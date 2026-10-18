@@ -2,8 +2,9 @@
 
 Companion to `SPACEGRAPH.md` (design) and `SPACEGRAPH.TODO.1.md` (plan, with the full pass log in §0).
 This is the release artifact for the prototype: what was built, how to run and reproduce it, what was
-measured, and what remains open. `R7.1` (library changelog and docs) lives in the `spacegraphjs` repo
-(`CHANGELOG.md`, `README.md`, `AGENTS.md`, `docs/host-integration.md`).
+measured, and what remains open. `R7.1` (library docs) lives in the `spacegraphjs` repo
+(`README.md`, `AGENTS.md`, `docs/host-integration.md`); the library change history is the `spacegraphjs`
+git log.
 
 ## Hypothesis
 
@@ -21,7 +22,7 @@ where the agent retried or changed direction.
 | Repository | Revision | Notes |
 |---|---|---|
 | OpenCode (`opencode` monorepo) | `dev` @ `f9c63d1b1b` + this docs pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `3e4612a`, docs `fbc368f` | Branch `main`; see `CHANGELOG.md` |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `3e4612a`, docs `3c87c3c` | Branch `main`; the library change history is its git log |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
 gitignored in the OpenCode repo; its commits are recorded here by SHA.

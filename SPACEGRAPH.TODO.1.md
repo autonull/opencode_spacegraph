@@ -1153,15 +1153,13 @@ final prototype write-up, the capability audit, the dependency migration plan, t
 the final checks. Library docs are in `spacegraphjs` commit `fbc368f`; the OpenCode docs are in this
 repo.
 
-- **R7.1 — SpaceGraphJS changelog and docs (done, `spacegraphjs` `fbc368f`).** New `spacegraphjs/CHANGELOG.md`
-  records every breaking change (chrome opt-in, global-registration opt-in, container-scoped keyboard,
-  on-demand rendering, `SpaceGraph.selected` → `string[]`, `Renderer` → `WebGLRenderer`, cross-instance
-  edge removal, node/edge type-name resolution, `HoverFingering` removal, `FractalZoomPlugin`
-  deprecation), the lean `activity` entry, the `@spacegraphjs/renderer` contract and all three leaves,
-  the ortho/zoom/selection/lifecycle/theme/click APIs, the package-boundary rules, and the §4.2 naming
-  table. `README.md` gains a "Renderer contract" section and links the changelog; `AGENTS.md` gains a
-  "Renderer surface" section pointing at `test:boundaries` and the naming rules. `docs/host-integration.md`
-  already carries the integration guide with a non-OpenCode example.
+- **R7.1 — SpaceGraphJS docs (done, `spacegraphjs` `fbc368f`, revised `3c87c3c`).** `README.md` gains a
+  "Renderer contract" section (the dependency-free port, the three leaves, the lean `activity` entry);
+  `AGENTS.md` gains a "Renderer surface" section with the §4.2 naming table, the boundary rules, and the
+  `test:boundaries` command. **Deviation:** a `spacegraphjs/CHANGELOG.md` was first added and then
+  removed at the user's direction — the git commit history already records every change and there are no
+  external users to inform, so a changelog is redundant. Breaking changes are read from the `spacegraphjs`
+  git log. `docs/host-integration.md` already carries the integration guide with a non-OpenCode example.
 - **R7.2 — prototype documentation (done).** `docs/spacegraph/prototype.md` is rewritten from running
   notes into the final write-up: hypothesis, architecture (ports/adapters), how to run, tested
   revisions, the screenshot table, the U3.6 renderer comparison, V5.7/V5.8/V5.9, the Phase 6 hybrid,
@@ -2347,10 +2345,10 @@ The hybrid is delivered in this order:
 
 ### Phase 7 — Polish, docs, and release package
 
-- [x] **R7.1 SpaceGraphJS changelog and docs** (done — `spacegraphjs` `fbc368f`; see log)
-  Record every breaking change, the lean `activity` entry, the `@spacegraphjs/renderer` contract, ortho/zoom/selection/lifecycle APIs, and both adapters in `spacegraphjs/CHANGELOG.md`, `README.md`, and the new `spacegraphjs/AGENTS.md`. Include a renderer-integration guide with a minimal non-OpenCode example and the naming rules from §4.2.
+- [x] **R7.1 SpaceGraphJS changelog and docs** (done — `spacegraphjs` `fbc368f`/`3c87c3c`; changelog dropped by user direction; see log)
+  Record every breaking change, the lean `activity` entry, the `@spacegraphjs/renderer` contract, ortho/zoom/selection/lifecycle APIs, and both adapters in `spacegraphjs/README.md` and `spacegraphjs/AGENTS.md`. Include a renderer-integration guide with a minimal non-OpenCode example and the naming rules from §4.2.
   Done: a new contributor can embed the lean entry and implement or use a renderer from the docs alone.
-  Status: `CHANGELOG.md` records every breaking change, the lean entry, the contract and three leaves, and the ortho/zoom/selection/lifecycle APIs plus the §4.2 naming table; `README.md` gains a "Renderer contract" section; `AGENTS.md` gains a "Renderer surface" section. The integration guide is `docs/host-integration.md` with the `demo/contract.html` example.
+  Status: `README.md` gains a "Renderer contract" section and `AGENTS.md` gains a "Renderer surface" section with the §4.2 naming table and the boundary rules; the integration guide is `docs/host-integration.md` with the `demo/contract.html` example. **Deviation:** the plan named a `spacegraphjs/CHANGELOG.md`; it was removed at the user's direction because the git history already records every change and there are no external users to inform. Breaking changes are read from the `spacegraphjs` git log.
 
 - [x] **R7.2 Prototype documentation** (done — see log)
   Write `docs/spacegraph/prototype.md`: hypothesis, architecture, how to run, tested SHAs, screenshots, renderer comparison, known limitations, and the evaluation protocol/results. Add `packages/session-graph/AGENTS.md` with the mission constraints.

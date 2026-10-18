@@ -68,4 +68,4 @@ The authoritative list is in [prototype.md](./prototype.md) §"Known limitations
 - [prototype.md](./prototype.md) — hypothesis, architecture, how to run, measurements, limitations,
   evaluation protocol, capability audit, and the dependency migration plan.
 - `SPACEGRAPH.md` (design) and `SPACEGRAPH.TODO.1.md` (plan) at the repo root.
-- Library side: `spacegraphjs/CHANGELOG.md`, `docs/host-integration.md`, and `demo/contract.html`.
+- Library side: `spacegraphjs/AGENTS.md`, `docs/host-integration.md`, and `demo/contract.html`.
