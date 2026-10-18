@@ -147,6 +147,43 @@ Verification: `cd spacegraphjs && pnpm exec vitest run` -> 10 files, 157 tests p
 `test/entry-critical-path.test.ts` asserting no ONNX/Monaco evaluation on import of the entry or activity).
 Deferred to L1.1/L1.2: `activity` build/`exports` wiring and the `spacegraphjs/*` source-consumption repoint.
 
+**2026-10-18 (cont.) — Phase 1 begins: L1.3 chrome opt-in and L1.4 render/theme plumbing.**
+
+Scope for this pass: make the library safely embeddable — take default chrome off the entry and let the
+host supply render/theme options. `spacegraphjs` commit `cac6374` (branch `main`).
+
+- **L1.3 — default chrome opt-in (done).** `DEFAULT_CHROME_PLUGINS` (`FractalZoomPlugin`, `ZoomUIPlugin`,
+  `MinimapPlugin`, `HUDPlugin`) is split out of `DEFAULT_SYSTEM_PLUGINS` in `src/core/defaults.ts`.
+  `SpaceGraphOptions.chrome` (default off) gates registration in `SpaceGraph.#registerDefaults`, so a bare
+  graph mounts only the canvas + CSS3D layer and no plugin appends to `document.body`. The only two
+  `document.body` writers are `ZoomUIPlugin` (chrome) and `HoverMetaWidget` (exported, not a default), so
+  the opt-out also satisfies "remove fixed body overlays unless chrome is enabled".
+- **L1.4 — plumb render/theme options (partial).** `SpaceGraphOptions` gains `render?: RenderOptions`,
+  `chrome?`, and `theme?: SpaceGraphTheme` (`{ background }`). `RenderOptions` gains `transparent` and
+  `preserveDrawingBuffer`; `Renderer` now imports the single definition from `src/types.ts` (its local
+  duplicate is gone) and honors `transparent` (null scene background + alpha clear) and
+  `preserveDrawingBuffer`. `SpaceGraph.#init` passes `{ ...options.render, backgroundColor:
+  theme.background ?? render.backgroundColor }` to the renderer, so a host theme no longer fights the
+  hard-coded `0x1a1a2e`. **Remaining:** the theme only covers `background`; node fill/stroke, edge color,
+  label color/font, and selection/hover wiring still need per-node/edge default plumbing. The "light and
+  dark screenshots both pass" clause needs the L1.18 demo page.
+- **L1.1/L1.2 — effectively complete for the current module set.** No `spacegraphjs/*` self-imports remain
+  in `src` (grep clean); `package.json` `exports` cover every existing module (`./`, `./activity`,
+  `./core`, `./nodes`, `./edges`, `./plugins`, `./plugins/mermaid`, `./input`, `./utils`, `./types`,
+  `./builder`, `./vision`). The five subpaths the plan lists as not yet present (`./zoom`, `./layout`,
+  `./a11y`, `./navigation`, `./inline`) are Phase 1 modules (L1.23–L1.26) and `ZoomBandsPlugin` (L1.2's
+  list) arrives with L1.23.
+
+Verification: `cd spacegraphjs && pnpm exec vitest run` -> 11 files, 160 tests (new `test/chrome.test.ts`
+asserts the chrome/system split and that core interaction + LOD stay registered). `pnpm exec tsc --noEmit`
+still reports the same 10 pre-existing `src` errors and none in the touched files. `eslint` cannot run in
+this environment (typescript-eslint rejects TS 7.0) and the repo is not prettier-clean, so style was
+matched by hand against the surrounding files.
+
+Note: the committed `docs/spacegraph/screenshots/00-spike-spacegraph.png` now understates the post-L1.3
+surface (it still shows the old default chrome). Regenerate it through the session-graph component test at
+the next opportunity.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -715,21 +752,25 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Packaging and entry points
 
-- [ ] **L1.1 Remove internal self-imports**
+- [x] **L1.1 Remove internal self-imports** (done for existing modules; five subpaths await their modules — see log)
   Convert the 37 `spacegraphjs/*` imports in `src` to relative imports. Add explicit core `exports` for `.`, `./activity`, `./core`, `./nodes`, `./edges`, `./plugins`, `./builder`, `./types`, `./zoom`, `./layout`, `./a11y`, `./navigation`, `./inline`, and `./vision`. Add `types` and a `types` condition. The renderer contract is a separate package, not a core subpath.
   Done: source and built consumption resolve without tsconfig paths; no `spacegraphjs/spacegraphjs/...` alias corruption.
+  Status: self-imports are all relative (grep clean); `exports` cover every existing module. `./zoom`, `./layout`, `./a11y`, `./navigation`, `./inline` land with L1.23–L1.26.
 
-- [ ] **L1.2 Add a lean activity entry**
+- [x] **L1.2 Add a lean activity entry** (done except `ZoomBandsPlugin`, which arrives with L1.23 — see log)
   Create `src/activity.ts` exporting only: `SpaceGraph`, `Graph`, `EventEmitter`, `ShapeNode`, `HtmlNode`, `DOMNode`, `NoteNode`, `PanelNode`, `TextMeshNode`, `GroupNode`, `CurvedEdge`, `LabeledEdge`, `GridLayout`, `HierarchicalLayout`, `TimelineLayout`, `LODPlugin`, `ZoomBandsPlugin`, and theme/types. It must not import vision, Monaco, Chart, Math, or media nodes.
   Done: lean entry imports in under the agreed chunk budget and never pulls ONNX/Monaco.
+  Status: `src/activity.ts` exists and `test/entry-critical-path.test.ts` asserts importing the entry and the activity entry evaluates neither ONNX nor Monaco. `ZoomBandsPlugin` is added when L1.23 creates it.
 
-- [ ] **L1.3 Make default chrome opt-in**
+- [x] **L1.3 Make default chrome opt-in** (done; see log — browser "bare canvas" assertion still to confirm in L1.18)
   Move `HUDPlugin`, `MinimapPlugin`, `ZoomUIPlugin`, and `FractalZoomPlugin` out of `DEFAULT_SYSTEM_PLUGINS` into a `DEFAULT_CHROME_PLUGINS` list. Add `chrome: false` default for embedded use. Remove fixed `document.body` overlays unless chrome is enabled.
   Done: a bare `new SpaceGraph(container, { chrome: false })` renders only canvas + CSS3D layer.
+  Status: `DEFAULT_CHROME_PLUGINS` exists; `chrome` defaults off and gates registration; `test/chrome.test.ts` asserts the split. The only default `document.body` writer was `ZoomUIPlugin`, now chrome-gated.
 
-- [ ] **L1.4 Plumb render/theme options**
+- [ ] **L1.4 Plumb render/theme options** (partial — background + transparency done; node/edge/label/selection/hover theming remains; `projection` waits on L1.12)
   Pass `RenderOptions` through `SpaceGraphOptions`: `backgroundColor`, `transparent`, `antialias`, `pixelRatio`, `preserveDrawingBuffer`, `projection`, `chrome`, `plugins`. Add a theme object for background, node fill/stroke, edge color, label color/font, selection/hover colors. Support transparent background so the app surface shows through.
   Done: no hard-coded `0x1a1a2e` when the app supplies a theme; light and dark screenshots both pass.
+  Status: `render`/`chrome`/`theme` added; `RenderOptions` gains `transparent` + `preserveDrawingBuffer`; `Renderer` honors both and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. Remaining: theme beyond `background`, the `projection` pass-through (needs L1.12), a `plugins` option, and the light/dark screenshot check (L1.18 demo page).
 
 #### Lifecycle and input
 

@@ -8,7 +8,7 @@ state, measurements, and open issues that the plan's `R7.2` will turn into the f
 | Repository | Revision | Notes |
 |---|---|---|
 | OpenCode (`opencode` monorepo) | `fd2c0454ea` (base) + the source-link/spike commit | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | `adf2dd6` | Self-imports resolved, `src` entry points exposed, `./activity` types condition |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | `cac6374` | Self-imports resolved, `src` entry points exposed, `./activity` types condition; chrome opt-in (L1.3) and render/theme plumbing (L1.4) |
 
 Linkage stays "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2).
 
@@ -80,13 +80,37 @@ are within the plan's budget (lazy SpaceGraphJS chunk < 400 KB gzip excluding `t
 
 ### Open issues for later phases
 
-- Default chrome is visible: the HUD telemetry panel, the "zoom level" card, and the zoom hint render in
-  the spike screenshot. Making chrome opt-in is L1.3.
-- The graph uses the library's hard-coded dark background (`0x1a1a2e`); there is no theme plumbing yet.
-  Threading an OpenCode-token theme is L1.4/U3.7.
+- ~~Default chrome is visible~~ **Resolved by L1.3 (`spacegraphjs` `cac6374`):** `DEFAULT_CHROME_PLUGINS`
+  is separate from `DEFAULT_SYSTEM_PLUGINS` and `chrome` defaults off, so a bare graph mounts only the
+  canvas + CSS3D layer. The committed spike screenshot predates this and should be regenerated.
+- ~~The graph uses the library's hard-coded dark background (`0x1a1a2e`); there is no theme plumbing yet.~~
+  **Partially resolved by L1.4:** `SpaceGraphOptions.render`/`chrome`/`theme` are plumbed and
+  `theme.background` overrides `render.backgroundColor`; `transparent` renders onto the host surface. Node
+  fill/stroke, edge color, label color/font, and selection/hover theming remain, and the OpenCode-token
+  theme bridge is U3.7.
 - The spike lives in `packages/session-graph` and runs under the Storybook host, not inside the routed
   session panel. Real placement in `packages/app` is Phase 4 (I4.2/I4.3); the plan's eval gate for Phase 0
   ("render and dispose cleanly in the real app shell") is not yet exercised end-to-end.
+
+## Phase 1 progress
+
+### L1.3 — default chrome opt-in (done, `cac6374`)
+
+- `src/core/defaults.ts`: `FractalZoomPlugin`, `ZoomUIPlugin`, `MinimapPlugin`, `HUDPlugin` moved from
+  `DEFAULT_SYSTEM_PLUGINS` to a new `DEFAULT_CHROME_PLUGINS`.
+- `SpaceGraph.#registerDefaults` registers chrome plugins only when `options.chrome` is true.
+- Verified by `spacegraphjs/test/chrome.test.ts` (chrome/system lists are disjoint; core
+  `InteractionPlugin`/`LODPlugin` remain always-registered). Full library suite: 11 files, 160 tests.
+
+### L1.4 — render/theme plumbing (partial, `cac6374`)
+
+- `SpaceGraphOptions` gains `render?: RenderOptions`, `chrome?`, `theme?: { background }`.
+- `RenderOptions` gains `transparent` and `preserveDrawingBuffer`; `Renderer` imports the single
+  definition from `src/types.ts` (its duplicate is removed) and honors both new flags.
+- `theme.background` takes precedence over `render.backgroundColor`; the hard-coded `0x1a1a2e` only
+  applies when the host supplies neither.
+- Remaining: theming beyond `background`, `projection` pass-through (L1.12), a `plugins` option, and the
+  light/dark screenshot check via the L1.18 demo page.
 
 ## P0.7 / P0.8 — not started
 
