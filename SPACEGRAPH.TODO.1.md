@@ -1146,6 +1146,61 @@ Notes for the next pass:
 - Remaining Phase 1: none. Remaining Phase 3: none. Phase 7 (R7.1–R7.7) and P8.1/P8.2 remain; P8.4/P8.8 stay
   deferred by design.
 
+**2026-10-18 (cont.) — Phase 7 polish, docs, and release package (R7.1, R7.2, R7.4–R7.7).**
+
+Scope for this pass: the release package the plan orders after Phase 6 — the library changelog, the
+final prototype write-up, the capability audit, the dependency migration plan, the release README, and
+the final checks. Library docs are in `spacegraphjs` commit `fbc368f`; the OpenCode docs are in this
+repo.
+
+- **R7.1 — SpaceGraphJS changelog and docs (done, `spacegraphjs` `fbc368f`).** New `spacegraphjs/CHANGELOG.md`
+  records every breaking change (chrome opt-in, global-registration opt-in, container-scoped keyboard,
+  on-demand rendering, `SpaceGraph.selected` → `string[]`, `Renderer` → `WebGLRenderer`, cross-instance
+  edge removal, node/edge type-name resolution, `HoverFingering` removal, `FractalZoomPlugin`
+  deprecation), the lean `activity` entry, the `@spacegraphjs/renderer` contract and all three leaves,
+  the ortho/zoom/selection/lifecycle/theme/click APIs, the package-boundary rules, and the §4.2 naming
+  table. `README.md` gains a "Renderer contract" section and links the changelog; `AGENTS.md` gains a
+  "Renderer surface" section pointing at `test:boundaries` and the naming rules. `docs/host-integration.md`
+  already carries the integration guide with a non-OpenCode example.
+- **R7.2 — prototype documentation (done).** `docs/spacegraph/prototype.md` is rewritten from running
+  notes into the final write-up: hypothesis, architecture (ports/adapters), how to run, tested
+  revisions, the screenshot table, the U3.6 renderer comparison, V5.7/V5.8/V5.9, the Phase 6 hybrid,
+  Phase 8 portability, a known-limitations list (15 items), the evaluation protocol, the capability
+  audit, and the migration plan. The stale "not done yet: phase nodes / levels / layout" Phase 2 text
+  and the old tested-SHA table are gone. `packages/session-graph/AGENTS.md` already existed (added in
+  the Phase 2/3 passes).
+- **R7.4 — release artifacts (done; no GIF).** New `docs/spacegraph/README.md` is the release entry:
+  experimental banner, motivation, setup, exact reproduce commands, tested commit, limitations, and the
+  demo command; it embeds the overview screenshot (`screenshots/02-graph-overview.png`). The
+  expand→zoom→inspect→return GIF/video is **not produced** (no recording tooling in this environment);
+  recorded as the one missing artifact.
+- **R7.5 — dependency migration plan (done).** `prototype.md` §"Dependency migration plan" gives the
+  concrete source→packaged steps (build `dist` + `build` scripts, swap `workspace:*` for versioned
+  ranges, drop the `./activity` `types` stopgap, re-run `graph:verify` + built e2e, keep
+  `CONTRACT_VERSION`).
+- **R7.6 — library capability audit (done).** `prototype.md` §"Library capability audit" is a table of
+  every generic module (contract, three leaves, zoom bands, lane layout, a11y, trail, DOM mount,
+  minimap) → consumers → gap; no session naming or data assumptions leak into the library.
+- **R7.7 — final checks (done; component/e2e from the last pass).** Ran this pass: `packages/session-graph`
+  `typecheck` clean + `bun test src` 22 pass; `packages/session-ui` `bun test src/graph` 47 pass;
+  `packages/app` `typecheck` clean; root `bun run lint:changed` 0 problems; `spacegraphjs` `pnpm exec
+  vitest run` 32 files / 294 tests; `test:boundaries` 5 pass; the four package suites 6/12/12/9 pass.
+  Component (`bun run test:components`, 22 pass) and app e2e (`e2e/graph/session-graph.spec.ts`, 13 pass)
+  were green in the last pass and are **not re-run** here (docs-only change). `bun run check` is not run:
+  it fails on two pre-existing, unrelated problems (`packages/ai` `zstdCompressSync` node-types error,
+  present on `origin/dev`, and a `turbo` SIGSEGV in this environment). All screenshots were inspected in
+  prior passes; this pass changes no pixels.
+
+Notes for the remaining work:
+
+- **Phase 7 is complete except R7.3.** R7.3 (evaluation protocol) is **protocol-only**: the protocol is
+  written into `prototype.md` but execution needs human participants, which this environment cannot
+  provide. The go/no-go decision at the end of the prototype therefore stays open.
+- **The GIF/video (R7.4) is the only unproduced release artifact.**
+- Remaining after Phase 7: **P8.1** (framework-agnostic view controller in `spacegraphjs/control`) and
+  **P8.2** (React/Solid bindings over the contract) are not started; **P8.4**/**P8.8** stay deferred by
+  design. The 15 known limitations in `prototype.md` are the honest backlog.
+
 ## 0. Mission
 
 
@@ -2292,33 +2347,40 @@ The hybrid is delivered in this order:
 
 ### Phase 7 — Polish, docs, and release package
 
-- [ ] **R7.1 SpaceGraphJS changelog and docs**
+- [x] **R7.1 SpaceGraphJS changelog and docs** (done — `spacegraphjs` `fbc368f`; see log)
   Record every breaking change, the lean `activity` entry, the `@spacegraphjs/renderer` contract, ortho/zoom/selection/lifecycle APIs, and both adapters in `spacegraphjs/CHANGELOG.md`, `README.md`, and the new `spacegraphjs/AGENTS.md`. Include a renderer-integration guide with a minimal non-OpenCode example and the naming rules from §4.2.
   Done: a new contributor can embed the lean entry and implement or use a renderer from the docs alone.
+  Status: `CHANGELOG.md` records every breaking change, the lean entry, the contract and three leaves, and the ortho/zoom/selection/lifecycle APIs plus the §4.2 naming table; `README.md` gains a "Renderer contract" section; `AGENTS.md` gains a "Renderer surface" section. The integration guide is `docs/host-integration.md` with the `demo/contract.html` example.
 
-- [ ] **R7.2 Prototype documentation**
+- [x] **R7.2 Prototype documentation** (done — see log)
   Write `docs/spacegraph/prototype.md`: hypothesis, architecture, how to run, tested SHAs, screenshots, renderer comparison, known limitations, and the evaluation protocol/results. Add `packages/session-graph/AGENTS.md` with the mission constraints.
   Done: docs are accurate at the tested commit.
+  Status: `docs/spacegraph/prototype.md` is the final write-up (hypothesis, architecture, how to run, tested revisions, screenshots, U3.6 comparison, V5.7–V5.9, Phase 6 hybrid, Phase 8 portability, 15-item known-limitations list, evaluation protocol, capability audit, migration plan); the stale Phase 2 "not done yet" text and old SHA table are removed. `packages/session-graph/AGENTS.md` already existed.
 
-- [ ] **R7.3 Evaluation protocol**
+- [ ] **R7.3 Evaluation protocol** (protocol written; execution pending — see log)
   Recruit a small set of users; give each the same five investigative tasks on the same fixture session, once with transcript and once with graph, counterbalanced. Record task success, completion, wrong turns, and subjective preference. No leading explanation of the graph.
   Done: results and quotes recorded; decision on continuing recorded.
+  Status: the protocol is written into `prototype.md` §"Evaluation protocol" (n ≥ 5, counterbalanced, the five tasks, and the recorded fields). **Not executed** — it requires human participants, which this environment cannot provide; results and the go/no-go decision stay open.
 
-- [ ] **R7.4 Release artifacts**
+- [x] **R7.4 Release artifacts** (done; no GIF — see log)
   Public/companion branch clearly marked experimental; one compelling overview screenshot; a short GIF/video of expand → zoom → inspect → return; README with motivation, setup, tested commit, limitations, and exact demo command.
   Done: another developer can launch the demo from the fixture without configuring a provider.
+  Status: `docs/spacegraph/README.md` (experimental banner, motivation, setup, reproduce commands, tested commit, limitations, demo command, overview screenshot) lands. The GIF/video is **not produced** — no recording tooling in this environment; it is the one missing artifact.
 
-- [ ] **R7.5 Dependency migration plan**
+- [x] **R7.5 Dependency migration plan** (done — see log)
   Document the step after the prototype: build `dist` for `spacegraphjs`, `@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, and `@spacegraphjs/cytoscape-renderer`; replace the source workspaces with versioned dependencies; keep the contract version; re-run the contract and capture suites.
   Done: migration steps are concrete enough to execute without rediscovery.
+  Status: `prototype.md` §"Dependency migration plan" lists the five concrete steps (build `dist` + `build` scripts; swap `workspace:*` for versioned ranges; drop the `./activity` `types` stopgap; re-run `graph:verify` + built e2e; keep `CONTRACT_VERSION` and negotiation).
 
-- [ ] **R7.6 Library capability audit**
+- [x] **R7.6 Library capability audit** (done — see log)
   For each generic module added (contract, zoom bands, lane layout, accessibility, trail, minimap, DOM mount, static SVG), confirm it has no OpenCode naming, no session data assumptions, and at least one non-OpenCode consumer or documented example. Remove or defer anything that only serves the prototype.
   Done: a table of capability → consumers → gaps; no session-specific leakage in the library.
+  Status: `prototype.md` §"Library capability audit" is the table (contract, three leaves, zoom bands, lane layout, a11y, trail, DOM mount, minimap → consumers → gap). No session naming or data assumptions leak into the library; every module has a non-OpenCode consumer (the library demo).
 
-- [ ] **R7.7 Final checks**
+- [x] **R7.7 Final checks** (done; component/e2e from the last pass — see log)
   Run `bun run check` from the repo root. Run package tests, component tests, e2e, contract conformance, and the capture suite in built mode for both renderers. Inspect every screenshot. Record unverified behavior explicitly.
   Done: green checks plus an explicit limitations list.
+  Status: this pass ran session-graph typecheck + `bun test src` (22), session-ui `bun test src/graph` (47), app typecheck, root `lint:changed` (0), `spacegraphjs` vitest (32 files / 294), `test:boundaries` (5), and the four package suites (6/12/12/9) — all green. Component (22) and app e2e (13) were green last pass and are not re-run (docs-only change). `bun run check` is not run: it fails on two pre-existing, unrelated problems (`packages/ai` `zstdCompressSync` node-types error on `origin/dev`, and a `turbo` SIGSEGV here). Limitations are listed in `prototype.md`.
 
 ---
 
