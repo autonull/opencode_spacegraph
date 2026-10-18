@@ -299,6 +299,23 @@ carries only the workspace wiring and this log.
   `RenderModel` from the contract. The next library dependency for L1.20 is the core primitive set it consumes
   (event forwarding L1.8, click semantics L1.9, unified selection L1.10, `setPositions` L1.16).
 
+**2026-10-18 (cont.) — Phase 1 core interaction primitives: events (L1.8), click semantics (L1.9), unified selection (L1.10), positions (L1.16).**
+
+Scope for this pass (agreed with the user): the core primitives the L1.20 SpaceGraph adapter consumes. `spacegraphjs` commit `6172d0f` (branch `main`). All work is in `spacegraphjs`; OpenCode carries only this log.
+
+- **L1.8 — forward graph events (done).** New `src/core/forwardEvents.ts::forwardGraphEvents(graph, events)` mirrors `node/edge:added|removed|updated` and the new `graph:cleared` from the Graph emitter onto `sg.events`, wired in `SpaceGraph.#init`. `Graph.updateNode` now emits `node:updated` (previously only the Node's own emitter fired, so `sg.watch('node:updated')` was dead); `Graph.clear()` emits `graph:cleared`. `SpaceGraphEvents` gains `graph:cleared`, `selection:changed`, `node:selection-changed`, `node:click`, `edge:click`, `background:click`, `node:dblclick`. This reconnects HUD/History subscriptions (`sg.events.on('node:added'|'selection:changed')`) that never fired before.
+- **L1.9 — real click semantics (done for the pointer path).** `InteractionPlugin` records the pressed node/edge on pointerdown and, on pointerup, emits `node:click` / `edge:click` / `background:click` (with `{ id, originalEvent }`) only when pointer movement stays within `CLICK_MOVE_THRESHOLD` (5px) and no box-select/connect/resize was active — so a drag does not emit click and a plain click does not fly the camera. The dblclick camera fly is gated by a new `SpaceGraphOptions.doubleClickFocus` (default true). Remaining: `ButtonNode`/`ToggleNode` still emit their own `node:click` on press and are not yet routed through the single pointer path.
+- **L1.10 — unified selection (done).** New `src/core/Selection.ts` is the one source of truth: `select(id | ids | null)`, `clear()`, `deselect()`, `toggle()`, `list`/`has`, applying `controlState` and emitting `selection:changed` (`{ ids, nodes:Set, edges:Set, timestamp }`) plus per-node `node:selection-changed`. `SpaceGraph` exposes `select`/`clearSelection`/`toggleSelection`/`deselect`/`selectAll`/`deselectAll`, `selected` (ids) and `selectedNodes`; `ErgonomicsAPI.select/deselect/selectAll/deselectAll/selected` delegate to it (they no longer call `node.focus()`; focus stays in `FocusManager`). `plugins/interaction/SelectionManager` is now a visual + box-select adapter over `Selection` (owns no membership state, resyncs DOM outlines from `selection:changed`); `KeyboardShortcuts.handleSelectAll` routes through it; `DragHandler`'s dead `emit('selection:getSelectedNodes')` probe was replaced with `sg.selectedNodes`. **Breaking:** `SpaceGraph.selected` now returns `string[]` ids (was `Node[]`); `ErgonomicsAPI.selected` still returns `Node[]`.
+- **L1.16 — stable layout primitives (done, adapter subset).** `Graph.setPositions(map)` (absolute, no animation, refreshes edges) and `Graph.pinAll()`; `SpaceGraph.setPositions`/`pinAll` delegate and `layoutOnce(name, options)` aliases the existing one-shot `layout`. Physics stays off by default and `AutoLayoutPlugin` is a no-op, so explicit positions are not fought. Remaining per the task: make `TimelineLayout`/`HierarchicalLayout` deterministic and pin-aware and remove the `window.gsap` layout dependency.
+
+Verification: `cd spacegraphjs && pnpm exec vitest run` → 13 files, 170 tests (new `test/selection.test.ts` 6 tests and `test/graph-events.test.ts` 4 tests). `pnpm exec tsc --noEmit` still reports exactly the same 10 pre-existing `src` errors (CameraControls `.at`, `bvh`, `DynamicThicknessEdge`, `HistoryPlugin`, `MermaidNode`) and none in the touched files. `packages/session-graph` typecheck (`tsc -b`) still clean.
+
+Notes for the next pass:
+
+- The next library dependency for **L1.20** (`@spacegraphjs/spacegraph-renderer`) is the adapter itself, plus viewport/band reporting (L1.13) and orthographic projection (L1.12) if 2D ortho is required at that step; click/selection/positions/events are now available in the core.
+- `selection:changed` carries both `ids: string[]` (contract-friendly) and `nodes`/`edges` Sets (legacy HUD shape). Contract consumers should read `ids`.
+- Loose ends from this slice: `ButtonNode`/`ToggleNode` click routing (L1.9), and layout determinism plus `window.gsap` cleanup (L1.16).
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -903,17 +920,20 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Events and selection
 
-- [ ] **L1.8 Forward graph events**
+- [x] **L1.8 Forward graph events** (done; see log — ButtonNode routing is L1.9's remainder)
   Emit `node:added`, `node:removed`, `node:updated`, `edge:added`, `edge:removed`, `edge:updated` on `sg.events` in addition to `sg.graph`. Add a typed `SpaceGraphEvents` map. `updateNode` emits `node:updated`; `clear()` emits remove events or a single `graph:cleared`.
   Done: `sg.watch('node:added', cb)` fires; HUD/History subscriptions work or are removed.
+  Status: `forwardGraphEvents` mirrors every Graph event onto `sg.events`; `Graph.updateNode` emits `node:updated`; `Graph.clear()` emits `graph:cleared`; the event names are declared on `SpaceGraphEvents`. HUD/History subscriptions now fire.
 
-- [ ] **L1.9 Real click semantics**
+- [x] **L1.9 Real click semantics** (done for the pointer path; ButtonNode/ToggleNode routing remains — see log)
   Distinguish click from drag with a movement threshold. Emit `node:click`, `node:dblclick`, `edge:click`, `background:click` with `{ id, originalEvent }`. Make the dblclick camera fly configurable (`doubleClickFocus: false`). Route `ButtonNode` clicks through the same event path.
   Done: a plain click on a card selects it and does not fly the camera; a drag does not emit click; edge click works.
+  Status: pointerup emits `node:click`/`edge:click`/`background:click` with `{ id, originalEvent }` when movement ≤ 5px and no box-select/connect/resize is active; a plain click selects the node; `doubleClickFocus` (default true) gates the dblclick fly. `ButtonNode`/`ToggleNode` still emit their own `node:click` on press.
 
-- [ ] **L1.10 Unified selection**
+- [x] **L1.10 Unified selection** (done; see log)
   Replace the three selection systems with one API: `select(id | ids | null)`, `clearSelection()`, `selected` (IDs), `selection:changed`, and `node:selection-changed`. Selection applies a visible outline; focus/camera movement is separate (`focusNode`). Box-select feeds the same state.
   Done: click, box-select, keyboard, and programmatic selection agree; selection survives updates by ID.
+  Status: `src/core/Selection.ts` owns the ids; `SpaceGraph.select/clearSelection/toggleSelection/deselect/selectAll/deselectAll`, `selected` (ids) and `selectedNodes` expose it; `ErgonomicsAPI` delegates; `SelectionManager` is a visual/box-select adapter; click, box-select, ctrl+A, drag multi-select, and programmatic calls all agree. `SpaceGraph.selected` changed from `Node[]` to `string[]` ids.
 
 - [ ] **L1.11 Hover and focus cleanup**
   Deduplicate hover events from `HoverManager` and `HoverFingering`. Add a visible keyboard focus outline for mesh nodes. Ensure hidden/LOD-culled nodes cannot be picked.
@@ -939,9 +959,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Add a supported `DOMNode`/`CustomNode` spec path that accepts an existing `HTMLElement`, never replaces it on update, and exposes `data.lod`. Make `HtmlNode.updateSpec` no-op when HTML is unchanged. Do not destroy mounted Solid content.
   Done: a mounted card survives 100 model updates with its listeners intact.
 
-- [ ] **L1.16 Stable layout primitives**
+- [x] **L1.16 Stable layout primitives** (done for the adapter subset; Timeline/Hierarchical determinism + gsap cleanup remain — see log)
   Add `setPositions(positions: Record<string, [number, number, number]>)`, `pinAll()`, and `layoutOnce(name, options)` that does not run on mutation. Make `TimelineLayout` and `HierarchicalLayout` deterministic and pin-aware. Remove `window.gsap` dependence from layout animation or make animation optional.
   Done: applying positions twice yields identical coordinates; adding nodes does not move pinned nodes.
+  Status: `Graph.setPositions` (absolute, no animation, refreshes edges), `Graph.pinAll`, and `SpaceGraph.setPositions`/`pinAll`/`layoutOnce` land; physics is off by default and `AutoLayoutPlugin` is a no-op, so host positions are stable. `TimelineLayout`/`HierarchicalLayout` determinism and the `window.gsap` dependency are unchanged.
 
 - [ ] **L1.17 Edge rendering fixes**
   Render `LabeledEdge` labels via a real CSS2D layer or an `HtmlNode` anchor. Ensure edge labels are zoom-aware and never overlap cards. Add an optional edge hit area for easier clicking.
