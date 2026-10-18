@@ -655,11 +655,10 @@ Notes for the remaining Phase 5 work:
   app level: forcing an adapter mount failure without adding a production seam is not possible in the built bundle.
   The wrapper's own load-failure fallback is covered by case 6 (dev-only, because the built chunk URL is hashed).
   Before adding the app-level duplicates, confirm they are not already owned by the component suite.
-- **New defect surfaced (filed, not fixed).** The graph logs `THREE.Color: Invalid hex color #ffffffff` twice at
-  mount. The host theme background token can be an 8-digit hex; the SpaceGraph adapter passes `theme.background`
-  (a CSS string) as the core `backgroundColor`, and the core `Renderer` does `new THREE.Color(string)`, which rejects
-  8-digit hex (falls back, warning). The fix belongs in the core `Renderer` color parsing (or normalize in the
-  adapter's `parseColor`). It is a warning, not an error, so the zero-console-*error* criterion still holds.
+- **8-digit theme color defect (fixed 2026-10-18).** The graph logged `THREE.Color: Invalid hex color #ffffffff`
+  at mount. The host theme background token can be an 8-digit hex; the core `Renderer` now normalizes its
+  background through `parseColor`, which drops alpha from 8-digit hex (and expands 3-digit hex), so no warning
+  fires and the clear color is correct (see the SpaceGraph-renderer-essentials pass note above).
 - **V5.1–V5.4 and V5.6–V5.9 remain** (capture spec + CLI + reproducible screenshots; conformance-in-CI; performance;
   accessibility; cross-environment). The app e2e harness is now proven to drive the graph, so the capture spec
   (V5.1) can build on `e2e/graph/`.
@@ -682,9 +681,11 @@ Verification:
 - `cd packages/app && bun run typecheck:e2e` → only the 4 pre-existing errors; `cd packages/session-graph && bun run typecheck` clean; `bun run lint:changed` → 0 problems.
 
 Notes for the remaining Phase 5 work:
-- **Ortho fit is imperfect (new defect).** `fitView` → `calculateFitView` derives camera distance from a perspective `fov`/`aspect`, so under the orthographic camera the fit does not center the graph; the session root and phase clusters can fall outside the frame at overview (02 shows only turn/subagent nodes). L1.12/L1.16 should make `calculateFitView` projection-aware. Images are still deterministic; 02 is the weakest.
+- **Ortho fit was imperfect (fixed 2026-10-18).** `calculateFitView` is now projection-aware and `fitView`
+  scales the orthographic frustum; `GraphView` fits on load and on level/projection change. Images are
+  deterministic; 02 is now framed (see the SpaceGraph-renderer-essentials pass note above).
 - **Toolbar back is under the floating header toggles.** At 1440×900 the toolbar's right side (`Renderer: …` + back) sits beneath `session-header-toggles` (`absolute end-3 top-0 z-30 h-12`) and is not clickable; the capture returns via the header toggle. Needs a layout fix.
-- **`THREE.Color: Invalid hex color #XXXXXXff` (pre-existing, filed at V5.5).** The 8-digit host token background reaches the core `new THREE.Color(string)`; warning only.
+- **`THREE.Color: Invalid hex color #XXXXXXff` (fixed 2026-10-18).** The 8-digit host token background now parses correctly (see the SpaceGraph-renderer-essentials pass note above); no warning.
 - **Cited-but-unverified:** 07/08 come from the Storybook story, not the app (no renderer switch); V5.1's `PLAYWRIGHT_BUILD=1` run and the non-verify modes' CI exit-code semantics are not exercised here, and V5.7/V5.8/V5.9 remain.
 
 **2026-10-18 (cont.) — Remaining Phase 1 partials: theme surface (L1.4), mesh focus outline (L1.11), DOMNode element path (L1.15), edge labels/hit area (L1.17).**
@@ -741,6 +742,58 @@ Notes for the next pass:
 - **`declutterLabels` measures `getBoundingClientRect()` each frame** (transform-only changes keep layout clean,
   so it is cheap) but ignores node/card rects; extend the entry list with DOM card rects to fully satisfy
   "never overlap cards".
+- Remaining Phase 1: L1.4 (`plugins` option + light/dark screenshots), L1.17 (label-vs-card), L1.27, L1.29,
+  L1.32, L1.33. Remaining Phase 3: U3.6, U3.13.
+
+**2026-10-18 (cont.) — SpaceGraph renderer essentials: orthographic fit, visible panel/badge nodes, and theme color parsing.**
+
+Scope for this pass (agreed with the user): the main SpaceGraphJS renderer must actually frame and draw the
+graph before other work. Performance and the minimap were explicitly deprioritized. Library work is in
+`spacegraphjs`; one host change in `packages/session-graph`.
+
+- **L1.12/L1.16 — orthographic fit (fixed).** `calculateFitView` was perspective-only: it derived camera
+  distance from `fov`/`aspect` and `fitView` only moved the target, so under the orthographic camera the
+  frustum was never scaled and the graph overflowed (the filed V5.4 "fit does not center" defect). It is now
+  projection-aware: for ortho it returns a frustum `zoom` computed from the X/Y bounds against the base
+  frustum (top-bottom / right-left), and `SpaceGraph.fitView` passes it through `CameraControls.flyTo(...,
+  zoom)` while keeping the camera radius (distance does not scale ortho). `CameraControls` gained animated
+  `zoomNext`/`startZoom` state wired into `setTargetSmooth`/`update`, clamped to the shared ortho zoom range.
+- **Host — fit on load and on level/projection change (§5.5).** `GraphView` now fits the model when the
+  canvas becomes ready, when the renderer switches, and on an explicit semantic-level or projection change
+  (deferred a microtask so the canvas has applied the matching model first). Previously nothing fit on first
+  load, so the overview was never framed; this is the exact V5.4 defect. Streaming model updates deliberately
+  do not refit.
+- **Adapter — do not force shape size 1 (fixed).** `@spacegraphjs/spacegraph-renderer`'s `nodeSpec` set
+  `size: node.size?.[0] ?? 1` for every non-card node, so `panel`/`badge` nodes (session root, turns, phases,
+  errors) rendered as sub-pixel boxes and edges to them looked like they dangled off-frame. It now passes the
+  host size only when supplied and otherwise lets the core default (40) apply.
+- **Core — color parsing (fixed).** `src/utils/color.ts::parseColor` mishandled 8- and 3-digit hex
+  (`parseInt` over the whole string, so `#161616ff` became a wrong blue-ish value). It now drops alpha from
+  8-digit hex and expands 3-digit hex, and the core `Renderer` normalizes its background through it, removing
+  the `THREE.Color: Invalid hex color #161616ff` warning and the wrong clear color.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 29 files, 280 tests (was 28/275; new `test/camera-fit.test.ts`
+  (5) and `test/color.test.ts` (5), plus 2 ortho-fit cases in `test/camera-controls.test.ts`). `pnpm exec tsc
+  --noEmit` unchanged at the 184-error baseline (no new errors in the touched files).
+- `cd spacegraphjs/packages/spacegraph-renderer && bun test && bun run typecheck` → 11 pass, clean.
+- `cd packages/session-graph && bun run typecheck && bun test src && bun run test:components` → clean, 19
+  pass, 15 pass. `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts`
+  → 6 pass.
+- `bun run graph:capture --mode=demo` regenerated 01–06; **02-graph-overview** is now framed (session root
+  and turn/phase nodes visible, no dangling edges), **03/04** are framed execution/selected views, and
+  **06-graph-3d** shows depth with the selection preserved — with **no `THREE.Color` warning** in the run.
+
+Notes for the next pass:
+- **Overview chips are plain panels, not counted clusters.** `phase`/`turn` nodes map to the `panel` shape
+  and render as small labelled boxes; `data.count`/`clusterCount` is not painted. Making overview "clusters
+  with counts" is host card-markup work in `buildRenderModel` (render a count badge for `derived` phase
+  nodes), not a renderer defect.
+- **Toolbar-right occlusion remains (filed at V5.4, unaddressed).** At 1440×900 the `session-header-toggles`
+  overlay (`absolute end-3 top-0 z-30 h-12`) still covers the toolbar's "Renderer: …" label and back button.
+  It is an app/`GraphView` layout fix, out of scope for this renderer pass.
+- **`focusNode` does not change ortho framing** (it only moves the target); `fit` is the framing path. Fine
+  for the prototype; revisit if a "zoom to selection" affordance is wanted.
 - Remaining Phase 1: L1.4 (`plugins` option + light/dark screenshots), L1.17 (label-vs-card), L1.27, L1.29,
   L1.32, L1.33. Remaining Phase 3: U3.6, U3.13.
 

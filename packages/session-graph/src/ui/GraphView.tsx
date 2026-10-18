@@ -49,6 +49,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererID, setRendererID] = createSignal<RendererID>()
   const [error, setError] = createSignal<string>()
+  const [canvasReady, setCanvasReady] = createSignal(false)
   let renderer: GraphRenderer | undefined
 
   const theme = () => props.theme ?? resolvedTheme()
@@ -94,6 +95,14 @@ export const GraphView = (props: GraphViewProps) => {
     const current = capabilities()
     if (current && projection() === "3d" && !supports(current, "3d")) changeProjection("2d")
   })
+  // §5.5: frame the model on first load, renderer switch, and an explicit level/projection change.
+  // Deferred a microtask so the canvas has applied the matching model before we measure its bounds.
+  createEffect(() => {
+    const ready = canvasReady()
+    level()
+    projection()
+    if (ready) queueMicrotask(() => renderer?.fit())
+  })
 
   return (
     <div data-component="session-graph-view" data-slot="graph-view" class="flex h-full w-full flex-col overflow-hidden">
@@ -131,7 +140,10 @@ export const GraphView = (props: GraphViewProps) => {
               props.onSelect?.(ids[0])
             }}
             onBackgroundClick={() => select(undefined)}
-            onRenderer={(instance) => (renderer = instance)}
+            onRenderer={(instance) => {
+              renderer = instance
+              setCanvasReady(!!instance)
+            }}
             onReady={(info) => {
               setError(undefined)
               setCapabilities(info.capabilities)
