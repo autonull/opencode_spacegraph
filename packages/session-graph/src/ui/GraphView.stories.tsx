@@ -101,3 +101,42 @@ export const Error = {
 export const Narrow = {
   render: () => <ViewHarness width="390px" height="844px" selection={INITIAL_SELECTION} />,
 }
+
+/** A tool node with long output proves the inspector scrolls rather than growing the panel. */
+const LONG_OUTPUT_MODEL: GraphModel = {
+  root: "session",
+  nodes: [
+    {
+      id: "session",
+      kind: "session",
+      label: "Session",
+      status: "neutral",
+      minLevel: "overview",
+      summary: "Fix the authentication test failures",
+    },
+    {
+      id: "tool:long",
+      kind: "tool",
+      label: "shell",
+      status: "failed",
+      messageID: "msg_long",
+      minLevel: "execution",
+      data: {
+        name: "shell",
+        category: "verify",
+        exit: 1,
+        input: {
+          command: "bun test packages/session-ui",
+          lines: Array.from({ length: 120 }, (_, index) => `line ${index}: expected 1 to equal 2`),
+        },
+      },
+    },
+  ],
+  edges: [{ id: "e1", kind: "part-of", source: "tool:long", target: "session", confidence: "explicit" }],
+  turns: [],
+  turnByMessageID: new Map(),
+}
+
+export const LongOutput = {
+  render: () => <ViewHarness model={LONG_OUTPUT_MODEL} selection="tool:long" level="execution" />,
+}

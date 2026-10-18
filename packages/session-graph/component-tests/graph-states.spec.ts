@@ -74,3 +74,28 @@ story("re-themes the same model in dark mode without reloading the renderer", as
 
   expect(errors).toEqual([])
 })
+
+story("scrolls long tool output instead of growing the panel", async ({ mount }) => {
+  const root = await mount("session-graph-view--long-output")
+
+  await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
+    timeout: 30_000,
+  })
+
+  const output = root.locator('[data-slot="graph-inspector"] pre')
+  await expect(output).toBeVisible()
+  await expect(output).toContainText("bun test packages/session-ui")
+
+  // The long output must live behind a scroll region, whether the node's own pre scrolls or the
+  // inspector body does; either way the panel does not grow.
+  const scrolls = await output.evaluate((element) => {
+    const region = element.closest(".overflow-y-auto")
+
+    return (
+      element.scrollHeight > element.clientHeight ||
+      (region !== null && region !== element && region.scrollHeight > region.clientHeight)
+    )
+  })
+
+  expect(scrolls).toBe(true)
+})
