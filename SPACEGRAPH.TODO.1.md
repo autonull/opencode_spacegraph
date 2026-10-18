@@ -1644,6 +1644,45 @@ Notes for the remaining work:
   notes that P8.1/H6.3 closed. Reconcile the doc before the release package is called final.
 - Naming (#10 "Graph" vs "Session map") and the deferred H6.5/R7.3/P8.4/P8.8 items are unchanged.
 
+**2026-10-18 (cont.) — Filed-defect fix (programmatic zoom, known limitation #15) and the prototype-doc reconcile.**
+
+Scope for this pass (agreed with the user: "finish the plan"): the two remaining items that are neither deferred
+by design nor human-gated — the one real red the docs filed, and the doc reconcile the previous pass asked for.
+The library fix is in `spacegraphjs` commit `189d345`; the doc work is in this repo.
+
+- **Programmatic zoom fixed (`spacegraphjs` `189d345`).** `SpaceGraph.setZoom` set the camera zoom and then
+  called `cameraControls.update()`, which re-applied an in-flight `fitView` zoom animation and overwrote the
+  value — the hardening demo calls `sg.fitView()` on load, so `setZoom(0.8)` read back ~0.57 under the
+  orthographic camera. Added `CameraControls.cancelTweens()` (clears the target/radius/phi/theta/zoom tween
+  state) and call it from `WebGLRenderer.setZoom` and `setProjection`, so an explicit programmatic camera
+  command is authoritative over a running animation. New `test/camera-controls.test.ts` case proves the cancel.
+  This fixes known limitation #15.
+- **Docs reconcile (R7.2 follow-up).** `docs/spacegraph/prototype.md`: tested revisions updated (spacegraphjs
+  `189d345`); P8.2 bindings recorded as landed; the P8.1 bullet notes OpenCode's `GraphView` now routes
+  selection/breadcrumbs through `GraphController`; the capability-audit rows for the navigation trail and view
+  controller lost their stale "swap/adoption pending" notes; and the known-limitations list was corrected —
+  edge-label background resolved (#6), inspector structural resolved (#9), U3.16/U3.17 partial closed (#14), and
+  the programmatic-zoom red resolved (#15) are removed, with new entries for the RF.2 `LaneLayout` cleanup and
+  vector-band dimming.
+
+Verification:
+- `cd spacegraphjs && node_modules/.bin/vitest run` → 37 files / 327 tests (was 36/326; +1 tween-cancel).
+- `cd spacegraphjs && node_modules/.bin/tsc --noEmit` unchanged at the 184-error baseline (only the two
+  pre-existing `CameraControls` `Array.at` errors).
+- `cd spacegraphjs && SG_DEMO_URL=… node_modules/.bin/playwright test test/e2e/hardening.spec.ts` → **5 pass**,
+  including the previously-red "switches projection and honours programmatic zoom".
+- Docs-only otherwise; no host package changed, so the session-graph/app suites are unaffected.
+
+Notes for the remaining work:
+- **RF.6 mesh selection outline** stays filed: a mesh node's focus/selection ring is still an axis-aligned
+  `BoxHelper` world box, not a silhouette (a stencil/backface pass). It is cosmetic for OpenCode (DOM cards) and
+  the library demo (box panels), so it is deliberately not taken.
+- **RF.2 `LaneLayout` folding** stays filed: make `spacegraphjs/layout/LaneLayout` support variable item widths
+  and per-lane cursors before folding the session strategies onto it (today it is a uniform `ordinal * step`
+  grid, so the fold is not behaviour-preserving).
+- **Deferred / human-gated, unchanged:** H6.5 (approval-gated inline row host), R7.3 (needs human participants),
+  P8.4/P8.8 (conditional by design), and the naming decision #10 ("Graph" vs "Session map").
+
 ## 0. Mission
 
 

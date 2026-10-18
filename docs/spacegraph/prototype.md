@@ -21,8 +21,8 @@ where the agent retried or changed direction.
 
 | Repository | Revision | Notes |
 |---|---|---|
-| OpenCode (`opencode` monorepo) | `dev` @ `f9c63d1b1b` + this docs pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `3e4612a`, docs `3c87c3c` | Branch `main`; the library change history is its git log |
+| OpenCode (`opencode` monorepo) | `dev` @ `484bd64944` + this docs pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `189d345` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `189d345` cancels in-flight camera tweens on an explicit zoom/projection |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
 gitignored in the OpenCode repo; its commits are recorded here by SHA.
@@ -222,9 +222,13 @@ Library-side work that lets a second host reuse the boundary without OpenCode (s
   (selection, trail, zoom bands, search), with no OpenCode import and no session vocabulary.
 - **Framework-agnostic view controller** (P8.1) — `spacegraphjs/control` (`GraphController`): selection,
   focus, navigation trail, zoom bands, search, and connections over a minimal structural model, bound to
-  any renderer through a minimal structural surface. The library demo is driven by it.
-- **Not started:** P8.2 (React/Solid bindings over the contract). P8.4 (host-neutral activity adapter)
-  and P8.8 (incremental `RenderModelPatch`) stay deferred by design.
+  any renderer through a minimal structural surface. The library demo is driven by it, and OpenCode's
+  `GraphView` routes selection and breadcrumbs through it (it stays unbound from the renderer, because
+  `GraphCanvas` remains the single renderer-event mediator).
+- **Framework bindings** (P8.2) — `react-spacegraph` and `solid-spacegraph` wrap `GraphBinding` (the
+  framework-agnostic mount/update/dispose policy in `spacegraphjs/control`) over the contract, not core
+  internals.
+- **Deferred by design:** P8.4 (host-neutral activity adapter) and P8.8 (incremental `RenderModelPatch`).
 
 ## Library capability audit (R7.6)
 
@@ -240,8 +244,8 @@ data assumptions appear in the library.
 | Zoom bands | `spacegraphjs/zoom` | library demo; host policy in `levels.ts` | band→level wiring is host-owned |
 | Lane layout | `spacegraphjs/layout` | library demo; host layout in `layout.ts` | `TimelineLayout`/`HierarchicalLayout` are not refactored onto it |
 | Accessibility layer | `spacegraphjs/a11y` | OpenCode a11y mirror, library demo | node list only; edges are not announced |
-| Navigation trail | `spacegraphjs/navigation` | `GraphController`, library demo | OpenCode breadcrumbs still read `part-of` ancestry (swap pending) |
-| View controller | `spacegraphjs/control` | library demo | OpenCode `GraphView` still owns selection/search inline (adoption pending) |
+| Navigation trail | `spacegraphjs/navigation` | `GraphController`, OpenCode `GraphView`, library demo | — |
+| View controller | `spacegraphjs/control` | OpenCode `GraphView` (selection), library demo | OpenCode search stays host-owned (uses the richer tool-input selector) |
 | DOM mount | `spacegraphjs` `DOMNode` | SpaceGraph adapter | — |
 | Minimap | host SVG (`GraphMinimap.tsx`) | OpenCode | vertical mirror under Cytoscape (documented) |
 
@@ -250,35 +254,30 @@ data assumptions appear in the library.
 Carry these forward explicitly; none is silently lowered.
 
 1. **Orthographic wheel zoom scales the frustum about the target**, not the pointer (L1.12).
-2. **The focus/selection outline is an axis-aligned `BoxHelper`**, not a silhouette (L1.11).
+2. **The mesh focus/selection outline is an axis-aligned `BoxHelper`**, not a silhouette (L1.11/RF.6);
+   DOM cards are outlined on the element with the resolved theme colours instead.
 3. **Edge labels avoid labels and DOM cards, but not all geometry**; `declutterLabels` measures label
    and card rects only (L1.17).
 4. **`SpaceGraph.instances`/`options.global` remain** as an off-by-default developer handle for the
    vision/inspection helpers; graph semantics no longer consult it (L1.30 literal step deferred).
 5. **The `./activity` `types` condition is a hand-authored stopgap** (`spacegraphjs/types/activity.d.ts`);
    replace with generated declarations once the library source is clean (L1.1).
-6. **The core hard-codes an edge-label background** (`rgba(0,0,0,0.55)`), and the SpaceGraph adapter
-   passes only `{ background }` to the core theme, so selected/focus outlines use core default colours.
-   The library demo overrides `.sg-edge-label` in CSS for light themes.
-7. **The graph toolbar renders in the app with an `endInset`** to clear the floating header toggles; the
+6. **The graph toolbar renders in the app with an `endInset`** to clear the floating header toggles; the
    reserve is desktop-media-query-gated.
-8. **Mobile graph mode is desktop-gated for v1** (I4.10 decision). The header toggle is desktop-only; on
+7. **Mobile graph mode is desktop-gated for v1** (I4.10 decision). The header toggle is desktop-only; on
    mobile the graph is reachable only through the `graph.toggle` command.
-9. **The inspector is structural.** It renders kind/status/label/summary, per-kind fields, tool input
-   JSON, connections with confidence, and "open in transcript". Markdown rendering, ANSI stripping,
-   on-demand diffs, and copy are not implemented — the model carries neither terminal text nor diff
-   hunks.
-10. **The minimap orientation is vertically mirrored under Cytoscape** (the Cytoscape canvas draws
-    model +y downward); it is correct under the default renderer.
-11. **Two adapter-failure app e2e cases are dev-only** (the built chunks are hashed); the component
-    suite keeps seam-based coverage.
-12. **First graph paint and pan frame rate have no harness**, and the session-entry delta is unmeasured.
-13. **The renderer selector is not in the app toolbar**; renderer choice is a prototype setting, and
+8. **The minimap orientation is vertically mirrored under Cytoscape** (the Cytoscape canvas draws
+   model +y downward); it is correct under the default renderer.
+9. **Two adapter-failure app e2e cases are dev-only** (the built chunks are hashed); the component
+   suite keeps seam-based coverage. The same applies to the lazy-wrapper load-failure case.
+10. **First graph paint and pan frame rate have no harness**, and the session-entry delta is unmeasured.
+11. **The renderer selector is not in the app toolbar**; renderer choice is a prototype setting, and
     the Cytoscape captures come from the Storybook story.
-14. **U3.16/U3.17 remain partial**: no `CurrentSessionProviders`-backed story set; the switch control and
-    prototype-settings renderer selector are app-e2e concerns, not component tests.
-15. **The `hardening.spec.ts` "programmatic zoom" e2e is a pre-existing red at library HEAD** (expects
-    `viewport.zoom ≈ 0.8` after `setZoom(0.8)` but reads ~0.57 under ortho; not caused by this work).
+12. **The session layout strategies compute their own cursors in `session-ui`**; folding them onto the
+    generic `spacegraphjs/layout/LaneLayout` needs that primitive to support variable item sizes and
+    per-lane cursors first (RF.2 library-first cleanup).
+13. **Vector swimlane bands stay full-opacity under execution focus dimming** (they are structure, not
+    content, and are `interactive: false`).
 
 ## Evaluation protocol (R7.3)
 
