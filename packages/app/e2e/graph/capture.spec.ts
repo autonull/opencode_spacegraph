@@ -125,8 +125,8 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // 04 — a selected node with inspector detail in the DOM panel.
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
-  await search.getByRole("textbox").fill("token.ts")
-  await search.getByRole("button", { name: "src/auth/token.ts", exact: true }).click()
+  await search.getByRole("combobox").fill("token.ts")
+  await search.getByRole("option", { name: "src/auth/token.ts", exact: true }).click()
   await expect(page.locator(inspector).getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
   await waitForStillCanvas(page)
   await capture(page, "04-graph-selected.png")

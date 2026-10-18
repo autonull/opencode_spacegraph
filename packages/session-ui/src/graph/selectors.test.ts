@@ -9,6 +9,7 @@ import {
   outgoing,
   search,
   shortestPath,
+  subtree,
   turnSubgraph,
   why,
 } from "./selectors"
@@ -115,5 +116,37 @@ describe("selectors — turn subgraph (hybrid H6.2/H6.4)", () => {
 
   test("an unknown turn is an empty subgraph", () => {
     expect(turnSubgraph(model, "turn:missing", 7)).toEqual({ nodes: [], edges: [] })
+  })
+})
+
+describe("selectors — subtree (U3.11 breadcrumb fit)", () => {
+  test("the session subtree is every node, including provenance files", () => {
+    expect(subtree(model, "session")).toHaveLength(model.nodes.length)
+    expect(subtree(model, "session").some((node) => node.kind === "file")).toBe(true)
+  })
+
+  test("a turn subtree spans its own activity and files, not the session root", () => {
+    const ids = subtree(model, turnNodeID("msg_user_1")).map((node) => node.id)
+
+    expect(ids).toContain(toolNodeID("prt_tool_write_1"))
+    expect(ids.some((id) => id.startsWith("file:"))).toBe(true)
+    expect(ids).not.toContain("session")
+  })
+
+  test("a leaf file is just itself", () => {
+    expect(subtree(model, fileNodeID("src/auth/token.ts")).map((node) => node.id)).toEqual([
+      fileNodeID("src/auth/token.ts"),
+    ])
+  })
+
+  test("a derived phase frames its whole cluster", () => {
+    const phase = model.nodes.find((node) => node.kind === "phase")!
+    const ids = subtree(model, phase.id).map((node) => node.id)
+
+    for (const member of phase.clusterOf!) expect(ids).toContain(member)
+  })
+
+  test("an unknown node has no subtree", () => {
+    expect(subtree(model, "missing")).toEqual([])
   })
 })

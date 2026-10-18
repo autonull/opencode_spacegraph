@@ -328,6 +328,7 @@ const source = {
   "ui.sessionGraph.turnMap.openFull": "Open full graph",
   "ui.sessionGraph.inline.label": "Execution subgraph",
   "ui.sessionGraph.inspector.title": "Details",
+  "ui.sessionGraph.inspector.resize": "Resize details panel",
   "ui.sessionGraph.inspector.empty": "Select a node to see its details",
   "ui.sessionGraph.inspector.emptyHint": "Click a card or use search to jump to a node.",
   "ui.sessionGraph.inspector.status": "Status",

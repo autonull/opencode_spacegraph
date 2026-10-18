@@ -62,8 +62,8 @@ test("selects a node from search and inspects it in the DOM panel", async ({ pag
 
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
-  await search.getByRole("textbox").fill("token.ts")
-  await search.getByRole("button", { name: "src/auth/token.ts", exact: true }).click()
+  await search.getByRole("combobox").fill("token.ts")
+  await search.getByRole("option", { name: "src/auth/token.ts", exact: true }).click()
 
   const panel = page.locator(inspector)
   await expect(panel.getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
@@ -80,8 +80,8 @@ test("appends a node from a live event without losing the selection", async ({ p
 
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
-  await search.getByRole("textbox").fill("token.ts")
-  await search.getByRole("button", { name: "src/auth/token.ts", exact: true }).click()
+  await search.getByRole("combobox").fill("token.ts")
+  await search.getByRole("option", { name: "src/auth/token.ts", exact: true }).click()
 
   const panel = page.locator(inspector)
   await expect(panel.getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()

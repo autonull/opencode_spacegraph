@@ -57,6 +57,51 @@ export function ancestors(model: GraphModel, id: string): GraphNode[] {
   return result
 }
 
+/**
+ * Everything a breadcrumb selection should frame (U3.11): the node, its `part-of` descendants, the
+ * members of a derived cluster, and the files those activities read or wrote. Provenance files are
+ * not `part-of` a turn, so they are collected one hop out; a file shared across turns appears under
+ * both. Returned in model order so the caller can fit the exact node set the bands draw.
+ */
+export function subtree(model: GraphModel, id: string): GraphNode[] {
+  const node = nodeByID(model, id)
+
+  if (!node) return []
+
+  const children = new Map<string, string[]>()
+
+  for (const edge of model.edges) {
+    if (edge.kind !== "part-of") continue
+    children.set(edge.target, [...(children.get(edge.target) ?? []), edge.source])
+  }
+
+  const members = new Set([id, ...(node.derived ? (node.clusterOf ?? []) : [])])
+  const queue = [...members]
+  const kindByID = new Map(model.nodes.map((node) => [node.id, node.kind]))
+
+  while (queue.length > 0) {
+    for (const child of children.get(queue.shift()!) ?? []) {
+      if (members.has(child)) continue
+      members.add(child)
+      queue.push(child)
+    }
+  }
+
+  const hierarchy = new Set(members)
+
+  for (const edge of model.edges) {
+    if (edge.kind === "part-of") continue
+    const source = kindByID.get(edge.source)
+    const target = kindByID.get(edge.target)
+
+    if (hierarchy.has(edge.source) && target === "file") members.add(edge.target)
+
+    if (hierarchy.has(edge.target) && source === "file") members.add(edge.source)
+  }
+
+  return model.nodes.filter((node) => members.has(node.id))
+}
+
 /** Breadcrumb line from the session root down to the node (root first). */
 export function breadcrumbs(model: GraphModel, id: string): GraphNode[] {
   const node = nodeByID(model, id)

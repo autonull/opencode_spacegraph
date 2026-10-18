@@ -84,6 +84,11 @@ export const Overview = {
   render: () => <ViewHarness level="overview" />,
 }
 
+/** Nothing selected at mount, like the app before the user interacts. */
+export const NoSelection = {
+  render: () => <ViewHarness level="execution" />,
+}
+
 export const Detail = {
   render: () => <ViewHarness level="detail" selection="result:prt_tool_shell_2" />,
 }

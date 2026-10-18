@@ -148,6 +148,29 @@ test("turn and phase swimlane bands are emitted when cluster bounds are supplied
   expect(turnBands.length).toBe(model.turns.length)
 })
 
+test("execution focus dims cards outside the selected neighborhood (RF.10)", () => {
+  const focus = "tool:prt_tool_write_1"
+  const built = buildRenderModel(model, {
+    level: "execution",
+    positions,
+    clusters: layoutGraph(model).clusters,
+    focus,
+  })
+  const focused = built.nodes.find((node) => node.id === focus)!
+
+  expect(focused.data?.dimmed).toBe(false)
+  expect(focused.html).not.toContain("opacity:.3")
+
+  const dimmed = built.nodes.filter((node) => node.data?.dimmed === true && node.html !== undefined)
+
+  expect(dimmed.length).toBeGreaterThan(0)
+  expect(dimmed.every((node) => node.html!.includes("opacity:.3"))).toBe(true)
+})
+
+test("without a focus nothing is dimmed", () => {
+  expect(at("execution").nodes.some((node) => node.data?.dimmed === true)).toBe(false)
+})
+
 test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () => {
   const built = at("detail")
   const style = (kind: string, confidence?: string) =>

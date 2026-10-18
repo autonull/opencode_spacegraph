@@ -4,6 +4,7 @@ import {
   domBudget,
   edgesAtLevel,
   isClusterExpanded,
+  neighbors,
   nodesAtLevel,
   type ClusterBounds,
   type GraphEdge,
@@ -90,11 +91,16 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
 
   let cards = 0
 
+  // RF.10: at execution a selected node dims everything outside its neighborhood (the edges are
+  // already narrowed by `edgesAtLevel`), so the neighbourhood reads without hunting.
+  const lit = focus ? new Set([focus, ...neighbors(model, focus).nodes.map((node) => node.id)]) : undefined
+
   const content = nodesAtLevel(model, level).map((node): RenderNode => {
     const position = positions.get(node.id) ?? ZERO
     const shape = NODE_SHAPE[node.kind]
     const chip = isClusterChip(node, level)
     const asCard = (shape === "card" || chip) && cards < budget
+    const dimmed = lit ? !lit.has(node.id) : false
 
     if (asCard) cards += 1
 
@@ -105,10 +111,10 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
       summary: node.summary,
       status: NODE_STATUS[node.status],
       shape: asCard ? "card" : shape === "card" ? "dot" : shape,
-      html: asCard ? renderCard(node, level) : undefined,
+      html: asCard ? wrapDim(renderCard(node, level), dimmed) : undefined,
       size: asCard && chip ? CHIP_SIZE : undefined,
       position: [position.x, position.y, position.z],
-      data: nodeData(node, level),
+      data: nodeData(node, level, dimmed),
     }
   })
 
@@ -172,7 +178,7 @@ function buildBands(
 }
 
 /** Renderer-facing affordance data only; detail content is read back from the model via selectors. */
-function nodeData(node: GraphNode, level: ZoomLevel): Record<string, unknown> {
+function nodeData(node: GraphNode, level: ZoomLevel, dimmed: boolean): Record<string, unknown> {
   return {
     turnID: node.turnID,
     messageID: node.messageID,
@@ -180,10 +186,16 @@ function nodeData(node: GraphNode, level: ZoomLevel): Record<string, unknown> {
     toolID: node.toolID,
     time: node.time,
     derived: node.derived ?? false,
+    dimmed,
     category: node.kind === "phase" ? node.data?.category : undefined,
     count: node.kind === "phase" ? clusterCount(node) : undefined,
     expanded: node.kind === "phase" ? isClusterExpanded(level) : undefined,
   }
+}
+
+/** Card markup is host-owned; out-of-neighborhood cards are faded without touching their content. */
+function wrapDim(html: string, dimmed: boolean) {
+  return dimmed ? `<div style="width:100%;height:100%;opacity:.3">${html}</div>` : html
 }
 
 /** Edge strength by kind/confidence (RF.4): the sequence spine and provenance are strong; hierarchy

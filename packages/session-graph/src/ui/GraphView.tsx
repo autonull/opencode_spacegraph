@@ -1,9 +1,9 @@
 import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
 import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, ZoomLevel } from "@opencode/session-ui/graph"
-import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors } from "@opencode/session-ui/graph"
+import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors, subtree } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, createUniqueId, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -66,7 +66,43 @@ export const GraphView = (props: GraphViewProps) => {
   const [error, setError] = createSignal<string>()
   const [canvasReady, setCanvasReady] = createSignal(false)
   const [viewport, setViewport] = createSignal<RendererViewport>()
+  const [narrow, setNarrow] = createSignal(false)
+  const [inspectorWidth, setInspectorWidth] = createSignal(288)
   let renderer: GraphRenderer | undefined
+  let rootEl!: HTMLDivElement
+
+  // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
+  // Only the threshold is tracked, so a resize does not re-render (and re-observe) on every pixel.
+  onMount(() => {
+    const observer = new ResizeObserver(([entry]) => {
+      const next = entry.contentRect.width > 0 && entry.contentRect.width < 768
+      setNarrow((current) => (current === next ? current : next))
+    })
+    observer.observe(rootEl)
+    onCleanup(() => observer.disconnect())
+  })
+
+  let resizeMove: ((event: PointerEvent) => void) | undefined
+  let resizeEnd: (() => void) | undefined
+  const stopResize = () => {
+    if (resizeMove) window.removeEventListener("pointermove", resizeMove)
+    if (resizeEnd) window.removeEventListener("pointerup", resizeEnd)
+    resizeMove = undefined
+    resizeEnd = undefined
+  }
+  const startResize = (event: PointerEvent) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = inspectorWidth()
+    resizeMove = (moveEvent) => {
+      const max = Math.max(240, rootEl.clientWidth * 0.6)
+      setInspectorWidth(Math.min(max, Math.max(220, startWidth - (moveEvent.clientX - startX))))
+    }
+    resizeEnd = stopResize
+    window.addEventListener("pointermove", resizeMove)
+    window.addEventListener("pointerup", resizeEnd)
+  }
+  onCleanup(stopResize)
 
   const theme = () => props.theme ?? resolvedTheme()
   const renderCard = createMemo(() => props.renderCard ?? createCardTemplate(theme()))
@@ -132,6 +168,11 @@ export const GraphView = (props: GraphViewProps) => {
     select(node.id)
     renderer?.focus(node.id)
   }
+  // U3.11: clicking a breadcrumb selects it and frames its subtree, so the canvas follows the trail.
+  const fitSubtree = (id: string) => {
+    select(id)
+    renderer?.fit(subtree(props.model, id).map((node) => node.id))
+  }
 
   // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
   // originate inside the a11y list or a form control are left to their owner.
@@ -183,7 +224,12 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   return (
-    <div data-component="session-graph-view" data-slot="graph-view" class="flex h-full w-full flex-col overflow-hidden">
+    <div
+      ref={rootEl}
+      data-component="session-graph-view"
+      data-slot="graph-view"
+      class="flex h-full w-full flex-col overflow-hidden"
+    >
       <GraphToolbar
         level={level()}
         onLevel={setLevel}
@@ -209,7 +255,7 @@ export const GraphView = (props: GraphViewProps) => {
         searching={searchOpen()}
         endInset={props.endInset}
       />
-      <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={select} />
+      <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={fitSubtree} />
       <Show when={fallback() && !error()}>
         <div
           data-slot="graph-fallback"
@@ -313,10 +359,29 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
         </div>
+        <Show when={selectedNode() && !narrow()}>
+          <div
+            data-slot="graph-inspector-resize"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={i18n.t("ui.sessionGraph.inspector.resize")}
+            class="w-1 shrink-0 cursor-col-resize touch-none hover:bg-border-weaker-base"
+            onPointerDown={startResize}
+          />
+        </Show>
         <div
-          class={selectedNode() ? "w-72 max-w-[45%] shrink-0" : "w-0 shrink-0 overflow-hidden"}
+          classList={{
+            "shrink-0": true,
+            "w-0 overflow-hidden": !selectedNode(),
+            "absolute inset-x-0 bottom-0 z-20 h-1/2 w-full border-t border-border-weaker-base": !!(
+              selectedNode() && narrow()
+            ),
+            "border-s border-border-weaker-base": !!(selectedNode() && !narrow()),
+          }}
+          style={selectedNode() && !narrow() ? { width: `${inspectorWidth()}px`, "max-width": "60%" } : undefined}
           data-slot="graph-inspector-gutter"
           data-collapsed={!selectedNode()}
+          data-layout={narrow() ? "sheet" : "side"}
         >
           <GraphInspector
             model={props.model}

@@ -48,6 +48,7 @@ export {
   outgoing,
   search,
   shortestPath,
+  subtree,
   turnSubgraph,
   why,
   type Subgraph,

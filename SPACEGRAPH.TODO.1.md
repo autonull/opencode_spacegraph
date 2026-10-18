@@ -1303,6 +1303,69 @@ Notes for the remaining work:
 - **`13-graph-narrow` shows the toolbar `flex-wrap`**, not an overflow menu; a true overflow menu is the
   remaining RF.7 clause.
 
+**2026-10-18 (cont.) — Phase 9 interaction polish and the responsive inspector (RF.10 done; RF.8 resizable + sheet).**
+
+Scope for this pass (agreed with the user): the remaining Phase 9 UX partials that need no user decision —
+keyboard-driven search, breadcrumb fit-subtree, execution focus dimming, and a resizable / mobile inspector.
+Host work is in `packages/session-ui` and `packages/session-graph` plus one `en.ts` key; the library change is
+in `spacegraphjs` commit (branch `main`, `fitView(ids)` + Cytoscape fit guard).
+
+- **RF.10 — search keyboard navigation (done).** `GraphSearch` is now a real combobox: the input is
+  `role="combobox"` with `aria-controls`/`aria-expanded`/`aria-activedescendant`, the results are a
+  `role="listbox"` of `role="option"` rows, and Arrow/Home/End move the active row while Enter selects it
+  (Escape still closes). The active row is scrolled into view. Options carry `data-node-id`/`data-index`.
+- **RF.10/U3.11 — breadcrumb fit-subtree (done).** New pure `subtree(model, id)` selector in
+  `session-ui/src/graph/selectors.ts`: the node, its `part-of` descendants, a derived cluster's members, and
+  the provenance **files** those activities touch (one hop, so a leaf file's subtree is just itself). Clicking a
+  breadcrumb now selects the ancestor and calls `renderer.fit(subtree ids)`, so the canvas follows the trail.
+  Groundwork: the library `SpaceGraph.fitView(padding, duration, ids?)` filters to the given ids (the
+  `./activity` stopgap signature is widened), the SpaceGraph adapter passes ids through, and the Cytoscape
+  `fit` guards an empty collection.
+- **RF.10/U3.11 — execution focus dimming (done).** `buildRenderModel` computes the selected node's neighbor
+  set (via `neighbors`) at execution and wraps every out-of-neighborhood **card** in an `opacity:.3` container;
+  the render node also carries `data.dimmed`. Bands and structure stay full-opacity. The dim is host markup, so
+  no contract change; vector panels (session/turn/phase) are not dimmed (documented limitation).
+- **RF.8 — resizable inspector + bottom sheet (done; deepened content still open).** `GraphView` observes its
+  own width with a **threshold-only** `ResizeObserver` (re-renders only when crossing 768px, avoiding an RO
+  feedback loop). Below 768px the inspector is a bottom sheet (`data-layout="sheet"`, `h-1/2`, `absolute
+  inset-x-0 bottom-0`) with no drag handle; at/above 768px it is a side panel (`data-layout="side"`) with a
+  `role="separator"` drag handle (`data-slot="graph-inspector-resize"`) that resizes between 220px and 60% of
+  the container. New `ui.sessionGraph.inspector.resize` key.
+- **App e2e locators follow the new search roles.** `e2e/graph/session-graph.spec.ts` and
+  `e2e/graph/capture.spec.ts` now target `getByRole("combobox")` / `getByRole("option", …)` instead of
+  `textbox`/`button`.
+- **New tests.** `session-ui/src/graph/selectors.test.ts` (+5 `subtree` cases); `session-graph`
+  `canvas/buildRenderModel.test.ts` (+2 dimming cases); new `component-tests/graph-refine.spec.ts` (7 cases:
+  search keyboard nav + selection, breadcrumb fit, dim at execution vs overview, dim after a post-mount
+  selection, side-panel resize drag, narrow bottom sheet); new `NoSelection` story.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 29 pass (was 27); `bun run
+  test:components` → 28 pass (was 22).
+- `cd packages/session-ui && bun test src/graph` → 55 pass (was 50); `bun run typecheck` clean.
+- `cd spacegraphjs && pnpm exec vitest run` → 32 files / 294 tests; `packages/spacegraph-renderer` 13,
+  `packages/cytoscape-renderer` 12 (`bun test`); typechecks clean.
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` → the same 4 pre-existing errors
+  (none in the graph specs); `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 13 pass (one earlier run
+  hit the documented timeline-virtualizer scroll-restore flake; 3/3 in isolation).
+- `bun run lint:changed` → 0 problems.
+- `bun run graph:capture --mode=compare` regenerated all 12 images; **04-graph-selected** shows the
+  neighborhood lit against faded cards (26/39 cards dimmed in the app DOM), and **13-graph-narrow** shows the
+  inspector as a bottom sheet over the canvas.
+
+Notes for the remaining work:
+- **RF.10 is complete.** RF.8 keeps only "deepened content" open (markdown/ANSI/diffs/copy) which needs the
+  model to carry terminal/diff text.
+- **RF.6's selection-outline alignment** is the one Phase 9 library item left: the mesh selection outline is
+  still a `BoxHelper` world box, not aligned to the DOM card bounds (needs a stencil/backface pass).
+- **RF.7's overflow menu** remains; narrow toolbars still use `flex-wrap`.
+- **Vector-node dimming.** Focus dimming fades DOM cards only; `session`/`turn`/`phase` panels and the swimlane
+  bands stay full-opacity. Dimming vector meshes needs a core `data.opacity`→material path (a library change).
+- **Controlled/uncontrolled selection quirk.** `GraphView` initializes `internalSelection` from the mount-time
+  `props.selection`; if a host later sets `selection` back to `undefined` without going through the view's own
+  `select`, the stale internal value is used. Harmless for the app's flow (deselect routes through `select`),
+  but worth normalizing if a host drives selection purely externally.
+
 ## 0. Mission
 
 
@@ -2613,8 +2676,9 @@ neighbours. The layout must be card-aware.
   under ~768px instead of the current side-by-side squeeze. Then deepen content (markdown, ANSI-stripped
   terminal, on-demand diffs, copy) once the model carries that text.
   Status: collapse landed (`data-slot="graph-inspector-gutter"` `data-collapsed`; the panel is `w-0`
-  with `overflow-hidden` when nothing is selected). **Open:** resizable width, the <768px bottom sheet,
-  and the deepened content (needs the model to carry terminal/diff text).
+  with `overflow-hidden` when nothing is selected); the gutter is now resizable at ≥768px (`role="separator"`
+  drag handle, 220px–60% clamp) and a bottom sheet below 768px (`data-layout="sheet"`). **Open:** the deepened
+  content (markdown, ANSI-stripped terminal, on-demand diffs, copy) needs the model to carry terminal/diff text.
 - [x] **RF.9 States and theming**
   Real loading skeleton, styled empty and error states, and light/dark parity checked in screenshots
   (not only Storybook).
@@ -2624,9 +2688,10 @@ neighbours. The layout must be card-aware.
 - [x] **RF.10 Interaction polish** (partial)
   Search result keyboard navigation, focus dimming of non-neighbours at execution (the U3.11 clause),
   breadcrumb fit-subtree, and a small keyboard map (`/` search, `f` fit, `1/2/3` levels).
-  Status: the keyboard map landed on the canvas region (`/`, `f`, `1`/`2`/`3`; ignored inside the a11y
-  list and form controls). **Open:** focus dimming of non-neighbours, breadcrumb fit-subtree, and
-  search-result keyboard navigation (the search list is still mouse-driven).
+  Status: done — the keyboard map lives on the canvas region (`/`, `f`, `1`/`2`/`3`; ignored inside the a11y
+  list and form controls); search is a combobox/listbox with Arrow/Home/End/Enter navigation; a breadcrumb
+  click fits its subtree (the pure `subtree` selector + `renderer.fit(ids)`); and selecting at execution dims
+  cards outside the neighborhood (host card markup). See the Phase 9 log entry for details.
 - [x] **RF.11 Visual regression contract**
   A fixed set of states captured per batch (overview, execution, selected, 3D, layout variants, 390×900)
   so each refinement step is judged against the previous image.
