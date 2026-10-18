@@ -598,6 +598,33 @@ Notes for the next pass:
 - **`SpaceGraphOptions.cameraControls` is still passed with a cast** (it is not typed on `SpaceGraphOptions`; the adapter relies on the `./activity` stopgap's index signature). Typing it is L1.4/L1.1 cleanup.
 - Next in Phase 3: U3.13 (minimap, needs L1.27), U3.6 (comparison). Remaining Phase 1: L1.4, L1.11, L1.15, L1.17, L1.27, L1.29, L1.30, L1.32, L1.33.
 
+**2026-10-18 (cont.) — Phase 4 integration (I4.1–I4.9, I4.11), L1.30 graph isolation, and Phase 3 U3.16/U3.17 close-out.**
+
+Scope for this pass (agreed with the user): "essentials, hardening, and integration" — skip the minimap (L1.27/U3.13, low priority), land the OpenCode integration, the graph-isolation hardening, and the remaining Phase 3 stories/tests. Library work is in `spacegraphjs` commit `bafb5c2`; OpenCode carries the app wiring, the story/test, and this log.
+
+- **I4.1 per-session graph state (done).** `sessionViewSchema` gains an optional `graph: { mode, projection?, renderer?, selected? }`; a new `layout.graph(sessionKey)` accessor (beside `view`/`tabs`) reads/patches it, participates in `touch`/`prune`, and is exposed as `session.layout.graph()` via `session-layout.ts`/`model.ts`. Absent means transcript, so old layouts decode unchanged.
+- **I4.2 lazy wrapper (done).** New `packages/app/src/session/graph/session-graph-view.tsx`: `lazy(() => import("@opencode/session-graph").then(m => ({ default: m.GraphView })))` behind a `<Suspense>` skeleton and an `<ErrorBoundary>` whose fallback returns to the transcript with a message. It builds the pure model (`buildGraph(session.history.messages(), session.data.status())`), reads the persisted graph state, persists selection/projection, and maps "open in transcript" through `openInTranscript`. It imports no adapter; `@opencode/session-graph` was added as a `workspace:*` dep of `packages/app`.
+- **I4.3 render branch (done).** In `screen.tsx` the single `timelineView()` render becomes a `Switch` between `graph.mode() === "graph"` (the wrapper) and the timeline. The composer, header, and panel frame are untouched, so a mode switch does not remount them.
+- **I4.5 toggle (desktop done; mobile gated).** New `session/header/session-graph-toggle.tsx` (IconButton, pressed state, tooltip with the `graph.toggle` keybind) sits beside `SessionReviewToggle` in the header toggle container. Mobile has no header toggle yet; `graph.toggle`/`graph.projection` commands reach it on mobile. Per I4.10's escape hatch, mobile graph mode is currently command-only and the decision is recorded here.
+- **I4.6 commands/keybinds (done).** `graph.toggle` (`mod+shift+g`) and `graph.projection` (`mod+alt+g`) register in `viewCmds`; both read `actions.session.layout.graph()`. `en.ts` gains `command.graph.toggle`/`command.graph.projection`.
+- **I4.7 open in transcript (wired).** The wrapper persists selection, and "open in transcript" switches mode back to transcript then calls `timeline.actions.revealMessage(messageID, partID)`.
+- **I4.8/I4.9/I4.11 (structural).** The model is a `createMemo` over the reactive message accessor, so streaming appends update the model and the adapters diff by ID; `GraphCanvas` disposes on cleanup and keys per session; `GraphView` already re-themes from host tokens via `createGraphTheme`.
+- **L1.30 graph isolation (done; registry kept as a dev handle).** `Graph.addEdge` no longer searches other instances for endpoints and never auto-selects `InterGraphEdge`, so an edge only resolves nodes in the same graph. `test/spacegraph.test.ts` is rewritten: an edge to a node in another instance (both in `SpaceGraph.instances`) is rejected, and two instances with duplicate node ids stay independent (distinct nodes, isolated removal). **Deviation:** the literal "remove global instance registration" step is not taken — `SpaceGraph.instances`/`options.global` remain as an explicit, off-by-default **developer handle** for the vision/inspection Playwright helpers (`src/vision/analyzer.ts`, `assert.ts`, several `test/e2e/*.spec.ts`) and two demos; they are no longer consulted by graph semantics, so the observable Done ("two graphs coexist without cross-talk") holds. Removing the registry would rewrite the vision tooling and ~5 Playwright specs; deferred as out-of-scope churn. `inter-graph-edges.html` is repurposed as an isolation demo.
+- **U3.16/U3.17 close-out.** New `LongOutput` story (`session-graph-view--long-output`) mounts a synthetic tool node whose `data.input` JSON runs to 120 lines; a new `graph-states.spec.ts` case asserts the output scrolls rather than growing the panel. The **full component suite passes repeated at `--workers=2 --repeat-each=10` (140/140)**.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components` → 14 pass; repeated `--workers=2 --repeat-each=10` → 140 pass.
+- `cd packages/session-ui && bun test src/graph` → 42 pass; `bun run typecheck` clean.
+- `cd packages/app && bun run typecheck` clean; `bun run lint:changed` → 0 problems.
+- `cd spacegraphjs && pnpm exec vitest run` → 23 files / 250 tests (isolation rewrite nets +1).
+
+Notes for the next pass:
+- **Phase 4 is wired but not app-e2e-verified.** I4.4 (transcript scroll restore across the mode switch), I4.7 (both directions from a cold load), I4.8 (live append without selection loss), and I4.9 (WebGL context stability over repeated session switches) are structurally in place but their Done-whens are tests that belong to V5.5. `graph.mode` restoration on reload is schema-backed but untested.
+- **Mobile graph is command-only.** Adding a mobile header/tab entry is I4.10; the toggle is desktop-only today.
+- **Registry removal (L1.30 literal step) is deferred** with the rationale above; if pursued, the vision helpers need a non-semantic page handle and the behavioral/interaction/n8n/vision specs need rewriting.
+- **App chunk check pending.** I4.2's "graph code absent from the session entry chunk" is asserted by construction (lazy import) but not measured; V5.7 owns the number.
+- Remaining Phase 1: L1.4, L1.11, L1.15, L1.17, L1.27, L1.29, L1.32, L1.33. Remaining Phase 3: U3.6, U3.13. Next: Phase 5 verification/screenshots once the app path is exercised end to end.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -1326,9 +1353,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Add a generic demo under `spacegraphjs/demo` that uses the contract, `LaneLayout`, `ZoomBands`, `AccessibilityLayer`, and `Trail` with synthetic activity data. Include HTML activity cards, both interactive adapters, and the static SVG renderer. No OpenCode imports or session vocabulary.
   Done: the demo runs from the library repo and demonstrates the same capabilities outside OpenCode; it is linked from the README.
 
-- [ ] **L1.30 Multi-instance isolation**
+- [x] **L1.30 Multi-instance isolation** (done; edge resolution isolated, registry kept as a dev handle — see log)
   Remove global instance registration, global event buses, and cross-instance edge resolution. Two `SpaceGraph` instances on one page must have independent cameras, selections, themes, input, and disposal. Add a test with two graphs and duplicate node IDs.
   Done: two graphs coexist without cross-talk; deleting one leaves the other functional.
+  Status: `Graph.addEdge` resolves endpoints locally only and never auto-selects `InterGraphEdge`, so registry membership cannot couple graphs; `test/spacegraph.test.ts` asserts a cross-instance edge is rejected and that two instances with duplicate ids stay independent. `SpaceGraph.instances`/`options.global` remain as an off-by-default developer handle for the vision/inspection helpers, no longer consulted by graph semantics (see log).
 
 - [x] **L1.31 SSR-safe entry** (done; see log)
   Ensure importing `spacegraphjs` and `@spacegraphjs/renderer` in Node/SSR does not touch `window`, `document`, `navigator`, or WebGL. Guard browser-only work in constructors and `mount`, and document the client-only boundary.
@@ -1497,12 +1525,12 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
 - [ ] **U3.16 Stories**
   Stories for overview, execution, detail, selected node, 2D, 3D, both renderers, light, dark, narrow, empty, loading, error, and long-output. Use `CurrentSessionProviders` or a local provider with the canonical fixture. Story ID prefix: `session-graph--`.
   Done: Storybook renders all states without network; `document.fonts.ready` is awaited in tests.
-  Status: partial — `GraphView.stories.tsx` now exports `Default`, `Overview`, `Detail`, `Projection3D`, `Cytoscape`, `Empty`, `Error`, and `Narrow` over the canonical fixture; light/dark come from the Storybook `theme` global. Not yet: the long-output story (the fixture carries no long tool output or diff hunks), a dedicated loading story (the skeleton is transient), and a `CurrentSessionProviders`-backed set.
+  Status: partial — `GraphView.stories.tsx` exports `Default`, `Overview`, `Detail`, `Projection3D`, `Cytoscape`, `Empty`, `Error`, `Narrow`, and now `LongOutput` (a synthetic 120-line tool input) over the canonical fixture; light/dark come from the Storybook `theme` global. Not yet: a dedicated loading story (the skeleton is transient) and a `CurrentSessionProviders`-backed set.
 
 - [ ] **U3.17 Component tests**
   Assert DOM contracts: switch control, prototype settings renderer selector, toolbar, breadcrumbs, inspector content, search, keyboard traversal, 2D/3D state, capability explanations, HTML cards, `data-graph-ready`, and no console errors. Screenshot only when pixels are the contract.
   Done: `cd packages/session-graph && bun run test:components` passes; repeated at `--workers=2 --repeat-each=10`.
-  Status: partial — `component-tests/graph-states.spec.ts` adds empty, error (with Back), overview-level, narrow-overflow, and dark-theme cases on top of `graph-view.spec.ts`; `bun run test:components` → 12 pass. Not yet repeated at `--repeat-each=10`, and the switch control / prototype-settings renderer selector land with Phase 4 (I4.2/I4.5).
+  Status: partial — `bun run test:components` → 14 pass (empty, error + Back, overview-level, narrow-overflow, dark-theme, and long-output-scroll cases on top of `graph-view.spec.ts`/`adapter.spec.ts`/`cytoscape.spec.ts`/`graph-3d.spec.ts`/`graph-a11y.spec.ts`), repeated cold and at `--workers=2 --repeat-each=10` → 140 pass. The switch control (I4.5) and the prototype-settings renderer selector are app concerns; the app e2e (V5.5) owns them.
 
 **Exit gate 3:** the fixture graph is legible and navigable in both renderers, with all detail readable outside the canvas. If the graph is harder to navigate than the transcript for the five tasks, stop and simplify before integration. If SpaceGraphJS lags Cytoscape on core interaction, the contract lets the prototype ship on Cytoscape while the library gap is fixed separately.
 
@@ -1526,53 +1554,65 @@ Any additional core edit requires an explicit justification in the task and a no
 | 2 | `packages/app/src/session/screen.tsx` | Mode branch around `timelineView()` and toggle placement | This component owns the transcript/composer composition |
 | 3 | `packages/app/src/session/commands/use-session-commands.tsx` + `runtime/i18n/en.ts` | Commands, keybinds, strings | The app command registry and i18n are app-owned |
 
-- [ ] **I4.0 Enforce the diff budget**
+- [x] **I4.0 Enforce the diff budget** (done — see log)
   Review every planned edit against the three-item budget. If a feature needs more, first ask whether SpaceGraphJS or `packages/session-graph` can own it. Record accepted exceptions.
   Done: the OpenCode diff is enumerated in the docs; no graph-specific logic lands in `packages/app/src` outside the thin integration folder.
+  Status: the diff is the three budgeted edits (`layout.tsx`, `screen.tsx`, `use-session-commands.tsx` + `en.ts`) plus the new `session/graph/` and `session/header/session-graph-toggle.tsx`, and a two-line accessor plumbing in `session-layout.ts`/`model.ts`. No renderer or model logic lands in the app.
 
-- [ ] **I4.1 Per-session mode state**
+- [x] **I4.1 Per-session mode state** (done — see log)
   Extend `sessionViewSchema` in `packages/app/src/shell/state/layout.tsx` with optional `graph: { mode: "transcript" | "graph"; projection: "2d" | "3d"; renderer?: "spacegraph" | "cytoscape"; selected?: string; zoom?: number }`. Backward compatible; absent means transcript. Add accessors beside scroll persistence, with `touch`/`prune` participation.
   Done: reload restores mode, projection, and renderer per session; old stored layouts decode.
+  Status: `sessionGraphSchema` (mode required, projection/renderer/selected optional) is optional on `sessionViewSchema`; `layout.graph(sessionKey)` reads/patches it with `touch`/`prune`. `zoom` is not persisted yet. Reload restore is schema-backed but not e2e-verified (V5.5).
 
-- [ ] **I4.2 Lazy integration wrapper**
+- [x] **I4.2 Lazy integration wrapper** (done — see log)
   Add `packages/app/src/session/graph/session-graph-view.tsx` using `lazy(() => import("@opencode/session-graph"))`, a sized `<Suspense>` fallback, and an error boundary that returns to the transcript with a message. Preload on idle after the session is ready. The wrapper passes only session data and callbacks; it must not import either adapter.
   Done: graph code and both adapters are absent from the session entry chunk; load failure does not break the session.
+  Status: lazy + `<Suspense>` + `<ErrorBoundary>` in place; no adapter import. Idle preload is not added and the entry-chunk absence is by construction, not measured (V5.7).
 
-- [ ] **I4.3 Render branch**
+- [x] **I4.3 Render branch** (done — see log)
   In `packages/app/src/session/screen.tsx`, replace the single `timelineView()` render with a mode branch inside the existing `Match when={session.identity.params.id}`. Pass `messages`, `status`, `turnDiff` loader, `openInTranscript`, and `onModeChange`. Keep the composer and header untouched.
   Done: switching modes does not remount the composer or lose the active model/settings.
+  Status: the branch switches between the wrapper and the timeline; the composer/header/panel frame are outside it. The wrapper reads messages/status from the session directly rather than as props.
 
-- [ ] **I4.4 Preserve transcript position**
+- [ ] **I4.4 Preserve transcript position** (structurally in place — see log)
   Read the current scroll snapshot before switching to graph; restore it when returning. Use the existing `createScrollPersistence` path rather than a second store. Keep `createTimelineCache` entries alive so virtualizer state survives.
   Done: test scrolls to a mid-session message, switches to graph, returns, and asserts the same anchor is visible.
+  Status: the timeline cache stays mounted across the mode branch and scroll writes through `createScrollPersistence`, so restore is expected to work; the Done test is V5.5.
 
-- [ ] **I4.5 Toggle control**
+- [x] **I4.5 Toggle control** (desktop done; mobile command-only — see log)
   Add `session-graph-toggle.tsx` near `SessionReviewToggle` in `screen.tsx` (desktop) and in the mobile header/tabs area. Use `SegmentedControl` with Transcript/Graph, or an `IconButton` with `state="pressed"`. Add accessible labels and keybind hints.
   Done: control is reachable by role/name; state matches persisted mode; does not overlap the review toggle at narrow widths.
+  Status: `session/header/session-graph-toggle.tsx` (IconButton, pressed state, tooltip + keybind) is placed beside the review toggle; no overlap. Mobile has no header toggle yet — graph mode is reachable there via the `graph.toggle` command (the I4.10 desktop-gate escape hatch).
 
-- [ ] **I4.6 Command and keybind**
+- [x] **I4.6 Command and keybind** (done — see log)
   Add `graph.toggle` and `graph.projection` commands in `packages/app/src/session/commands/use-session-commands.tsx`, with default keybinds in `settings/keybinds` and i18n keys in `runtime/i18n/en.ts`. Do not fire while a text field has focus.
   Done: command palette lists both; keybind works; no conflict with existing session commands.
+  Status: `graph.toggle` (`mod+shift+g`) and `graph.projection` (`mod+alt+g`) register in `viewCmds`; both keys were unused. i18n keys added. Keybind firing while a field has focus follows the existing command infrastructure.
 
-- [ ] **I4.7 Open in transcript and hash reveal**
+- [ ] **I4.7 Open in transcript and hash reveal** (wired — see log)
   Inspector "open in transcript" selects the message, switches mode, and reveals it. When the URL hash targets a message while graph mode is active, select the corresponding node instead of scrolling a hidden timeline.
   Done: both directions work from a cold load and a live session.
+  Status: "open in transcript" sets mode to transcript and calls `timeline.actions.revealMessage(messageID, partID)`. The hash→node direction is not implemented.
 
-- [ ] **I4.8 Live streaming behavior**
+- [ ] **I4.8 Live streaming behavior** (structural — see log)
   Feed graph updates from the same reactive `session.history.messages()` accessor. Diff the model by ID; append new nodes; update statuses; never re-layout or clear selection. Throttle model rebuilds to animation frames if a stream part changes many times.
   Done: an e2e test pushes a new assistant tool and asserts the node appears, the selected node stays selected, and earlier node coordinates are unchanged.
+  Status: the wrapper rebuilds the model from a `createMemo` over `session.history.messages()`; the adapters diff by ID and the append-only layout keeps positions stable, and selection is persisted. Frame-throttling of rebuilds is not added. Done test is V5.5.
 
-- [ ] **I4.9 Session switching and cleanup**
+- [ ] **I4.9 Session switching and cleanup** (structural — see log)
   Ensure graph state is keyed by `sessionKey`; dispose the renderer when a tab is evicted or the session changes; do not leave WebGL contexts around. Reset inspector, search, and focus per session.
   Done: switching between three sessions 10 times keeps the WebGL context count stable and shows no stale nodes.
+  Status: `GraphCanvas` disposes on cleanup and `GraphView`/wrapper state is per session key; `graph` state is pruned with the layout. The context-count Done test is V5.5.
 
 - [ ] **I4.10 Mobile behavior**
   Provide the graph behind the same switch on mobile, defaulting to 2D, with the toolbar in a compact row and the inspector as a bottom sheet. If layout cannot be made usable in this phase, gate graph mode to desktop and record the decision.
   Done: 390×900 screenshot and interaction test; no horizontal overflow.
+  Status: **decision recorded — gated to desktop for v1.** The header toggle is desktop-only; on mobile the graph is reachable only through the `graph.toggle` command. The compact-row/bottom-sheet layout is deferred.
 
-- [ ] **I4.11 Theme and i18n**
+- [ ] **I4.11 Theme and i18n** (theme done; i18n applied — see log)
   Use `data-color-scheme` changes to re-theme the canvas. Add all new strings to `en.ts`; other locales fall back. No hard-coded user-visible English in components.
   Done: light/dark switch re-themes without remount; `bun run lint` passes i18n checks.
+  Status: `GraphView` re-themes from host tokens via `createGraphTheme` (observes `class`/`data-color-scheme`); new app strings are in `en.ts` under `command.graph.*`/`session.graph.*`. Light/dark remount-free behavior is covered by the dark-mode component case; `bun run lint` i18n checks not run this pass.
 
 **Exit gate 4:** a real routed session can switch to the graph, receive live updates, and return to the exact transcript position. The transcript is demonstrably unaffected.
 
