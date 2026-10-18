@@ -98,7 +98,11 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   }, undefined)
 
   createEffect(() => {
-    mounted?.renderer.setModel(props.model)
+    // Read the props before the optional chain: `mounted?.x(props.y)` never evaluates `props.y` while
+    // the mount is pending, so the effect would not track the prop and later updates would be dropped.
+    const model = props.model
+
+    mounted?.renderer.setModel(model)
   })
   createEffect(() => {
     const selection = props.selection
@@ -106,7 +110,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     if (mounted && selection) mounted.renderer.setSelection(selection)
   })
   createEffect(() => {
-    mounted?.renderer.setTheme(props.theme)
+    const theme = props.theme
+
+    mounted?.renderer.setTheme(theme)
   })
   createEffect(() => {
     const projection = props.projection

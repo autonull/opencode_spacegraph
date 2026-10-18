@@ -170,3 +170,35 @@ UI phase; the earlier reverted attempt at exactly this was the reason to do it c
 
 Not done yet: `phase` nodes (M2.3), `levels.ts` (M2.6), `layout.ts` (M2.7). Phase 3 needs positions from
 M2.7 before `buildRenderModel` can emit a `RenderModel`. See the plan's Phase 2 progress notes for detail.
+
+## Phase 5 — capture and conformance (V5.1–V5.4, V5.6)
+
+One command produces every image and one command proves both adapters still honor the contract:
+
+- `bun run graph:capture --mode=baseline|demo|compare|verify` writes to `docs/spacegraph/screenshots/`
+  (`verify` renders into a temp dir and asserts the committed set). `demo`/`compare` capture the app's
+  routed session through `packages/app/e2e/graph/capture.spec.ts`; `compare`/`verify` add the Cytoscape
+  frames from `packages/session-graph/component-tests/graph-capture.spec.ts` (the app has no renderer
+  switch yet). Readiness is the preserved WebGL drawing buffer, not a node count.
+- `bun run graph:verify` runs the headless contract suite against both adapters, the package boundary
+  test, the four leaf/contract packages, the session-graph unit and component suites, and the capture
+  verify pass.
+
+Committed images: `01-log`, `02-graph-overview`, `03-graph-execution`, `04-graph-selected`,
+`05-return-to-log`, `06-graph-3d`, `07-cytoscape-overview`, `08-cytoscape-selected`. Determinism:
+viewport 1440×900, device scale factor 1, dark scheme, en-US, reduced motion, and the clock-free fixture.
+
+Known defects found while capturing:
+
+- `GraphCanvas`'s model/theme effects used `mounted?.renderer.setModel(props.model)`, so `props.model`
+  was never read while `mounted` was undefined and the effect never tracked it; after mount, level
+  switches and live appends reached the DOM but never the WebGL scene. Fixed by reading the props first.
+  The capture spec guards it by asserting the overview→execution level change repaints the canvas.
+- Orthographic `fitView` derives the camera distance from a perspective `fov`/`aspect`, so it does not
+  center the graph; the session root and overview clusters can fall outside the frame (image 02 is the
+  weakest). `calculateFitView` should be projection-aware.
+- The graph toolbar's right side (`Renderer: …` and the back control) sits beneath the floating
+  `session-header-toggles`, so those controls are not clickable at 1440×900. The capture returns to the
+  transcript through the header toggle instead.
+- `THREE.Color: Invalid hex color #XXXXXXff` at mount (a warning): the host token background is 8-digit
+  hex and reaches `new THREE.Color(string)` unchanged.

@@ -1,0 +1,150 @@
+import { mkdirSync } from "node:fs"
+import { resolve } from "node:path"
+import { expect, test, type Page } from "@playwright/test"
+import { buildFixtureMessages } from "@opencode/session-ui/graph"
+import { trackPageErrors } from "../utils/errors"
+import { openSession } from "../utils/workspace"
+
+// The screenshot capture for Phase 5 (V5.1/V5.3/V5.4). It uses the canonical fixture (§7) through the
+// app's own mocked server harness, so the images are the real routed session, not a Storybook host.
+// Images are written only when GRAPH_CAPTURE_DIR is set (the `graph:capture` CLI); the assertions run
+// either way, which is what `graph:capture --mode=verify` relies on.
+
+const directory = "C:/OpenCode/SessionGraph"
+
+const sessionID = "ses_session_graph"
+
+const canvasHost = '[data-slot="graph-canvas-host"]'
+
+const toolbar = '[data-slot="graph-toolbar"]'
+
+const inspector = '[data-slot="graph-inspector"]'
+
+const captureDir = process.env.GRAPH_CAPTURE_DIR
+
+// `baseline` writes only the transcript frame; `demo`/`compare`/`verify` walk the whole flow.
+const mode = process.env.GRAPH_CAPTURE_MODE ?? "demo"
+
+// Determinism (V5.3): fixed viewport, scale factor 1, a pinned scheme and locale; reduced motion is
+// emulated per page (`page.emulateMedia`) because this Playwright build does not expose it as a fixture.
+test.use({
+  viewport: { width: 1440, height: 900 },
+  deviceScaleFactor: 1,
+  colorScheme: "dark",
+  locale: "en-US",
+})
+
+function graphFixture() {
+  return {
+    name: "SessionGraph",
+    directory,
+    sessions: [{ id: sessionID, title: "Session graph" }],
+    pageMessages: () => ({ items: buildFixtureMessages() }),
+  }
+}
+
+async function capture(page: Page, name: string) {
+  if (!captureDir) return
+  mkdirSync(captureDir, { recursive: true })
+  await page.screenshot({ path: resolve(captureDir, name) })
+}
+
+function canvasSample(page: Page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('[data-slot="graph-canvas-host"] canvas')
+
+    return canvas ? canvas.toDataURL() : ""
+  })
+}
+
+// The graph paints on demand into a preserved drawing buffer, so the capture waits on the buffer itself
+// rather than on DOM state. Two consecutive equal samples prove a camera flight has settled.
+async function waitForStillCanvas(page: Page) {
+  let previous = await canvasSample(page)
+
+  await expect
+    .poll(async () => {
+      const current = await canvasSample(page)
+      const still = current === previous
+      previous = current
+
+      return still
+    })
+    .toBe(true)
+}
+
+async function settle(page: Page) {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined))
+}
+
+async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") {
+  await page.locator(toolbar).getByRole("button", { name: level, exact: true }).click()
+  await expect(page.locator(toolbar).getByRole("button", { name: level, exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+}
+
+async function fit(page: Page) {
+  await page.locator(toolbar).getByRole("button", { name: "Fit to view", exact: true }).click()
+}
+
+test("captures the transcript, graph levels, selection, return, and 3D", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+
+  // 01 — the transcript baseline.
+  await openSession(page, graphFixture())
+  await settle(page)
+  await capture(page, "01-log.png")
+
+  if (mode === "baseline") {
+    expect(errors).toEqual([])
+
+    return
+  }
+
+  // 02 — overview: turns and phases carry meaning, tool calls are counts.
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await setLevel(page, "Overview")
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "02-graph-overview.png")
+
+  // 03 — execution: tool calls and provenance files become individual objects. The level change must
+  // always reach the canvas: a representation change that does not repaint is the U3.3/U3.4 contract bug.
+  const overviewFrame = await canvasSample(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await waitForStillCanvas(page)
+  expect(await canvasSample(page)).not.toEqual(overviewFrame)
+  await capture(page, "03-graph-execution.png")
+
+  // 04 — a selected node with inspector detail in the DOM panel.
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  const search = page.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("textbox").fill("token.ts")
+  await search.getByRole("button", { name: "src/auth/token.ts", exact: true }).click()
+  await expect(page.locator(inspector).getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
+  await waitForStillCanvas(page)
+  await capture(page, "04-graph-selected.png")
+
+  // 05 — return to the transcript (the header toggle; the toolbar's back control sits under the floating header).
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
+  await settle(page)
+  await capture(page, "05-return-to-log.png")
+
+  // 06 — the 3D toggle on the same model.
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await page.locator(toolbar).getByRole("button", { name: "3D", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "06-graph-3d.png")
+
+  expect(errors).toEqual([])
+})
