@@ -687,6 +687,63 @@ Notes for the remaining Phase 5 work:
 - **`THREE.Color: Invalid hex color #XXXXXXff` (pre-existing, filed at V5.5).** The 8-digit host token background reaches the core `new THREE.Color(string)`; warning only.
 - **Cited-but-unverified:** 07/08 come from the Storybook story, not the app (no renderer switch); V5.1's `PLAYWRIGHT_BUILD=1` run and the non-verify modes' CI exit-code semantics are not exercised here, and V5.7/V5.8/V5.9 remain.
 
+**2026-10-18 (cont.) — Remaining Phase 1 partials: theme surface (L1.4), mesh focus outline (L1.11), DOMNode element path (L1.15), edge labels/hit area (L1.17).**
+
+Scope for this pass (agreed with the user): the embedding-hardening partials. All work is in `spacegraphjs`
+commit `de0f632` (branch `main`); OpenCode carries only this log.
+
+- **L1.4 theme surface (background already done; node/edge/label/interaction colours landed).** `SpaceGraphTheme`
+  gains `node {fill, stroke}`, `edge {color, labelColor}`, `label {color, fontFamily, fontSize}`, and
+  `selection`/`hover`/`focus`. New `src/core/theme.ts` (`resolveTheme`, `applyNodeTheme`, `applyEdgeTheme`):
+  colour/label fields stay optional (a partial theme never overrides a node's own styling) while the
+  interaction colours carry fallbacks (`NodeDefaults.SELECTED_COLOR`/`HOVER_COLOR`, focus `0x8b5cf6`). The base
+  `Node`/`Edge` constructors apply the theme to their `data`; `ShapeNode` reads its mesh colour from `this.data`
+  and its label uses the theme typography; `LabeledEdge` uses `theme.edge.labelColor`/`theme.label`. **Remaining:**
+  a `plugins` option and the light/dark screenshot check (L1.18 demo) — unchanged.
+- **L1.11 mesh focus outline (done).** `Node.setControlState(state)` is now the single writer for `controlState`
+  and drives `syncVisual()`; the base implementation shows a `THREE.BoxHelper` outline on focus/selection/hover,
+  coloured by `resolvedTheme.focus`/`selection`/`hover`, added to the renderer scene and disposed with the node.
+  `DOMNode` overrides `syncVisual()` to draw a DOM `outline` instead (no BoxHelper). `Selection`,
+  `HoverManager`, and `InteractionManager` route through `setControlState`; `SelectionManager` lost its dead
+  DOM-visual path (it read a `userData.domElement` nothing ever set). `ControlState` gains `'focus'`.
+  Tab→`FocusManager.focusNext` already existed, so focus is now visible while cycling.
+- **L1.15 DOMNode element spec path (done).** `DOMNode`'s constructor arg is optional and falls back to
+  `spec.data.element`; `DOMNodeData` is added to the `NodeData` union and `DOMNode` is registered in
+  `DEFAULT_NODE_TYPES`, so `{ type: "DOMNode", data: { element } }` builds an adopting node. `DOMNode.updateSpec`
+  strips `element` from updates so a mounted element is never replaced (a test updates 100× and asserts element
+  identity plus a surviving listener). `BaseNodeData` now types `lod`/`minZoom`/`maxZoom` (already honoured by
+  `Node.computeLOD`).
+- **L1.17 edge labels and hit area (partial — label-vs-label done; label-vs-card open).** `EdgeData.hitWidth`
+  drives `Edge.hitTest`'s raycaster threshold (default 5). Base `Edge` exposes a `labelElement` getter
+  (`LabeledEdge` returns its `.sg-edge-label`); `Renderer` runs a per-frame declutter pass that measures the
+  CSS2D label rects and hides overlaps via the pure `declutterLabels(rects, padding)` helper
+  (`src/utils/labelDeclutter.ts`, deterministic by priority then id), using `opacity` so it never fights the
+  existing LOD `visibility` logic, and skipped above a 200-label cap. **Remaining:** avoiding overlap against
+  DOM cards (the declutter only considers label rects).
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 27 files / 268 tests (was 23/250; +`theme`, `interaction-visuals`,
+  `dom-node`, `edge-labels`). `pnpm exec tsc --noEmit` unchanged at 184 errors — the current baseline is **184**,
+  not the 181 recorded earlier, because the count now includes the `packages/n8n-bridge` sources; a stashed
+  baseline also reports 184, so this pass adds none. `bun run test:boundaries` → 5 pass.
+- `cd spacegraphjs/packages/spacegraph-renderer && bun test` → 10 pass; `bun run typecheck` clean.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components` → 15 pass.
+- `cd packages/app && bun run typecheck` clean.
+
+Notes for the next pass:
+
+- **The theme is now a real surface but only the library consumes it.** The SpaceGraph adapter still maps its own
+  `RenderTheme` to per-node/per-edge specs, so OpenCode sees no visual change from L1.4. A host that wants the
+  core defaults sets `options.theme` (or per-node `data.color`).
+- **The focus/selection outline is a `BoxHelper`.** It is an axis-aligned world box, not a silhouette; fine for
+  the prototype, but a true outline needs a stencil/backface pass. Hover scales the node object, so the box
+  tracks it.
+- **`declutterLabels` measures `getBoundingClientRect()` each frame** (transform-only changes keep layout clean,
+  so it is cheap) but ignores node/card rects; extend the entry list with DOM card rects to fully satisfy
+  "never overlap cards".
+- Remaining Phase 1: L1.4 (`plugins` option + light/dark screenshots), L1.17 (label-vs-card), L1.27, L1.29,
+  L1.32, L1.33. Remaining Phase 3: U3.6, U3.13.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -1272,10 +1329,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: a bare `new SpaceGraph(container, { chrome: false })` renders only canvas + CSS3D layer.
   Status: `DEFAULT_CHROME_PLUGINS` exists; `chrome` defaults off and gates registration; `test/chrome.test.ts` asserts the split. The only default `document.body` writer was `ZoomUIPlugin`, now chrome-gated.
 
-- [ ] **L1.4 Plumb render/theme options** (partial — background + transparency done; node/edge/label/selection/hover theming remains; `projection` waits on L1.12)
+- [ ] **L1.4 Plumb render/theme options** (partial — background, node/edge/label, and selection/hover/focus colours landed; a `plugins` option and the light/dark screenshot check remain; `projection` done in L1.12)
   Pass `RenderOptions` through `SpaceGraphOptions`: `backgroundColor`, `transparent`, `antialias`, `pixelRatio`, `preserveDrawingBuffer`, `projection`, `chrome`, `plugins`. Add a theme object for background, node fill/stroke, edge color, label color/font, selection/hover colors. Support transparent background so the app surface shows through.
   Done: no hard-coded `0x1a1a2e` when the app supplies a theme; light and dark screenshots both pass.
-  Status: `render`/`chrome`/`theme` added; `RenderOptions` gains `transparent`, `preserveDrawingBuffer`, and `projection`; `Renderer` honors them and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. `render.projection` now drives the ortho/perspective camera (L1.12). Remaining: theme beyond `background`, a `plugins` option, and the light/dark screenshot check (L1.18 demo page).
+  Status: `render`/`chrome`/`theme` added; `RenderOptions` gains `transparent`, `preserveDrawingBuffer`, and `projection`; `Renderer` honors them and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. `render.projection` now drives the ortho/perspective camera (L1.12). `theme` now also covers node fill/stroke, edge colour/label, label typography, and the selection/hover/focus outline colours through `src/core/theme.ts` (L1.4 pass). Remaining: a `plugins` option and the light/dark screenshot check (L1.18 demo page).
 
 #### Lifecycle and input
 
@@ -1311,10 +1368,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: click, box-select, keyboard, and programmatic selection agree; selection survives updates by ID.
   Status: `src/core/Selection.ts` owns the ids; `SpaceGraph.select/clearSelection/toggleSelection/deselect/selectAll/deselectAll`, `selected` (ids) and `selectedNodes` expose it; `ErgonomicsAPI` delegates; `SelectionManager` is a visual/box-select adapter; click, box-select, ctrl+A, drag multi-select, and programmatic calls all agree. `SpaceGraph.selected` changed from `Node[]` to `string[]` ids.
 
-- [ ] **L1.11 Hover and focus cleanup** (partial — dedup and non-pickable hidden nodes done; mesh focus outline open)
+- [x] **L1.11 Hover and focus cleanup** (done; see log)
   Deduplicate hover events from `HoverManager` and `HoverFingering`. Add a visible keyboard focus outline for mesh nodes. Ensure hidden/LOD-culled nodes cannot be picked.
   Done: one enter/leave per transition; Tab cycles selectable nodes with visible focus.
-  Status: the dead `HoverFingering` (never activated — `start()` returned false) is removed with its registration and export, so `HoverManager` is the single hover source. Hidden/LOD-culled nodes are not pickable (L1.14). Remaining: a visible keyboard focus outline for mesh nodes; the DOM traversal path is the a11y layer (U3.14).
+  Status: the dead `HoverFingering` (never activated — `start()` returned false) is removed with its registration and export, so `HoverManager` is the single hover source. Hidden/LOD-culled nodes are not pickable (L1.14). The mesh focus outline is now real: `Node.setControlState`/`syncVisual` draw a theme-coloured `BoxHelper` on focus/selection/hover (DOM nodes draw a DOM outline instead), so Tab→`FocusManager.focusNext` shows a visible focus ring. **Deviation:** the outline is an axis-aligned `BoxHelper`, not a silhouette.
 
 #### Cameras and zoom
 
@@ -1335,20 +1392,20 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Content and layout
 
-- [ ] **L1.15 Safe DOM node updates** (partial — HtmlNode no-op done; existing-element spec path open)
+- [x] **L1.15 Safe DOM node updates** (done; see log)
   Add a supported `DOMNode`/`CustomNode` spec path that accepts an existing `HTMLElement`, never replaces it on update, and exposes `data.lod`. Make `HtmlNode.updateSpec` no-op when HTML is unchanged. Do not destroy mounted Solid content.
   Done: a mounted card survives 100 model updates with its listeners intact.
-  Status: `HtmlNode.updateSpec` only rewrites `innerHTML`/`textContent` when the value actually changed, so an unchanged update no longer tears down DOM. Remaining: a `DOMNode`/`CustomNode` spec path that adopts a caller-supplied `HTMLElement` (node types are constructed as `new Type(sg, spec)`, so this needs a factory/registry path), plus `data.lod` exposure.
+  Status: `HtmlNode.updateSpec` only rewrites `innerHTML`/`textContent` when the value actually changed. `DOMNode` now takes an optional element and falls back to `spec.data.element`, is registered in `DEFAULT_NODE_TYPES`, and strips `element` from updates so a mounted element is never replaced; `BaseNodeData` types `lod`/`minZoom`/`maxZoom`, honoured by `Node.computeLOD`. `dom-node.test.ts` asserts element identity and a surviving listener across 100 updates.
 
 - [x] **L1.16 Stable layout primitives** (done; see log)
   Add `setPositions(positions: Record<string, [number, number, number]>)`, `pinAll()`, and `layoutOnce(name, options)` that does not run on mutation. Make `TimelineLayout` and `HierarchicalLayout` deterministic and pin-aware. Remove `window.gsap` dependence from layout animation or make animation optional.
   Done: applying positions twice yields identical coordinates; adding nodes does not move pinned nodes.
   Status: `Graph.setPositions` (absolute, refreshes edges, requests a frame), `Graph.pinAll`, and `SpaceGraph.setPositions`/`pinAll`/`layoutOnce` land; physics is off by default. `BaseLayout.applyPosition` now applies positions synchronously without `window.gsap`, so layouts are deterministic, and `HierarchicalLayout` skips pinned nodes. Unit-tested for byte-identical repeats and pinned stability.
 
-- [ ] **L1.17 Edge rendering fixes** (partial — labels now paint via a CSS2D layer; overlap/hit area open)
+- [ ] **L1.17 Edge rendering fixes** (partial — labels paint, label-vs-label declutter and the edge hit area are done; label-vs-card overlap open)
   Render `LabeledEdge` labels via a real CSS2D layer or an `HtmlNode` anchor. Ensure edge labels are zoom-aware and never overlap cards. Add an optional edge hit area for easier clicking.
   Done: edge labels appear in a screenshot; edge click targets are reliable at 2D zoom levels.
-  Status: `LabeledEdge` no longer crashes on construction (the base `Edge` constructor called the overridable `update()` before the label fields existed; a `ready` guard defers `_positionLabel`/`updateLod`). `Renderer` now owns a `CSS2DRenderer` layer (created, rendered each frame, resized, and disposed with the rest) so edge labels actually display at a constant screen size across zoom — the demo asserts a visible `.sg-edge-label`. Remaining: overlap avoidance against cards and an optional edge hit area. (spacegraphjs `7dec1ed`.)
+  Status: `LabeledEdge` no longer crashes on construction (the base `Edge` constructor called the overridable `update()` before the label fields existed; a `ready` guard defers `_positionLabel`/`updateLod`). `Renderer` owns a `CSS2DRenderer` layer so edge labels display at a constant screen size. `EdgeData.hitWidth` now drives `Edge.hitTest`'s raycaster threshold (default 5), and `Renderer` runs a per-frame declutter pass (`declutterLabels` helper) that hides overlapping CSS2D labels by priority/id via `opacity`, capped at 200 labels. Remaining: overlap avoidance against DOM cards (only label rects are measured). (spacegraphjs `7dec1ed`/`de0f632`.)
 
 - [x] **L1.18 Library tests and demo** (done for this slice; see log)
   Add focused Vitest tests for event forwarding, click-vs-drag, selection, dispose, ortho projection math, zoom bands, stable IDs/positions, and DOM update preservation. Add a Playwright demo page exercising ortho + click + zoom bands + dispose. Quarantine or repair stale tests that contradict the new API.
