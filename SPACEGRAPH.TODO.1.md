@@ -1441,7 +1441,62 @@ Verification:
 Notes for the remaining work:
 - **OpenCode adoption of `GraphController` is pending.** `packages/session-graph`'s `GraphView` still owns selection (entangled with the controlled/uncontrolled `props.selection` path) and reads `part-of` ancestry directly instead of a `Trail`; folding both onto the controller is a host refactor with its own component/e2e surface and was deliberately not taken in this pass. The plan's P8.1 Done names both the demo and OpenCode, so this is the open half.
 - **`ControlRenderer` is deliberately smaller than `GraphRenderer`** — no `setModel`/`setProjection`/`setTheme`/`setViewport`/`capabilities`. The host keeps the model in sync on the renderer and keeps capability gating; the controller manages only interaction state and consumes `viewportChange` in place of a `setViewport` call.
-- **P8.2 (React/Solid bindings) remains not started** and needs React/Solid test infrastructure the library vitest setup does not have; the bindings should wrap the contract plus this controller, not core internals.
+- **P8.2 (React/Solid bindings) is now done** (see the pass below); the bindings wrap the contract plus this controller, not core internals.
+
+**2026-10-18 (cont.) — Phase 8 portability: framework bindings (P8.2).**
+
+Scope for this pass: the framework-agnostic binding core and the React/Solid wrappers over the renderer
+contract and `GraphController`, so a second host can mount a `RenderModel` without touching core
+internals. All work is in `spacegraphjs`; OpenCode carries one `graph:verify` step and this log.
+
+- **`spacegraphjs/control/GraphBinding` (new, core).** `GraphBinding<TTheme>` owns one container's
+  renderer lifecycle: `mount(container)` creates the renderer (a structural `BindingRenderer`, so the
+  core still imports no contract), binds a `GraphController`, and pushes model/theme/projection/
+  selection; `setModel`/`setTheme`/`setProjection`/`setSelection` push updates; `dispose()` tears both
+  down. Mounting is generation-guarded, so a mount that resolves after an unmount disposes its own
+  renderer — the React StrictMode path. The controller keeps owning only interaction state; the binding
+  owns the renderer lifecycle.
+- **`react-spacegraph` (rewritten).** The React component is now `GraphView` (named export), a thin
+  `useEffect`/`useRef` wrapper over `GraphBinding`: mount once, push prop changes through keyed effects,
+  dispose on cleanup. Props take the contract `RenderModel`/`RenderTheme`/`Projection` and a
+  `createRenderer` factory; `onReady(renderer)`/`onChange(snapshot)`/`onError` are the host seams. It no
+  longer imports core `SpaceGraph`/`GraphSpec`.
+- **`solid-spacegraph` (rewritten).** The Solid component is `GraphView` over the same binding, using
+  `onMount`/`onCleanup`/`createEffect`. Both wrappers are written without JSX, so the same source runs
+  under the jsdom vitest suite (React uses `createElement`; Solid returns a created container element).
+- **Tests.** `test/control-binding.test.ts` (9: mount/idempotence/dispose, StrictMode pending-mount
+  dispose, `onError`, event forwarding, and a `GraphRenderer`→`BindingRenderer` assignability assertion);
+  `packages/react-spacegraph/test/binding.test.ts` (3, incl. a StrictMode double-invoke case asserting
+  exactly one live renderer); `packages/solid-spacegraph/test/binding.test.ts` (2, incl. signal-driven
+  model updates). `test/boundaries.test.ts` gains a case asserting both bindings import the contract and
+  `spacegraphjs/control` and never core internals.
+- **Wiring.** Both packages depend on `@spacegraphjs/renderer` (`workspace:*`) and keep React/Solid as
+  peers; `pnpm install` links React 19 / Solid 1.9 for the tests. `vitest.config.ts` includes
+  `packages/*/test/**` and aliases `solid-js`/`solid-js/web` to the browser builds (Vitest resolves the
+  server build, which rejects client-only APIs). `script/graph-verify.ts` gains a "view controller +
+  framework bindings" step. `docs/host-integration.md` §6/§8 and `AGENTS.md` document the binding.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 36 files / 322 tests (was 33/307; +9 control-binding,
+  +3 React, +2 Solid, +1 boundary). `bun run test:boundaries` → 6 pass.
+- `pnpm exec tsc --noEmit` → the 184-error baseline, none in the new or changed files;
+  `pnpm exec tsc --noEmit -p packages/{react,solid}-spacegraph/tsconfig.json` → clean.
+- `pnpm run build` in each binding → ES/CJS bundles build (11.9/11.7 KB min).
+- `node_modules/.bin/vitest run` on the four files (the new `graph:verify` step) → 26 pass.
+
+Notes for the remaining work:
+- **P8.2's Done is met for the bindings themselves.** "Pass the contract smoke test" is interpreted as
+  the binding driving any contract renderer (proved by the assignability assertion and the shared fake),
+  since a binding is not itself a `GraphRenderer`; a real-adapter mount (three/WebGL) cannot run in jsdom
+  and is owned by the adapter conformance suite.
+- **The bindings are deliberately minimal.** They expose `createRenderer`/model/theme/projection/
+  selection and `onReady`/`onChange`/`onError`; they do not own the detail panel, semantic levels, or
+  persistence (§4.8 host concerns). `GraphBinding` exposes `fit`/`focus`/`controller` for a host that
+  needs them.
+- **P8.1's OpenCode adoption half is still open** (`GraphView` selection/breadcrumbs vs
+  `GraphController`), unchanged by this pass.
+- Remaining after this pass: P8.1's OpenCode adoption, R7.3 (human evaluation), P8.4/P8.8 (deferred by
+  design), H6.3/H6.5 (deferred).
 
 ## 0. Mission
 
@@ -2637,10 +2692,10 @@ Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate
   Done: the vanilla controller drives both the library demo and OpenCode; no Solid imports.
   Status: `spacegraphjs/control` (`GraphController`) owns selection, focus, trail, zoom bands, search, and `connections` over a minimal structural model, and binds to any renderer through a minimal structural surface (`ControlRenderer`) with no contract import (the core stays pure; `test/boundaries.test.ts` unchanged). `setModel` reconciles selection + trail by id. The library demo is driven by it (`demo/contract-demo.ts`; `contract-demo.spec.ts` 5/5). Covered by `test/control.test.ts` (12 cases, incl. a `GraphRenderer`→`ControlRenderer` assignability assertion). **Open:** `packages/session-graph`'s `GraphView` still owns selection (controlled/uncontrolled prop path) and `part-of` breadcrumbs instead of `Trail`; adopting the controller there is the remaining half of the Done line.
 
-- [ ] **P8.2 Framework bindings** (not started — see log)
+- [x] **P8.2 Framework bindings** (done — see log)
   Repair `spacegraphjs/packages/solid-spacegraph` and add `spacegraphjs/packages/react-spacegraph` to wrap `@spacegraphjs/renderer` and the controllers, not core internals. Provide a minimal Hermes-style example. Verify React StrictMode double-mount and Solid `onCleanup` do not leak or double-initialize.
   Done: both bindings mount the same `RenderModel` and pass the contract smoke test; StrictMode double-mount is clean.
-  Status: not started. `react-spacegraph` and `solid-spacegraph` exist but wrap `SpaceGraph`/`graph.fromJSON` core internals, not the contract. A contract-based rewrite also needs React/Solid test infrastructure the library vitest setup lacks.
+  Status: both packages are rewritten as thin lifecycle wrappers over the new framework-agnostic `GraphBinding` (core `spacegraphjs/control`) plus `GraphController`; they take the contract `RenderModel`/`RenderTheme`/`Projection` and a `createRenderer` factory and no longer import core `SpaceGraph`/`GraphSpec`. `GraphView` is the named export (no default). Tests: `test/control-binding.test.ts` (9), `packages/react-spacegraph/test/binding.test.ts` (3, incl. StrictMode double-invoke), `packages/solid-spacegraph/test/binding.test.ts` (2, incl. cleanup + signal updates); a `GraphRenderer`→`BindingRenderer` assignability assertion proves a real adapter is accepted. "Pass the contract smoke test" = the binding drives any contract renderer (a binding is not itself a `GraphRenderer`); a real three/WebGL mount is not runnable in jsdom and is owned by the adapter conformance suite. The Hermes-style example is `docs/host-integration.md` §8 and the runnable non-OpenCode demo (L1.29). `graph:verify` gains a bindings step.
 
 - [x] **P8.3 Static export** (done — see log)
   Build on `@spacegraphjs/svg-renderer` for `renderToSVG(RenderModel)` and JSON serialization. Use it for docs, artifacts, and hosts that need a static preview.
@@ -2839,6 +2894,7 @@ Fixture rules:
 | Screenshot verification | `bun run graph:capture --mode=verify` | Interaction assertions |
 | SpaceGraphJS tests | `cd spacegraphjs && bunx vitest run` | Library unit |
 | View controller unit | `cd spacegraphjs && bunx vitest run test/control.test.ts` | Selection, trail, bands, search |
+| Framework bindings | `cd spacegraphjs && bunx vitest run test/control-binding.test.ts packages/*/test/binding.test.ts` | `GraphBinding` lifecycle, StrictMode, React/Solid wrappers |
 | SpaceGraphJS demo | `cd spacegraphjs && bunx playwright test test/e2e/<graph-demo>.spec.ts` | Ortho/click/zoom/dispose |
 | Non-OpenCode contract demo | `cd spacegraphjs && SG_DEMO_URL=… bunx playwright test test/e2e/contract-demo.spec.ts` | Contract + adapters + SVG + a11y/trail/zoom bands, light/dark |
 | Cytoscape demo | `cd spacegraphjs && bunx playwright test test/e2e/cytoscape-demo.spec.ts` | DOM overlay, preset layout, selection |
