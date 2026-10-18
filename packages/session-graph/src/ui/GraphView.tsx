@@ -6,7 +6,7 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, createUniqueId, Show } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
-import type { RendererID } from "../canvas/renderer-registry"
+import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { GraphInspector } from "./GraphInspector"
@@ -23,6 +23,8 @@ export type GraphViewProps = {
   /** Controlled selection: when set, the graph mirrors it and reports changes through `onSelect`. */
   selection?: string
   preferredRenderer?: RendererID
+  /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
+  rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   positions?: ReadonlyMap<string, Position>
   renderCard?: CardTemplate
   onSelect?: (id: string | undefined) => void
@@ -45,6 +47,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [searchOpen, setSearchOpen] = createSignal(false)
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererID, setRendererID] = createSignal<RendererID>()
+  const [error, setError] = createSignal<string>()
   let renderer: GraphRenderer | undefined
 
   const theme = () => props.theme ?? resolvedTheme()
@@ -117,6 +120,7 @@ export const GraphView = (props: GraphViewProps) => {
             projection={projection()}
             selection={selection()}
             preferredRenderer={props.preferredRenderer}
+            overrides={props.rendererOverrides}
             onSelect={(ids) => {
               setSelection(ids)
               props.onSelect?.(ids[0])
@@ -124,9 +128,11 @@ export const GraphView = (props: GraphViewProps) => {
             onBackgroundClick={() => select(undefined)}
             onRenderer={(instance) => (renderer = instance)}
             onReady={(info) => {
+              setError(undefined)
               setCapabilities(info.capabilities)
               setRendererID(info.id)
             }}
+            onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
           />
           <GraphA11y
             model={renderModel()}
@@ -135,6 +141,33 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={select}
             onEscape={() => select(undefined)}
           />
+          <Show when={error()}>
+            <div
+              data-slot="graph-error"
+              class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background-base/80 px-6 text-center"
+            >
+              <span class="text-14-medium text-text-strong">{i18n.t("ui.sessionGraph.canvas.error")}</span>
+              <span class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.canvas.errorHint")}</span>
+              <Show when={props.onBack}>
+                <button
+                  type="button"
+                  class="rounded-sm border border-border-base px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
+                  onClick={() => props.onBack?.()}
+                >
+                  {i18n.t("ui.sessionGraph.toolbar.back")}
+                </button>
+              </Show>
+            </div>
+          </Show>
+          <Show when={!error() && props.model.nodes.length === 0}>
+            <div
+              data-slot="graph-empty"
+              class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center"
+            >
+              <span class="text-14-regular text-text-weak">{i18n.t("ui.sessionGraph.canvas.empty")}</span>
+              <span class="text-12-regular text-text-weaker">{i18n.t("ui.sessionGraph.canvas.emptyHint")}</span>
+            </div>
+          </Show>
           <Show when={searchOpen()}>
             <GraphSearch
               model={props.model}

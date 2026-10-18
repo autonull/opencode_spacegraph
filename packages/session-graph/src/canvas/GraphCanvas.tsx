@@ -7,7 +7,7 @@ import type {
   RenderTheme,
 } from "@spacegraphjs/renderer"
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
-import { mountRenderer, type MountedRenderer, type RendererID } from "./renderer-registry"
+import { mountRenderer, type MountedRenderer, type RendererFactory, type RendererID } from "./renderer-registry"
 
 export type GraphCanvasReady = { id: RendererID; capabilities: RendererCapabilities; fallback: boolean }
 
@@ -17,6 +17,8 @@ export type GraphCanvasProps = {
   projection?: Projection
   selection?: readonly string[]
   preferredRenderer?: RendererID
+  /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
+  overrides?: Partial<Record<RendererID, RendererFactory>>
   onSelect?: (ids: readonly string[]) => void
   onReady?: (info: GraphCanvasReady) => void
   onError?: (error: unknown) => void
@@ -51,7 +53,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     const current = ++generation
     teardown()
 
-    mountRenderer(host, { theme: props.theme, projection: props.projection ?? "2d", preferred: id })
+    mountRenderer(host, { theme: props.theme, projection: props.projection ?? "2d", preferred: id }, props.overrides ?? {})
       .then((result) => {
         // A newer mount or an unmount superseded this one; drop the late result instead of leaking it.
         if (current !== generation) {

@@ -553,6 +553,31 @@ Notes for the remaining work:
 - **Bounds cache.** `Node.getScreenPixelSize` caches per render frame (`Node.lodFrame`); the public `bounds`/`bounds3D` getters stay uncached so camera fit is always fresh. Any future caller that needs node bounds outside a render frame should use the getters, not the LOD path.
 - Next in Phase 1: L1.27 (minimap/zoom-control rework, unblocks U3.13), then L1.5-adjacent L1.30–L1.34 (multi-instance, SSR, touch, renderer rename, boundaries). Phase 3 UI still needs U3.6, U3.13, U3.15, U3.16, U3.17.
 
+**2026-10-18 (cont.) — Phase 1 hardening (L1.28, L1.31, L1.34) and Phase 3 states/stories/tests (U3.16/U3.17 partial).**
+
+Scope for this pass: two Phase 1 test-first tasks that needed no product behaviour, plus the graph view's non-happy-path states and their story/component coverage. Library work is in `spacegraphjs` (tests + one script; no `src` change); host work is in `packages/session-graph` plus four `en.ts` keys.
+
+- **L1.31 SSR-safe entry (done).** New `spacegraphjs/test/ssr.test.ts` runs under `// @vitest-environment node` and imports the full entry, the lean `activity` entry, and all four packages (`@spacegraphjs/renderer`, `spacegraph-renderer`, `cytoscape-renderer`, `svg-renderer`) with no DOM present, asserting `window`/`document` are undefined and each surface resolves. This locks the "no top-level browser access" boundary; the entry already imported cleanly under Node.
+- **L1.34 package boundaries (done).** New `spacegraphjs/test/boundaries.test.ts` statically scans imports (test/spec files excluded) and asserts the §4.1 direction: `src` imports none of the contract/adapters/`cytoscape`; `@spacegraphjs/renderer/src` has no imports at all; `cytoscape-renderer/src` and `svg-renderer/src` import neither `spacegraphjs` core nor `cytoscape`; and `spacegraph-renderer/src` is the only adapter that imports both the core and the contract. New `test:boundaries` script (`vitest run test/boundaries.test.ts`). The four package `package.json`s already carried explicit `exports`, `sideEffects: false`, and peer deps; a `build` script stays deferred with the source-workspace decision (R7.5).
+- **L1.28 capability-aware UI contract (confirmed done).** `supports(capabilities, capability)` drives the toolbar's 3D control (`disabled` + `title` explanation) and `GraphView` falls back to 2D when the active renderer lacks 3D; there is no `renderer === "cytoscape"` branch in the UI. No code change needed.
+- **U3.8 gap closed — empty and error states.** `GraphView` now renders a `data-slot="graph-empty"` message when the model has no nodes and a `data-slot="graph-error"` overlay (with a "Back to transcript" action when `onBack` is supplied) driven by the canvas's `onError`, so a session with nothing to graph and a total mount failure both stay legible. `GraphCanvas` gained an `overrides?: Partial<Record<RendererID, RendererFactory>>` prop forwarded to the existing `mountRenderer` overrides parameter, and `GraphView` exposes it as `rendererOverrides`; this is the seam that forces the error state without a global mock. Four `ui.sessionGraph.canvas.{empty,emptyHint,error,errorHint}` keys added to `en.ts`.
+- **U3.16 stories (partial).** `GraphView.stories.tsx` is now a generalised harness with named stories: `Default` (execution, selected tool), `Overview`, `Detail` (failed shell result), `Projection3D`, `Cytoscape`, `Empty`, `Error`, `Narrow` (390×844). Light/dark are driven by the Storybook `theme` global (the preview toggles the `light`/`dark` class, which `createGraphTheme` observes), not separate stories.
+- **U3.17 component tests (partial).** New `component-tests/graph-states.spec.ts` (5 tests) mounts the real view: empty state visible with the canvas ready; forced mount failure shows the error overlay + Back button with `data-graph-ready="false"`; overview disables zoom-out and enables zoom-in; the 390px viewport has no horizontal overflow; dark mode re-mounts the same model with `data-graph-renderer="spacegraph"` and zero console errors.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 22 files, 245 tests (was 20/236; +`ssr`, +`boundaries`). `pnpm exec tsc --noEmit` unchanged (181 pre-existing errors, none in the new files). `bun run test:boundaries` → 5 pass.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components` → 12 pass (was 7; +5 states).
+- `cd packages/ui && bun run typecheck` clean; `cd packages/app && bun run typecheck` clean.
+
+Notes for the next pass:
+
+- **U3.16 still needs**: a long-output story (the canonical fixture carries no long tool output or diff hunks — the inspector's `<pre>` reads `data.input`, not terminal text), separate loading-state coverage (the skeleton is transient), and a `CurrentSessionProviders`-backed story set. The `aria`/`data-*` state note from U3.7/U3.8 still holds: read the inspector DOM and the harness callback, not the controlled selection.
+- **Error-state assertion is story-injected, not integration.** The app e2e (V5.5: "SpaceGraph mount failure falls back to Cytoscape with a banner" and "both renderers failing falls back to the transcript") is the owner of the real fallback path; the `rendererOverrides` seam is only for deterministic stories/tests.
+- **`rendererOverrides` is a test seam on two public components.** If the app integration (I4.2) does not need it, consider moving it behind a dev-only path; the registry's `mountRenderer(..., overrides)` already supported it, so it added no new concept.
+- **L1.30 (multi-instance isolation) is the next Phase 1 fault line** and is *not* free: `Graph.addEdge` still resolves nodes across `SpaceGraph.instances` and `test/spacegraph.test.ts` ("creates InterGraphEdges…") asserts it. Removing the mechanism means rewriting that test and deciding whether `InterGraphEdge` stays. **L1.27 (minimap)** is larger than it reads: contract `setViewport` carries `zoom` but the adapters ignore `center`, so a click/drag-to-pan minimap needs a contract change and both adapters plus the conformance suite.
+- Next in Phase 3: U3.15 (3D polish), U3.13 (minimap, needs L1.27), U3.6 (comparison). Remaining Phase 1: L1.11, L1.15, L1.17, L1.25, L1.27, L1.29–L1.34.
+
+
 
 ## 0. Mission
 
@@ -1273,9 +1298,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Fix `MinimapPlugin` and `ZoomControls` for embedded use: container-scoped, explicit enable/disable, accurate viewport rectangle, no second full scene pass if a DOM/SVG minimap is cheaper. Expose them as optional modules, not defaults.
   Done: a 300-node demo can enable the minimap without doubling frame cost; disabling leaves no DOM behind.
 
-- [ ] **L1.28 Capability-aware UI contract**
+- [x] **L1.28 Capability-aware UI contract** (done; see log)
   Define how unsupported capabilities surface: `supports(capabilities, capability)` plus a user-visible explanation. 3D on Cytoscape and minimap availability must be explicit. HTML cards are supported by both adapters; only their `maxDomNodes` differs.
   Done: the UI never calls an unsupported method; the toolbar explains unavailable actions.
+  Status: `supports` (L1.19) drives the toolbar's 3D control (`disabled` + `title` explanation) and `GraphView` falls back to 2D when the active renderer lacks 3D; there is no `renderer === "cytoscape"` branch. The minimap stays declared unavailable until L1.27.
 
 - [ ] **L1.29 Non-OpenCode reference demo**
   Add a generic demo under `spacegraphjs/demo` that uses the contract, `LaneLayout`, `ZoomBands`, `AccessibilityLayer`, and `Trail` with synthetic activity data. Include HTML activity cards, both interactive adapters, and the static SVG renderer. No OpenCode imports or session vocabulary.
@@ -1285,9 +1311,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Remove global instance registration, global event buses, and cross-instance edge resolution. Two `SpaceGraph` instances on one page must have independent cameras, selections, themes, input, and disposal. Add a test with two graphs and duplicate node IDs.
   Done: two graphs coexist without cross-talk; deleting one leaves the other functional.
 
-- [ ] **L1.31 SSR-safe entry**
+- [x] **L1.31 SSR-safe entry** (done; see log)
   Ensure importing `spacegraphjs` and `@spacegraphjs/renderer` in Node/SSR does not touch `window`, `document`, `navigator`, or WebGL. Guard browser-only work in constructors and `mount`, and document the client-only boundary.
   Done: a Node import smoke test passes; no top-level browser access.
+  Status: `test/ssr.test.ts` runs under `// @vitest-environment node` and imports the full entry, `activity`, and all four packages with no DOM; it asserts `window`/`document` are undefined and each surface resolves. Constructors still do browser-only work at `mount`/`init`, not at import.
 
 - [ ] **L1.32 Touch and pointer parity**
   Add pinch zoom, two-finger pan, pointer capture, and touch hit-testing to the SpaceGraphJS adapter. Do not rely on global keyboard listeners. Verify at 390×900 with touch emulation.
@@ -1297,9 +1324,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Rename the core WebGL class `Renderer` to `WebGLRenderer`, keeping `Renderer` as a deprecated alias for one release. Update exports, docs, and internal references. Reserve "renderer" in public docs for the contract and adapters.
   Done: no public name collision between the core WebGL class and the renderer contract; existing imports still work through the alias.
 
-- [ ] **L1.34 Package boundaries and dependency enforcement**
+- [x] **L1.34 Package boundaries and dependency enforcement** (done; see log)
   Give each package its own `package.json` with explicit `exports`, `sideEffects: false`, peer dependencies where appropriate (`three`, `gsap`, `cytoscape`), and a build script. Add a boundary test that scans `spacegraphjs/src` and fails if it imports `@spacegraphjs/renderer`, `@spacegraphjs/cytoscape-renderer`, or `cytoscape`, and scans `@spacegraphjs/cytoscape-renderer` and fails if it imports `spacegraphjs` core.
   Done: the boundary test runs in CI; core's dependency graph is unchanged by the contract and adapters; each package is independently publishable.
+  Status: `test/boundaries.test.ts` (run by the new `test:boundaries` script) enforces the §4.1 direction: core imports none of the contract/adapters/`cytoscape`; the contract has zero imports; the Cytoscape and SVG renderers stay off the core and Cytoscape; only the SpaceGraph adapter imports core + contract. All four packages carry explicit `exports`, `sideEffects: false`, and peer deps; a `build` script is deferred with the source-workspace decision (R7.5).
 
 **Exit gate 1:** a minimal activity graph can be opened, panned, zoomed in 2D and 3D, clicked, keyboard-navigated, and disposed without leaks or global interference. Both adapters pass the shared contract, including HTML activity cards. If click/selection/dispose cannot be made reliable in SpaceGraphJS, the Cytoscape adapter is already proven and the contract isolates the change.
 
@@ -1449,10 +1477,12 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
 - [ ] **U3.16 Stories**
   Stories for overview, execution, detail, selected node, 2D, 3D, both renderers, light, dark, narrow, empty, loading, error, and long-output. Use `CurrentSessionProviders` or a local provider with the canonical fixture. Story ID prefix: `session-graph--`.
   Done: Storybook renders all states without network; `document.fonts.ready` is awaited in tests.
+  Status: partial — `GraphView.stories.tsx` now exports `Default`, `Overview`, `Detail`, `Projection3D`, `Cytoscape`, `Empty`, `Error`, and `Narrow` over the canonical fixture; light/dark come from the Storybook `theme` global. Not yet: the long-output story (the fixture carries no long tool output or diff hunks), a dedicated loading story (the skeleton is transient), and a `CurrentSessionProviders`-backed set.
 
 - [ ] **U3.17 Component tests**
   Assert DOM contracts: switch control, prototype settings renderer selector, toolbar, breadcrumbs, inspector content, search, keyboard traversal, 2D/3D state, capability explanations, HTML cards, `data-graph-ready`, and no console errors. Screenshot only when pixels are the contract.
   Done: `cd packages/session-graph && bun run test:components` passes; repeated at `--workers=2 --repeat-each=10`.
+  Status: partial — `component-tests/graph-states.spec.ts` adds empty, error (with Back), overview-level, narrow-overflow, and dark-theme cases on top of `graph-view.spec.ts`; `bun run test:components` → 12 pass. Not yet repeated at `--repeat-each=10`, and the switch control / prototype-settings renderer selector land with Phase 4 (I4.2/I4.5).
 
 **Exit gate 3:** the fixture graph is legible and navigable in both renderers, with all detail readable outside the canvas. If the graph is harder to navigate than the transcript for the five tasks, stop and simplify before integration. If SpaceGraphJS lags Cytoscape on core interaction, the contract lets the prototype ship on Cytoscape while the library gap is fixed separately.
 
