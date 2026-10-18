@@ -53,6 +53,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [searchOpen, setSearchOpen] = createSignal(false)
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererID, setRendererID] = createSignal<RendererID>()
+  const [fallback, setFallback] = createSignal(false)
   const [error, setError] = createSignal<string>()
   const [canvasReady, setCanvasReady] = createSignal(false)
   const [viewport, setViewport] = createSignal<RendererViewport>()
@@ -144,6 +145,14 @@ export const GraphView = (props: GraphViewProps) => {
         endInset={props.endInset}
       />
       <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={select} />
+      <Show when={fallback() && !error()}>
+        <div
+          data-slot="graph-fallback"
+          class="border-b border-border-weaker-base bg-surface-base px-2 py-1 text-12-regular text-text-weak"
+        >
+          {i18n.t("ui.sessionGraph.fallback")}
+        </div>
+      </Show>
       <div class="relative flex min-h-0 flex-1">
         <div
           class="relative min-w-0 flex-1"
@@ -173,6 +182,7 @@ export const GraphView = (props: GraphViewProps) => {
               setError(undefined)
               setCapabilities(info.capabilities)
               setRendererID(info.id)
+              setFallback(info.fallback)
             }}
             onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
             onViewportChange={setViewport}

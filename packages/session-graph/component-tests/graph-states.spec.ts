@@ -37,6 +37,14 @@ story("shows a recoverable error state when no renderer can mount", async ({ mou
   expect(errors).toEqual([])
 })
 
+story("shows the loading skeleton while an adapter mount is pending", async ({ mount }) => {
+  const root = await mount("session-graph-view--loading")
+
+  await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "false")
+  await expect(root.locator('[data-slot="graph-canvas-skeleton"]')).toBeVisible()
+  await expect(root.locator('[data-slot="graph-toolbar"]')).toBeVisible()
+})
+
 story("renders the overview level with the level control reflecting it", async ({ mount }) => {
   const root = await mount("session-graph-view--overview")
 

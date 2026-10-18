@@ -73,8 +73,10 @@ export function graphThemeFromTokens(read: (name: string) => string): RenderThem
 /** Reads the resolved theme from an element's computed style. Browser-only. */
 export function resolveGraphTheme(root: HTMLElement = document.documentElement): RenderTheme {
   const style = getComputedStyle(root)
+  const theme = graphThemeFromTokens((name) => style.getPropertyValue(name))
 
-  return graphThemeFromTokens((name) => style.getPropertyValue(name))
+  // P8.9: the host's document direction drives bidi; the graph coordinates are never mirrored.
+  return { ...theme, direction: root.dir === "rtl" ? "rtl" : "ltr" }
 }
 
 /**
@@ -90,7 +92,7 @@ export function createGraphTheme(root: () => HTMLElement | undefined = () => doc
     resolve()
     const element = root() ?? document.documentElement
     const observer = new MutationObserver(resolve)
-    observer.observe(element, { attributes: true, attributeFilter: ["class", "style", "data-color-scheme"] })
+    observer.observe(element, { attributes: true, attributeFilter: ["class", "style", "data-color-scheme", "dir"] })
     const media = window.matchMedia("(prefers-color-scheme: dark)")
     media.addEventListener("change", resolve)
     onCleanup(() => {

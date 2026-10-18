@@ -327,4 +327,28 @@ opens over the log, so the reader never loses their place. Nothing injects into 
 - App e2e: `packages/app/e2e/graph/session-graph.spec.ts` adds "opens the hybrid turn map over the graph
   and closes on Escape", driving the toolbar control after a turn is selected.
 
+## Phase 8 — portability (P8.3, P8.5, P8.6, P8.7, P8.9)
+
+Library-side work that lets a second host reuse the boundary without OpenCode (see
+`spacegraphjs/docs/host-integration.md`):
+
+- **Contract version negotiation.** `negotiateContract` in `@spacegraphjs/renderer`; the host registry rejects an
+  adapter whose declared `capabilities.contractVersion` is unsupported and falls through.
+- **Static export.** `serializeRenderModel`/`parseRenderModel` in `@spacegraphjs/svg-renderer` (validated,
+  `undefined` on malformed input) beside `renderToSVG`.
+- **Text direction.** `renderToSVG` emits `direction="rtl"`; the SpaceGraph adapter wraps host card markup in a
+  `dir` container; the Cytoscape adapter sets `dir` on overlay cards; the host bridge reads
+  `document.documentElement.dir`. Graph coordinates are never mirrored.
+- **Second-host fixture.** `spacegraphjs/test/fixtures/activity-host.ts`, exercised by the shared conformance suite.
+
+Also fixed here: the Cytoscape adapter passed 8-digit-hex host theme tokens into `cy.style`, logging
+`The style property … is invalid`; `normalizeTheme` now normalizes colors at mount/`setTheme`. The adapter-failure
+app path (below) surfaced it.
+
+### Adapter fallback in the app
+
+SpaceGraph mount failure now falls back to Cytoscape with a visible `data-slot="graph-fallback"` banner and 3D
+disabled; when no adapter mounts, the error state's Back control returns to the transcript. Both paths have
+dev-only app e2e cases (the built chunks are hashed, so `PLAYWRIGHT_BUILD=1` skips them).
+
 

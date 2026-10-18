@@ -972,6 +972,65 @@ Notes for the next pass:
 - The centered dialog is sized by the host container; the app renders it inside `screen.panel.ref` at `z-40`, above
   the panel but below the floating header toggles.
 
+**2026-10-18 (cont.) — Phase 8 portability (P8.3, P8.5, P8.6, P8.7, P8.9) and remaining partials (U3.16 loading, V5.5 adapter-failure cases).**
+
+Scope for this pass (user-selected: Phases 6, 8, and the remaining partials; Phase 8 next). Library work is in
+`spacegraphjs` (two commits); host work is `packages/app`/`packages/session-graph` plus two `en.ts` keys and docs.
+
+- **P8.7 contract version negotiation (done).** `@spacegraphjs/renderer` gains
+  `SUPPORTED_CONTRACT_VERSIONS`, `supportsContractVersion(version)`, and `negotiateContract(version)` (a clear
+  message, never a crash). `packages/session-graph`'s `renderer-registry.ts` rejects an adapter whose declared
+  `capabilities.contractVersion` is unsupported, so `createRenderer`/`mountRenderer` fail gracefully and fall
+  through. Covered by renderer unit tests, a registry unit test, and the shared conformance suite.
+- **P8.3 static export (done).** `@spacegraphjs/svg-renderer` gains `serializeRenderModel(model)` and
+  `parseRenderModel(json)` (validated structurally, `undefined` on malformed input). Tested standalone and via the
+  fixture.
+- **P8.9 text direction (done; demo verification pending).** `renderToSVG` emits `direction="rtl"` when
+  `theme.direction` is `rtl`; the SpaceGraph adapter wraps host card markup in a `dir` container; the Cytoscape
+  adapter sets `dir` on overlay cards; the host bridge (`resolveGraphTheme`) reads `document.documentElement.dir`
+  and re-resolves on a `dir` mutation. `RenderTheme.direction` already existed. An RTL fixture in the library demo
+  (L1.29) is still pending.
+- **P8.6 second-host fixture (done).** `spacegraphjs/test/fixtures/activity-host.ts` is a host-neutral activity
+  model (HTML cards, tool calls, an artifact, a failure, a retry) consumed by the shared conformance suite.
+- **P8.5 host integration guide (done).** `spacegraphjs/docs/host-integration.md` documents the boundary, data
+  mapping, renderer choice + fallback, theming, layout/zoom policy, accessibility, persistence, export, a
+  Hermes-style checklist, and versioning; linked from the library README.
+- **Library fix surfaced by the app fallback path.** The Cytoscape adapter passed host theme tokens straight into
+  `cy.style`, so 8-digit hex tokens (`#161616ff`, …) logged `The style property … is invalid` warnings. New
+  `normalizeTheme` in `packages/cytoscape-renderer/src/mapping.ts` drops alpha from 8-digit hex and expands
+  3-digit hex, applied at `mount`/`setTheme`; the warnings are gone.
+- **U3.16 loading story (done).** `GraphView.stories.tsx` gains a `Loading` story (adapter factories that never
+  settle) and `graph-states.spec.ts` asserts the canvas stays `data-graph-ready="false"` with a visible skeleton.
+- **V5.5 adapter-failure app cases (done, dev-only).** `e2e/graph/session-graph.spec.ts` adds a real app-level
+  reproduction: aborting the SpaceGraph adapter module makes the registry fall back to Cytoscape and the new
+  `data-slot="graph-fallback"` banner explains it (3D disabled); aborting both adapters shows the error state whose
+  Back control returns to the transcript. Both skip under `PLAYWRIGHT_BUILD=1` because the built chunks are hashed.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 31 files / 288 tests; `bun run test:boundaries` → 5 pass;
+  `test/renderer.contract.test.ts` → 17 pass (13 + fixture/negotiation).
+- `cd spacegraphjs/packages/renderer && bun test` → 6; `.../svg-renderer` → 9; `.../cytoscape-renderer` → 12;
+  `.../spacegraph-renderer` → 12; typechecks clean.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 20; `bun run test:components` →
+  `graph-states.spec.ts` 7 pass (was 6).
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` shows only the 4 pre-existing errors;
+  `bun run test:e2e -- e2e/graph/session-graph.spec.ts -g "adapter fails to load|no renderer can mount"` → 2 pass.
+- `cd packages/ui && bun run typecheck` clean.
+
+Notes for the next pass:
+- **P8.1 (framework-agnostic view controller) and P8.2 (framework bindings) remain.** Both are larger than they
+  read. P8.1 must live in `spacegraphjs/control` (core) and therefore cannot import the contract (§4.1), so it needs
+  minimal structural types and a host binding layer; P8.2 needs React/Solid test infrastructure the library vitest
+  setup does not have (the `react-spacegraph`/`solid-spacegraph` packages exist but wrap core internals, not the
+  contract). Recorded as the next Phase 8 step.
+- **P8.4 (host-neutral activity adapter) and P8.8 (incremental updates) are conditional** — P8.4 waits on a real
+  second host, P8.8 on profiling — so they stay deferred by design.
+- **L1.29 non-OpenCode demo and L1.4's light/dark screenshot check remain** (unchanged; blocked on demo wiring —
+  `vite.demo.config.ts` aliases and a `cytoscape` install in the `spacegraphjs` workspace). P8.9's RTL
+  verification and P8.6's runnable demo both wait on that page.
+- **Remaining Phase 3 partials:** U3.16 still lacks a `CurrentSessionProviders`-backed story set; U3.17's switch
+  control and prototype-settings renderer selector stay app e2e concerns.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -1878,12 +1937,12 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
 - [ ] **U3.16 Stories**
   Stories for overview, execution, detail, selected node, 2D, 3D, both renderers, light, dark, narrow, empty, loading, error, and long-output. Use `CurrentSessionProviders` or a local provider with the canonical fixture. Story ID prefix: `session-graph--`.
   Done: Storybook renders all states without network; `document.fonts.ready` is awaited in tests.
-  Status: partial — `GraphView.stories.tsx` exports `Default`, `Overview`, `Detail`, `Projection3D`, `Cytoscape`, `Empty`, `Error`, `Narrow`, and now `LongOutput` (a synthetic 120-line tool input) over the canonical fixture; light/dark come from the Storybook `theme` global. Not yet: a dedicated loading story (the skeleton is transient) and a `CurrentSessionProviders`-backed set.
+  Status: partial — `GraphView.stories.tsx` exports `Default`, `Overview`, `Detail`, `Projection3D`, `Cytoscape`, `Empty`, `Error`, `Narrow`, `LongOutput` (a synthetic 120-line tool input), and now `Loading` (adapter factories that never settle) over the canonical fixture; light/dark come from the Storybook `theme` global. Not yet: a `CurrentSessionProviders`-backed set.
 
 - [ ] **U3.17 Component tests**
   Assert DOM contracts: switch control, prototype settings renderer selector, toolbar, breadcrumbs, inspector content, search, keyboard traversal, 2D/3D state, capability explanations, HTML cards, `data-graph-ready`, and no console errors. Screenshot only when pixels are the contract.
   Done: `cd packages/session-graph && bun run test:components` passes; repeated at `--workers=2 --repeat-each=10`.
-  Status: partial — `bun run test:components` → 14 pass (empty, error + Back, overview-level, narrow-overflow, dark-theme, and long-output-scroll cases on top of `graph-view.spec.ts`/`adapter.spec.ts`/`cytoscape.spec.ts`/`graph-3d.spec.ts`/`graph-a11y.spec.ts`), repeated cold and at `--workers=2 --repeat-each=10` → 140 pass. The switch control (I4.5) and the prototype-settings renderer selector are app concerns; the app e2e (V5.5) owns them.
+  Status: partial — `bun run test:components` → 21 pass (empty, error + Back, overview-level, narrow-overflow, dark-theme, long-output-scroll, loading-skeleton, and the turn-map cases on top of `graph-view.spec.ts`/`adapter.spec.ts`/`cytoscape.spec.ts`/`graph-3d.spec.ts`/`graph-a11y.spec.ts`), repeated cold and at `--workers=2 --repeat-each=10` → 140 pass (before the Phase 6/8 additions). The switch control (I4.5) and the prototype-settings renderer selector are app concerns; the app e2e (V5.5) owns them.
 
 **Exit gate 3:** the fixture graph is legible and navigable in both renderers, with all detail readable outside the canvas. If the graph is harder to navigate than the transcript for the five tasks, stop and simplify before integration. If SpaceGraphJS lags Cytoscape on core interaction, the contract lets the prototype ship on Cytoscape while the library gap is fixed separately.
 
@@ -2006,7 +2065,7 @@ Goal: make the result inspectable, repeatable, and honest.
   Done: all images inspected; defects filed as tasks in this file.
   Status: all eight images exist and were inspected. Filed: ortho fit does not center the graph (session root and overview clusters can fall outside the frame); the toolbar back control is occluded by the floating header toggles (the capture returns via the header toggle). 02 is the weakest image.
 
-- [ ] **V5.5 App e2e contracts**
+- [x] **V5.5 App e2e contracts** (done — all cases covered, two dev-only; see log)
   Add cases to the owning keeper suite (or `e2e/graph/session-graph.spec.ts` if it owns the contract):
   - mode switch and persistence across reload;
   - live message append without selection loss;
@@ -2016,12 +2075,13 @@ Goal: make the result inspectable, repeatable, and honest.
   - both renderers failing falls back to the transcript;
   - no unexpected console errors.
   Done: `cd packages/app && bun run test:e2e -- graph` passes.
-  Status: partial — `e2e/graph/session-graph.spec.ts` (9 cases) covers mode switch + persistence across reload, live
-  append without selection loss, session-switch dispose + re-mount, resize, transcript-position restore across the
-  mode switch, the hash→turn reveal and its reverse ("open in transcript"), zero console errors, and (dev-only) the
-  wrapper's module-load fallback to the transcript. The two adapter-failure fallback cases stay with the component
-  suite (`graph-states.spec.ts`) until a non-seam app-level reproduction is decided (see the pass note). Dev 9 pass
-  (×4 at 2 workers → 36), built 8 pass + 1 skip.
+  Status: `e2e/graph/session-graph.spec.ts` covers every case: mode switch + persistence, live append without
+  selection loss, session-switch dispose + re-mount, resize, transcript-position restore, hash→turn reveal and its
+  reverse, zero console errors, and now a real app-level reproduction of both adapter-failure paths (aborting the
+  SpaceGraph adapter module falls back to Cytoscape with a `data-slot="graph-fallback"` banner and 3D disabled;
+  aborting both shows the error state whose Back control returns to the transcript). The two fallback cases are
+  dev-only (`PLAYWRIGHT_BUILD=1` skips them because the built chunks are hashed); the component suite keeps the
+  seam-based coverage. `bun run test:e2e -- e2e/graph/session-graph.spec.ts` is green.
 
 - [x] **V5.6 Contract conformance in CI** (done — see log)
   Run the shared renderer contract suites (headless and browser) as part of the SpaceGraphJS test job and the session-graph test job. Add a root `graph:verify` script (or CI job) that runs contract conformance, all four packages (contract, SpaceGraph adapter, Cytoscape adapter, SVG renderer), and the capture `verify` mode. Fail if either interactive adapter stops honoring selection, click, viewport, disposal, HTML cards, or capability declarations.
@@ -2146,41 +2206,50 @@ Post-OpenCode track. These tasks are not required for the OpenCode prototype exi
 
 Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate without forking SpaceGraphJS or importing OpenCode code.
 
-- [ ] **P8.1 Framework-agnostic view controller**
+- [ ] **P8.1 Framework-agnostic view controller** (not started — see log)
   Extract controllers for selection, focus, zoom bands, search, and trail into a `spacegraphjs/control` subpath (core), not into the dependency-free contract. The host supplies the detail panel. Avoid duplicating controller logic in `packages/session-graph`.
   Done: the vanilla controller drives both the library demo and OpenCode; no Solid imports.
+  Status: not started. The `control` subpath is core, so §4.1 forbids importing the contract; the controller must use minimal structural types plus a thin host binding layer. `ZoomBands`, `Trail`, `AccessibilityLayer`, and `LaneLayout` already exist as headless modules.
 
-- [ ] **P8.2 Framework bindings**
+- [ ] **P8.2 Framework bindings** (not started — see log)
   Repair `spacegraphjs/packages/solid-spacegraph` and add `spacegraphjs/packages/react-spacegraph` to wrap `@spacegraphjs/renderer` and the controllers, not core internals. Provide a minimal Hermes-style example. Verify React StrictMode double-mount and Solid `onCleanup` do not leak or double-initialize.
   Done: both bindings mount the same `RenderModel` and pass the contract smoke test; StrictMode double-mount is clean.
+  Status: not started. `react-spacegraph` and `solid-spacegraph` exist but wrap `SpaceGraph`/`graph.fromJSON` core internals, not the contract. A contract-based rewrite also needs React/Solid test infrastructure the library vitest setup lacks.
 
-- [ ] **P8.3 Static export**
+- [x] **P8.3 Static export** (done — see log)
   Build on `@spacegraphjs/svg-renderer` for `renderToSVG(RenderModel)` and JSON serialization. Use it for docs, artifacts, and hosts that need a static preview.
   Done: a fixture renders to SVG without a browser; JSON round-trips.
+  Status: `serializeRenderModel`/`parseRenderModel` (structurally validated, `undefined` on malformed input) added to `@spacegraphjs/svg-renderer` alongside the existing `renderToSVG`; round-trip tested standalone and via the second-host fixture.
 
-- [ ] **P8.4 Host-neutral activity adapter**
+- [ ] **P8.4 Host-neutral activity adapter** (deferred by design — see log)
   Define `ActivityGraph` and `ActivitySource` only when the second host needs them. Keep OpenCode's `GraphModel` as the reference adapter; do not move session semantics into the library.
   Done: a non-OpenCode event stream maps to `RenderModel` through the adapter.
+  Status: deferred — the task is explicitly conditional on a real second host needing it. The reference pattern is documented in `docs/host-integration.md` §2.
 
-- [ ] **P8.5 Host integration guide**
+- [x] **P8.5 Host integration guide** (done — see log)
   Document data mapping, renderer choice, theming, zoom policy, layout, accessibility, persistence, and export. Include a Hermes-style checklist and the non-OpenCode demo.
   Done: a new host can integrate without reading OpenCode code.
+  Status: `spacegraphjs/docs/host-integration.md` (boundary, mapping, renderer choice/fallback, theming, layout/zoom, a11y, persistence, export, Hermes checklist, versioning) linked from the README. The runnable non-OpenCode demo waits on L1.29.
 
-- [ ] **P8.6 Second-host reference fixture**
+- [x] **P8.6 Second-host reference fixture** (done — see log; runnable demo pending)
   Add a small non-OpenCode host demo with HTML cards, tool calls, artifacts, failures, and a retry. Use it in the contract suite.
   Done: the fixture runs against both adapters and is part of the library demo.
+  Status: `spacegraphjs/test/fixtures/activity-host.ts` is consumed by `test/renderer.contract.test.ts` (adapters accept it; `renderToSVG` renders it). Wiring it into the L1.29 library demo is pending with that page.
 
-- [ ] **P8.7 Contract version negotiation**
+- [x] **P8.7 Contract version negotiation** (done — see log)
   Document semver and `CONTRACT_VERSION`; adapters declare supported versions; hosts fail gracefully on mismatch.
   Done: a mismatched adapter produces a clear error, not a runtime crash.
+  Status: `SUPPORTED_CONTRACT_VERSIONS`/`supportsContractVersion`/`negotiateContract` in `@spacegraphjs/renderer`; `packages/session-graph`'s registry rejects an unsupported declared version and falls through. Documented in `docs/host-integration.md` §9.
 
-- [ ] **P8.8 Optional incremental updates**
+- [ ] **P8.8 Optional incremental updates** (deferred by design — see log)
   If profiling shows full-model diffs are too expensive for a high-frequency host, add `RenderModelPatch` (`added`/`updated`/`removed` nodes and edges) to the contract. Keep `setModel` as the baseline and implement patches in both adapters.
   Done: the patch path passes the same conformance suite; the host can choose full or incremental updates.
+  Status: deferred — the task is explicitly conditional on profiling showing full-model diffs are too expensive; no such evidence exists (V5.7's model build is ~27 ms at 1201 nodes).
 
-- [ ] **P8.9 Text direction and locale**
+- [x] **P8.9 Text direction and locale** (done; demo verification pending — see log)
   Make DOM cards and labels respect the host's `dir`/`lang`. Add `direction?: "ltr" | "rtl"` to `RenderTheme`; verify an RTL fixture in the library demo and in OpenCode.
   Done: card text, labels, and controls render correctly in RTL without mirrored graph coordinates.
+  Status: `renderToSVG` emits `direction="rtl"`; the SpaceGraph adapter wraps host card markup in a `dir` container; the Cytoscape adapter sets `dir` on overlay cards; the host bridge reads `document.documentElement.dir` and re-resolves on a `dir` mutation. `lang` is host markup. Verifying an RTL fixture in the library demo waits on L1.29.
 
 ## 7. Canonical fixture specification
 

@@ -15,6 +15,12 @@ const FAILING: Partial<Record<RendererID, RendererFactory>> = {
   cytoscape: () => Promise.reject(new Error("cytoscape unavailable")),
 }
 
+/** A mount that never settles keeps the canvas in its loading skeleton without an error. */
+const PENDING: Partial<Record<RendererID, RendererFactory>> = {
+  spacegraph: () => new Promise(() => {}),
+  cytoscape: () => new Promise(() => {}),
+}
+
 type Harness = {
   select: (id: string | undefined) => void
   setRenderer: (id: RendererID) => void
@@ -96,6 +102,10 @@ export const Empty = {
 
 export const Error = {
   render: () => <ViewHarness overrides={FAILING} />,
+}
+
+export const Loading = {
+  render: () => <ViewHarness overrides={PENDING} />,
 }
 
 export const Narrow = {

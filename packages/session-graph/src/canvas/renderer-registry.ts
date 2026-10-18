@@ -1,8 +1,17 @@
-import type { GraphRenderer, Projection, RenderTheme } from "@spacegraphjs/renderer"
+import { negotiateContract, type GraphRenderer, type Projection, type RenderTheme } from "@spacegraphjs/renderer"
 
 export type RendererID = "spacegraph" | "cytoscape"
 
 export type RendererFactory = () => Promise<GraphRenderer>
+
+/** P8.7: a renderer that declares an unsupported contract version is rejected with a clear message. */
+function requireCompatible(renderer: GraphRenderer): GraphRenderer {
+  const negotiation = negotiateContract(renderer.capabilities.contractVersion)
+
+  if (!negotiation.ok) throw new Error(negotiation.message)
+
+  return renderer
+}
 
 /**
  * Adapters load behind dynamic `import()` so neither backend is pulled at module scope; a host that
@@ -15,7 +24,7 @@ const FACTORIES: Record<RendererID, RendererFactory> = {
 
 /** Constructs an adapter without mounting, so a host can inspect capabilities before it commits. */
 export function createRenderer(id: RendererID): Promise<GraphRenderer> {
-  return FACTORIES[id]()
+  return FACTORIES[id]().then(requireCompatible)
 }
 
 /** SpaceGraphJS first with Cytoscape as the 2D fallback; a Cytoscape request never falls back up. */
@@ -45,7 +54,7 @@ export async function mountRenderer(
 
   for (const [index, id] of rendererOrder(options.preferred).entries()) {
     try {
-      const renderer = await (overrides[id] ?? FACTORIES[id])()
+      const renderer = requireCompatible(await (overrides[id] ?? FACTORIES[id])())
       await renderer.mount(container, { theme: options.theme, projection: options.projection })
 
       return { id, renderer, fallback: index > 0, ...(lastError ? { error: lastError } : {}) }
