@@ -344,6 +344,8 @@ const source = {
   "ui.sessionGraph.inspector.childSession": "Child session",
   "ui.sessionGraph.inspector.path": "Path",
   "ui.sessionGraph.inspector.files": "Changed files",
+  "ui.sessionGraph.inspector.diff": "Diff",
+  "ui.sessionGraph.inspector.diffLoading": "Loading changes…",
   "ui.sessionGraph.inspector.connections": "Connections",
   "ui.sessionGraph.inspector.noConnections": "No connections",
   "ui.sessionGraph.inspector.openTranscript": "Open in transcript",

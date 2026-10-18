@@ -1,5 +1,6 @@
 import { Button } from "@opencode/ui/button"
 import { buildGraph, nodeByID, openInTranscript, turnNodeID } from "@opencode/session-ui/graph"
+import { useData } from "@opencode/session-ui/context"
 import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
 import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack } from "solid-js"
@@ -29,6 +30,21 @@ export function SessionGraphView(props: {
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const graph = session.layout.graph()
   const model = createMemo(() => buildGraph(session.history.messages(), session.data.status()))
+  // RF.8: the inspector's on-demand diffs read the same per-tab turn-diff cache the timeline uses,
+  // scoped to the current session so the graph package never holds a session id.
+  const data = useData()
+
+  const diffSource = createMemo(() => {
+    const source = data.turnDiff
+    const sessionID = data.sessionID
+
+    if (!source || !sessionID) return undefined
+
+    return {
+      get: (from: string) => source.get({ sessionID, from }),
+      load: (from: string) => source.load({ sessionID, from }),
+    }
+  })
 
   // I4.7: while graph mode is active, a hash that targets a message selects its owning turn instead
   // of scrolling the hidden transcript. Only the hash drives this, so streaming model updates and a
@@ -77,6 +93,7 @@ export function SessionGraphView(props: {
           selection={graph.selected()}
           strategy={graph.layout()}
           minimap={graph.minimap()}
+          diffSource={diffSource()}
           onSelect={(id) => graph.setSelected(id)}
           onProjectionChange={(projection) => graph.setProjection(projection)}
           onStrategyChange={(layout) => graph.setLayout(layout)}

@@ -20,6 +20,7 @@ export { GraphCanvas, type GraphCanvasProps, type GraphCanvasReady } from "./can
 
 export { GraphA11y, type GraphA11yProps } from "./ui/GraphA11y"
 export { GraphBreadcrumbs, type GraphBreadcrumbsProps } from "./ui/GraphBreadcrumbs"
+export { GraphDiffView, type GraphDiff, type GraphDiffSource } from "./ui/GraphDiff"
 export { GraphInspector, type GraphInspectorProps } from "./ui/GraphInspector"
 export { GraphSearch, type GraphSearchProps } from "./ui/GraphSearch"
 export { GraphToolbar, type GraphToolbarProps } from "./ui/GraphToolbar"

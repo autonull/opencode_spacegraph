@@ -10,6 +10,7 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
+import type { GraphDiffSource } from "./GraphDiff"
 import { GraphInspector } from "./GraphInspector"
 import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
@@ -32,6 +33,8 @@ export type GraphViewProps = {
   strategy?: LayoutStrategy
   /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
   minimap?: boolean
+  /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
+  diffSource?: GraphDiffSource
   renderCard?: CardTemplate
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
@@ -386,6 +389,7 @@ export const GraphView = (props: GraphViewProps) => {
           <GraphInspector
             model={props.model}
             node={selectedNode()}
+            diffSource={props.diffSource}
             onSelect={select}
             onOpenTranscript={props.onOpenTranscript}
           />

@@ -39,6 +39,13 @@ story("assembles the graph view and answers node questions without the canvas", 
   await expect(output).toBeVisible()
   await expect(output).toContainText("3 pass 0 fail")
 
+  // A turn's diff node loads its changed files on demand and renders the patch as selectable DOM text.
+  await page.evaluate(() => (window as unknown as ViewWindow).__graphView!.select("diff:msg_idle_1"))
+  const diff = inspector.locator('[data-slot="graph-inspector-diff"]')
+  await expect(diff).toBeVisible()
+  await expect(diff).toContainText("src/auth/session.ts")
+  await expect(diff).toContainText("src/auth/token.ts")
+
   // Level is a component prop: changing it must reach the toolbar's derived disabled state.
   const zoomOut = root.locator('button[aria-label="Zoom out"]')
   await expect(zoomOut).toBeEnabled()

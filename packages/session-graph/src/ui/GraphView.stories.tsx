@@ -2,9 +2,28 @@ import type { Projection, RenderTheme } from "@spacegraphjs/renderer"
 import { buildFixtureGraph, type GraphModel, type ZoomLevel } from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
+import type { GraphDiffSource } from "./GraphDiff"
 import { GraphView } from "./GraphView"
 
 const graph = buildFixtureGraph()
+
+/** A turn's changed-file diffs, loaded on demand when the diff node is inspected (RF.8). */
+const FIXTURE_DIFFS = [
+  {
+    file: "src/auth/session.ts",
+    patch: "@@ -1,3 +1,4 @@\n import { guard } from \"./guards\"\n+export const ttl = 60\n export function session() {}",
+    additions: 1,
+    deletions: 0,
+    status: "modified" as const,
+  },
+  {
+    file: "src/auth/token.ts",
+    patch: "@@ -0,0 +1,2 @@\n+export const token = \"\"\n+export const refresh = () => token",
+    additions: 2,
+    deletions: 0,
+    status: "added" as const,
+  },
+]
 
 /** The fixture has a session root; a truly empty model proves the empty state. */
 const EMPTY_MODEL: GraphModel = { root: "session", nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
@@ -46,6 +65,14 @@ const INITIAL_SELECTION = "tool:prt_tool_read_1"
 const ViewHarness = (props: HarnessProps) => {
   const [renderer, setRenderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
+  // On-demand turn diffs: nothing is available until a diff node is inspected and calls `load`.
+  const [diffLoaded, setDiffLoaded] = createSignal(false)
+  const diffSource: GraphDiffSource = {
+    get: (from) => (diffLoaded() && from === "msg_user_1" ? FIXTURE_DIFFS : undefined),
+    load: (from) => {
+      if (from === "msg_user_1") setDiffLoaded(true)
+    },
+  }
   ;(window as unknown as { __graphView?: Harness }).__graphView = {
     select: setSelected,
     setRenderer,
@@ -62,6 +89,7 @@ const ViewHarness = (props: HarnessProps) => {
         preferredRenderer={renderer()}
         rendererOverrides={props.overrides}
         theme={props.theme}
+        diffSource={diffSource}
         onSelect={setSelected}
         onOpenTranscript={() => undefined}
         onBack={() => undefined}
@@ -91,6 +119,11 @@ export const NoSelection = {
 
 export const Detail = {
   render: () => <ViewHarness level="detail" selection="result:prt_tool_shell_2" />,
+}
+
+/** A turn's diff node: the changed files load on demand through the host diff source (RF.8). */
+export const Diff = {
+  render: () => <ViewHarness level="execution" selection="diff:msg_idle_1" />,
 }
 
 export const Projection3D = {

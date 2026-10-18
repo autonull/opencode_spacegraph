@@ -4,6 +4,7 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal } from "solid-js"
+import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 
 const KIND_KEY = {
   session: "ui.sessionGraph.kind.session",
@@ -57,6 +58,8 @@ type Connection = { edge: GraphEdge; other: GraphNode; direction: "in" | "out" }
 export type GraphInspectorProps = {
   model: GraphModel
   node?: GraphNode
+  /** RF.8: host loader for a finished turn's changed-file diffs; when absent, diff nodes list paths only. */
+  diffSource?: GraphDiffSource
   onSelect: (id: string) => void
   onOpenTranscript?: (id: string) => void
 }
@@ -93,6 +96,15 @@ export const GraphInspector = (props: GraphInspectorProps) => {
   }
 
   const time = (value: number | undefined) => (value === undefined ? undefined : new Date(value).toLocaleTimeString())
+
+  // A diff node's turn is `turn:${opener}`; the turn node carries the opening message id the host
+  // turn-diff source keys on.
+  const turnFrom = () => {
+    const node = props.node
+    if (!node?.turnID) return undefined
+
+    return nodeByID(props.model, node.turnID)?.messageID
+  }
 
   const field = (label: string, value: string | number | undefined) => (
     <Show when={value !== undefined && value !== ""}>
@@ -166,7 +178,11 @@ export const GraphInspector = (props: GraphInspectorProps) => {
                 </div>
               </Show>
 
-              <Show when={strings(data()?.files).length > 0}>
+              <Show when={node().kind === "diff" && props.diffSource ? turnFrom() : undefined}>
+                {(from) => <GraphDiffView from={from()} source={props.diffSource} />}
+              </Show>
+
+              <Show when={strings(data()?.files).length > 0 && !(node().kind === "diff" && props.diffSource)}>
                 <div class="mt-3">
                   <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.files")}</div>
                   <ul class="mt-1 flex flex-col gap-0.5">
