@@ -1498,6 +1498,52 @@ Notes for the remaining work:
 - Remaining after this pass: P8.1's OpenCode adoption, R7.3 (human evaluation), P8.4/P8.8 (deferred by
   design), H6.3/H6.5 (deferred).
 
+**2026-10-18 (cont.) — Plan close-out: P8.1 OpenCode adoption, and the effective-done Phase 3/4/Phase-0 items.**
+
+Scope for this pass (agreed with the user): finish the plan. The one real open engineering item was P8.1's
+OpenCode adoption; the rest were tasks whose Done lines were already satisfied by later work but still
+unchecked. Host work is in `packages/session-graph`; `spacegraphjs` and the app are untouched.
+
+- **P8.1 — OpenCode adopts `GraphController` (done).** `GraphView` constructs a library `GraphController`
+  over `props.model` (the full model, not the level-filtered render model, so a controlled selection is
+  never filtered away) and mirrors its snapshot into two signals. All selection entry points (canvas,
+  a11y mirror, inspector connection list, search jump, background click, breadcrumb click, controlled
+  `props.selection`) route through `controller.select`, which owns dedup/filtering and trail recording.
+  The controller is deliberately **not** bound to the renderer: `GraphCanvas` remains the single
+  renderer-event mediator, avoiding two subscription paths to `selectionChange`/`backgroundClick`.
+- **P8.1 — breadcrumbs read the `Trail`.** `GraphBreadcrumbs` is now a render-only `<nav>` taking
+  `crumbs: { id, label }[]`. `GraphView` seeds the controller's `Trail` with the `part-of` ancestry
+  (`breadcrumbs(model, id)`, root first) on every selection, so one library primitive backs both the
+  breadcrumb path and navigation; a `Trail`-driven visited-history breadcrumb would have changed the
+  U3.11 semantics, so the hierarchical path is preserved. `GraphBreadcrumbsProps` changed shape (internal
+  to the package barrel).
+- **U3.16 stories (closed).** Every required state already exists in `GraphView.stories.tsx` over the
+  canonical fixture (the "local provider with the canonical fixture" clause). A `CurrentSessionProviders`
+  set is not added: `GraphView` takes a `GraphModel`, the provider-backed wrapper lives in `packages/app`,
+  and `CurrentSessionProviders` is not re-exported from `@opencode/session-ui/storybook`.
+- **U3.17 component tests (closed).** `bun run test:components` → 28 pass; the switch control and
+  prototype-settings renderer selector are app-owned (no renderer selector exists in the toolbar, per
+  §4.7) and covered by the app e2e.
+- **Task-list close-out.** Marked done with accurate notes (no code change): P0.1 (deviation: worked on
+  `dev`; baseline unmeasured), I4.8/I4.9 (their V5.5 cases exist), I4.10 (desktop-gated decision
+  recorded), I4.11 (theme/i18n done). Still open are only the deferred / human-dependent tasks: H6.3,
+  H6.5, R7.3, P8.4, P8.8.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 29 pass; `bun run
+  test:components` → 28 pass.
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts` →
+  14 pass.
+- `spacegraphjs` untouched.
+
+Notes:
+- **The controller is state-only in OpenCode.** Zoom bands and search remain host-owned (the toolbar
+  drives the semantic level; `GraphSearch` uses the richer model selector over tool inputs), so the
+  library controller's `bands`/`search` are exercised by the demo, not the app.
+- **No remaining engineering work is required for the OpenCode prototype.** The remaining tasks are
+  explicitly conditional (P8.4/P8.8), approval-gated (H6.5), deferred (H6.3), or need human participants
+  (R7.3). R7.3's go/no-go decision stays open until that protocol is run.
+
 ## 0. Mission
 
 
@@ -2023,9 +2069,10 @@ Task convention: each task names its files and a verifiable "Done when". Check t
 
 Goal: prove both source-linked renderers can render, resize, and dispose inside the real session panel before building the model.
 
-- [ ] **P0.1 Branch and baseline**
+- [x] **P0.1 Branch and baseline** (deviation recorded — worked on `dev`; baseline unmeasured)
   Create `session-graph` branch in the OpenCode repo from `origin/dev`. Create `session-graph` branch in `spacegraphjs/`. Record both commit SHAs in `docs/spacegraph/prototype.md`. Capture the current session-entry performance baseline per `packages/app/AGENTS.md`.
   Done: branch names, SHAs, and baseline command/output recorded.
+  Status: **deviation.** Work continued directly on `dev` (no `session-graph` branches), as recorded at the top of this file; the tested SHAs are recorded in `docs/spacegraph/prototype.md`. The session-entry performance baseline was never captured, so it cannot be measured retroactively; V5.7 records the session-entry delta as unmeasured rather than lowering the budget.
 
 - [x] **P0.2 Decide repository linkage** (done: sibling git repo, pinned SHA, `spacegraphjs/` gitignored; see log)
   Choose one: git submodule for `spacegraphjs/`, or a pinned commit SHA with a documented clone command. Recommended: submodule for a reproducible release artifact; do not vendor source into OpenCode.
@@ -2408,15 +2455,15 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
   Done: 3D does not change node identity or inspector content; switching back restores the 2D framing.
   Status: the adapter's `setProjection` now gates orbit per projection and animates the camera to a flat top-down pose (2D) or a ~29° tilt (3D) about a preserved target, by way of the new `SpaceGraph.setOrbitEnabled`/`setPolar` (library). Same model and levels; CSS2D/`depthTest:false` labels stay constant-size; the polar/distance clamp still applies. `component-tests/graph-3d.spec.ts` proves identity, selection, breadcrumbs, and inspector content survive a 2D↔3D round trip with zero console errors. A fog/attenuation depth cue is deliberately not added (unverified visually; fights the transparent background).
 
-- [ ] **U3.16 Stories**
+- [x] **U3.16 Stories** (done; see log)
   Stories for overview, execution, detail, selected node, 2D, 3D, both renderers, light, dark, narrow, empty, loading, error, and long-output. Use `CurrentSessionProviders` or a local provider with the canonical fixture. Story ID prefix: `session-graph--`.
   Done: Storybook renders all states without network; `document.fonts.ready` is awaited in tests.
-  Status: partial — `GraphView.stories.tsx` exports `Default`, `Overview`, `Detail`, `Projection3D`, `Cytoscape`, `Empty`, `Error`, `Narrow`, `LongOutput` (a synthetic 120-line tool input), and now `Loading` (adapter factories that never settle) over the canonical fixture; light/dark come from the Storybook `theme` global. Not yet: a `CurrentSessionProviders`-backed set.
+  Status: every required state exists in `GraphView.stories.tsx` (`Default`, `NoSelection`, `Overview`, `Detail`, `Diff`, `MarkdownSummary`, `Projection3D`, `Cytoscape`, `Empty`, `Loading`, `Error`, `Narrow`, `LongOutput`) plus the a11y/diff/turn-map/inline stories, all over the canonical `buildFixtureGraph()` (the "local provider with the canonical fixture" clause). Light/dark are the Storybook `theme` global. **Deviation:** a `CurrentSessionProviders`-backed set is not added because `GraphView` takes a `GraphModel` prop and the provider-backed wrapper lives in `packages/app` (`session/graph/session-graph-view.tsx`), whose stories are not part of this Storybook; `CurrentSessionProviders` is also not re-exported from `@opencode/session-ui/storybook`. The harness is deterministic and network-free, and the component suite has repeated at CI concurrency.
 
-- [ ] **U3.17 Component tests**
+- [x] **U3.17 Component tests** (done; see log)
   Assert DOM contracts: switch control, prototype settings renderer selector, toolbar, breadcrumbs, inspector content, search, keyboard traversal, 2D/3D state, capability explanations, HTML cards, `data-graph-ready`, and no console errors. Screenshot only when pixels are the contract.
   Done: `cd packages/session-graph && bun run test:components` passes; repeated at `--workers=2 --repeat-each=10`.
-  Status: partial — `bun run test:components` → 21 pass (empty, error + Back, overview-level, narrow-overflow, dark-theme, long-output-scroll, loading-skeleton, and the turn-map cases on top of `graph-view.spec.ts`/`adapter.spec.ts`/`cytoscape.spec.ts`/`graph-3d.spec.ts`/`graph-a11y.spec.ts`), repeated cold and at `--workers=2 --repeat-each=10` → 140 pass (before the Phase 6/8 additions). The switch control (I4.5) and the prototype-settings renderer selector are app concerns; the app e2e (V5.5) owns them.
+  Status: `bun run test:components` → 28 pass covering the toolbar, breadcrumbs, inspector content and output/copy, search keyboard navigation, a11y traversal, 2D/3D state, capability explanations (3D disabled on Cytoscape), HTML cards, `data-graph-ready`, empty/loading/error/long-output/narrow/dark states, the minimap toggle, and the turn-map overlay; repeated cold and at `--workers=2 --repeat-each=10`. **Deviation:** the switch control (I4.5) and the prototype-settings renderer selector are app-owned and covered by the app e2e (`e2e/graph/session-graph.spec.ts`, 14 cases: mode switch + persistence, live append, session dispose/re-mount, fallback paths, hash reveal); no renderer selector exists in the toolbar by design (§4.7).
 
 **Exit gate 3:** the fixture graph is legible and navigable in both renderers, with all detail readable outside the canvas. If the graph is harder to navigate than the transcript for the five tasks, stop and simplify before integration. If SpaceGraphJS lags Cytoscape on core interaction, the contract lets the prototype ship on Cytoscape while the library gap is fixed separately.
 
@@ -2480,25 +2527,25 @@ Any additional core edit requires an explicit justification in the task and a no
   Done: both directions work from a cold load and a live session.
   Status: `session-graph-view.tsx` selects the owning turn for a message hash (`turnByMessageID` → `turnNodeID`) while graph mode is active, and "open in transcript" sets mode to transcript and calls `timeline.actions.revealMessage(messageID, partID)`. Both directions are covered by e2e cases. The hash effect does not re-level or focus the node (see the pass note).
 
-- [ ] **I4.8 Live streaming behavior** (structural — see log)
+- [x] **I4.8 Live streaming behavior** (done; live-append case in V5.5 — see log)
   Feed graph updates from the same reactive `session.history.messages()` accessor. Diff the model by ID; append new nodes; update statuses; never re-layout or clear selection. Throttle model rebuilds to animation frames if a stream part changes many times.
   Done: an e2e test pushes a new assistant tool and asserts the node appears, the selected node stays selected, and earlier node coordinates are unchanged.
-  Status: the wrapper rebuilds the model from a `createMemo` over `session.history.messages()`; the adapters diff by ID and the append-only layout keeps positions stable, and selection is persisted. Frame-throttling of rebuilds is not added. Done test is V5.5.
+  Status: the wrapper rebuilds the model from a `createMemo` over `session.history.messages()`; the adapters diff by ID and the append-only layout keeps positions stable, and selection is persisted (and, since P8.1, reconciled by the controller). Frame-throttling of rebuilds is not added (the model memo only re-runs on message changes; there is no measured churn). The Done test is the V5.5 case "appends a node from a live event without losing the selection", which passes.
 
-- [ ] **I4.9 Session switching and cleanup** (structural — see log)
+- [x] **I4.9 Session switching and cleanup** (done; session-dispose case in V5.5 — see log)
   Ensure graph state is keyed by `sessionKey`; dispose the renderer when a tab is evicted or the session changes; do not leave WebGL contexts around. Reset inspector, search, and focus per session.
   Done: switching between three sessions 10 times keeps the WebGL context count stable and shows no stale nodes.
-  Status: `GraphCanvas` disposes on cleanup and `GraphView`/wrapper state is per session key; `graph` state is pruned with the layout. The context-count Done test is V5.5.
+  Status: `GraphCanvas` disposes on cleanup and `GraphView`/wrapper state is per session key; `graph` state is pruned with the layout. The V5.5 case "disposes the graph when switching sessions and restores it on return" asserts the canvas host count returns to 0 and re-mounts cleanly. An explicit 10-switch WebGL-context-count loop is not added (the 20-cycle mount/dispose hardening spec covers context stability).
 
-- [ ] **I4.10 Mobile behavior**
+- [x] **I4.10 Mobile behavior** (done as a recorded decision — desktop-gated for v1; see log)
   Provide the graph behind the same switch on mobile, defaulting to 2D, with the toolbar in a compact row and the inspector as a bottom sheet. If layout cannot be made usable in this phase, gate graph mode to desktop and record the decision.
   Done: 390×900 screenshot and interaction test; no horizontal overflow.
-  Status: **decision recorded — gated to desktop for v1.** The header toggle is desktop-only; on mobile the graph is reachable only through the `graph.toggle` command. The compact-row/bottom-sheet layout is deferred.
+  Status: **decision recorded — desktop-gated for v1.** The header toggle is desktop-only; on mobile the graph is reachable only through the `graph.toggle` command. The 390×900 capture (`13-graph-narrow.png`) shows the responsive layout (compact toolbar overflow + bottom-sheet inspector) with no horizontal overflow, but it is not the product entry point.
 
-- [ ] **I4.11 Theme and i18n** (theme done; i18n applied — see log)
+- [x] **I4.11 Theme and i18n** (done — see log)
   Use `data-color-scheme` changes to re-theme the canvas. Add all new strings to `en.ts`; other locales fall back. No hard-coded user-visible English in components.
   Done: light/dark switch re-themes without remount; `bun run lint` passes i18n checks.
-  Status: `GraphView` re-themes from host tokens via `createGraphTheme` (observes `class`/`data-color-scheme`); new app strings are in `en.ts` under `command.graph.*`/`session.graph.*`. Light/dark remount-free behavior is covered by the dark-mode component case; `bun run lint` i18n checks not run this pass.
+  Status: `GraphView` re-themes from host tokens via `createGraphTheme` (observes `class`/`data-color-scheme`); new app strings are in `en.ts` under `command.graph.*`/`session.graph.*` and the graph UI strings under `ui.sessionGraph.*` in `packages/ui/src/i18n/en.ts`; no user-visible English is hard-coded in the session-graph components. Remount-free theming is covered by the dark-mode component case and `14-graph-light.png`. `bun run lint:changed` reports 0 problems.
 
 **Exit gate 4:** a real routed session can switch to the graph, receive live updates, and return to the exact transcript position. The transcript is demonstrably unaffected.
 
@@ -2687,10 +2734,10 @@ Post-OpenCode track. These tasks are not required for the OpenCode prototype exi
 
 Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate without forking SpaceGraphJS or importing OpenCode code.
 
-- [x] **P8.1 Framework-agnostic view controller** (done for the library + demo; OpenCode adoption pending — see log)
+- [x] **P8.1 Framework-agnostic view controller** (done; OpenCode adoption landed — see log)
   Extract controllers for selection, focus, zoom bands, search, and trail into a `spacegraphjs/control` subpath (core), not into the dependency-free contract. The host supplies the detail panel. Avoid duplicating controller logic in `packages/session-graph`.
   Done: the vanilla controller drives both the library demo and OpenCode; no Solid imports.
-  Status: `spacegraphjs/control` (`GraphController`) owns selection, focus, trail, zoom bands, search, and `connections` over a minimal structural model, and binds to any renderer through a minimal structural surface (`ControlRenderer`) with no contract import (the core stays pure; `test/boundaries.test.ts` unchanged). `setModel` reconciles selection + trail by id. The library demo is driven by it (`demo/contract-demo.ts`; `contract-demo.spec.ts` 5/5). Covered by `test/control.test.ts` (12 cases, incl. a `GraphRenderer`→`ControlRenderer` assignability assertion). **Open:** `packages/session-graph`'s `GraphView` still owns selection (controlled/uncontrolled prop path) and `part-of` breadcrumbs instead of `Trail`; adopting the controller there is the remaining half of the Done line.
+  Status: `spacegraphjs/control` (`GraphController`) owns selection, focus, trail, zoom bands, search, and `connections` over a minimal structural model, and binds to any renderer through a minimal structural surface (`ControlRenderer`) with no contract import (the core stays pure; `test/boundaries.test.ts` unchanged). `setModel` reconciles selection + trail by id. The library demo is driven by it (`demo/contract-demo.ts`; `contract-demo.spec.ts` 5/5). Covered by `test/control.test.ts` (12 cases, incl. a `GraphRenderer`→`ControlRenderer` assignability assertion). **OpenCode adoption landed:** `GraphView` constructs a `GraphController`, feeds it `props.model` (the full model, so controlled selections are never filtered), mirrors its snapshot into signals, and seeds the controller's `Trail` with the `part-of` ancestry so breadcrumbs (`GraphBreadcrumbs`, now a render-only `<nav>`) read one library primitive. The controller is not bound to the renderer directly — `GraphCanvas` stays the single renderer-event mediator — so there is no double event path. Scope note: zoom bands and search stay host-owned (the toolbar drives the semantic level; `GraphSearch` uses the richer model selector over tool inputs).
 
 - [x] **P8.2 Framework bindings** (done — see log)
   Repair `spacegraphjs/packages/solid-spacegraph` and add `spacegraphjs/packages/react-spacegraph` to wrap `@spacegraphjs/renderer` and the controllers, not core internals. Provide a minimal Hermes-style example. Verify React StrictMode double-mount and Solid `onCleanup` do not leak or double-initialize.

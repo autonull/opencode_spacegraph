@@ -1,14 +1,15 @@
 import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
 import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, ZoomLevel } from "@opencode/session-ui/graph"
-import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors, subtree } from "@opencode/session-ui/graph"
+import { breadcrumbs, layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors, subtree } from "@opencode/session-ui/graph"
+import { GraphController } from "spacegraphjs/control"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show, type JSX } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
-import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
+import { GraphBreadcrumbs, type GraphBreadcrumb } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphInspector } from "./GraphInspector"
@@ -63,8 +64,19 @@ export const GraphView = (props: GraphViewProps) => {
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
-  const [internalSelection, setSelection] = createSignal<readonly string[]>(props.selection ? [props.selection] : [])
   const [searchOpen, setSearchOpen] = createSignal(false)
+  // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
+  // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
+  const [selection, setSelection] = createSignal<readonly string[]>(props.selection ? [props.selection] : [])
+  const [crumbs, setCrumbs] = createSignal<readonly GraphBreadcrumb[]>([])
+  const controller = new GraphController({ selection: selection() })
+  const sameIDs = (a: readonly string[], b: readonly string[]) =>
+    a.length === b.length && a.every((id, index) => id === b[index])
+  controller.onChange((snapshot) => {
+    setSelection((current) => (sameIDs(current, snapshot.selection) ? current : [...snapshot.selection]))
+    setCrumbs(snapshot.trail.map((entry) => ({ id: entry.id, label: entry.label ?? entry.id })))
+  })
+  onCleanup(() => controller.dispose())
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererID, setRendererID] = createSignal<RendererID>()
   const [fallback, setFallback] = createSignal(false)
@@ -128,7 +140,6 @@ export const GraphView = (props: GraphViewProps) => {
 
     return layoutGraph(props.model, { strategy: strategy() })
   })
-  const selection = (): readonly string[] => (props.selection !== undefined ? [props.selection] : internalSelection())
   const renderModel = createMemo(() =>
     buildRenderModel(props.model, {
       level: level(),
@@ -154,8 +165,18 @@ export const GraphView = (props: GraphViewProps) => {
     return ancestors(props.model, id).find((ancestor) => ancestor.kind === "turn")?.id
   }
 
-  const select = (id: string | undefined) => {
-    setSelection(id ? [id] : [])
+  // Breadcrumbs are the `part-of` ancestry, seeded into the controller's trail so one library
+  // primitive backs both selection and the path (U3.11/P8.1).
+  const seedTrail = (id: string | undefined) => {
+    controller.trail.reset()
+
+    if (id)
+      for (const node of breadcrumbs(props.model, id)) controller.trail.push({ id: node.id, label: node.label, kind: node.kind })
+  }
+  const select = (target: string | readonly string[] | undefined) => {
+    const id = typeof target === "string" ? target : target?.[0]
+    controller.select(target ?? null)
+    seedTrail(id)
     props.onSelect?.(id)
   }
   const changeProjection = (next: Projection) => {
@@ -217,6 +238,17 @@ export const GraphView = (props: GraphViewProps) => {
   createEffect(() => {
     if (props.minimap !== undefined) setMinimap(props.minimap)
   })
+  // Keep the controller's model in step with the host model; it reconciles selection + trail by id, so
+  // streaming appends never clear either.
+  createEffect(() => controller.setModel(props.model))
+  // Controlled selection: mirror the host value into the controller (and seed the path on mount).
+  createEffect(() => {
+    const next = props.selection
+
+    if (next === undefined) return
+    if (controller.selection[0] !== next) controller.select(next)
+    seedTrail(next)
+  })
   // A capability gap is never silent: when the active renderer cannot do 3D, fall back to 2D rather
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
@@ -266,7 +298,7 @@ export const GraphView = (props: GraphViewProps) => {
         compact={compact()}
         endInset={props.endInset}
       />
-      <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={fitSubtree} />
+      <GraphBreadcrumbs crumbs={crumbs()} onSelect={fitSubtree} />
       <Show when={fallback() && !error()}>
         <div
           data-slot="graph-fallback"
@@ -292,10 +324,7 @@ export const GraphView = (props: GraphViewProps) => {
             selection={selection()}
             preferredRenderer={props.preferredRenderer}
             overrides={props.rendererOverrides}
-            onSelect={(ids) => {
-              setSelection(ids)
-              props.onSelect?.(ids[0])
-            }}
+            onSelect={(ids) => select(ids)}
             onBackgroundClick={() => select(undefined)}
             onRenderer={(instance) => {
               renderer = instance
