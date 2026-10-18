@@ -3,7 +3,7 @@ import { supports } from "@spacegraphjs/renderer"
 import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors, subtree } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show, type JSX } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -35,6 +35,8 @@ export type GraphViewProps = {
   minimap?: boolean
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
   diffSource?: GraphDiffSource
+  /** Optional host renderer for a node's summary (for example Markdown); falls back to plain text. */
+  renderSummary?: (node: GraphNode) => JSX.Element | undefined
   renderCard?: CardTemplate
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
@@ -396,6 +398,7 @@ export const GraphView = (props: GraphViewProps) => {
             model={props.model}
             node={selectedNode()}
             diffSource={props.diffSource}
+            renderSummary={props.renderSummary}
             onSelect={select}
             onOpenTranscript={props.onOpenTranscript}
           />

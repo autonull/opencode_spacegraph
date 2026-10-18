@@ -90,6 +90,11 @@ const ViewHarness = (props: HarnessProps) => {
         rendererOverrides={props.overrides}
         theme={props.theme}
         diffSource={diffSource}
+        renderSummary={(node) =>
+          node.kind === "message" || node.kind === "reasoning" ? (
+            <div data-slot="test-summary">{node.summary}</div>
+          ) : undefined
+        }
         onSelect={setSelected}
         onOpenTranscript={() => undefined}
         onBack={() => undefined}
@@ -124,6 +129,11 @@ export const Detail = {
 /** A turn's diff node: the changed files load on demand through the host diff source (RF.8). */
 export const Diff = {
   render: () => <ViewHarness level="execution" selection="diff:msg_idle_1" />,
+}
+
+/** An assistant message renders its summary through the host renderer (Markdown in the app, RF.8). */
+export const MarkdownSummary = {
+  render: () => <ViewHarness level="execution" selection="msg_plan_1:text:0" />,
 }
 
 export const Projection3D = {

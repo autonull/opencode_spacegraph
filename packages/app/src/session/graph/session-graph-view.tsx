@@ -1,6 +1,7 @@
 import { Button } from "@opencode/ui/button"
 import { buildGraph, nodeByID, openInTranscript, turnNodeID } from "@opencode/session-ui/graph"
 import { useData } from "@opencode/session-ui/context"
+import { Markdown } from "@opencode/session-ui/markdown"
 import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
 import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack } from "solid-js"
@@ -94,6 +95,11 @@ export function SessionGraphView(props: {
           strategy={graph.layout()}
           minimap={graph.minimap()}
           diffSource={diffSource()}
+          renderSummary={(node) =>
+            node.kind === "message" || node.kind === "reasoning" ? (
+              <Markdown text={node.summary ?? ""} class="text-12-regular text-text-base" />
+            ) : undefined
+          }
           onSelect={(id) => graph.setSelected(id)}
           onProjectionChange={(projection) => graph.setProjection(projection)}
           onStrategyChange={(layout) => graph.setLayout(layout)}

@@ -3,7 +3,7 @@ import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { For, Show, createSignal } from "solid-js"
+import { For, Show, createSignal, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 
 const KIND_KEY = {
@@ -60,6 +60,8 @@ export type GraphInspectorProps = {
   node?: GraphNode
   /** RF.8: host loader for a finished turn's changed-file diffs; when absent, diff nodes list paths only. */
   diffSource?: GraphDiffSource
+  /** Optional host renderer for a node's summary (for example Markdown); falls back to plain text. */
+  renderSummary?: (node: GraphNode) => JSX.Element | undefined
   onSelect: (id: string) => void
   onOpenTranscript?: (id: string) => void
 }
@@ -159,7 +161,16 @@ export const GraphInspector = (props: GraphInspectorProps) => {
 
             <div class="min-h-0 flex-1 overflow-y-auto px-3 py-2">
               <Show when={node().summary}>
-                <p class="mb-3 whitespace-pre-wrap break-words text-12-regular text-text-base">{node().summary}</p>
+                <div class="mb-3">
+                  <Show
+                    when={props.renderSummary?.(node())}
+                    fallback={
+                      <p class="whitespace-pre-wrap break-words text-12-regular text-text-base">{node().summary}</p>
+                    }
+                  >
+                    {(rendered) => rendered()}
+                  </Show>
+                </div>
               </Show>
 
               <dl class="flex flex-col gap-2">

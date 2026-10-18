@@ -72,6 +72,23 @@ test("selects a node from search and inspects it in the DOM panel", async ({ pag
   expect(errors).toEqual([])
 })
 
+test("renders an assistant message as Markdown in the inspector", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // Search reaches the assistant text node by its summary, then renders it through the shared Markdown.
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  const search = page.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("combobox").fill("inspect the failing")
+  await search.getByRole("option").first().click()
+
+  const markdown = page.locator(inspector).locator('[data-component="markdown"]')
+  await expect(markdown).toBeVisible()
+  await expect(markdown).toContainText("inspect the failing authentication tests")
+
+  expect(errors).toEqual([])
+})
+
 test("appends a node from a live event without losing the selection", async ({ page }) => {
   const errors = trackPageErrors(page)
   const timeline = await setupTimeline(page, { sessionMessages: buildFixtureMessages() })

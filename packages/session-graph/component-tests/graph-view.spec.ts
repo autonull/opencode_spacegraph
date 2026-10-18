@@ -48,6 +48,10 @@ story("assembles the graph view and answers node questions without the canvas", 
   await expect(diff).toContainText("src/auth/session.ts")
   await expect(diff).toContainText("src/auth/token.ts")
 
+  // An assistant message renders its summary through the host renderer (Markdown in the app, RF.8).
+  await page.evaluate(() => (window as unknown as ViewWindow).__graphView!.select("msg_plan_1:text:0"))
+  await expect(inspector.locator('[data-slot="test-summary"]')).toContainText("inspect the failing authentication tests")
+
   // Level is a component prop: changing it must reach the toolbar's derived disabled state.
   const zoomOut = root.locator('button[aria-label="Zoom out"]')
   await expect(zoomOut).toBeEnabled()
