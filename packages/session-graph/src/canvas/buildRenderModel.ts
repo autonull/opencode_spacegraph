@@ -66,10 +66,10 @@ export type BandTemplate = (node: GraphNode, count: number, bounds: ClusterBound
 export type BuildRenderModelOptions = {
   level: ZoomLevel
   positions: ReadonlyMap<string, Position>
-  /** Cluster bounds from `layoutGraph`; enables turn/phase swimlane bands (RF.5). */
-  clusters?: ReadonlyMap<string, ClusterBounds>
   /** Execution-level focus: narrows edges to the selected node's neighborhood (§5.4). */
   focus?: string
+  /** Enables turn/phase swimlane bands (RF.5); their bounds wrap the members visible at the level. */
+  bands?: boolean
   /** Overrides the per-level DOM card budget; cards above it fall back to labels. */
   cardBudget?: number
   /** Replaces the default card markup, e.g. with localized copy. */
@@ -118,7 +118,8 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
     }
   })
 
-  const bands = options.clusters ? buildBands(model, level, positions, options.clusters, renderBand) : []
+  const visible = new Set(content.map((node) => node.id))
+  const bands = options.bands ? buildBands(model, level, positions, renderBand, visible) : []
 
   return { nodes: [...bands, ...content], edges: edgesAtLevel(model, level, focus).map((edge) => toRenderEdge(edge, level)) }
 }
@@ -137,15 +138,30 @@ function buildBands(
   model: GraphModel,
   level: ZoomLevel,
   positions: ReadonlyMap<string, Position>,
-  clusters: ReadonlyMap<string, ClusterBounds>,
   renderBand: BandTemplate,
+  visible: ReadonlySet<string>,
 ): RenderNode[] {
   const bands: RenderNode[] = []
 
-  const emit = (node: GraphNode, count: number) => {
-    const bounds = clusters.get(node.id)
-    if (!bounds) return
+  // Bands wrap the members actually drawn at this level, so an overview turn band frames its phase
+  // chips rather than the full execution extent (which is empty at that level).
+  const boundsOf = (ids: readonly string[]): ClusterBounds | undefined => {
+    const points = ids.flatMap((id) => {
+      const point = positions.get(id)
+      return visible.has(id) && point ? [point] : []
+    })
+    if (points.length === 0) return undefined
+
+    return {
+      min: { x: Math.min(...points.map((point) => point.x)), y: Math.min(...points.map((point) => point.y)), z: 0 },
+      max: { x: Math.max(...points.map((point) => point.x)), y: Math.max(...points.map((point) => point.y)), z: 0 },
+    }
+  }
+
+  const emit = (node: GraphNode, count: number, ids: readonly string[]) => {
     if (count === 0) return
+    const bounds = boundsOf(ids)
+    if (!bounds) return
     const width = bounds.max.x - bounds.min.x + BAND_PAD * 2
     const height = bounds.max.y - bounds.min.y + BAND_PAD * 2
     bands.push({
@@ -164,14 +180,14 @@ function buildBands(
   for (const turnID of model.turns) {
     const turn = model.nodes.find((node) => node.id === turnID)
     if (!turn) continue
-    const count = model.nodes.filter((node) => node.turnID === turnID).length
-    emit(turn, count)
+    const members = model.nodes.filter((node) => node.turnID === turnID)
+    emit(turn, members.length, members.map((node) => node.id))
   }
 
   for (const node of model.nodes) {
     if (node.kind !== "phase" || !node.clusterOf) continue
-    if (isClusterExpanded(level) === false) continue
-    emit(node, clusterCount(node))
+    if (!isClusterExpanded(level)) continue
+    emit(node, clusterCount(node), node.clusterOf)
   }
 
   return bands

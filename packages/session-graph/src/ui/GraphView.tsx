@@ -133,7 +133,7 @@ export const GraphView = (props: GraphViewProps) => {
     buildRenderModel(props.model, {
       level: level(),
       positions: layout().positions,
-      clusters: layout().clusters,
+      bands: true,
       focus: level() === "execution" ? selection()[0] : undefined,
       renderCard: renderCard(),
       renderBand: renderBand(),

@@ -130,9 +130,8 @@ test("model building is deterministic", () => {
   expect(JSON.stringify(at("execution"))).toBe(JSON.stringify(at("execution")))
 })
 
-test("turn and phase swimlane bands are emitted when cluster bounds are supplied (RF.5)", () => {
-  const clusters = layoutGraph(model).clusters
-  const built = buildRenderModel(model, { level: "execution", positions, clusters })
+test("turn and phase swimlane bands wrap the members visible at the level (RF.5)", () => {
+  const built = buildRenderModel(model, { level: "execution", positions, bands: true })
   const bands = built.nodes.filter((node) => node.kind === "band")
 
   expect(bands.length).toBeGreaterThan(0)
@@ -153,7 +152,7 @@ test("execution focus dims cards outside the selected neighborhood (RF.10)", () 
   const built = buildRenderModel(model, {
     level: "execution",
     positions,
-    clusters: layoutGraph(model).clusters,
+    bands: true,
     focus,
   })
   const focused = built.nodes.find((node) => node.id === focus)!
