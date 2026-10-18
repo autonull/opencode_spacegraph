@@ -129,3 +129,31 @@ test("overview keeps only hierarchy edges", () => {
 test("model building is deterministic", () => {
   expect(JSON.stringify(at("execution"))).toBe(JSON.stringify(at("execution")))
 })
+
+test("turn and phase swimlane bands are emitted when cluster bounds are supplied (RF.5)", () => {
+  const clusters = layoutGraph(model).clusters
+  const built = buildRenderModel(model, { level: "execution", positions, clusters })
+  const bands = built.nodes.filter((node) => node.kind === "band")
+
+  expect(bands.length).toBeGreaterThan(0)
+
+  for (const band of bands) {
+    expect(band.interactive).toBe(false)
+    expect(band.html).toBeDefined()
+    expect(band.size?.[0]).toBeGreaterThan(0)
+  }
+
+  // Execution draws a band per turn and per expanded phase.
+  const turnBands = bands.filter((band) => band.data?.band === "turn")
+  expect(turnBands.length).toBe(model.turns.length)
+})
+
+test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () => {
+  const built = at("detail")
+  const style = (kind: string, confidence?: string) =>
+    built.edges.find((edge) => edge.kind === kind && (!confidence || edge.confidence === confidence))?.style
+
+  expect(style("part-of")).toBe("dashed")
+  expect(style("sequence", "explicit")).toBe("solid")
+  expect(style("writes")).toBe("solid")
+})

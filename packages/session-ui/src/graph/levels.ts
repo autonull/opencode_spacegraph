@@ -90,6 +90,8 @@ export function edgesAtLevel(model: GraphModel, level: ZoomLevel, focus?: string
   const allowed = model.edges.filter(
     (edge) =>
       LEVEL_RANK[EDGE_MIN_LEVEL[edge.kind]] <= LEVEL_RANK[level] &&
+      // RF.4: hierarchy is demoted to the turn bands at execution, so the root does not fan out.
+      !(level === "execution" && edge.kind === "part-of") &&
       visible.has(edge.source) &&
       visible.has(edge.target),
   )

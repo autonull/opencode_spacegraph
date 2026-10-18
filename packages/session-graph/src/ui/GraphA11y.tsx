@@ -24,13 +24,15 @@ export const GraphA11y = (props: GraphA11yProps) => {
   let layer: AccessibilityLayer | undefined
 
   const items = (): AccessibleItem[] =>
-    props.model.nodes.map((node) => ({
-      id: node.id,
-      label: node.label,
-      kind: node.kind,
-      status: node.status,
-      interactive: node.interactive !== false,
-    }))
+    props.model.nodes
+      .filter((node) => node.interactive !== false)
+      .map((node) => ({
+        id: node.id,
+        label: node.label,
+        kind: node.kind,
+        status: node.status,
+        interactive: true,
+      }))
 
   onMount(() => {
     layer = new AccessibilityLayer(container, {

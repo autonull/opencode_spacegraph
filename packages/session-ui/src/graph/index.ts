@@ -69,11 +69,16 @@ export {
 } from "./levels"
 
 export {
+  CARD_SIZE,
+  COMPACT_SIZE,
   LANES,
+  LAYOUT_STRATEGIES,
   layoutGraph,
+  nodeSize,
   type ClusterBounds,
   type GraphLayout,
   type Lane,
   type LayoutOptions,
+  type LayoutStrategy,
   type Position,
 } from "./layout"

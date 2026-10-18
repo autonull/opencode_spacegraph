@@ -24,8 +24,8 @@ story("assembles the graph view and answers node questions without the canvas", 
   await expect(host).toHaveAttribute("data-graph-renderer", "spacegraph")
   await expect(root.locator('[data-slot="graph-toolbar"]')).toBeVisible()
 
-  // Execution (the default) renders phase clusters as expanded panels, not DOM cards.
-  await expect(host.locator(".html-node-container", { hasText: "Explore" })).toHaveCount(0)
+  // Execution expands phase clusters into swimlane bands, not counted DOM cards.
+  await expect(host.locator('.html-node-container:has([data-kind="phase"])')).toHaveCount(0)
 
   // The selected tool node renders as readable DOM detail, with its place in the session above it.
   await expect(inspector).toContainText("Tool call")
@@ -41,7 +41,7 @@ story("assembles the graph view and answers node questions without the canvas", 
 
   // The level change is a representation change: the cluster must be re-created as a counted DOM card,
   // not left as the execution panel whose node type no longer matches (the adapter remodels on type).
-  const exploreChip = host.locator(".html-node-container", { hasText: "Explore" })
+  const exploreChip = host.locator('.html-node-container:has([data-kind="phase"])', { hasText: "Explore" })
   await expect(exploreChip).toHaveCount(1)
   await expect(exploreChip).toContainText("Explore 5")
 

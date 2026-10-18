@@ -5,7 +5,7 @@ import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
-import type { ZoomLevel } from "@opencode/session-ui/graph"
+import { LAYOUT_STRATEGIES, type LayoutStrategy, type ZoomLevel } from "@opencode/session-ui/graph"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
 
@@ -14,6 +14,12 @@ const LEVEL_KEY = {
   execution: "ui.sessionGraph.level.execution",
   detail: "ui.sessionGraph.level.detail",
 } as const satisfies Record<ZoomLevel, string>
+
+const STRATEGY_KEY = {
+  lanes: "ui.sessionGraph.layout.lanes",
+  timeline: "ui.sessionGraph.layout.timeline",
+  hierarchy: "ui.sessionGraph.layout.hierarchy",
+} as const satisfies Record<LayoutStrategy, string>
 
 export type GraphToolbarProps = {
   level: ZoomLevel
@@ -24,6 +30,12 @@ export type GraphToolbarProps = {
   renderer?: string
   onFit: () => void
   onSearch: () => void
+  /** RF.2: the visible layout chooser; absent when the host does not offer strategies. */
+  strategy?: LayoutStrategy
+  onStrategy?: (strategy: LayoutStrategy) => void
+  /** RF.7: minimap toggle, default off. */
+  minimap?: boolean
+  onToggleMinimap?: () => void
   /** Opens the hybrid turn map for the currently selected turn; absent when no turn is selected. */
   onTurnMap?: () => void
   onBack?: () => void
@@ -101,6 +113,27 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         </SegmentedControlItem>
       </SegmentedControl>
 
+      <Show when={props.onStrategy}>
+        <SegmentedControl
+          value={props.strategy ?? "lanes"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.layout")}
+          onChange={(value) => value && props.onStrategy?.(value as LayoutStrategy)}
+        >
+          {LAYOUT_STRATEGIES.map((strategy) => (
+            <SegmentedControlItem value={strategy}>{i18n.t(STRATEGY_KEY[strategy])}</SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      </Show>
+
+      <IconButton
+        size="small"
+        variant="ghost"
+        state={props.minimap ? "pressed" : "rest"}
+        aria-label={i18n.t("ui.sessionGraph.toolbar.minimap")}
+        title={i18n.t("ui.sessionGraph.toolbar.minimap")}
+        onClick={() => props.onToggleMinimap?.()}
+        icon={<Icon name="layout-bottom" size="small" />}
+      />
       <IconButton
         size="small"
         variant="ghost"

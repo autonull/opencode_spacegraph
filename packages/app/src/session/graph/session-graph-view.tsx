@@ -75,8 +75,12 @@ export function SessionGraphView(props: {
           projection={graph.projection()}
           preferredRenderer={graph.renderer()}
           selection={graph.selected()}
+          strategy={graph.layout()}
+          minimap={graph.minimap()}
           onSelect={(id) => graph.setSelected(id)}
           onProjectionChange={(projection) => graph.setProjection(projection)}
+          onStrategyChange={(layout) => graph.setLayout(layout)}
+          onMinimapChange={(minimap) => graph.setMinimap(minimap)}
           onTurnMap={(turnID) => graph.setTurnMap(turnID)}
           onOpenTranscript={(id) => {
             const ref = openInTranscript(model(), id)

@@ -10,6 +10,10 @@ story("U3.13 minimap: overview renders from positions and pans through the share
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
+  // RF.7: the minimap defaults off and is a toggle.
+  await expect(root.locator('[data-slot="graph-minimap"]')).toHaveCount(0)
+  await root.locator('[data-slot="graph-toolbar"] button[aria-label="Toggle minimap"]').click()
+
   const minimap = root.locator('[data-slot="graph-minimap"]')
   await expect(minimap).toBeVisible()
   await expect(minimap.locator("circle").first()).toBeVisible()

@@ -1,6 +1,6 @@
 import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
-import type { GraphModel, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
+import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, createUniqueId, Show } from "solid-js"
@@ -9,6 +9,7 @@ import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
+import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { GraphInspector } from "./GraphInspector"
 import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
@@ -27,11 +28,17 @@ export type GraphViewProps = {
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   positions?: ReadonlyMap<string, Position>
+  /** RF.2: controlled layout strategy; the host persists the choice. */
+  strategy?: LayoutStrategy
+  /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
+  minimap?: boolean
   renderCard?: CardTemplate
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
+  onStrategyChange?: (strategy: LayoutStrategy) => void
+  onMinimapChange?: (minimap: boolean) => void
   onOpenTranscript?: (id: string) => void
   /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
   onTurnMap?: (turnID: string) => void
@@ -49,6 +56,8 @@ export const GraphView = (props: GraphViewProps) => {
   const resolvedTheme = createGraphTheme()
   const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
+  const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
+  const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
   const [internalSelection, setSelection] = createSignal<readonly string[]>(props.selection ? [props.selection] : [])
   const [searchOpen, setSearchOpen] = createSignal(false)
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
@@ -60,14 +69,28 @@ export const GraphView = (props: GraphViewProps) => {
   let renderer: GraphRenderer | undefined
 
   const theme = () => props.theme ?? resolvedTheme()
-  const layout = createMemo(() => props.positions ?? layoutGraph(props.model).positions)
+  const renderCard = createMemo(() => props.renderCard ?? createCardTemplate(theme()))
+  const renderBand = createMemo(() => createBandTemplate(theme()))
+  const layout = createMemo((): GraphLayout => {
+    if (props.positions)
+      return {
+        positions: props.positions,
+        clusters: new Map(),
+        bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+        strategy: strategy(),
+      }
+
+    return layoutGraph(props.model, { strategy: strategy() })
+  })
   const selection = (): readonly string[] => (props.selection !== undefined ? [props.selection] : internalSelection())
   const renderModel = createMemo(() =>
     buildRenderModel(props.model, {
       level: level(),
-      positions: layout(),
+      positions: layout().positions,
+      clusters: layout().clusters,
       focus: level() === "execution" ? selection()[0] : undefined,
-      renderCard: props.renderCard,
+      renderCard: renderCard(),
+      renderBand: renderBand(),
     }),
   )
   const selectedNode = () => {
@@ -93,6 +116,16 @@ export const GraphView = (props: GraphViewProps) => {
     setProjection(next)
     props.onProjectionChange?.(next)
   }
+  const changeStrategy = (next: LayoutStrategy) => {
+    setStrategy(next)
+    props.onStrategyChange?.(next)
+  }
+  const toggleMinimap = () => {
+    setMinimap((open) => {
+      props.onMinimapChange?.(!open)
+      return !open
+    })
+  }
   const jumpTo = (node: GraphNode) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
@@ -106,6 +139,12 @@ export const GraphView = (props: GraphViewProps) => {
   createEffect(() => {
     if (props.projection !== undefined) setProjection(props.projection)
   })
+  createEffect(() => {
+    if (props.strategy !== undefined) setStrategy(props.strategy)
+  })
+  createEffect(() => {
+    if (props.minimap !== undefined) setMinimap(props.minimap)
+  })
   // A capability gap is never silent: when the active renderer cannot do 3D, fall back to 2D rather
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
@@ -118,6 +157,7 @@ export const GraphView = (props: GraphViewProps) => {
     const ready = canvasReady()
     level()
     projection()
+    strategy()
     if (ready) queueMicrotask(() => renderer?.fit())
   })
 
@@ -132,6 +172,10 @@ export const GraphView = (props: GraphViewProps) => {
         renderer={rendererID()}
         onFit={() => renderer?.fit()}
         onSearch={() => setSearchOpen((open) => !open)}
+        strategy={strategy()}
+        onStrategy={changeStrategy}
+        minimap={minimap()}
+        onToggleMinimap={toggleMinimap}
         onTurnMap={
           props.onTurnMap
             ? () => {
@@ -194,11 +238,11 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={select}
             onEscape={() => select(undefined)}
           />
-          <Show when={!error() && props.model.nodes.length > 0}>
+          <Show when={minimap() && !error() && props.model.nodes.length > 0}>
             <div class="absolute bottom-2 end-2 z-10">
               <GraphMinimap
                 model={props.model}
-                positions={layout()}
+                positions={layout().positions}
                 theme={theme()}
                 viewport={viewport()}
                 onPan={(center) => {
@@ -247,7 +291,11 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
         </div>
-        <div class="w-72 max-w-[45%] shrink-0">
+        <div
+          class={selectedNode() ? "w-72 max-w-[45%] shrink-0" : "w-0 shrink-0 overflow-hidden"}
+          data-slot="graph-inspector-gutter"
+          data-collapsed={!selectedNode()}
+        >
           <GraphInspector
             model={props.model}
             node={selectedNode()}

@@ -90,6 +90,9 @@ const sessionGraphSchema = Persistence.struct({
   projection: Schema.optional(Schema.Literals(["2d", "3d"])),
   renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
   selected: Schema.optional(Schema.String),
+  // RF.2/RF.7: the chosen layout strategy and minimap visibility, per session.
+  layout: Schema.optional(Schema.Literals(["lanes", "timeline", "hierarchy"])),
+  minimap: Schema.optional(Schema.Boolean),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
   turnMap: Schema.optional(Schema.String),
 })
@@ -563,8 +566,16 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           renderer: createMemo(() => state()?.renderer),
           selected: createMemo(() => state()?.selected),
           turnMap: createMemo(() => state()?.turnMap),
+          layout: createMemo(() => state()?.layout ?? "lanes"),
+          minimap: createMemo(() => state()?.minimap ?? false),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
+          },
+          setLayout(layout: NonNullable<SessionGraphState["layout"]>) {
+            write({ layout })
+          },
+          setMinimap(minimap: boolean) {
+            write({ minimap })
           },
           setProjection(projection: NonNullable<SessionGraphState["projection"]>) {
             write({ projection })
@@ -577,6 +588,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setTurnMap(turnMap: string | undefined) {
             write({ turnMap })
+          },
+          toggleMinimap() {
+            write({ minimap: !(state()?.minimap ?? false) })
           },
         }
       },
