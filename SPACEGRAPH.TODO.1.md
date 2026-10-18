@@ -1031,7 +1031,77 @@ Notes for the next pass:
 - **Remaining Phase 3 partials:** U3.16 still lacks a `CurrentSessionProviders`-backed story set; U3.17's switch
   control and prototype-settings renderer selector stay app e2e concerns.
 
+**2026-10-18 (cont.) — L1.29 non-OpenCode demo (and the L1.4 screenshot check), plus a node-type registration fix.**
+
+Scope for this pass: close the last Phase 1 task by building the reference host the library boundary exists for,
+and use it for the outstanding light/dark screenshot check. Library work is in `spacegraphjs`; OpenCode carries
+the two demo screenshots and the docs.
+
+- **L1.29 — non-OpenCode reference demo (done).** `spacegraphjs/demo/contract.html` + `demo/contract-demo.ts`
+  drive one synthetic activity stream (intent → explore → edit/artifact → delegate → failing verify → retry →
+  recover) through the SpaceGraph adapter, the Cytoscape adapter, and the static SVG renderer. Positions come
+  from `LaneLayout` (lane → Y, per-lane ordinal → X, depth → Z); `ZoomBands` reads the adapter viewport,
+  `Trail` backs the breadcrumbs, and `AccessibilityLayer` provides keyboard traversal. Controls switch
+  renderer/projection/theme/direction/scene; 3D is disabled with an explanation when 3D is unsupported. No
+  OpenCode import, no session vocabulary. `demo/index.ts`, `demo/README.md`, and the root `README.md` link it.
+- **Demo wiring (the blocker recorded last pass).** `vite.demo.config.ts` now uses regex aliases
+  (`^spacegraphjs$`, `^spacegraphjs/(.+)$`) plus `@spacegraphjs/{renderer,spacegraph-renderer,cytoscape-renderer,svg-renderer}`
+  source aliases, so the demo resolves the workspace packages (and the `cytoscape` installed under
+  `packages/cytoscape-renderer/node_modules`) without a pnpm link. The previous bare `spacegraphjs` string would
+  have rewritten `spacegraphjs/layout` to `src/index.ts/layout`.
+- **Second host is demo-consumed (P8.6/P8.9).** `test/fixtures/activity-host.ts` moved to `demo/activity-host.ts`
+  (the conformance suite imports it from there), so the fixture is part of the runnable demo ("Second host"
+  scene). The demo spec exercises RTL markup (`html[dir=rtl]`, the adapter's `dir` card container), not only the
+  SVG renderer.
+- **L1.4 light/dark screenshot check (done).** `test/e2e/contract-demo.spec.ts` captures the demo at 1440×900 in
+  both themes as `docs/spacegraph/screenshots/09-contract-demo-light.png` and `10-contract-demo-dark.png`.
+  Inspected: both are legible; the theme surface (background, node fill via status, edge colour, edge-label
+  colour) renders correctly in light and dark.
+- **Library bug fixed — inherited `static typeName`.** `MermaidNode extends HtmlNode` inherits
+  `static typeName = 'HtmlNode'`, and `#registerDefaults` used `cls.typeName || cls.name`; `PluginManager.
+  registerNodeType` also re-registered each class under its inherited `typeName`. Every `HtmlNode` was therefore
+  constructed as a `MermaidNode` (its generated label markup replaced the host `html`), and every `Edge` subclass
+  registered as `Edge` (last one, `Wire`, won). Fixed with a new `nodeTypeName(cls)` helper (own-property
+  `typeName` only) in `src/core/defaults.ts`, used by `#registerDefaults`, and an own-property check in
+  `PluginManager.registerNodeType`/`registerEdgeType`. Regression test `test/node-types.test.ts` asserts the
+  names are unique and `MermaidNode`/`CurvedEdge` do not alias their parents. This is why the app captures now
+  show real card markup instead of the 160×60 label fallback.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 32 files, 294 tests (was 31/288; +`node-types`). `pnpm exec tsc
+  --noEmit` unchanged at the 184-error baseline. `bun run test:boundaries` → 5 pass.
+- `packages/{renderer,spacegraph-renderer,cytoscape-renderer,svg-renderer} bun test` → 6/12/12/9 pass.
+- Demo: `pnpm run dev:demo` (vite on 5173) then `node_modules/.bin/playwright test test/e2e/contract-demo.spec.ts
+  --workers=1` with `SG_DEMO_URL` → 5 pass (mount, renderer switch + SVG export + 3D gating, keyboard/connection/
+  trail, second-host fixture + RTL, light/dark capture).
+- `cd packages/session-graph && bun run typecheck && bun test src && bun run test:components` → clean, 20, 22 pass.
+  `cd packages/app && bun run typecheck` clean. `bun run graph:capture --mode=demo` regenerated 01–06; 03/04 now
+  show real HTML cards.
+
+Notes for the next pass:
+
+- **The demo is the reference host the plan's §8 library-demo rows named.** `L1.18`'s demo row and the V5.4
+  "library demo" half now have a page; folding `contract-demo.spec.ts` into a library demo command (or CI) is
+  still open. The demo needs `pnpm run dev:demo` running (there is no bundled webServer config in
+  `playwright.config.ts`).
+- **Two theme gaps the demo works around.** The core hard-codes an edge-label background (`rgba(0,0,0,0.55)` on
+  `LabeledEdge`), so a light theme draws theme text over a dark pill; the demo overrides `.sg-edge-label` in CSS.
+  And the SpaceGraph adapter passes only `{ background }` to the core theme, so selected/focus outlines use the
+  core default colour (the app's orange ring in `09`). Extending `SpaceGraphTheme` (edge label background) and
+  mapping the adapter's `RenderTheme.selection/focus/hover` into it is the cleanup.
+- **`node-types` changes default `Edge` resolution.** Nodes/edges created with `type: 'Edge'` now get `Edge`
+  rather than the previously-registered `Wire`; `type: 'HtmlNode'` now gets `HtmlNode` rather than
+  `MermaidNode`. No test relied on the old behaviour, but any consumer that omitted `type` and depended on the
+  last-registered class should be re-checked.
+- **App captures still show the known overview gap.** `02`/`03` now draw real 220×72 HTML cards (the fix), while
+  `phase`/`turn`/`session` nodes remain plain `panel` shapes with tiny labels — the "overview chips are plain
+  panels, not counted clusters" item recorded at V5.4. `buildRenderModel` could emit card markup (with `count`)
+  for derived phase nodes within the overview DOM budget; that is the remaining host-side overview work.
+- Remaining Phase 1: none (L1.4 and L1.29 land here). Remaining Phase 3: none. Phase 7 (R7.1–R7.7) and P8.1/P8.2
+  remain; P8.4/P8.8 stay deferred by design.
+
 ## 0. Mission
+
 
 Build a prototype that tests this hypothesis:
 
@@ -1616,10 +1686,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: a bare `new SpaceGraph(container, { chrome: false })` renders only canvas + CSS3D layer.
   Status: `DEFAULT_CHROME_PLUGINS` exists; `chrome` defaults off and gates registration; `test/chrome.test.ts` asserts the split. The only default `document.body` writer was `ZoomUIPlugin`, now chrome-gated.
 
-- [ ] **L1.4 Plumb render/theme options** (partial — background, node/edge/label, selection/hover/focus colours, `plugins`, and `projection` landed; the light/dark screenshot check remains)
+- [x] **L1.4 Plumb render/theme options** (done — background, node/edge/label, selection/hover/focus colours, `plugins`, and `projection` landed; light/dark verified by the L1.29 demo captures)
   Pass `RenderOptions` through `SpaceGraphOptions`: `backgroundColor`, `transparent`, `antialias`, `pixelRatio`, `preserveDrawingBuffer`, `projection`, `chrome`, `plugins`. Add a theme object for background, node fill/stroke, edge color, label color/font, selection/hover colors. Support transparent background so the app surface shows through.
   Done: no hard-coded `0x1a1a2e` when the app supplies a theme; light and dark screenshots both pass.
-  Status: `render`/`chrome`/`theme`/`plugins` added; `RenderOptions` gains `transparent`, `preserveDrawingBuffer`, and `projection`; `WebGLRenderer` honors them and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. `render.projection` now drives the ortho/perspective camera (L1.12). `theme` now also covers node fill/stroke, edge colour/label, label typography, and the selection/hover/focus outline colours through `src/core/theme.ts` (L1.4 pass). `SpaceGraphOptions.plugins` (extra plugin instances registered after the defaults in `#registerDefaults`) landed this pass, so a host can add a chrome module or its own plugin without `chrome: true`. Remaining: the light/dark screenshot check (L1.18 demo page); `test/chrome-embedded.test.ts` covers the plugin registration path only indirectly.
+  Status: `render`/`chrome`/`theme`/`plugins` added; `RenderOptions` gains `transparent`, `preserveDrawingBuffer`, and `projection`; `WebGLRenderer` honors them and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. `render.projection` now drives the ortho/perspective camera (L1.12). `theme` now also covers node fill/stroke, edge colour/label, label typography, and the selection/hover/focus outline colours through `src/core/theme.ts` (L1.4 pass). `SpaceGraphOptions.plugins` (extra plugin instances registered after the defaults in `#registerDefaults`) landed this pass. The light/dark check is satisfied by the L1.29 demo captures (`docs/spacegraph/screenshots/09-contract-demo-light.png`, `10-contract-demo-dark.png`); `test/chrome-embedded.test.ts` covers the plugin registration path only indirectly. Known gap: the core hard-codes an edge-label background, and the SpaceGraph adapter passes only `{ background }` to the core theme, so selection/focus outlines use core defaults.
 
 #### Lifecycle and input
 
@@ -1756,10 +1826,16 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: the UI never calls an unsupported method; the toolbar explains unavailable actions.
   Status: `supports` (L1.19) drives the toolbar's 3D control (`disabled` + `title` explanation) and `GraphView` falls back to 2D when the active renderer lacks 3D; there is no `renderer === "cytoscape"` branch. The minimap stays declared unavailable until L1.27.
 
-- [ ] **L1.29 Non-OpenCode reference demo**
+- [x] **L1.29 Non-OpenCode reference demo** (done — `demo/contract.html` + `demo/contract-demo.ts`; see log)
   Add a generic demo under `spacegraphjs/demo` that uses the contract, `LaneLayout`, `ZoomBands`, `AccessibilityLayer`, and `Trail` with synthetic activity data. Include HTML activity cards, both interactive adapters, and the static SVG renderer. No OpenCode imports or session vocabulary.
   Done: the demo runs from the library repo and demonstrates the same capabilities outside OpenCode; it is linked from the README.
-  Status: **not started — blocked on demo wiring, not on source.** `vite.demo.config.ts` aliases only `@src`/`spacegraphjs`; it has no `@spacegraphjs/{renderer,spacegraph-renderer,cytoscape-renderer,svg-renderer}` aliases (the vitest config has them) and the pnpm workspace at `spacegraphjs/` is installed root-only, so `node_modules/@spacegraphjs/*` and `node_modules/cytoscape` are absent. A runnable "both interactive adapters" demo therefore needs (a) `@spacegraphjs/*` + `spacegraphjs/zoom|layout|a11y|navigation` aliases in `vite.demo.config.ts` and (b) `cytoscape` installed into the `spacegraphjs` workspace (e.g. `pnpm add -w -D cytoscape`), which the repo has avoided (heavy dep tree). The page itself is unstarted; the generic modules it would exercise (contract, `LaneLayout`, `ZoomBands`, `AccessibilityLayer`, `Trail`, `renderToSVG`) all exist and are tested.
+  Status: **done.** `spacegraphjs/demo/contract.html` + `demo/contract-demo.ts` mount the same synthetic activity
+  model through the SpaceGraph adapter, the Cytoscape adapter, and the static SVG renderer, using `LaneLayout`
+  (positions), `ZoomBands` (viewport bands), `Trail` (breadcrumbs), and `AccessibilityLayer` (keyboard
+  traversal); the P8.6 second-host fixture is the "Second host" scene. `vite.demo.config.ts` gained the
+  `@spacegraphjs/*` and regex `spacegraphjs/*` aliases the demo needs. `test/e2e/contract-demo.spec.ts` (5 cases)
+  proves mount, renderer switch + SVG export + 3D gating, keyboard/connection/trail navigation, the second-host
+  fixture with RTL markup, and the light/dark capture. Linked from `demo/README.md` and the root `README.md`.
 
 - [x] **L1.30 Multi-instance isolation** (done; edge resolution isolated, registry kept as a dev handle — see log)
   Remove global instance registration, global event buses, and cross-instance edge resolution. Two `SpaceGraph` instances on one page must have independent cameras, selections, themes, input, and disposal. Add a test with two graphs and duplicate node IDs.
@@ -2229,12 +2305,12 @@ Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate
 - [x] **P8.5 Host integration guide** (done — see log)
   Document data mapping, renderer choice, theming, zoom policy, layout, accessibility, persistence, and export. Include a Hermes-style checklist and the non-OpenCode demo.
   Done: a new host can integrate without reading OpenCode code.
-  Status: `spacegraphjs/docs/host-integration.md` (boundary, mapping, renderer choice/fallback, theming, layout/zoom, a11y, persistence, export, Hermes checklist, versioning) linked from the README. The runnable non-OpenCode demo waits on L1.29.
+  Status: `spacegraphjs/docs/host-integration.md` (boundary, mapping, renderer choice/fallback, theming, layout/zoom, a11y, persistence, export, Hermes checklist, versioning) linked from the README. The runnable non-OpenCode demo is L1.29 (`demo/contract.html`).
 
-- [x] **P8.6 Second-host reference fixture** (done — see log; runnable demo pending)
+- [x] **P8.6 Second-host reference fixture** (done — see log)
   Add a small non-OpenCode host demo with HTML cards, tool calls, artifacts, failures, and a retry. Use it in the contract suite.
   Done: the fixture runs against both adapters and is part of the library demo.
-  Status: `spacegraphjs/test/fixtures/activity-host.ts` is consumed by `test/renderer.contract.test.ts` (adapters accept it; `renderToSVG` renders it). Wiring it into the L1.29 library demo is pending with that page.
+  Status: `spacegraphjs/demo/activity-host.ts` (moved from `test/fixtures/`) is consumed by `test/renderer.contract.test.ts` (adapters accept it; `renderToSVG` renders it) and by the L1.29 demo as the "Second host" scene, so the fixture runs against both adapters and is part of the demo.
 
 - [x] **P8.7 Contract version negotiation** (done — see log)
   Document semver and `CONTRACT_VERSION`; adapters declare supported versions; hosts fail gracefully on mismatch.
@@ -2246,10 +2322,10 @@ Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate
   Done: the patch path passes the same conformance suite; the host can choose full or incremental updates.
   Status: deferred — the task is explicitly conditional on profiling showing full-model diffs are too expensive; no such evidence exists (V5.7's model build is ~27 ms at 1201 nodes).
 
-- [x] **P8.9 Text direction and locale** (done; demo verification pending — see log)
+- [x] **P8.9 Text direction and locale** (done — see log)
   Make DOM cards and labels respect the host's `dir`/`lang`. Add `direction?: "ltr" | "rtl"` to `RenderTheme`; verify an RTL fixture in the library demo and in OpenCode.
   Done: card text, labels, and controls render correctly in RTL without mirrored graph coordinates.
-  Status: `renderToSVG` emits `direction="rtl"`; the SpaceGraph adapter wraps host card markup in a `dir` container; the Cytoscape adapter sets `dir` on overlay cards; the host bridge reads `document.documentElement.dir` and re-resolves on a `dir` mutation. `lang` is host markup. Verifying an RTL fixture in the library demo waits on L1.29.
+  Status: `renderToSVG` emits `direction="rtl"`; the SpaceGraph adapter wraps host card markup in a `dir` container; the Cytoscape adapter sets `dir` on overlay cards; the host bridge reads `document.documentElement.dir` and re-resolves on a `dir` mutation. `lang` is host markup. Verified in the L1.29 demo (`test/e2e/contract-demo.spec.ts` RTL case: `html[dir=rtl]` plus the SpaceGraph adapter's `dir` card container).
 
 ## 7. Canonical fixture specification
 
@@ -2301,6 +2377,7 @@ Fixture rules:
 | Screenshot verification | `bun run graph:capture --mode=verify` | Interaction assertions |
 | SpaceGraphJS tests | `cd spacegraphjs && bunx vitest run` | Library unit |
 | SpaceGraphJS demo | `cd spacegraphjs && bunx playwright test test/e2e/<graph-demo>.spec.ts` | Ortho/click/zoom/dispose |
+| Non-OpenCode contract demo | `cd spacegraphjs && SG_DEMO_URL=… bunx playwright test test/e2e/contract-demo.spec.ts` | Contract + adapters + SVG + a11y/trail/zoom bands, light/dark |
 | Cytoscape demo | `cd spacegraphjs && bunx playwright test test/e2e/cytoscape-demo.spec.ts` | DOM overlay, preset layout, selection |
 | Full repo | `bun run check` | Lint + typecheck |
 
@@ -2407,8 +2484,11 @@ New:
 - `spacegraphjs/src/activity/ActivityGraph.ts` (Phase 8, only if needed)
 - `spacegraphjs/test/renderer.contract.test.ts`
 - `spacegraphjs/test/e2e/renderer.contract.spec.ts`
+- `spacegraphjs/test/e2e/contract-demo.spec.ts`
+- `spacegraphjs/demo/contract.html` + `spacegraphjs/demo/contract-demo.ts` (non-OpenCode reference demo)
+- `spacegraphjs/demo/activity-host.ts` (second-host fixture, shared with the contract suite)
 - `spacegraphjs/test/boundaries.test.ts`
-- `spacegraphjs/demo/activity-contract.ts` (non-OpenCode reference demo)
+- `spacegraphjs/demo/activity-contract.ts` (planned name; the demo actually landed as `demo/contract.html` + `demo/contract-demo.ts` above)
 - `spacegraphjs/AGENTS.md`
 
 Modified:

@@ -351,4 +351,41 @@ SpaceGraph mount failure now falls back to Cytoscape with a visible `data-slot="
 disabled; when no adapter mounts, the error state's Back control returns to the transcript. Both paths have
 dev-only app e2e cases (the built chunks are hashed, so `PLAYWRIGHT_BUILD=1` skips them).
 
+## L1.29 — non-OpenCode reference demo (done)
+
+`spacegraphjs/demo/contract.html` + `demo/contract-demo.ts` is a second host built only from the public surface:
+the contract, `LaneLayout`, `ZoomBands`, `Trail`, `AccessibilityLayer`, and the three renderer leaves. It carries
+no OpenCode import and no session vocabulary.
+
+- One synthetic activity stream (intent → explore → edit/artifact → delegate → failing verify → retry → recover)
+  is laid out by `LaneLayout` (lane → Y, per-lane ordinal → X, hierarchy depth → Z) and fed unchanged to the
+  SpaceGraph adapter, the Cytoscape adapter, and the static SVG renderer. Neither renderer runs a layout.
+- Controls switch renderer, projection (3D is disabled and explained when the active adapter lacks it), theme,
+  text direction, and scene ("Pipeline" plus the P8.6 second-host fixture, now demo-consumed rather than test-only).
+  Selection drives the `Trail` breadcrumbs, the `AccessibilityLayer` mirror (Arrow/Home/End, Enter, Escape), and a
+  generic inspector whose edge rows follow a connection and label its `confidence`.
+- `vite.demo.config.ts` now uses regex aliases (`^spacegraphjs$`, `^spacegraphjs/(.+)$`) plus `@spacegraphjs/*`
+  source aliases, so the demo resolves the workspace packages without a pnpm link; the old bare `spacegraphjs`
+  string would have rewritten `spacegraphjs/layout` to `src/index.ts/layout`.
+- `test/e2e/contract-demo.spec.ts` runs five cases (SpaceGraph mount, renderer switch + SVG export + 3D gating,
+  keyboard/connection/trail navigation, second-host fixture + RTL markup, light/dark capture) against the demo
+  server (`SG_DEMO_URL`, page `/contract.html`). Light and dark captures are committed as
+  `docs/spacegraph/screenshots/09-contract-demo-light.png` and `10-contract-demo-dark.png`, which is also the
+  L1.4 light/dark screenshot check.
+- Remaining demo gaps: the edge label pill is styled by demo CSS because the core hard-codes an edge-label
+  background (a light theme otherwise draws theme text over a dark pill); the selected outline uses the core
+  default colour because the SpaceGraph adapter still passes only `{ background }` to the core theme.
+
+### Node-type registration collision (library bug, fixed)
+
+Adding the demo exposed a real defect: `MermaidNode extends HtmlNode` and inherits `static typeName = 'HtmlNode'`,
+so `#registerDefaults` (`cls.typeName || cls.name`) registered `MermaidNode` **as** `HtmlNode`, and
+`PluginManager.registerNodeType` re-registered every class under its inherited `typeName`. Every `HtmlNode` in
+the library was silently constructed as a `MermaidNode` (its label markup replaced the host `html`), and every
+`Edge` subclass registered as `Edge` (the last subclass, `Wire`, won). Fixed with `nodeTypeName` (own-property
+`typeName` only) used by `#registerDefaults`, and an own-property check in `PluginManager.registerNodeType`/
+`registerEdgeType`. Regression test: `spacegraphjs/test/node-types.test.ts`. This is why the app captures now
+show real card markup sizes (220×72) instead of the previous 160×60 label fallback.
+
+
 
