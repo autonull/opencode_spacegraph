@@ -513,6 +513,22 @@ Notes for the next pass:
 - **L1.23's bands are a generic default, not UI policy.** The semantic level policy stays in `session-ui/src/graph/levels.ts`.
 - Remaining Phase 3 UI: U3.6 (renderer comparison), U3.13 (minimap, needs L1.27), U3.14 (a11y, needs the layer mount), U3.15 (3D polish), U3.16 (stories), U3.17 (component tests). Remaining Phase 1: L1.5–L1.7, L1.11, L1.14–L1.18, L1.27–L1.34.
 
+**2026-10-18 (cont.) — Phase 3 accessibility mirror (U3.14) and a selection-echo fix.**
+
+Scope for this pass: mount the L1.25 `AccessibilityLayer` over the render model so keyboard-only users reach every node the canvas draws, and prove it in both renderers. Library work is in spacegraphjs `313a4bc`; OpenCode carries the UI, one i18n edit, and this log.
+
+- **U3.14 accessibility mirror (done).** New `packages/session-graph/src/ui/GraphA11y.tsx` mounts the library `AccessibilityLayer` over `RenderModel.nodes` (mapping `id`/`label`/`kind`/`status`/`interactive`), mirrors the host selection into it, and forwards Enter/Space selection and Escape to the view. Its live-region copy is localized: `AccessibilityLayer` gained an optional `formatSelection(labels)` hook (default stays English), and the host passes `ui.sessionGraph.a11y.selected` / `.cleared`. `GraphView` renders it inside the canvas region, gives the region `tabindex="0"` + `aria-describedby` pointing at a visually hidden instructions paragraph, and wires Escape to clear the selection. Four new `ui.sessionGraph.a11y.*` keys in `packages/ui/src/i18n/en.ts`.
+- **New story + component test.** `src/ui/GraphA11y.stories.tsx` (`session-graph-a11y`) mounts `GraphView` **uncontrolled** (the mirror drives the view's own selection; the harness only observes), because the controlled `selection` prop does not reliably round-trip in the Storybook/preview module graph (the warning recorded in the U3.7/U3.8 note). `component-tests/graph-a11y.spec.ts` asserts the labelled group, the connection to the instructions, one roving tabindex, arrow-key traversal, Enter-to-select-and-inspect, Escape-to-clear, and then repeats the traversal and inspection after switching to Cytoscape.
+- **Selection feedback loop fixed (spacegraphjs `313a4bc`).** Wiring the mirror exposed a real bug: both adapters emitted `selectionChange` for their **own** `setSelection` calls, so `GraphCanvas` fed the event back into host selection, which re-pushed `setSelection` (a fresh array each time) and looped — the selection never stuck. With the debug trace, `ADAPTER.setSelection []` / `selection:changed []` repeated thousands of times. Both adapters now suppress `selectionChange` while applying a programmatic `setSelection` (a guard flag), so the event again means "the user changed the selection". The SpaceGraph adapter's `setSelection` and Cytoscape's `select`/`unselect` binding are the two changed sites.
+- **Verification.** `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components` → 7 pass (was 6; +1 a11y), repeated cold. In spacegraphjs: `pnpm exec vitest run` → 19 files / 224 tests (a11y +1 with its `formatSelection` case); `test/renderer.contract.test.ts` → 13 pass; `packages/{spacegraph-renderer,cytoscape-renderer,renderer}` `bun run typecheck` clean.
+
+Notes for the next pass:
+
+- **The mirror lists nodes only.** `AccessibilityLayer` takes a node-shaped item; edge traversal is not exposed. If the contract needs edge announcements, extend the layer with an edge list rather than faking edges as items.
+- **Live selection assertions in the harness remain unreliable.** The a11y test is deterministic because the view is uncontrolled and the assertions read the inspector DOM + the harness-observed callback, not the controlled prop. Keep the app e2e (I4.8/V5.5) as the owner of live streaming/resize selection.
+- **U3.11 can still swap breadcrumbs to `Trail` (L1.26).** Unchanged; the a11y work did not touch breadcrumbs.
+- Remaining Phase 3 UI: U3.6, U3.13 (needs L1.27), U3.15, U3.16, U3.17. Remaining Phase 1: L1.5–L1.7, L1.11, L1.14–L1.18, L1.27–L1.34.
+
 
 ## 0. Mission
 
@@ -1390,9 +1406,10 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
   Use the fixed optional library minimap or a DOM/SVG overview fed by the same positions. Show the viewport rectangle; click/drag to pan. Do not run a second full scene pass.
   Done: minimap stays in sync with both renderers and does not double rendering cost.
 
-- [ ] **U3.14 Accessibility mirror**
+- [x] **U3.14 Accessibility mirror** (done; see log)
   Mount `spacegraphjs/a11y/AccessibilityLayer` over the active render model. Expose an ordered node/edge list, roving tabindex, Enter/Space selection, Escape back, and `aria-live` announcements. The canvas wrapper has instructions and focus.
   Done: keyboard-only traversal selects and inspects nodes in both renderers.
+  Status: `src/ui/GraphA11y.tsx` mounts the library layer over `RenderModel.nodes` (kind/status/interactive), mirrors selection, and localizes its announcements through the layer's new `formatSelection` hook; `GraphView` gives the canvas region `tabindex` + `aria-describedby` instructions. `component-tests/graph-a11y.spec.ts` walks the hidden list with the arrow keys to a node, activates it with Enter, and asserts the inspector in SpaceGraph and Cytoscape. The ordered list is nodes only (edges are not listed); the app e2e still owns live selection assertions. Fixing it surfaced a selection feedback loop (both adapters echoed their own `setSelection` as a user `selectionChange`), fixed in spacegraphjs `313a4bc`.
 
 - [ ] **U3.15 3D mode**
   Same model and levels; Z from hierarchy. Clamp orbit, keep 2D-like labels, add a subtle depth cue. Toggle animates camera and preserves target/selection. Default remains 2D; the control is capability-gated.

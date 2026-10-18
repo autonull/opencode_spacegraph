@@ -18,6 +18,7 @@ export {
 
 export { GraphCanvas, type GraphCanvasProps, type GraphCanvasReady } from "./canvas/GraphCanvas"
 
+export { GraphA11y, type GraphA11yProps } from "./ui/GraphA11y"
 export { GraphBreadcrumbs, type GraphBreadcrumbsProps } from "./ui/GraphBreadcrumbs"
 export { GraphInspector, type GraphInspectorProps } from "./ui/GraphInspector"
 export { GraphSearch, type GraphSearchProps } from "./ui/GraphSearch"

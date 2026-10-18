@@ -3,10 +3,11 @@ import { supports } from "@spacegraphjs/renderer"
 import type { GraphModel, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, createUniqueId, Show } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererID } from "../canvas/renderer-registry"
+import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { GraphInspector } from "./GraphInspector"
 import { GraphSearch } from "./GraphSearch"
@@ -36,6 +37,7 @@ export type GraphViewProps = {
  */
 export const GraphView = (props: GraphViewProps) => {
   const i18n = useI18n()
+  const a11yInstructionsId = createUniqueId()
   const resolvedTheme = createGraphTheme()
   const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
@@ -101,7 +103,14 @@ export const GraphView = (props: GraphViewProps) => {
       />
       <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={select} />
       <div class="relative flex min-h-0 flex-1">
-        <div class="relative min-w-0 flex-1" role="group" aria-label={i18n.t("ui.sessionGraph.canvas.label")}>
+        <div
+          class="relative min-w-0 flex-1"
+          data-slot="graph-canvas-region"
+          role="group"
+          aria-label={i18n.t("ui.sessionGraph.canvas.label")}
+          aria-describedby={a11yInstructionsId}
+          tabindex="0"
+        >
           <GraphCanvas
             model={renderModel()}
             theme={theme()}
@@ -118,6 +127,13 @@ export const GraphView = (props: GraphViewProps) => {
               setCapabilities(info.capabilities)
               setRendererID(info.id)
             }}
+          />
+          <GraphA11y
+            model={renderModel()}
+            selection={selection()}
+            instructionsId={a11yInstructionsId}
+            onSelect={select}
+            onEscape={() => select(undefined)}
           />
           <Show when={searchOpen()}>
             <GraphSearch
