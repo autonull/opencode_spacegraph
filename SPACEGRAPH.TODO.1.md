@@ -1544,6 +1544,60 @@ Notes:
   explicitly conditional (P8.4/P8.8), approval-gated (H6.5), deferred (H6.3), or need human participants
   (R7.3). R7.3's go/no-go decision stays open until that protocol is run.
 
+**2026-10-18 (cont.) — H6.3 lands: the synchronized session-map side panel (and the generic transcript SDK surface it needed).**
+
+Scope for this pass (user chose "everything"): un-defer the last implementable Phase 6 deliverable and, with it, the
+two "open" library notes that the plan had filed (RF.6 mesh outline, RF.2 `LaneLayout`). All host work is in
+OpenCode; the library notes are unchanged (see the remaining-work notes below).
+
+- **H6.3 — the `session-map` extension (`packages/gui-extensions/src/session-map/`).** A `Panel`
+  (`region: "side"`, `Store.session` `{ focused }`) that renders a compact, non-interactive SVG overview of the
+  routed session's turns and phase clusters: it builds the pure graph model from the session's own store
+  (`props.session.server.data.session.message.list/status`), lays it out with
+  `@opencode/session-ui/graph`'s `layoutGraph` + `nodesAtLevel("overview")`, and draws one box per node. It is
+  added from the side strip's `+` menu (a `session.panel` `MenuItem`, "Open session map") so it is opt-in and adds
+  no header control. `renderer.tsx`/`main.ts` register it; the README guide's `builtins` blocks carry it too.
+- **The generic SDK surface the panel needed (the reason H6.3 was deferred).** No extension could read the active
+  transcript message or reveal one (`state.messageID` and `revealMessage` were app-internal; `Router.path()` drops
+  the hash). `SessionScreen` gains a `TranscriptScreen` (`packages/gui-extensions/src/sdk/host-apis.ts`):
+  `activeMessageID(): string | undefined` and `reveal(messageID, partID?)`. The app binds it from the timeline —
+  `createSessionTimelineInteraction` now returns `currentMessageId` (an additive read of `state.messageID`),
+  `createMountedSession` exposes a `transcript` getter plus a `bindTranscript` installer, and `screen.tsx` installs
+  the real accessors (`activeMessageID: timeline.currentMessageId`, `reveal: openGraphTranscript`). The controller
+  stays the single renderer-event mediator; the panel never touches the renderer.
+- **The panel's two links (H6.3 Done).** Highlight = the transcript's active message's turn → else the node the
+  user last picked (the session store) → else the model's `activeTurn`. Picking a node records it in the store and
+  calls `transcript.reveal`, so the transcript scrolls to that message and the map follows the transcript.
+- **H6.6 test.** A new keeper case in `packages/app/e2e/regression/side-panels.spec.ts` (the side-panel suite):
+  open the panel via the `<`+`>` menu over the canonical fixture, assert the first turn's node starts unhighlighted,
+  click it, and assert its message appears in the transcript and the node's `rect` highlight flips to `stroke-width="2"`.
+
+Verification:
+- `cd packages/app && bun run test:e2e -- e2e/regression/side-panels.spec.ts -g "session map panel"` → 1 pass
+  (was failing until the highlight precedence was fixed: the model's `activeTurn` shadowed the user's pick).
+- `cd packages/gui-extensions && bun run typecheck` clean; `cd packages/app && bun run typecheck` clean;
+  `bun run typecheck:e2e` → only the 4 pre-existing errors (none in the new case).
+- `bun script/sdk-docs.ts` → 0 problems (the new `TranscriptScreen`/`transcript` carry TSDoc; the guide blocks match).
+- `bun run lint:changed` → 0 problems; `bunx ast-grep scan -c script/ast-grep/gui-extensions/sgconfig.yml` → the
+  one pre-existing `util` warning only. `bun run test:components extension-graph.spec.ts` (the built-in boot matrix)
+  → 1 pass, so both built-in lists and the new extension compose without a cycle.
+
+Notes for the remaining work:
+- **Library refinements the plan still files as open (unchanged this pass; not blocking H6.3).**
+  - **RF.6 mesh outline.** The selection/focus outline for mesh nodes is still an axis-aligned `BoxHelper` world
+    box, not a silhouette (a stencil/backface pass). DOM cards (what the app draws) already use the themed DOM
+    outline, so this is cosmetic for OpenCode.
+  - **Vector-node dimming.** Execution focus dimming fades DOM cards only; `session`/`turn`/`phase` panels and the
+    swimlane bands stay full-opacity because the core has no `data.opacity`→material path. Needs a small
+    `spacegraphjs` core change plus an adapter mapping.
+  - **RF.2 `LaneLayout`.** The three session layout strategies still compute their own cursors in `session-ui`;
+    folding them onto `spacegraphjs/layout/LaneLayout` is a behaviour-preserving cleanup.
+- **Naming.** The panel's copy uses "Session map" (the plan's own vocabulary for this surface), while the full-graph
+  mode uses "Graph". Open decision #10 ("pick one and use it everywhere") is still open; align the two when it is
+  decided.
+- **Still deferred / not implementable here:** H6.5 (approval-gated inline row host), R7.3 (needs human
+  participants), P8.4/P8.8 (conditional by design).
+
 ## 0. Mission
 
 
@@ -2644,8 +2698,8 @@ The hybrid is delivered in this order:
   Done: a one-page host decision; no timeline-row edits.
   Status: recorded in `docs/spacegraph/prototype.md` §"Phase 6 — H6.1". The overlay host is
   `packages/app/src/session/graph/turn-map-overlay.tsx` (a lazy popover inside `screen.panel.ref`), opened from the
-  graph toolbar and the `graph.turnmap` command. H6.3 (side panel) is deferred and H6.5 (inline row) stays
-  approval-gated; no timeline-row edits.
+  graph toolbar and the `graph.turnmap` command. H6.3 (side panel) now lands as a `gui-extensions` `Panel` and
+  H6.5 (inline row) stays approval-gated; no timeline-row edits.
 
 - [x] **H6.2 Turn map overlay** (done — see log)
   Build `TurnMapOverlay.tsx`: render the selected turn's execution-level subgraph, maximum 7 nodes, with inspect, follow-edge, and "open full graph" actions. Open from the graph toolbar and from a transcript selection; Esc restores the previous focus and scroll anchor.
@@ -2655,12 +2709,16 @@ The hybrid is delivered in this order:
   graph" switches mode and selects the turn. The transcript stays mounted underneath, so its scroll position is
   preserved. Entry is the toolbar control (a selected turn) and the command, not a timeline row (see H6.1 note).
 
-- [ ] **H6.3 Synchronized side panel** (deferred — see log)
+- [x] **H6.3 Synchronized side panel** (done — see log)
   Build an extension `Panel` (`region: "side"`) that renders a compact session map and follows the active turn. Use `Store.session` for its own state. No core timeline edits.
   Done: selecting a transcript turn highlights the map; selecting a map node can reveal the message in the transcript.
-  Status: **deferred this pass.** A side panel is a `packages/gui-extensions` extension `Panel` with its own store and
-  per-locale i18n, a materially larger surface than the overlay that already delivers the hybrid's first value.
-  Recorded in `docs/spacegraph/prototype.md` §"Phase 6 — H6.1".
+  Status: **done.** `packages/gui-extensions/src/session-map/` is a side `Panel` over `@opencode/session-ui/graph`
+  (`layoutGraph` + `nodesAtLevel("overview")` → SVG), opened from the strip's `+` menu, with `Store.session`
+  `{ focused }`. It required the new generic SDK surface `SessionScreen.transcript` (`TranscriptScreen`
+  `activeMessageID()`/`reveal()`, in `packages/gui-extensions/src/sdk/host-apis.ts`), which the app binds from the
+  timeline (`interaction.ts` `currentMessageId`, `mounted-session.ts` `bindTranscript`, `screen.tsx`). Highlight =
+  transcript active turn → last map pick → model `activeTurn`; picking a node records it and reveals the message.
+  Covered by a keeper case in `packages/app/e2e/regression/side-panels.spec.ts`. No core timeline-row edits.
 
 - [x] **H6.4 Generic inline graph** (done — see log; not injected into the timeline)
   Use `InlineGraph` from `@spacegraphjs/svg-renderer` against `RenderModel`: execution-level subset, no pan/zoom, max 5 nodes, theme-aware. `packages/session-graph/src/ui/InlineGraph.tsx` is a thin OpenCode wrapper. Keep it out of OpenCode's timeline until approved.
@@ -2674,11 +2732,12 @@ The hybrid is delivered in this order:
   Done: either approval + a generic slot + tests, or a recorded decision to defer.
   Status: **deferred** (no maintainer approval sought); it is the only Phase 6 item that exceeds the core diff budget.
 
-- [x] **H6.6 Tests** (done — overlay cases; side-panel cases dropped with H6.3)
+- [x] **H6.6 Tests** (done — overlay cases and a side-panel keeper case)
   Component tests for overlay open/close/return and side-panel synchronization; e2e for the overlay on the fixture. No duplicate coverage of the canvas contract.
   Done: both suites pass.
-  Status: `packages/session-graph/component-tests/turn-map.spec.ts` (5 cases) and an app e2e case in
-  `e2e/graph/session-graph.spec.ts`. Side-panel synchronization cases are dropped with the H6.3 deferral.
+  Status: `packages/session-graph/component-tests/turn-map.spec.ts` (5 cases) and app e2e cases in
+  `e2e/graph/session-graph.spec.ts` (overlay) and `e2e/regression/side-panels.spec.ts` (H6.3 side-panel
+  synchronization: open the panel, pick a node, assert the transcript reveal and the map highlight).
 
 - [x] **H6.7 Flag and documentation** (done — see log)
   Default the hybrid to off until the full graph proves useful; expose a prototype setting and document progressive disclosure.

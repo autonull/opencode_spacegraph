@@ -190,12 +190,18 @@ reader never loses their place. Nothing injects into timeline rows.
 - **H6.4 inline subgraph.** `packages/session-graph/src/ui/TurnMapInlineGraph.tsx` is a thin,
   non-interactive wrapper over `@spacegraphjs/svg-renderer`'s `InlineGraph` (five-node turn subset).
   Not injected into the timeline.
-- **H6.3 side panel — deferred.** A `gui-extensions` `Panel` (region `"side"`) with its own store and
-  per-locale i18n is a materially larger surface for a view whose first value the overlay already
-  delivers. **H6.5 inline row host — deferred, approval-gated** (the only item that exceeds the core
-  diff budget).
+- **H6.3 side panel.** `packages/gui-extensions/src/session-map/` — a `Panel` (region `"side"`, with a
+  `Store.session` `{ focused }`) that draws a compact SVG overview of the session's turns and phase
+  clusters from `@opencode/session-ui/graph` (`layoutGraph` + `nodesAtLevel("overview")`), opened from
+  the side strip's `+` menu (a `session.panel` `MenuItem`). It needs the new generic SDK surface
+  `SessionScreen.transcript` (`TranscriptScreen.activeMessageID()`/`reveal()`), which the app binds from
+  the timeline; the map highlights the transcript's active turn (then the last pick, then the model's
+  `activeTurn`) and reveals a message when its node is picked. **H6.5 inline row host — deferred,
+  approval-gated** (the only item that exceeds the core diff budget).
 - **H6.7 flag.** The hybrid is off by default; the overlay opens only on explicit action.
-- **H6.6 tests.** `component-tests/turn-map.spec.ts` (5 cases) and an app e2e case.
+- **H6.6 tests.** `component-tests/turn-map.spec.ts` (5 cases); app e2e cases for the overlay
+  (`e2e/graph/session-graph.spec.ts`) and the side-panel synchronization
+  (`e2e/regression/side-panels.spec.ts`).
 
 ## Portability (Phase 8)
 

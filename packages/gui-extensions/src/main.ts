@@ -6,6 +6,7 @@ import terminal from "./terminal"
 import file from "./file"
 import review from "./review"
 import details from "./details"
+import sessionMap from "./session-map"
 import browser from "./browser"
 import pairing from "./pairing"
 import updater from "./updater"
@@ -25,6 +26,7 @@ export const builtins = Extension.compose(
   file,
   review,
   details,
+  sessionMap,
   { ...browser, main: () => import("./browser/main") },
   { ...pairing, main: () => import("./pairing/main") },
   { ...updater, main: () => import("./updater/main") },

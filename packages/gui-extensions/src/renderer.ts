@@ -13,6 +13,8 @@ import review from "./review"
 import reviewRenderer from "./review/renderer"
 import details from "./details"
 import detailsRenderer from "./details/renderer"
+import sessionMap from "./session-map"
+import sessionMapRenderer from "./session-map/renderer"
 import browser from "./browser"
 import browserRenderer from "./browser/renderer"
 import pairing from "./pairing"
@@ -43,6 +45,7 @@ export const builtins = Extension.compose(
   { ...file, renderer: eager(fileRenderer) },
   { ...review, renderer: eager(reviewRenderer) },
   { ...details, renderer: eager(detailsRenderer) },
+  { ...sessionMap, renderer: eager(sessionMapRenderer) },
   { ...browser, renderer: eager(browserRenderer) },
   { ...pairing, renderer: eager(pairingRenderer) },
   { ...updater, renderer: eager(updaterRenderer) },

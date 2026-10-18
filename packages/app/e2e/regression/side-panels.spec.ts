@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
+import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { tabKey } from "../utils/app"
+import { trackPageErrors } from "../utils/errors"
 import { fileDiff, openSession } from "../utils/workspace"
 import { expectSessionTitle } from "../utils/waits"
 
@@ -335,6 +337,38 @@ for (const direction of ["ltr", "rtl"] as const) {
     await expectTerminalControlsAligned(terminal, toggle)
   })
 }
+
+// The session map is an extension side panel: it renders the canonical session graph in the side region and
+// links it to the transcript in both directions. It proves H6.3's synchronized panel without a core timeline edit.
+test("session map panel follows the transcript and reveals messages", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openSession(page, {
+    name: "SessionMap",
+    sessions: [{ id: "ses_session_map", title: "Session map" }],
+    pageMessages: () => ({ items: buildFixtureMessages() }),
+  })
+
+  // The map is a side panel an extension contributes, so it is added from the strip's add menu, not a header toggle.
+  await page.getByRole("button", { name: "Toggle review" }).click()
+  await page.getByRole("button", { name: "Add tab" }).click()
+  await page.getByRole("menuitem", { name: "Open session map" }).click()
+
+  const panel = page.locator('[data-slot="session-map-panel"]')
+  await expect(panel).toBeVisible()
+
+  // The first turn's node starts unhighlighted: the transcript opens at the bottom, on a later turn.
+  const node = panel.locator('[data-slot="session-map-node"][data-node-id="turn:msg_user_1"]')
+  await expect(node).toBeVisible()
+  await expect(node.locator("rect")).toHaveAttribute("stroke-width", "1")
+
+  // Picking the node reveals its message in the transcript, and the map highlights the turn it now shows.
+  await node.click()
+  await expect(page.locator('[data-timeline-row="UserMessage"][data-message-id="msg_user_1"]')).toBeVisible()
+  await expect(node.locator("rect")).toHaveAttribute("stroke-width", "2")
+
+  expect(errors).toEqual([])
+})
 
 // A DOM mark survives only while the same node stays mounted.
 function mark(locator: Locator) {

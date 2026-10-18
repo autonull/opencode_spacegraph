@@ -581,6 +581,26 @@ export interface MountedSession extends SessionRef {
 }
 
 /**
+ * The routed session's transcript: the messages the user scrolls through, and the cursor that tracks them. It follows
+ * the route like `SessionScreen`, so its cursor and reveal action always belong to the session on screen. A surface that
+ * draws a session map uses it to link a map node back to its message and to follow the message the user is reading.
+ */
+export interface TranscriptScreen {
+  /**
+   * The message the transcript's viewport currently shows, or undefined while it follows the newest content.
+   * Reactive: call it where you use the value so the surface updates as the user scrolls.
+   */
+  activeMessageID(): string | undefined
+  /**
+   * Reveals a message in the transcript, scrolling it into view and leaving graph mode when it is active.
+   *
+   * @param messageID - The message to reveal.
+   * @param partID - The tool call inside the message to open, when known.
+   */
+  reveal(messageID: string, partID?: string): void
+}
+
+/**
  * The session screen: the app's view that shows the routed session, and stays the same object while it routes A, then
  * B, then A again. It follows the route on purpose: its files, comments and composer are the screen's workspace models,
  * and every action through them targets the session routed at that moment. Read it where you act, or pass it to the
@@ -593,6 +613,8 @@ export interface SessionScreen {
   readonly comment: Comments
   /** The routed session's composer. */
   readonly composer: Composer
+  /** The routed session's transcript. */
+  readonly transcript: TranscriptScreen
 }
 
 /** The session screen, while it routes the mounted session. */

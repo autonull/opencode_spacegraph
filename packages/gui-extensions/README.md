@@ -122,7 +122,7 @@ createKeyed(updater, (client) => void client.on("check", () => act("check")))
 ```mermaid
 flowchart LR
   route["route: A → B → A"] --> objects["MountedSession objects: A₁, B₁, A₂"]
-  route --> screen["one SessionScreen: file, comment, composer"]
+  route --> screen["one SessionScreen: file, comment, composer, transcript"]
   objects -- "props.session / input.session (getters)" --> renders["panel and slot renders, mounted once"]
   objects -- "ctx.sessions.current()" --> setup["setup and handlers"]
   screen -- "ctx.screen.current()" --> actions["actions on the routed session"]
@@ -668,6 +668,7 @@ export const builtins = Extension.compose(
   file,
   review,
   details,
+  sessionMap,
   { ...browser, main: () => import("./browser/main") },
   { ...pairing, main: () => import("./pairing/main") },
   { ...updater, main: () => import("./updater/main") },
@@ -694,6 +695,7 @@ export const builtins = Extension.compose(
   { ...file, renderer: eager(fileRenderer) },
   { ...review, renderer: eager(reviewRenderer) },
   { ...details, renderer: eager(detailsRenderer) },
+  { ...sessionMap, renderer: eager(sessionMapRenderer) },
   { ...browser, renderer: eager(browserRenderer) },
   { ...pairing, renderer: eager(pairingRenderer) },
   { ...updater, renderer: eager(updaterRenderer) },

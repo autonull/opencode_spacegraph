@@ -20,6 +20,7 @@ import type {
   ServerRef,
   MountedSession,
   SessionScreen,
+  TranscriptScreen,
 } from "@opencode/gui-extensions/sdk"
 import { useComments } from "@/composer/comments"
 import { useComposerState } from "@/composer/persistence"
@@ -207,11 +208,23 @@ export function createMountedSession(session: SessionModel) {
     return view
   }
 
+  // The transcript follows the route too, but the timeline it delegates to is created by the content after this screen
+  // exists, so its members read the binding the content installs through `bindTranscript`.
+  let transcriptImpl: TranscriptScreen | undefined
+
+  const transcript: TranscriptScreen = {
+    activeMessageID: () => transcriptImpl?.activeMessageID(),
+    reveal: (messageID, partID) => {
+      transcriptImpl?.reveal(messageID, partID)
+    },
+  }
+
   // One object while this screen is mounted, whichever session it routes: its models follow the route.
   const screen: SessionScreen = Object.freeze({
     file: files,
     comment,
     composer: composerRef,
+    transcript,
   })
 
   const owner = getOwner()
@@ -257,5 +270,9 @@ export function createMountedSession(session: SessionModel) {
     screen,
     view: mounted,
     bindBackground: (tasks: Accessor<readonly BackgroundTask[]>) => setBackground(() => tasks),
+    // The content installs the transcript once it creates the timeline; until then the getters read undefined.
+    bindTranscript: (impl: TranscriptScreen) => {
+      transcriptImpl = impl
+    },
   }
 }

@@ -12,7 +12,13 @@ import {
 } from "solid-js"
 import { createStore } from "solid-js/store"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
-import { Slot, type BackgroundTask, type MountedSession, type SessionScreen } from "@opencode/gui-extensions/sdk"
+import {
+  Slot,
+  type BackgroundTask,
+  type MountedSession,
+  type SessionScreen,
+  type TranscriptScreen,
+} from "@opencode/gui-extensions/sdk"
 import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings } from "@/settings/model"
@@ -53,6 +59,7 @@ export function SessionScreenView(props: { session: SessionModel }) {
         screen={mounted.screen}
         view={mounted.view}
         bindBackground={mounted.bindBackground}
+        bindTranscript={mounted.bindTranscript}
       />
     </ExtensionLinks>
   )
@@ -64,6 +71,7 @@ function SessionScreenContent(props: {
   view: Accessor<MountedSession>
   screen: SessionScreen
   bindBackground: (tasks: () => readonly BackgroundTask[]) => void
+  bindTranscript: (transcript: TranscriptScreen) => void
 }) {
   const session = props.session
   const host = useExtensionHost()
@@ -96,6 +104,12 @@ function SessionScreenContent(props: {
     graph.setMode("transcript")
     timeline.actions.revealMessage(messageID, partID)
   }
+
+  // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
+  props.bindTranscript({
+    activeMessageID: timeline.currentMessageId,
+    reveal: openGraphTranscript,
+  })
 
   const timelineSearch = createTimelineSearchController({
     sessionID: session.identity.sessionID,

@@ -365,6 +365,8 @@ export function createSessionTimelineInteraction(session: SessionModel) {
       resume,
       setActiveMessage,
     },
+    // The message at the top of the viewport, for surfaces that follow the transcript (the session map panel).
+    currentMessageId: () => state.messageID,
     lastUserMessage: timeline.lastUserMessage,
     resource: timeline.resource,
     ready: timeline.ready,
