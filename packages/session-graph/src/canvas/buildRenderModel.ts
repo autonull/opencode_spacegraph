@@ -49,6 +49,9 @@ const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {
 
 const ZERO: Position = { x: 0, y: 0, z: 0 }
 
+/** A collapsed derived cluster draws as a compact counted chip rather than a bare panel label. */
+const CHIP_SIZE: [number, number, number] = [132, 44, 0]
+
 /** Host-owned, sanitized markup for a `card`. Text must be escaped by the template. */
 export type CardTemplate = (node: GraphNode, level: ZoomLevel) => string
 
@@ -78,7 +81,8 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
   const nodes = nodesAtLevel(model, level).map((node): RenderNode => {
     const position = positions.get(node.id) ?? ZERO
     const shape = NODE_SHAPE[node.kind]
-    const asCard = shape === "card" && cards < budget
+    const chip = isClusterChip(node, level)
+    const asCard = (shape === "card" || chip) && cards < budget
 
     if (asCard) cards += 1
 
@@ -90,12 +94,18 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
       status: NODE_STATUS[node.status],
       shape: asCard ? "card" : shape === "card" ? "dot" : shape,
       html: asCard ? renderCard(node, level) : undefined,
+      size: asCard && chip ? CHIP_SIZE : undefined,
       position: [position.x, position.y, position.z],
       data: nodeData(node, level),
     }
   })
 
   return { nodes, edges: edgesAtLevel(model, level, focus).map(toRenderEdge) }
+}
+
+/** A derived cluster collapsed at this level (§5.4): it shows a member count and expands later. */
+function isClusterChip(node: GraphNode, level: ZoomLevel) {
+  return node.derived === true && (node.clusterOf?.length ?? 0) > 0 && !isClusterExpanded(level)
 }
 
 /** Renderer-facing affordance data only; detail content is read back from the model via selectors. */
@@ -139,11 +149,13 @@ export function escapeHtml(value: string) {
 }
 
 /**
- * Default activity card. It carries only content derived from the model (labels, summaries, tool
- * output) and inherits color/font from the host, so no palette or copy is baked in here.
+ * Default activity card. It carries only content derived from the model (labels, summaries, counts)
+ * and inherits color/font from the host, so no palette or copy is baked in here.
  */
-function defaultCard(node: GraphNode) {
+function defaultCard(node: GraphNode, level: ZoomLevel) {
+  const count = isClusterChip(node, level) ? (node.clusterOf?.length ?? 0) : 0
+  const badge = count ? ` <span style="opacity:.6">${count}</span>` : ""
   const summary = node.summary ? `<span style="opacity:.7">${escapeHtml(node.summary)}</span>` : ""
 
-  return `<div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px;color:inherit;font-family:inherit"><span style="font-weight:600">${escapeHtml(node.label)}</span>${summary}</div>`
+  return `<div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px;color:inherit;font-family:inherit"><span style="font-weight:600">${escapeHtml(node.label)}${badge}</span>${summary}</div>`
 }

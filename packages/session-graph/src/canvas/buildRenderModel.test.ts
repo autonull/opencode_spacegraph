@@ -25,6 +25,33 @@ test("overview shows only session, turns, phase clusters, and subagents", () => 
   }
 })
 
+test("overview phase clusters render as counted cards within the DOM budget", () => {
+  const built = at("overview")
+  const phases = built.nodes.filter((node) => node.kind === "phase")
+
+  expect(phases.length).toBeGreaterThan(0)
+
+  const chips = phases.filter((node) => node.shape === "card")
+
+  expect(chips.length).toBeGreaterThan(0)
+
+  for (const chip of chips) {
+    expect(chip.html).toContain(String(chip.data?.count))
+    expect(chip.size?.[0]).toBeLessThan(220)
+  }
+
+  expect(built.nodes.filter((node) => node.html !== undefined).length).toBeLessThanOrEqual(12)
+})
+
+test("execution expands phase clusters into panels, not counted chips", () => {
+  const phases = at("execution").nodes.filter((node) => node.kind === "phase")
+
+  for (const phase of phases) {
+    expect(phase.shape).toBe("panel")
+    expect(phase.html).toBeUndefined()
+  }
+})
+
 test("execution adds tools, files, results, errors, and retries", () => {
   const kinds = kindsAt("execution")
 

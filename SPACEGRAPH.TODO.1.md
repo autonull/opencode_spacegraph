@@ -1097,8 +1097,54 @@ Notes for the next pass:
   `phase`/`turn`/`session` nodes remain plain `panel` shapes with tiny labels — the "overview chips are plain
   panels, not counted clusters" item recorded at V5.4. `buildRenderModel` could emit card markup (with `count`)
   for derived phase nodes within the overview DOM budget; that is the remaining host-side overview work.
+  **(Resolved — see the "Overview counted clusters" entry below: phase clusters now draw as counted cards.)**
 - Remaining Phase 1: none (L1.4 and L1.29 land here). Remaining Phase 3: none. Phase 7 (R7.1–R7.7) and P8.1/P8.2
   remain; P8.4/P8.8 stay deferred by design.
+
+**2026-10-18 (cont.) — Overview counted clusters (U3.1) and adapter node remodelling.**
+
+Scope for this pass (agreed with the user): the "remaining host-side overview work" the V5.4/L1.29 pass filed —
+phase clusters read as tiny bare panel labels at overview — and the adapter defect it exposed. Host work is in
+`packages/session-graph`; the library fix is in `spacegraphjs` commit `3e4612a` (branch `main`).
+
+- **U3.1 — overview clusters are counted cards (done).** `buildRenderModel` now renders a derived cluster that is
+  collapsed at the current level as a compact counted `card` (host markup), not a bare `panel` label. A new
+  `isClusterChip(node, level)` predicate (derived + `clusterOf` + `!isClusterExpanded(level)`) gates it; the chip
+  consumes the level's DOM card budget like any card and carries `size: [132, 44, 0]` so it draws as a chip. The
+  default card appends the member count (`Explore 5`), escaped and structural, so no palette or English copy is
+  baked in and a host `renderCard` can localize it. `nodeData` already exposed `count`/`expanded`; unchanged.
+- **Adapter node remodelling (library, `spacegraphjs` `3e4612a`).** Wiring the chips exposed a real defect the L1.20
+  note had flagged: `loadSpec` upserts by id and never changes a node's class, so a phase created as a `ShapeNode`
+  panel at execution kept winning after the level switched to overview — the counted card never appeared. The
+  SpaceGraph adapter now tracks each node's spec type (`#nodeTypes`) and drops a node whose type changed before
+  `loadSpec` recreates it; the Cytoscape adapter re-applies `classes` on update so a shape change is not stale. This
+  makes semantic zoom a true representation change, which is the hypothesis the prototype tests.
+- **Tests.** `buildRenderModel.test.ts` gains two cases (overview clusters are counted cards within the budget;
+  execution clusters stay panels). `component-tests/graph-view.spec.ts` switches execution→overview on the real view
+  and asserts the `Explore 5` chip is a DOM card (and that execution has none) — the regression guard for the
+  remodelling fix. The app path was verified directly first (11 overview DOM cards, was 3) before writing it.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 22 pass (was 20; +2); `bun run
+  test:components` → 22 pass.
+- `cd packages/session-ui && bun test src/graph` → 47 pass; `bun run typecheck` clean.
+- `cd spacegraphjs && pnpm exec vitest run` → 294 pass; `bun run test:boundaries` → 5 pass; `spacegraph-renderer`
+  and `cytoscape-renderer` typecheck clean and `bun test` 12/12.
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 13 pass.
+- `bun run graph:capture --mode=demo` regenerated 01/02; **02-graph-overview** now reads as counted clusters
+  (`Explore 5`, `Edit 1`, `Verify 2`, …) with no `THREE.Color` warning. Root `bun run lint:changed` → 0 problems.
+
+Notes for the next pass:
+- **Overview chips are host markup, not a library concept.** The library renders the card; the count, the 132×44
+  size, and the `derived`/`clusterOf` semantics are `session-graph`/`session-ui`. No `phase` vocabulary entered the
+  library.
+- **The remodelling fix is generic and now covers every type change** (card↔dot demotion, future kinds), not just
+  phases. The Cytoscape class-sync half rides the existing adapter/cytoscape component specs; a dedicated case was
+  not added because the phase panel↔card change is the same Cytoscape class (`card`).
+- **Remaining host-side overview polish:** `turn`/`session` nodes are still `panel` shapes; only derived clusters
+  became chips. The §5.4 overview table calls for phase clusters with counts, which is now satisfied.
+- Remaining Phase 1: none. Remaining Phase 3: none. Phase 7 (R7.1–R7.7) and P8.1/P8.2 remain; P8.4/P8.8 stay
+  deferred by design.
 
 ## 0. Mission
 
