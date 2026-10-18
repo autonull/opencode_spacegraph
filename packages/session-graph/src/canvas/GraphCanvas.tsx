@@ -1,4 +1,5 @@
 import type {
+  GraphRenderer,
   Projection,
   RendererCapabilities,
   RenderModel,
@@ -20,6 +21,9 @@ export type GraphCanvasProps = {
   onReady?: (info: GraphCanvasReady) => void
   onError?: (error: unknown) => void
   onViewportChange?: (viewport: RendererViewport) => void
+  onBackgroundClick?: () => void
+  /** Exposes the live renderer so a host can call `fit`/`focus`; `undefined` after teardown. */
+  onRenderer?: (renderer: GraphRenderer | undefined) => void
 }
 
 /**
@@ -37,6 +41,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   const teardown = () => {
     for (const unsubscribe of unsubscribers) unsubscribe()
     unsubscribers = []
+    props.onRenderer?.(undefined)
     mounted?.renderer.dispose()
     mounted = undefined
     setReady(false)
@@ -57,6 +62,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         mounted = result
         unsubscribers = [
           result.renderer.on("selectionChange", ({ ids }) => props.onSelect?.(ids)),
+          result.renderer.on("backgroundClick", () => props.onBackgroundClick?.()),
           result.renderer.on("bandChange", ({ band }) => {
             host.dataset.graphBand = band
           }),
@@ -68,6 +74,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         host.dataset.graphProjection = props.projection ?? "2d"
         host.dataset.graphReady = "true"
         setReady(true)
+        props.onRenderer?.(result.renderer)
         props.onReady?.({ id: result.id, capabilities: result.renderer.capabilities, fallback: result.fallback })
       })
       .catch((error: unknown) => {

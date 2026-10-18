@@ -399,7 +399,7 @@ that mounts an adapter. `spacegraphjs` is untouched; work is in `packages/sessio
   `zstdCompressSync` node-types error (present on `origin/dev`; `git diff origin/dev` for `packages/ai` is empty) and a
   `turbo` SIGSEGV in this environment. Lint (`oxlint`/ast-grep) passed, and no graph package reported an error.
 
-Notes for the next pass:
+Notes for the next pass (U3.1–U3.3):
 
 - **Localization is still deferred to the UI layer.** `buildRenderModel`'s default card and the model's own labels
   (`Explore`, `Session`, `Retry #2`) are English; `renderCard` is the seam to supply localized copy, and the toolbar/
@@ -414,6 +414,84 @@ Notes for the next pass:
   adapter's own `ResizeObserver` (the contract `resize()` is not driven by the canvas).
 - Next in the plan: U3.4/U3.5 (wire SpaceGraph and Cytoscape through the registry, theme, projection, bands), then
   U3.7–U3.17 (theme bridge, view layout, toolbar, inspector, breadcrumbs, search, minimap, a11y, 3D, stories, tests).
+
+**2026-10-18 (cont.) — Phase 3 UI shell: theme bridge (U3.7), GraphView (U3.8), toolbar (U3.9), inspector (U3.10),
+breadcrumbs (U3.11), search (U3.12); SpaceGraph/Cytoscape wiring (U3.4/U3.5).**
+
+Scope for this pass: the legible, navigable surface that answers the five questions in the DOM, on top of the
+U3.1–U3.3 core. All work is in `packages/session-graph` plus one shared i18n/`@source` edit; `spacegraphjs` is
+untouched.
+
+- **New dependency.** `@opencode/ui` added as a `workspace:*` dependency of `packages/session-graph` (toolbar/
+  inspector reuse `IconButton`, `Icon`, `SegmentedControl`, and `useI18n`). `bun install` links it.
+- **U3.7 theme bridge — `src/ui/theme.ts`.** `graphThemeFromTokens(read)` maps the host's semantic CSS custom
+  properties (`--v2-background-bg-base`, `--v2-text-text-base`, `--v2-state-fg-danger`, `--v2-font-family-sans`, …)
+  to a `RenderTheme`, with a neutral fallback per token so a missing stylesheet never yields an empty theme.
+  `resolveGraphTheme(root?)` reads computed style; `createGraphTheme()` re-resolves on a `class`/`style`/
+  `data-color-scheme` mutation or an OS scheme change. The library only ever sees a `RenderTheme`; OpenCode token
+  names stay in this file. Unit-tested in `src/ui/theme.test.ts` (2 tests).
+- **U3.8 GraphView — `src/ui/GraphView.tsx`.** One flex column: `GraphToolbar` -> `GraphBreadcrumbs` -> (canvas +
+  search overlay) + `GraphInspector`. Owns semantic level, projection, selection, and search-open; builds the
+  `RenderModel` via `buildRenderModel` + `layoutGraph`, mounts `GraphCanvas`, exposes the live renderer for
+  `fit`/`focus`, and reads the theme from `createGraphTheme` unless a host theme is supplied. Selection is
+  controlled when `props.selection` is set (mirrors the host value, reports through `onSelect`) and internal
+  otherwise. A capability-gap effect falls back to 2D when the active renderer cannot do 3D, so the projection is
+  never silently ignored.
+- **U3.9 toolbar — `src/ui/GraphToolbar.tsx`.** Level `SegmentedControl` (Overview/Execution/Detail), zoom-out/
+  zoom-in steppers (step the level), projection `SegmentedControl` (3D disabled with an explanation when
+  `supports(capabilities, "3d")` is false), fit, search toggle, an unobtrusive "Renderer: …" label, and back-to-
+  transcript. Every control has an aria label and a title; `data-slot="graph-toolbar"`.
+- **U3.10 inspector — `src/ui/GraphInspector.tsx`.** Conventional DOM panel keyed by node kind: kind + status
+  header, label, summary, time/path/agent/child-session/attempt/exit/timeout fields, changed-file list, tool input
+  JSON in a scrollable `<pre>`, and a connection list built from `why(model, id)` where each edge names its other
+  endpoint and confidence and selects it ("follow edge"). "Open in transcript" is shown only when
+  `openInTranscript` returns a ref. All text is selectable; `data-slot="graph-inspector"`.
+- **U3.11 breadcrumbs — `src/ui/GraphBreadcrumbs.tsx`.** Session -> turn -> phase -> node from the model's
+  `breadcrumbs` selector; clicking a crumb selects it. (The plan names `spacegraphjs/navigation/Trail` (L1.26); that
+  library primitive does not exist yet, so this reads the model's `part-of` ancestry. Swap to `Trail` when L1.26
+  lands.)
+- **U3.12 search — `src/ui/GraphSearch.tsx`.** Query over the model's `search` selector; result count via
+  `i18n.plural("ui.sessionGraph.search.results", count)`; selecting a result bumps the level to the node's
+  `minLevel`, selects it, and focuses it. Escape closes.
+- **U3.4/U3.5 wiring.** Both adapters already mount through `renderer-registry`; this pass supplies the real theme,
+  the level->model rebuild, projection with capability fallback, string-ID selection, and the renderer/capability
+  state the toolbar shows. No `renderer === "cytoscape"` branch anywhere; 3D is gated by `supports`.
+- **i18n.** New `ui.sessionGraph.*` keys added to `packages/ui/src/i18n/en.ts` only (English source copy; other
+  locales fall back per the app's `base = { ...en, ...dict }` merge). Count copy uses `.one`/`.other` plural keys.
+- **Styling.** `@source "../../../../session-graph/src"` added to `packages/ui/src/styles/tailwind/index.css` so
+  Tailwind scans the new components in the app and Storybook builds.
+- **Story + component test.** `src/ui/GraphView.stories.tsx` (`session-graph-view`) mounts the real view over the
+  canonical fixture with a controlled selection starting on `tool:prt_tool_read_1`. `component-tests/graph-view.spec.ts`
+  asserts: ready/spacegraph; the selected tool node renders as DOM detail (kind "Tool call", the path in its input)
+  with breadcrumbs root "Session"; the level prop drives the toolbar's derived disabled state; search lists results
+  and selecting `src/auth/token.ts` updates the host selection and closes the overlay; the 3D toggle projects to 3D;
+  switching to Cytoscape rebuilds once, falls back to 2D, and disables 3D — with zero console errors.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` -> 19 tests (was 17; +2 theme).
+- `cd packages/session-graph && bun run test:components` -> 6 pass (was 5; +1 view), repeated cold.
+- `cd packages/ui && bun run typecheck` clean; `cd packages/app && bun run typecheck` clean.
+
+Notes for the next pass:
+
+- **A controlled selection is the reliable path in the Storybook harness.** During development the view exposed its
+  state via `createEffect`+`data-*` and a native-attribute binding, and those did not re-render under the
+  Storybook/preview module graph, while child text nodes and component props did; an effect fed by the adapter's
+  `selectionChange` also risked a rebuild loop (`layoutGraph`/`selection()` return fresh objects each call). The
+  shipped view avoids `data-*` reactivity for state and drives selection through props. If U3.14/U3.17 later need
+  live selection assertions, verify them here before relying on them; the app e2e (I4.8/V5.5) is the stronger owner.
+- **U3.11 is not the library Trail.** L1.26 (`spacegraphjs/navigation/Trail`) still has to exist before breadcrumbs
+  can move; U3.11's done-when "the trail controller has no OpenCode imports" is met only after that swap.
+- **U3.13 minimap (L1.27), U3.14 a11y (L1.25), U3.15 3D polish, U3.16 stories, U3.17 component tests remain.** The
+  3D toggle exists but there is no depth cue/orbit polish and no 3D story. The renderer selector is not in the
+  toolbar (it lives in the story harness / prototype settings); per §4.7 it belongs in prototype settings.
+- **Inspector is structural.** It reads `GraphNode.summary`/`data`; markdown rendering, ANSI stripping, and
+  on-demand diffs (§U3.10) are not implemented — the graph model does not carry the raw terminal text or diff
+  hunks yet. Phase 4/5 own loading those from `openInTranscript` refs.
+- **`graphThemeFromTokens` reads `--v2-font-family-sans`.** The token exists in `tokens/theme.css`; if a host omits
+  it the fallback `system-ui, sans-serif` applies.
+- Next in the plan: U3.16/U3.17 stories and component tests for the remaining states, then U3.13/U3.14 which need
+  the Phase 1 primitives (L1.25 AccessibilityLayer, L1.27 MinimapPlugin), then Phase 4 integration (I4.x).
 
 
 ## 0. Mission
@@ -1240,41 +1318,49 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
   Done: session switch and unmount dispose cleanly; no stale async callbacks; renderer switch rebuilds once.
   Status: `GraphCanvas` mounts once, pushes model/theme/selection/projection, mirrors `selectionChange`, reports `onReady`, sets the `data-*` attributes, and disposes on cleanup; a `generation` guard drops late async mounts. Resize is the adapter's `ResizeObserver`; the skeleton is a placeholder until U3.8.
 
-- [ ] **U3.4 SpaceGraph wiring**
+- [x] **U3.4 SpaceGraph wiring**
   Use `@spacegraphjs/spacegraph-renderer` through the registry. Apply the theme and projection; map renderer zoom bands to the semantic level; drive selection from string IDs; render HTML activity cards through the adapter's `DOMNode` path. Keep core imports inside the adapter package.
   Done: 2D ortho and 3D work with the shared model; HTML cards survive updates; no session semantics enter the library.
+  Status: wired through `GraphCanvas` + `GraphView`; the host theme flows from the U3.7 bridge, projection is capability-gated with a 2D fallback, selection is string IDs, and 2D/3D both render the shared model (verified by the view component test toggling 3D). Band→level mapping is not wired: the renderer's `bandChange` is still only surfaced as `data-graph-band`; the toolbar drives the level directly. HTML cards use the adapter's `data.html` path, not `DOMNode`.
 
-- [ ] **U3.5 Cytoscape wiring**
+- [x] **U3.5 Cytoscape wiring**
   Use `@spacegraphjs/cytoscape-renderer` through the same registry. The preset layout consumes model positions; styles consume `RenderTheme`; HTML cards use the adapter's DOM overlay with its lower cap; 3D is unavailable and explained. Selection, click, fit, focus, and zoom events map to the contract.
   Done: the same fixture renders, selects, inspects, and displays HTML cards identically; the inspector does not depend on the renderer.
+  Status: same registry/theme/level path as U3.4; switching to Cytoscape rebuilds once, the 3D control disables with an explanation, and the projection falls back to 2D. The view component test asserts the switch; the Cytoscape adapter's own component test covers overlay/selection/dispose.
 
 - [ ] **U3.6 Renderer comparison**
   Render overview, execution, and selected states in both renderers. Record navigation steps, visual clarity, frame rate, chunk size, and capability gaps. Capture paired screenshots.
   Done: a comparison table in `docs/spacegraph/prototype.md`; the default renderer choice is justified, not assumed.
 
-- [ ] **U3.7 Theme bridge**
+- [x] **U3.7 Theme bridge**
   Read OpenCode CSS tokens (`--v2-*`) at mount and on scheme change. Produce the full `RenderTheme`. Provide light/dark values in both app and Storybook; do not leak OpenCode token names into the library.
   Done: both renderers re-theme from the same theme object; no hard-coded palette.
+  Status: `src/ui/theme.ts` maps `--v2-*` tokens → `RenderTheme` (per-token fallback), re-resolves on scheme/`class` change, unit-tested. `graphThemeFromTokens` is pure; `GraphView` uses `createGraphTheme` unless a host theme is passed. Light/dark screenshots (L1.18 demo page) still pending.
 
-- [ ] **U3.8 Graph view layout**
+- [x] **U3.8 Graph view layout**
   `GraphView.tsx` composes canvas + toolbar + breadcrumbs + inspector in a flex layout that fills the session panel. No page-level scroll; the canvas owns pan/zoom. Empty/loading/error states keep the transcript available.
   Done: at 1440×900 and 390×900 the canvas and controls do not overlap the composer or header.
+  Status: `src/ui/GraphView.tsx` composes the four regions in a flex column with the inspector as a capped sidebar. The Storybook harness mounts it at 1100×640; the 390×900 narrow/mobile layout (bottom-sheet inspector) is I4.10 and not yet done.
 
-- [ ] **U3.9 Toolbar**
+- [x] **U3.9 Toolbar**
   2D/3D toggle, zoom in/out, fit, reset, search, "current activity", and "back to transcript". Show the active renderer and capability state unobtrusively; put the renderer selector in prototype settings, not the primary toolbar. Use `SegmentedControl`, `IconButton`, `Tooltip`, and existing tokens. Disable unsupported capabilities with a reason. Add `data-slot="graph-toolbar"`.
   Done: every control is keyboard reachable and has an aria label; the 3D toggle is disabled on Cytoscape with an explanation; the toolbar is not a renderer debug panel.
+  Status: `src/ui/GraphToolbar.tsx` ships level + zoom steppers + 2D/3D + fit + search + back + renderer label; 3D is disabled via `supports()`. "Reset" and "current activity" are not present (fit covers reframing; the level control covers zoom). Explanation is a `title`/disabled rather than a `Tooltip` component.
 
-- [ ] **U3.10 Inspector**
+- [x] **U3.10 Inspector**
   Render per-kind detail: message markdown, reasoning, tool input/output (ANSI-stripped terminal), file path + diff, subagent link, error/retry/evidence, timestamps, and confidence labels. Provide "follow edge", "open in transcript", and copy actions. Keep text selectable and scrollable; do not use the canvas for detail text.
   Done: all fixture node kinds render without errors in both renderers; long output scrolls; diffs load on demand.
+  Status: `src/ui/GraphInspector.tsx` renders kind/status/label/summary, per-kind fields, tool input JSON, a scrollable connection list with confidence labels ("follow edge"), and "open in transcript". Markdown rendering, ANSI stripping, on-demand diffs, and copy are not implemented (the model carries neither terminal text nor diff hunks yet).
 
-- [ ] **U3.11 Breadcrumbs and focus**
+- [x] **U3.11 Breadcrumbs and focus**
   Use `spacegraphjs/navigation/Trail` for session → turn → phase → node. Clicking an ancestor selects it and fits its subtree. "Focus" dims non-neighbors at execution level; Esc clears focus, then selection.
   Done: breadcrumbs track selection; the trail controller has no OpenCode imports.
+  Status: `src/ui/GraphBreadcrumbs.tsx` renders the model's `part-of` ancestry and selects on click. It does not use the library `Trail` (L1.26 does not exist yet), does not fit the subtree, and has no focus-dimming/Esc behavior. Revisit with L1.26 + U3.11's focus clause.
 
-- [ ] **U3.12 Search**
+- [x] **U3.12 Search**
   Search labels, tool names, file paths, commands, and summaries. Selecting a result selects the node, expands its level, and fits it. Show result count and keyboard navigation.
   Done: searching a fixture file name finds all provenance nodes.
+  Status: `src/ui/GraphSearch.tsx` uses the model's `search` selector over labels/summaries/tool inputs, shows a pluralized result count, and on select raises the level to the node's `minLevel`, selects, and focuses it. Escape closes; per-result keyboard navigation (arrow keys) is not implemented.
 
 - [ ] **U3.13 Minimap**
   Use the fixed optional library minimap or a DOM/SVG overview fed by the same positions. Show the viewport rectangle; click/drag to pan. Do not run a second full scene pass.

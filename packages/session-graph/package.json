@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@opencode/session-ui": "workspace:*",
+    "@opencode/ui": "workspace:*",
     "@spacegraphjs/cytoscape-renderer": "workspace:*",
     "@spacegraphjs/renderer": "workspace:*",
     "@spacegraphjs/spacegraph-renderer": "workspace:*",
