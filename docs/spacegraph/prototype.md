@@ -7,7 +7,7 @@ state, measurements, and open issues that the plan's `R7.2` will turn into the f
 
 | Repository | Revision | Notes |
 |---|---|---|
-| OpenCode (`opencode` monorepo) | `fd2c0454ea` (base) + the source-link/spike commit | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
+| OpenCode (`opencode` monorepo) | `fd2c0454ea` (base) + the source-link/spike commit + the Phase 2 model commit | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
 | SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | `cac6374` | Self-imports resolved, `src` entry points exposed, `./activity` types condition; chrome opt-in (L1.3) and render/theme plumbing (L1.4) |
 
 Linkage stays "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2).
@@ -117,3 +117,24 @@ are within the plan's budget (lazy SpaceGraphJS chunk < 400 KB gzip excluding `t
 Both need Phase 1 packages: the Cytoscape spike (P0.7) needs `@spacegraphjs/cytoscape-renderer` (L1.21) and
 the contract smoke test (P0.8) needs `@spacegraphjs/renderer` (L1.19). Neither package exists yet. Phase 0
 exit gate 0 (both renderers) is therefore not satisfiable without pulling Phase 1 packaging forward.
+
+## Phase 2 — graph model (M2.1–M2.5, M2.8, M2.9; in-repo)
+
+Started ahead of finishing Phase 0/1 because the model is pure, testable with `bun test`, and unblocks every
+UI phase; the earlier reverted attempt at exactly this was the reason to do it carefully.
+
+- Location: `packages/session-ui/src/graph/` (`model.ts`, `selectors.ts`, `fixture.ts`, `index.ts`, tests).
+  Exported as `@opencode/session-ui/graph` and `@opencode/session-ui/graph/model`.
+- Reuse contract (M2.2): `Timeline.constructSessionMessageRows` gained an additive `turnByMessageID`
+  (message id → execution opener) computed inside its existing walk; the graph reads ownership from it and
+  never re-walks the message stream. Projection suite still green (72 tests).
+- `buildGraph(messages, status)` builds session/turn/message/reasoning/tool/subagent/file/result/error/
+  retry/diff/compaction/notice nodes and `part-of`/`sequence`/`delegates`/`reads`/`writes`/`searches`/
+  `produces`/`references`/`compacts`/`evidence` edges. `inferred-cause` is never emitted from adjacency.
+- `selectors.ts` answers the five mission questions in unit tests (`selectors.test.ts`), so exit gate 2's
+  "the model answers the five questions without rendering" holds in tests.
+- Verification: `cd packages/session-ui && bun test src/graph` → 24 pass; `bun run typecheck` clean in
+  session-ui and app.
+
+Not done yet: `phase` nodes (M2.3), `levels.ts` (M2.6), `layout.ts` (M2.7). Phase 3 needs positions from
+M2.7 before `buildRenderModel` can emit a `RenderModel`. See the plan's Phase 2 progress notes for detail.

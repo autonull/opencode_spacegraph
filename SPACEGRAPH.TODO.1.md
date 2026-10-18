@@ -184,6 +184,48 @@ Note: the committed `docs/spacegraph/screenshots/00-spike-spacegraph.png` now un
 surface (it still shows the old default chrome). Regenerate it through the session-graph component test at
 the next opportunity.
 
+**2026-10-18 (cont.) — Phase 2 begins: the graph model, fixture, and selectors (all in-repo, no library change).**
+
+Scope for this pass: build the pure, tested model that everything downstream renders, since it is the
+foundation and the previous attempt at it was reverted. All work is in `packages/session-ui`; `spacegraphjs`
+is untouched. Entered Phase 2 ahead of finishing Phase 0/1 because the model is self-contained, verifiable
+with `bun test` (not a browser), and unblocks the UI phases; Phase 0's remaining tasks (P0.7/P0.8) are still
+gated on the Phase 1 contract packages.
+
+- **Reuse, not a second walk (M2.2).** `Timeline.constructSessionMessageRows` now returns an additive
+  `turnByMessageID` map (message id → owning execution opener) built inside its existing walk. A steered
+  prompt maps to the opener that began its execution, so the graph groups steers into one turn without
+  re-deriving boundaries. The change is purely additive; the projection suite (72 tests) still passes.
+- **New `packages/session-ui/src/graph/`.** `model.ts` (`buildGraph`, node/edge/ID helpers), `selectors.ts`
+  (neighbors, ancestors/breadcrumbs, `why`, shortest path, `forwardChain`, search, `openInTranscript`,
+  `currentActivity`), `fixture.ts` (§7 canonical session; `buildFixtureMessages`/`fixtureMessages`,
+  `buildFixtureGraph`, `buildInterruptedFixtureMessages`, `CHANGED_FILES`), `index.ts` barrel, and tests.
+  Exported from the package as `@opencode/session-ui/graph` and `.../graph/model`.
+- **Measured:** `cd packages/session-ui && bun test src/graph` → 24 tests pass; `bun run typecheck` clean
+  (session-ui and `packages/app`). Full session-ui suite 263 pass; the one failure is the pre-existing
+  `markdown-solid.test.tsx` Solid `jsxDEV` runtime issue, unrelated to this work.
+- **Exit gate 2 is satisfied in tests:** `selectors.test.ts` answers all five mission questions against
+  the fixture (why a file changed, which tools led to the failure, the subagent's contribution, the
+  changes after the failing test, and where the agent retried).
+
+Remaining Phase 2 work (notes):
+
+- **M2.3 phase nodes are not built.** `buildGraph` creates session/turn/message/reasoning/tool/subagent/
+  file/result/error/retry/diff/compaction/notice nodes; it does **not** yet create `phase` nodes
+  (§5.1: consecutive tool categories Explore/Edit/Verify/Delegate/Result, `derived: true`, `clusterOf`).
+  M2.6 (semantic levels) is blocked on this: its overview policy renders phase clusters with counts.
+- **M2.6 `levels.ts` and M2.7 `layout.ts` are not started.** `nodesAtLevel`/`edgesAtLevel` (policy table
+  §5.4) and the deterministic lanes/ordinals/positions (§5.5) live there. `buildGraph` already sets
+  `minLevel` on every node and `data.category` on tools, which is the input these modules need. Positions
+  are required before Phase 3 (`buildRenderModel`) can emit a `RenderModel`.
+- **M2.10 is partial.** Tests cover stable IDs, steered turns, shell-only turns, interrupted idle, subagent
+  mapping, file provenance, retry/evidence, unknown tools, malformed metadata, no-inferred-cause, purity,
+  and the five questions. Level-filtering and layout-stability tests land with M2.6/M2.7.
+- **Design choices worth confirming downstream.** A shell turn owns its trailing idle; a subagent tool maps
+  to one `subagent` node keyed by child session id, and the synthetic completion notice carries the
+  `delegates` edge (there is no separate spawner node); `diff` nodes list only written/patch/snapshot files,
+  never reads; the session root id is the literal `"session"`.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -914,19 +956,22 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 Goal: a pure, tested model that answers the five questions from real session data.
 
-- [ ] **M2.1 Model types and IDs**
+- [x] **M2.1 Model types and IDs** (done; see log)
   Add `packages/session-ui/src/graph/model.ts` with `GraphModel`, `GraphNode`, `GraphEdge`, `NodeKind`, `EdgeKind`, `Confidence`, and the ID helpers in §5.3. Export via `@opencode/session-ui/graph`.
   Done: types compile; ID helpers have table-driven tests.
+  Status: landed in `model.ts`; `fileNodeID` normalization is covered; exported from `./graph` and `./graph/model`.
 
-- [ ] **M2.2 Turn ownership**
+- [x] **M2.2 Turn ownership** (done; see log — additive `turnByMessageID` on the projection's single walk)
   Derive turn boundaries by reusing `Timeline.constructSessionMessageRows` / `assistantMessagesByParent`, not a second implementation. Handle steered prompts, idle markers, shell messages, notices, and interrupted sessions.
   Done: model tests cover a steered-prompt turn, an interrupted turn, and a shell-only turn.
+  Status: `constructSessionMessageRows` now returns `turnByMessageID`; tests cover a steered turn, a shell-only turn, and an interrupted idle.
 
-- [ ] **M2.3 Node construction**
+- [ ] **M2.3 Node construction** (partial — `phase` nodes not built; see log)
   Build session, turn, phase, message, reasoning, tool, result, error, retry, subagent, file, diff, compaction, notice, and approval nodes. Map tool names to categories with `timelineCategory`; normalize unknown tools to a generic `tool` node.
   Done: every `SessionMessageInfo` variant maps to a node or is explicitly ignored; unknown tools do not throw.
+  Status: every kind except `phase` (and `approval`) is built; config events (agent/model/location-switched) are explicitly ignored; unknown tools become generic `tool` nodes. `phase` nodes (consecutive tool categories, `derived`, `clusterOf`) remain and unblock M2.6.
 
-- [ ] **M2.4 Edge construction**
+- [x] **M2.4 Edge construction** (done; see log)
   Emit `part-of`, `sequence`, `delegates`, `reads`, `writes`, `searches`, `produces`, `references`, `compacts`, and `evidence` edges with confidence. Ensure no `inferred-cause` edge is created from adjacency. Read file paths from:
   - `read` input `path`
   - `edit`/`write` input `path` and `state.metadata.files`
@@ -936,10 +981,12 @@ Goal: a pure, tested model that answers the five questions from real session dat
   - `assistant.snapshot.files` as fallback provenance
   - synthetic subagent completion `metadata.source`, `childID`
   Done: provenance tests for each tool; a file touched by two tools has one node and two edges.
+  Status: all ten edge kinds are emitted with confidence; `inferred-cause` is never created; file provenance covers read/edit/write/patch/search, subagent child session, and snapshot fallback; a file touched by several tools keeps one node and many edges.
 
-- [ ] **M2.5 Status and failure interpretation**
+- [x] **M2.5 Status and failure interpretation** (done; see log)
   Normalize running/completed/error tools, shell exit/timeout failures, assistant errors/retries, and idle outcomes. Attach failure badges to the owning turn/phase.
   Done: fixture produces exactly one failed result, one retry, and one recovered success.
+  Status: node `status` normalizes tools/shell/idle/assistant errors; the fixture yields exactly one failed `result`, one `retry`, and a recovered success; failure badges attach to the owning turn via `part-of` (phase badges wait on M2.3).
 
 - [ ] **M2.6 Semantic zoom levels**
   Implement `levels.ts` with the policy table in §5.4: per-level visible kinds, cluster expansion, label mode, edge filter, and DOM budget. Expose `nodesAtLevel(model, level)` and `edgesAtLevel(model, level, focus?)`.
@@ -949,17 +996,20 @@ Goal: a pure, tested model that answers the five questions from real session dat
   Implement `layout.ts` per §5.5: lanes, ordinals, depth, cluster bounds, append-only coordinates, reserved in-flight turn space. Return positions and cluster geometry; no rendering dependency.
   Done: repeated builds produce byte-identical positions; appending a turn leaves earlier positions unchanged.
 
-- [ ] **M2.8 Selectors**
+- [x] **M2.8 Selectors** (done; see log — answers the five questions in unit tests)
   Implement neighbors, incoming/outgoing edges, shortest path, "why this node" (part-of + evidence + sequence context), search index, breadcrumbs, current activity, and "open in transcript" message/part refs.
   Done: fixture queries answer all five mission questions in unit tests.
+  Status: `selectors.ts` provides neighbors, incoming/outgoing, ancestors/breadcrumbs, `why`, `shortestPath`, `forwardChain`, `search`, `openInTranscript`, and `currentActivity`; `selectors.test.ts` answers all five questions.
 
-- [ ] **M2.9 Canonical fixture**
+- [x] **M2.9 Canonical fixture** (done; see log)
   Add `fixture.ts` implementing §7 with deterministic IDs and timestamps. Export both raw `SessionMessageInfo[]` and the built model. Make it the single source for stories, e2e seeds, and screenshots; do not maintain a second hand-written fixture.
   Done: fixture consumes no network, no clock; identical output across runs; a parity test asserts the story and e2e fixtures produce the same model.
+  Status: `fixture.ts` gives `buildFixtureMessages`/`fixtureMessages`, `buildFixtureGraph`, and a `buildInterruptedFixtureMessages` variant; the purity test asserts identical output across runs. The story/e2e parity assertion lands when Phase 3/4 consume it.
 
-- [ ] **M2.10 Model tests**
+- [ ] **M2.10 Model tests** (partial — level-filtering and layout tests wait on M2.6/M2.7; see log)
   Cover stable IDs, steered turns, subagent mapping, file provenance, retry/evidence, cluster counts, level filtering, layout stability, unknown tools, streaming partial states, and malformed metadata.
   Done: `cd packages/session-ui && bun test src/graph` passes.
+  Status: `bun test src/graph` → 24 tests pass (stable IDs, steered/shell/interrupted turns, subagent mapping, provenance, retry/evidence, unknown tools, streaming JSON, malformed metadata, purity, five questions). Cluster-count, level-filtering, and layout-stability cases land with M2.6/M2.7.
 
 **Exit gate 2:** the fixture model is inspectable in a plain test and answers the five questions without rendering. If the model cannot answer them, the UI cannot.
 
