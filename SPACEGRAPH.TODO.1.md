@@ -531,7 +531,7 @@ Notes for the next pass:
 
 **2026-10-18 (cont.) — Library hardening: lifecycle/input/scheduling (L1.5–L1.7), LOD (L1.14), DOM updates (L1.15), layouts (L1.16), tests and demo (L1.18); L1.11 dedup.**
 
-Scope for this pass (agreed with the user): make the core reliably embeddable and deterministic. All work is in `spacegraphjs` (commit `e4ea140`, branch `main`); the only OpenCode edits are two component-test assertions that no longer read the (now opt-in) global registry.
+Scope for this pass (agreed with the user): make the core reliably embeddable and deterministic. All work is in `spacegraphjs` (commits `e4ea140` and `7dec1ed`, branch `main`); the only OpenCode edits are two component-test assertions that no longer read the (now opt-in) global registry.
 
 - **L1.5 Correct `init()`/`dispose()` (done).** `SpaceGraphOptions.global` (default false) gates `window.SpaceGraph` and `SpaceGraph.instances` registration. `init()` is idempotent (`#initialized`); `dispose()` is idempotent (`#disposed`) and now calls `pause()`, `pluginManager.disposePlugins()`, `input.dispose()`, `cameraControls.dispose()`, `vision.dispose()`, `graph.clear()`, `renderer.dispose()` (ResizeObserver + WebGL + DOM), and `events.clear()` — the old `dispose()` leaked the renderer, camera controls, input, vision, and event listeners. Verified by the new Playwright spec (`test/e2e/hardening.spec.ts`): 20 mount/dispose cycles leave one canvas and no extra instances.
 - **L1.6 Container-scoped keyboard (done).** `SpaceGraphOptions.keyboard: false | 'container' | 'window'` (default `'container'`). `CameraControls.setKeyboardScope()` attaches listeners to the container (or window) and ignores keys whose target is an `input`/`textarea`/`select`/`[contenteditable]`/`.monaco-editor`. `SpaceGraph.#init` gives the container `tabindex=0` when scoped to it. Unit-tested in `test/hardening.test.ts` (container moves, window ignored, editable ignored, `false` binds nothing, `'window'` moves).
@@ -549,7 +549,7 @@ Verification:
 
 Notes for the remaining work:
 - **Behavior changes to carry forward.** Graphs are bare by default: no `window.SpaceGraph`, no `SpaceGraph.instances`, no `chrome`, on-demand rendering, and container-scoped keyboard. Hosts that relied on the global registry or the continuous loop must opt in (`global: true`, `render: { renderMode: 'continuous' }`). Cross-graph edge resolution in `Graph.addEdge` still reads `SpaceGraph.instances`, so the inter-graph demo now needs `global: true` (L1.30 removes the mechanism).
-- **L1.17 unchanged.** The `LabeledEdge` constructor-crash fix stands; real CSS2D label layering, zoom-awareness, overlap avoidance, and edge hit areas remain.
+- **L1.17 advanced.** `Renderer` gained a `CSS2DRenderer` layer, so edge labels actually paint (previously `LabeledEdge` built `CSS2DObject`s but no CSS2D renderer existed) at a constant screen size; the demo asserts a visible `.sg-edge-label` (spacegraphjs `7dec1ed`). Overlap avoidance and edge hit areas remain.
 - **Bounds cache.** `Node.getScreenPixelSize` caches per render frame (`Node.lodFrame`); the public `bounds`/`bounds3D` getters stay uncached so camera fit is always fresh. Any future caller that needs node bounds outside a render frame should use the getters, not the LOD path.
 - Next in Phase 1: L1.27 (minimap/zoom-control rework, unblocks U3.13), then L1.5-adjacent L1.30–L1.34 (multi-instance, SSR, touch, renderer rename, boundaries). Phase 3 UI still needs U3.6, U3.13, U3.15, U3.16, U3.17.
 
@@ -1212,10 +1212,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: applying positions twice yields identical coordinates; adding nodes does not move pinned nodes.
   Status: `Graph.setPositions` (absolute, refreshes edges, requests a frame), `Graph.pinAll`, and `SpaceGraph.setPositions`/`pinAll`/`layoutOnce` land; physics is off by default. `BaseLayout.applyPosition` now applies positions synchronously without `window.gsap`, so layouts are deterministic, and `HierarchicalLayout` skips pinned nodes. Unit-tested for byte-identical repeats and pinned stability.
 
-- [ ] **L1.17 Edge rendering fixes** (partial — LabeledEdge constructor crash fixed; layering/hit area open)
+- [ ] **L1.17 Edge rendering fixes** (partial — labels now paint via a CSS2D layer; overlap/hit area open)
   Render `LabeledEdge` labels via a real CSS2D layer or an `HtmlNode` anchor. Ensure edge labels are zoom-aware and never overlap cards. Add an optional edge hit area for easier clicking.
   Done: edge labels appear in a screenshot; edge click targets are reliable at 2D zoom levels.
-  Status: `LabeledEdge` no longer crashes on construction (the base `Edge` constructor called the overridable `update()` before the label fields existed; a `ready` guard now defers `_positionLabel`/`updateLod`). Labels still use CSS2D, and zoom-awareness, overlap avoidance, and edge hit areas remain.
+  Status: `LabeledEdge` no longer crashes on construction (the base `Edge` constructor called the overridable `update()` before the label fields existed; a `ready` guard defers `_positionLabel`/`updateLod`). `Renderer` now owns a `CSS2DRenderer` layer (created, rendered each frame, resized, and disposed with the rest) so edge labels actually display at a constant screen size across zoom — the demo asserts a visible `.sg-edge-label`. Remaining: overlap avoidance against cards and an optional edge hit area. (spacegraphjs `7dec1ed`.)
 
 - [x] **L1.18 Library tests and demo** (done for this slice; see log)
   Add focused Vitest tests for event forwarding, click-vs-drag, selection, dispose, ortho projection math, zoom bands, stable IDs/positions, and DOM update preservation. Add a Playwright demo page exercising ortho + click + zoom bands + dispose. Quarantine or repair stale tests that contradict the new API.
