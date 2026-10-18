@@ -1,5 +1,63 @@
 # SPACEGRAPH.TODO.1 — Spatial Session Graph for OpenCode
 
+## 0. Progress log
+
+**2026-10-18 — restart from Phase 0 (previous attempt reverted).**
+
+The prior commit `0cd8b67376` ("feat(session-ui): sketch session graph model from session messages") was
+rejected and reverted with `git reset --hard origin/dev`. It was unverified and did not build:
+
+- `packages/session-ui/src/graph/model.ts` declared required `childrenOf`/`parentOf` fields on `GraphModel`
+  but `build()` never returned them, so it did not typecheck.
+- It reimplemented the turn walk from scratch, which M2.2 explicitly forbids ("reuse
+  `Timeline.constructSessionMessageRows` / `assistantMessagesByParent`, not a second implementation").
+- It skipped Phase 0, which the plan orders first, and recorded a known bug (phase `time` held an ordinal).
+
+`SPACEGRAPH.md` and `SPACEGRAPH.TODO.1.md` are unchanged from `93f49a9cea` (the plan commit); only the
+speculative model code was dropped. Work restarts from Phase 0.
+
+### Environment (this session)
+
+- `bun` 1.4.3 installed to `/home/me/.local` via `npm i -g bun --prefix ~/.local` (postinstall run manually);
+  it is on `PATH`. `bun install` at the repo root succeeds (2155 packages; `bun.lock` gains the new workspace).
+- Playwright browser mismatch worked around: the repo pins `@playwright/test` 1.59.1 (wants chromium
+  headless-shell revision 1217) while the machine cache had 1193/1194/1234. The 1217 path is now a symlink to
+  the working 1234 build (`~/.cache/ms-playwright/chromium_headless_shell-1217/...`), with the
+  `INSTALLATION_COMPLETE`/`DEPENDENCIES_VALIDATED` markers copied. Also note `bun x playwright` resolves to a
+  broken Python shim; drive the CLI through
+  `node node_modules/.bun/playwright@1.59.1/node_modules/playwright/cli.js`.
+
+### Done
+
+- **P0.2 Repository linkage** — `spacegraphjs/` added to root `.gitignore`. Linkage stays "sibling git repo,
+  pinned commit, not vendored, not a submodule": remote `git@github.com:autonull/spacegraphjs7.git`, tested
+  commit `8fe955a` (branch `main`). No nested-repo commit.
+- **P0.6 `packages/session-graph` scaffolding** — private `@opencode/session-graph`, `type: module`, source
+  export `"." -> ./src/index.ts`, scripts `typecheck` (`tsc -b`) / `test` (`bun test src`) / `test:components`
+  (Playwright via `../storybook/playwright/config`), `AGENTS.md`, and a placeholder story. Registered in
+  `packages/storybook/.storybook/main.ts` (story glob, `optimizeDeps` entry, `server.fs.allow`). Verified:
+  `bun run typecheck` passes; `bun run test:components` boots Storybook, discovers `session-graph-scaffold`,
+  and the scaffold spec passes. `bun test src` matches no files yet (no unit tests until Phase 2/3).
+
+### Notes for the remaining Phase 0 work
+
+- **P0.1** branch/baseline: work continues directly on `dev` (no `session-graph` branches). Tested SHAs:
+  OpenCode `93f49a9cea`, spacegraphjs `8fe955a`. The session-entry performance baseline is not yet captured.
+- **P0.3** source workspaces: only `spacegraphjs` core can be linked today. The four contract packages
+  (`@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`,
+  `@spacegraphjs/svg-renderer`) do not exist yet; they are Phase 1 deliverables (L1.19-L1.21a). The task's
+  "links all five packages" is not satisfiable in Phase 0 as written: link core now, add the rest as Phase 1
+  creates them. `spacegraphjs` `package.json` still points `main`/`module` at `./dist` (no build present) and
+  must be repointed at `src/index.ts` for source consumption, with a Vite/tsconfig fallback if bun workspace
+  resolution conflicts.
+- **P0.4** critical path: the library survey found `spacegraphjs/src/core/VisionManager.ts` statically imports
+  `spacegraphjs/vision` -> `onnxruntime-web`, `src/nodes/CodeEditorNode.ts` statically imports
+  `@monaco-editor/loader`, and `src/core/Renderer.ts:3` imports `three-mesh-bvh` (patched onto global
+  `THREE.*.prototype` in `Renderer.init()`). `src/index.ts` pulls all of these at import time. `mitt` is a
+  declared dependency with no imports in `src/`.
+- **P0.5/P0.7/P0.8** embed spike, Cytoscape spike, and contract smoke test are not started; they depend on
+  P0.3 and on the contract package.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -528,7 +586,7 @@ Goal: prove both source-linked renderers can render, resize, and dispose inside 
   Create `session-graph` branch in the OpenCode repo from `origin/dev`. Create `session-graph` branch in `spacegraphjs/`. Record both commit SHAs in `docs/spacegraph/prototype.md`. Capture the current session-entry performance baseline per `packages/app/AGENTS.md`.
   Done: branch names, SHAs, and baseline command/output recorded.
 
-- [ ] **P0.2 Decide repository linkage**
+- [x] **P0.2 Decide repository linkage** (done: sibling git repo, pinned SHA, `spacegraphjs/` gitignored; see log)
   Choose one: git submodule for `spacegraphjs/`, or a pinned commit SHA with a documented clone command. Recommended: submodule for a reproducible release artifact; do not vendor source into OpenCode.
   Done: linkage method documented; `spacegraphjs/` ignored or registered consistently; no accidental nested-repo commit.
 
@@ -544,7 +602,7 @@ Goal: prove both source-linked renderers can render, resize, and dispose inside 
   In `packages/session-graph`, render 8 `HtmlNode`s and `CurvedEdge`s inside a sized div in the session panel. Verify pointer drag, resize, theme, cleanup on unmount, session switch, and HMR. Capture one screenshot. Measure the lazy chunk size.
   Done: parity with the spike checklist in SPACEGRAPH.md §4; go/no-go recorded.
 
-- [ ] **P0.6 Add `packages/session-graph` scaffolding**
+- [x] **P0.6 Add `packages/session-graph` scaffolding** (done: package + story + component test verified; see log)
   Private package, `type: module`, source exports, `typecheck`/`test`/`test:components` scripts, `playwright.components.config.ts` using `componentConfig`, and `AGENTS.md`. Add it to `packages/storybook/.storybook/main.ts` story globs and optimize-deps entries.
   Done: empty package typechecks; Storybook discovers a placeholder story; component test runner starts.
 

@@ -10,6 +10,7 @@ import { playgroundCss } from "./playground-css-plugin.ts"
 const here = path.dirname(fileURLToPath(import.meta.url))
 const ui = path.resolve(here, "../../ui")
 const sessionUi = path.resolve(here, "../../session-ui")
+const sessionGraph = path.resolve(here, "../../session-graph")
 const app = path.resolve(here, "../../app/src")
 const extensions = path.resolve(here, "../../gui-extensions/src")
 const mocks = path.resolve(here, "./mocks")
@@ -46,6 +47,7 @@ export default defineMain({
   stories: [
     "../../ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
     "../../session-ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../../session-graph/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
     "../../app/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
     "../../gui-extensions/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
   ],
@@ -61,7 +63,7 @@ export default defineMain({
         // follow `new Worker(new URL(…))`), the modules component tests load, and the preview with the Storybook
         // runtime that its virtual entry imports, so the first browser request never discovers a new dependency.
         entries: [
-          entry("../../{ui,session-ui,app,gui-extensions}/src/**/*.{stories.tsx,worker.ts}"),
+          entry("../../{ui,session-ui,session-graph,app,gui-extensions}/src/**/*.{stories.tsx,worker.ts}"),
           ...new Set(componentTestModules.map(entry)),
           entry("./preview.tsx"),
         ],
@@ -100,7 +102,7 @@ export default defineMain({
       },
       server: {
         fs: {
-          allow: [searchForWorkspaceRoot(process.cwd()), ui, sessionUi, app, extensions, mocks],
+          allow: [searchForWorkspaceRoot(process.cwd()), ui, sessionUi, sessionGraph, app, extensions, mocks],
         },
       },
     })
