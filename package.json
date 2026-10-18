@@ -43,7 +43,8 @@
       "packages/console/*",
       "packages/stats/*",
       "spacegraphjs",
-      "spacegraphjs/packages/renderer"
+      "spacegraphjs/packages/renderer",
+      "spacegraphjs/packages/spacegraph-renderer"
     ],
     "catalog": {
       "@effect/opentelemetry": "4.0.1",

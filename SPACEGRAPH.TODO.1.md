@@ -316,6 +316,33 @@ Notes for the next pass:
 - `selection:changed` carries both `ids: string[]` (contract-friendly) and `nodes`/`edges` Sets (legacy HUD shape). Contract consumers should read `ids`.
 - Loose ends from this slice: `ButtonNode`/`ToggleNode` click routing (L1.9), and layout determinism plus `window.gsap` cleanup (L1.16).
 
+**2026-10-18 (cont.) — Phase 1 ortho projection (L1.12), zoom telemetry (L1.13), and the SpaceGraph adapter (L1.20).**
+
+Scope for this pass (agreed with the user): the core prerequisites the adapter needs, then the adapter itself. `spacegraphjs` commit `f7f5544` (branch `main`); OpenCode carries the workspace wiring, an adapter story + component test, and this log.
+
+- **L1.12 — first-class orthographic projection (done).** `Renderer` now owns both a `perspectiveCamera` and an `orthographicCamera` and exposes the active one via a `camera` getter; `setProjection('perspective' | 'orthographic', target?)` swaps them, copying position/orientation and deriving the ortho frustum from the perspective framing at the current distance so the toggle preserves scale. `RenderContext.setCamera` follows the active camera for culling; `onResize` keeps the ortho frustum aspect-correct and the perspective aspect otherwise; `render()` renders and raycasts with the active camera. `CameraControls` takes a mutable `camera` with `setCamera`, detects ortho from the camera type, disables orbit in ortho, and drives zoom through `orthographicCamera.zoom` (clamped 0.01–100) instead of distance. `SpaceGraph.setProjection(projection)` wires it and emits `projection:change`. Call sites that read perspective-only fields (`calculateFitView`, `ResizeFingering`, `ResizeHandler`, `MinimapPlugin`, `MermaidPlugin`, `HUDPlugin`) were widened or cast; `calculateFitView` now accepts `THREE.Camera`.
+- **L1.13 — camera zoom telemetry (done).** New `src/core/zoom.ts` (`normalizeZoom`/`denormalizeZoom`/`clamp`) maps raw perspective distance or ortho zoom to a normalized 0..1 value (1 = closest). `Renderer.getZoom`/`setZoom`/`getViewport` expose it; `SpaceGraph` adds `zoom`, `setZoom(value)`, `zoomToFit()`, and `viewport`, and emits `camera:change` and `zoom:change` from the animation loop and every explicit camera op, deduped by value (no timer throttle, so tests are deterministic). `SpaceGraphEvents` gains `camera:change`, `zoom:change`, and `projection:change`; `CameraViewport` and `Projection` are exported from `src/types.ts`.
+- **L1.20 — `@spacegraphjs/spacegraph-renderer` (done).** `packages/spacegraph-renderer` implements `GraphRenderer` over the lean `spacegraphjs/activity` entry (loaded via dynamic `import()` inside `mount`, so importing the adapter is free of `three`/WebGL). `src/mapping.ts` is the pure `RenderNode`/`RenderEdge` → core-spec mapping (HtmlNode for `html` cards via `data.html`, ShapeNode otherwise; `LabeledEdge` when a label exists else `CurvedEdge`; status→color, inferred→muted/dashed). `src/index.ts` holds `SpaceGraphRenderer`: idempotent `mount`, ID-diffed `setModel` (add/update/remove via `loadSpec`/`removeNode`/`removeEdge` + `setPositions`), `setSelection`, `setTheme` (re-applies the model), `setProjection`, `setViewport`→`setZoom`, `fit`/`focus`/`resize`, `on`, and idempotent `dispose`. It never calls a layout; the core still does not import the contract (grep clean). Capabilities: `projections: ['2d','3d']`, `domNodes: true`, `maxDomNodes: 40`, `edgeLabels: true`, `clusterNodes: true`, `minimap: false` (honest until L1.27), `maxRecommendedNodes: 300`.
+- **Bug fix (L1.17 partial).** `LabeledEdge` crashed on construction: the base `Edge` constructor calls the overridable `update()`, which ran `_positionLabel`/`updateLod` before `labelObject`/`labelEl`/`labelLod` existed. Added a `ready` guard so the overrides no-op until the label is built. This was blocking any labelled edge in the adapter.
+- **Stopgap types.** `spacegraphjs/types/activity.d.ts` (the `./activity` `types` condition) was extended with the L1.8–L1.13 surface the adapter consumes (`events`, `setPositions`, `setProjection`, `setZoom`, `select`, `clearSelection`, `removeNode`/`removeEdge`, `hide`/`show`, `watch`, `zoom`, `viewport`, and an `EventEmitter` with `on`/`off`/`emit`). Still a stopgap; replace with generated declarations once L1.1 lands.
+- **Wiring.** `spacegraphjs/packages/spacegraph-renderer` added to the OpenCode root `workspaces.packages` and as a `workspace:*` dep of `packages/session-graph`; `bun install` links it. `packages/session-graph/src/contract.test.ts` now also asserts the adapter resolves and declares its capabilities. New `packages/session-graph/src/contract/adapter-contract.tsx` + `.stories.tsx` (story id `session-graph-adapter`) mount the real adapter with a 5-node/2-edge `RenderModel` (HTML card + labelled + inferred edges).
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 14 files, 180 tests (new `test/zoom.test.ts`, 10 tests). `pnpm exec tsc --noEmit` still reports exactly the 10 pre-existing `src` errors and none in touched files.
+- `cd spacegraphjs/packages/spacegraph-renderer && bun test` → 10 tests (mapping + capability). `bun run typecheck` clean.
+- `cd packages/session-graph && bun test src` → 2 tests; `bun run typecheck` clean; `cd packages/app && bun run typecheck` clean.
+- `cd packages/session-graph && bun run test:components` → 3 component tests pass (scaffold, spike, new adapter contract). The adapter test mounts in Storybook, asserts mount + 5 nodes/2 edges + a single `SpaceGraph` instance, toggles 2D→3D→2D, selects, resizes, disposes, and asserts zero console errors and a stable instance count.
+
+Notes for the next pass:
+
+- **L1.22 headless conformance is partial.** The shared `spacegraphjs/test/renderer.contract.test.ts` suite is not written because only one adapter exists; a one-adapter harness proves little. The adapter's behaviour is covered by its own `bun test` mapping suite plus the session-graph browser contract test. Build the shared suite when the Cytoscape adapter (L1.21) lands.
+- **Adapter limitations to revisit.** `setProjection` swaps projection but not `enableRotate`, so 3D after a 2D start cannot orbit (cosmetic). `setModel` upserts node specs by ID via `loadSpec`, so a node changing `type` (e.g. card→dot) is not remodelled; it keeps its original type. `fit(ids)` ignores ids (fit-all). `resize()` just re-renders because the core owns a `ResizeObserver`.
+- **Orbit-enable plumbing.** If the adapter should allow orbit in 3D and lock it in 2D, expose `CameraControls.config.enableRotate` (or a `SpaceGraph.setInteraction`) rather than reconstructing.
+- **L1.17 remains open.** The `LabeledEdge` fix only stops the constructor crash; label CSS2D layering/zoom-awareness and edge hit areas are still L1.17.
+- **`projection` lives on `render`.** `SpaceGraphOptions` does not yet take a top-level `projection`; hosts set `render.projection`. L1.4's remaining theming work is unchanged.
+- Next in the plan: L1.21 (`@spacegraphjs/cytoscape-renderer`), L1.21a (`@spacegraphjs/svg-renderer`), then the shared conformance suite (L1.22), which unblocks P0.7/P0.8 and exit gate 0.
+
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -851,7 +878,7 @@ Goal: prove both source-linked renderers can render, resize, and dispose inside 
 - [ ] **P0.3 Make the SpaceGraphJS packages source workspaces** (core + `@spacegraphjs/renderer` linked; the three adapter/SVG packages are Phase 1 deliverables — see log)
   Add `spacegraphjs`, `spacegraphjs/packages/renderer`, `spacegraphjs/packages/spacegraph-renderer`, `spacegraphjs/packages/cytoscape-renderer`, and `spacegraphjs/packages/svg-renderer` to root `workspaces.packages`. Point each package's `main`/`module`/`types`/`exports` at its `src/index.ts` for the prototype. Add `spacegraphjs`, `@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`, and `@spacegraphjs/svg-renderer` as `workspace:*` dependencies of `packages/session-graph`. Keep a documented fallback (Vite regex aliases + tsconfig paths) if Bun workspace resolution conflicts.
   Done: `bun install` links all five packages; imports resolve from `packages/session-graph` in Vite, Bun test, typecheck, and Storybook; core does not import the contract.
-  Status: `spacegraphjs` is a root workspace and a `workspace:*` dep of `packages/session-graph`; imports resolve in Vite, Bun, and Storybook, and typecheck passes via the `./activity` `types` condition. `@spacegraphjs/renderer` is now also a root workspace and a `workspace:*` dep (L1.19), resolved under `bun test`/`tsc -b` with no `types` stopgap. The three adapter/SVG packages and the "all five" clause land with L1.20–L1.21a.
+  Status: `spacegraphjs` is a root workspace and a `workspace:*` dep of `packages/session-graph`; imports resolve in Vite, Bun, and Storybook, and typecheck passes via the `./activity` `types` condition. `@spacegraphjs/renderer` is now also a root workspace and a `workspace:*` dep (L1.19), resolved under `bun test`/`tsc -b` with no `types` stopgap. `@spacegraphjs/spacegraph-renderer` (L1.20) is the third linked package: a root workspace and a `workspace:*` dep of `packages/session-graph`, resolved under `bun test`/`tsc -b`/Storybook. The Cytoscape and SVG packages and the "all five" clause land with L1.21–L1.21a.
 
 - [x] **P0.4 Trim the critical path** (done, narrowed scope: ONNX/Monaco dynamic, BVH patch now conditional; see log)
   Make `onnxruntime-web` and `@monaco-editor/loader` optional via dynamic import in `src/core/VisionManager.ts` and `src/nodes/CodeEditorNode.ts`. Do not import `src/vision` statically from the main entry. Remove the unconditional `three-mesh-bvh` prototype patch in `src/core/Renderer.ts` unless a real BVH is built.
@@ -902,7 +929,7 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 - [ ] **L1.4 Plumb render/theme options** (partial — background + transparency done; node/edge/label/selection/hover theming remains; `projection` waits on L1.12)
   Pass `RenderOptions` through `SpaceGraphOptions`: `backgroundColor`, `transparent`, `antialias`, `pixelRatio`, `preserveDrawingBuffer`, `projection`, `chrome`, `plugins`. Add a theme object for background, node fill/stroke, edge color, label color/font, selection/hover colors. Support transparent background so the app surface shows through.
   Done: no hard-coded `0x1a1a2e` when the app supplies a theme; light and dark screenshots both pass.
-  Status: `render`/`chrome`/`theme` added; `RenderOptions` gains `transparent` + `preserveDrawingBuffer`; `Renderer` honors both and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. Remaining: theme beyond `background`, the `projection` pass-through (needs L1.12), a `plugins` option, and the light/dark screenshot check (L1.18 demo page).
+  Status: `render`/`chrome`/`theme` added; `RenderOptions` gains `transparent`, `preserveDrawingBuffer`, and `projection`; `Renderer` honors them and takes the single `types.ts` definition; `theme.background` overrides `render.backgroundColor`. `render.projection` now drives the ortho/perspective camera (L1.12). Remaining: theme beyond `background`, a `plugins` option, and the light/dark screenshot check (L1.18 demo page).
 
 #### Lifecycle and input
 
@@ -941,13 +968,15 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Cameras and zoom
 
-- [ ] **L1.12 First-class orthographic projection**
+- [x] **L1.12 First-class orthographic projection** (done; see log — wheel zoom is centered on the viewport, not the pointer)
   Add `projection: "perspective" | "orthographic"` to the renderer. Swap the camera used by WebGL, CSS3D, raycasting, resize, `fitView`, and `RenderContext`. Implement ortho pan and wheel zoom around the pointer. Clamp zoom. Disable free orbit in ortho.
   Done: `sg.setProjection("orthographic")` produces a true parallel projection with correct CSS3D alignment; wheel zoom and pan work; toggling to perspective preserves target and selection.
+  Status: `Renderer` owns both cameras and swaps them in `setProjection`; `RenderContext.setCamera` follows the active camera; `onResize` keeps the ortho frustum aspect-correct; `CameraControls` disables orbit in ortho and zooms the frustum (clamped 0.01–100). Browser-verified by the session-graph adapter component test (2D↔3D with no console errors). Pointer-anchored ortho zoom is not done; zoom scales the frustum about the target.
 
-- [ ] **L1.13 Camera zoom telemetry**
+- [x] **L1.13 Camera zoom telemetry** (done; see log)
   Add a normalized camera zoom (`0..1` or log-scale) derived from perspective distance or ortho height. Emit throttled `camera:change` and `zoom:change`; expose `zoom`, `setZoom`, and `zoomToFit(nodes?)`. Do not implement semantic levels here; the band controller in L1.23 owns policy.
   Done: manual wheel, programmatic zoom, and projection changes all emit correct viewport/zoom events.
+  Status: `src/core/zoom.ts` normalizes distance/ortho zoom; `Renderer.getZoom`/`setZoom`/`getViewport` and `SpaceGraph.zoom`/`setZoom`/`zoomToFit`/`viewport` expose it; `camera:change`/`zoom:change` are emitted on change (value-deduped, not timer-throttled). `band` is left for host policy.
 
 - [ ] **L1.14 LOD correctness**
   Cache node bounds instead of recomputing `Box3.setFromObject` twice per frame. Add per-node `data.minZoom`/`maxZoom`/`data.lod`. Hidden nodes are not pickable. Add `labelMode: "scale" | "constant" | "hide"` for DOM labels. Fix the LOD plugin key mismatch and restore edges when zooming back in.
@@ -964,9 +993,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: applying positions twice yields identical coordinates; adding nodes does not move pinned nodes.
   Status: `Graph.setPositions` (absolute, no animation, refreshes edges), `Graph.pinAll`, and `SpaceGraph.setPositions`/`pinAll`/`layoutOnce` land; physics is off by default and `AutoLayoutPlugin` is a no-op, so host positions are stable. `TimelineLayout`/`HierarchicalLayout` determinism and the `window.gsap` dependency are unchanged.
 
-- [ ] **L1.17 Edge rendering fixes**
+- [ ] **L1.17 Edge rendering fixes** (partial — LabeledEdge constructor crash fixed; layering/hit area open)
   Render `LabeledEdge` labels via a real CSS2D layer or an `HtmlNode` anchor. Ensure edge labels are zoom-aware and never overlap cards. Add an optional edge hit area for easier clicking.
   Done: edge labels appear in a screenshot; edge click targets are reliable at 2D zoom levels.
+  Status: `LabeledEdge` no longer crashes on construction (the base `Edge` constructor called the overridable `update()` before the label fields existed; a `ready` guard now defers `_positionLabel`/`updateLod`). Labels still use CSS2D, and zoom-awareness, overlap avoidance, and edge hit areas remain.
 
 - [ ] **L1.18 Library tests and demo**
   Add focused Vitest tests for event forwarding, click-vs-drag, selection, dispose, ortho projection math, zoom bands, stable IDs/positions, and DOM update preservation. Add a Playwright demo page exercising ortho + click + zoom bands + dispose. Quarantine or repair stale tests that contradict the new API.
@@ -979,9 +1009,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: the package typechecks and builds with zero runtime dependencies; importing it adds no bundle weight.
   Status: `@spacegraphjs/renderer` exists with the §4.4 types plus `CONTRACT_VERSION`/`supports`; zero deps; source export. Typecheck is clean and `bun test` passes. No build step yet (source-only), and it is linked into `packages/session-graph` (P0.3).
 
-- [ ] **L1.20 SpaceGraph renderer adapter package**
+- [x] **L1.20 SpaceGraph renderer adapter package** (done; see log — remodelling a node to a new type is not supported)
   Create `spacegraphjs/packages/spacegraph-renderer` (`@spacegraphjs/spacegraph-renderer`) exporting `SpaceGraphRenderer`. It wraps the lean `spacegraphjs/activity` entry, maps `RenderModel` to specs, applies positions with `setPositions`, maps status/kind to theme styles, positions HTML cards via `DOMNode`/`HtmlNode`, translates events to string IDs, and implements viewport/band reporting. It is the only package that imports both the core and the contract.
   Done: the adapter passes the contract suite; it never calls an automatic layout; core still does not import the contract.
+  Status: `SpaceGraphRenderer` implements the full `GraphRenderer` surface; core loads via dynamic import inside `mount`; core never imports the contract (grep clean); never calls a layout. Passing the *shared* conformance suite waits on L1.22 (one adapter today); verified by `bun test` mapping/capability tests and the session-graph browser contract test. HTML cards go through `data.html` on `HtmlNode` (a `DOMNode` element path is not wired yet).
 
 - [ ] **L1.21 Cytoscape renderer adapter package**
   Create `spacegraphjs/packages/cytoscape-renderer` (`@spacegraphjs/cytoscape-renderer`) exporting `CytoscapeRenderer`. It depends only on `@spacegraphjs/renderer` and `cytoscape` (peer), not on `spacegraphjs` core. Use `preset` layout, `cy.batch` diffs, `cy.style` from `RenderTheme`, compound-free cluster nodes, `min-zoomed-font-size`, and event mapping. Implement a clipped DOM overlay for `shape: "card"` nodes, updated on `render`/`viewport`, with `maxDomNodes` and simple-label fallback. Declare `projections: ["2d"]`, `domNodes: true`, `maxDomNodes`, and `maxRecommendedNodes`.
@@ -994,6 +1025,7 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 - [ ] **L1.22 Renderer conformance suite**
   Finish `test/renderer.contract.test.ts` and run it against both adapters: mount/dispose, diff-by-ID, selection sync, click-vs-drag, fit/focus, viewport/band events, theme change, resize, hidden-node non-interactivity, HTML-card positioning, and capability declaration. Split the suite: headless model assertions in Vitest, and mount/click/resize/dispose assertions in Playwright (Cytoscape can run headless for graph operations, but hit-testing and canvas lifecycle need a browser).
   Done: one command proves both adapters honor the contract; capability gaps are asserted, not ignored.
+  Status: not started as a shared suite; with only the SpaceGraph adapter (L1.20) present, a one-adapter harness proves little. Behaviour is covered today by the adapter's `bun test` mapping suite and the session-graph browser contract test. Build the shared suite when the Cytoscape adapter (L1.21) lands.
 
 - [ ] **L1.23 Generic zoom-band controller**
   Add `src/zoom/ZoomBands.ts`: configurable thresholds, normalized zoom, band callbacks, and viewport snapshots. Replace `FractalZoomPlugin` with a thin `ZoomBandsPlugin` that delegates to the controller. The controller stays headless and policy-free.

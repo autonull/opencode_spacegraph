@@ -8,7 +8,7 @@ state, measurements, and open issues that the plan's `R7.2` will turn into the f
 | Repository | Revision | Notes |
 |---|---|---|
 | OpenCode (`opencode` monorepo) | `fd2c0454ea` (base) + the source-link/spike commit + the Phase 2 model commit | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | `cac6374` | Self-imports resolved, `src` entry points exposed, `./activity` types condition; chrome opt-in (L1.3) and render/theme plumbing (L1.4) |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | `f7f5544` | Self-imports resolved, `src` entry points exposed, `./activity` types condition; chrome opt-in (L1.3), render/theme plumbing (L1.4), ortho projection + zoom telemetry (L1.12/L1.13), and the `@spacegraphjs/renderer` + `@spacegraphjs/spacegraph-renderer` packages (L1.19/L1.20) |
 
 Linkage stays "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2).
 
@@ -26,10 +26,10 @@ against. Capture it before the first change to `packages/app` session/timeline e
   symlink lives at `packages/session-graph/node_modules/spacegraphjs -> ../../../spacegraphjs`).
 - `spacegraphjs/package.json` `main`/`module`/`types` and `exports` now point at `src` so the package is
   consumed from source for the prototype.
-- The four contract packages in the plan (`@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`,
-  `@spacegraphjs/cytoscape-renderer`, `@spacegraphjs/svg-renderer`) do not exist yet; they are Phase 1
-  deliverables (L1.19–L1.21a). P0.3 therefore links the core only. Add the rest to `workspaces.packages`
-  and to `packages/session-graph` as Phase 1 creates them.
+- The contract packages in the plan land as Phase 1 creates them (L1.19–L1.21a). So far
+  `@spacegraphjs/renderer` (L1.19) and `@spacegraphjs/spacegraph-renderer` (L1.20) exist and are linked as
+  workspaces and `workspace:*` deps of `packages/session-graph`. `@spacegraphjs/cytoscape-renderer` and
+  `@spacegraphjs/svg-renderer` do not exist yet. P0.3 therefore links the core and two contract packages.
 
 ### Why `./activity` has a `types` condition
 
@@ -109,14 +109,46 @@ are within the plan's budget (lazy SpaceGraphJS chunk < 400 KB gzip excluding `t
   definition from `src/types.ts` (its duplicate is removed) and honors both new flags.
 - `theme.background` takes precedence over `render.backgroundColor`; the hard-coded `0x1a1a2e` only
   applies when the host supplies neither.
-- Remaining: theming beyond `background`, `projection` pass-through (L1.12), a `plugins` option, and the
-  light/dark screenshot check via the L1.18 demo page.
+- Remaining: theming beyond `background`, the `plugins` option, and the light/dark screenshot check via the
+  L1.18 demo page. `projection` is now plumbed through `render.projection` (L1.12).
 
-## P0.7 / P0.8 — not started
+### L1.12 — orthographic projection, and L1.13 — zoom telemetry (done, `f7f5544`)
 
-Both need Phase 1 packages: the Cytoscape spike (P0.7) needs `@spacegraphjs/cytoscape-renderer` (L1.21) and
-the contract smoke test (P0.8) needs `@spacegraphjs/renderer` (L1.19). Neither package exists yet. Phase 0
-exit gate 0 (both renderers) is therefore not satisfiable without pulling Phase 1 packaging forward.
+- `Renderer` owns a perspective and an orthographic camera and swaps the active one in
+  `setProjection(projection, target?)`, deriving the ortho frustum from the perspective framing so the toggle
+  preserves scale. `RenderContext.setCamera` follows the active camera; `onResize` keeps the ortho frustum
+  aspect-correct.
+- `CameraControls` takes a mutable `camera` with `setCamera`, disables orbit in ortho, and drives zoom
+  through `orthographicCamera.zoom` (clamped 0.01–100).
+- `src/core/zoom.ts` normalizes distance/ortho zoom to 0..1; `SpaceGraph.zoom`/`setZoom`/`zoomToFit`/`viewport`
+  expose it and emit `camera:change`/`zoom:change`/`projection:change` (value-deduped).
+- Verified by `spacegraphjs/test/zoom.test.ts` (10 tests) and the browser adapter contract test below.
+- Not done: pointer-anchored ortho zoom (zoom scales the frustum about the target), and `projection` is not a
+  top-level `SpaceGraphOptions` field (hosts set `render.projection`).
+
+### L1.20 — `@spacegraphjs/spacegraph-renderer` (done, `f7f5544`)
+
+- `spacegraphjs/packages/spacegraph-renderer` implements the `GraphRenderer` contract over the lean
+  `spacegraphjs/activity` entry, loaded by dynamic `import()` inside `mount` (so importing the adapter pulls
+  no `three`/WebGL). `src/mapping.ts` is the pure `RenderNode`/`RenderEdge` → core-spec mapping; `src/index.ts`
+  is `SpaceGraphRenderer` (idempotent mount/dispose, ID-diffed `setModel`, selection, theme, projection,
+  viewport, fit/focus/resize, events).
+- Capabilities: `projections: ['2d','3d']`, `domNodes: true`, `maxDomNodes: 40`, `edgeLabels: true`,
+  `clusterNodes: true`, `minimap: false` (honest until L1.27), `maxRecommendedNodes: 300`. The core never
+  imports the contract (grep clean) and the adapter never runs a layout.
+- Verified by `packages/spacegraph-renderer` `bun test` (10 tests) and `packages/session-graph`'s
+  `component-tests/adapter.spec.ts` (`session-graph-adapter` story): mount, 5 nodes/2 edges, one `SpaceGraph`
+  instance, 2D→3D→2D, selection, resize, dispose to zero instances, no console errors.
+- Also fixed the pre-existing `LabeledEdge` constructor crash (the base `Edge` constructor called the
+  overridable `update()` before the label fields existed).
+- Limitations: node `type` changes are not remodelled; `fit(ids)` ignores ids; `resize()` just re-renders.
+
+## P0.7 / P0.8 — blocked on the second adapter
+
+`@spacegraphjs/renderer` (L1.19) and `@spacegraphjs/spacegraph-renderer` (L1.20) now exist, so the SpaceGraph
+side of P0.8 is available. The Cytoscape spike (P0.7) and the two-adapter contract smoke test (P0.8) still
+need `@spacegraphjs/cytoscape-renderer` (L1.21). Phase 0 exit gate 0 (both renderers) remains unsatisfiable
+until then.
 
 ## Phase 2 — graph model (M2.1–M2.5, M2.8, M2.9; in-repo)
 

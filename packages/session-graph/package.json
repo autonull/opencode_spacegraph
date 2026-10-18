@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@spacegraphjs/renderer": "workspace:*",
+    "@spacegraphjs/spacegraph-renderer": "workspace:*",
     "solid-js": "catalog:",
     "spacegraphjs": "workspace:*"
   },
