@@ -493,6 +493,26 @@ Notes for the next pass:
 - Next in the plan: U3.16/U3.17 stories and component tests for the remaining states, then U3.13/U3.14 which need
   the Phase 1 primitives (L1.25 AccessibilityLayer, L1.27 MinimapPlugin), then Phase 4 integration (I4.x).
 
+**2026-10-18 (cont.) — Phase 1 generic controller modules: ZoomBands (L1.23), LaneLayout (L1.24), AccessibilityLayer (L1.25), Trail (L1.26).**
+
+Scope for this pass: the contract-free, headless primitives the remaining Phase 3 UI needs — breadcrumbs (U3.11), minimap (U3.13), and the accessibility mirror (U3.14). All work is in `spacegraphjs` commit `1d9159d` (branch `main`); OpenCode carries only this log.
+
+- **L1.23 ZoomBands (done).** New `src/zoom/ZoomBands.ts`: contiguous normalized bands (validated to cover `[0,1]`) with a hysteresis dead-zone, `feed(raw, range)` / `feedNormalized(value)`, change callbacks carrying `from` and the previous snapshot, and `snapshot()`. New thin `src/plugins/ZoomBandsPlugin.ts` (extends `BaseSystemPlugin`) subscribes to the core `zoom:change` telemetry, feeds the controller, and emits `zoomband:change` plus a legacy `fractal:level-change` (band index as `to`) so `ZoomUIPlugin` and the `fractal-complex` demo keep working. `DEFAULT_CHROME_PLUGINS` now lists `ZoomBandsPlugin`; `FractalZoomPlugin` is kept but marked `@deprecated`. Exported from `src/index.ts`, `src/plugins/index.ts`, and the lean `src/activity.ts`; new `SpaceGraphEvents['zoomband:change']`.
+- **L1.24 LaneLayout (done).** New `src/layout/LaneLayout.ts`: lanes → Y, group/ordinal → X, depth → Z, with `reserve(group, span)` for in-flight groups, `bounds(ids?)`, idempotent `place`, `placeAll`, and `clear`. Deterministic and append-only; no session or contract dependency. This is the generic primitive `layout.ts` (M2.7) can sit on once a host chooses to.
+- **L1.25 AccessibilityLayer (layer implemented; adapter wiring is U3.14).** New `src/a11y/AccessibilityLayer.ts`: a visually hidden, ordered mirror over a minimal structural item (`id`/`label`/`kind`/`status`/`interactive`), roving tabindex, Arrow/Home/End traversal that skips non-interactive items, Enter/Space selection, Escape, and an `aria-live` selection announcement. It imports no contract and no renderer, and the core still does not import the contract (grep clean). **Not done:** mounting it over the active render model in the session-graph UI and proving keyboard traversal against both adapters — that is U3.14.
+- **L1.26 Trail (done).** New `src/navigation/Trail.ts`: push/replace/back/forward with forward-truncation, `maxDepth` trimming, `reset(node?)`, `toLabels`, change listeners, and `reconcile(byId)` so entries survive render-model updates by ID (removed ids are dropped; nothing surviving resets the trail).
+- **Exports.** `package.json` `exports` gains `./zoom`, `./layout`, `./a11y`, `./navigation`; the `spacegraphjs/*` tsconfig path already covers them. `./inline` remains the only subpath from L1.1's list with no module (the inline SVG renderer lives in `@spacegraphjs/svg-renderer`, not the core).
+
+Verification: `cd spacegraphjs && pnpm exec vitest run` → 19 files, 226 tests (4 new files: `zoom-bands` 8, `lane-layout` 9, `trail` 8, `a11y` 6; `chrome.test.ts` updated to the new chrome list). `pnpm exec tsc --noEmit` still reports exactly the 181 pre-existing errors, none in the new or changed files. `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass.
+
+Notes for the next pass:
+
+- **L1.27 (Minimap/ZoomUI rework) is untouched** and blocks U3.13. The survey found: the minimap overlay is already container-scoped (`renderer.container`) but `ZoomUIPlugin` appends to `document.body`; `MinimapPlugin.dispose()` leaks its overlay node and never calls `super.dispose()`; `ZoomUIPlugin.dispose()` leaks the `fractal:level-change` listener and its hint `setTimeout`; the minimap runs a second full scene render per frame and computes the viewport rect from a `PerspectiveCamera` cast (wrong under ortho).
+- **U3.11 breadcrumbs can now swap to `Trail`** (import `spacegraphjs/navigation`); `Trail` has no OpenCode imports. The focus-dimming/Esc clause of U3.11 is separate.
+- **U3.14 should mount `AccessibilityLayer` against `RenderModel.nodes`** (map kind/status/interactive) and the adapter selection event.
+- **L1.23's bands are a generic default, not UI policy.** The semantic level policy stays in `session-ui/src/graph/levels.ts`.
+- Remaining Phase 3 UI: U3.6 (renderer comparison), U3.13 (minimap, needs L1.27), U3.14 (a11y, needs the layer mount), U3.15 (3D polish), U3.16 (stories), U3.17 (component tests). Remaining Phase 1: L1.5–L1.7, L1.11, L1.14–L1.18, L1.27–L1.34.
+
 
 ## 0. Mission
 
@@ -1064,15 +1084,15 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Packaging and entry points
 
-- [x] **L1.1 Remove internal self-imports** (done for existing modules; five subpaths await their modules — see log)
+- [x] **L1.1 Remove internal self-imports** (done; `./zoom`/`./layout`/`./a11y`/`./navigation` now exist — see log)
   Convert the 37 `spacegraphjs/*` imports in `src` to relative imports. Add explicit core `exports` for `.`, `./activity`, `./core`, `./nodes`, `./edges`, `./plugins`, `./builder`, `./types`, `./zoom`, `./layout`, `./a11y`, `./navigation`, `./inline`, and `./vision`. Add `types` and a `types` condition. The renderer contract is a separate package, not a core subpath.
   Done: source and built consumption resolve without tsconfig paths; no `spacegraphjs/spacegraphjs/...` alias corruption.
-  Status: self-imports are all relative (grep clean); `exports` cover every existing module. `./zoom`, `./layout`, `./a11y`, `./navigation`, `./inline` land with L1.23–L1.26.
+  Status: self-imports are all relative (grep clean); `exports` cover every existing module. `./zoom`, `./layout`, `./a11y`, and `./navigation` exist (L1.23–L1.26); only `./inline` has no core module (the inline SVG renderer is `@spacegraphjs/svg-renderer`).
 
-- [x] **L1.2 Add a lean activity entry** (done except `ZoomBandsPlugin`, which arrives with L1.23 — see log)
+- [x] **L1.2 Add a lean activity entry** (done — see log)
   Create `src/activity.ts` exporting only: `SpaceGraph`, `Graph`, `EventEmitter`, `ShapeNode`, `HtmlNode`, `DOMNode`, `NoteNode`, `PanelNode`, `TextMeshNode`, `GroupNode`, `CurvedEdge`, `LabeledEdge`, `GridLayout`, `HierarchicalLayout`, `TimelineLayout`, `LODPlugin`, `ZoomBandsPlugin`, and theme/types. It must not import vision, Monaco, Chart, Math, or media nodes.
   Done: lean entry imports in under the agreed chunk budget and never pulls ONNX/Monaco.
-  Status: `src/activity.ts` exists and `test/entry-critical-path.test.ts` asserts importing the entry and the activity entry evaluates neither ONNX nor Monaco. `ZoomBandsPlugin` is added when L1.23 creates it.
+  Status: `src/activity.ts` exists and `test/entry-critical-path.test.ts` asserts importing the entry and the activity entry evaluates neither ONNX nor Monaco. `ZoomBandsPlugin` is now exported from the lean entry (L1.23).
 
 - [x] **L1.3 Make default chrome opt-in** (done; see log — browser "bare canvas" assertion still to confirm in L1.18)
   Move `HUDPlugin`, `MinimapPlugin`, `ZoomUIPlugin`, and `FractalZoomPlugin` out of `DEFAULT_SYSTEM_PLUGINS` into a `DEFAULT_CHROME_PLUGINS` list. Add `chrome: false` default for embedded use. Remove fixed `document.body` overlays unless chrome is enabled.
@@ -1182,21 +1202,25 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: one command proves both adapters honor the contract; capability gaps are asserted, not ignored.
   Status: `spacegraphjs/test/renderer.contract.test.ts` (Vitest, jsdom, 13 tests) runs the headless contract against **both** adapters — method surface, `CONTRACT_VERSION`, capability-driven `supports()`, pre-mount no-ops, `on()` unsubscribe, idempotent `dispose` + post-dispose no-ops, and an explicit 3D/minimap capability-difference case. The browser half (mount/click/resize/dispose, hidden-node display, HTML-card overlay, capability gating) runs in the session-graph Storybook harness (`component-tests/{adapter,cytoscape}.spec.ts`). **Deviation:** the browser suite is the host harness, not `spacegraphjs/test/e2e/renderer.contract.spec.ts`, because the library repo has no contract page harness; add the library-side spec if a non-OpenCode host needs it. V5.6 folds both commands into `graph:verify`.
 
-- [ ] **L1.23 Generic zoom-band controller**
+- [x] **L1.23 Generic zoom-band controller** (done; see log)
   Add `src/zoom/ZoomBands.ts`: configurable thresholds, normalized zoom, band callbacks, and viewport snapshots. Replace `FractalZoomPlugin` with a thin `ZoomBandsPlugin` that delegates to the controller. The controller stays headless and policy-free.
   Done: unit tests cover threshold edges, wheel bursts, projection changes, and programmatic zoom; `FractalZoomPlugin` is removed or deprecated.
+  Status: `src/zoom/ZoomBands.ts` is a headless controller (validated contiguous bands, hysteresis, `feed`/`feedNormalized`, change callbacks, `snapshot`). `ZoomBandsPlugin` delegates and is now in `DEFAULT_CHROME_PLUGINS`; `FractalZoomPlugin` is kept but `@deprecated`. `test/zoom-bands.test.ts` covers threshold edges, wheel-burst hysteresis, projection switches, and programmatic zoom.
 
-- [ ] **L1.24 Generic lane layout**
+- [x] **L1.24 Generic lane layout** (done; see log)
   Add `src/layout/LaneLayout.ts`: lanes, ordinals, gaps, cluster bounds, reserved space, and append-only positions. `TimelineLayout`/`HierarchicalLayout` can use it internally, but the API is generic and does not mention sessions or messages.
   Done: deterministic snapshots; adding an item never moves existing items.
+  Status: `src/layout/LaneLayout.ts` provides `place`/`placeAll`/`reserve`/`bounds`/`clear`; `test/lane-layout.test.ts` asserts lane→Y, ordinal→X, depth→Z, group reservation, byte-identical rebuilds, and append-only stability. `TimelineLayout`/`HierarchicalLayout` are not yet refactored onto it.
 
-- [ ] **L1.25 Generic accessibility layer**
+- [ ] **L1.25 Generic accessibility layer** (layer implemented; adapter wiring is U3.14 — see log)
   Add `src/a11y/AccessibilityLayer.ts`: a visually hidden ordered node/edge list, roving tabindex, Enter/Space selection, Escape back, and `aria-live` selection announcements. It accepts a minimal structural node list (`id`, `label`, `kind`, `status`, `interactive`) so core does not import the contract; the host passes `RenderModel.nodes`.
   Done: keyboard-only traversal works against both interactive adapters; no renderer-specific accessibility code; core has no contract import.
+  Status: `src/a11y/AccessibilityLayer.ts` implements the mirror (roving tabindex, Arrow/Home/End skipping non-interactive items, Enter/Space, Escape, `aria-live`), imports no contract, and is covered by `test/a11y.test.ts` in jsdom. Remaining: mounting it over the active render model and proving traversal against both adapters (U3.14).
 
-- [ ] **L1.26 Generic navigation trail**
+- [x] **L1.26 Generic navigation trail** (done; see log)
   Add `src/navigation/Trail.ts`: push/replace/back/forward, depth, and labels. Session-graph renders breadcrumbs from it; any graph app can use the controller.
   Done: trail state survives render-model updates by ID and resets on explicit root.
+  Status: `src/navigation/Trail.ts` provides the history plus `reconcile(byId)`/`reset`; `test/trail.test.ts` asserts forward-truncation, `maxDepth` trimming, by-id reconciliation, and reset. Session-graph breadcrumbs still read `part-of` ancestry; the swap to `Trail` is U3.11's remainder.
 
 - [ ] **L1.27 Optional chrome modules**
   Fix `MinimapPlugin` and `ZoomControls` for embedded use: container-scoped, explicit enable/disable, accurate viewport rectangle, no second full scene pass if a DOM/SVG minimap is cheaper. Expose them as optional modules, not defaults.
