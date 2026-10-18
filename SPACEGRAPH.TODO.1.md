@@ -75,13 +75,12 @@ exist yet.
 
 - **P0.1** branch/baseline: work continues directly on `dev` (no `session-graph` branches). Tested SHAs:
   OpenCode `93f49a9cea`, spacegraphjs `8fe955a`. The session-entry performance baseline is not yet captured.
-- **P0.3** source workspaces: only `spacegraphjs` core can be linked today. The four contract packages
-  (`@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`,
-  `@spacegraphjs/svg-renderer`) do not exist yet; they are Phase 1 deliverables (L1.19-L1.21a). The task's
-  "links all five packages" is not satisfiable in Phase 0 as written: link core now, add the rest as Phase 1
-  creates them. `spacegraphjs` `package.json` still points `main`/`module` at `./dist` (no build present) and
-  must be repointed at `src/index.ts` for source consumption, with a Vite/tsconfig fallback if bun workspace
-  resolution conflicts.
+- **P0.3** source workspaces: `spacegraphjs` core and `@spacegraphjs/renderer` (L1.19) are linked today. The
+  remaining three packages (`@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`,
+  `@spacegraphjs/svg-renderer`) do not exist yet; they are Phase 1 deliverables (L1.20-L1.21a). The task's
+  "links all five packages" is not satisfiable in Phase 0 as written: link each now as Phase 1 creates it.
+  `spacegraphjs` `package.json` already points `main`/`module` at `./src/index.ts` with a `types` stopgap for
+  `./activity`; the contract package needs no stopgap because its source is clean.
 - **P0.4** critical path: the library survey found `spacegraphjs/src/core/VisionManager.ts` statically imports
   `spacegraphjs/vision` -> `onnxruntime-web`, `src/nodes/CodeEditorNode.ts` statically imports
   `@monaco-editor/loader`, and `src/core/Renderer.ts:3` imports `three-mesh-bvh` (patched onto global
@@ -272,6 +271,33 @@ Notes for the next phases:
   primitive exists.
 - Positions are units-agnostic absolute coordinates with default gaps (`turnGap` 320, `step` 48, `laneGap` 56,
   `depthStep` 64); `buildRenderModel` (U3.1) consumes them directly.
+
+**2026-10-18 (cont.) — Phase 1 L1.19: the dependency-free renderer contract package.**
+
+Scope for this pass: publish the shared port that Phase 3 and P0.8 build on, and link it into the OpenCode
+workspace (the next piece of P0.3). All library work is in `spacegraphjs` commit `5a39bd5`; the OpenCode repo
+carries only the workspace wiring and this log.
+
+- **L1.19 — `@spacegraphjs/renderer` created (`spacegraphjs/packages/renderer`).** `src/index.ts` carries the
+  §4.4 contract: `CONTRACT_VERSION`, `Projection`, `NodeStatus`, `RenderNode`, `RenderEdge`, `RenderModel`,
+  `RenderTheme`, `RendererCapabilities`, `RendererViewport`, `RendererEventMap`, `GraphRenderer`, `Unsubscribe`,
+  plus `RendererCapability` and `supports` (the L1.28 predicate: `"2d"`/`"3d"` resolve through
+  `capabilities.projections`, every other capability is its own boolean field). Zero runtime dependencies,
+  `sideEffects: false`, source export `"." -> ./src/index.ts` (no build step, matching the source-workspace
+  decision). `src/index.test.ts` (bun) covers the version and `supports`.
+- **Workspace linkage (P0.3, second of five packages).** `spacegraphjs/packages/renderer` added to the root
+  `workspaces.packages`; `@spacegraphjs/renderer` added as a `workspace:*` dependency of
+  `packages/session-graph`. New `packages/session-graph/src/contract.test.ts` proves resolution under `bun test`
+  and `tsc -b`. **No `types` stopgap is needed** (unlike `spacegraphjs/activity`) because the contract source is
+  clean under this repo's `noUnusedLocals`; the package `tsconfig.json` excludes its `bun:test` file from
+  `tsc --noEmit`, which only checks the contract source.
+- **Verification.** `cd spacegraphjs/packages/renderer && bun test` → 4 pass; `cd spacegraphjs && pnpm exec tsc
+  --noEmit -p packages/renderer/tsconfig.json` clean; `cd packages/session-graph && bun test src` → 1 pass;
+  `bun run typecheck` clean; root `bun install` links the new workspace.
+- **Not done here (unchanged from plan ordering).** The three adapters and the conformance suite
+  (L1.20–L1.22) are not started; P0.7/P0.8 stay gated on them. Phase 3 `buildRenderModel` (U3.1) can now import
+  `RenderModel` from the contract. The next library dependency for L1.20 is the core primitive set it consumes
+  (event forwarding L1.8, click semantics L1.9, unified selection L1.10, `setPositions` L1.16).
 
 ## 0. Mission
 
@@ -805,10 +831,10 @@ Goal: prove both source-linked renderers can render, resize, and dispose inside 
   Choose one: git submodule for `spacegraphjs/`, or a pinned commit SHA with a documented clone command. Recommended: submodule for a reproducible release artifact; do not vendor source into OpenCode.
   Done: linkage method documented; `spacegraphjs/` ignored or registered consistently; no accidental nested-repo commit.
 
-- [ ] **P0.3 Make the SpaceGraphJS packages source workspaces** (core linked; the four contract packages are Phase 1 deliverables — see log)
+- [ ] **P0.3 Make the SpaceGraphJS packages source workspaces** (core + `@spacegraphjs/renderer` linked; the three adapter/SVG packages are Phase 1 deliverables — see log)
   Add `spacegraphjs`, `spacegraphjs/packages/renderer`, `spacegraphjs/packages/spacegraph-renderer`, `spacegraphjs/packages/cytoscape-renderer`, and `spacegraphjs/packages/svg-renderer` to root `workspaces.packages`. Point each package's `main`/`module`/`types`/`exports` at its `src/index.ts` for the prototype. Add `spacegraphjs`, `@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`, and `@spacegraphjs/svg-renderer` as `workspace:*` dependencies of `packages/session-graph`. Keep a documented fallback (Vite regex aliases + tsconfig paths) if Bun workspace resolution conflicts.
   Done: `bun install` links all five packages; imports resolve from `packages/session-graph` in Vite, Bun test, typecheck, and Storybook; core does not import the contract.
-  Status: `spacegraphjs` is a root workspace and a `workspace:*` dep of `packages/session-graph`; imports resolve in Vite, Bun, and Storybook, and typecheck passes via the `./activity` `types` condition. The remaining four packages and the "all five" clause land in Phase 1.
+  Status: `spacegraphjs` is a root workspace and a `workspace:*` dep of `packages/session-graph`; imports resolve in Vite, Bun, and Storybook, and typecheck passes via the `./activity` `types` condition. `@spacegraphjs/renderer` is now also a root workspace and a `workspace:*` dep (L1.19), resolved under `bun test`/`tsc -b` with no `types` stopgap. The three adapter/SVG packages and the "all five" clause land with L1.20–L1.21a.
 
 - [x] **P0.4 Trim the critical path** (done, narrowed scope: ONNX/Monaco dynamic, BVH patch now conditional; see log)
   Make `onnxruntime-web` and `@monaco-editor/loader` optional via dynamic import in `src/core/VisionManager.ts` and `src/nodes/CodeEditorNode.ts`. Do not import `src/vision` statically from the main entry. Remove the unconditional `three-mesh-bvh` prototype patch in `src/core/Renderer.ts` unless a real BVH is built.
@@ -927,9 +953,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Shared contract and second backend
 
-- [ ] **L1.19 Publish the renderer contract package**
+- [x] **L1.19 Publish the renderer contract package** (done; see log)
   Create `spacegraphjs/packages/renderer` (`@spacegraphjs/renderer`) with the types in §4.4. It contains types plus a tiny `CONTRACT_VERSION`/capability helper, with zero dependencies. It must not import `spacegraphjs`, `three`, `cytoscape`, or host code. Add a small `supports(capabilities, capability)` helper if useful.
   Done: the package typechecks and builds with zero runtime dependencies; importing it adds no bundle weight.
+  Status: `@spacegraphjs/renderer` exists with the §4.4 types plus `CONTRACT_VERSION`/`supports`; zero deps; source export. Typecheck is clean and `bun test` passes. No build step yet (source-only), and it is linked into `packages/session-graph` (P0.3).
 
 - [ ] **L1.20 SpaceGraph renderer adapter package**
   Create `spacegraphjs/packages/spacegraph-renderer` (`@spacegraphjs/spacegraph-renderer`) exporting `SpaceGraphRenderer`. It wraps the lean `spacegraphjs/activity` entry, maps `RenderModel` to specs, applies positions with `setPositions`, maps status/kind to theme styles, positions HTML cards via `DOMNode`/`HtmlNode`, translates events to string IDs, and implements viewport/band reporting. It is the only package that imports both the core and the contract.
