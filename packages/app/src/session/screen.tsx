@@ -35,6 +35,8 @@ import { TimelineSearchBar } from "./timeline/search-bar"
 import { ActiveSessionComposerRegion, createActiveSessionRegion } from "./composer/region"
 import { SessionIdentityHeader } from "./session-identity-header"
 import { SessionReviewToggle } from "./header/session-header-actions"
+import { SessionGraphToggle } from "./header/session-graph-toggle"
+import { SessionGraphView } from "./graph/session-graph-view"
 import { SessionRunningMenu } from "./header/session-running-menu"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
 import { createTimelineCache } from "./timeline/cache"
@@ -86,6 +88,13 @@ function SessionScreenContent(props: {
   })
 
   const timeline = createSessionTimelineInteraction(session)
+
+  const graph = session.layout.graph()
+
+  const openGraphTranscript = (messageID: string, partID?: string) => {
+    graph.setMode("transcript")
+    timeline.actions.revealMessage(messageID, partID)
+  }
 
   const timelineSearch = createTimelineSearchController({
     sessionID: session.identity.sessionID,
@@ -353,7 +362,14 @@ function SessionScreenContent(props: {
                 />
               </SessionIdentityHeader>
             </Show>
-            <Show when={messagesReady() && session.identity.params.id}>{timelineView()}</Show>
+            <Show when={messagesReady() && session.identity.params.id}>
+              <Switch>
+                <Match when={graph.mode() === "graph"}>
+                  <SessionGraphView session={session} onBack={() => graph.setMode("transcript")} onOpenTranscript={openGraphTranscript} />
+                </Match>
+                <Match when={true}>{timelineView()}</Match>
+              </Switch>
+            </Show>
           </Match>
         </Switch>
       </div>
@@ -374,11 +390,12 @@ function SessionScreenContent(props: {
           {/* Keep the control outside panel animations. */}
           <Show when={isDesktop() && messagesReady() && session.identity.params.id}>
             <div
-              class="absolute end-3 top-0 z-30 h-12 flex items-center"
-              data-slot="session-review-toggle"
+              class="absolute end-3 top-0 z-30 h-12 flex items-center gap-1"
+              data-slot="session-header-toggles"
               onPointerDown={hideTimelineScrollbar}
               onClick={hideTimelineScrollbar}
             >
+              <SessionGraphToggle />
               <SessionReviewToggle />
             </div>
           </Show>

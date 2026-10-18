@@ -453,6 +453,26 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       keybind: "mod+shift+r",
       onSelect: () => actions.session.layout.view().side.toggle(),
     }),
+    viewCommand({
+      id: "graph.toggle",
+      title: language.t("command.graph.toggle"),
+      keybind: "mod+shift+g",
+      disabled: !actions.session.identity.params.id,
+      onSelect: () => {
+        const graph = actions.session.layout.graph()
+        graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
+      },
+    }),
+    viewCommand({
+      id: "graph.projection",
+      title: language.t("command.graph.projection"),
+      keybind: "mod+alt+g",
+      disabled: !actions.session.identity.params.id,
+      onSelect: () => {
+        const graph = actions.session.layout.graph()
+        graph.setProjection(graph.projection() === "3d" ? "2d" : "3d")
+      },
+    }),
     ...(shown()
       ? [
           viewCommand({

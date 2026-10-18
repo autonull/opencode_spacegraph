@@ -28,6 +28,7 @@ export type GraphViewProps = {
   positions?: ReadonlyMap<string, Position>
   renderCard?: CardTemplate
   onSelect?: (id: string | undefined) => void
+  onProjectionChange?: (projection: Projection) => void
   onOpenTranscript?: (id: string) => void
   onBack?: () => void
 }
@@ -70,6 +71,10 @@ export const GraphView = (props: GraphViewProps) => {
     setSelection(id ? [id] : [])
     props.onSelect?.(id)
   }
+  const changeProjection = (next: Projection) => {
+    setProjection(next)
+    props.onProjectionChange?.(next)
+  }
   const jumpTo = (node: GraphNode) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
@@ -87,7 +92,7 @@ export const GraphView = (props: GraphViewProps) => {
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
     const current = capabilities()
-    if (current && projection() === "3d" && !supports(current, "3d")) setProjection("2d")
+    if (current && projection() === "3d" && !supports(current, "3d")) changeProjection("2d")
   })
 
   return (
@@ -96,7 +101,7 @@ export const GraphView = (props: GraphViewProps) => {
         level={level()}
         onLevel={setLevel}
         projection={projection()}
-        onProjection={setProjection}
+        onProjection={changeProjection}
         capabilities={capabilities()}
         renderer={rendererID()}
         onFit={() => renderer?.fit()}

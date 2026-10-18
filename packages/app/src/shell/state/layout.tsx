@@ -85,6 +85,15 @@ const sessionTabsSchema = Persistence.struct({
   active: Persistence.optional(Schema.String),
 })
 
+const sessionGraphSchema = Persistence.struct({
+  mode: Schema.Literals(["transcript", "graph"]),
+  projection: Schema.optional(Schema.Literals(["2d", "3d"])),
+  renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
+  selected: Schema.optional(Schema.String),
+})
+
+export type SessionGraphState = typeof sessionGraphSchema.Type
+
 const sessionViewSchema = Persistence.struct({
   scroll: Persistence.record(Schema.Struct({ x: Schema.Finite, y: Schema.Finite })),
   // Review state from before extensions. An extension copies each session's entry out once; nothing writes these
@@ -94,6 +103,8 @@ const sessionViewSchema = Persistence.struct({
   reviewFile: Schema.optional(Schema.String),
   pendingMessage: Schema.optional(Schema.String),
   pendingMessageAt: Schema.optional(Schema.Finite),
+  // Transcript | graph mode and its renderer/projection/selection, per session. Absent means transcript.
+  graph: Persistence.optional(sessionGraphSchema),
 })
 
 export const layoutSchema = Persistence.struct({
@@ -520,6 +531,46 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           session: {
             width: createMemo(() => regions.sessionWidth() ?? DEFAULT_SESSION_WIDTH),
             resize: regions.setSessionWidth,
+          },
+        }
+      },
+      /** Transcript | graph mode and its renderer/projection/selection, per session. Absent means transcript. */
+      graph(sessionKey: string | Accessor<string>) {
+        const key = createSessionKeyReader(sessionKey, ensureKey)
+        const state = () => store.sessionView[key()]?.graph
+
+        const write = (next: Partial<SessionGraphState>) => {
+          const session = key()
+          touch(session)
+          const current = store.sessionView[session]
+          const merged: SessionGraphState = { mode: current?.graph?.mode ?? "transcript", ...current?.graph, ...next }
+
+          if (!current) {
+            setStore("sessionView", session, { scroll: {}, graph: merged })
+            prune(usage.active ?? session)
+
+            return
+          }
+
+          setStore("sessionView", session, "graph", merged)
+        }
+
+        return {
+          mode: createMemo(() => state()?.mode ?? "transcript"),
+          projection: createMemo(() => state()?.projection ?? "2d"),
+          renderer: createMemo(() => state()?.renderer),
+          selected: createMemo(() => state()?.selected),
+          setMode(mode: SessionGraphState["mode"]) {
+            write({ mode })
+          },
+          setProjection(projection: NonNullable<SessionGraphState["projection"]>) {
+            write({ projection })
+          },
+          setRenderer(renderer: NonNullable<SessionGraphState["renderer"]>) {
+            write({ renderer })
+          },
+          setSelected(selected: string | undefined) {
+            write({ selected })
           },
         }
       },
