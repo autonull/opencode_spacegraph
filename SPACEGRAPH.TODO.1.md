@@ -1405,6 +1405,27 @@ Notes for the remaining RF.8 work:
   carries only the changed-file list (`diff` node `data.files`) today. Phase 4/5 scope.
 - RF.6 (selection-outline alignment), RF.7 (overflow menu), P8.1/P8.2 remain (unchanged below).
 
+**2026-10-18 (cont.) — Phase 9 close-out: on-demand diffs, toolbar overflow, assistant Markdown, theme-coloured DOM outlines, and tighter swimlane bands.**
+
+Scope for this pass (agreed with the user: "everything, go as far as possible toward completeness, usability, usefulness"): the remaining Phase 9 host gaps plus the one library colour gap. Host work is in `packages/session-graph`, `packages/app`, and one `en.ts` edit; the library change is in `spacegraphjs` commit `2fcaabd` (branch `main`).
+
+- **RF.8 — on-demand diffs (done).** New `packages/session-graph/src/ui/GraphDiff.tsx` (`GraphDiffView`, `GraphDiffSource`): a `diff` node's changed files load through a host source keyed by the turn's opening message id and render each file's unified patch as selectable DOM text with per-line tone and +/- counts. `GraphInspector` derives `from` from the turn node's `messageID` (via the diff node's `turnID`) and renders it only when a `diffSource` is supplied, so the plain path list stays the fallback. The app wires `useData().turnDiff` (scoped to the current session) through `session-graph-view.tsx` into `GraphView`; the graph package never holds a session id and does not import the transcript's diff renderer, so the graph chunk is unaffected. `GraphView.stories.tsx` gains a `Diff` story with an on-demand source; `graph-view.spec.ts` asserts the loaded patch renders.
+- **RF.8 — assistant Markdown (done).** `GraphInspector` gains an optional `renderSummary(node)` seam; the app passes a renderer that renders `message`/`reasoning` summaries with the shared `Markdown` component (already in the session entry, so no new graph-chunk cost). A `MarkdownSummary` story and a `graph-view.spec.ts` assertion cover the seam; a new app e2e case ("renders an assistant message as Markdown in the inspector") proves the wiring selects an assistant text node by search and renders `[data-component="markdown"]`.
+- **RF.7 — narrow toolbar overflow (done).** `GraphToolbar` gains a `compact` prop; when set, the controls after the level stepper collapse into a native `<details>` overflow menu (`data-slot="graph-toolbar-overflow"`, `outline-dots` summary, `ui.sessionGraph.toolbar.more`), while wide rows keep them inline. `GraphView` tracks a second width threshold (`< 640px`) alongside the inspector's `< 768px` and passes `compact`. `graph-states.spec.ts` opens the overflow at 390px; `graph-view.spec.ts` asserts no overflow at 1100px. The app capture `fit` helper opens and closes the menu at narrow widths.
+- **RF.6 — theme-coloured DOM outlines (library, `spacegraphjs` `2fcaabd`).** `applyControlStateStyles` takes an optional colour override, and `DOMNode.syncVisual` passes the resolved theme's `selection`/`focus`/`hover`, so a selected DOM card's ring follows the host theme instead of the hardcoded orange. `test/interaction-visuals.test.ts` asserts the default and themed colours. **Open:** mesh nodes still use the `BoxHelper` world box (a stencil/backface pass); the app draws cards, so this is cosmetic there.
+- **RF.5 refinement — bands wrap visible members.** `buildRenderModel` bands now compute their bounds from the members drawn at the current level (via a new `bands: true` option; the layout `clusters` map is no longer needed), so an overview turn band frames its visible chips/subagents instead of the full execution extent. `buildRenderModel.test.ts` updated; `GraphView` passes `bands: true`.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 29 pass; `bun run test:components` → 28 pass.
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` → only the 4 pre-existing errors; `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 13 pass, 1 fail ("restores the transcript position after leaving the graph") — **confirmed pre-existing**: the same case fails on `d59ed216b0` (before this pass) in a full run and passes in isolation, the load-dependent timeline-virtualizer flake recorded at V5.7.
+- `cd spacegraphjs && pnpm exec vitest run` → 32 files / 295 tests; `bun run test:boundaries` → 5 pass.
+- `bun run graph:capture --mode=compare` regenerated all images; inspected `02` (tighter bands), `04` (theme-coloured selection ring), `13` (overflow button). Root `bun run lint:changed` → 0 problems.
+
+Notes for the remaining work:
+- **RF.6 mesh outline** and **vector-node dimming** (session/turn/phase panels and bands stay full-opacity) remain; both need a core `data.opacity`/stencil path.
+- **P8.1** (framework-agnostic controller in `spacegraphjs/control`) and **P8.2** (React/Solid bindings over the contract) remain the last Phase 8 items and are larger than they read.
+- The overview band is still tall because a turn's visible content spans the phases→delegate lanes; a compact overview layout (e.g. hide the assistant `message` at overview per §5.4) would tighten it further.
+
 ## 0. Mission
 
 
@@ -2695,32 +2716,35 @@ neighbours. The layout must be card-aware.
   Map `RenderTheme.selection`/`focus`/`hover`/edge-label through end to end (the core hard-codes the
   edge-label pill; the adapter passes only `{ background }`). Align the selection outline to DOM card
   bounds. Verify light and dark.
-  Status: done except the selection-outline alignment. The core `SpaceGraphTheme` gained
+  Status: done for DOM cards. The core `SpaceGraphTheme` gained
   `edge.labelBackground`; `@spacegraphjs/spacegraph-renderer`'s `spaceGraphTheme` maps the whole
   `RenderTheme` (node stroke, edge colour + label pill, label typography, selection/hover/focus) at
-  `mount` and `setTheme`. Light and dark verified via `14-graph-light.png` / `02-graph-overview.png`.
-  **Open:** the mesh selection outline is still a `BoxHelper` world box, not aligned to the DOM card
-  bounds.
+  `mount` and `setTheme`; and `DOMNode.syncVisual` now draws its DOM outline with the resolved theme
+  colours (`spacegraphjs` `2fcaabd`), so a selected card's ring follows the host. Light and dark
+  verified via `14-graph-light.png` / `02-graph-overview.png`. **Open:** mesh nodes still use a
+  `BoxHelper` world box (needs a stencil/backface pass); the app draws cards, so this is cosmetic there.
 - [x] **RF.7 Toolbar information architecture, zoom control, and minimap toggle** (user-requested)
   One toolbar row with clear left/right grouping; replace the detached floating zoom stepper with a
   clean zoom control; add a **minimap toggle, default off** (the minimap is noise when the whole graph
   is already visible), persisted per session (`sessionViewSchema.graph.minimap`). Narrow widths use an
   overflow menu. Keep the "Renderer: …" label unobtrusive and clear of the header toggles.
-  Status: done except the overflow menu. The row groups the level/zoom/projection/layout controls on the
-  left and the renderer label + back on the right (`flex-wrap` keeps narrow widths usable rather than an
-  overflow menu); a minimap toggle (default off) persists in `sessionViewSchema.graph.minimap`; the
+  Status: done. The row groups the level/zoom/projection/layout controls on the
+  left and the renderer label + back on the right; below 640px the controls after the level stepper
+  collapse into a `<details>` overflow menu (`data-slot="graph-toolbar-overflow"`), while wide rows
+  keep them inline; a minimap toggle (default off) persists in `sessionViewSchema.graph.minimap`; the
   layout chooser sits beside projection.
-- [x] **RF.8 Inspector** (partial)
+- [x] **RF.8 Inspector**
   Collapse the `w-72` gutter when nothing is selected; make it resizable; render it as a bottom sheet
   under ~768px instead of the current side-by-side squeeze. Then deepen content (markdown, ANSI-stripped
   terminal, on-demand diffs, copy) once the model carries that text.
-  Status: collapse landed (`data-slot="graph-inspector-gutter"` `data-collapsed`; the panel is `w-0`
-  with `overflow-hidden` when nothing is selected); the gutter is now resizable at ≥768px (`role="separator"`
-  drag handle, 220px–60% clamp) and a bottom sheet below 768px (`data-layout="sheet"`). **Terminal output and
-  copy landed** (this pass): shell/execute result nodes carry full ANSI-stripped `data.output` and the panel
-  renders it in a scrollable `<pre>` with a copy button (`data-slot="graph-inspector-output"`). **Open:**
-  Markdown for assistant text (would pull the Markdown component/worker into the graph chunk) and on-demand
-  diffs (need the app's `turnDiff` loader threaded into `GraphView` plus diff-hunk model support).
+  Status: done. Collapse landed (`data-slot="graph-inspector-gutter"` `data-collapsed`; the panel is `w-0`
+  with `overflow-hidden` when nothing is selected); the gutter is resizable at ≥768px (`role="separator"`
+  drag handle, 220px–60% clamp) and a bottom sheet below 768px (`data-layout="sheet"`). Shell/execute
+  result nodes carry full ANSI-stripped `data.output` and the panel renders it in a scrollable `<pre>` with
+  a copy button (`data-slot="graph-inspector-output"`). This pass adds **on-demand diffs** (a `diff` node
+  loads the turn's changed files through a host source and renders each patch; `GraphDiffView`) and
+  **assistant Markdown** (a `renderSummary` seam renders `message`/`reasoning` summaries with the shared
+  Markdown component in the app).
 - [x] **RF.9 States and theming**
   Real loading skeleton, styled empty and error states, and light/dark parity checked in screenshots
   (not only Storybook).
