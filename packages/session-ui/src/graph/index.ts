@@ -48,6 +48,7 @@ export {
   outgoing,
   search,
   shortestPath,
+  turnSubgraph,
   why,
   type Subgraph,
   type TranscriptRef,

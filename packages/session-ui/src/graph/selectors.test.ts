@@ -1,7 +1,17 @@
 import { describe, expect, test } from "bun:test"
 import { buildFixtureGraph } from "./fixture"
 import { fileNodeID, messageNodeID, resultNodeID, subagentNodeID, toolNodeID, turnNodeID } from "./model"
-import { ancestors, breadcrumbs, forwardChain, openInTranscript, outgoing, search, shortestPath, why } from "./selectors"
+import {
+  ancestors,
+  breadcrumbs,
+  forwardChain,
+  openInTranscript,
+  outgoing,
+  search,
+  shortestPath,
+  turnSubgraph,
+  why,
+} from "./selectors"
 
 const model = buildFixtureGraph()
 
@@ -74,5 +84,36 @@ describe("selectors — search and transcript refs", () => {
     const turn = turnNodeID("msg_user_1")
 
     expect(outgoing(model, turn).every((edge) => edge.source === turn)).toBe(true)
+  })
+})
+
+describe("selectors — turn subgraph (hybrid H6.2/H6.4)", () => {
+  test("caps the turn plus its highest-signal children at the limit", () => {
+    const sub = turnSubgraph(model, turnNodeID("msg_user_1"), 7)
+
+    expect(sub.nodes).toHaveLength(7)
+    expect(sub.nodes[0]!.id).toBe(turnNodeID("msg_user_1"))
+    expect(sub.nodes.some((node) => node.kind === "phase")).toBe(true)
+  })
+
+  test("a lower limit still keeps the turn and prefers phases over raw tools", () => {
+    const sub = turnSubgraph(model, turnNodeID("msg_user_1"), 3)
+    const kinds = sub.nodes.map((node) => node.kind)
+
+    expect(sub.nodes).toHaveLength(3)
+    expect(sub.nodes[0]!.id).toBe(turnNodeID("msg_user_1"))
+    expect(kinds.filter((kind) => kind === "phase")).toHaveLength(2)
+  })
+
+  test("every edge connects two included nodes and no inference creeps in", () => {
+    const sub = turnSubgraph(model, turnNodeID("msg_user_1"), 7)
+    const ids = new Set(sub.nodes.map((node) => node.id))
+
+    expect(sub.edges.every((edge) => ids.has(edge.source) && ids.has(edge.target))).toBe(true)
+    expect(sub.edges.some((edge) => edge.kind === "inferred-cause")).toBe(false)
+  })
+
+  test("an unknown turn is an empty subgraph", () => {
+    expect(turnSubgraph(model, "turn:missing", 7)).toEqual({ nodes: [], edges: [] })
   })
 })

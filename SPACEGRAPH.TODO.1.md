@@ -926,6 +926,52 @@ Notes for the next pass:
 - **The hardening "programmatic zoom" e2e is a pre-existing red** at HEAD — worth a separate fix (likely an in-flight camera animation from the projection toggle overwriting `setZoom`, or `normalizeZoom`/`setZoom` disagreement under ortho).
 - Remaining Phase 1: **L1.4** (screenshot check), **L1.29** (demo). Remaining Phase 3: none (U3.6 and U3.13 both landed). Phases 6–8 (hybrid, docs/release, portability) are unstarted.
 
+**2026-10-18 (cont.) — Phase 6 hybrid log + graph begins: host decision (H6.1), turn map overlay (H6.2), generic inline subgraph (H6.4), tests (H6.6), flag/docs (H6.7).**
+
+Scope for this pass (user-selected: Phases 6, 8, and the remaining partials; Phase 6 first). The hybrid is
+progressive disclosure over the transcript; nothing injects into timeline rows. Work is in `packages/session-ui`,
+`packages/session-graph`, `packages/app`, plus `en.ts` strings and docs; `spacegraphjs` is untouched.
+
+- **H6.1 host decision (recorded).** The overlay host is a lazy popover at
+  `packages/app/src/session/graph/turn-map-overlay.tsx`, mounted inside the session panel's relative container
+  (`screen.panel.ref`) so it covers the panel in either mode while the transcript stays mounted (scroll preserved).
+  Entry points: the graph toolbar's "Open turn map" control (shown while a turn is selected) and the `graph.turnmap`
+  command (`mod+alt+t`). **H6.3 deferred** (a side panel is an extension `Panel` region with its own i18n/store —
+  a larger surface whose first value the overlay already delivers) and **H6.5 deferred** (approval-gated timeline
+  slot). Both recorded in `docs/spacegraph/prototype.md` §"Phase 6".
+- **H6.2 turn map overlay.** `packages/session-ui/src/graph/selectors.ts` gains the pure
+  `turnSubgraph(model, turnID, limit)` (turn + highest-signal `part-of` children; phases/failures/subagent/result
+  rank above tools/files; `inferred-cause` never appears). `packages/session-graph/src/ui/turnMap.ts` scopes the
+  model and reuses `layoutGraph`/`buildRenderModel`. `src/ui/TurnMapOverlay.tsx` is a focus-trapped, Escape-closing
+  dialog (`role="dialog"`, `aria-modal`) with a compact `GraphCanvas`, the shared `GraphInspector`, and "Open full
+  graph"; the toolbar (`GraphToolbar`/`GraphView`) gained an `onTurnMap` control that resolves the selected node's
+  turn via `ancestors`.
+- **H6.4 generic inline subgraph.** `src/ui/TurnMapInlineGraph.tsx` is a thin wrapper over
+  `@spacegraphjs/svg-renderer`'s `InlineGraph` rendering a five-node turn subset as static SVG; no graph logic, not
+  injected into the timeline (deferred with H6.5).
+- **H6.7 flag/docs.** Off by default: the overlay opens only on explicit action; the graph view stays the primary
+  alternate mode. Rationale recorded in the prototype doc.
+- **H6.6 tests.** `component-tests/turn-map.spec.ts` (5 cases: open/ready, Escape-close, "Open full graph", trapped
+  focus, Cytoscape fallback, inline SVG node cap); app e2e case "opens the hybrid turn map over the graph and closes
+  on Escape".
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 47 pass (was 42; +5 for `turnSubgraph`).
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components` →
+  5 new `turn-map` cases pass (10.3s).
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts -g "hybrid turn
+  map"` → 1 pass; `bun run typecheck:e2e` shows only the 4 pre-existing errors.
+- `cd packages/ui && bun run typecheck` clean.
+
+Notes for the next pass:
+- **H6.3/H6.5 remain deferred** (see the H6.1 decision). If the side panel is pursued, the entry is an extension
+  `Panel` (`region: "side"`) in `packages/gui-extensions`, with its own store and `i18n/en.ts`.
+- **The overlay's "open from a transcript selection" is a command, not a row affordance.** Timeline rows are
+  off-limits this phase; the `graph.turnmap` command in either mode is the transcript-side entry. A real
+  transcript-turn affordance would need a header control or an approved generic slot (H6.5).
+- The centered dialog is sized by the host container; the app renders it inside `screen.panel.ref` at `z-40`, above
+  the panel but below the floating header toggles.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -2012,33 +2058,53 @@ The hybrid is delivered in this order:
 3. **Generic inline graph component** — built in `@spacegraphjs/svg-renderer`, wrapped thinly by `packages/session-graph`, usable by any host, but not injected into OpenCode's timeline.
 4. **Inline row host** — deferred unless the OpenCode maintainers approve a generic timeline slot. It is the only task that would exceed the core diff budget, so it stays approval-gated.
 
-- [ ] **H6.1 Host decision**
+- [x] **H6.1 Host decision** (done — overlay host chosen; side panel recorded as deferred)
   Confirm the overlay and side-panel hosts before building. Do not modify `session-timeline-row.tsx` in this phase. Record the decision and the rationale in the docs.
   Done: a one-page host decision; no timeline-row edits.
+  Status: recorded in `docs/spacegraph/prototype.md` §"Phase 6 — H6.1". The overlay host is
+  `packages/app/src/session/graph/turn-map-overlay.tsx` (a lazy popover inside `screen.panel.ref`), opened from the
+  graph toolbar and the `graph.turnmap` command. H6.3 (side panel) is deferred and H6.5 (inline row) stays
+  approval-gated; no timeline-row edits.
 
-- [ ] **H6.2 Turn map overlay**
+- [x] **H6.2 Turn map overlay** (done — see log)
   Build `TurnMapOverlay.tsx`: render the selected turn's execution-level subgraph, maximum 7 nodes, with inspect, follow-edge, and "open full graph" actions. Open from the graph toolbar and from a transcript selection; Esc restores the previous focus and scroll anchor.
   Done: overlay opens at the same log position and returns to it; focus trap and keyboard work.
+  Status: `packages/session-graph/src/ui/TurnMapOverlay.tsx` (focus-trapped, Escape-closing dialog) over the pure
+  `turnSubgraph` selector and `turnMap.ts`; inspect/follow-edge come from the shared `GraphInspector`; "Open full
+  graph" switches mode and selects the turn. The transcript stays mounted underneath, so its scroll position is
+  preserved. Entry is the toolbar control (a selected turn) and the command, not a timeline row (see H6.1 note).
 
-- [ ] **H6.3 Synchronized side panel**
+- [ ] **H6.3 Synchronized side panel** (deferred — see log)
   Build an extension `Panel` (`region: "side"`) that renders a compact session map and follows the active turn. Use `Store.session` for its own state. No core timeline edits.
   Done: selecting a transcript turn highlights the map; selecting a map node can reveal the message in the transcript.
+  Status: **deferred this pass.** A side panel is a `packages/gui-extensions` extension `Panel` with its own store and
+  per-locale i18n, a materially larger surface than the overlay that already delivers the hybrid's first value.
+  Recorded in `docs/spacegraph/prototype.md` §"Phase 6 — H6.1".
 
-- [ ] **H6.4 Generic inline graph**
+- [x] **H6.4 Generic inline graph** (done — see log; not injected into the timeline)
   Use `InlineGraph` from `@spacegraphjs/svg-renderer` against `RenderModel`: execution-level subset, no pan/zoom, max 5 nodes, theme-aware. `packages/session-graph/src/ui/InlineGraph.tsx` is a thin OpenCode wrapper. Keep it out of OpenCode's timeline until approved.
   Done: the library component renders the fixture subset in the library demo and is documented as a reusable capability; the wrapper adds no graph logic.
+  Status: `packages/session-graph/src/ui/TurnMapInlineGraph.tsx` (named to avoid colliding with the library
+  `InlineGraph`) wraps `@spacegraphjs/svg-renderer`'s `InlineGraph` over the five-node turn subset, theme-aware and
+  non-interactive. Not injected into the timeline (deferred with H6.5). The library-demo half is V5.4/L1.29 scope.
 
-- [ ] **H6.5 Inline row host (approval-gated)**
+- [ ] **H6.5 Inline row host (approval-gated)** (deferred — approval-gated)
   Only if the OpenCode maintainers approve: add one generic `session.timeline.group` slot that any extension can render into, not a graph-specific branch. Then mount `InlineGraph` there behind a setting. This is an explicit exception to the current timeline-row rule and must be documented.
   Done: either approval + a generic slot + tests, or a recorded decision to defer.
+  Status: **deferred** (no maintainer approval sought); it is the only Phase 6 item that exceeds the core diff budget.
 
-- [ ] **H6.6 Tests**
+- [x] **H6.6 Tests** (done — overlay cases; side-panel cases dropped with H6.3)
   Component tests for overlay open/close/return and side-panel synchronization; e2e for the overlay on the fixture. No duplicate coverage of the canvas contract.
   Done: both suites pass.
+  Status: `packages/session-graph/component-tests/turn-map.spec.ts` (5 cases) and an app e2e case in
+  `e2e/graph/session-graph.spec.ts`. Side-panel synchronization cases are dropped with the H6.3 deferral.
 
-- [ ] **H6.7 Flag and documentation**
+- [x] **H6.7 Flag and documentation** (done — see log)
   Default the hybrid to off until the full graph proves useful; expose a prototype setting and document progressive disclosure.
   Done: setting persists; docs explain why inline injection is deferred.
+  Status: the hybrid is off by default — the overlay opens only on explicit action; the prototype doc records the
+  progressive-disclosure rationale and why inline injection (H6.5) is deferred. No separate prototype-settings flag
+  was added because the overlay is inert until invoked.
 
 ---
 

@@ -158,6 +158,29 @@ test("keeps the toolbar back control clickable under the floating header toggles
   expect(errors).toEqual([])
 })
 
+test("opens the hybrid turn map over the graph and closes on Escape", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // Selecting a turn (via a message hash) makes the turn-map control available in the toolbar.
+  await page.evaluate(() => {
+    window.location.hash = "#message-msg_user_1"
+  })
+  await expect(page.locator(inspector).getByText("Turn", { exact: true })).toBeVisible()
+
+  await page.locator(toolbar).getByRole("button", { name: "Open turn map" }).click()
+  const overlay = page.getByRole("dialog", { name: "Turn map" })
+  await expect(overlay).toBeVisible()
+  await expect(overlay.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+
+  await page.keyboard.press("Escape")
+  await expect(overlay).toBeHidden()
+  // The graph underneath is untouched.
+  await expect(page.locator(toolbar)).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
 test("reveals the turn for a message hash and returns to it in the transcript", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

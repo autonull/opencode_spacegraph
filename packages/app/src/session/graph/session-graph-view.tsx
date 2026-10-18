@@ -77,6 +77,7 @@ export function SessionGraphView(props: {
           selection={graph.selected()}
           onSelect={(id) => graph.setSelected(id)}
           onProjectionChange={(projection) => graph.setProjection(projection)}
+          onTurnMap={(turnID) => graph.setTurnMap(turnID)}
           onOpenTranscript={(id) => {
             const ref = openInTranscript(model(), id)
 

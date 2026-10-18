@@ -4,6 +4,7 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
+import { Show } from "solid-js"
 import type { ZoomLevel } from "@opencode/session-ui/graph"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
@@ -23,6 +24,8 @@ export type GraphToolbarProps = {
   renderer?: string
   onFit: () => void
   onSearch: () => void
+  /** Opens the hybrid turn map for the currently selected turn; absent when no turn is selected. */
+  onTurnMap?: () => void
   onBack?: () => void
   searching?: boolean
   /**
@@ -115,6 +118,16 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         onClick={props.onSearch}
         icon={<Icon name="magnifying-glass" size="small" />}
       />
+      <Show when={props.onTurnMap}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.turnMap")}
+          title={i18n.t("ui.sessionGraph.toolbar.turnMap")}
+          onClick={() => props.onTurnMap?.()}
+          icon={<Icon name="branch" size="small" />}
+        />
+      </Show>
 
       <div class="ml-auto flex items-center gap-2">
         {props.renderer ? (

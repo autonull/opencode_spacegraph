@@ -1,6 +1,6 @@
 import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
-import type { GraphModel, GraphEdge, GraphNode } from "./model"
+import type { GraphModel, GraphEdge, GraphNode, NodeKind } from "./model"
 
 export type Subgraph = {
   nodes: GraphNode[]
@@ -183,4 +183,44 @@ export function currentActivity(model: GraphModel): Subgraph | undefined {
   const children = new Set(edges.map((edge) => edge.source))
 
   return { nodes: [turn, ...model.nodes.filter((node) => children.has(node.id))], edges }
+}
+
+/** Signal order for a turn's children: phases and failures summarize a turn better than raw tools. */
+const TURN_CHILD_PRIORITY: Partial<Record<NodeKind, number>> = {
+  phase: 0,
+  error: 1,
+  retry: 2,
+  subagent: 3,
+  result: 4,
+  tool: 5,
+  file: 6,
+  diff: 7,
+  message: 8,
+  compaction: 9,
+  notice: 10,
+  reasoning: 11,
+}
+
+/**
+ * The execution-level subgraph for one turn (H6.2/H6.4): the turn node plus its highest-signal
+ * `part-of` children, capped so a compact overlay or inline graph stays legible. Phase chips and
+ * failures rank above individual tools and files; ties keep model order, so the result is stable.
+ */
+export function turnSubgraph(model: GraphModel, turnID: string, limit = 7): Subgraph {
+  const turn = nodeByID(model, turnID)
+
+  if (!turn) return { nodes: [], edges: [] }
+
+  const children = model.edges
+    .filter((edge) => edge.kind === "part-of" && edge.target === turnID)
+    .map((edge) => nodeByID(model, edge.source))
+    .filter((node): node is GraphNode => !!node)
+    .sort((a, b) => (TURN_CHILD_PRIORITY[a.kind] ?? 99) - (TURN_CHILD_PRIORITY[b.kind] ?? 99))
+
+  const chosen = new Set([turn.id, ...children.slice(0, Math.max(0, limit - 1)).map((node) => node.id)])
+
+  return {
+    nodes: model.nodes.filter((node) => chosen.has(node.id)),
+    edges: model.edges.filter((edge) => chosen.has(edge.source) && chosen.has(edge.target)),
+  }
 }

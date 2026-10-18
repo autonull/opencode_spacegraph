@@ -1,7 +1,7 @@
 import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
 import type { GraphModel, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
-import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID } from "@opencode/session-ui/graph"
+import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, createUniqueId, Show } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
@@ -33,6 +33,8 @@ export type GraphViewProps = {
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onOpenTranscript?: (id: string) => void
+  /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
+  onTurnMap?: (turnID: string) => void
   onBack?: () => void
 }
 
@@ -70,6 +72,16 @@ export const GraphView = (props: GraphViewProps) => {
   const selectedNode = () => {
     const id = selection()[0]
     return id ? nodeByID(props.model, id) : undefined
+  }
+  const selectedTurn = () => {
+    const id = selection()[0]
+
+    if (!id) return undefined
+    const node = nodeByID(props.model, id)
+
+    if (node?.kind === "turn") return node.id
+
+    return ancestors(props.model, id).find((ancestor) => ancestor.kind === "turn")?.id
   }
 
   const select = (id: string | undefined) => {
@@ -119,6 +131,14 @@ export const GraphView = (props: GraphViewProps) => {
         renderer={rendererID()}
         onFit={() => renderer?.fit()}
         onSearch={() => setSearchOpen((open) => !open)}
+        onTurnMap={
+          props.onTurnMap
+            ? () => {
+                const turnID = selectedTurn()
+                if (turnID) props.onTurnMap?.(turnID)
+              }
+            : undefined
+        }
         onBack={props.onBack}
         searching={searchOpen()}
         endInset={props.endInset}

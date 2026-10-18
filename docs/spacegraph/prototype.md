@@ -274,3 +274,57 @@ Known cross-environment caveat: WebGL under headless Chromium uses SwiftShader; 
 the preserved drawing buffer rather than a frame count, and DOM assertions are preferred where a
 pixel is not the contract.
 
+## Phase 6 — hybrid log + graph (H6.1, H6.2, H6.4, H6.6, H6.7)
+
+The hybrid is delivered as progressive disclosure over the transcript: a compact subgraph of one turn
+opens over the log, so the reader never loses their place. Nothing injects into timeline rows.
+
+### H6.1 — host decision (recorded)
+
+- **Turn map overlay host.** `packages/app/src/session/graph/turn-map-overlay.tsx` mounts the library
+  `TurnMapOverlay` lazily inside the session panel's relative container (`screen.panel.ref`), so it
+  covers the panel in either mode while the transcript underneath stays mounted (scroll position is
+  therefore preserved for free). It is opened from the graph toolbar's "Open turn map" control (visible
+  while a turn is selected) and from the `graph.turnmap` command (`mod+alt+t`). No
+  `session-timeline-row.tsx` edit.
+- **Synchronized side panel (H6.3) — deferred.** A side panel is an extension `Panel` (region `"side"`)
+  in `packages/gui-extensions`, which is a materially larger surface: a new extension entry, per-locale
+  i18n, a session store, and host integration, for a view whose first value (a graph popover that does
+  not abandon the log) is already delivered by the overlay. Recorded as a deliberate deferral, not a
+  silent omission.
+- **Inline row host (H6.5) — deferred, approval-gated.** It would add a generic timeline slot, the one
+  change that exceeds the core diff budget; it stays gated on maintainer approval.
+
+### H6.2 — turn map overlay
+
+- `packages/session-graph/src/ui/TurnMapOverlay.tsx`: a focus-trapped dialog (`role="dialog"`,
+  `aria-modal`) showing the turn's execution-level subgraph (turn + highest-signal `part-of` children,
+  capped at seven) through `GraphCanvas`, the same `GraphInspector` detail panel, and "Open full graph".
+  Escape closes and focus returns to the control that opened it.
+- `packages/session-ui/src/graph/selectors.ts` gains the pure `turnSubgraph(model, turnID, limit)`
+  selector: children rank phases/failures/subagent/result above raw tools/files, ties keep model order,
+  and `inferred-cause` never appears. Covered by new `selectors.test.ts` cases.
+- `packages/session-graph/src/ui/turnMap.ts` scopes the model and reuses `layoutGraph`/`buildRenderModel`
+  so the overlay positions match the full graph.
+
+### H6.4 — generic inline subgraph
+
+- `packages/session-graph/src/ui/TurnMapInlineGraph.tsx` is a thin, non-interactive wrapper over
+  `@spacegraphjs/svg-renderer`'s `InlineGraph`, rendering a five-node turn subset as static SVG. It adds
+  no graph logic and is theme-aware. It is not injected into the timeline (deferred with H6.5).
+
+### H6.7 — flag and progressive disclosure
+
+- The hybrid is **off by default**. The overlay opens only on explicit action (the toolbar control or the
+  command); the graph view remains the primary alternate mode. Documented here: a graph appears where it
+  answers a question (what happened in this tool sequence), not on every message.
+
+### H6.6 — tests
+
+- Component: `packages/session-graph/component-tests/turn-map.spec.ts` (5 cases) mounts the real overlay
+  over a transcript placeholder and asserts open/ready, Escape-close, "Open full graph", a trapped focus
+  ring, the Cytoscape fallback, and the inline SVG node cap.
+- App e2e: `packages/app/e2e/graph/session-graph.spec.ts` adds "opens the hybrid turn map over the graph
+  and closes on Escape", driving the toolbar control after a turn is selected.
+
+

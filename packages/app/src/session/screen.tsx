@@ -37,6 +37,7 @@ import { SessionIdentityHeader } from "./session-identity-header"
 import { SessionReviewToggle } from "./header/session-header-actions"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
 import { SessionGraphView } from "./graph/session-graph-view"
+import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
 import { SessionRunningMenu } from "./header/session-running-menu"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
 import { createTimelineCache } from "./timeline/cache"
@@ -567,6 +568,21 @@ function SessionScreenContent(props: {
                 </div>
               </div>
             </div>
+          </Show>
+
+          <Show when={graph.turnMap()}>
+            {(turnID) => (
+              <SessionTurnMapOverlay
+                session={session}
+                turnID={turnID()}
+                onClose={() => graph.setTurnMap(undefined)}
+                onOpenFullGraph={(id) => {
+                  graph.setTurnMap(undefined)
+                  graph.setMode("graph")
+                  graph.setSelected(id)
+                }}
+              />
+            )}
           </Show>
         </div>
 

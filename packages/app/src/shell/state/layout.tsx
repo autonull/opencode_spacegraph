@@ -90,6 +90,8 @@ const sessionGraphSchema = Persistence.struct({
   projection: Schema.optional(Schema.Literals(["2d", "3d"])),
   renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
   selected: Schema.optional(Schema.String),
+  // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
+  turnMap: Schema.optional(Schema.String),
 })
 
 export type SessionGraphState = typeof sessionGraphSchema.Type
@@ -560,6 +562,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           projection: createMemo(() => state()?.projection ?? "2d"),
           renderer: createMemo(() => state()?.renderer),
           selected: createMemo(() => state()?.selected),
+          turnMap: createMemo(() => state()?.turnMap),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
           },
@@ -571,6 +574,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setSelected(selected: string | undefined) {
             write({ selected })
+          },
+          setTurnMap(turnMap: string | undefined) {
+            write({ turnMap })
           },
         }
       },

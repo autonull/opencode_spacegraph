@@ -12,6 +12,7 @@ import { formatServerError } from "@/runtime/server/errors"
 import { projectSettingsKey, useSettings } from "@/settings/model"
 import { showToast } from "@/shell/notifications/toast"
 import { fetchSessionExport, saveSessionExport, sessionExportFilename } from "@/session/commands/export"
+import { TURN_MAP_ACTIVE } from "@/session/graph/turn-map-overlay"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { SessionModel } from "@/session/model"
 import type { SessionRevert } from "@/session/revert"
@@ -471,6 +472,25 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       onSelect: () => {
         const graph = actions.session.layout.graph()
         graph.setProjection(graph.projection() === "3d" ? "2d" : "3d")
+      },
+    }),
+    viewCommand({
+      id: "graph.turnmap",
+      title: language.t("command.graph.turnmap"),
+      keybind: "mod+alt+t",
+      disabled: !actions.session.identity.params.id,
+      onSelect: () => {
+        const graph = actions.session.layout.graph()
+
+        if (graph.turnMap()) {
+          graph.setTurnMap(undefined)
+
+          return
+        }
+
+        const selected = graph.selected()
+        const turnID = selected?.startsWith("turn:") ? selected : TURN_MAP_ACTIVE
+        graph.setTurnMap(turnID)
       },
     }),
     ...(shown()
