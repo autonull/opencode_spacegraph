@@ -44,7 +44,9 @@
       "packages/stats/*",
       "spacegraphjs",
       "spacegraphjs/packages/renderer",
-      "spacegraphjs/packages/spacegraph-renderer"
+      "spacegraphjs/packages/spacegraph-renderer",
+      "spacegraphjs/packages/cytoscape-renderer",
+      "spacegraphjs/packages/svg-renderer"
     ],
     "catalog": {
       "@effect/opentelemetry": "4.0.1",

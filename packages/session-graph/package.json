@@ -14,8 +14,10 @@
     "test:components": "playwright test --config playwright.components.config.ts"
   },
   "dependencies": {
+    "@spacegraphjs/cytoscape-renderer": "workspace:*",
     "@spacegraphjs/renderer": "workspace:*",
     "@spacegraphjs/spacegraph-renderer": "workspace:*",
+    "@spacegraphjs/svg-renderer": "workspace:*",
     "solid-js": "catalog:",
     "spacegraphjs": "workspace:*"
   },
