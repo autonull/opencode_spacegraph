@@ -1199,6 +1199,18 @@ Notes for the remaining work:
   **P8.2** (React/Solid bindings over the contract) are not started; **P8.4**/**P8.8** stay deferred by
   design. The 15 known limitations in `prototype.md` are the honest backlog.
 
+**2026-10-18 (cont.) — Phase 9 planned: refinement (visual and UX).**
+
+The prototype is functionally complete and the integration is proven, but the screenshots show it is not
+yet *usable*: the root defect is that `layout.ts` spaces nodes by 48px while cards are 220px wide, so
+every card overlaps; cards are generic status-coloured boxes; the root fans `part-of` edges across the
+canvas; the inspector reserves width when empty; and the minimap has no toggle. Recorded as **Phase 9 —
+Refinement (visual and UX)** with ten batches (RF.1–RF.11) and three held requirements: a visible
+**layout chooser** (Lanes / Timeline / Hierarchy, persisted), a **minimap toggle defaulting off**, and a
+**stylized, colourful, iconographic** card/edge vocabulary. Each batch regenerates and inspects the
+screenshots as its acceptance contract. No code changed this pass; the phase is scheduled. Batch order
+starts with RF.1 (card-aware geometry), which changes every image.
+
 ## 0. Mission
 
 
@@ -2432,6 +2444,71 @@ Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate
   Make DOM cards and labels respect the host's `dir`/`lang`. Add `direction?: "ltr" | "rtl"` to `RenderTheme`; verify an RTL fixture in the library demo and in OpenCode.
   Done: card text, labels, and controls render correctly in RTL without mirrored graph coordinates.
   Status: `renderToSVG` emits `direction="rtl"`; the SpaceGraph adapter wraps host card markup in a `dir` container; the Cytoscape adapter sets `dir` on overlay cards; the host bridge reads `document.documentElement.dir` and re-resolves on a `dir` mutation. `lang` is host markup. Verified in the L1.29 demo (`test/e2e/contract-demo.spec.ts` RTL case: `html[dir=rtl]` plus the SpaceGraph adapter's `dir` card container).
+
+---
+
+### Phase 9 — Refinement (visual and UX)
+
+Goal: make the graph usable, legible, and pleasant — not merely functional. The prototype's plumbing is
+proven; this phase is where it becomes something a user reaches for. Every batch ends by regenerating
+the committed screenshots (`bun run graph:capture --mode=compare`) and inspecting them against the prior
+image; the images are the acceptance contract.
+
+Root cause to fix first (blocks all legibility): `packages/session-ui/src/graph/layout.ts` spaces nodes
+by `step: 48` / `laneGap: 56` while activity nodes render as 220×72 cards, so every card overlaps its
+neighbours. The layout must be card-aware.
+
+- [ ] **RF.1 Card-aware layout geometry**
+  Rework `layout.ts`: per-lane X cursors that advance by node width + gap, lane Y from cumulative lane
+  heights, file nodes anchored under their owning turn (never `x = 0`), and emitted cluster bounds.
+  Done: at execution no two cards overlap at 1440×900 or 390×900.
+- [ ] **RF.2 Layout chooser** (user-requested)
+  Expose named layout strategies and a toolbar chooser (segmented control or combobox). At minimum:
+  **Lanes** (current semantic lanes), **Timeline** (strict chronological left-to-right), and
+  **Hierarchy** (indented by turn/depth). Persist the choice per session (`sessionViewSchema.graph.layout`).
+  Library-first: the generic geometry stays in `spacegraphjs/layout`; the session strategies and the
+  chooser stay in `session-ui`/`session-graph`. Done: switching layout rebuilds positions deterministically
+  and the choice survives reload.
+- [ ] **RF.3 Card design and per-kind colour/iconography** (user-requested: "not boring boxes and lines")
+  A real card template: leading kind glyph (icon/emoji), per-kind accent, status as a corner indicator
+  rather than a full fill, monospaced paths/tool names, single-line ellipsised label, clamped summary,
+  and explicit `13px`/`--line-height-compact` metrics. Neutral by default; colour reserved for
+  running/warning/error/success signals so the graph is not a wall of green.
+- [ ] **RF.4 Edge styling**
+  Style by kind/confidence: `sequence`/`writes`/`reads`/`evidence` strong, `part-of` demoted at execution
+  (hierarchy as a band/indent rather than a root fan), `inferred` dashed. Reduces the spider of long edges.
+- [ ] **RF.5 Grouping (turn and phase bands)**
+  Draw the computed cluster bounds as turn swimlane bands and phase groups with a labelled header and
+  status badge. This is where most of the overview's meaning lives.
+- [ ] **RF.6 Theme completion**
+  Map `RenderTheme.selection`/`focus`/`hover`/edge-label through end to end (the core hard-codes the
+  edge-label pill; the adapter passes only `{ background }`). Align the selection outline to DOM card
+  bounds. Verify light and dark.
+- [ ] **RF.7 Toolbar information architecture, zoom control, and minimap toggle** (user-requested)
+  One toolbar row with clear left/right grouping; replace the detached floating zoom stepper with a
+  clean zoom control; add a **minimap toggle, default off** (the minimap is noise when the whole graph
+  is already visible), persisted per session (`sessionViewSchema.graph.minimap`). Narrow widths use an
+  overflow menu. Keep the "Renderer: …" label unobtrusive and clear of the header toggles.
+- [ ] **RF.8 Inspector**
+  Collapse the `w-72` gutter when nothing is selected; make it resizable; render it as a bottom sheet
+  under ~768px instead of the current side-by-side squeeze. Then deepen content (markdown, ANSI-stripped
+  terminal, on-demand diffs, copy) once the model carries that text.
+- [ ] **RF.9 States and theming**
+  Real loading skeleton, styled empty and error states, and light/dark parity checked in screenshots
+  (not only Storybook).
+- [ ] **RF.10 Interaction polish**
+  Search result keyboard navigation, focus dimming of non-neighbours at execution (the U3.11 clause),
+  breadcrumb fit-subtree, and a small keyboard map (`/` search, `f` fit, `1/2/3` levels).
+- [ ] **RF.11 Visual regression contract**
+  A fixed set of states captured per batch (overview, execution, selected, 3D, layout variants, 390×900)
+  so each refinement step is judged against the previous image.
+
+Held requirements from this phase (do not drop):
+
+- **Layout chooser** — a visible control, not a hidden setting (RF.2).
+- **Minimap defaults off** and is a toggle (RF.7).
+- **Stylized, colourful, iconographic** — the graph should read at a glance, not be generic boxes and
+  lines (RF.3/RF.5).
 
 ## 7. Canonical fixture specification
 
