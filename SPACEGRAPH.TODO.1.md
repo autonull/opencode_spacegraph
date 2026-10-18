@@ -1426,6 +1426,23 @@ Notes for the remaining work:
 - **P8.1** (framework-agnostic controller in `spacegraphjs/control`) and **P8.2** (React/Solid bindings over the contract) remain the last Phase 8 items and are larger than they read.
 - The overview band is still tall because a turn's visible content spans the phases→delegate lanes; a compact overview layout (e.g. hide the assistant `message` at overview per §5.4) would tighten it further.
 
+**2026-10-18 (cont.) — Phase 8 portability: the framework-agnostic view controller (P8.1).**
+
+Scope for this pass: the reusable vanilla controller the plan orders after Phase 7 — selection, focus, zoom bands, search, and trail in one policy-free module a second host can bind. Library work is in `spacegraphjs`; OpenCode carries this log and the doc/README edits.
+
+- **P8.1 — `spacegraphjs/control` (done).** New `spacegraphjs/src/control/GraphController.ts` (+ `index.ts`, package `exports["./control"]`; the tsconfig `spacegraphjs/*` wildcard already covers it). `GraphController` owns selection (filtered to ids that still exist, deduped), focus, the navigation trail (a `Trail` that records single selections and reconciles on model change), zoom bands (a `ZoomBands` fed by renderer viewport events), and search (ranked label/summary/kind/id), plus `connections(id)` for a detail panel. It reads a minimal structural model (`ControlNode`/`ControlEdge`/`ControlModel`) and binds to any renderer through a minimal structural surface (`ControlRenderer`: `setSelection`/`fit`/`focus`/`on`/`dispose?`), so the core never imports the contract; a contract `GraphRenderer` is assignment-compatible (asserted in the test). `setModel` reconciles selection + trail by id, so streaming appends never clear either. `bind` consumes `selectionChange`/`viewportChange`/`nodeClick`/`nodeDoubleClick`/`backgroundClick`; a renderer-originated selection is applied without echoing it back (no loop). `onChange(snapshot)` is the framework seam; nothing touches the DOM and there are no Solid/React imports.
+- **The library demo is driven by it (Done half).** `demo/contract-demo.ts` drops its inline `selection`/`trail`/`bands` bookkeeping and its manual `renderer.on(...)` wiring; it now constructs one `GraphController`, `bind`s each adapter on switch, and re-renders detail/trail/band/a11y from `controller.onChange`. The `contract-demo.spec.ts` suite passes unchanged.
+- **Tests.** New `spacegraphjs/test/control.test.ts` (12 cases): selection filtering/dedup, trail record/back/forward, no trail record for multi-select, model-update reconciliation, toggle, search ranking + misses, connections (dangling edges ignored), band mapping, renderer-event forwarding without echo, explicit selection through to the renderer, `onChange` + dispose, and the contract-adapter assignability check.
+
+Verification:
+- `cd spacegraphjs && node_modules/.bin/vitest run` → 33 files / 307 tests (was 32/294; +`control` 12). `bun run test:boundaries` stays 5 (control imports only the sibling core subpaths).
+- `cd spacegraphjs && SG_DEMO_URL=… node_modules/.bin/playwright test test/e2e/contract-demo.spec.ts --workers=1` → 5 pass (mount, renderer switch + SVG + 3D gating, keyboard/connection/trail, second-host + RTL, light/dark) with the controller driving the demo.
+
+Notes for the remaining work:
+- **OpenCode adoption of `GraphController` is pending.** `packages/session-graph`'s `GraphView` still owns selection (entangled with the controlled/uncontrolled `props.selection` path) and reads `part-of` ancestry directly instead of a `Trail`; folding both onto the controller is a host refactor with its own component/e2e surface and was deliberately not taken in this pass. The plan's P8.1 Done names both the demo and OpenCode, so this is the open half.
+- **`ControlRenderer` is deliberately smaller than `GraphRenderer`** — no `setModel`/`setProjection`/`setTheme`/`setViewport`/`capabilities`. The host keeps the model in sync on the renderer and keeps capability gating; the controller manages only interaction state and consumes `viewportChange` in place of a `setViewport` call.
+- **P8.2 (React/Solid bindings) remains not started** and needs React/Solid test infrastructure the library vitest setup does not have; the bindings should wrap the contract plus this controller, not core internals.
+
 ## 0. Mission
 
 
@@ -2615,10 +2632,10 @@ Post-OpenCode track. These tasks are not required for the OpenCode prototype exi
 
 Goal: after OpenCode works, a second agent UI such as Hermes Agent can integrate without forking SpaceGraphJS or importing OpenCode code.
 
-- [ ] **P8.1 Framework-agnostic view controller** (not started — see log)
+- [x] **P8.1 Framework-agnostic view controller** (done for the library + demo; OpenCode adoption pending — see log)
   Extract controllers for selection, focus, zoom bands, search, and trail into a `spacegraphjs/control` subpath (core), not into the dependency-free contract. The host supplies the detail panel. Avoid duplicating controller logic in `packages/session-graph`.
   Done: the vanilla controller drives both the library demo and OpenCode; no Solid imports.
-  Status: not started. The `control` subpath is core, so §4.1 forbids importing the contract; the controller must use minimal structural types plus a thin host binding layer. `ZoomBands`, `Trail`, `AccessibilityLayer`, and `LaneLayout` already exist as headless modules.
+  Status: `spacegraphjs/control` (`GraphController`) owns selection, focus, trail, zoom bands, search, and `connections` over a minimal structural model, and binds to any renderer through a minimal structural surface (`ControlRenderer`) with no contract import (the core stays pure; `test/boundaries.test.ts` unchanged). `setModel` reconciles selection + trail by id. The library demo is driven by it (`demo/contract-demo.ts`; `contract-demo.spec.ts` 5/5). Covered by `test/control.test.ts` (12 cases, incl. a `GraphRenderer`→`ControlRenderer` assignability assertion). **Open:** `packages/session-graph`'s `GraphView` still owns selection (controlled/uncontrolled prop path) and `part-of` breadcrumbs instead of `Trail`; adopting the controller there is the remaining half of the Done line.
 
 - [ ] **P8.2 Framework bindings** (not started — see log)
   Repair `spacegraphjs/packages/solid-spacegraph` and add `spacegraphjs/packages/react-spacegraph` to wrap `@spacegraphjs/renderer` and the controllers, not core internals. Provide a minimal Hermes-style example. Verify React StrictMode double-mount and Solid `onCleanup` do not leak or double-initialize.
@@ -2821,6 +2838,7 @@ Fixture rules:
 | Renderer comparison | `bun run graph:capture --mode=compare` | Paired screenshots and metrics |
 | Screenshot verification | `bun run graph:capture --mode=verify` | Interaction assertions |
 | SpaceGraphJS tests | `cd spacegraphjs && bunx vitest run` | Library unit |
+| View controller unit | `cd spacegraphjs && bunx vitest run test/control.test.ts` | Selection, trail, bands, search |
 | SpaceGraphJS demo | `cd spacegraphjs && bunx playwright test test/e2e/<graph-demo>.spec.ts` | Ortho/click/zoom/dispose |
 | Non-OpenCode contract demo | `cd spacegraphjs && SG_DEMO_URL=… bunx playwright test test/e2e/contract-demo.spec.ts` | Contract + adapters + SVG + a11y/trail/zoom bands, light/dark |
 | Cytoscape demo | `cd spacegraphjs && bunx playwright test test/e2e/cytoscape-demo.spec.ts` | DOM overlay, preset layout, selection |

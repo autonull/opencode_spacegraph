@@ -212,11 +212,13 @@ Library-side work that lets a second host reuse the boundary without OpenCode (s
   conformance suite and the demo.
 - **Host integration guide** (P8.5) — `spacegraphjs/docs/host-integration.md`.
 - **Reference demo** (L1.29) — `spacegraphjs/demo/contract.html` + `demo/contract-demo.ts`: one
-  synthetic activity stream through all three leaves, using `LaneLayout`, `ZoomBands`, `Trail`, and
-  `AccessibilityLayer`, with no OpenCode import and no session vocabulary.
-- **Not started:** P8.1 (framework-agnostic view controller in `spacegraphjs/control`) and P8.2
-  (React/Solid bindings over the contract). P8.4 (host-neutral activity adapter) and P8.8 (incremental
-  `RenderModelPatch`) stay deferred by design.
+  synthetic activity stream through all three leaves, using `LaneLayout` and the `GraphController`
+  (selection, trail, zoom bands, search), with no OpenCode import and no session vocabulary.
+- **Framework-agnostic view controller** (P8.1) — `spacegraphjs/control` (`GraphController`): selection,
+  focus, navigation trail, zoom bands, search, and connections over a minimal structural model, bound to
+  any renderer through a minimal structural surface. The library demo is driven by it.
+- **Not started:** P8.2 (React/Solid bindings over the contract). P8.4 (host-neutral activity adapter)
+  and P8.8 (incremental `RenderModelPatch`) stay deferred by design.
 
 ## Library capability audit (R7.6)
 
@@ -232,7 +234,8 @@ data assumptions appear in the library.
 | Zoom bands | `spacegraphjs/zoom` | library demo; host policy in `levels.ts` | band→level wiring is host-owned |
 | Lane layout | `spacegraphjs/layout` | library demo; host layout in `layout.ts` | `TimelineLayout`/`HierarchicalLayout` are not refactored onto it |
 | Accessibility layer | `spacegraphjs/a11y` | OpenCode a11y mirror, library demo | node list only; edges are not announced |
-| Navigation trail | `spacegraphjs/navigation` | library demo | OpenCode breadcrumbs still read `part-of` ancestry (swap pending) |
+| Navigation trail | `spacegraphjs/navigation` | `GraphController`, library demo | OpenCode breadcrumbs still read `part-of` ancestry (swap pending) |
+| View controller | `spacegraphjs/control` | library demo | OpenCode `GraphView` still owns selection/search inline (adoption pending) |
 | DOM mount | `spacegraphjs` `DOMNode` | SpaceGraph adapter | — |
 | Minimap | host SVG (`GraphMinimap.tsx`) | OpenCode | vertical mirror under Cytoscape (documented) |
 
