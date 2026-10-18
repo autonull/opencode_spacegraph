@@ -64,8 +64,16 @@ story("fits a narrow mobile viewport without horizontal overflow", async ({ moun
     timeout: 30_000,
   })
 
-  const overflow = await root.evaluate((element) => element.scrollWidth - element.clientWidth)
-  expect(overflow).toBeLessThanOrEqual(1)
+  // RF.7: the narrow row collapses the secondary controls into an overflow menu.
+  const overflow = root.locator('[data-slot="graph-toolbar-overflow"]')
+  await expect(overflow).toBeVisible()
+  const minimap = overflow.locator('button[aria-label="Toggle minimap"]')
+  await expect(minimap).toBeHidden()
+  await overflow.locator("summary").click()
+  await expect(minimap).toBeVisible()
+
+  const width = await root.evaluate((element) => element.scrollWidth - element.clientWidth)
+  expect(width).toBeLessThanOrEqual(1)
 })
 
 story("re-themes the same model in dark mode without reloading the renderer", async ({ mount, page }) => {

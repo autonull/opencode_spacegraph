@@ -70,16 +70,21 @@ export const GraphView = (props: GraphViewProps) => {
   const [canvasReady, setCanvasReady] = createSignal(false)
   const [viewport, setViewport] = createSignal<RendererViewport>()
   const [narrow, setNarrow] = createSignal(false)
+  const [compact, setCompact] = createSignal(false)
   const [inspectorWidth, setInspectorWidth] = createSignal(288)
   let renderer: GraphRenderer | undefined
   let rootEl!: HTMLDivElement
 
   // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
-  // Only the threshold is tracked, so a resize does not re-render (and re-observe) on every pixel.
+  // RF.7: below 640px the toolbar collapses its secondary controls into an overflow menu.
+  // Only thresholds are tracked, so a resize does not re-render (and re-observe) on every pixel.
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
-      const next = entry.contentRect.width > 0 && entry.contentRect.width < 768
-      setNarrow((current) => (current === next ? current : next))
+      const width = entry.contentRect.width
+      const nextNarrow = width > 0 && width < 768
+      const nextCompact = width > 0 && width < 640
+      setNarrow((current) => (current === nextNarrow ? current : nextNarrow))
+      setCompact((current) => (current === nextCompact ? current : nextCompact))
     })
     observer.observe(rootEl)
     onCleanup(() => observer.disconnect())
@@ -256,6 +261,7 @@ export const GraphView = (props: GraphViewProps) => {
         }
         onBack={props.onBack}
         searching={searchOpen()}
+        compact={compact()}
         endInset={props.endInset}
       />
       <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={fitSubtree} />

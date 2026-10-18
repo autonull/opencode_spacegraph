@@ -40,6 +40,8 @@ export type GraphToolbarProps = {
   onTurnMap?: () => void
   onBack?: () => void
   searching?: boolean
+  /** RF.7: narrow widths collapse the secondary controls into an overflow menu. */
+  compact?: boolean
   /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
@@ -64,44 +66,9 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       ? undefined
       : i18n.t("ui.sessionGraph.capability.projectionUnavailable", { projection: projection.toUpperCase(), renderer: props.renderer ?? "" })
 
-  return (
-    <div
-      data-component="session-graph-toolbar"
-      data-slot="graph-toolbar"
-      class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
-      style={props.endInset ? { "padding-inline-end": props.endInset } : undefined}
-    >
-      <SegmentedControl
-        value={props.level}
-        aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
-        onChange={(value) => value && props.onLevel(value as ZoomLevel)}
-      >
-        {LEVELS.map((level) => (
-          <SegmentedControlItem value={level}>{i18n.t(LEVEL_KEY[level])}</SegmentedControlItem>
-        ))}
-      </SegmentedControl>
-
-      <div class="flex items-center">
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
-          title={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
-          disabled={props.level === "overview"}
-          onClick={() => step(-1)}
-          icon={<Icon name="expand" size="small" />}
-        />
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
-          title={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
-          disabled={props.level === "detail"}
-          onClick={() => step(1)}
-          icon={<Icon name="plus" size="small" />}
-        />
-      </div>
-
+  // The controls after the level stepper: inline on wide rows, behind an overflow menu when compact.
+  const secondary = () => (
+    <>
       <SegmentedControl
         value={props.projection}
         aria-label={i18n.t("ui.sessionGraph.toolbar.projection")}
@@ -160,6 +127,66 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           onClick={() => props.onTurnMap?.()}
           icon={<Icon name="branch" size="small" />}
         />
+      </Show>
+    </>
+  )
+
+  return (
+    <div
+      data-component="session-graph-toolbar"
+      data-slot="graph-toolbar"
+      class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
+      style={props.endInset ? { "padding-inline-end": props.endInset } : undefined}
+    >
+      <SegmentedControl
+        value={props.level}
+        aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
+        onChange={(value) => value && props.onLevel(value as ZoomLevel)}
+      >
+        {LEVELS.map((level) => (
+          <SegmentedControlItem value={level}>{i18n.t(LEVEL_KEY[level])}</SegmentedControlItem>
+        ))}
+      </SegmentedControl>
+
+      <div class="flex items-center">
+        <IconButton
+          size="small"
+          variant="ghost"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
+          title={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
+          disabled={props.level === "overview"}
+          onClick={() => step(-1)}
+          icon={<Icon name="expand" size="small" />}
+        />
+        <IconButton
+          size="small"
+          variant="ghost"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
+          title={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
+          disabled={props.level === "detail"}
+          onClick={() => step(1)}
+          icon={<Icon name="plus" size="small" />}
+        />
+      </div>
+
+      <Show
+        when={!props.compact}
+        fallback={
+          <details class="relative" data-slot="graph-toolbar-overflow">
+            <summary
+              class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
+              aria-label={i18n.t("ui.sessionGraph.toolbar.more")}
+              title={i18n.t("ui.sessionGraph.toolbar.more")}
+            >
+              <Icon name="outline-dots" size="small" />
+            </summary>
+            <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
+              {secondary()}
+            </div>
+          </details>
+        }
+      >
+        {secondary()}
       </Show>
 
       <div class="ml-auto flex items-center gap-2">

@@ -23,6 +23,8 @@ story("assembles the graph view and answers node questions without the canvas", 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
   await expect(host).toHaveAttribute("data-graph-renderer", "spacegraph")
   await expect(root.locator('[data-slot="graph-toolbar"]')).toBeVisible()
+  // RF.7: a wide row keeps the secondary controls inline, with no overflow menu.
+  await expect(root.locator('[data-slot="graph-toolbar-overflow"]')).toHaveCount(0)
 
   // Execution expands phase clusters into swimlane bands, not counted DOM cards.
   await expect(host.locator('.html-node-container:has([data-kind="phase"])')).toHaveCount(0)
