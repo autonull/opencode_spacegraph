@@ -91,17 +91,19 @@ export function createCardTemplate(theme: RenderTheme): CardTemplate {
     const count = node.derived && node.clusterOf ? node.clusterOf.length : 0
     const badge = count ? `<span style="color:${theme.textMuted};font-weight:500"> ${count}</span>` : ""
     const labelFont = mono ? `ui-monospace,SFMono-Regular,Menlo,monospace` : `inherit`
+    const status = statusColor(theme, node)
+    const border = node.status === "neutral" || node.status === "success" ? theme.border : status
     const summary = node.summary
       ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.summary)}</span>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};border-radius:8px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[node.kind]}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>
 ${summary}
 </span>
-<span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${statusColor(theme, node)}"></span>
+<span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`
   }
 }
@@ -111,11 +113,13 @@ ${summary}
  * clipped header carrying the label, the member count, and a status dot.
  */
 export function createBandTemplate(theme: RenderTheme): BandTemplate {
-  return (node: GraphNode, count: number) => {
+  return (node: GraphNode, count: number, bounds) => {
     const { solid, soft } = accent(node)
     const label = escapeHtml(node.label.replace(/\s+/g, " ").trim().slice(0, 48))
+    const width = Math.round(bounds.max.x - bounds.min.x + 56)
+    const height = Math.round(bounds.max.y - bounds.min.y + 56)
 
-    return `<div data-band="${node.kind}" style="width:100%;height:100%;box-sizing:border-box;border:1px solid ${solid};border-radius:14px;background:${soft};pointer-events:none;position:relative;font-family:${theme.fontFamily}">
+    return `<div data-band="${node.kind}" style="width:${width}px;height:${height}px;box-sizing:border-box;border:1px solid ${solid};border-radius:14px;background:${soft};pointer-events:none;position:relative;font-family:${theme.fontFamily}">
 <span style="position:absolute;top:6px;left:12px;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 24px);padding:2px 8px;border-radius:9999px;background:${theme.surface};color:${theme.text};font-size:11px;font-weight:600;line-height:var(--line-height-compact,16px)">
 <span style="width:6px;height:6px;border-radius:9999px;background:${solid}"></span>
 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>

@@ -589,9 +589,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           setTurnMap(turnMap: string | undefined) {
             write({ turnMap })
           },
-          toggleMinimap() {
-            write({ minimap: !(state()?.minimap ?? false) })
-          },
         }
       },
       /** Side panel tabs for any session key, mounted or not. Reads are reactive. */

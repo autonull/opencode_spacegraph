@@ -146,5 +146,34 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await waitForStillCanvas(page)
   await capture(page, "06-graph-3d.png")
 
+  // 11 — the Timeline layout strategy (RF.2) on the same model.
+  await page.locator(toolbar).getByRole("button", { name: "2D", exact: true }).click()
+  await setLevel(page, "Execution")
+  await page.locator(toolbar).getByRole("button", { name: "Timeline", exact: true }).click()
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "11-graph-timeline.png")
+
+  // 12 — the Hierarchy layout strategy: ancestry reads as an indent, not a horizontal fan.
+  await page.locator(toolbar).getByRole("button", { name: "Hierarchy", exact: true }).click()
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "12-graph-hierarchy.png")
+
+  // 13 — a narrow 390×900 viewport (RF.11): the toolbar wraps and the canvas stays framed.
+  await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 900 })
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "13-graph-narrow.png")
+  await page.setViewportSize({ width: 1440, height: 900 })
+
+  // 14 — light scheme parity (RF.9/RF.11): the same model re-themes from the host tokens.
+  await page.emulateMedia({ colorScheme: "light" })
+  await setLevel(page, "Overview")
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "14-graph-light.png")
+
   expect(errors).toEqual([])
 })

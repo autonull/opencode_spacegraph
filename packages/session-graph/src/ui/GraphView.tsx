@@ -133,6 +133,27 @@ export const GraphView = (props: GraphViewProps) => {
     renderer?.focus(node.id)
   }
 
+  // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
+  // originate inside the a11y list or a form control are left to their owner.
+  const onRegionKeyDown = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null
+
+    if (target?.closest("[data-slot='graph-a11y'], input, textarea, [contenteditable]")) return
+
+    if (event.key === "/") {
+      event.preventDefault()
+      setSearchOpen(true)
+
+      return
+    }
+
+    if (event.key === "f") renderer?.fit()
+
+    const level = { "1": "overview", "2": "execution", "3": "detail" }[event.key] as ZoomLevel | undefined
+
+    if (level) setLevel(level)
+  }
+
   createEffect(() => {
     if (props.level !== undefined) setLevel(props.level)
   })
@@ -205,6 +226,7 @@ export const GraphView = (props: GraphViewProps) => {
           aria-label={i18n.t("ui.sessionGraph.canvas.label")}
           aria-describedby={a11yInstructionsId}
           tabindex="0"
+          onKeyDown={onRegionKeyDown}
         >
           <GraphCanvas
             model={renderModel()}

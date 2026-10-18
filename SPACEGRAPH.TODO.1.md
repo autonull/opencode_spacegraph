@@ -1211,6 +1211,98 @@ Refinement (visual and UX)** with ten batches (RF.1–RF.11) and three held requ
 screenshots as its acceptance contract. No code changed this pass; the phase is scheduled. Batch order
 starts with RF.1 (card-aware geometry), which changes every image.
 
+**2026-10-18 (cont.) — Phase 9 refinement begins: card-aware geometry (RF.1), layout chooser (RF.2),
+themed cards (RF.3), edge styling (RF.4), swimlane bands (RF.5), theme mapping (RF.6), toolbar + minimap
+toggle (RF.7), inspector collapse (RF.8), states/theming parity (RF.9), keyboard map (RF.10), and the
+extended visual-regression capture (RF.11).**
+
+Scope for this pass (agreed with the user): the whole visual/UX refinement phase, in batch order, with the
+screenshots as the acceptance contract. Host work is in `packages/session-ui`, `packages/session-graph`,
+`packages/app`, and one `en.ts` edit; the one library change (RF.6) is in `spacegraphjs` commit
+`1cca265` (branch `main`).
+
+- **RF.1 — card-aware geometry (done).** `packages/session-ui/src/graph/layout.ts` is rewritten around a
+  `nodeSize(node)` table (`CARD_SIZE` 220×72; `COMPACT_SIZE` 132×44 for session/turn/phase/error/retry/
+  approval) that matches what the renderer draws. Text `R/F.5` typo fixed to `RF.5`. `layoutGraph` now
+  groups nodes into the session column plus one column per turn and advances **per-lane, per-turn X
+  cursors** by `nodeSize(node)[0] + gap`; positions are node **centres** (the renderer places boxes on
+  their centre). Lane Y is a uniform card-height stride (`LANES` gained a leading `phases` lane). Turn
+  columns are sized from their own widest lane, so no card overlaps another on a lane. File nodes are
+  attributed to their owning turn (`fileOwnerTurn`) and placed on the artifacts lane inside that turn's
+  column (never `x = 0`). `clusters` now carries **turn bounds** as well as phase bounds;
+  `GraphLayout.positions` widened to `ReadonlyMap` and `strategy` added. `layout.test.ts` is rewritten:
+  determinism, append-only, lane/depth placement, file-in-turn, **no two nodes overlap**, phase bounds,
+  turn bands, and the three strategies.
+- **RF.2 — layout strategies + chooser (done).** `layoutGraph(model, { strategy })` implements `lanes`
+  (semantic lanes), `timeline` (one chronological row), and `hierarchy` (indent by turn/depth). New exports
+  `LAYOUT_STRATEGIES`, `LayoutStrategy`, `CARD_SIZE`, `COMPACT_SIZE`, `nodeSize` via the `graph` barrel.
+  `GraphToolbar` gained a `SegmentedControl` chooser; `GraphView` owns a `strategy` signal (controlled via
+  `props.strategy`/`onStrategyChange`); `sessionViewSchema.graph.layout` persists it and
+  `session-graph-view.tsx` wires it through. Folding the strategies onto the generic
+  `spacegraphjs/layout/LaneLayout` remains open (noted).
+- **RF.3 — themed cards (done).** New `packages/session-graph/src/ui/cardTemplate.ts`
+  (`createCardTemplate(theme)`): inline SVG kind glyph on a per-kind tinted chip, single-line ellipsised
+  label (monospaced for tool/file/diff), muted clamped summary, and a **status corner dot**; explicit
+  13px / `--line-height-compact`. `GraphView` renders through it (a host `renderCard` still overrides).
+  The SpaceGraph adapter now draws HTML cards on a neutral `theme.surface` (`nodeSpec` html branch) so
+  status is an accent, not a full fill; failure/warning/running cards tint their border. Unit-tested in
+  `cardTemplate.test.ts`.
+- **RF.4 — edge styling (done).** `levels.ts::edgesAtLevel` drops `part-of` at execution (the root fan
+  becomes the turn bands); `buildRenderModel.toRenderEdge` marks (`part-of`/`compacts`) and `inferred`
+  edges dashed and undirected; provenance/sequence stay solid and directed.
+- **RF.5 — turn and phase swimlane bands (done).** `buildRenderModel` gained a `clusters` option and emits
+  non-interactive `band` nodes **behind** the content (turn bands always; phase bands once clusters expand)
+  with `interactive:false`. `createBandTemplate(theme)` draws a rounded tinted box with a labelled header,
+  member count, and status dot. `GraphA11y` filters non-interactive nodes out of the mirror. Because a
+  band's `height:100%` resolved to 0 inside the core `HtmlNode` wrapper, the band markup now uses explicit
+  pixel width/height computed from the cluster bounds.
+- **RF.6 — theme mapping (library, done except the outline alignment).** `spacegraphjs` `SpaceGraphTheme`
+  and `EdgeData` gained `edge.labelBackground`; `LabeledEdge` and `applyEdgeTheme` honour it. The adapter's
+  `spaceGraphTheme(theme)` maps the whole `RenderTheme` (node stroke, edge colour + label pill, label
+  typography, selection/hover/focus) at `mount` and `setTheme` (the latter also updates
+  `sg.options.theme`). The `./activity` stopgap `theme` type was widened. **Open:** the mesh selection
+  outline is still a `BoxHelper` world box rather than aligned to DOM card bounds.
+- **RF.7 — toolbar + minimap toggle (done except the overflow menu).** The toolbar row uses `flex-wrap`
+  for narrow widths (no overflow menu); a **minimap toggle (default off)** persists in
+  `sessionViewSchema.graph.minimap`; `GraphView` shows the minimap only when toggled. The layout chooser
+  sits beside projection. `graph-minimap.spec.ts` now asserts default-off then toggles it on.
+- **RF.8 — inspector collapse (partial).** The inspector gutter is `w-0 overflow-hidden` with
+  `data-collapsed` when nothing is selected (the panel stays mounted so its empty text remains in the
+  DOM). Remaining: resizable width, the <768px bottom sheet, and deepened content (needs the model to
+  carry terminal/diff text).
+- **RF.9 — states/theming (done).** Loading/empty/error states already exist; light/dark parity is now
+  captured outside Storybook (`14-graph-light.png`).
+- **RF.10 — keyboard map (partial).** The canvas region handles `/` (search), `f` (fit), and `1`/`2`/`3`
+  (levels), ignoring keys from the a11y list and form controls. Remaining: focus dimming of non-neighbours,
+  breadcrumb fit-subtree, and search-result keyboard navigation.
+- **RF.11 — visual regression (done).** `capture.spec.ts` writes the fixed set `01`–`06` plus
+  `11-graph-timeline`, `12-graph-hierarchy`, `13-graph-narrow` (390×900), and `14-graph-light`; Cytoscape
+  stays at `07`/`08`. `script/capture-graph-demo.ts` `--mode=verify` asserts the enlarged committed set.
+- **Test churn from bands/glyphs.** `graph-view.spec.ts` scopes the "phase is not an execution card"
+  assertion to `[data-kind="phase"]` (bands are `[data-band]`); `graph-a11y.spec.ts` is unchanged because
+  bands are filtered out of the mirror.
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 50 pass; `bun run typecheck` clean.
+- `cd packages/session-graph && bun test src` → 27 pass; `bun run typecheck` clean; `bun run
+  test:components` → 22 pass.
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts`
+  → 13 pass.
+- `cd spacegraphjs && pnpm exec vitest run` → 294 pass; `packages/spacegraph-renderer bun test` → 13 pass;
+  `packages/renderer|cytoscape-renderer` typechecks clean.
+- `bun run graph:capture --mode=compare` regenerated all images; inspected `02` (bands + counted chips),
+  `03` (non-overlapping neutral cards with kind glyphs and status dots), `12`, and `14` (light parity).
+- Root `bun run lint:changed` → 0 problems.
+
+Notes for the remaining work:
+- **RF.8/RF.10 partials** are the only open Phase 9 sub-items (details above); RF.6's selection-outline
+  alignment is the third.
+- **The strategies do not yet use `spacegraphjs/layout/LaneLayout`.** They compute their own cursors in
+  `session-ui`; folding the generic primitive in is a library-first cleanup, not a behaviour change.
+- **Overview band fill reads strong** at 16% opacity; a follow-up could lower it or tint by turn only.
+- **`13-graph-narrow` shows the toolbar `flex-wrap`**, not an overflow menu; a true overflow menu is the
+  remaining RF.7 clause.
+
 ## 0. Mission
 
 
@@ -2458,50 +2550,89 @@ Root cause to fix first (blocks all legibility): `packages/session-ui/src/graph/
 by `step: 48` / `laneGap: 56` while activity nodes render as 220×72 cards, so every card overlaps its
 neighbours. The layout must be card-aware.
 
-- [ ] **RF.1 Card-aware layout geometry**
+- [x] **RF.1 Card-aware layout geometry**
   Rework `layout.ts`: per-lane X cursors that advance by node width + gap, lane Y from cumulative lane
   heights, file nodes anchored under their owning turn (never `x = 0`), and emitted cluster bounds.
   Done: at execution no two cards overlap at 1440×900 or 390×900.
-- [ ] **RF.2 Layout chooser** (user-requested)
+  Status: done — per-lane width-aware cursors, uniform card-height lanes, file nodes placed on the
+  artifacts lane inside their owning turn's column, and `clusters` now carries turn bounds too. A unit
+  test asserts no two nodes on a lane overlap.
+- [x] **RF.2 Layout chooser** (user-requested)
   Expose named layout strategies and a toolbar chooser (segmented control or combobox). At minimum:
   **Lanes** (current semantic lanes), **Timeline** (strict chronological left-to-right), and
   **Hierarchy** (indented by turn/depth). Persist the choice per session (`sessionViewSchema.graph.layout`).
   Library-first: the generic geometry stays in `spacegraphjs/layout`; the session strategies and the
   chooser stay in `session-ui`/`session-graph`. Done: switching layout rebuilds positions deterministically
   and the choice survives reload.
-- [ ] **RF.3 Card design and per-kind colour/iconography** (user-requested: "not boring boxes and lines")
+  Status: done — `layoutGraph(model, { strategy })` implements all three; the toolbar has a
+  `SegmentedControl` chooser and the choice persists in `sessionViewSchema.graph.layout` (default
+  `lanes`). The generic `spacegraphjs/layout/LaneLayout` primitive is not consumed yet (the session
+  strategies compute their own cursors); folding them onto `LaneLayout` stays open.
+- [x] **RF.3 Card design and per-kind colour/iconography** (user-requested: "not boring boxes and lines")
   A real card template: leading kind glyph (icon/emoji), per-kind accent, status as a corner indicator
   rather than a full fill, monospaced paths/tool names, single-line ellipsised label, clamped summary,
   and explicit `13px`/`--line-height-compact` metrics. Neutral by default; colour reserved for
   running/warning/error/success signals so the graph is not a wall of green.
-- [ ] **RF.4 Edge styling**
+  Status: done — `session-graph/src/ui/cardTemplate.ts` (`createCardTemplate`): inline SVG kind glyph on
+  a per-kind tinted chip, single-line label (monospaced for tool/file/diff), muted clamped summary, and a
+  status corner dot; the adapter now draws HTML cards on a neutral `theme.surface` so status is an accent,
+  not a fill. `border` tints for running/warning/error. Cards are host markup, so no library change.
+- [x] **RF.4 Edge styling**
   Style by kind/confidence: `sequence`/`writes`/`reads`/`evidence` strong, `part-of` demoted at execution
   (hierarchy as a band/indent rather than a root fan), `inferred` dashed. Reduces the spider of long edges.
-- [ ] **RF.5 Grouping (turn and phase bands)**
+  Status: done — `edgesAtLevel` drops `part-of` at execution; `toRenderEdge` marks hierarchy (`part-of`/
+  `compacts`) and `inferred` dashed and undirected, provenance/sequence solid and directed.
+- [x] **RF.5 Grouping (turn and phase bands)**
   Draw the computed cluster bounds as turn swimlane bands and phase groups with a labelled header and
   status badge. This is where most of the overview's meaning lives.
-- [ ] **RF.6 Theme completion**
+  Status: done — `buildRenderModel` emits non-interactive `band` nodes behind the content from the
+  `clusters` map; `createBandTemplate` draws a rounded tinted box with a labelled header, count, and
+  status dot. Turn bands always; phase bands once clusters expand (execution+). Bands are excluded from
+  the a11y mirror.
+- [x] **RF.6 Theme completion**
   Map `RenderTheme.selection`/`focus`/`hover`/edge-label through end to end (the core hard-codes the
   edge-label pill; the adapter passes only `{ background }`). Align the selection outline to DOM card
   bounds. Verify light and dark.
-- [ ] **RF.7 Toolbar information architecture, zoom control, and minimap toggle** (user-requested)
+  Status: done except the selection-outline alignment. The core `SpaceGraphTheme` gained
+  `edge.labelBackground`; `@spacegraphjs/spacegraph-renderer`'s `spaceGraphTheme` maps the whole
+  `RenderTheme` (node stroke, edge colour + label pill, label typography, selection/hover/focus) at
+  `mount` and `setTheme`. Light and dark verified via `14-graph-light.png` / `02-graph-overview.png`.
+  **Open:** the mesh selection outline is still a `BoxHelper` world box, not aligned to the DOM card
+  bounds.
+- [x] **RF.7 Toolbar information architecture, zoom control, and minimap toggle** (user-requested)
   One toolbar row with clear left/right grouping; replace the detached floating zoom stepper with a
   clean zoom control; add a **minimap toggle, default off** (the minimap is noise when the whole graph
   is already visible), persisted per session (`sessionViewSchema.graph.minimap`). Narrow widths use an
   overflow menu. Keep the "Renderer: …" label unobtrusive and clear of the header toggles.
-- [ ] **RF.8 Inspector**
+  Status: done except the overflow menu. The row groups the level/zoom/projection/layout controls on the
+  left and the renderer label + back on the right (`flex-wrap` keeps narrow widths usable rather than an
+  overflow menu); a minimap toggle (default off) persists in `sessionViewSchema.graph.minimap`; the
+  layout chooser sits beside projection.
+- [x] **RF.8 Inspector** (partial)
   Collapse the `w-72` gutter when nothing is selected; make it resizable; render it as a bottom sheet
   under ~768px instead of the current side-by-side squeeze. Then deepen content (markdown, ANSI-stripped
   terminal, on-demand diffs, copy) once the model carries that text.
-- [ ] **RF.9 States and theming**
+  Status: collapse landed (`data-slot="graph-inspector-gutter"` `data-collapsed`; the panel is `w-0`
+  with `overflow-hidden` when nothing is selected). **Open:** resizable width, the <768px bottom sheet,
+  and the deepened content (needs the model to carry terminal/diff text).
+- [x] **RF.9 States and theming**
   Real loading skeleton, styled empty and error states, and light/dark parity checked in screenshots
   (not only Storybook).
-- [ ] **RF.10 Interaction polish**
+  Status: loading skeleton, styled empty, and error states already exist (`graph-empty`, `graph-error`,
+  `Loading` story); light/dark parity is captured outside Storybook in `14-graph-light.png`. The
+  `Loading` overlay text is themed from host tokens; no separate dark/light stories.
+- [x] **RF.10 Interaction polish** (partial)
   Search result keyboard navigation, focus dimming of non-neighbours at execution (the U3.11 clause),
   breadcrumb fit-subtree, and a small keyboard map (`/` search, `f` fit, `1/2/3` levels).
-- [ ] **RF.11 Visual regression contract**
+  Status: the keyboard map landed on the canvas region (`/`, `f`, `1`/`2`/`3`; ignored inside the a11y
+  list and form controls). **Open:** focus dimming of non-neighbours, breadcrumb fit-subtree, and
+  search-result keyboard navigation (the search list is still mouse-driven).
+- [x] **RF.11 Visual regression contract**
   A fixed set of states captured per batch (overview, execution, selected, 3D, layout variants, 390×900)
   so each refinement step is judged against the previous image.
+  Status: done — `capture.spec.ts` now writes `11-graph-timeline`, `12-graph-hierarchy`,
+  `13-graph-narrow` (390×900), and `14-graph-light` alongside `01`–`06`; the Cytoscape frames stay at
+  `07`/`08`. `script/capture-graph-demo.ts` `--mode=verify` asserts the enlarged committed set.
 
 Held requirements from this phase (do not drop):
 

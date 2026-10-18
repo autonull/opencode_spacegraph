@@ -60,6 +60,10 @@ if (mode === "verify") {
     "06-graph-3d.png",
     "07-cytoscape-overview.png",
     "08-cytoscape-selected.png",
+    "11-graph-timeline.png",
+    "12-graph-hierarchy.png",
+    "13-graph-narrow.png",
+    "14-graph-light.png",
   ]
   const missing = expected.filter((name) => !existsSync(join(screenshots, name)))
 
