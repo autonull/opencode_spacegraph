@@ -625,6 +625,45 @@ Notes for the next pass:
 - **App chunk check pending.** I4.2's "graph code absent from the session entry chunk" is asserted by construction (lazy import) but not measured; V5.7 owns the number.
 - Remaining Phase 1: L1.4, L1.11, L1.15, L1.17, L1.27, L1.29, L1.32, L1.33. Remaining Phase 3: U3.6, U3.13. Next: Phase 5 verification/screenshots once the app path is exercised end to end.
 
+**2026-10-18 (cont.) — Phase 5 begins: graph app e2e contracts (V5.5).**
+
+Scope for this pass (agreed with the user): verify the wired-but-unverified Phase 4 integration end to end. New
+`packages/app/e2e/graph/session-graph.spec.ts` (6 cases) over the canonical fixture. No production code changed;
+OpenCode carries the new spec and this log.
+
+- **Fixture seeding reuses the single source (M2.9).** The spec imports `buildFixtureMessages()` from
+  `@opencode/session-ui/graph` and serves it through the harness `pageMessages` (mock server) or
+  `setupTimeline({ sessionMessages })`. No second hand-written fixture.
+- **Cases.** (1) mode switch renders the fixture (execution-level DOM activity cards) and the mode persists across
+  reload; (2) search selects a file node and the inspector renders its detail in the DOM panel; (3) a live
+  `session.step.started` + tool events append a node (a new file card) without clearing the selected node; (4)
+  switching tabs disposes the graph (`graph-canvas-host` count 0) and returning re-mounts it; (5) resize keeps
+  `data-graph-ready="true"`; (6) dev-only: aborting the lazy `@opencode/session-graph` module URL drives the wrapper
+  `ErrorBoundary` to the transcript fallback.
+- **Verification.** `cd packages/app && bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 6 pass (dev);
+  `--repeat-each=10 --workers=5 --retries=0` → 60 pass across three clean runs (one earlier run failed 5/10 of case 1
+  while the machine was heavily loaded; not reproduced in three later full runs); built
+  `PLAYWRIGHT_BUILD=1 … -- e2e/graph/session-graph.spec.ts` → 5 pass, 1 skipped (the dev-only fallback). The file
+  typechecks (`bun run typecheck:e2e`; the 4 pre-existing errors are unchanged) and root `bun run lint:changed`
+  reports 0 problems.
+
+Notes for the remaining Phase 5 work:
+
+- **V5.5 still needs the renderer-fallback cases.** "SpaceGraph mount failure falls back to Cytoscape with a banner"
+  and "both renderers failing falls back to the transcript" are proven at the component level
+  (`session-graph/component-tests/graph-states.spec.ts`, via the `rendererOverrides` seam) but are not reproduced at
+  app level: forcing an adapter mount failure without adding a production seam is not possible in the built bundle.
+  The wrapper's own load-failure fallback is covered by case 6 (dev-only, because the built chunk URL is hashed).
+  Before adding the app-level duplicates, confirm they are not already owned by the component suite.
+- **New defect surfaced (filed, not fixed).** The graph logs `THREE.Color: Invalid hex color #ffffffff` twice at
+  mount. The host theme background token can be an 8-digit hex; the SpaceGraph adapter passes `theme.background`
+  (a CSS string) as the core `backgroundColor`, and the core `Renderer` does `new THREE.Color(string)`, which rejects
+  8-digit hex (falls back, warning). The fix belongs in the core `Renderer` color parsing (or normalize in the
+  adapter's `parseColor`). It is a warning, not an error, so the zero-console-*error* criterion still holds.
+- **V5.1–V5.4 and V5.6–V5.9 remain** (capture spec + CLI + reproducible screenshots; conformance-in-CI; performance;
+  accessibility; cross-environment). The app e2e harness is now proven to drive the graph, so the capture spec
+  (V5.1) can build on `e2e/graph/`.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -1660,6 +1699,11 @@ Goal: make the result inspectable, repeatable, and honest.
   - both renderers failing falls back to the transcript;
   - no unexpected console errors.
   Done: `cd packages/app && bun run test:e2e -- graph` passes.
+  Status: partial — `e2e/graph/session-graph.spec.ts` covers mode switch + persistence across reload, live append
+  without selection loss, session-switch dispose + re-mount, resize, zero console errors, and (dev-only) the wrapper's
+  module-load fallback to the transcript. The two adapter-failure fallback cases stay with the component suite
+  (`graph-states.spec.ts`) until a non-seam app-level reproduction is decided (see the pass note). Dev 6 pass, built
+  5 pass + 1 skip.
 
 - [ ] **V5.6 Contract conformance in CI**
   Run the shared renderer contract suites (headless and browser) as part of the SpaceGraphJS test job and the session-graph test job. Add a root `graph:verify` script (or CI job) that runs contract conformance, all four packages (contract, SpaceGraph adapter, Cytoscape adapter, SVG renderer), and the capture `verify` mode. Fail if either interactive adapter stops honoring selection, click, viewport, disposal, HTML cards, or capability declarations.
