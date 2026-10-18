@@ -664,6 +664,7 @@
       "name": "@opencode/session-graph",
       "version": "2.0.32",
       "dependencies": {
+        "@opencode/session-ui": "workspace:*",
         "@spacegraphjs/cytoscape-renderer": "workspace:*",
         "@spacegraphjs/renderer": "workspace:*",
         "@spacegraphjs/spacegraph-renderer": "workspace:*",

@@ -14,6 +14,7 @@
     "test:components": "playwright test --config playwright.components.config.ts"
   },
   "dependencies": {
+    "@opencode/session-ui": "workspace:*",
     "@spacegraphjs/cytoscape-renderer": "workspace:*",
     "@spacegraphjs/renderer": "workspace:*",
     "@spacegraphjs/spacegraph-renderer": "workspace:*",

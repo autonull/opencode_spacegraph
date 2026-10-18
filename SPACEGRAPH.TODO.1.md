@@ -363,6 +363,58 @@ Notes for the next pass:
 - **Both `@spacegraphjs/renderer` consumers** now exist; the shared suite is one headless command (spacegraphjs) plus one browser command (session-graph). Fold both into `graph:verify` at V5.6.
 - **L1.17** (`LabeledEdge` layering/hit-area) and **L1.18** (library tests/demo) remain; the SVG renderer gives V5.4 its static export path but `InlineGraph` is not exercised in a browser yet (U3.16/H6.4).
 
+**2026-10-18 (cont.) — Phase 3 begins: render-model builder (U3.1), renderer registry (U3.2), canvas component (U3.3).**
+
+Scope for this pass: the renderer-agnostic core of the graph UI — model → render model, backend selection, and the canvas
+that mounts an adapter. `spacegraphjs` is untouched; work is in `packages/session-graph`.
+
+- **New dependency (P0.3 wiring).** `@opencode/session-ui` added as a `workspace:*` dependency of `packages/session-graph`
+  (`bun install` links it). This is what lets the canvas builder import the graph model; previously only the
+  `@spacegraphjs/*` packages were linked.
+- **U3.1 `buildRenderModel` (done).** New `packages/session-graph/src/canvas/buildRenderModel.ts`:
+  `buildRenderModel(model, { level, positions, focus?, cardBudget?, renderCard? })` → `RenderModel`. It calls
+  `nodesAtLevel`/`edgesAtLevel` (§5.4), maps model status → contract status (`failed → error`, `interrupted → warning`),
+  maps each kind to a `card`/`panel`/`dot`/`badge` shape, emits absolute positions from the `layoutGraph` map, and attaches
+  sanitized `html` for `card` nodes within the level's DOM budget — above the cap a card degrades to a `dot` label. Card
+  markup is escaped (`escapeHtml`) and, by default, carries only model content (labels/summaries) with `color:inherit`, so
+  no palette or English copy is baked in; a host `renderCard` template (e.g. localized) can replace it. Pure: imports only
+  the contract, never a backend.
+- **U3.2 `renderer-registry` (done).** New `renderer-registry.ts`: `createRenderer(id)` (construct without mount, so
+  capabilities are readable first), `rendererOrder(preferred)` (`spacegraph` default with `cytoscape` fallback; a
+  `cytoscape` request never falls back up), and `mountRenderer(container, options, overrides?)` which tries the order,
+  discards a failed attempt, returns `{ id, renderer, fallback, error? }`, and rethrows the last error when all fail.
+  Both adapters load behind dynamic `import()` so neither is pulled at module scope.
+- **U3.3 `GraphCanvas.tsx` (done).** New `GraphCanvas` (Solid): mounts the selected adapter once, pushes `model`/`theme`/
+  `selection`/`projection` via effects, mirrors `selectionChange` out through `onSelect`, reports readiness/capabilities
+  via `onReady`, sets `data-graph-ready`/`data-graph-renderer`/`data-graph-projection`/`data-graph-band`, and disposes on
+  cleanup. A `generation` counter drops late async mounts (StrictMode/HMR/session-switch safe). Changing `preferredRenderer`
+  disposes and rebuilds once on the same model.
+- **Verification.** `cd packages/session-graph && bun test src` → 17 tests (new `canvas/buildRenderModel.test.ts` 9,
+  `canvas/renderer-registry.test.ts` 4). `bun run typecheck` clean. New story `session-graph-canvas` +
+  `component-tests/canvas.spec.ts` mount the canonical fixture through the real model → registry → adapter path: asserts
+  ready, `spacegraph` renderer, DOM activity cards carrying fixture text (`src/auth/session.ts`), `onReady` capabilities
+  (3D present), a live switch to `cytoscape`, programmatic selection, and zero console errors.
+  `bun run test:components` → 5 pass; a cold run (cache cleared, fresh port) prints no dependency-optimizer reloads.
+- **`bun run check` caveat.** Repo-wide `check` still fails on two pre-existing, unrelated problems: `packages/ai`
+  `zstdCompressSync` node-types error (present on `origin/dev`; `git diff origin/dev` for `packages/ai` is empty) and a
+  `turbo` SIGSEGV in this environment. Lint (`oxlint`/ast-grep) passed, and no graph package reported an error.
+
+Notes for the next pass:
+
+- **Localization is still deferred to the UI layer.** `buildRenderModel`'s default card and the model's own labels
+  (`Explore`, `Session`, `Retry #2`) are English; `renderCard` is the seam to supply localized copy, and the toolbar/
+  inspector (U3.9/U3.10) own the `en.ts` rule. `GraphCanvas` carries `data-*` only and no accessible name yet — that lands
+  with the accessibility mirror (U3.14) and `GraphView` (U3.8).
+- **The canonical fixture has no reasoning parts**, so `detail` adds `notice` (the synthetic subagent-completion message)
+  but not `reasoning`; a reasoning-bearing fixture or a synthetic model is needed to exercise `reasoning` rendering (U3.10).
+- **Per-session renderer persistence and the fallback banner** are not in U3.2/U3.3 (they are app/integration or
+  `GraphView` concerns): the registry returns `fallback`/`error` and `GraphCanvas` surfaces `data-graph-error`/`onError`;
+  the recoverable banner + persisted choice are I4.1/U3.8.
+- **`GraphCanvas` skeleton is a bare placeholder**; `GraphView` (U3.8) owns real empty/loading/error chrome. Resize is the
+  adapter's own `ResizeObserver` (the contract `resize()` is not driven by the canvas).
+- Next in the plan: U3.4/U3.5 (wire SpaceGraph and Cytoscape through the registry, theme, projection, bands), then
+  U3.7–U3.17 (theme bridge, view layout, toolbar, inspector, breadcrumbs, search, minimap, a11y, 3D, stories, tests).
+
 
 ## 0. Mission
 
@@ -1173,17 +1225,20 @@ Goal: a pure, tested model that answers the five questions from real session dat
 
 Goal: a legible, navigable surface that is worth comparing to the transcript, and that proves renderer independence.
 
-- [ ] **U3.1 Render-model builder**
+- [x] **U3.1 Render-model builder** (done; see log)
   Add `packages/session-graph/src/canvas/buildRenderModel.ts`: `GraphModel` + level + positions + focus → `RenderModel`. It applies the §5.4 policy, hides non-interactive nodes, assigns labels and statuses, emits absolute positions, and generates sanitized `html` for `shape: "card"` nodes from a host-owned template. It must not import a renderer.
   Done: snapshot tests per level; both adapters receive identical models; card HTML is escaped/sanitized and contains no host code.
+  Status: `buildRenderModel` maps level visibility, status, shape, positions, and escaped card markup; pure and contract-only. Tests cover per-level visibility, status mapping, card budgeting, escaping, edge/hidden-node invariants, and determinism. The default card is structural (host `renderCard` seam); both adapters get the same model (canvas component test).
 
-- [ ] **U3.2 Renderer registry**
+- [x] **U3.2 Renderer registry** (done; see log)
   Add `renderer-registry.ts` mapping `"spacegraph" | "cytoscape"` to dynamic imports of `@spacegraphjs/spacegraph-renderer` and `@spacegraphjs/cytoscape-renderer`. Expose capabilities before mount. Default to SpaceGraphJS; fall back to Cytoscape after a mount error with a recoverable banner. Persist the chosen renderer per session.
   Done: neither adapter is imported at module scope; a fake failing SpaceGraph mount selects Cytoscape without losing the session.
+  Status: dynamic-import factories, `createRenderer` (capabilities before mount), `rendererOrder`, and `mountRenderer` with fallback land; a failing preferred mount selects Cytoscape (unit-tested). Per-session persistence is app-level (I4.1) and the banner is `GraphView`'s (U3.8).
 
-- [ ] **U3.3 Canvas component**
+- [x] **U3.3 Canvas component** (done; see log)
   `GraphCanvas.tsx` owns one container, mounts the selected adapter once, sends new `RenderModel`s, syncs selection both ways, handles resize, and disposes. Show a sized skeleton while mounting and surface errors to the parent. Expose `data-graph-ready`, `data-graph-renderer`, `data-graph-projection`, `data-graph-band`.
   Done: session switch and unmount dispose cleanly; no stale async callbacks; renderer switch rebuilds once.
+  Status: `GraphCanvas` mounts once, pushes model/theme/selection/projection, mirrors `selectionChange`, reports `onReady`, sets the `data-*` attributes, and disposes on cleanup; a `generation` guard drops late async mounts. Resize is the adapter's `ResizeObserver`; the skeleton is a placeholder until U3.8.
 
 - [ ] **U3.4 SpaceGraph wiring**
   Use `@spacegraphjs/spacegraph-renderer` through the registry. Apply the theme and projection; map renderer zoom bands to the semantic level; drive selection from string IDs; render HTML activity cards through the adapter's `DOMNode` path. Keep core imports inside the adapter package.
