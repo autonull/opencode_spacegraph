@@ -16,6 +16,38 @@ rejected and reverted with `git reset --hard origin/dev`. It was unverified and 
 `SPACEGRAPH.md` and `SPACEGRAPH.TODO.1.md` are unchanged from `93f49a9cea` (the plan commit); only the
 speculative model code was dropped. Work restarts from Phase 0.
 
+**2026-10-18 (cont.) — P0.3 core link and P0.5 embed spike.**
+
+Scope for this pass (agreed with the user): link `spacegraphjs` core from source and prove it embeds. The
+contract/Cytoscape/SVG subpackages and P0.7/P0.8 stay deferred to Phase 1, since those packages do not
+exist yet.
+
+- **L1.1 (first half) — landed in `spacegraphjs` (`adf2dd6`).** All 37 `spacegraphjs/*` self-imports in
+  `src` are now relative, so the library resolves without a tsconfig `paths` alias. `package.json`
+  `main`/`module`/`types` and `exports` point at `src` and expose `./activity`, `./core`, `./edges`,
+  `./nodes`, `./plugins`, `./plugins/mermaid`, `./input`, `./utils`, `./types`, `./builder`, `./vision`.
+  `tsconfig.json` drops the TS7-removed `baseUrl` and keeps valid relative `paths` for `test/`. Vitest: 10
+  files / 157 tests pass. `pnpm exec tsc` in `spacegraphjs` now surfaces 181 pre-existing errors (10 in
+  `src`) that the old invalid config masked; cleaning them is L1.18.
+- **P0.3 — core linked (not complete).** `spacegraphjs` added to root `workspaces.packages` and as a
+  `workspace:*` dependency of `packages/session-graph`; `bun install` links it. Because the library source
+  is not clean under this repo's universal `noUnusedLocals`, the `./activity` export carries a `types`
+  condition pointing at a stopgap `spacegraphjs/types/activity.d.ts`; Vite/Bun load real source and only
+  `tsc` sees the stopgap (the L1.1 "types condition" mechanism). `packages/session-graph` typecheck
+  passes. The plan's four contract packages do not exist yet, so only the core is linked.
+- **P0.5 — embed spike done (go).** `packages/session-graph/src/spike/graph-spike.tsx`, its story, and
+  `component-tests/graph-spike.spec.ts` mount the real library (`SpaceGraph.create`) with 8 `HtmlNode`s +
+  `CurvedEdge`s. The component test asserts mount, node/edge counts, single `SpaceGraph` instance, resize
+  propagation, drag with no console errors, and captures
+  `docs/spacegraph/screenshots/00-spike-spacegraph.png`. Chunk: ~27 KB min / ~8.7 KB gzip excluding
+  `three`; ~360 KB min / ~84 KB gzip with `three` (the app does not yet depend on `three`).
+- **Findings for later phases.** The spike runs under the Storybook host, not the routed session panel, so
+  exit gate 0's "in the real app shell" is not yet exercised (Phase 4). Default chrome (HUD telemetry,
+  zoom card, hint) and the hard-coded dark background are visible and are L1.3/L1.4 work.
+  `Renderer` forces its container to `position: relative`, so the graph container must be given a definite
+  size rather than `position: absolute; inset: 0`.
+- Details and measurements: `docs/spacegraph/prototype.md`.
+
 ### Environment (this session)
 
 - `bun` 1.4.3 installed to `/home/me/.local` via `npm i -g bun --prefix ~/.local` (postinstall run manually);
@@ -647,17 +679,19 @@ Goal: prove both source-linked renderers can render, resize, and dispose inside 
   Choose one: git submodule for `spacegraphjs/`, or a pinned commit SHA with a documented clone command. Recommended: submodule for a reproducible release artifact; do not vendor source into OpenCode.
   Done: linkage method documented; `spacegraphjs/` ignored or registered consistently; no accidental nested-repo commit.
 
-- [ ] **P0.3 Make the SpaceGraphJS packages source workspaces**
+- [ ] **P0.3 Make the SpaceGraphJS packages source workspaces** (core linked; the four contract packages are Phase 1 deliverables — see log)
   Add `spacegraphjs`, `spacegraphjs/packages/renderer`, `spacegraphjs/packages/spacegraph-renderer`, `spacegraphjs/packages/cytoscape-renderer`, and `spacegraphjs/packages/svg-renderer` to root `workspaces.packages`. Point each package's `main`/`module`/`types`/`exports` at its `src/index.ts` for the prototype. Add `spacegraphjs`, `@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`, and `@spacegraphjs/svg-renderer` as `workspace:*` dependencies of `packages/session-graph`. Keep a documented fallback (Vite regex aliases + tsconfig paths) if Bun workspace resolution conflicts.
   Done: `bun install` links all five packages; imports resolve from `packages/session-graph` in Vite, Bun test, typecheck, and Storybook; core does not import the contract.
+  Status: `spacegraphjs` is a root workspace and a `workspace:*` dep of `packages/session-graph`; imports resolve in Vite, Bun, and Storybook, and typecheck passes via the `./activity` `types` condition. The remaining four packages and the "all five" clause land in Phase 1.
 
 - [x] **P0.4 Trim the critical path** (done, narrowed scope: ONNX/Monaco dynamic, BVH patch now conditional; see log)
   Make `onnxruntime-web` and `@monaco-editor/loader` optional via dynamic import in `src/core/VisionManager.ts` and `src/nodes/CodeEditorNode.ts`. Do not import `src/vision` statically from the main entry. Remove the unconditional `three-mesh-bvh` prototype patch in `src/core/Renderer.ts` unless a real BVH is built.
   Done: importing `spacegraphjs` and constructing a graph never evaluates ONNX or Monaco; build has no ONNX wasm on the critical path.
 
-- [ ] **P0.5 Minimal embed spike**
+- [x] **P0.5 Minimal embed spike** (done for SpaceGraphJS; see log; screenshot `docs/spacegraph/screenshots/00-spike-spacegraph.png`)
   In `packages/session-graph`, render 8 `HtmlNode`s and `CurvedEdge`s inside a sized div in the session panel. Verify pointer drag, resize, theme, cleanup on unmount, session switch, and HMR. Capture one screenshot. Measure the lazy chunk size.
   Done: parity with the spike checklist in SPACEGRAPH.md §4; go/no-go recorded.
+  Status: mounts 8 cards + curved edges, asserts mount/resize/drag/single-instance/no-console-errors in a component test; chunk measured; screenshot committed. Placement is the Storybook host, not the routed session panel (Phase 4); theme and chrome are L1.3/L1.4.
 
 - [x] **P0.6 Add `packages/session-graph` scaffolding** (done: package + story + component test verified; see log)
   Private package, `type: module`, source exports, `typecheck`/`test`/`test:components` scripts, `playwright.components.config.ts` using `componentConfig`, and `AGENTS.md`. Add it to `packages/storybook/.storybook/main.ts` story globs and optimize-deps entries.

@@ -11,6 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const ui = path.resolve(here, "../../ui")
 const sessionUi = path.resolve(here, "../../session-ui")
 const sessionGraph = path.resolve(here, "../../session-graph")
+const spacegraphjs = path.resolve(here, "../../../spacegraphjs")
 const app = path.resolve(here, "../../app/src")
 const extensions = path.resolve(here, "../../gui-extensions/src")
 const mocks = path.resolve(here, "./mocks")
@@ -102,7 +103,7 @@ export default defineMain({
       },
       server: {
         fs: {
-          allow: [searchForWorkspaceRoot(process.cwd()), ui, sessionUi, sessionGraph, app, extensions, mocks],
+          allow: [searchForWorkspaceRoot(process.cwd()), ui, sessionUi, sessionGraph, app, extensions, mocks, spacegraphjs],
         },
       },
     })

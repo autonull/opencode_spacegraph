@@ -14,13 +14,16 @@
     "test:components": "playwright test --config playwright.components.config.ts"
   },
   "dependencies": {
-    "solid-js": "catalog:"
+    "solid-js": "catalog:",
+    "spacegraphjs": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@tsconfig/node22": "catalog:",
     "@types/bun": "catalog:",
     "@typescript/native": "catalog:",
+    "@types/three": "0.185.4",
+    "three": "0.185.1",
     "vite": "catalog:",
     "vite-plugin-solid": "catalog:"
   }
