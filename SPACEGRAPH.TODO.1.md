@@ -577,7 +577,26 @@ Notes for the next pass:
 - **L1.30 (multi-instance isolation) is the next Phase 1 fault line** and is *not* free: `Graph.addEdge` still resolves nodes across `SpaceGraph.instances` and `test/spacegraph.test.ts` ("creates InterGraphEdges…") asserts it. Removing the mechanism means rewriting that test and deciding whether `InterGraphEdge` stays. **L1.27 (minimap)** is larger than it reads: contract `setViewport` carries `zoom` but the adapters ignore `center`, so a click/drag-to-pan minimap needs a contract change and both adapters plus the conformance suite.
 - Next in Phase 3: U3.15 (3D polish), U3.13 (minimap, needs L1.27), U3.6 (comparison). Remaining Phase 1: L1.11, L1.15, L1.17, L1.25, L1.27, L1.29–L1.34.
 
+**2026-10-18 (cont.) — Phase 3 3D mode (U3.15): orbit follows projection, a real 3D camera pose, and a projection-agnostic detail check.**
 
+Scope for this pass: make the 2D↔3D toggle an actual camera change instead of a silent swap. Library work is in `spacegraphjs` (camera controls + `SpaceGraph` facade + the `./activity` stopgap); host work is the adapter wiring plus one component test.
+
+- **Orbit follows projection (library).** `CameraControls` gains `setOrbitEnabled(enabled)` (gates orbit input without swapping the camera; orthographic still never orbits) and `setPolar(phi, theta, duration)` (points the camera at a polar/azimuth angle, animating through the existing target/radius lerp when a duration is given; the polar clamp is shared with `rotate`). `SpaceGraph` re-exposes both as `setOrbitEnabled`/`setPolar`. New `test/camera-controls.test.ts` (4 tests) covers orbit gating and immediate vs animated pose.
+- **U3.15 — 3D is a camera change (adapter).** `@spacegraphjs/spacegraph-renderer`'s `setProjection` now also applies a pose: `2d` → orbit off + flat top-down (`FLAT_PHI = π/2`), `3d` → orbit on + a ~29° tilt (`TILT_PHI = π/2 - 0.5`) so the hierarchy Z reads as depth; both animate over 0.5s and keep the controls target, so identity, selection, and inspector content are untouched. The same pose is applied at `mount` for a graph that starts in 3D. Without this, 3D looked identical to 2D until the user orbited, and orbit stayed dead after a 2D→3D toggle (the `enableRotate: false` set at mount was never restored).
+- **Bug fixed.** The adapter set `enableRotate: !ortho` once at mount; `setOrbitEnabled` replaces that one-shot with an explicit per-projection gate, so 3D-after-2D can orbit.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 23 files, 249 tests (was 22/245; +`camera-controls` 4). `pnpm exec tsc --noEmit` adds no errors in touched files (CameraControls keeps only its two pre-existing `Array.at` errors).
+- `cd spacegraphjs/packages/spacegraph-renderer && bun run typecheck && bun test` → clean, 10 tests.
+- `cd packages/session-graph && bun run typecheck && bun test src` → clean, 19 tests.
+- `cd packages/session-graph && bun run test:components` → 13 pass (was 12; +`graph-3d`, which toggles 3D→2D and asserts `data-graph-projection`, inspector content, and breadcrumbs survive with zero console errors).
+- `cd packages/app && bun run typecheck` → clean.
+
+Notes for the next pass:
+- **U3.15 remaining cosmetics.** "Keep 2D-like labels" already holds (CSS2D edge labels and `depthTest:false` node labels are constant-size); the "subtle depth cue" is the default 3D tilt — a fog/attenuation cue was deliberately not added because it is unverifiable without visual review and interacts badly with the transparent background. Orbit clamp is the existing polar/distance clamp.
+- **The 3D pose is generic adapter policy, not OpenCode semantics.** `FLAT_PHI`/`TILT_PHI` live in the SpaceGraph adapter (the renderer owns camera per contract rule 1); a host cannot yet choose the tilt. If a host needs a different 3D framing, surface `render.projectionTilt` rather than branching in the host UI.
+- **`SpaceGraphOptions.cameraControls` is still passed with a cast** (it is not typed on `SpaceGraphOptions`; the adapter relies on the `./activity` stopgap's index signature). Typing it is L1.4/L1.1 cleanup.
+- Next in Phase 3: U3.13 (minimap, needs L1.27), U3.6 (comparison). Remaining Phase 1: L1.4, L1.11, L1.15, L1.17, L1.27, L1.29, L1.30, L1.32, L1.33.
 
 ## 0. Mission
 
@@ -1213,7 +1232,7 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 - [x] **L1.12 First-class orthographic projection** (done; see log — wheel zoom is centered on the viewport, not the pointer)
   Add `projection: "perspective" | "orthographic"` to the renderer. Swap the camera used by WebGL, CSS3D, raycasting, resize, `fitView`, and `RenderContext`. Implement ortho pan and wheel zoom around the pointer. Clamp zoom. Disable free orbit in ortho.
   Done: `sg.setProjection("orthographic")` produces a true parallel projection with correct CSS3D alignment; wheel zoom and pan work; toggling to perspective preserves target and selection.
-  Status: `Renderer` owns both cameras and swaps them in `setProjection`; `RenderContext.setCamera` follows the active camera; `onResize` keeps the ortho frustum aspect-correct; `CameraControls` disables orbit in ortho and zooms the frustum (clamped 0.01–100). Browser-verified by the session-graph adapter component test (2D↔3D with no console errors). Pointer-anchored ortho zoom is not done; zoom scales the frustum about the target.
+  Status: `Renderer` owns both cameras and swaps them in `setProjection`; `RenderContext.setCamera` follows the active camera; `onResize` keeps the ortho frustum aspect-correct; `CameraControls` disables orbit in ortho and zooms the frustum (clamped 0.01–100). Orbit is now explicitly gated per projection via `CameraControls.setOrbitEnabled`/`SpaceGraph.setOrbitEnabled` and `setPolar` (U3.15). Browser-verified by the session-graph adapter component test (2D↔3D with no console errors). Pointer-anchored ortho zoom is not done; zoom scales the frustum about the target.
 
 - [x] **L1.13 Camera zoom telemetry** (done; see log)
   Add a normalized camera zoom (`0..1` or log-scale) derived from perspective distance or ortho height. Emit throttled `camera:change` and `zoom:change`; expose `zoom`, `setZoom`, and `zoomToFit(nodes?)`. Do not implement semantic levels here; the band controller in L1.23 owns policy.
@@ -1470,9 +1489,10 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
   Done: keyboard-only traversal selects and inspects nodes in both renderers.
   Status: `src/ui/GraphA11y.tsx` mounts the library layer over `RenderModel.nodes` (kind/status/interactive), mirrors selection, and localizes its announcements through the layer's new `formatSelection` hook; `GraphView` gives the canvas region `tabindex` + `aria-describedby` instructions. `component-tests/graph-a11y.spec.ts` walks the hidden list with the arrow keys to a node, activates it with Enter, and asserts the inspector in SpaceGraph and Cytoscape. The ordered list is nodes only (edges are not listed); the app e2e still owns live selection assertions. Fixing it surfaced a selection feedback loop (both adapters echoed their own `setSelection` as a user `selectionChange`), fixed in spacegraphjs `313a4bc`.
 
-- [ ] **U3.15 3D mode**
+- [x] **U3.15 3D mode** (done; see log — depth cue is the default 3D tilt, not fog)
   Same model and levels; Z from hierarchy. Clamp orbit, keep 2D-like labels, add a subtle depth cue. Toggle animates camera and preserves target/selection. Default remains 2D; the control is capability-gated.
   Done: 3D does not change node identity or inspector content; switching back restores the 2D framing.
+  Status: the adapter's `setProjection` now gates orbit per projection and animates the camera to a flat top-down pose (2D) or a ~29° tilt (3D) about a preserved target, by way of the new `SpaceGraph.setOrbitEnabled`/`setPolar` (library). Same model and levels; CSS2D/`depthTest:false` labels stay constant-size; the polar/distance clamp still applies. `component-tests/graph-3d.spec.ts` proves identity, selection, breadcrumbs, and inspector content survive a 2D↔3D round trip with zero console errors. A fog/attenuation depth cue is deliberately not added (unverified visually; fights the transparent background).
 
 - [ ] **U3.16 Stories**
   Stories for overview, execution, detail, selected node, 2D, 3D, both renderers, light, dark, narrow, empty, loading, error, and long-output. Use `CurrentSessionProviders` or a local provider with the canonical fixture. Story ID prefix: `session-graph--`.
