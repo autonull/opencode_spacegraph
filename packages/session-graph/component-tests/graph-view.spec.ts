@@ -33,6 +33,12 @@ story("assembles the graph view and answers node questions without the canvas", 
   await expect(inspector).toContainText("src/auth/session.ts")
   await expect(root.locator('[data-slot="graph-breadcrumbs"]')).toContainText("Session")
 
+  // Detail is read back from the model, not the canvas: a shell result shows its full terminal output.
+  await page.evaluate(() => (window as unknown as ViewWindow).__graphView!.select("result:prt_tool_shell_3"))
+  const output = inspector.locator('[data-slot="graph-inspector-output"]')
+  await expect(output).toBeVisible()
+  await expect(output).toContainText("3 pass 0 fail")
+
   // Level is a component prop: changing it must reach the toolbar's derived disabled state.
   const zoomOut = root.locator('button[aria-label="Zoom out"]')
   await expect(zoomOut).toBeEnabled()

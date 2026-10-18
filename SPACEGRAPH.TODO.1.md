@@ -1366,6 +1366,45 @@ Notes for the remaining work:
   `select`, the stale internal value is used. Harmless for the app's flow (deselect routes through `select`),
   but worth normalizing if a host drives selection purely externally.
 
+**2026-10-18 (cont.) — Phase 9 RF.8: full terminal output in the inspector (with copy).**
+
+Scope for this pass: the terminal half of RF.8's "deepened content". The inspector already had the
+`ui.sessionGraph.inspector.output`/`.error` i18n keys defined but unwired, and result nodes carried only a
+truncated summary. Host work is in `packages/session-ui` (model) and `packages/session-graph` (inspector);
+`spacegraphjs` is untouched.
+
+- **Model — full terminal output (`packages/session-ui/src/graph/model.ts`).** `shell`/`execute`/`bash`
+  result nodes now carry `data.output`: the complete process output, ANSI-stripped (`strip-ansi`) with CRLF
+  normalized. A new pure `terminalOutput(text)` helper produces it; the node `summary` stays the truncated
+  preview used on the canvas. Both result paths (a shell message in `appendShell` and a shell tool in
+  `appendTool`) use it. The renderer is unaffected: `buildRenderModel`'s `nodeData` maps only affordance
+  fields, so full output never reaches the canvas or the render model (no DOM-budget or chunk impact).
+- **Inspector — output section with copy (`packages/session-graph/src/ui/GraphInspector.tsx`).** A result
+  node now renders an "Output" block (`data-slot="graph-inspector-output"`) in a scrollable `<pre>`
+  (`whitespace-pre-wrap`, `max-h-64`) with a copy `IconButton` (`ui.message.copy`/`.copied`,
+  `navigator.clipboard.writeText`). This wires the previously-unused `inspector.output` key. Additive: nodes
+  without output are unchanged.
+- **Tests.** `model.test.ts` gains a case asserting a shell result carries the full ANSI-stripped output
+  (red SGR codes stripped, CRLF → LF). `component-tests/graph-view.spec.ts` selects `result:prt_tool_shell_3`
+  and asserts the output section is visible and shows the fixture text (`3 pass 0 fail`).
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 56 pass (was 55); `bun run typecheck` clean.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 29 pass; `bun run test:components`
+  → 28 pass.
+- `cd packages/app && bun run typecheck` clean; root `bun run lint:changed` → 0 problems.
+
+Notes for the remaining RF.8 work:
+- **Markdown for assistant text is not done.** Assistant `message` nodes carry full text in `summary` and
+  the inspector renders it as plain (whitespace-preserved) text. Real Markdown would pull
+  `@opencode/session-ui/markdown` (DOMPurify/marked/worker + `MarkdownProvider`) into the graph chunk;
+  deferred until the graph chunk budget is revisited.
+- **On-demand diffs are not done.** They need the app's `turnDiff` loader
+  (`serverSDK.api.session.diff`, cached per tab in `packages/app/src/shell/routes/session-ui-provider.tsx`)
+  threaded through `session-graph-view.tsx` into `GraphView`, plus model support for diff hunks; the model
+  carries only the changed-file list (`diff` node `data.files`) today. Phase 4/5 scope.
+- RF.6 (selection-outline alignment), RF.7 (overflow menu), P8.1/P8.2 remain (unchanged below).
+
 ## 0. Mission
 
 
@@ -2677,8 +2716,11 @@ neighbours. The layout must be card-aware.
   terminal, on-demand diffs, copy) once the model carries that text.
   Status: collapse landed (`data-slot="graph-inspector-gutter"` `data-collapsed`; the panel is `w-0`
   with `overflow-hidden` when nothing is selected); the gutter is now resizable at ≥768px (`role="separator"`
-  drag handle, 220px–60% clamp) and a bottom sheet below 768px (`data-layout="sheet"`). **Open:** the deepened
-  content (markdown, ANSI-stripped terminal, on-demand diffs, copy) needs the model to carry terminal/diff text.
+  drag handle, 220px–60% clamp) and a bottom sheet below 768px (`data-layout="sheet"`). **Terminal output and
+  copy landed** (this pass): shell/execute result nodes carry full ANSI-stripped `data.output` and the panel
+  renders it in a scrollable `<pre>` with a copy button (`data-slot="graph-inspector-output"`). **Open:**
+  Markdown for assistant text (would pull the Markdown component/worker into the graph chunk) and on-demand
+  diffs (need the app's `turnDiff` loader threaded into `GraphView` plus diff-hunk model support).
 - [x] **RF.9 States and theming**
   Real loading skeleton, styled empty and error states, and light/dark parity checked in screenshots
   (not only Storybook).

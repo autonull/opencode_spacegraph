@@ -203,6 +203,33 @@ describe("graph model — failure and retry", () => {
   })
 })
 
+describe("graph model — terminal output", () => {
+  test("a shell result carries the full ANSI-stripped output for the inspector", () => {
+    const messages = [
+      {
+        id: "s1",
+        type: "shell",
+        shellID: "sh",
+        command: "bun test",
+        status: "exited",
+        exit: 1,
+        output: {
+          output: "\u001b[31mFAIL\u001b[0m src/auth/session.test.ts\r\n  expected 1 to be 2",
+          cursor: 0,
+          size: 1,
+          truncated: false,
+        },
+        time: { created: 1, completed: 2 },
+      },
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const result = nodesOf(buildGraph(messages, { type: "idle" }), "result")[0]
+
+    expect(result?.data?.output).toBe("FAIL src/auth/session.test.ts\n  expected 1 to be 2")
+  })
+})
+
 describe("graph model — invariants", () => {
   test("no inferred-cause edge is created from adjacency", () => {
     const model = buildFixtureGraph()

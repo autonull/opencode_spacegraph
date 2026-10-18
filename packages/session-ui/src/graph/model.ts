@@ -8,6 +8,7 @@ import type {
   SessionStatus,
 } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
+import stripAnsi from "strip-ansi"
 import { timelineCategory } from "../timeline/detail"
 import { Timeline } from "../timeline/projection"
 import { currentToolError, currentToolFailed, currentToolOutput } from "../message/current-tool-state"
@@ -201,6 +202,17 @@ function truncate(text: string, max = 80) {
   const single = text.replace(/\s+/g, " ").trim()
 
   return single.length > max ? `${single.slice(0, max - 1)}…` : single
+}
+
+/**
+ * Full terminal text for the inspector (RF.8). ANSI colour codes are stripped and CRLF normalized so
+ * the panel shows plain, selectable output; the renderer never sees this because `buildRenderModel`
+ * maps only affordance fields.
+ */
+function terminalOutput(text: string | undefined): string | null {
+  if (!text) return null
+
+  return stripAnsi(text).replace(/\r\n?/g, "\n")
 }
 
 function stringField(record: Record<string, JsonValue>, key: string) {
@@ -541,6 +553,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
         exit: message.exit ?? null,
         timeout: message.status === "timeout",
         truncated: message.output?.truncated ?? null,
+        output: terminalOutput(message.output?.output),
       },
     })
     partOf(resultID, turnID)
@@ -716,7 +729,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
         toolID: tool.id,
         time: tool.time.completed ?? tool.time.created,
         minLevel: "execution",
-        data: { exit: metadata.exit ?? null, timeout: metadata.timeout === true },
+        data: { exit: metadata.exit ?? null, timeout: metadata.timeout === true, output: terminalOutput(output) },
       })
       partOf(resultID, turnID)
       addEdge({ kind: "produces", source: nodeID, target: resultID, confidence: "explicit" })

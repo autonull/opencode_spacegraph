@@ -3,7 +3,7 @@ import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { For, Show } from "solid-js"
+import { For, Show, createSignal } from "solid-js"
 
 const KIND_KEY = {
   session: "ui.sessionGraph.kind.session",
@@ -69,6 +69,16 @@ export type GraphInspectorProps = {
 export const GraphInspector = (props: GraphInspectorProps) => {
   const i18n = useI18n()
   const data = () => props.node?.data
+  const [copied, setCopied] = createSignal(false)
+
+  const copyOutput = async () => {
+    const output = text(data()?.output)
+
+    if (!output) return
+    await navigator.clipboard?.writeText(output)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const connections = (): Connection[] => {
     const node = props.node
@@ -174,6 +184,27 @@ export const GraphInspector = (props: GraphInspectorProps) => {
                     {JSON.stringify(data()?.input, null, 2)}
                   </pre>
                 </div>
+              </Show>
+
+              <Show when={text(data()?.output)}>
+                {(output) => (
+                  <div class="mt-3" data-slot="graph-inspector-output">
+                    <div class="flex items-center justify-between">
+                      <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.output")}</div>
+                      <IconButton
+                        size="small"
+                        variant="ghost"
+                        aria-label={i18n.t(copied() ? "ui.message.copied" : "ui.message.copy")}
+                        title={i18n.t(copied() ? "ui.message.copied" : "ui.message.copy")}
+                        onClick={copyOutput}
+                        icon={<Icon name={copied() ? "check" : "outline-copy"} size="small" />}
+                      />
+                    </div>
+                    <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono text-text-base whitespace-pre-wrap break-words">
+                      {output()}
+                    </pre>
+                  </div>
+                )}
               </Show>
 
               <div class="mt-4">
