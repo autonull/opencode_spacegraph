@@ -1683,6 +1683,23 @@ Notes for the remaining work:
 - **Deferred / human-gated, unchanged:** H6.5 (approval-gated inline row host), R7.3 (needs human participants),
   P8.4/P8.8 (conditional by design), and the naming decision #10 ("Graph" vs "Session map").
 
+**2026-10-18 (cont.) — Phase 10 planned: legibility, framing, and representation/depth experiments.**
+
+A fresh read of the committed screenshots (not just "does it repaint") found the visual result is not yet
+usable, so the work is added as **Phase 10** (LE.1–LE.17) rather than reopening Phase 9. Findings: `02`/`14`
+overview is a giant mostly-empty band; `03`/`04` clip the second turn and float the content in an empty half;
+`11` timeline is a thin smear; `12` hierarchy overlaps bands; `06` 3D is an illegible jumble; `13` narrow
+buries the graph under the sheet; `07`/`08` Cytoscape cram into a corner; the `session`/`turn`/`phase` mesh
+panels are near-invisible, mis-themed boxes; and long cross-canvas dashed edges add noise. Root causes: fit is
+dominated by the oversized bands, and the overview reuses the lane spread for content that does not fill it.
+
+The phase is deliberately framed as **seams, not verdicts**: three persisted, switchable axes
+(`representation` = graph|ribbon|matrix, `layout` = lanes|timeline|hierarchy, `depth` = flat|layered|
+depth-stack|orbit) so contested choices are built and captured as options and settled by the R7.3 protocol.
+3D is treated as a depth spectrum (a 2.5D `layered` mode with subtle depth ordering is the minimum legible
+bar; `orbit` is a labelled experiment), not a tilt toggle. New open decisions #14–#16 record the deferred
+choices. No code changed this pass; the phase is scheduled, ordered LE.1-first (fit fixes the most images).
+
 ## 0. Mission
 
 
@@ -3037,6 +3054,125 @@ Held requirements from this phase (do not drop):
 - **Stylized, colourful, iconographic** — the graph should read at a glance, not be generic boxes and
   lines (RF.3/RF.5).
 
+### Phase 10 — Legibility, framing, and representation/depth experiments
+
+Goal: make the graph *usable*, not merely present, and — where the right representation is genuinely
+contested — build **switchable options and capture them** instead of deciding one winner in code. The
+screenshots are the acceptance contract again, but this time every batch is judged by a human eye
+against legibility, and the contested choices are settled later by the R7.3 protocol.
+
+Why a new phase: the Phase 9 captures passed a "does it repaint" check but failed a legibility read.
+`02`/`14` (overview) are one giant mostly-empty band; `03`/`04` clip the second turn and float the
+content in an empty half; `11` (timeline) is a thin smear; `12` (hierarchy) overlaps bands; `06` (3D)
+is an illegible jumble; `13` (narrow) buries the graph under the sheet; `07`/`08` (Cytoscape) cram
+into a corner; and the `session`/`turn`/`phase` `panel` meshes are near-invisible, mis-themed boxes.
+Two root causes recur: **fit is dominated by the oversized bands**, and **the overview reuses the lane
+spread for content that does not fill it**.
+
+**Design principle: seams, not verdicts.** Three persisted, switchable axes, each a pure function over
+the existing model, defaulted conservatively and reusing levels/selectors/inspector unchanged:
+
+- `representation` — `graph` (node-link, current) | `ribbon` (per-turn stacked-phase bar) | `matrix`
+  (turns × phase categories).
+- `layout` — `lanes` | `timeline` | `hierarchy` (exists; fix legibility).
+- `depth` — `flat` | `layered` (2.5D) | `depth-stack` | `orbit`.
+
+Nothing here changes session semantics, the protocol, or the transcript; the library stays generic and
+the session vocabulary stays in `session-ui`/`session-graph`.
+
+Framing and structural defects (fix regardless of representation):
+
+- [ ] **LE.1 Fit and framing (library-first)**
+  Fit from *content* bounds: exclude band nodes and empty structural columns, add padding, and inset
+  for the open inspector (side panel or bottom sheet), the header toggles, and the composer; re-fit
+  when the inspector toggles and when the level/projection changes. Library seam: let `fitView` accept
+  a node-id subset and/or ignore declared sizes (the adapter already passes ids). Done: `02`–`04`,
+  `11`–`14` frame the whole model with no clipping and no dominant empty region; `07`/`08` too.
+- [ ] **LE.2 Structural node legibility and theming**
+  `session`/`turn`/`phase` panels and `error`/`retry` badges take `RenderTheme.surface`/`border`/
+  `text`; minimum legible size; the session root reads in light and dark (today it is a dark box in
+  light mode and a dash in dark). Library + adapter.
+- [ ] **LE.3 Overview band correctness**
+  Bands wrap only the members drawn at the level and are suppressed where they add nothing; no
+  cross-lane empty box. Host `buildRenderModel`.
+- [ ] **LE.4 Narrow / mobile**
+  Size the canvas to the area above the bottom-sheet inspector and fit inside the visible region; the
+  sheet never covers the framed content. Host.
+- [ ] **LE.5 Cytoscape harness parity**
+  Give the capture story an explicit container size, fit after positions apply, and assert overlay
+  geometry; regenerate `07`/`08` to match the app's framing and card sizes. Component test/host.
+- [ ] **LE.6 Edge legibility**
+  Drop cross-turn structural wires at overview; no full-width dashed lines; keep root→turn links short
+  or omit. Host `edgesAtLevel`/`buildRenderModel`.
+
+Representation experiments (build the seam, then the options):
+
+- [ ] **LE.7 Representation seam**
+  Add a `representation` field (beside `layout`/`depth`) persisted on `sessionViewSchema.graph`,
+  exposed as a prototype-settings control, defaulting to `graph`. Each representation is a pure
+  `model → view` function; the toolbar, inspector, search, breadcrumbs, and a11y mirror stay
+  representation-agnostic. This is the enabling seam for LE.8/LE.9.
+- [ ] **LE.8 Turn ribbon representation**
+  One horizontal bar per turn, segmented and tinted by phase category with counts, failure/retry
+  markers, and a turn header; clicking a segment selects/expands into `graph`. Overview-first; fixes
+  the empty-band problem by construction.
+- [ ] **LE.9 Turn matrix representation**
+  Turns (rows) × phase categories (columns); each cell shows count/status; click to select/expand. The
+  cheapest representation for the five questions; include it in the R7.3 comparison.
+
+Layout versatility (keep every option legible):
+
+- [ ] **LE.10 Lane gutter and turn header rail**
+  A fixed left gutter with lane labels (Phases / Explore / Edit / Verify / Delegate / Artifacts) and a
+  per-turn header rail, so the spatial grammar is visible. An overlay on `lanes`, not a replacement.
+- [ ] **LE.11 Timeline and hierarchy legibility**
+  Timeline wraps (snake rows or per-turn rows) instead of one long row; hierarchy computes its own band
+  bounds (or suppresses bands) and widens spacing. All three `LayoutStrategy` values stay legible at
+  1440×900 and 390×900.
+- [ ] **LE.12 Artifacts rail / file-first navigation**
+  A persistent changed-files rail; hovering/selecting a file highlights its writers, inverting the "why
+  did this file change" question. An optional lens over `graph`.
+- [ ] **LE.13 Edge bundling / spine rails**
+  Per-turn spine with short provenance connectors instead of crossing wires; optional, behind a flag.
+
+3D as a depth spectrum, not a tilt (per the depth-ordering idea):
+
+- [ ] **LE.14 Depth-mode seam and treatments**
+  Add a `depth` render option with several treatments, all 2D-legible first:
+  - `flat` — the current default.
+  - `layered` (2.5D) — mostly 2D with **subtle depth ordering**: small per-level/lane/time Z offsets,
+    occlusion and depth fade, cards stay flat/billboarded; a gentle parallax rather than an orbit.
+  - `depth-stack` — Z encodes one chosen dimension (hierarchy depth, turn index, or time) with real
+    separation and a shallow camera angle; labels billboarded.
+  - `orbit` — the current 2D+3D perspective with orbit, kept as an experiment and honestly labelled.
+  Library-first: add the missing primitives (a `depth` render option, depth fade/attenuation, billboard
+  handling) to `spacegraphjs` and the adapter; keep it opt-in.
+- [ ] **LE.15 Depth cue primitives (library)**
+  Depth fade/attenuation, z-ordering, optional billboarding, and a contract/adapter `depth` option;
+  unit-tested, with a legibility check per mode at 1440×900.
+
+Experimentation harness and acceptance:
+
+- [ ] **LE.16 Option switcher + capture matrix**
+  A prototype-settings switcher for `representation`/`layout`/`depth` (per §4.7), and a capture matrix
+  that renders each meaningful combination into the committed screenshot set (numbered, documented),
+  with `graph:capture --mode=compare` covering the options. The screenshots become the comparison
+  surface for the protocol.
+- [ ] **LE.17 Visual acceptance + R7.3 wiring**
+  Each batch regenerates and is *inspected* before "done"; the R7.3 protocol runs the five tasks
+  against each representation/depth option, and the go/no-go decides the winner. No representation or
+  depth mode is removed on taste alone.
+
+Held requirements from this phase (do not drop):
+
+- **Do not pick a single representation or depth treatment in code.** Ship the seams and the options,
+  capture them, and decide from the usability protocol.
+- **3D is a depth spectrum, not a toggle.** At minimum `layered` (2.5D) must be legible; `orbit` is
+  retained only as a labelled experiment.
+- **The transcript remains the baseline**; every option is lazy, opt-in, and reverts cleanly.
+- **Library-first**: generic capabilities (fit-with-insets, depth cues, lane gutter, edge bundling)
+  land in `spacegraphjs` before the host uses them.
+
 ## 7. Canonical fixture specification
 
 A single deterministic session used by model tests, stories, component tests, e2e, and screenshots.
@@ -3168,6 +3304,9 @@ Go/no-go points:
 11. **Framework binding priority:** Solid for OpenCode first; React for Hermes after the OpenCode prototype. Confirm.
 12. **Host-neutral activity schema:** extract `ActivityGraph` only when the second host needs it; do not pre-generalize OpenCode semantics. Confirm at Phase 8.
 13. **Static renderer packaging:** keep `@spacegraphjs/svg-renderer` separate from the dependency-free contract (recommended) vs adding runtime SVG helpers to the contract package. The separate package preserves the zero-dependency contract.
+14. **Overview representation:** `graph` vs `ribbon` vs `matrix` (Phase 10 LE.7–LE.9). Do not decide upfront; build all three behind one seam, capture them, and decide from the R7.3 comparison. Supersedes the implicit single "graph" choice.
+15. **Depth treatment:** `flat` / `layered` (2.5D) / `depth-stack` / `orbit` (Phase 10 LE.14–LE.15). 3D is a spectrum, not a binary toggle; `layered` is the minimum legible bar and `orbit` is retained only if the protocol supports it. Supersedes decision #8.
+16. **File-first lens:** whether the artifacts rail (LE.12) is a default affordance or an optional lens. Decide after the deeper captures and the R7.3 protocol.
 
 ## 12. File touch index
 
