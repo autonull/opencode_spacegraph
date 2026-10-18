@@ -1218,8 +1218,8 @@ extended visual-regression capture (RF.11).**
 
 Scope for this pass (agreed with the user): the whole visual/UX refinement phase, in batch order, with the
 screenshots as the acceptance contract. Host work is in `packages/session-ui`, `packages/session-graph`,
-`packages/app`, and one `en.ts` edit; the one library change (RF.6) is in `spacegraphjs` commit
-`1cca265` (branch `main`).
+`packages/app`, and one `en.ts` edit; the library changes are in `spacegraphjs` commits
+`1cca265` (theme mapping) and `c23feea` (neutral HTML card surface, branch `main`).
 
 - **RF.1 — card-aware geometry (done).** `packages/session-ui/src/graph/layout.ts` is rewritten around a
   `nodeSize(node)` table (`CARD_SIZE` 220×72; `COMPACT_SIZE` 132×44 for session/turn/phase/error/retry/
