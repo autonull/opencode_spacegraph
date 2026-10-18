@@ -56,6 +56,7 @@ function laneOf(node: GraphNode): Lane {
     const role = node.data?.role
 
     if (role === "user") return "prompt"
+
     if (role === "shell") return "verify"
 
     return "narrative"
@@ -95,6 +96,7 @@ export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): Gra
   const depthStep = options.depthStep ?? 64
 
   const positions = new Map<string, Position>()
+
   const place = (id: string, x: number, lane: Lane, depth: number) => {
     positions.set(id, { x, y: LANES.indexOf(lane) * laneGap, z: depth * depthStep })
   }
@@ -152,6 +154,7 @@ export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): Gra
 
   for (const node of model.nodes) {
     if (node.kind !== "phase" || !node.clusterOf) continue
+
     const members = node.clusterOf.flatMap((id) => {
       const position = positions.get(id)
 

@@ -86,6 +86,7 @@ export function clusterCount(node: GraphNode) {
  */
 export function edgesAtLevel(model: GraphModel, level: ZoomLevel, focus?: string): GraphEdge[] {
   const visible = visibleNodeIDs(model, level)
+
   const allowed = model.edges.filter(
     (edge) =>
       LEVEL_RANK[EDGE_MIN_LEVEL[edge.kind]] <= LEVEL_RANK[level] &&
@@ -99,6 +100,7 @@ export function edgesAtLevel(model: GraphModel, level: ZoomLevel, focus?: string
 
   for (const edge of allowed) {
     if (edge.source === focus) neighborhood.add(edge.target)
+
     if (edge.target === focus) neighborhood.add(edge.source)
   }
 

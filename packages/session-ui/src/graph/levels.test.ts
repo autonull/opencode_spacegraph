@@ -41,6 +41,7 @@ describe("semantic levels — node visibility", () => {
     const detail = idsAt("detail")
 
     expect(detail.has("msg:msg_synthetic_1")).toBe(true)
+
     for (const id of execution) expect(detail.has(id)).toBe(true)
   })
 

@@ -156,11 +156,9 @@ const PHASE_LABELS: Record<PhaseCategory, string> = {
   result: "Result",
 }
 
-const PHASE_CATEGORIES = new Set<string>(["explore", "edit", "verify", "delegate", "result"])
-
-function isPhaseCategory(value: JsonValue | undefined): value is PhaseCategory {
-  return typeof value === "string" && PHASE_CATEGORIES.has(value)
-}
+const decodePhaseCategory = Schema.decodeUnknownOption(
+  Schema.Literals(["explore", "edit", "verify", "delegate", "result"]),
+)
 
 /**
  * The phase a tool belongs to. Named tools map to the semantic vocabulary; anything unclassified
@@ -180,18 +178,14 @@ export function phaseCategoryForTool(name: string): PhaseCategory {
 
 /** The phase category of a node that participates in a phase (tool, subagent, or phase cluster). */
 export function phaseCategoryOf(node: GraphNode): PhaseCategory | undefined {
-  if (node.kind === "phase") {
-    const category = node.data?.category
-
-    return isPhaseCategory(category) ? category : undefined
-  }
+  if (node.kind === "phase") return Option.getOrUndefined(decodePhaseCategory(node.data?.category))
 
   if (node.kind === "subagent") return "delegate"
 
   if (node.kind === "tool") {
-    const name = node.data?.name
+    const name = decodeString(node.data?.name)
 
-    return typeof name === "string" ? phaseCategoryForTool(name) : undefined
+    return Option.isSome(name) ? phaseCategoryForTool(name.value) : undefined
   }
 
   return undefined
