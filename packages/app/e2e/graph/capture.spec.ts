@@ -86,7 +86,14 @@ async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") 
 }
 
 async function fit(page: Page) {
+  // RF.7: a narrow toolbar keeps the fit control inside the overflow menu; open it, click, and close.
+  const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
+  const compact = (await overflow.count()) > 0
+
+  if (compact) await overflow.locator("summary").click()
   await page.locator(toolbar).getByRole("button", { name: "Fit to view", exact: true }).click()
+
+  if (compact) await overflow.locator("summary").click()
 }
 
 test("captures the transcript, graph levels, selection, return, and 3D", async ({ page }) => {
