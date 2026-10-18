@@ -170,6 +170,24 @@ test("without a focus nothing is dimmed", () => {
   expect(at("execution").nodes.some((node) => node.data?.dimmed === true)).toBe(false)
 })
 
+test("execution focus dims vector panels through node opacity, not markup (RF.10)", () => {
+  const built = buildRenderModel(model, {
+    level: "execution",
+    positions,
+    bands: true,
+    focus: "tool:prt_tool_write_1",
+  })
+
+  // Bands are never dimmed; the structural panels/badges have no markup, so they carry the opacity.
+  const fadedVectors = built.nodes.filter(
+    (node) => node.data?.dimmed === true && node.html === undefined,
+  )
+
+  expect(fadedVectors.length).toBeGreaterThan(0)
+  expect(fadedVectors.every((node) => node.data?.opacity === 0.3)).toBe(true)
+  expect(fadedVectors.some((node) => node.kind === "turn" || node.kind === "session")).toBe(true)
+})
+
 test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () => {
   const built = at("detail")
   const style = (kind: string, confidence?: string) =>

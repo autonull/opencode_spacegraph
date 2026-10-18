@@ -54,6 +54,9 @@ const ZERO: Position = { x: 0, y: 0, z: 0 }
 /** A collapsed derived cluster draws as a compact counted chip rather than a bare panel label. */
 const CHIP_SIZE: [number, number, number] = [132, 44, 0]
 
+/** Opacity applied to a node outside the selected neighborhood at execution (RF.10). */
+const DIM_OPACITY = 0.3
+
 /** Padding added to a cluster band so members sit inside it. */
 const BAND_PAD = 28
 
@@ -104,6 +107,12 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
 
     if (asCard) cards += 1
 
+    // Cards fade through their host markup; vector panels/badges have no markup, so they carry the
+    // opacity for the renderer to apply to the node itself. It is sent even when lit because the core
+    // merges node data, so a stale dim would otherwise stick.
+    const data = nodeData(node, level, dimmed)
+    if (!asCard) data.opacity = dimmed ? DIM_OPACITY : 1
+
     return {
       id: node.id,
       kind: node.kind,
@@ -114,7 +123,7 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
       html: asCard ? wrapDim(renderCard(node, level), dimmed) : undefined,
       size: asCard && chip ? CHIP_SIZE : undefined,
       position: [position.x, position.y, position.z],
-      data: nodeData(node, level, dimmed),
+      data,
     }
   })
 

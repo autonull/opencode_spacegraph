@@ -1598,6 +1598,52 @@ Notes for the remaining work:
 - **Still deferred / not implementable here:** H6.5 (approval-gated inline row host), R7.3 (needs human
   participants), P8.4/P8.8 (conditional by design).
 
+**2026-10-18 (cont.) — Phase 9 RF.10/RF.6 follow-up: vector-node focus dimming (the filed "vector-node dimming" note).**
+
+Scope for this pass: close one of the three library partials the previous passes filed — execution focus
+dimming faded DOM cards but left the `session`/`turn`/`phase` vector panels at full opacity, so the
+selection neighborhood read inconsistently. Library work is in `spacegraphjs`; host work is
+`packages/session-graph`.
+
+- **Core — `data.opacity` is now honoured by vector nodes (`spacegraphjs` `f456ab0`).**
+  `Node` gains an `opacity` getter (`data.opacity`, default `1`). `ShapeNode.applyOpacity()` sets the mesh
+  material `opacity`/`transparent` and the label sprite opacity; it runs at construction and from
+  `updateSpec` whenever `data.opacity`/`data.transparent` changes. This also makes the previously dead
+  `Node.opacity()` builder / `Graph.opacityNodes` path functional (nothing consumed `data.opacity` before).
+- **Host — dimmed vector nodes carry opacity (`buildRenderModel.ts`).** Non-card nodes (panels, badges,
+  the dot fallback) get `data.opacity` = `0.3` when dimmed and `1` otherwise. The value is sent even when
+  lit because the core **merges** node data (`{ ...this.data, ...updates.data }`), so an omitted key would
+  leave a stale `0.3` and the node would stay dimmed after focus cleared. Cards still fade through their
+  own markup (`wrapDim`, `opacity:.3`) so their content is untouched; bands (already `interactive:false`)
+  are never dimmed.
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 37 files / 326 tests (was 36/322; +`node-opacity` 4).
+  `pnpm exec tsc --noEmit` → the 184-error baseline, none in the touched files. `bun run test:boundaries`
+  → 6 pass.
+- `cd packages/session-graph && bun test src` → 30 pass (was 29; +1 vector-dim case); `bun run typecheck`
+  clean; `bun run test:components` → 28 pass.
+- `cd packages/app && bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 13 pass, 1 fail
+  ("restores the transcript position after leaving the graph"), which is the documented pre-existing
+  timeline-virtualizer flake (passes in isolation in 12s; re-confirmed unrelated).
+- `bun run graph:verify` → all steps passed (contract conformance, boundaries, four packages,
+  session-graph unit + components, capture verify).
+
+Notes for the remaining work:
+- **RF.6 mesh selection outline** is unchanged: a mesh node's focus/selection ring is still an axis-aligned
+  `BoxHelper` world box, not a silhouette. The app draws DOM cards for content and its panels are boxes, so
+  the BoxHelper is already close to their bounds; a true outline needs a stencil/backface pass.
+- **RF.2 `LaneLayout` folding is *not* behaviour-preserving as written.** The session layout uses per-lane
+  width-aware X cursors and variable card heights, while `spacegraphjs/layout/LaneLayout` is a uniform
+  grid (`ordinal * step`, `laneIndex * laneGap`). Folding them onto `LaneLayout` needs it to support
+  variable item sizes first; leave it as the documented library-first cleanup.
+- **Vector bands** (`band` nodes) stay full-opacity by design (they are structure, not content).
+- **`docs/spacegraph/prototype.md` needs a refresh.** Its "Known limitations" list predates the later
+  Phase 9 passes: item 6 (edge-label background) and item 9 (inspector structural — no Markdown/ANSI/
+  diffs/copy) are now resolved, and several capability-audit rows carry stale "swap/adoption pending"
+  notes that P8.1/H6.3 closed. Reconcile the doc before the release package is called final.
+- Naming (#10 "Graph" vs "Session map") and the deferred H6.5/R7.3/P8.4/P8.8 items are unchanged.
+
 ## 0. Mission
 
 
@@ -2935,7 +2981,9 @@ neighbours. The layout must be card-aware.
   Status: done — the keyboard map lives on the canvas region (`/`, `f`, `1`/`2`/`3`; ignored inside the a11y
   list and form controls); search is a combobox/listbox with Arrow/Home/End/Enter navigation; a breadcrumb
   click fits its subtree (the pure `subtree` selector + `renderer.fit(ids)`); and selecting at execution dims
-  cards outside the neighborhood (host card markup). See the Phase 9 log entry for details.
+  cards outside the neighborhood (host card markup) and, since the vector-node-dimming pass, the
+  `session`/`turn`/`phase` panels and badges through `data.opacity` (core `f456ab0`). See the Phase 9 log
+  entry for details.
 - [x] **RF.11 Visual regression contract**
   A fixed set of states captured per batch (overview, execution, selected, 3D, layout variants, 390×900)
   so each refinement step is judged against the previous image.
