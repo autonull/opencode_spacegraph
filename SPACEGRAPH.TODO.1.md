@@ -58,6 +58,53 @@ speculative model code was dropped. Work restarts from Phase 0.
 - **P0.5/P0.7/P0.8** embed spike, Cytoscape spike, and contract smoke test are not started; they depend on
   P0.3 and on the contract package.
 
+### spacegraphjs toolchain (installed; persists across sessions, not in git)
+
+- `cd spacegraphjs && pnpm install --ignore-scripts --filter spacegraphjs` installs the root project only (348
+  packages; skips the heavy `n8n-bridge` workspace and the native `canvas` build). Verified working:
+  `pnpm exec vitest run test/EventManager.test.ts` passes. The `esbuild` CLI is absent from `.bin`, but
+  vite/vitest transforms work.
+- Do **not** run a full `pnpm install` in `spacegraphjs/`: it pulls the `n8n-bridge` workspace (n8n, rxjs,
+  yjs, ...) and the native `canvas` devDependency.
+
+### P0.4 execution notes (survey complete; NO spacegraphjs edits made yet)
+
+Exact changes, with locations confirmed by reading the files:
+
+1. `spacegraphjs/src/core/Renderer.ts`
+   - line 3: remove `import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh'`.
+   - line 33: remove `private _threePatched = false`.
+   - lines 99-103: remove the global `THREE.*.prototype` patch block inside `init()`.
+   - Safe: `src/nodes/SceneNode.ts` already feature-detects (`if (geometry.disposeBoundsTree)` at lines 77/88,
+     `if (computeBoundsTree)` at line 125), and `three-mesh-bvh` is imported nowhere else (grep confirmed).
+2. `spacegraphjs/src/vision/VisionModelLoader.ts`
+   - line 1: keep only a type import, `import type { InferenceSession } from 'onnxruntime-web'` (erased at runtime).
+   - `configureWasmPaths`: make `async` and `const { env } = await import('onnxruntime-web')`.
+   - `loadModels`: `const { InferenceSession } = await import('onnxruntime-web')`.
+3. `spacegraphjs/src/core/VisionManager.ts`
+   - line 48: `await VisionModelLoader.configureWasmPaths(...)`.
+4. `spacegraphjs/src/vision/strategies/OnnxStrategy.ts`
+   - line 1: remove the static `Tensor` import (only used as a value, always inside `async` methods at lines
+     91, 147, 187, 208, 244). Use a dynamic `await import('onnxruntime-web')` at those sites or one private helper.
+5. `spacegraphjs/src/nodes/CodeEditorNode.ts`
+   - line 1: remove `import loader from '@monaco-editor/loader'`.
+   - lines ~86 and ~111: replace `loader.init()` with
+     `import('@monaco-editor/loader').then(({ default: loader }) => loader.init())`.
+
+`spacegraphjs/src/index.ts:245` statically re-exports `./vision`; that is acceptable once `onnxruntime-web` is
+reachable only through dynamic imports (deviation from the literal "do not import `src/vision` statically" wording;
+the done-when is about runtime evaluation, which the dynamic import satisfies). `onnxruntime-web` is referenced in
+only those two vision files (grep confirmed).
+
+Verification: `cd spacegraphjs && pnpm exec vitest run`, plus a new `test/entry-critical-path.test.ts` that
+`vi.mock`s `onnxruntime-web` and `@monaco-editor/loader` with recorders and asserts neither recorder fires when
+`await import('../src/index')` runs.
+
+Caveat to check first: `spacegraphjs/vitest.config.ts` aliases `spacegraphjs -> src/index.ts` with a bare string;
+`@rollup/plugin-alias` string matching would rewrite `spacegraphjs/vision` to `src/index.ts/vision` and fail. Verify
+that importing the entry under vitest resolves `spacegraphjs/vision`; if not, tighten the alias to `/^spacegraphjs$/`
+and rely on the tsconfig `paths` (`spacegraphjs/* -> src/*`) for subpaths.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
