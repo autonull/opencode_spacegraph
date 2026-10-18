@@ -1,4 +1,4 @@
-import type { GraphRenderer, Projection, RendererCapabilities, RenderTheme } from "@spacegraphjs/renderer"
+import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
 import type { GraphModel, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { layoutGraph, LEVEL_RANK, minLevelOf, nodeByID } from "@opencode/session-ui/graph"
@@ -10,6 +10,7 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { GraphInspector } from "./GraphInspector"
+import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { createGraphTheme } from "./theme"
@@ -52,6 +53,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [rendererID, setRendererID] = createSignal<RendererID>()
   const [error, setError] = createSignal<string>()
   const [canvasReady, setCanvasReady] = createSignal(false)
+  const [viewport, setViewport] = createSignal<RendererViewport>()
   let renderer: GraphRenderer | undefined
 
   const theme = () => props.theme ?? resolvedTheme()
@@ -153,6 +155,7 @@ export const GraphView = (props: GraphViewProps) => {
               setRendererID(info.id)
             }}
             onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
+            onViewportChange={setViewport}
           />
           <GraphA11y
             model={renderModel()}
@@ -161,6 +164,21 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={select}
             onEscape={() => select(undefined)}
           />
+          <Show when={!error() && props.model.nodes.length > 0}>
+            <div class="absolute bottom-2 end-2 z-10">
+              <GraphMinimap
+                model={props.model}
+                positions={layout()}
+                theme={theme()}
+                viewport={viewport()}
+                onPan={(center) => {
+                  const current = viewport()
+                  if (!current) return
+                  renderer?.setViewport({ zoom: current.zoom, center: [center[0], center[1], 0] })
+                }}
+              />
+            </div>
+          </Show>
           <Show when={error()}>
             <div
               data-slot="graph-error"

@@ -289,6 +289,7 @@ const source = {
   "ui.sessionGraph.canvas.emptyHint": "Send a message and its activity will appear here.",
   "ui.sessionGraph.canvas.error": "The graph could not load",
   "ui.sessionGraph.canvas.errorHint": "Return to the transcript and try again.",
+  "ui.sessionGraph.minimap.label": "Graph overview; click or drag to move the view.",
   "ui.sessionGraph.toolbar.level": "Zoom level",
   "ui.sessionGraph.level.overview": "Overview",
   "ui.sessionGraph.level.execution": "Execution",
