@@ -2,7 +2,14 @@ import { expect, test, type Page } from "@playwright/test"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { sessionHref } from "../utils/app"
 import { trackPageErrors } from "../utils/errors"
-import { assistantMessage, partUpdated, setupTimeline, stepStarted, toolPart } from "../utils/timeline"
+import {
+  assistantMessage,
+  historyMessages,
+  partUpdated,
+  setupTimeline,
+  stepStarted,
+  toolPart,
+} from "../utils/timeline"
 import { openSession } from "../utils/workspace"
 
 const directory = "C:/OpenCode/SessionGraph"
@@ -134,6 +141,71 @@ test("keeps the canvas ready across a resize", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
+  expect(errors).toEqual([])
+})
+
+test("reveals the turn for a message hash and returns to it in the transcript", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const panel = page.locator(inspector)
+  // A hash that targets a message while graph mode is active selects the owning turn.
+  await page.evaluate(() => {
+    window.location.hash = "#message-msg_user_1"
+  })
+  await expect(panel.getByRole("heading", { name: "Fix the authentication test failures." })).toBeVisible()
+  await expect(panel.getByText("Turn", { exact: true })).toBeVisible()
+
+  // The reverse direction: open in transcript returns to the originating message.
+  await page.getByRole("button", { name: "Open in transcript" }).click()
+  await expect(page.locator(canvasHost)).toHaveCount(0)
+  await expect(page.locator('[data-timeline-row="UserMessage"][data-message-id="msg_user_1"]')).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("selects the turn for a message hash when the graph opens", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openSession(page, graphFixture())
+
+  await page.evaluate(() => {
+    window.location.hash = "#message-msg_user_2"
+  })
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+
+  await expect(page.locator(inspector).getByRole("heading", { name: "Also cover the refresh path" })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("restores the transcript position after leaving the graph", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  // A long transcript so switching modes has a position worth restoring.
+  const items = [...historyMessages(20), ...buildFixtureMessages()]
+  await openSession(page, {
+    name: "SessionGraph",
+    directory,
+    sessions: [{ id: sessionID, title: "Session graph" }],
+    pageMessages: () => ({ items }),
+  })
+
+  const scroller = page.locator(".scroll-view__viewport", { has: page.locator("[data-timeline-row]") })
+  // Scroll up from the pinned bottom so the timeline remembers a mid-session position.
+  await scroller.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+    element.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -600 }))
+    element.scrollTop -= 600
+  })
+  const before = await scroller.evaluate((element) => Math.round(element.scrollTop))
+  expect(before).toBeGreaterThan(0)
+
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveCount(0)
+
+  await expect.poll(() => scroller.evaluate((element) => Math.round(element.scrollTop))).toBe(before)
   expect(errors).toEqual([])
 })
 

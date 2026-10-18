@@ -1,6 +1,8 @@
 import { Button } from "@opencode/ui/button"
-import { buildGraph, openInTranscript } from "@opencode/session-ui/graph"
-import { ErrorBoundary, Suspense, createMemo, lazy } from "solid-js"
+import { buildGraph, nodeByID, openInTranscript, turnNodeID } from "@opencode/session-ui/graph"
+import { useLocation } from "@solidjs/router"
+import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack } from "solid-js"
+import { messageIdFromHash } from "@/session/message-id-from-hash"
 import { useLanguage } from "@/runtime/i18n/language"
 import type { SessionModel } from "@/session/model"
 
@@ -20,8 +22,31 @@ export function SessionGraphView(props: {
 }) {
   const language = useLanguage()
   const session = props.session
+  const location = useLocation()
   const graph = session.layout.graph()
   const model = createMemo(() => buildGraph(session.history.messages(), session.data.status()))
+
+  // I4.7: while graph mode is active, a hash that targets a message selects its owning turn instead
+  // of scrolling the hidden transcript. Only the hash drives this, so streaming model updates and a
+  // manual node selection do not fight it.
+  createEffect(
+    on(
+      () => location.hash,
+      (hash) => {
+        const messageID = messageIdFromHash(hash)
+
+        if (!messageID) return
+        const current = untrack(model)
+        const owner = current.turnByMessageID.get(messageID)
+
+        if (!owner) return
+        const turnID = turnNodeID(owner)
+
+        if (!nodeByID(current, turnID)) return
+        graph.setSelected(turnID)
+      },
+    ),
+  )
 
   return (
     <ErrorBoundary

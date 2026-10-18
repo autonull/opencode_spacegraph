@@ -188,6 +188,9 @@ export function createTimelineVirtualizer(input: Input) {
   let maxScroll = 0
   let virtualContent: HTMLDivElement | undefined
   let scrollTop = 0
+  // The last unpinned offset. Graph mode detaches and reattaches this scroll element without
+  // recreating the virtualizer, so the live scrollTop is lost; restore this on reconnect.
+  let rememberedOffset = 0
   let reportOffset: ((offset: number, scrolling: boolean) => void) | undefined
   let reportRect: ((rect: { width: number; height: number }) => void) | undefined
   let batchingColdSizes = false
@@ -235,6 +238,7 @@ export function createTimelineVirtualizer(input: Input) {
         virtualContent?.querySelectorAll<HTMLDivElement>("[data-index]").forEach(virtualizer.measureElement)
 
         if (input.pinned()) virtualizer.scrollToEnd()
+        else if (rememberedOffset > 0) virtualizer.scrollToOffset(rememberedOffset)
         settleColdBottom()
       })
     },
@@ -756,6 +760,8 @@ export function createTimelineVirtualizer(input: Input) {
     const previousTop = scrollTop
     const previousMaxScroll = maxScroll
     scrollTop = root.scrollTop
+
+    if (!input.pinned()) rememberedOffset = root.scrollTop
     maxScroll = root.scrollHeight - root.clientHeight
     const atEnd = maxScroll - scrollTop <= endEpsilon
     const arrived = scrollTop > previousTop + endEpsilon || maxScroll < previousMaxScroll

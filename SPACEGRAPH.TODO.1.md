@@ -797,6 +797,53 @@ Notes for the next pass:
 - Remaining Phase 1: L1.4 (`plugins` option + light/dark screenshots), L1.17 (label-vs-card), L1.27, L1.29,
   L1.32, L1.33. Remaining Phase 3: U3.6, U3.13.
 
+**2026-10-18 (cont.) — Phase 4 close-out: hash→node reveal (I4.7) and transcript scroll restore (I4.4), with V5.5 coverage.**
+
+Scope for this pass (agreed with the user): close Exit gate 4 by implementing the two Phase 4 behaviours that
+were "wired/structural" but unverified. All work is in `packages/app` (the graph wrapper, the timeline
+virtualizer, and the app e2e keeper suite); `spacegraphjs` and `packages/session-graph` are untouched.
+
+- **I4.7 — hash→node reveal (done).** `session/graph/session-graph-view.tsx` now watches `location.hash` and,
+  when it targets a message (`messageIdFromHash`), selects the owning turn node
+  (`model.turnByMessageID.get(id)` → `turnNodeID`) if it exists in the current model. Driven only by the
+  hash, so streaming model updates and manual selection do not fight it. This runs in graph mode only
+  (the wrapper mounts only there). The reverse direction ("open in transcript") was already wired and is
+  now covered end to end.
+- **I4.4 — transcript scroll restore (done; a real defect, not just structurally in place).** The timeline
+  virtualizer's scroll element is detached and re-attached when the mode branch swaps timeline↔graph, and a
+  detached element's `scrollTop` resets to 0; the reconnect path only restored the *pinned* state, so an
+  unpinned timeline returned to the top. `session/timeline/virtualizer.tsx` now remembers the last unpinned
+  offset (recorded in `handleListScroll` while not pinned) and restores it with `scrollToOffset` in the
+  `observeElementOffsetReconnectAware` reconnect callback (the pinned branch still calls `scrollToEnd`). One
+  local variable; no second store.
+- **V5.5 app e2e (extended).** `e2e/graph/session-graph.spec.ts` gains three cases: a message hash selects
+  its turn and returns to the transcript; a message hash present when the graph opens selects the turn; and
+  the transcript position is restored after a graph round-trip (seeded with 20 history messages).
+
+Verification:
+- `cd packages/app && bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 9 pass (was 6). Built
+  (`PLAYWRIGHT_BUILD=1`) → 8 pass, 1 skipped (the dev-only module-load fallback). `--workers=2
+  --repeat-each=4` → 36 pass.
+- `bun run test:e2e -- e2e/regression/timeline-history.spec.ts` → 6 pass (the touched virtualizer keeps
+  prepend-anchor behaviour).
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` still only the 4 pre-existing errors;
+  root `bun run lint:changed` → 0 problems.
+
+Notes for the next pass:
+- **The hash→node effect selects the turn but does not change the level or focus it.** The turn node is
+  visible at execution (the default) and overview, so it renders; a deep link to a message whose turn is not
+  the current level is not re-levelled. If the UI wants "jump to node" on hash, raise the level and focus, as
+  `GraphSearch` does via `jumpTo`.
+- **The timeline's own hash-scroll effects still run in graph mode.** They find no scroller element and retry
+  a few frames harmlessly, and they set `state.messageID`; the reverse reveal then keeps that message. Not
+  suppressed, because it does not scroll anything visible.
+- **`rememberedOffset` is per virtualizer instance**, which is per cached timeline entry (per session key),
+  so it does not leak across sessions. Restore is skipped when pinned, so following the tail is unchanged.
+- Remaining Phase 4: I4.8/I4.9 are covered by existing cases (live append, session-switch dispose); I4.10 is
+  the recorded desktop-gate decision; the adapter-failure V5.5 cases stay with the component suite. Remaining
+  Phase 1: L1.4, L1.17, L1.27, L1.29, L1.32, L1.33. Remaining Phase 3: U3.6, U3.13. Remaining Phase 5:
+  V5.7–V5.9 (and the two deferred adapter-failure V5.5 cases).
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -1746,10 +1793,10 @@ Any additional core edit requires an explicit justification in the task and a no
   Done: switching modes does not remount the composer or lose the active model/settings.
   Status: the branch switches between the wrapper and the timeline; the composer/header/panel frame are outside it. The wrapper reads messages/status from the session directly rather than as props.
 
-- [ ] **I4.4 Preserve transcript position** (structurally in place — see log)
+- [x] **I4.4 Preserve transcript position** (done — see log)
   Read the current scroll snapshot before switching to graph; restore it when returning. Use the existing `createScrollPersistence` path rather than a second store. Keep `createTimelineCache` entries alive so virtualizer state survives.
   Done: test scrolls to a mid-session message, switches to graph, returns, and asserts the same anchor is visible.
-  Status: the timeline cache stays mounted across the mode branch and scroll writes through `createScrollPersistence`, so restore is expected to work; the Done test is V5.5.
+  Status: the timeline cache keeps the virtualizer alive across the mode branch, but the detached scroll element resets its `scrollTop`; `virtualizer.tsx` now remembers the last unpinned offset and restores it on reconnect (`scrollToOffset`), leaving the pinned follow path on `scrollToEnd`. Covered by a V5.5 case that seeds 20 history messages, scrolls up, switches modes, and asserts the offset returns.
 
 - [x] **I4.5 Toggle control** (desktop done; mobile command-only — see log)
   Add `session-graph-toggle.tsx` near `SessionReviewToggle` in `screen.tsx` (desktop) and in the mobile header/tabs area. Use `SegmentedControl` with Transcript/Graph, or an `IconButton` with `state="pressed"`. Add accessible labels and keybind hints.
@@ -1761,10 +1808,10 @@ Any additional core edit requires an explicit justification in the task and a no
   Done: command palette lists both; keybind works; no conflict with existing session commands.
   Status: `graph.toggle` (`mod+shift+g`) and `graph.projection` (`mod+alt+g`) register in `viewCmds`; both keys were unused. i18n keys added. Keybind firing while a field has focus follows the existing command infrastructure.
 
-- [ ] **I4.7 Open in transcript and hash reveal** (wired — see log)
+- [x] **I4.7 Open in transcript and hash reveal** (done — see log)
   Inspector "open in transcript" selects the message, switches mode, and reveals it. When the URL hash targets a message while graph mode is active, select the corresponding node instead of scrolling a hidden timeline.
   Done: both directions work from a cold load and a live session.
-  Status: "open in transcript" sets mode to transcript and calls `timeline.actions.revealMessage(messageID, partID)`. The hash→node direction is not implemented.
+  Status: `session-graph-view.tsx` selects the owning turn for a message hash (`turnByMessageID` → `turnNodeID`) while graph mode is active, and "open in transcript" sets mode to transcript and calls `timeline.actions.revealMessage(messageID, partID)`. Both directions are covered by e2e cases. The hash effect does not re-level or focus the node (see the pass note).
 
 - [ ] **I4.8 Live streaming behavior** (structural — see log)
   Feed graph updates from the same reactive `session.history.messages()` accessor. Diff the model by ID; append new nodes; update statuses; never re-layout or clear selection. Throttle model rebuilds to animation frames if a stream part changes many times.
@@ -1835,11 +1882,12 @@ Goal: make the result inspectable, repeatable, and honest.
   - both renderers failing falls back to the transcript;
   - no unexpected console errors.
   Done: `cd packages/app && bun run test:e2e -- graph` passes.
-  Status: partial — `e2e/graph/session-graph.spec.ts` covers mode switch + persistence across reload, live append
-  without selection loss, session-switch dispose + re-mount, resize, zero console errors, and (dev-only) the wrapper's
-  module-load fallback to the transcript. The two adapter-failure fallback cases stay with the component suite
-  (`graph-states.spec.ts`) until a non-seam app-level reproduction is decided (see the pass note). Dev 6 pass, built
-  5 pass + 1 skip.
+  Status: partial — `e2e/graph/session-graph.spec.ts` (9 cases) covers mode switch + persistence across reload, live
+  append without selection loss, session-switch dispose + re-mount, resize, transcript-position restore across the
+  mode switch, the hash→turn reveal and its reverse ("open in transcript"), zero console errors, and (dev-only) the
+  wrapper's module-load fallback to the transcript. The two adapter-failure fallback cases stay with the component
+  suite (`graph-states.spec.ts`) until a non-seam app-level reproduction is decided (see the pass note). Dev 9 pass
+  (×4 at 2 workers → 36), built 8 pass + 1 skip.
 
 - [x] **V5.6 Contract conformance in CI** (done — see log)
   Run the shared renderer contract suites (headless and browser) as part of the SpaceGraphJS test job and the session-graph test job. Add a root `graph:verify` script (or CI job) that runs contract conformance, all four packages (contract, SpaceGraph adapter, Cytoscape adapter, SVG renderer), and the capture `verify` mode. Fail if either interactive adapter stops honoring selection, click, viewport, disposal, HTML cards, or capability declarations.
