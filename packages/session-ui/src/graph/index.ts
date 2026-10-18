@@ -5,6 +5,8 @@ export {
   fileNodeID,
   messageNodeID,
   normalizePath,
+  phaseCategoryForTool,
+  phaseCategoryOf,
   phaseNodeID,
   reasoningNodeID,
   resultNodeID,
@@ -21,6 +23,7 @@ export {
   type GraphNode,
   type NodeKind,
   type NodeStatus,
+  type PhaseCategory,
   type ZoomLevel,
 } from "./model"
 
@@ -49,3 +52,27 @@ export {
   type Subgraph,
   type TranscriptRef,
 } from "./selectors"
+
+export {
+  clusterCount,
+  domBudget,
+  edgesAtLevel,
+  isClusterExpanded,
+  isVisibleAt,
+  labelMode,
+  LEVEL_RANK,
+  minLevelOf,
+  nodesAtLevel,
+  visibleNodeIDs,
+  type LabelMode,
+} from "./levels"
+
+export {
+  LANES,
+  layoutGraph,
+  type ClusterBounds,
+  type GraphLayout,
+  type Lane,
+  type LayoutOptions,
+  type Position,
+} from "./layout"

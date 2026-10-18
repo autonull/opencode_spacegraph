@@ -14,6 +14,9 @@ import { currentToolError, currentToolFailed, currentToolOutput } from "../messa
 
 export type ZoomLevel = "overview" | "execution" | "detail"
 
+/** Semantic phases (§5.1): runs of consecutive tool activity of one kind. */
+export type PhaseCategory = "explore" | "edit" | "verify" | "delegate" | "result"
+
 export type NodeKind =
   | "session"
   | "turn"
@@ -140,6 +143,59 @@ const SUBAGENT_TOOLS = new Set(["subagent", "task"])
 const SHELL_TOOLS = new Set(["shell", "execute", "bash"])
 
 const SEARCH_TOOLS = new Set(["glob", "grep", "list"])
+
+const EDIT_TOOLS = new Set(["edit", "write", "patch", "apply_patch"])
+
+const READ_TOOLS = new Set(["read", "glob", "grep", "list", "webfetch"])
+
+const PHASE_LABELS: Record<PhaseCategory, string> = {
+  explore: "Explore",
+  edit: "Edit",
+  verify: "Verify",
+  delegate: "Delegate",
+  result: "Result",
+}
+
+const PHASE_CATEGORIES = new Set<string>(["explore", "edit", "verify", "delegate", "result"])
+
+function isPhaseCategory(value: JsonValue | undefined): value is PhaseCategory {
+  return typeof value === "string" && PHASE_CATEGORIES.has(value)
+}
+
+/**
+ * The phase a tool belongs to. Named tools map to the semantic vocabulary; anything unclassified
+ * falls into `result` so no activity is silently dropped from the phase grouping.
+ */
+export function phaseCategoryForTool(name: string): PhaseCategory {
+  if (SUBAGENT_TOOLS.has(name)) return "delegate"
+
+  if (EDIT_TOOLS.has(name)) return "edit"
+
+  if (SHELL_TOOLS.has(name)) return "verify"
+
+  if (READ_TOOLS.has(name)) return "explore"
+
+  return "result"
+}
+
+/** The phase category of a node that participates in a phase (tool, subagent, or phase cluster). */
+export function phaseCategoryOf(node: GraphNode): PhaseCategory | undefined {
+  if (node.kind === "phase") {
+    const category = node.data?.category
+
+    return isPhaseCategory(category) ? category : undefined
+  }
+
+  if (node.kind === "subagent") return "delegate"
+
+  if (node.kind === "tool") {
+    const name = node.data?.name
+
+    return typeof name === "string" ? phaseCategoryForTool(name) : undefined
+  }
+
+  return undefined
+}
 
 const decodeString = Schema.decodeUnknownOption(Schema.String)
 
@@ -282,6 +338,41 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
 
     if (previous) addEdge({ kind: "sequence", source: previous, target: childID, confidence: "explicit" })
     lastChildByTurn.set(turnID, childID)
+  }
+
+  // Semantic phases: consecutive phase-eligible children of one turn with the same category cluster
+  // into one derived `phase` node. Only runs of the same category merge; a category change starts a
+  // new cluster. Membership is recorded on `clusterOf` and the phase is `part-of` its turn.
+  const phaseByTurn = new Map<string, { id: string; category: PhaseCategory; members: string[] }>()
+  const phaseOrdinalsByTurn = new Map<string, number>()
+
+  const cluster = (turnID: string, childID: string, category: PhaseCategory) => {
+    const current = phaseByTurn.get(turnID)
+
+    if (current?.category === category) {
+      current.members.push(childID)
+
+      return
+    }
+
+    const ordinal = (phaseOrdinalsByTurn.get(turnID) ?? 0) + 1
+    phaseOrdinalsByTurn.set(turnID, ordinal)
+    const id = phaseNodeID(turnID, category, ordinal)
+    const members = [childID]
+
+    addNode({
+      id,
+      kind: "phase",
+      label: PHASE_LABELS[category],
+      status: "neutral",
+      turnID,
+      derived: true,
+      minLevel: "overview",
+      clusterOf: members,
+      data: { category },
+    })
+    partOf(id, turnID)
+    phaseByTurn.set(turnID, { id, category, members })
   }
 
   let previousTurn: string | undefined
@@ -437,6 +528,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
     })
     partOf(nodeID, turnID)
     sequence(turnID, nodeID)
+    cluster(turnID, nodeID, "verify")
 
     const resultID = resultNodeID(message.id)
     const resultStatus = shellStatus(message)
@@ -460,6 +552,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
     partOf(resultID, turnID)
     addEdge({ kind: "produces", source: nodeID, target: resultID, confidence: "explicit" })
     sequence(turnID, resultID)
+    cluster(turnID, resultID, "verify")
 
     if (resultStatus === "failed") noteError(turnID, resultID)
   }
@@ -588,6 +681,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
       })
       partOf(nodeID, turnID)
       sequence(turnID, nodeID)
+      cluster(turnID, nodeID, "delegate")
 
       if (status === "failed") noteError(turnID, nodeID)
 
@@ -612,6 +706,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
     })
     partOf(nodeID, turnID)
     sequence(turnID, nodeID)
+    cluster(turnID, nodeID, phaseCategoryForTool(tool.name))
 
     if (SHELL_TOOLS.has(tool.name)) {
       const resultID = resultNodeID(tool.id)
@@ -632,6 +727,7 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
       partOf(resultID, turnID)
       addEdge({ kind: "produces", source: nodeID, target: resultID, confidence: "explicit" })
       sequence(turnID, resultID)
+      cluster(turnID, resultID, "verify")
 
       if (status === "failed") noteError(turnID, resultID)
     } else if (status === "failed") {
@@ -773,11 +869,6 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
 
   const activeOwner = activeMessageID ? ownerOf(activeMessageID) : undefined
   const activeTurn = activeOwner ? turnNodeID(activeOwner) : undefined
-
-  if (activeTurn && nodeIDs.has(activeTurn)) {
-    const node = nodes.find((candidate) => candidate.id === activeTurn)!
-    node.data = { ...node.data, active: status.type !== "idle" }
-  }
 
   if (activeTurn && nodeIDs.has(activeTurn)) {
     const node = nodes.find((candidate) => candidate.id === activeTurn)!

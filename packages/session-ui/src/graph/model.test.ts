@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { SessionMessageInfo } from "@opencode/client/promise"
+import type { JsonValue, SessionMessageAssistantTool, SessionMessageInfo } from "@opencode/client/promise"
 import {
   buildGraph,
   fileNodeID,
@@ -219,5 +219,77 @@ describe("graph model — invariants", () => {
     expect(a.nodes.map((node) => node.id)).toEqual(b.nodes.map((node) => node.id))
     expect(a.edges.map((edge) => edge.id)).toEqual(b.edges.map((edge) => edge.id))
     expect(messages).toEqual(before)
+  })
+})
+
+const toolPart = (id: string, name: string, input: Record<string, JsonValue>): SessionMessageAssistantTool => ({
+  type: "tool",
+  id,
+  name,
+  state: { status: "completed", input, content: [{ type: "text", text: "ok" }] },
+  time: { created: 1, completed: 2 },
+})
+
+const assistantWith = (id: string, content: SessionMessageAssistantTool[]): SessionMessageInfo => ({
+  id,
+  type: "assistant",
+  agent: "build",
+  model: { id: "m", providerID: "p" },
+  content,
+  time: { created: 1, completed: 2 },
+})
+
+describe("graph model — semantic phases", () => {
+  const model = buildFixtureGraph()
+
+  test("consecutive tools of one kind collapse into a phase with ordered membership", () => {
+    const phases = nodesOf(model, "phase")
+
+    expect(phases.map((phase) => phase.id)).toEqual([
+      "phase:turn:msg_user_1:explore:1",
+      "phase:turn:msg_user_1:delegate:2",
+      "phase:turn:msg_user_1:edit:3",
+      "phase:turn:msg_user_1:verify:4",
+      "phase:turn:msg_user_1:edit:5",
+      "phase:turn:msg_user_1:verify:6",
+      "phase:turn:msg_user_2:edit:1",
+      "phase:turn:msg_user_2:verify:2",
+    ])
+    expect(phases[0]?.clusterOf).toEqual([
+      toolNodeID("prt_tool_glob_1"),
+      toolNodeID("prt_tool_grep_1"),
+      toolNodeID("prt_tool_read_1"),
+      toolNodeID("prt_tool_read_2"),
+      toolNodeID("prt_tool_read_3"),
+    ])
+  })
+
+  test("a phase node is derived, carries its category, and belongs to its turn", () => {
+    const phase = model.nodes.find((node) => node.id === "phase:turn:msg_user_1:edit:3")
+
+    expect(phase?.derived).toBe(true)
+    expect(phase?.data?.category).toBe("edit")
+    expect(phase?.turnID).toBe(turnNodeID("msg_user_1"))
+    expect(
+      model.edges.some(
+        (edge) => edge.kind === "part-of" && edge.source === phase?.id && edge.target === turnNodeID("msg_user_1"),
+      ),
+    ).toBe(true)
+  })
+
+  test("a category change starts a new cluster", () => {
+    const messages = [
+      user("u1"),
+      assistantWith("a1", [
+        toolPart("t_read_1", "read", { path: "a.ts" }),
+        toolPart("t_edit_1", "edit", { path: "b.ts" }),
+        toolPart("t_read_2", "read", { path: "c.ts" }),
+      ]),
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const phases = nodesOf(buildGraph(messages, { type: "idle" }), "phase")
+
+    expect(phases.map((phase) => phase.data?.category)).toEqual(["explore", "edit", "explore"])
   })
 })

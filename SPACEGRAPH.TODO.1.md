@@ -226,6 +226,53 @@ Remaining Phase 2 work (notes):
   `delegates` edge (there is no separate spawner node); `diff` nodes list only written/patch/snapshot files,
   never reads; the session root id is the literal `"session"`.
 
+**2026-10-18 (cont.) — Phase 2 completes: phase nodes (M2.3), semantic levels (M2.6), deterministic layout (M2.7).**
+
+Scope for this pass: the remaining in-repo Phase 2 deliverables. `spacegraphjs` is untouched; all work is in
+`packages/session-ui` and verifiable with `bun test`.
+
+- **M2.3 `phase` nodes (done).** `model.ts` now clusters consecutive phase-eligible children of one turn into
+  derived `phase` nodes (`phase:${turnID}:${category}:${ordinal}`) carrying `derived: true`, `data.category`,
+  and `clusterOf` in membership order; each phase is `part-of` its turn. Categories use the §5.1 vocabulary
+  (explore/edit/verify/delegate/result) from `phaseCategoryForTool`; unclassified tools fall to `result`.
+  Membership is tracked per turn, so a category change starts a new run (explore → edit → explore is three
+  phases). Children keep their existing `part-of` → turn edges (breadcrumbs/`ancestors` unchanged) and phases
+  are deliberately **not** added to the `sequence` chain, so `forwardChain` semantics are unchanged. A
+  duplicated active-turn block in `buildGraphInternal` was removed.
+- **M2.6 `levels.ts` (done).** New `packages/session-ui/src/graph/levels.ts`: per-kind minimum level (each
+  node's own `minLevel` wins), `nodesAtLevel`/`visibleNodeIDs`, `edgesAtLevel` (edge-kind min level plus both
+  endpoints visible; at execution a focus narrows to the neighborhood plus hierarchy), `clusterCount`,
+  `isClusterExpanded`, `labelMode` (constant), and `domBudget` (12/40/24). Overview resolves to hierarchy
+  (`part-of`) edges only; errors/retries are execution-level because the model sets their `minLevel` to
+  execution, so failures reach overview as phase/turn badges rather than standalone nodes.
+- **M2.7 `layout.ts` (done).** New `layout.ts` exposes `layoutGraph(model, options?)` → `positions`,
+  `clusters`, `bounds`. X = turn index × `turnGap` + event ordinal × `step`; Y = lane (`prompt`, `narrative`,
+  `explore`, `edit`, `verify`, `delegate`, `artifacts`) × `laneGap`; Z = hierarchy depth × `depthStep`. Phase
+  clusters sit at their first member's X on the phase's lane; file nodes sit near their first tool write on
+  the artifacts lane (else their first provenance edge). Positions depend only on model order, so layout is
+  append-only and byte-identical across builds.
+- **M2.10 tests (done).** Added phase, level, and layout suites. `cd packages/session-ui && bun test src/graph`
+  → 42 tests across 4 files. `bun run typecheck` clean; `bun test src` → 289 pass with the single pre-existing
+  `markdown-solid.test.tsx` `jsxDEV` failure unchanged.
+
+Notes for the next phases:
+
+- **Level/lane conventions to confirm downstream.** Phase category `result` is the fallback bucket for tools
+  that match no named category; extend `phaseCategoryForTool` if the UI wants a distinct chip label. Phase
+  labels are hardcoded English (`PHASE_LABELS`) matching the existing model convention (e.g. "Session",
+  "Retry #2"); localize at the UI layer when the graph is rendered (U3.x), which is also where the `en.ts`
+  rule applies.
+- **Overview edges.** Overview keeps only `part-of` today because both endpoints must be visible and error/
+  retry nodes are execution-level; failure visibility at overview is via phase/turn clusters and badges. If the
+  UI needs explicit `evidence`/`delegates` edges at overview, relax the endpoint-visibility rule for those kinds
+  in `edgesAtLevel`.
+- **`levels.ts` is host policy.** Per §5.4 it lives in `session-ui` (the host adapter), not the library; the
+  generic band controller (`spacegraphjs/zoom`, L1.23) still owns raw zoom thresholds. `layout.ts` is a
+  session-specific assignment meant to sit on top of `spacegraphjs/layout/LaneLayout` (L1.24) once that generic
+  primitive exists.
+- Positions are units-agnostic absolute coordinates with default gaps (`turnGap` 320, `step` 48, `laneGap` 56,
+  `depthStep` 64); `buildRenderModel` (U3.1) consumes them directly.
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -966,10 +1013,10 @@ Goal: a pure, tested model that answers the five questions from real session dat
   Done: model tests cover a steered-prompt turn, an interrupted turn, and a shell-only turn.
   Status: `constructSessionMessageRows` now returns `turnByMessageID`; tests cover a steered turn, a shell-only turn, and an interrupted idle.
 
-- [ ] **M2.3 Node construction** (partial — `phase` nodes not built; see log)
+- [x] **M2.3 Node construction** (done; see log — `phase` nodes now built)
   Build session, turn, phase, message, reasoning, tool, result, error, retry, subagent, file, diff, compaction, notice, and approval nodes. Map tool names to categories with `timelineCategory`; normalize unknown tools to a generic `tool` node.
   Done: every `SessionMessageInfo` variant maps to a node or is explicitly ignored; unknown tools do not throw.
-  Status: every kind except `phase` (and `approval`) is built; config events (agent/model/location-switched) are explicitly ignored; unknown tools become generic `tool` nodes. `phase` nodes (consecutive tool categories, `derived`, `clusterOf`) remain and unblock M2.6.
+  Status: `phase` nodes are built from consecutive tool categories (`derived`, `data.category`, `clusterOf`, `part-of` the turn); every other kind except `approval` is built; config events (agent/model/location-switched) are explicitly ignored; unknown tools become generic `tool` nodes. `approval` stays unbuilt until question/permission messages are represented.
 
 - [x] **M2.4 Edge construction** (done; see log)
   Emit `part-of`, `sequence`, `delegates`, `reads`, `writes`, `searches`, `produces`, `references`, `compacts`, and `evidence` edges with confidence. Ensure no `inferred-cause` edge is created from adjacency. Read file paths from:
@@ -988,13 +1035,15 @@ Goal: a pure, tested model that answers the five questions from real session dat
   Done: fixture produces exactly one failed result, one retry, and one recovered success.
   Status: node `status` normalizes tools/shell/idle/assistant errors; the fixture yields exactly one failed `result`, one `retry`, and a recovered success; failure badges attach to the owning turn via `part-of` (phase badges wait on M2.3).
 
-- [ ] **M2.6 Semantic zoom levels**
+- [x] **M2.6 Semantic zoom levels** (done; see log)
   Implement `levels.ts` with the policy table in §5.4: per-level visible kinds, cluster expansion, label mode, edge filter, and DOM budget. Expose `nodesAtLevel(model, level)` and `edgesAtLevel(model, level, focus?)`.
   Done: snapshot tests for each level; cluster counts match children; hidden nodes are excluded from interaction data.
+  Status: `levels.ts` provides `nodesAtLevel`/`visibleNodeIDs`/`edgesAtLevel`, `clusterCount`, `isClusterExpanded`, `labelMode`, and `domBudget`; tests cover per-level visibility, edge filtering, focus narrowing, endpoint visibility, and cluster counts.
 
-- [ ] **M2.7 Deterministic layout**
+- [x] **M2.7 Deterministic layout** (done; see log)
   Implement `layout.ts` per §5.5: lanes, ordinals, depth, cluster bounds, append-only coordinates, reserved in-flight turn space. Return positions and cluster geometry; no rendering dependency.
   Done: repeated builds produce byte-identical positions; appending a turn leaves earlier positions unchanged.
+  Status: `layoutGraph` returns `positions`/`clusters`/`bounds` with lanes, depths, and first-write file anchoring; tests assert byte-identical rebuilds, append-only stability, lane/depth placement, and cluster bounds. Reserved in-flight turn space is implicit in the turn-indexed base X.
 
 - [x] **M2.8 Selectors** (done; see log — answers the five questions in unit tests)
   Implement neighbors, incoming/outgoing edges, shortest path, "why this node" (part-of + evidence + sequence context), search index, breadcrumbs, current activity, and "open in transcript" message/part refs.
@@ -1006,10 +1055,10 @@ Goal: a pure, tested model that answers the five questions from real session dat
   Done: fixture consumes no network, no clock; identical output across runs; a parity test asserts the story and e2e fixtures produce the same model.
   Status: `fixture.ts` gives `buildFixtureMessages`/`fixtureMessages`, `buildFixtureGraph`, and a `buildInterruptedFixtureMessages` variant; the purity test asserts identical output across runs. The story/e2e parity assertion lands when Phase 3/4 consume it.
 
-- [ ] **M2.10 Model tests** (partial — level-filtering and layout tests wait on M2.6/M2.7; see log)
+- [x] **M2.10 Model tests** (done; see log)
   Cover stable IDs, steered turns, subagent mapping, file provenance, retry/evidence, cluster counts, level filtering, layout stability, unknown tools, streaming partial states, and malformed metadata.
   Done: `cd packages/session-ui && bun test src/graph` passes.
-  Status: `bun test src/graph` → 24 tests pass (stable IDs, steered/shell/interrupted turns, subagent mapping, provenance, retry/evidence, unknown tools, streaming JSON, malformed metadata, purity, five questions). Cluster-count, level-filtering, and layout-stability cases land with M2.6/M2.7.
+  Status: `bun test src/graph` → 42 tests pass across `model.test.ts`, `selectors.test.ts`, `levels.test.ts`, and `layout.test.ts` (stable IDs, steered/shell/interrupted turns, phases, subagent mapping, provenance, retry/evidence, unknown tools, streaming JSON, malformed metadata, purity, five questions, level filtering, and layout stability).
 
 **Exit gate 2:** the fixture model is inspectable in a plain test and answers the five questions without rendering. If the model cannot answer them, the UI cannot.
 
