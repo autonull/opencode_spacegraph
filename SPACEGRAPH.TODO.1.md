@@ -67,7 +67,7 @@ speculative model code was dropped. Work restarts from Phase 0.
 - Do **not** run a full `pnpm install` in `spacegraphjs/`: it pulls the `n8n-bridge` workspace (n8n, rxjs,
   yjs, ...) and the native `canvas` devDependency.
 
-### P0.4 execution notes (survey complete; NO spacegraphjs edits made yet)
+### P0.4 — applied (spacegraphjs commit `d066ffa`). Edit map below, now done; extras listed at the end.
 
 Exact changes, with locations confirmed by reading the files:
 
@@ -104,6 +104,16 @@ Caveat to check first: `spacegraphjs/vitest.config.ts` aliases `spacegraphjs -> 
 `@rollup/plugin-alias` string matching would rewrite `spacegraphjs/vision` to `src/index.ts/vision` and fail. Verify
 that importing the entry under vitest resolves `spacegraphjs/vision`; if not, tighten the alias to `/^spacegraphjs$/`
 and rely on the tsconfig `paths` (`spacegraphjs/* -> src/*`) for subpaths.
+
+Extras landed with P0.4 (narrowed scope, agreed with user): vision is now bypassed rather than supported
+(ONNX import made dynamic; vision dropped from the default entry, still on `spacegraphjs/core` and the opt-in
+`spacegraphjs/vision` subpath); `n8n-bridge` removed from `pnpm-workspace.yaml` and its vitest suite excluded;
+new lean `spacegraphjs/src/activity.ts`. Two pre-existing bugs were surfaced by fixing the vitest subpath alias
+(bare `spacegraphjs -> src/index.ts` broke all `spacegraphjs/*` imports) and were fixed: the alias is now a
+regex array, and `PluginManager` field order no longer evaluates `pluginNames` before `plugins` exists.
+Verification: `cd spacegraphjs && pnpm exec vitest run` -> 10 files, 157 tests pass (incl. new
+`test/entry-critical-path.test.ts` asserting no ONNX/Monaco evaluation on import of the entry or activity).
+Deferred to L1.1/L1.2: `activity` build/`exports` wiring and the `spacegraphjs/*` source-consumption repoint.
 
 ## 0. Mission
 
@@ -641,7 +651,7 @@ Goal: prove both source-linked renderers can render, resize, and dispose inside 
   Add `spacegraphjs`, `spacegraphjs/packages/renderer`, `spacegraphjs/packages/spacegraph-renderer`, `spacegraphjs/packages/cytoscape-renderer`, and `spacegraphjs/packages/svg-renderer` to root `workspaces.packages`. Point each package's `main`/`module`/`types`/`exports` at its `src/index.ts` for the prototype. Add `spacegraphjs`, `@spacegraphjs/renderer`, `@spacegraphjs/spacegraph-renderer`, `@spacegraphjs/cytoscape-renderer`, and `@spacegraphjs/svg-renderer` as `workspace:*` dependencies of `packages/session-graph`. Keep a documented fallback (Vite regex aliases + tsconfig paths) if Bun workspace resolution conflicts.
   Done: `bun install` links all five packages; imports resolve from `packages/session-graph` in Vite, Bun test, typecheck, and Storybook; core does not import the contract.
 
-- [ ] **P0.4 Trim the critical path**
+- [x] **P0.4 Trim the critical path** (done, narrowed scope: ONNX/Monaco dynamic, BVH patch gone; see log)
   Make `onnxruntime-web` and `@monaco-editor/loader` optional via dynamic import in `src/core/VisionManager.ts` and `src/nodes/CodeEditorNode.ts`. Do not import `src/vision` statically from the main entry. Remove the unconditional `three-mesh-bvh` prototype patch in `src/core/Renderer.ts` unless a real BVH is built.
   Done: importing `spacegraphjs` and constructing a graph never evaluates ONNX or Monaco; build has no ONNX wasm on the critical path.
 
