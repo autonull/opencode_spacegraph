@@ -844,6 +844,65 @@ Notes for the next pass:
   Phase 1: L1.4, L1.17, L1.27, L1.29, L1.32, L1.33. Remaining Phase 3: U3.6, U3.13. Remaining Phase 5:
   V5.7–V5.9 (and the two deferred adapter-failure V5.5 cases).
 
+**2026-10-18 (cont.) — Phase 5 verification close-out: renderer comparison (U3.6), performance (V5.7),
+accessibility (V5.8), cross-environment (V5.9), and the filed toolbar-occlusion defect.**
+
+Scope for this pass (agreed with the user): make the result inspectable, repeatable, and honest, and fix the
+one filed UI defect that the captures exposed. OpenCode carries the guard test, the toolbar fix, the e2e
+case, the docs, and regenerated screenshots; `spacegraphjs` is untouched.
+
+- **Toolbar occlusion fixed (filed at V5.4).** The desktop `session-header-toggles` (`absolute end-3 top-0
+  z-30 h-12`; two 28px buttons) floated over the graph toolbar's right side, so its "Renderer: …" label and
+  back control were not clickable at 1440×900. `GraphToolbar`/`GraphView` gain an optional `endInset` CSS
+  length (`padding-inline-end` on `data-slot="graph-toolbar"`, default unset → no change in Storybook); the
+  app wrapper `session-graph-view.tsx` passes `"72px"` when the desktop media query matches. This mirrors
+  the timeline's `reserveReviewToggle`/`SessionHeaderSpacer` pattern. New e2e case "keeps the toolbar back
+  control clickable under the floating header toggles" clicks the toolbar back at 1440×900 (Playwright only
+  clicks when the element receives the event). Images `02`/`04` now show the back control clear of the toggles.
+- **U3.6 renderer comparison (done).** `docs/spacegraph/prototype.md` §"U3.6" records the capability matrix,
+  built chunk sizes, and the shared five-question navigation; paired screenshots `02`/`03`/`04` vs `07`/`08`.
+  Default stays SpaceGraphJS (only 2D+3D host); Cytoscape is the 2D fallback/benchmark, no host branch.
+- **V5.7 performance (done; two metrics documented unmeasured).** New
+  `packages/session-ui/src/graph/performance.test.ts`: a 300-message / 1201-node tool-heavy stream builds and
+  lays out in ~27ms under a 250ms complexity guard (catches an accidental O(n²) join, never flakes). Built-app
+  chunks (`bun run build`, packages/app): core `activity-*.js` 1,039.6 KB min / 282.0 KB gzip (incl. `three`),
+  `cytoscape.esm-*.js` 435.0 KB min / 137.9 KB gzip, session-graph UI `src-*.js` 28.3 KB min / 8.8 KB gzip,
+  SpaceGraph adapter 4.4 KB min / 2.0 KB gzip — all within §9 budgets. Session-entry delta is unmeasured (the
+  graph is lazy and the P0.1 baseline was never captured); first paint and pan frame rate have no graph perf
+  harness. Both are recorded as unmeasured, not lowered.
+- **V5.8 accessibility (done).** Library layer unit-tested (`spacegraphjs/test/a11y.test.ts`); browser
+  traversal/select/inspect against both adapters in `component-tests/graph-a11y.spec.ts`; the switch/return
+  leg is the app e2e toggle cases. No dedicated axe suite; reduced motion is emulated for capture but the
+  adapter camera animation has no dedicated reduced-motion assertion.
+- **V5.9 cross-environment (done; two entries not run).** Dev web 10 pass; built web (`PLAYWRIGHT_BUILD=1`)
+  9 pass + 1 dev-only skip; Storybook component suite 15 pass. Desktop shell and the spacegraphjs demo pages
+  were not run in this environment and are recorded as such.
+
+Verification:
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components`
+  → 15 pass.
+- `cd packages/session-ui && bun test src/graph` → 43 pass (was 42; +performance guard); `bun run typecheck`
+  clean.
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 10
+  pass (was 9; +toolbar-occlusion case); `PLAYWRIGHT_BUILD=1 … → 9 pass, 1 skipped`.
+- `bun run graph:capture --mode=compare` regenerated all eight images; `02`/`04` inspected.
+- Root `bun run lint:changed` → 0 problems.
+
+Notes for the next pass:
+
+- **Test flake observed, not caused here.** One full dev run failed "restores the transcript position after
+  leaving the graph" (a timeline-virtualizer scroll-restore assertion) under machine load while this pass's
+  build and e2e ran concurrently; the case then passed 3/3 in isolation and in the later full/built runs. If
+  it recurs, treat it as a timeline-virtualizer race, not a graph bug.
+- **V5.5 still partial.** The two adapter-failure app-level cases ("SpaceGraph mount failure → Cytoscape with
+  a banner", "both renderers fail → transcript") remain owned by the component suite (`graph-states.spec.ts`)
+  via the `rendererOverrides` seam; a non-seam app-level reproduction is undecided.
+- **Remaining Phase 1: L1.4 (`plugins` option + light/dark screenshots), L1.17 (label-vs-card overlap), L1.27
+  (minimap), L1.29 (non-OpenCode demo), L1.32 (touch), L1.33 (rename core renderer). Remaining Phase 3: U3.13
+  (minimap, needs L1.27). Phase 6–8 (hybrid, docs/release, portability) are unstarted; R7.2 should fold
+  `docs/spacegraph/prototype.md` (still carrying stale Phase 2/3 text above the new Phase 5 section) into the
+  final write-up.**
+
 ## 0. Mission
 
 Build a prototype that tests this hypothesis:
@@ -1693,9 +1752,10 @@ Goal: a legible, navigable surface that is worth comparing to the transcript, an
   Done: the same fixture renders, selects, inspects, and displays HTML cards identically; the inspector does not depend on the renderer.
   Status: same registry/theme/level path as U3.4; switching to Cytoscape rebuilds once, the 3D control disables with an explanation, and the projection falls back to 2D. The view component test asserts the switch; the Cytoscape adapter's own component test covers overlay/selection/dispose.
 
-- [ ] **U3.6 Renderer comparison**
+- [x] **U3.6 Renderer comparison** (done; see log)
   Render overview, execution, and selected states in both renderers. Record navigation steps, visual clarity, frame rate, chunk size, and capability gaps. Capture paired screenshots.
   Done: a comparison table in `docs/spacegraph/prototype.md`; the default renderer choice is justified, not assumed.
+  Status: `docs/spacegraph/prototype.md` §"U3.6 — renderer comparison" records the capability matrix, built chunk sizes, and the shared navigation; paired screenshots `02`/`03`/`04` (SpaceGraphJS) and `07`/`08` (Cytoscape). Default stays SpaceGraphJS (2D+3D); Cytoscape is the 2D fallback/benchmark. Frame rate is documented as unmeasured (no graph perf harness).
 
 - [x] **U3.7 Theme bridge**
   Read OpenCode CSS tokens (`--v2-*`) at mount and on scheme change. Produce the full `RenderTheme`. Provide light/dark values in both app and Storybook; do not leak OpenCode token names into the library.
@@ -1894,17 +1954,20 @@ Goal: make the result inspectable, repeatable, and honest.
   Done: one command covers both adapters; regressions fail before UI tests.
   Status: `script/graph-verify.ts` (+ root `graph:verify`) runs the headless contract suite (13), the boundary test (5), the four packages (4/10/10/6), session-graph unit (19) and component (15) suites, and `graph:capture --mode=verify`. Not yet wired into a CI job (the script is the CI entry point).
 
-- [ ] **V5.7 Performance**
+- [x] **V5.7 Performance** (done; see log — first paint/pan fps documented as unmeasured)
   Record: model build time for the fixture, first graph paint, pan frame rate at the DOM cap, chunk size, and session-entry delta for both adapters. Compare against the P0.1 baseline. Add a guard test for model build complexity if practical.
   Done: numbers recorded in `docs/spacegraph/prototype.md`; regressions beyond budget are either fixed or documented.
+  Status: new `packages/session-ui/src/graph/performance.test.ts` guards a 300-message/1201-node build+layout (~27ms, ceiling 250ms). Built-app chunks recorded: core `activity-*.js` 282.0 KB gzip (incl. `three`), Cytoscape 137.9 KB gzip, session-graph UI 8.8 KB gzip, adapter 2.0 KB gzip — within §9 budgets. Session-entry delta is unmeasured because the graph is lazy and the P0.1 baseline was never captured; first paint and pan frame rate have no graph perf harness.
 
-- [ ] **V5.8 Accessibility**
+- [x] **V5.8 Accessibility** (done; see log)
   Keyboard traversal, focus visibility, aria labels, inspector focus order, overlay focus trap (Phase 6), and reduced-motion behavior. Run the library accessibility layer against both adapters. Run the app's existing a11y tooling if available; otherwise manual scripted checks.
   Done: keyboard-only path covers switch → traverse → select → inspect → return.
+  Status: the library layer is unit-tested (spacegraphjs `test/a11y.test.ts`); browser traversal/select/inspect against **both** adapters is `component-tests/graph-a11y.spec.ts`; the switch/return is the app e2e toggle cases. No dedicated axe suite exists; reduced motion is emulated in the capture spec but has no dedicated assertion for the adapter camera animation.
 
-- [ ] **V5.9 Cross-environment**
+- [x] **V5.9 Cross-environment** (done; see log — desktop shell and demo pages not run)
   Verify in web dev, built web (`PLAYWRIGHT_BUILD=1`), desktop shell, Storybook, and the SpaceGraphJS demo pages. Note any WebGL/SwiftShader differences in CI.
   Done: a short matrix in the docs with pass/fail and known limitations.
+  Status: `docs/spacegraph/prototype.md` §"V5.9 — cross-environment" records web dev (10 pass), built web (9 pass + 1 dev-only skip), and Storybook (15 pass). Desktop shell and the spacegraphjs demo pages were not run in this environment and are recorded as such.
 
 **Exit gate 5:** a reviewer can run one command, inspect the images, and reproduce the demo from the fixture without a model provider.
 

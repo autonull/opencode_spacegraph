@@ -1,6 +1,7 @@
 import { Button } from "@opencode/ui/button"
 import { buildGraph, nodeByID, openInTranscript, turnNodeID } from "@opencode/session-ui/graph"
 import { useLocation } from "@solidjs/router"
+import { createMediaQuery } from "@solid-primitives/media"
 import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack } from "solid-js"
 import { messageIdFromHash } from "@/session/message-id-from-hash"
 import { useLanguage } from "@/runtime/i18n/language"
@@ -23,6 +24,9 @@ export function SessionGraphView(props: {
   const language = useLanguage()
   const session = props.session
   const location = useLocation()
+  // The desktop header toggles float over the panel's top-right (two 28px buttons, 12px inset);
+  // reserve that width so the graph toolbar's renderer label and back control stay clickable.
+  const isDesktop = createMediaQuery("(min-width: 768px)")
   const graph = session.layout.graph()
   const model = createMemo(() => buildGraph(session.history.messages(), session.data.status()))
 
@@ -81,6 +85,7 @@ export function SessionGraphView(props: {
             props.onOpenTranscript(ref.messageID, ref.partID)
           }}
           onBack={() => props.onBack()}
+          endInset={isDesktop() ? "72px" : undefined}
         />
       </Suspense>
     </ErrorBoundary>

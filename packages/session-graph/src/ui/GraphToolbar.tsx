@@ -25,6 +25,11 @@ export type GraphToolbarProps = {
   onSearch: () => void
   onBack?: () => void
   searching?: boolean
+  /**
+   * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
+   * the graph panel's top-right keeps the renderer label and back control clickable.
+   */
+  endInset?: string
 }
 
 /**
@@ -49,6 +54,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       data-component="session-graph-toolbar"
       data-slot="graph-toolbar"
       class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
+      style={props.endInset ? { "padding-inline-end": props.endInset } : undefined}
     >
       <SegmentedControl
         value={props.level}

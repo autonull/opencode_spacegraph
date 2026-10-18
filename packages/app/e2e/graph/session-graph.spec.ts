@@ -144,6 +144,20 @@ test("keeps the canvas ready across a resize", async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test("keeps the toolbar back control clickable under the floating header toggles", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openGraph(page, graphFixture())
+
+  // The toolbar's back control sits in the panel's top-right, where the desktop header toggles float.
+  // Playwright only clicks when the element receives the event, so this fails if the toggles cover it.
+  await page.locator(toolbar).getByRole("button", { name: "Back to transcript" }).click()
+  await expect(page.locator(canvasHost)).toHaveCount(0)
+  await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
+
+  expect(errors).toEqual([])
+})
+
 test("reveals the turn for a message hash and returns to it in the transcript", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

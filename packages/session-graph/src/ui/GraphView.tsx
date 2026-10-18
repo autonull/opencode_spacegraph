@@ -27,6 +27,8 @@ export type GraphViewProps = {
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   positions?: ReadonlyMap<string, Position>
   renderCard?: CardTemplate
+  /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
+  endInset?: string
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onOpenTranscript?: (id: string) => void
@@ -117,6 +119,7 @@ export const GraphView = (props: GraphViewProps) => {
         onSearch={() => setSearchOpen((open) => !open)}
         onBack={props.onBack}
         searching={searchOpen()}
+        endInset={props.endInset}
       />
       <GraphBreadcrumbs model={props.model} selected={selection()[0]} onSelect={select} />
       <div class="relative flex min-h-0 flex-1">

@@ -197,8 +197,80 @@ Known defects found while capturing:
 - Orthographic `fitView` derives the camera distance from a perspective `fov`/`aspect`, so it does not
   center the graph; the session root and overview clusters can fall outside the frame (image 02 is the
   weakest). `calculateFitView` should be projection-aware.
+  **Resolved** (see "SpaceGraph renderer essentials"): `calculateFitView` is now projection-aware and
+  `GraphView` fits on load and on level/projection change.
 - The graph toolbar's right side (`Renderer: …` and the back control) sits beneath the floating
   `session-header-toggles`, so those controls are not clickable at 1440×900. The capture returns to the
   transcript through the header toggle instead.
+  **Resolved** (see "Phase 5 verification"): `GraphView`/`GraphToolbar` reserve an inline-end inset and
+  the app wrapper passes the desktop toggle width; `02`/`04` show the back control clear of the toggles.
 - `THREE.Color: Invalid hex color #XXXXXXff` at mount (a warning): the host token background is 8-digit
   hex and reaches `new THREE.Color(string)` unchanged.
+  **Resolved** (see "SpaceGraph renderer essentials"): the core `Renderer` normalizes its background
+  through `parseColor`, which drops alpha from 8-digit hex.
+
+## Phase 5 verification (V5.7–V5.9, U3.6)
+
+Captured against the current `dev` tree; see `SPACEGRAPH.TODO.1.md` §0 for the full pass log.
+
+### U3.6 — renderer comparison
+
+Both adapters consume the same `RenderModel` (same fixture, same `buildRenderModel`). The differences
+are declared capabilities, not behavior:
+
+| Aspect | SpaceGraphJS (`@spacegraphjs/spacegraph-renderer`) | Cytoscape (`@spacegraphjs/cytoscape-renderer`) |
+|---|---|---|
+| Projection | 2D orthographic + 3D perspective | 2D only (`setProjection('3d')` is a declared no-op) |
+| Lazy chunk (built app) | core `activity-*.js` 1,039.6 KB min / 282.0 KB gzip (includes `three`) | `cytoscape.esm-*.js` 435.0 KB min / 137.9 KB gzip |
+| HTML cards | CSS3D `HtmlNode`/`DOMNode`, cap 40 | clipped DOM overlay, cap 20 |
+| Edge labels | CSS2D, constant screen size, decluttered | cytoscape labels |
+| Cluster nodes | model nodes | model nodes (compound-free) |
+| Selection, click/drag, fit/focus, viewport | contract events | contract events |
+| Minimap | declared unavailable | declared unavailable |
+
+Navigation for the five mission questions is identical in both (toolbar level, breadcrumbs, search,
+inspector, edge-follow); the toolbar disables 3D with an explanation under Cytoscape. Paired
+screenshots: `02`/`03`/`04` (SpaceGraphJS) and `07`/`08` (Cytoscape). The default renderer stays
+SpaceGraphJS because it is the only one with the 2D+3D story the hypothesis tests; Cytoscape is the
+2D fallback and benchmark and renders the same model without any host branch.
+
+### V5.7 — performance
+
+| Metric | Budget (§9) | Measured |
+|---|---|---|
+| Model build, 300-message / 1201-node synthetic stream (`performance.test.ts`) | 200 msgs < 50 ms | ~27 ms (guard ceiling 250 ms) |
+| Lazy SpaceGraphJS chunk (gzip, excluding `three`) | < 400 KB | core chunk 282.0 KB gzip incl. `three`; adapter 2.0 KB gzip |
+| Lazy Cytoscape chunk (gzip) | < 250 KB | 137.9 KB |
+| Session-graph UI chunk | — | 28.3 KB min / 8.8 KB gzip |
+| Session entry delta | no measurable regression | not measured — the graph is lazy, so no graph module is in the entry; the P0.1 baseline was never captured |
+| First graph paint / pan frame rate | < 500 ms / 60 fps | not measured — no graph perf harness is wired; DOM/canvas readiness is asserted instead |
+
+`packages/session-ui/src/graph/performance.test.ts` is the complexity guard: a 300-message,
+tool-heavy stream must build and lay out under a generous ceiling, catching an accidental O(n²) join
+without flaking under CI load.
+
+### V5.8 — accessibility
+
+- Library layer: `spacegraphjs/test/a11y.test.ts` (jsdom) covers roving tabindex, Arrow/Home/End
+  skipping non-interactive items, Enter/Space, Escape, and the `aria-live` announcement.
+- Browser traversal against **both** adapters: `packages/session-graph/component-tests/graph-a11y.spec.ts`
+  walks the hidden mirror to a node, activates it with Enter, and asserts the inspector under
+  SpaceGraphJS and after switching to Cytoscape.
+- The app has no dedicated axe/automated a11y suite; the keyboard path is exercised through the
+  component suite and the app e2e. Reduced motion: the capture spec emulates `prefers-reduced-motion`;
+  no dedicated reduced-motion assertion exists for the adapter's camera animation.
+
+### V5.9 — cross-environment
+
+| Environment | Result |
+|---|---|
+| Web dev (`bun run test:e2e -- e2e/graph/session-graph.spec.ts`) | 10 pass (9 original + the toolbar-occlusion case) |
+| Built web (`PLAYWRIGHT_BUILD=1`, same spec) | 9 pass, 1 skipped (the dev-only module-load fallback, whose chunk URL is hashed) |
+| Storybook component suite (`bun run test:components`) | 15 pass |
+| Desktop shell | not run this pass |
+| SpaceGraphJS demo pages (`test/e2e/hardening.spec.ts`) | not run this pass |
+
+Known cross-environment caveat: WebGL under headless Chromium uses SwiftShader; the capture waits on
+the preserved drawing buffer rather than a frame count, and DOM assertions are preferred where a
+pixel is not the contract.
+
