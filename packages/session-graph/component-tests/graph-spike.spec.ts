@@ -1,7 +1,5 @@
 import { expect, story } from "../../storybook/playwright/story"
 
-type SpaceGraphGlobal = { SpaceGraph: { instances: Set<unknown> } }
-
 story("mounts the SpaceGraphJS embed spike with eight nodes", async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {
@@ -17,7 +15,7 @@ story("mounts the SpaceGraphJS embed spike with eight nodes", async ({ mount, pa
   await expect(host).toHaveAttribute("data-graph-edges", "7")
   await expect(canvas).toBeVisible()
   await expect(host.locator("[data-node-id]")).toHaveCount(8)
-  expect(await page.evaluate(() => (window as unknown as SpaceGraphGlobal).SpaceGraph.instances.size)).toBe(1)
+  expect(await canvas.count()).toBe(1)
 
   const heightBeforeResize = await canvas.evaluate((element: HTMLCanvasElement) => element.height)
   await host.evaluate((element) => {

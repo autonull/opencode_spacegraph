@@ -529,6 +529,30 @@ Notes for the next pass:
 - **U3.11 can still swap breadcrumbs to `Trail` (L1.26).** Unchanged; the a11y work did not touch breadcrumbs.
 - Remaining Phase 3 UI: U3.6, U3.13 (needs L1.27), U3.15, U3.16, U3.17. Remaining Phase 1: L1.5–L1.7, L1.11, L1.14–L1.18, L1.27–L1.34.
 
+**2026-10-18 (cont.) — Library hardening: lifecycle/input/scheduling (L1.5–L1.7), LOD (L1.14), DOM updates (L1.15), layouts (L1.16), tests and demo (L1.18); L1.11 dedup.**
+
+Scope for this pass (agreed with the user): make the core reliably embeddable and deterministic. All work is in `spacegraphjs` (commit `e4ea140`, branch `main`); the only OpenCode edits are two component-test assertions that no longer read the (now opt-in) global registry.
+
+- **L1.5 Correct `init()`/`dispose()` (done).** `SpaceGraphOptions.global` (default false) gates `window.SpaceGraph` and `SpaceGraph.instances` registration. `init()` is idempotent (`#initialized`); `dispose()` is idempotent (`#disposed`) and now calls `pause()`, `pluginManager.disposePlugins()`, `input.dispose()`, `cameraControls.dispose()`, `vision.dispose()`, `graph.clear()`, `renderer.dispose()` (ResizeObserver + WebGL + DOM), and `events.clear()` — the old `dispose()` leaked the renderer, camera controls, input, vision, and event listeners. Verified by the new Playwright spec (`test/e2e/hardening.spec.ts`): 20 mount/dispose cycles leave one canvas and no extra instances.
+- **L1.6 Container-scoped keyboard (done).** `SpaceGraphOptions.keyboard: false | 'container' | 'window'` (default `'container'`). `CameraControls.setKeyboardScope()` attaches listeners to the container (or window) and ignores keys whose target is an `input`/`textarea`/`select`/`[contenteditable]`/`.monaco-editor`. `SpaceGraph.#init` gives the container `tabindex=0` when scoped to it. Unit-tested in `test/hardening.test.ts` (container moves, window ignored, editable ignored, `false` binds nothing, `'window'` moves).
+- **L1.7 Render scheduling (done).** `RenderOptions.renderMode: 'continuous' | 'on-demand'` (default `'on-demand'`). `SpaceGraph.render()` starts the loop only in continuous mode; otherwise `requestFrame()` coalesces a single frame. Frames are requested by graph/selection events, explicit camera ops, `CameraControls` drag/fly/keys, `InputManager` events, `Renderer.onResize`, and `Graph.setPositions`/`pinAll` and `Node.updateSpec`, so on-demand repaints on every mutation and idle CPU is near zero.
+- **L1.11 dedup (partial — focus outline open).** The dead `HoverFingering` (its `start()` always returned false, so `FingerManager` never activated it) is removed along with its registration and export; `HoverManager` is the single hover source. Hidden/LOD-culled nodes are no longer pickable (see L1.14). **Not done:** a visible keyboard focus outline for mesh nodes (the a11y layer, U3.14, is the DOM traversal path; mesh focus painting is separate).
+- **L1.14 LOD correctness (done).** `Node.computeLOD` is the single implementation (`RenderContext.computeLOD` delegates); it honours per-node `data.minZoom`/`data.maxZoom` and `data.lod`, and `Renderer.render` computes LOD once per node per frame (the double `Box3.setFromObject` is gone) via a per-frame bounds cache (`Node.lodFrame`). `InteractionRaycaster` skips nodes whose `node.visible`/`node.object.visible` is false, so hidden nodes cannot be picked. Unit-tested for zoom bands, the `lod` override, invisibility, screen-size culling, and cache invalidation on frame advance.
+- **L1.15 safe DOM updates (partial).** `HtmlNode.updateSpec` no longer rewrites `innerHTML`/`textContent` when the html/content is unchanged. **Not done:** a `DOMNode`/`CustomNode` spec path that adopts an existing `HTMLElement` and exposes `data.lod` (types are constructed as `new Type(sg, spec)`, so a factory/registry path is required).
+- **L1.16 deterministic layouts (done).** `BaseLayout.applyPosition` applies positions synchronously and no longer reaches for `window.gsap`, so layouts are deterministic; `HierarchicalLayout` skips pinned nodes (the timeline layout already did). Unit-tested: repeated runs are byte-identical and pinned nodes never move when new nodes are added.
+- **L1.18 tests and demo (done for this slice).** New `test/hardening.test.ts` (12 tests) and `test/e2e/hardening.spec.ts` (4 Playwright tests) plus `demo/hardening.html`. The library unit suite is 20 files / 236 tests (was 19/224).
+
+Verification:
+- `cd spacegraphjs && pnpm exec vitest run` → 20 files, 236 tests pass. `pnpm exec tsc --noEmit` still reports exactly the same 10 pre-existing `src` errors (`bvh`, `DynamicThicknessEdge`, `HistoryPlugin`, `MermaidNode`, and two `Array.at` in `CameraControls`), none in the changed files.
+- `cd spacegraphjs && node_modules/.bin/playwright test test/e2e/hardening.spec.ts` → 4 pass in Chromium against `demo/hardening.html`. **Environment caveats:** the demo server must be the repo vite (`root: 'demo'`), so the page URL is `/hardening.html` (not `/demo/hardening.html`; the older `/demo/*.html` specs are stale under this config). The suite needs the headless-shell/ffmpeg revision symlinks and `SG_DEMO_URL` when 5173 is occupied; the spec reads `SG_DEMO_URL` for that reason.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 19 pass; `bun run test:components` → 7 pass. `cd packages/app && bun run typecheck` clean.
+
+Notes for the remaining work:
+- **Behavior changes to carry forward.** Graphs are bare by default: no `window.SpaceGraph`, no `SpaceGraph.instances`, no `chrome`, on-demand rendering, and container-scoped keyboard. Hosts that relied on the global registry or the continuous loop must opt in (`global: true`, `render: { renderMode: 'continuous' }`). Cross-graph edge resolution in `Graph.addEdge` still reads `SpaceGraph.instances`, so the inter-graph demo now needs `global: true` (L1.30 removes the mechanism).
+- **L1.17 unchanged.** The `LabeledEdge` constructor-crash fix stands; real CSS2D label layering, zoom-awareness, overlap avoidance, and edge hit areas remain.
+- **Bounds cache.** `Node.getScreenPixelSize` caches per render frame (`Node.lodFrame`); the public `bounds`/`bounds3D` getters stay uncached so camera fit is always fresh. Any future caller that needs node bounds outside a render frame should use the getters, not the LOD path.
+- Next in Phase 1: L1.27 (minimap/zoom-control rework, unblocks U3.13), then L1.5-adjacent L1.30–L1.34 (multi-instance, SSR, touch, renderer rename, boundaries). Phase 3 UI still needs U3.6, U3.13, U3.15, U3.16, U3.17.
+
 
 ## 0. Mission
 
@@ -1122,17 +1146,20 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
 
 #### Lifecycle and input
 
-- [ ] **L1.5 Correct `init()`/`dispose()`**
+- [x] **L1.5 Correct `init()`/`dispose()`** (done; see log)
   Make both idempotent. `dispose()` must call `renderer.dispose()` (ResizeObserver + WebGL + DOM), `cameraControls.dispose()`, `input.dispose()`, `vision.dispose()`, `pluginManager.disposePlugins()`, `graph.clear()`, and `events.clear()`. Remove `window.SpaceGraph`/`instances` registration by default (`global: false`).
   Done: repeated mount/unmount over 20 cycles shows no listener, observer, or WebGL context growth; verified by a Playwright test.
+  Status: `init()`/`dispose()` are idempotent (`#initialized`/`#disposed`); `dispose()` releases renderer, camera controls, input, vision, plugins, graph, and events. Registration on `window.SpaceGraph`/`SpaceGraph.instances` requires `options.global`. `test/e2e/hardening.spec.ts` runs 20 cycles with a stable canvas count.
 
-- [ ] **L1.6 Container-scoped keyboard**
+- [x] **L1.6 Container-scoped keyboard** (done; see log)
   Camera keyboard handling only when the canvas or its container has focus, and never while an `input`, `textarea`, `select`, `[contenteditable]`, or `.monaco-editor` has focus. Add `keyboard: false | "container" | "window"`.
   Done: typing in the app composer/settings never moves the camera; keyboard pan/zoom still works when the canvas is focused.
+  Status: `SpaceGraphOptions.keyboard` (default `'container'`) drives `CameraControls.setKeyboardScope`; listeners bind to the container (or window); editable targets are ignored; the container gets `tabindex=0` when scoped to it. `test/hardening.test.ts` covers all five cases.
 
-- [ ] **L1.7 Render scheduling**
+- [x] **L1.7 Render scheduling** (done; see log)
   Add `renderMode: "continuous" | "on-demand"`. On-demand schedules a frame after graph mutations, camera moves, resize, theme changes, and selection changes. Default embedded mode to on-demand.
   Done: idle CPU usage is near zero; mutations repaint; tests still see deterministic frames.
+  Status: `RenderOptions.renderMode` (default `'on-demand'`); `SpaceGraph.requestFrame()` coalesces a frame and is driven by graph/selection events, explicit camera ops, `CameraControls` interaction, `InputManager` events, `Renderer.onResize`, and `Graph.setPositions`/`pinAll`/`Node.updateSpec`. Continuous mode keeps the rAF loop. `test/e2e/hardening.spec.ts` asserts on-demand ortho rendering.
 
 #### Events and selection
 
@@ -1151,9 +1178,10 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: click, box-select, keyboard, and programmatic selection agree; selection survives updates by ID.
   Status: `src/core/Selection.ts` owns the ids; `SpaceGraph.select/clearSelection/toggleSelection/deselect/selectAll/deselectAll`, `selected` (ids) and `selectedNodes` expose it; `ErgonomicsAPI` delegates; `SelectionManager` is a visual/box-select adapter; click, box-select, ctrl+A, drag multi-select, and programmatic calls all agree. `SpaceGraph.selected` changed from `Node[]` to `string[]` ids.
 
-- [ ] **L1.11 Hover and focus cleanup**
+- [ ] **L1.11 Hover and focus cleanup** (partial — dedup and non-pickable hidden nodes done; mesh focus outline open)
   Deduplicate hover events from `HoverManager` and `HoverFingering`. Add a visible keyboard focus outline for mesh nodes. Ensure hidden/LOD-culled nodes cannot be picked.
   Done: one enter/leave per transition; Tab cycles selectable nodes with visible focus.
+  Status: the dead `HoverFingering` (never activated — `start()` returned false) is removed with its registration and export, so `HoverManager` is the single hover source. Hidden/LOD-culled nodes are not pickable (L1.14). Remaining: a visible keyboard focus outline for mesh nodes; the DOM traversal path is the a11y layer (U3.14).
 
 #### Cameras and zoom
 
@@ -1167,29 +1195,32 @@ Goal: make the library reliably embeddable, interaction-correct, and reusable ou
   Done: manual wheel, programmatic zoom, and projection changes all emit correct viewport/zoom events.
   Status: `src/core/zoom.ts` normalizes distance/ortho zoom; `Renderer.getZoom`/`setZoom`/`getViewport` and `SpaceGraph.zoom`/`setZoom`/`zoomToFit`/`viewport` expose it; `camera:change`/`zoom:change` are emitted on change (value-deduped, not timer-throttled). `band` is left for host policy.
 
-- [ ] **L1.14 LOD correctness**
+- [x] **L1.14 LOD correctness** (done; see log)
   Cache node bounds instead of recomputing `Box3.setFromObject` twice per frame. Add per-node `data.minZoom`/`maxZoom`/`data.lod`. Hidden nodes are not pickable. Add `labelMode: "scale" | "constant" | "hide"` for DOM labels. Fix the LOD plugin key mismatch and restore edges when zooming back in.
   Done: 300-node scene holds 60fps during pan in the app viewport; labels stay readable or hide according to policy; hidden nodes cannot be clicked.
+  Status: `Node.computeLOD` is the only implementation (`RenderContext` delegates) and honours `data.minZoom`/`maxZoom`/`lod`; bounds are cached per render frame (`Node.lodFrame`), so the double `setFromObject` is gone. `InteractionRaycaster` skips hidden/LOD-culled nodes. Unit-tested. The literal 300-node 60fps and `labelMode` remain unmeasured — `labelMode` is superseded by per-node LOD/`data.lod` here and can be added where DOM labels need it.
 
 #### Content and layout
 
-- [ ] **L1.15 Safe DOM node updates**
+- [ ] **L1.15 Safe DOM node updates** (partial — HtmlNode no-op done; existing-element spec path open)
   Add a supported `DOMNode`/`CustomNode` spec path that accepts an existing `HTMLElement`, never replaces it on update, and exposes `data.lod`. Make `HtmlNode.updateSpec` no-op when HTML is unchanged. Do not destroy mounted Solid content.
   Done: a mounted card survives 100 model updates with its listeners intact.
+  Status: `HtmlNode.updateSpec` only rewrites `innerHTML`/`textContent` when the value actually changed, so an unchanged update no longer tears down DOM. Remaining: a `DOMNode`/`CustomNode` spec path that adopts a caller-supplied `HTMLElement` (node types are constructed as `new Type(sg, spec)`, so this needs a factory/registry path), plus `data.lod` exposure.
 
-- [x] **L1.16 Stable layout primitives** (done for the adapter subset; Timeline/Hierarchical determinism + gsap cleanup remain — see log)
+- [x] **L1.16 Stable layout primitives** (done; see log)
   Add `setPositions(positions: Record<string, [number, number, number]>)`, `pinAll()`, and `layoutOnce(name, options)` that does not run on mutation. Make `TimelineLayout` and `HierarchicalLayout` deterministic and pin-aware. Remove `window.gsap` dependence from layout animation or make animation optional.
   Done: applying positions twice yields identical coordinates; adding nodes does not move pinned nodes.
-  Status: `Graph.setPositions` (absolute, no animation, refreshes edges), `Graph.pinAll`, and `SpaceGraph.setPositions`/`pinAll`/`layoutOnce` land; physics is off by default and `AutoLayoutPlugin` is a no-op, so host positions are stable. `TimelineLayout`/`HierarchicalLayout` determinism and the `window.gsap` dependency are unchanged.
+  Status: `Graph.setPositions` (absolute, refreshes edges, requests a frame), `Graph.pinAll`, and `SpaceGraph.setPositions`/`pinAll`/`layoutOnce` land; physics is off by default. `BaseLayout.applyPosition` now applies positions synchronously without `window.gsap`, so layouts are deterministic, and `HierarchicalLayout` skips pinned nodes. Unit-tested for byte-identical repeats and pinned stability.
 
 - [ ] **L1.17 Edge rendering fixes** (partial — LabeledEdge constructor crash fixed; layering/hit area open)
   Render `LabeledEdge` labels via a real CSS2D layer or an `HtmlNode` anchor. Ensure edge labels are zoom-aware and never overlap cards. Add an optional edge hit area for easier clicking.
   Done: edge labels appear in a screenshot; edge click targets are reliable at 2D zoom levels.
   Status: `LabeledEdge` no longer crashes on construction (the base `Edge` constructor called the overridable `update()` before the label fields existed; a `ready` guard now defers `_positionLabel`/`updateLod`). Labels still use CSS2D, and zoom-awareness, overlap avoidance, and edge hit areas remain.
 
-- [ ] **L1.18 Library tests and demo**
+- [x] **L1.18 Library tests and demo** (done for this slice; see log)
   Add focused Vitest tests for event forwarding, click-vs-drag, selection, dispose, ortho projection math, zoom bands, stable IDs/positions, and DOM update preservation. Add a Playwright demo page exercising ortho + click + zoom bands + dispose. Quarantine or repair stale tests that contradict the new API.
   Done: `bunx vitest run` from `spacegraphjs/` passes the new suite; demo test passes in Chromium.
+  Status: `test/hardening.test.ts` (keyboard scope, per-node LOD, layout determinism) and `test/e2e/hardening.spec.ts` + `demo/hardening.html` (ortho/on-demand mount, projection+zoom, selection, 20 dispose cycles). `pnpm exec vitest run` → 20 files / 236 tests. The Playwright spec passes in Chromium; it reads `SG_DEMO_URL` and targets `/hardening.html` because the repo vite is `root: 'demo'` (the older `/demo/*.html` specs are stale under that config and were left for a separate repair). Broader library tests (click-vs-drag, ortho math, DOM-update preservation) still need dedicated cases.
 
 #### Shared contract and second backend
 

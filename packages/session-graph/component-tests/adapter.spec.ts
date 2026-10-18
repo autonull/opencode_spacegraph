@@ -1,7 +1,6 @@
 import { expect, story } from "../../storybook/playwright/story"
 
 type AdapterGlobal = {
-  SpaceGraph?: { instances: Set<unknown> }
   __sessionGraphAdapter?: {
     setProjection: (projection: string) => void
     setSelection: (ids: string[]) => void
@@ -22,7 +21,7 @@ story("mounts the SpaceGraph adapter behind the renderer contract", async ({ mou
   await expect(host).toHaveAttribute("data-graph-nodes", "5")
   await expect(host).toHaveAttribute("data-graph-edges", "2")
   await expect(host.locator("canvas")).toBeVisible()
-  expect(await page.evaluate(() => (window as unknown as AdapterGlobal).SpaceGraph?.instances.size)).toBe(1)
+  expect(await host.locator("canvas").count()).toBe(1)
 
   // 2D orthographic -> 3D perspective -> 2D, plus selection, must not throw.
   await page.evaluate(() => (window as unknown as AdapterGlobal).__sessionGraphAdapter!.setProjection("3d"))
@@ -35,7 +34,7 @@ story("mounts the SpaceGraph adapter behind the renderer contract", async ({ mou
   })
 
   await page.evaluate(() => (window as unknown as AdapterGlobal).__sessionGraphAdapter!.dispose())
-  await expect.poll(() => page.evaluate(() => (window as unknown as AdapterGlobal).SpaceGraph?.instances.size)).toBe(0)
+  await expect.poll(() => host.locator("canvas").count()).toBe(0)
 
   expect(errors).toEqual([])
 })
