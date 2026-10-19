@@ -90,6 +90,7 @@ export function SessionGraphView(props: {
         <GraphView
           model={model()}
           projection={graph.projection()}
+          depth={graph.depth()}
           preferredRenderer={graph.renderer()}
           selection={graph.selected()}
           strategy={graph.layout()}
@@ -104,6 +105,7 @@ export function SessionGraphView(props: {
           }
           onSelect={(id) => graph.setSelected(id)}
           onProjectionChange={(projection) => graph.setProjection(projection)}
+          onDepthChange={(depth) => graph.setDepth(depth)}
           onStrategyChange={(layout) => graph.setLayout(layout)}
           onRepresentationChange={(representation) => graph.setRepresentation(representation)}
           onMinimapChange={(minimap) => graph.setMinimap(minimap)}

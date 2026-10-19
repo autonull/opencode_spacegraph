@@ -1,5 +1,5 @@
-import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
-import { supports } from "@spacegraphjs/renderer"
+import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
+import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
 import type { GraphLayout, GraphModel, GraphNode, Lane, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 import {
   ancestors,
@@ -50,6 +50,8 @@ export type GraphViewProps = {
   theme?: RenderTheme
   level?: ZoomLevel
   projection?: Projection
+  /** LE.14: controlled depth spectrum (flat | layered | depth-stack | orbit); the host persists it. */
+  depth?: DepthMode
   /** Controlled selection: when set, the graph mirrors it and reports changes through `onSelect`. */
   selection?: string
   preferredRenderer?: RendererID
@@ -73,6 +75,7 @@ export type GraphViewProps = {
   endInset?: string
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
+  onDepthChange?: (depth: DepthMode) => void
   onStrategyChange?: (strategy: LayoutStrategy) => void
   onRepresentationChange?: (representation: Representation) => void
   onMinimapChange?: (minimap: boolean) => void
@@ -94,6 +97,7 @@ export const GraphView = (props: GraphViewProps) => {
   const resolvedTheme = createGraphTheme()
   const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
+  const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
   const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
@@ -234,7 +238,15 @@ export const GraphView = (props: GraphViewProps) => {
   }
   const changeProjection = (next: Projection) => {
     setProjection(next)
+    // Projection is the coarse depth selection; keep the depth treatment in step with it.
+    setDepth(next === "2d" ? "flat" : "orbit")
     props.onProjectionChange?.(next)
+  }
+  const changeDepth = (next: DepthMode) => {
+    setDepth(next)
+    // A depth treatment implies its projection; keep the coarse projection control in step.
+    setProjection(next === "flat" ? "2d" : "3d")
+    props.onDepthChange?.(next)
   }
   const changeStrategy = (next: LayoutStrategy) => {
     setStrategy(next)
@@ -306,6 +318,9 @@ export const GraphView = (props: GraphViewProps) => {
     if (props.projection !== undefined) setProjection(props.projection)
   })
   createEffect(() => {
+    if (props.depth !== undefined) setDepth(props.depth)
+  })
+  createEffect(() => {
     if (props.strategy !== undefined) setStrategy(props.strategy)
   })
   createEffect(() => {
@@ -332,7 +347,9 @@ export const GraphView = (props: GraphViewProps) => {
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
     const current = capabilities()
-    if (current && projection() === "3d" && !supports(current, "3d")) changeProjection("2d")
+    if (!current) return
+    if (projection() === "3d" && !supports(current, "3d")) changeProjection("2d")
+    if (!supportsDepth(current, depth())) setDepth("flat")
   })
   // LE.1: frame the drawn content (never the non-interactive bands) on first load, a renderer/level/
   // projection/strategy/representation change, and when the inspector toggles. The fit is deferred to
@@ -341,6 +358,7 @@ export const GraphView = (props: GraphViewProps) => {
   createEffect(() => {
     level()
     projection()
+    depth()
     strategy()
     representation()
     inspectorOpen()
@@ -364,8 +382,9 @@ export const GraphView = (props: GraphViewProps) => {
       <GraphToolbar
         level={level()}
         onLevel={setLevel}
-        projection={projection()}
-        onProjection={changeProjection}
+        depth={depth()}
+        onDepth={changeDepth}
+        depthModes={DEPTH_MODES}
         capabilities={capabilities()}
         renderer={rendererID()}
         onFit={fitContent}
@@ -420,6 +439,7 @@ export const GraphView = (props: GraphViewProps) => {
             model={renderModel()}
             theme={theme()}
             projection={projection()}
+            depth={depth()}
             selection={selection()}
             preferredRenderer={props.preferredRenderer}
             overrides={props.rendererOverrides}

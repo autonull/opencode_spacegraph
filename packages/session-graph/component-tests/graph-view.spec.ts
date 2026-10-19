@@ -78,15 +78,15 @@ story("assembles the graph view and answers node questions without the canvas", 
     .poll(() => page.evaluate(() => (window as unknown as ViewWindow).__graphView!.selected()))
     .toBe(TOKEN_ID)
 
-  // 3D is available on SpaceGraphJS and projects through the contract.
-  await root.locator('[data-slot="graph-toolbar"] button', { hasText: "3D" }).click()
+  // 3D (the orbit depth) is available on SpaceGraphJS and projects through the contract.
+  await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Orbit" }).click()
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
 
-  // Switching backend rebuilds once on the same model; 3D becomes unavailable, not broken.
+  // Switching backend rebuilds once on the same model; the perspective depths become unavailable, not broken.
   await page.evaluate(() => (window as unknown as ViewWindow).__graphView!.setRenderer("cytoscape"))
   await expect(host).toHaveAttribute("data-graph-renderer", "cytoscape", { timeout: 30_000 })
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
-  await expect(root.locator('[data-slot="graph-toolbar"] button', { hasText: "3D" })).toBeDisabled()
+  await expect(root.locator('[data-slot="graph-toolbar"] button', { hasText: "Orbit" })).toBeDisabled()
 
   expect(errors).toEqual([])
 })

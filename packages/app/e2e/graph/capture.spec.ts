@@ -90,10 +90,10 @@ async function fit(page: Page) {
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
   const compact = (await overflow.count()) > 0
 
-  if (compact) await overflow.locator("summary").click()
+  if (compact) await overflow.getByLabel("More controls").click()
   await page.locator(toolbar).getByRole("button", { name: "Fit to view", exact: true }).click()
 
-  if (compact) await overflow.locator("summary").click()
+  if (compact) await overflow.getByLabel("More controls").click()
 }
 
 test("captures the transcript, graph levels, selection, return, and 3D", async ({ page }) => {
@@ -144,17 +144,25 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await settle(page)
   await capture(page, "05-return-to-log.png")
 
-  // 06 — the 3D toggle on the same model.
+  // 06 — the 3D (orbit) depth on the same model.
   await page.getByRole("button", { name: "Toggle graph view" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await page.locator(toolbar).getByRole("button", { name: "3D", exact: true }).click()
+  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "06-graph-3d.png")
 
+  // 18 — the `layered` depth treatment (LE.14): a shallow camera and a subtle depth fade, still
+  // billboarded and flat-card; the depth spectrum's minimum legible 2.5D bar.
+  await page.locator(toolbar).getByRole("button", { name: "Layer", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "18-graph-layered.png")
+
   // 11 — the Timeline layout strategy (RF.2) on the same model.
-  await page.locator(toolbar).getByRole("button", { name: "2D", exact: true }).click()
+  await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
   await setLevel(page, "Execution")
   await page.locator(toolbar).getByRole("button", { name: "Timeline", exact: true }).click()
   await fit(page)

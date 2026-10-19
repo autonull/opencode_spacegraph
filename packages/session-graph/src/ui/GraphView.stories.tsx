@@ -1,4 +1,4 @@
-import type { Projection, RenderTheme } from "@spacegraphjs/renderer"
+import type { DepthMode, Projection, RenderTheme } from "@spacegraphjs/renderer"
 import { buildFixtureGraph, type GraphModel, type Representation, type ZoomLevel } from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -51,6 +51,7 @@ type HarnessProps = {
   selection?: string
   level?: ZoomLevel
   projection?: Projection
+  depth?: DepthMode
   representation?: Representation
   /** LE.12: open the changed-files rail on mount. */
   files?: boolean
@@ -95,6 +96,7 @@ const ViewHarness = (props: HarnessProps) => {
         selection={selected()}
         level={props.level}
         projection={props.projection}
+        depth={props.depth}
         representation={props.representation}
         files={props.files}
         preferredRenderer={renderer()}
@@ -149,6 +151,16 @@ export const MarkdownSummary = {
 
 export const Projection3D = {
   render: () => <ViewHarness projection="3d" selection={INITIAL_SELECTION} />,
+}
+
+/** LE.14: the 2.5D `layered` treatment — a shallow camera with a subtle depth fade. */
+export const Layered = {
+  render: () => <ViewHarness depth="layered" selection={INITIAL_SELECTION} />,
+}
+
+/** LE.14: `depth-stack` separates the hierarchy Z under a steeper camera with a stronger fade. */
+export const DepthStack = {
+  render: () => <ViewHarness depth="depth-stack" selection={INITIAL_SELECTION} />,
 }
 
 /** LE.8: the turn ribbon — one horizontal bar of phase segments per turn. */

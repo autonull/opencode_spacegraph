@@ -1,5 +1,5 @@
-import type { Projection, RendererCapabilities } from "@spacegraphjs/renderer"
-import { supports } from "@spacegraphjs/renderer"
+import type { DepthMode, RendererCapabilities } from "@spacegraphjs/renderer"
+import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
@@ -33,11 +33,20 @@ const REPRESENTATION_KEY = {
   matrix: "ui.sessionGraph.representation.matrix",
 } as const satisfies Record<Representation, string>
 
+const DEPTH_KEY = {
+  flat: "ui.sessionGraph.depth.flat",
+  layered: "ui.sessionGraph.depth.layered",
+  "depth-stack": "ui.sessionGraph.depth.depthStack",
+  orbit: "ui.sessionGraph.depth.orbit",
+} as const satisfies Record<DepthMode, string>
+
 export type GraphToolbarProps = {
   level: ZoomLevel
   onLevel: (level: ZoomLevel) => void
-  projection: Projection
-  onProjection: (projection: Projection) => void
+  /** LE.14: the depth spectrum chooser (flat 2D | layered | depth-stack | orbit 3D). */
+  depth?: DepthMode
+  onDepth?: (depth: DepthMode) => void
+  depthModes?: readonly DepthMode[]
   capabilities?: RendererCapabilities
   renderer?: string
   onFit: () => void
@@ -82,25 +91,28 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   }
   // The level and layout controls drive the node-link graph only; the ribbon/matrix are overview-first.
   const graphMode = () => props.representation === undefined || props.representation === "graph"
-  const projectionAvailable = (projection: Projection) => !props.capabilities || supports(props.capabilities, projection)
-  const projectionReason = (projection: Projection) =>
-    projectionAvailable(projection)
+  const depthAvailable = (depth: DepthMode) => !props.capabilities || supportsDepth(props.capabilities, depth)
+  const depthReason = (depth: DepthMode) =>
+    depthAvailable(depth)
       ? undefined
-      : i18n.t("ui.sessionGraph.capability.projectionUnavailable", { projection: projection.toUpperCase(), renderer: props.renderer ?? "" })
+      : i18n.t("ui.sessionGraph.capability.depthUnavailable", { depth: i18n.t(DEPTH_KEY[depth]), renderer: props.renderer ?? "" })
 
   // The controls after the level stepper: inline on wide rows, behind an overflow menu when compact.
   const secondary = () => (
     <>
-      <SegmentedControl
-        value={props.projection}
-        aria-label={i18n.t("ui.sessionGraph.toolbar.projection")}
-        onChange={(value) => value && props.onProjection(value as Projection)}
-      >
-        <SegmentedControlItem value="2d">{i18n.t("ui.sessionGraph.projection.2d")}</SegmentedControlItem>
-        <SegmentedControlItem value="3d" disabled={!projectionAvailable("3d")} title={projectionReason("3d")}>
-          {i18n.t("ui.sessionGraph.projection.3d")}
-        </SegmentedControlItem>
-      </SegmentedControl>
+      <Show when={props.onDepth}>
+        <SegmentedControl
+          value={props.depth ?? "flat"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.depth")}
+          onChange={(value) => value && props.onDepth?.(value as DepthMode)}
+        >
+          {(props.depthModes ?? DEPTH_MODES).map((mode) => (
+            <SegmentedControlItem value={mode} disabled={!depthAvailable(mode)} title={depthReason(mode)}>
+              {i18n.t(DEPTH_KEY[mode])}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      </Show>
 
       <Show when={props.onStrategy && graphMode()}>
         <SegmentedControl

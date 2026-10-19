@@ -97,6 +97,8 @@ const sessionGraphSchema = Persistence.struct({
   files: Schema.optional(Schema.Boolean),
   // LE.7: the contested representation axis (node-link graph | turn ribbon | turn matrix), per session.
   representation: Schema.optional(Schema.Literals(["graph", "ribbon", "matrix"])),
+  // LE.14: the depth spectrum (flat 2D | layered | depth-stack | orbit), per session. Absent means flat.
+  depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
   turnMap: Schema.optional(Schema.String),
 })
@@ -574,6 +576,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           minimap: createMemo(() => state()?.minimap ?? false),
           files: createMemo(() => state()?.files ?? false),
           representation: createMemo(() => state()?.representation ?? "graph"),
+          depth: createMemo(() => state()?.depth ?? "flat"),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
           },
@@ -582,6 +585,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setRepresentation(representation: NonNullable<SessionGraphState["representation"]>) {
             write({ representation })
+          },
+          setDepth(depth: NonNullable<SessionGraphState["depth"]>) {
+            write({ depth })
           },
           setMinimap(minimap: boolean) {
             write({ minimap })

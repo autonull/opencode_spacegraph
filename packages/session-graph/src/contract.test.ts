@@ -8,6 +8,7 @@ test("session-graph resolves the @spacegraphjs/renderer workspace package", () =
   const capabilities: RendererCapabilities = {
     contractVersion: CONTRACT_VERSION,
     projections: ["2d"],
+    depths: ["flat"],
     domNodes: true,
     maxDomNodes: 40,
     edgeLabels: true,

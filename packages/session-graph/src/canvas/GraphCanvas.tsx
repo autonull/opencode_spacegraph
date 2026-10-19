@@ -1,4 +1,5 @@
 import type {
+  DepthMode,
   GraphRenderer,
   Projection,
   RendererCapabilities,
@@ -15,6 +16,8 @@ export type GraphCanvasProps = {
   model: RenderModel
   theme: RenderTheme
   projection?: Projection
+  /** LE.14: depth treatment applied after mount; unsupported modes are the host's to gate. */
+  depth?: DepthMode
   selection?: readonly string[]
   preferredRenderer?: RendererID
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
@@ -46,6 +49,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   let unsubscribers: (() => void)[] = []
   let generation = 0
   const [ready, setReady] = createSignal(false)
+  // Depth defaults to the projection's coarse treatment; the adapter derives it at mount, so an unset
+  // depth is not a conflict (LE.14).
+  const depth = () => props.depth ?? (props.projection === "3d" ? "orbit" : "flat")
 
   const teardown = () => {
     for (const unsubscribe of unsubscribers) unsubscribe()
@@ -81,8 +87,10 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         result.renderer.setModel(props.model)
         props.onModelApplied?.(result.renderer)
         result.renderer.setSelection(props.selection ?? [])
+        result.renderer.setDepth(depth())
         host.dataset.graphRenderer = result.id
         host.dataset.graphProjection = props.projection ?? "2d"
+        host.dataset.graphDepth = depth()
         host.dataset.graphReady = "true"
         setReady(true)
         props.onRenderer?.(result.renderer)
@@ -131,6 +139,13 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     if (!mounted || !projection) return
     mounted.renderer.setProjection(projection)
     host.dataset.graphProjection = projection
+  })
+  createEffect(() => {
+    const value = depth()
+
+    if (!mounted) return
+    mounted.renderer.setDepth(value)
+    host.dataset.graphDepth = value
   })
 
   onCleanup(() => {

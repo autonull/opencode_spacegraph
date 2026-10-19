@@ -8,6 +8,7 @@ function stub(): GraphRenderer {
     capabilities: {
       contractVersion: CONTRACT_VERSION,
       projections: ["2d"],
+      depths: ["flat"],
       domNodes: false,
       maxDomNodes: 0,
       edgeLabels: false,
@@ -19,6 +20,7 @@ function stub(): GraphRenderer {
     setModel: () => {},
     setTheme: () => {},
     setProjection: () => {},
+    setDepth: () => {},
     setSelection: () => {},
     setViewport: () => {},
     fit: () => {},

@@ -1937,6 +1937,69 @@ Notes for the remaining Phase 10 work:
   and the R7.3 protocol wiring.
 - **The lanes overview empty region persists** (`02`/`14`); unchanged, fixed by construction by the ribbon.
 
+**2026-10-18 (cont.) — Phase 10 depth spectrum (LE.14/LE.15): the core depth option, the contract axis, and the host chooser.**
+
+Scope for this pass (user: "continue implementing the plan"): the depth-ordering experiments the plan files as the "3D as a depth
+spectrum, not a tilt" cluster. Library work is in `spacegraphjs` (`src/depth`, `src/core/WebGLRenderer`, `src/SpaceGraph`, the
+contract, and both adapters); host work is `packages/session-graph`, `packages/app`, and one `en.ts` edit.
+
+- **LE.15 — depth-cue primitives (library, new).** New `spacegraphjs/src/depth/DepthCues.ts`: `DEPTH_MODES` and
+  `depthTreatment(mode)` (projection + camera polar angle + orbit flag + exponential fog density) and the pure
+  `depthFade(distance, density)` attenuation curve. Exported from `src/index.ts`, the lean `src/activity.ts`, and a new
+  `spacegraphjs/depth` subpath. Unit tests in `test/depth.test.ts` (7 cases: mode→treatment, orbit/fade membership, tilt
+  ordering, fade curve). Billboarding is the existing default: CSS3D cards and label sprites already face the camera.
+- **LE.14 — core depth option.** `RenderOptions.depth` and `DepthMode` (`flat | layered | depth-stack | orbit`).
+  `SpaceGraph.setDepth(mode)` owns the treatment: it sets the renderer projection, the camera polar pose, the orbit flag, and the
+  depth fade, and emits the new `depth:change` event; `get depth` and `#init` apply the initial value. `WebGLRenderer.setDepthFade`
+  sets/clears a `THREE.FogExp2` toward the theme background so distant nodes attenuate; `#bgColor` is retained for it.
+- **LE.14 — contract axis.** `@spacegraphjs/renderer` bumps `CONTRACT_VERSION` to **2**, adds `DepthMode`/`DEPTH_MODES`,
+  `RendererCapabilities.depths`, `GraphRenderer.setDepth(mode)`, and the `supportsDepth(capabilities, mode)` predicate. Rule 10
+  (post-dispose/capability mismatch is a no-op, never a throw) applies to `setDepth` too.
+- **LE.14 — adapters.** `@spacegraphjs/spacegraph-renderer` declares all four depths and `setDepth` delegates to the core; its old
+  `FLAT_PHI`/`TILT_PHI`/`#applyProjection` are gone — projection (`2d`→flat, `3d`→orbit) is now the coarse depth selection and the
+  core owns the pose. `@spacegraphjs/cytoscape-renderer` declares `depths: ['flat']` and implements `setDepth` as a no-op.
+  `src/control/GraphBinding` is unchanged (the depth axis is a renderer treatment, not controller state); the bindings' fakes are
+  cast, so they are unaffected. The shared conformance suite (`test/renderer.contract.test.ts`) adds `setDepth` to the method
+  surface, a depth-declaration case, and the honest difference (SpaceGraph = 4 modes, Cytoscape = flat only).
+- **LE.14 — host.** `sessionViewSchema.graph.depth` persists the choice per session (`layout.graph().depth`/`setDepth`).
+  `GraphCanvas` gains a `depth` prop pushed through `renderer.setDepth` (derived `flat`/`orbit` from `projection` when unset) and
+  reports `data-graph-depth`. `GraphView` owns a `depth` signal (controlled via `props.depth`/`onDepthChange`), falls back to
+  `flat` when the active renderer does not support the mode, and includes depth in the fit effect deps.
+  **Design change:** the toolbar's `2D | 3D` toggle is **replaced** by the `Flat | Layer | Stack | Orbit` depth chooser — LE.14's
+  held requirement is "3D is a depth spectrum, not a toggle", and the projection control was redundant (flat = 2D, orbit = 3D).
+  `changeDepth`/`changeProjection` keep the projection signal in step. New `ui.sessionGraph.toolbar.depth` and
+  `ui.sessionGraph.depth.*` keys; the retired `toolbar.projection`/`projection.2d|3d`/`capability.projectionUnavailable` keys are
+  removed. New stories `session-graph-view--layered` and `--depth-stack`; `graph-3d.spec.ts` is rewritten around the depth
+  control; `graph-view.spec.ts` and the app e2e/capture specs now target the depth labels.
+- **LE.16 (partial).** `e2e/graph/capture.spec.ts` adds `18-graph-layered.png` (the 2.5D treatment) and
+  `script/capture-graph-demo.ts --mode=verify` expects it. Inspected: `18` frames the same execution model under a shallow camera
+  with a subtle depth fade; the toolbar is a single row again.
+
+Verification:
+- `cd spacegraphjs && node_modules/.bin/vitest run` → 38 files / 337 tests (was 37/327; +`depth` 7, +3 conformance).
+  `bun run test:boundaries` → 6 pass. `tsc --noEmit` unchanged at the 184-error baseline (none in touched files). The four
+  packages typecheck clean and `bun test` 6/13/12/9 pass.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 33 pass; `bun run test:components` → 32 pass.
+- `cd packages/session-ui && bun test src/graph` → 66 pass (unchanged); `bun run typecheck` clean.
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` → only the 4 pre-existing errors; `bun run
+  test:e2e -- e2e/graph/session-graph.spec.ts` → 15 pass.
+- `bun run graph:capture --mode=compare` regenerated all 15 app images (incl. `18`) plus `07`/`08`. Root `bun run lint:changed`
+  → 0 problems.
+
+Notes for the remaining Phase 10 work:
+- **LE.16/LE.17 remain.** The full representation × layout × depth capture matrix and the R7.3 protocol wiring are not built; the
+  depth axis now exists (`18` proves `layered`), so the matrix can include it. A prototype-settings surface for the three axes
+  (per §4.7) is still absent (the choosers live in the toolbar).
+- **The rendered depth is a camera + fog treatment, not new geometry.** Z is already host-owned (`layout.ts` hierarchy depth); the
+  modes differ by projection, camera tilt, orbit gating, and the fog density. A true `depth-stack` with a larger Z spread would be
+  a host layout change, not a renderer one.
+- **Vector defocus/occlusion is not simulated.** The plan's "occlusion and depth fade" is realised as scene fog toward the theme
+  background; per-object depth-of-field would need a stencil/DoF pass in the core and is out of scope for the prototype.
+- **`layered`/`depth-stack` use the perspective camera**, so on Cytoscape (2D-only) the chooser disables them with an explanation
+  (capability-gated, no host branch); the same is true for the shared conformance assertion.
+- **Library refinements unchanged:** RF.6 mesh outline (stencil pass), RF.2 `LaneLayout` folding, vector-band dimming.
+- **Lanes overview empty region persists** (`02`/`14`); the ribbon/matrix fix it by construction.
+
 ## 0. Mission
 
 
@@ -3417,7 +3480,7 @@ Layout versatility (keep every option legible):
 
 3D as a depth spectrum, not a tilt (per the depth-ordering idea):
 
-- [ ] **LE.14 Depth-mode seam and treatments**
+- [x] **LE.14 Depth-mode seam and treatments** (done; see the Phase 10 depth-spectrum log)
   Add a `depth` render option with several treatments, all 2D-legible first:
   - `flat` — the current default.
   - `layered` (2.5D) — mostly 2D with **subtle depth ordering**: small per-level/lane/time Z offsets,
@@ -3427,9 +3490,17 @@ Layout versatility (keep every option legible):
   - `orbit` — the current 2D+3D perspective with orbit, kept as an experiment and honestly labelled.
   Library-first: add the missing primitives (a `depth` render option, depth fade/attenuation, billboard
   handling) to `spacegraphjs` and the adapter; keep it opt-in.
-- [ ] **LE.15 Depth cue primitives (library)**
+  Status: `RenderOptions.depth` + `SpaceGraph.setDepth` own projection/pose/orbit/fog; the contract adds `DepthMode`/`depths`/
+  `setDepth`/`supportsDepth` (version 2); both adapters declare their modes (SpaceGraph 4, Cytoscape flat only). The toolbar
+  depth chooser replaces the 2D/3D toggle (flat=2D, orbit=3D); `layered`/`depth-stack` differ by camera tilt + fog density over the
+  existing host Z. Billboarding is the default (CSS3D/sprites). See the log for the caveats (fog, not DoF).
+
+- [x] **LE.15 Depth cue primitives (library)** (done; see the Phase 10 depth-spectrum log)
   Depth fade/attenuation, z-ordering, optional billboarding, and a contract/adapter `depth` option;
   unit-tested, with a legibility check per mode at 1440×900.
+  Status: `src/depth/DepthCues.ts` (`DEPTH_MODES`, `depthTreatment`, `depthFade`) exported from the entry, `activity`, and the
+  `./depth` subpath; `test/depth.test.ts` covers the mode table and the fade curve. The per-mode legibility check is `18-graph-layered`
+  (inspected); z-ordering is the host layout, billboarding is the renderer default.
 
 Experimentation harness and acceptance:
 
@@ -3439,8 +3510,8 @@ Experimentation harness and acceptance:
   with `graph:capture --mode=compare` covering the options. The screenshots become the comparison
   surface for the protocol.
   Status: the `representation` chooser is in the toolbar (deviation, LE.7) and `15`/`16` capture ribbon/matrix,
-  with `17` capturing the LE.12 file lens; the full combination matrix, the `depth` axis, and a prototype-settings
-  surface remain.
+  with `17` capturing the LE.12 file lens and `18` capturing the LE.14 `layered` depth; the full combination matrix,
+  the `depth` axis across representations, and a prototype-settings surface remain.
 - [ ] **LE.17 Visual acceptance + R7.3 wiring**
   Each batch regenerates and is *inspected* before "done"; the R7.3 protocol runs the five tasks
   against each representation/depth option, and the go/no-go decides the winner. No representation or

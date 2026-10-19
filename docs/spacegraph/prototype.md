@@ -21,8 +21,8 @@ where the agent retried or changed direction.
 
 | Repository | Revision | Notes |
 |---|---|---|
-| OpenCode (`opencode` monorepo) | `dev` @ `484bd64944` + this docs pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `189d345` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `189d345` cancels in-flight camera tweens on an explicit zoom/projection |
+| OpenCode (`opencode` monorepo) | `dev` @ `2360be5b62` + this depth pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `55ded02` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2) |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
 gitignored in the OpenCode repo; its commits are recorded here by SHA.
@@ -253,6 +253,7 @@ data assumptions appear in the library.
 | Navigation trail | `spacegraphjs/navigation` | `GraphController`, OpenCode `GraphView`, library demo | — |
 | View controller | `spacegraphjs/control` | OpenCode `GraphView` (selection), library demo | OpenCode search stays host-owned (uses the richer tool-input selector) |
 | DOM mount | `spacegraphjs` `DOMNode` | SpaceGraph adapter | — |
+| Depth spectrum | `spacegraphjs/depth` + contract `depths` | OpenCode depth chooser, library demo | Z spread is host layout; depth fade is scene fog, not per-object DoF |
 | Minimap | host SVG (`GraphMinimap.tsx`) | OpenCode | vertical mirror under Cytoscape (documented) |
 
 ## Known limitations
