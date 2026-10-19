@@ -66,6 +66,7 @@ if (mode === "verify") {
     "14-graph-light.png",
     "15-graph-ribbon.png",
     "16-graph-matrix.png",
+    "17-graph-files.png",
   ]
   const missing = expected.filter((name) => !existsSync(join(screenshots, name)))
 

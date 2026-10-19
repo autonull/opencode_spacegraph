@@ -209,6 +209,36 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
   expect(errors).toEqual([])
 })
 
+// LE.12: the file-first lens. The rail lists the session's written files in order; selecting one
+// selects the file node so the inspector names its writers, inverting the "why did this change?".
+story("the changed-files rail lists written files and selects one on click", async ({ mount, page }) => {
+  const errors: string[] = []
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text())
+  })
+
+  const root = await mount("session-graph-view")
+  const host = root.locator('[data-slot="graph-canvas-host"]')
+  await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+  const toolbar = root.locator('[data-slot="graph-toolbar"]')
+  const toggle = toolbar.getByRole("button", { name: "Toggle changed files", exact: true })
+  await expect(toggle).toHaveAttribute("data-state", "rest")
+  await toggle.click()
+
+  const rail = root.locator('[data-slot="graph-file-rail"]')
+  await expect(rail).toBeVisible()
+  await expect(rail).toContainText("src/auth/token.ts")
+
+  await rail.locator('[data-slot="graph-file-rail-item"]', { hasText: "src/auth/token.ts" }).click()
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as RefineWindow).__graphView!.selected()))
+    .toBe("file:src/auth/token.ts")
+  await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("src/auth/token.ts")
+
+  expect(errors).toEqual([])
+})
+
 story("the turn matrix places phases in category columns", async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {

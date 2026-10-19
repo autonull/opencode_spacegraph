@@ -225,6 +225,21 @@ test("execution focus dims demoted vector nodes through node opacity, not markup
   expect(fadedVectors.every((node) => node.data?.opacity === 0.3)).toBe(true)
 })
 
+test("provenance bundling rebases file edges onto their turn spine (LE.13)", () => {
+  const plain = at("execution")
+  const bundled = buildRenderModel(model, { level: "execution", positions, bundle: true })
+  const fileTargets = (built: ReturnType<typeof at>) =>
+    built.edges.filter((edge) => edge.target.startsWith("file:"))
+  const sources = (built: ReturnType<typeof at>) => new Set(fileTargets(built).map((edge) => edge.source))
+
+  // Every file edge now originates from a turn node, and there are fewer crossing wires than before.
+  expect([...sources(bundled)].every((source) => source.startsWith("turn:"))).toBe(true)
+  expect(sources(bundled).size).toBeLessThan(sources(plain).size)
+  expect(fileTargets(bundled).length).toBeLessThan(fileTargets(plain).length)
+  // Nothing that does not touch a file is rebased, so the sequence spine is untouched.
+  expect(bundled.edges.some((edge) => edge.kind === "sequence" && edge.source.startsWith("tool:"))).toBe(true)
+})
+
 test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () => {
   const built = at("detail")
   const style = (kind: string, confidence?: string) =>

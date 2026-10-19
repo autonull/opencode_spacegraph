@@ -182,11 +182,19 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await waitForStillCanvas(page)
   await capture(page, "16-graph-matrix.png")
 
-  // Back to the node-link graph for the narrow and light frames.
+  // Back to the node-link graph, lanes layout, for the file lens and the narrow/light frames.
   await page.locator(toolbar).getByRole("button", { name: "Graph", exact: true }).click()
+  await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
+
+  // 17 — the file-first lens (LE.12): the changed-files rail with provenance bundled to turn spines.
+  await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
+  await expect(page.locator('[data-slot="graph-file-rail"]')).toBeVisible()
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "17-graph-files.png")
+  await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
 
   // 13 — a narrow 390×900 viewport (RF.11): the toolbar wraps and the canvas stays framed.
-  await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
   await page.setViewportSize({ width: 390, height: 900 })
   await fit(page)
   await waitForStillCanvas(page)

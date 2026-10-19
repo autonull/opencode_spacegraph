@@ -7,6 +7,7 @@ import {
   neighbors,
   nodesAtLevel,
   type ClusterBounds,
+  type EdgeKind,
   type GraphEdge,
   type GraphModel,
   type GraphNode,
@@ -90,6 +91,11 @@ export type BuildRenderModelOptions = {
   bands?: boolean
   /** Emits edges; the ribbon/matrix representations are edge-free summaries (LE.8/LE.9). */
   edges?: boolean
+  /**
+   * LE.13: bundles per-activity provenance edges to their owning turn node, so a file is connected to
+   * a short turn spine instead of one crossing wire per reader/writer. The file-first lens enables it.
+   */
+  bundle?: boolean
   /** Overrides the per-level DOM card budget; cards above it fall back to labels. */
   cardBudget?: number
   /** Replaces the default card markup, e.g. with localized copy. */
@@ -153,7 +159,8 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
   const visible = new Set(content.map((node) => node.id))
   const bands = options.bands ? buildBands(model, level, positions, renderBand, visible) : []
   const lanes = buildLaneLabels(options.laneLabels, content)
-  const edges = (options.edges ?? true) ? edgesAtLevel(model, level, focus).map((edge) => toRenderEdge(edge, level)) : []
+  const rawEdges = (options.edges ?? true) ? edgesAtLevel(model, level, focus) : []
+  const edges = (options.bundle ? bundleEdges(model, rawEdges) : rawEdges).map((edge) => toRenderEdge(edge, level))
 
   return { nodes: [...bands, ...lanes, ...content], edges }
 }
@@ -183,6 +190,39 @@ function buildLaneLabels(
     position: [x, lane.y, ZERO.z - 1],
     data: { lane: lane.id },
   }))
+}
+
+/** LE.13: provenance edges that a file-first lens rebases onto the owning turn node. */
+const BUNDLED_KINDS = new Set<EdgeKind>(["writes", "reads", "searches", "references", "produces"])
+
+/**
+ * LE.13 — provenance bundling. Every per-activity edge into a `file` is rebased to the owning turn
+ * node and deduped, so a file links to a short per-turn spine (one connector per turn) instead of one
+ * crossing wire per writer/reader. Edges that do not target a file, or whose activity has no turn, are
+ * kept verbatim. The rebased id is stable (`bundle:${source}:${target}:${kind}`) for renderer diffing.
+ */
+function bundleEdges(model: GraphModel, edges: readonly GraphEdge[]): GraphEdge[] {
+  const byID = new Map(model.nodes.map((node) => [node.id, node]))
+  // `GraphNode.turnID` is already the owning turn node id (`turn:<opener>`), not the opener message id.
+  const turnOf = (id: string) => byID.get(id)?.turnID ?? id
+  const seen = new Set<string>()
+  const bundled: GraphEdge[] = []
+
+  for (const edge of edges) {
+    if (!BUNDLED_KINDS.has(edge.kind) || byID.get(edge.target)?.kind !== "file") {
+      bundled.push(edge)
+      continue
+    }
+
+    const source = turnOf(edge.source)
+    const key = `${source}:${edge.target}:${edge.kind}`
+
+    if (seen.has(key)) continue
+    seen.add(key)
+    bundled.push(source === edge.source ? edge : { ...edge, id: `bundle:${key}`, source })
+  }
+
+  return bundled
 }
 
 /** A derived cluster collapsed at this level (§5.4): it shows a member count and expands later. */

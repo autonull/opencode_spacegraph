@@ -1,6 +1,6 @@
 import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
-import type { GraphModel, GraphEdge, GraphNode, NodeKind } from "./model"
+import type { EdgeKind, GraphModel, GraphEdge, GraphNode, NodeKind } from "./model"
 
 export type Subgraph = {
   nodes: GraphNode[]
@@ -207,6 +207,53 @@ export function search(model: GraphModel, query: string): GraphNode[] {
   if (!needle) return []
 
   return model.nodes.filter((node) => searchable(node).includes(needle))
+}
+
+const READ_KINDS = new Set<EdgeKind>(["reads", "searches", "references"])
+
+export type ChangedFile = {
+  id: string
+  path: string
+  /** Activity node ids that wrote or produced this file, in model order. */
+  writers: string[]
+  /** Activity node ids that read, searched, or referenced this file, in model order. */
+  readers: string[]
+}
+
+/**
+ * The session's changed files, in first-write order (LE.12). Each entry is a `file` node with the
+ * activity ids that wrote it (`writes`/`produces`), plus the ids that read it one hop out. The
+ * file-first rail renders this; selecting a file inverts the "why did this change?" question by
+ * focusing its writers. Files that were only read never appear.
+ */
+export function changedFiles(model: GraphModel): ChangedFile[] {
+  const kindByID = new Map(model.nodes.map((node) => [node.id, node.kind]))
+  const byID = new Map<string, ChangedFile>()
+  const order: string[] = []
+
+  for (const edge of model.edges) {
+    if (kindByID.get(edge.target) !== "file") continue
+
+    if (edge.kind !== "writes" && edge.kind !== "produces") continue
+
+    let entry = byID.get(edge.target)
+
+    if (!entry) {
+      const node = nodeByID(model, edge.target)
+      entry = { id: edge.target, path: dataString(node?.data?.path) ?? node?.label ?? edge.target, writers: [], readers: [] }
+      byID.set(edge.target, entry)
+      order.push(edge.target)
+    }
+
+    entry.writers.push(edge.source)
+  }
+
+  for (const edge of model.edges) {
+    if (kindByID.get(edge.target) !== "file" || !READ_KINDS.has(edge.kind)) continue
+    byID.get(edge.target)?.readers.push(edge.source)
+  }
+
+  return order.map((id) => byID.get(id)!)
 }
 
 /** The message/part a node points back to in the transcript, when it has one. */

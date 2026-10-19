@@ -39,6 +39,7 @@ export {
 export {
   ancestors,
   breadcrumbs,
+  changedFiles,
   currentActivity,
   forwardChain,
   incoming,
@@ -51,6 +52,7 @@ export {
   subtree,
   turnSubgraph,
   why,
+  type ChangedFile,
   type Subgraph,
   type TranscriptRef,
 } from "./selectors"

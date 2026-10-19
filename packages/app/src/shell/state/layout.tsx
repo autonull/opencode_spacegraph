@@ -93,6 +93,8 @@ const sessionGraphSchema = Persistence.struct({
   // RF.2/RF.7: the chosen layout strategy and minimap visibility, per session.
   layout: Schema.optional(Schema.Literals(["lanes", "timeline", "hierarchy"])),
   minimap: Schema.optional(Schema.Boolean),
+  // LE.12: the file-first lens (changed-files rail + bundled provenance), per session. Absent means off.
+  files: Schema.optional(Schema.Boolean),
   // LE.7: the contested representation axis (node-link graph | turn ribbon | turn matrix), per session.
   representation: Schema.optional(Schema.Literals(["graph", "ribbon", "matrix"])),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
@@ -570,6 +572,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           turnMap: createMemo(() => state()?.turnMap),
           layout: createMemo(() => state()?.layout ?? "lanes"),
           minimap: createMemo(() => state()?.minimap ?? false),
+          files: createMemo(() => state()?.files ?? false),
           representation: createMemo(() => state()?.representation ?? "graph"),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
@@ -582,6 +585,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setMinimap(minimap: boolean) {
             write({ minimap })
+          },
+          setFiles(files: boolean) {
+            write({ files })
           },
           setProjection(projection: NonNullable<SessionGraphState["projection"]>) {
             write({ projection })

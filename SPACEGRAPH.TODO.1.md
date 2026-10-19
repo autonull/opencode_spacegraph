@@ -1885,6 +1885,58 @@ Notes for the remaining Phase 10 work:
 - **`layout.ts` still computes its own cursors** rather than sitting on `spacegraphjs/layout/LaneLayout` (the
   unchanged RF.2 cleanup).
 
+**2026-10-18 (cont.) — Phase 10 file-first navigation (LE.12) and provenance bundling (LE.13).**
+
+Scope for this pass (user: "continue implementing the plan"): the two host-only "optional lens" items the plan
+orders after LE.11. All work is in `packages/session-ui`, `packages/session-graph`, `packages/app`, and one
+`packages/ui/src/i18n/en.ts` edit; `spacegraphjs` is untouched.
+
+- **LE.12 — changed-files rail (done).** New pure `changedFiles(model)` selector
+  (`session-ui/src/graph/selectors.ts`): every `file` node written (`writes`/`produces`) in first-write order,
+  each with its writer activity ids and, one hop out, its reader ids; a file that was only read never appears.
+  New `GraphFileRail` (`session-graph/src/ui/GraphFileRail.tsx`) is a persistent left rail listing the paths
+  (monospaced, truncated) and a pluralized writer count; selecting a file selects the file node, so the
+  inspector names its writers and execution focus dims the non-neighbours — the "why did this change?" question
+  inverted. Persisted per session as `sessionViewSchema.graph.files` (default off) behind a toolbar icon-button
+  toggle (`folder`), wired through the `layout.graph` accessor and `session-graph-view.tsx`. The rail renders
+  only in the `graph` representation and only on wide viewports (`!narrow()`), so it never fights the mobile
+  sheet; toggling it re-fits (added to the LE.1 fit effect deps).
+- **LE.13 — provenance bundling (done; deviation).** `buildRenderModel` gains a `bundle` option: every
+  provenance edge into a `file` (`writes`/`reads`/`searches`/`references`/`produces`) is rebased to the owning
+  turn node and deduped, so a file links to a short per-turn spine instead of one crossing wire per
+  writer/reader; ids are stable (`bundle:<turn>:<file>:<kind>`) for renderer diffing. Non-file edges (the
+  `sequence` spine) are untouched. **Deviation:** the plan files LE.13 as its own flag; it is enabled by the
+  same file-first lens flag (`files`) because that is the view it serves, rather than adding a second toggle.
+- **Tests.** `session-ui` `selectors.test.ts` +3 (`changedFiles` set/writers/read-only-excluded);
+  `session-graph` `buildRenderModel.test.ts` +1 (file edges originate from turn nodes, fewer wires, non-file
+  edges rebased nowhere); `component-tests/graph-refine.spec.ts` +1 (toggle the rail, list a fixture file,
+  click it, assert selection + inspector); new `session-graph-view--files` story.
+- **Capture (LE.16, partial).** `e2e/graph/capture.spec.ts` adds `17-graph-files.png` (lanes layout, rail open);
+  `script/capture-graph-demo.ts --mode=verify` expects it. Inspected: the rail lists the four fixture files with
+  writer counts (`session.ts` 4, `token.ts` 2, `guards.ts` 2, `session.test.ts` 4) and the selected file's
+  connections read `writes`/`produces`.
+- **Bug caught while regenerating.** The first bundling pass double-prefixed the turn id (`turn:turn:…`) because
+  `GraphNode.turnID` is **already** the turn node id (`turn:<opener>`), not the opener message id; the core then
+  rejected the rebased edges ("missing source or target node"). Fixed to read `turnID` directly.
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 66 pass (was 63; +3); `bun run typecheck` clean. Full
+  `bun test src` → 313 pass with the single pre-existing `markdown-solid.test.tsx` `jsxDEV` failure unchanged.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 33 pass (was 32; +1); `bun run
+  test:components` → 31 pass (was 30; +1).
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` → only the 4 pre-existing errors; `bun run
+  test:e2e -- e2e/graph/session-graph.spec.ts` → 15 pass.
+- `bun run graph:capture --mode=demo` regenerated `01`–`06`, `11`–`17`; `--mode=verify` passed. Root
+  `bun run lint:changed` → 0 problems.
+
+Notes for the remaining Phase 10 work:
+- **LE.14/LE.15 (depth spectrum) remain** — the biggest held requirement ("`layered` 2.5D must be legible").
+  They are library-first (a `depth` render option + depth fade/attenuation/billboarding in `spacegraphjs` and
+  the adapter), so they were deliberately not folded into this host-only pass.
+- **LE.16/LE.17 remain** — the full combination capture matrix (now including a `depth` axis once LE.14 lands)
+  and the R7.3 protocol wiring.
+- **The lanes overview empty region persists** (`02`/`14`); unchanged, fixed by construction by the ribbon.
+
 ## 0. Mission
 
 
@@ -3350,11 +3402,18 @@ Layout versatility (keep every option legible):
   Status: `timelineLayout` wraps each turn into rows (default 6 columns); `hierarchyLayout` is an indented
   one-node-per-row outline; hierarchy suppresses bands in `buildRenderModel`. `11`/`12` are legible and
   covered by `layout.test.ts`.
-- [ ] **LE.12 Artifacts rail / file-first navigation**
+- [x] **LE.12 Artifacts rail / file-first navigation** (done; see the Phase 10 file-first log)
   A persistent changed-files rail; hovering/selecting a file highlights its writers, inverting the "why
   did this file change" question. An optional lens over `graph`.
-- [ ] **LE.13 Edge bundling / spine rails**
+  Status: `changedFiles(model)` + `GraphFileRail` list written files (writer count) in first-write order; selecting
+  one selects the file node, whose inspector detail names its writers. Persisted `graph.files` (default off) behind a
+  toolbar toggle; graph-representation-only and hidden on narrow viewports. Hover-to-highlight is select-to-highlight
+  (execution focus dims the non-neighbours); a pointer-hover preview is not added.
+- [x] **LE.13 Edge bundling / spine rails** (done; see the Phase 10 file-first log)
   Per-turn spine with short provenance connectors instead of crossing wires; optional, behind a flag.
+  Status: `buildRenderModel`'s `bundle` option rebases every file provenance edge to its owning turn node and dedups
+  it (`bundle:<turn>:<file>:<kind>`), so a file links to a per-turn spine. **Deviation:** enabled by the LE.12 `files`
+  flag rather than its own toggle; a separate spine rail node is not drawn (the turn node is the spine).
 
 3D as a depth spectrum, not a tilt (per the depth-ordering idea):
 
@@ -3379,8 +3438,9 @@ Experimentation harness and acceptance:
   that renders each meaningful combination into the committed screenshot set (numbered, documented),
   with `graph:capture --mode=compare` covering the options. The screenshots become the comparison
   surface for the protocol.
-  Status: the `representation` chooser is in the toolbar (deviation, LE.7) and `15`/`16` capture ribbon/matrix;
-  the full combination matrix, the `depth` axis, and a prototype-settings surface remain.
+  Status: the `representation` chooser is in the toolbar (deviation, LE.7) and `15`/`16` capture ribbon/matrix,
+  with `17` capturing the LE.12 file lens; the full combination matrix, the `depth` axis, and a prototype-settings
+  surface remain.
 - [ ] **LE.17 Visual acceptance + R7.3 wiring**
   Each batch regenerates and is *inspected* before "done"; the R7.3 protocol runs the five tasks
   against each representation/depth option, and the go/no-go decides the winner. No representation or

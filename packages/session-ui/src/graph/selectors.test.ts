@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { buildFixtureGraph } from "./fixture"
+import { buildFixtureGraph, CHANGED_FILES } from "./fixture"
 import { fileNodeID, messageNodeID, resultNodeID, subagentNodeID, toolNodeID, turnNodeID } from "./model"
 import {
   ancestors,
   breadcrumbs,
+  changedFiles,
   forwardChain,
   openInTranscript,
   outgoing,
@@ -116,6 +117,30 @@ describe("selectors — turn subgraph (hybrid H6.2/H6.4)", () => {
 
   test("an unknown turn is an empty subgraph", () => {
     expect(turnSubgraph(model, "turn:missing", 7)).toEqual({ nodes: [], edges: [] })
+  })
+})
+
+describe("selectors — changed files (LE.12 file-first rail)", () => {
+  test("lists exactly the files the session wrote, with their writers", () => {
+    const files = changedFiles(model)
+
+    expect(files.map((file) => file.path).sort()).toEqual([...CHANGED_FILES].sort())
+
+    for (const file of files) expect(file.writers.length).toBeGreaterThan(0)
+  })
+
+  test("a written file names the tool that produced it and the reads into it", () => {
+    const token = changedFiles(model).find((file) => file.path === "src/auth/token.ts")!
+
+    expect(token.writers).toContain(toolNodeID("prt_tool_write_1"))
+    expect(token.id).toBe(fileNodeID("src/auth/token.ts"))
+  })
+
+  test("a file that was only read never appears", () => {
+    const readOnly = model.nodes.find((node) => node.kind === "file" && node.label === "src/auth/store.ts")
+
+    expect(readOnly).toBeDefined()
+    expect(changedFiles(model).some((file) => file.path === "src/auth/store.ts")).toBe(false)
   })
 })
 

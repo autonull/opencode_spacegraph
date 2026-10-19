@@ -52,6 +52,8 @@ type HarnessProps = {
   level?: ZoomLevel
   projection?: Projection
   representation?: Representation
+  /** LE.12: open the changed-files rail on mount. */
+  files?: boolean
   renderer?: RendererID
   overrides?: Partial<Record<RendererID, RendererFactory>>
   theme?: RenderTheme
@@ -94,6 +96,7 @@ const ViewHarness = (props: HarnessProps) => {
         level={props.level}
         projection={props.projection}
         representation={props.representation}
+        files={props.files}
         preferredRenderer={renderer()}
         rendererOverrides={props.overrides}
         theme={props.theme}
@@ -156,6 +159,11 @@ export const Ribbon = {
 /** LE.9: the turn matrix — turns as rows, phase categories as columns. */
 export const Matrix = {
   render: () => <ViewHarness representation="matrix" />,
+}
+
+/** LE.12: the file-first lens — the changed-files rail with bundled provenance edges. */
+export const Files = {
+  render: () => <ViewHarness files={true} selection="file:src/auth/token.ts" />,
 }
 
 export const Cytoscape = {

@@ -51,6 +51,9 @@ export type GraphToolbarProps = {
   /** RF.7: minimap toggle, default off. */
   minimap?: boolean
   onToggleMinimap?: () => void
+  /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
+  files?: boolean
+  onToggleFiles?: () => void
   /** Opens the hybrid turn map for the currently selected turn; absent when no turn is selected. */
   onTurnMap?: () => void
   /** LE.8/LE.9: opens the selected ribbon/matrix segment in the node-link graph; absent outside graph mode. */
@@ -120,6 +123,17 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         onClick={() => props.onToggleMinimap?.()}
         icon={<Icon name="layout-bottom" size="small" />}
       />
+      <Show when={props.onToggleFiles}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          state={props.files ? "pressed" : "rest"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.files")}
+          title={i18n.t("ui.sessionGraph.toolbar.files")}
+          onClick={() => props.onToggleFiles?.()}
+          icon={<Icon name="folder" size="small" />}
+        />
+      </Show>
       <IconButton
         size="small"
         variant="ghost"

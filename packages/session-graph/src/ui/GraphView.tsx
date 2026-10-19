@@ -4,6 +4,7 @@ import type { GraphLayout, GraphModel, GraphNode, Lane, LayoutStrategy, Position
 import {
   ancestors,
   breadcrumbs,
+  changedFiles,
   laneAnchors,
   layoutGraph,
   LEVEL_RANK,
@@ -24,6 +25,7 @@ import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs, type GraphBreadcrumb } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import type { GraphDiffSource } from "./GraphDiff"
+import { GraphFileRail } from "./GraphFileRail"
 import { GraphInspector } from "./GraphInspector"
 import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
@@ -60,6 +62,8 @@ export type GraphViewProps = {
   representation?: Representation
   /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
   minimap?: boolean
+  /** LE.12: the file-first lens (changed-files rail + bundled provenance edges); the host persists it. */
+  files?: boolean
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
   diffSource?: GraphDiffSource
   /** Optional host renderer for a node's summary (for example Markdown); falls back to plain text. */
@@ -72,6 +76,7 @@ export type GraphViewProps = {
   onStrategyChange?: (strategy: LayoutStrategy) => void
   onRepresentationChange?: (representation: Representation) => void
   onMinimapChange?: (minimap: boolean) => void
+  onFilesChange?: (files: boolean) => void
   onOpenTranscript?: (id: string) => void
   /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
   onTurnMap?: (turnID: string) => void
@@ -92,6 +97,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
   const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
+  const [files, setFiles] = createSignal<boolean>(props.files ?? false)
   const [searchOpen, setSearchOpen] = createSignal(false)
   // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
   // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
@@ -182,6 +188,7 @@ export const GraphView = (props: GraphViewProps) => {
       positions: layout().positions,
       bands: representation() === "graph" && strategy() !== "hierarchy",
       edges: representation() === "graph",
+      bundle: representation() === "graph" && files(),
       focus: representation() === "graph" && level() === "execution" ? selection()[0] : undefined,
       laneLabels:
         representation() === "graph" && strategy() === "lanes"
@@ -251,6 +258,14 @@ export const GraphView = (props: GraphViewProps) => {
       return !open
     })
   }
+  const toggleFiles = () => {
+    setFiles((open) => {
+      props.onFilesChange?.(!open)
+      return !open
+    })
+  }
+  // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
+  const changedFilesList = createMemo(() => changedFiles(props.model))
   const jumpTo = (node: GraphNode) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
@@ -299,6 +314,9 @@ export const GraphView = (props: GraphViewProps) => {
   createEffect(() => {
     if (props.minimap !== undefined) setMinimap(props.minimap)
   })
+  createEffect(() => {
+    if (props.files !== undefined) setFiles(props.files)
+  })
   // Keep the controller's model in step with the host model; it reconciles selection + trail by id, so
   // streaming appends never clear either.
   createEffect(() => controller.setModel(props.model))
@@ -326,6 +344,7 @@ export const GraphView = (props: GraphViewProps) => {
     strategy()
     representation()
     inspectorOpen()
+    files()
     setNeedsFit(true)
   })
   const fitContent = () => renderer?.fit(untrack(contentIDs))
@@ -357,6 +376,8 @@ export const GraphView = (props: GraphViewProps) => {
         onRepresentation={changeRepresentation}
         minimap={minimap()}
         onToggleMinimap={toggleMinimap}
+        files={files()}
+        onToggleFiles={toggleFiles}
         onTurnMap={
           props.onTurnMap
             ? () => {
@@ -383,6 +404,9 @@ export const GraphView = (props: GraphViewProps) => {
         </div>
       </Show>
       <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
+        <Show when={files() && representation() === "graph" && !narrow()}>
+          <GraphFileRail files={changedFilesList()} selection={selection()} onSelect={(id) => select(id)} />
+        </Show>
         <div
           class="relative min-w-0 flex-1"
           data-slot="graph-canvas-region"

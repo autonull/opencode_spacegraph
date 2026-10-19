@@ -95,6 +95,7 @@ export function SessionGraphView(props: {
           strategy={graph.layout()}
           representation={graph.representation()}
           minimap={graph.minimap()}
+          files={graph.files()}
           diffSource={diffSource()}
           renderSummary={(node) =>
             node.kind === "message" || node.kind === "reasoning" ? (
@@ -106,6 +107,7 @@ export function SessionGraphView(props: {
           onStrategyChange={(layout) => graph.setLayout(layout)}
           onRepresentationChange={(representation) => graph.setRepresentation(representation)}
           onMinimapChange={(minimap) => graph.setMinimap(minimap)}
+          onFilesChange={(files) => graph.setFiles(files)}
           onTurnMap={(turnID) => graph.setTurnMap(turnID)}
           onOpenTranscript={(id) => {
             const ref = openInTranscript(model(), id)
