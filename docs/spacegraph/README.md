@@ -50,7 +50,7 @@ cd spacegraphjs && pnpm run dev:demo   # then open /contract.html
 
 ## Tested commit
 
-OpenCode `dev` @ `f9c63d1b1b` + the docs pass; SpaceGraphJS code `3e4612a`. See
+OpenCode `dev` synced with upstream `dev` `ba06ff9e0b` (merge `f802f5e707`); SpaceGraphJS code `5abf80d`. See
 [prototype.md](./prototype.md) for the full tested-revision table, measurements, and the per-pass log.
 
 ## Limitations

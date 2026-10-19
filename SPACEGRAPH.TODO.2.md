@@ -16,7 +16,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Item | State |
 |---|---|
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
-| OpenCode fork | `dev` @ `a7c26a1a18`; 63 commits since merge-base; **41 commits behind upstream `dev`** |
+| OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
 | SpaceGraphJS | `main` @ `5abf80d`; **3 commits not pushed** (`6056ba6`, `55ded02`, `5abf80d`) |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
@@ -87,7 +87,7 @@ conflict. Re-check these facts at execution time; do not assume them.
 commit messages, and progress log, and would make rollback harder. For an upstream PR, produce a
 clean branch later from the merge result (T3.7). Never force-push a shared branch.
 
-- [ ] **T0.1 Back up both repositories before touching anything**
+- [x] **T0.1 Back up both repositories before touching anything**
   Push the fork and the currently unpushed library commits, and tag the pre-sync state.
   ```
   git push origin dev
@@ -98,7 +98,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   Done when: `origin/dev` and `origin/main` contain the current tips; tags exist on both.
   Verify: `git ls-remote origin refs/heads/dev refs/tags/pre-sync-2026-10-19` (both repos).
 
-- [ ] **T0.2 Add the upstream remote and fetch**
+- [x] **T0.2 Add the upstream remote and fetch**
   ```
   git remote add upstream https://github.com/anomalyco/opencode.git
   git fetch upstream dev --no-tags
@@ -107,7 +107,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   Done when: `upstream/dev` is fetched; the behind/ahead counts and SHAs are recorded in §12.
   Do not push to `upstream`.
 
-- [ ] **T0.3 Merge upstream into a dedicated sync branch**
+- [x] **T0.3 Merge upstream into a dedicated sync branch**
   ```
   git switch -c upstream-sync-1019
   git merge --no-ff upstream/dev -m "chore: sync upstream dev"
@@ -124,7 +124,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   whole side.
   Verify: `git log --oneline -1`; `git diff --check`.
 
-- [ ] **T0.4 Reconcile dependencies and the protocol surface**
+- [x] **T0.4 Reconcile dependencies and the protocol surface**
   Run `bun install` at the root; inspect lockfile changes; update our model if upstream altered
   message/part types. Specifically re-check the graph model's handling of `idle`, archived sessions,
   and any new message/part variants (TODO.1 §5.1).
@@ -132,7 +132,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   mapped or explicitly ignored with a test.
   Verify: `cd packages/session-ui && bun run typecheck && bun test src/graph`.
 
-- [ ] **T0.5 Run the full graph verification on the merged tree**
+- [x] **T0.5 Run the full graph verification on the merged tree**
   ```
   cd packages/session-graph && bun run typecheck && bun test src && bun run test:components
   cd packages/app && bun run typecheck && bun run typecheck:e2e
@@ -144,7 +144,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   Known environment caveats: `bun run check` is red for unrelated reasons (`packages/ai`
   node-types error; `turbo` SIGSEGV). Re-run it on bare upstream in T0.7 before blaming the merge.
 
-- [ ] **T0.6 Re-baseline the documentation and screenshots**
+- [x] **T0.6 Re-baseline the documentation and screenshots**
   Upstream may change tokens, fonts, or the shell. Regenerate with
   `bun run graph:capture --mode=compare`, inspect `01`–`19`, and re-capture only after inspection.
   Update `docs/spacegraph/prototype.md` "Tested revisions" (it currently cites `6479486583` + "this
@@ -152,7 +152,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   Done when: docs name the merge commit and the library SHA; every changed image has a one-line
   reason in §12.
 
-- [ ] **T0.7 Capture the missing upstream baseline (closes P0.1 / success criterion 9)**
+- [x] **T0.7 Capture the missing upstream baseline (closes P0.1 / success criterion 9)**
   Build upstream and the merged tree and measure the session-entry delta and first paint that were
   never captured.
   ```
@@ -166,7 +166,7 @@ clean branch later from the merge result (T3.7). Never force-push a shared branc
   first-paint number or an explicit "no harness".
   Verify: the table plus the build logs; remove the worktree afterwards.
 
-- [ ] **T0.8 Merge the sync branch into `dev` and push**
+- [x] **T0.8 Merge the sync branch into `dev` and push**
   Only after T0.5–T0.7 pass. Keep the sync branch and the tag.
   ```
   git switch dev && git merge --ff-only upstream-sync-1019
@@ -786,3 +786,39 @@ A temporary camera-zoom control and capture matrix were implemented to test the 
 the absolute log range `0.01..100` for orthographic zoom plus composer focus stealing printable keys.
 The experiment was reverted; no product code or committed image changed. Evidence and per-image
 findings are in the visual review; the capture matrix stays blocked on T1.8.
+
+**2026-10-19 — T0 upstream sync (T0.1–T0.8).** Synced the fork to upstream `dev` `ba06ff9e0b`.
+Backup: pushed `origin/dev` (fork tip `266d7c5e63`) and `spacegraphjs` `origin/main` (`5abf80d`), with
+tag `pre-sync-2026-10-19` on both. Added the `upstream` remote, fetched, and merged into branch
+`upstream-sync-1019` (merge `f802f5e707`). Re-verified the plan's facts before merging: changed-file
+sets (315 upstream / 128 fork) had **zero** overlap, so the merge had no conflicts and no side was
+discarded; `bun.lock`/`package.json` were untouched by upstream, and `bun install` reported no changes.
+Protocol deltas are additive: `idle` added to the message-type filter (`packages/protocol/src/groups/message.ts`),
+`session.archived`/`session.unarchived` events (`packages/schema/src/session-event.ts`), `archived` list
+filter (`packages/schema/src/session.ts`), and `permission.saved.update` (`packages/protocol/src/groups/permission.ts`).
+The graph model already handles `idle`; archive is session-list-level and does not touch the graph.
+
+Verification on the merged tree: `session-ui` graph 66 ✓; `session-graph` typecheck + unit 33 ✓ +
+components 32 ✓; `app` typecheck ✓; `graph:verify` all steps ✓; `spacegraphjs` vitest 338 ✓. Two reds,
+both proven pre-existing (not merge fallout): (a) `app` `typecheck:e2e` fails on DOM-lib types in
+`e2e/performance/terminals/probe.ts`, `e2e/performance/timeline/session-timeline-stream-probe.ts`, and
+`e2e/regression/timeline-stream.spec.ts` — those files are byte-identical to upstream and the tsconfig/lock
+are unchanged; (b) the graph e2e "restores the transcript position after leaving the graph" (T1.5 flake)
+fails ~60% even in isolation (`--repeat-each=10 --workers=1` → 6 failed / 4 passed on pre-merge HEAD
+`a7c26a1a18`), which is worse than T1.5's "passes in isolation" description — the virtualizer reconnect
+race is the suspect.
+
+Captures (T0.6): `bun run graph:capture --mode=compare` rewrote 5 images (06, 13, 14, 17, 18); RMSE
+4e-6–9e-4 is antialiasing noise (upstream changed no `packages/app/src` or `packages/ui`), so they were
+reverted. `prototype.md`/`README.md` now name upstream `ba06ff9e0b`, merge `f802f5e707`, and library
+`5abf80d`.
+
+Baseline (T0.7): built upstream (`/tmp` worktree) and the merged tree; entry `index` 654.66→656.09 kB,
+largest session route 361.12→355.31 kB, and a **new lazy `graph` chunk 37.55 kB (11.82 kB gzip)** that is
+referenced only from the route import map. The initial-load delta is bundler re-split noise; first paint
+has no harness. Surprise: `bun run check` **passes on bare upstream** here (34/34 tasks) but fails on this
+checkout only in `@opencode/ai` (`zstdCompressSync` on `node:zlib`) — the main checkout sits under
+`/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2` that
+shadows the repo's `@types/node@24.12.2`; the `/tmp` worktree has no such ancestor. This is environmental
+(checkout location), not a fork or merge regression, and is the concrete input to T1.6. T0.8: fast-forwarded
+`dev` to the sync branch and pushed `dev`, the sync branch, and the tag.

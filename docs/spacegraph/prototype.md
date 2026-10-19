@@ -23,7 +23,7 @@ where the agent retried or changed direction.
 
 | Repository | Revision | Notes |
 |---|---|---|
-| OpenCode (`opencode` monorepo) | `dev` @ `6479486583` + this capture-matrix pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
+| OpenCode (`opencode` monorepo) | `dev` synced with upstream `dev` @ `ba06ff9e0b` (merge `f802f5e707`) | Branch `dev`; the upstream sync merged 41 commits with no textual or semantic conflicts (upstream touched no `packages/app/src` or `packages/ui`). Prior fork tip was `6479486583`. |
 | SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `5abf80d` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2); `5abf80d` includes node extents in the fit bounds so edge cards are not clipped |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
@@ -177,12 +177,36 @@ Cytoscape is the 2D fallback and benchmark and renders the same model with no ho
 | Lazy SpaceGraphJS chunk (gzip, excluding `three`) | < 400 KB | core chunk 282.0 KB gzip incl. `three`; adapter 2.0 KB gzip |
 | Lazy Cytoscape chunk (gzip) | < 250 KB | 137.9 KB |
 | Session-graph UI chunk | — | 28.3 KB min / 8.8 KB gzip |
-| Session entry delta | no measurable regression | **unmeasured** — the graph is lazy, so no graph module is in the entry; the P0.1 baseline was never captured |
+| Session entry delta (P0.1 / T0.7) | no measurable regression | entry `index` 654.66→656.09 kB (gzip 201.30→201.62); session route 361.12→355.31 kB (gzip 109.18→106.88); new lazy `graph` chunk 37.55 kB min / 11.82 kB gzip |
 | First graph paint / pan frame rate | < 500 ms / 60 fps | **unmeasured** — no graph perf harness; DOM/canvas readiness is asserted instead |
 
 `packages/session-ui/src/graph/performance.test.ts` is the complexity guard: a 300-message, tool-heavy
 stream must build and lay out under a generous ceiling, catching an accidental O(n²) join without
-flaking under CI load. The two unmeasured rows are recorded, not lowered.
+flaking under CI load. The unmeasured row is recorded, not lowered.
+
+### Entry-delta baseline (T0.7, captured 2026-10-19)
+
+`packages/app` was built with `bun run build` from a clean `git worktree` of upstream `dev` @
+`ba06ff9e0b` and from the merged tree @ `f802f5e707`; chunk names and sizes are read from the Vite
+build log.
+
+| Chunk | Upstream `ba06ff9e0b` | Merged `f802f5e707` | Δ |
+|---|---|---|---|
+| App entry `index-*.js` | 654.66 kB (gzip 201.30) | 656.09 kB (gzip 201.62) | +1.43 kB |
+| Session route `route-*.js` (largest) | 361.12 kB (gzip 109.18) | 355.31 kB (gzip 106.88) | −5.81 kB |
+| Secondary route `route-*.js` | 45.50 kB (gzip 13.63) | 45.63 kB (gzip 13.66) | +0.13 kB |
+| Graph view `graph-*.js` (lazy) | — | 37.55 kB (gzip 11.82) | +37.55 kB (lazy only) |
+
+The graph is a separate lazy chunk referenced from the route's import map; the session entry/route
+delta is within bundler re-split noise (≈±6 kB), so there is no measurable regression to the initial
+session load. First paint has no harness and stays unmeasured.
+
+`bun run check` **passes on bare upstream** here (34/34 turbo tasks) and **fails on this checkout**
+only in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`). Cause: the main checkout lives
+under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2`
+and shadows the repo's `@types/node@24.12.2`; the `/tmp` upstream worktree has no such ancestor and
+resolves the repo copy. This is environmental (checkout location), not a fork or merge regression; see
+T1.6.
 
 ## Accessibility (V5.8)
 
