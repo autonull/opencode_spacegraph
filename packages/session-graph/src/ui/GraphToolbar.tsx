@@ -5,7 +5,13 @@ import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
-import { LAYOUT_STRATEGIES, type LayoutStrategy, type ZoomLevel } from "@opencode/session-ui/graph"
+import {
+  LAYOUT_STRATEGIES,
+  REPRESENTATIONS,
+  type LayoutStrategy,
+  type Representation,
+  type ZoomLevel,
+} from "@opencode/session-ui/graph"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
 
@@ -21,6 +27,12 @@ const STRATEGY_KEY = {
   hierarchy: "ui.sessionGraph.layout.hierarchy",
 } as const satisfies Record<LayoutStrategy, string>
 
+const REPRESENTATION_KEY = {
+  graph: "ui.sessionGraph.representation.graph",
+  ribbon: "ui.sessionGraph.representation.ribbon",
+  matrix: "ui.sessionGraph.representation.matrix",
+} as const satisfies Record<Representation, string>
+
 export type GraphToolbarProps = {
   level: ZoomLevel
   onLevel: (level: ZoomLevel) => void
@@ -33,11 +45,16 @@ export type GraphToolbarProps = {
   /** RF.2: the visible layout chooser; absent when the host does not offer strategies. */
   strategy?: LayoutStrategy
   onStrategy?: (strategy: LayoutStrategy) => void
+  /** LE.7: the representation chooser; absent when the host does not offer representations. */
+  representation?: Representation
+  onRepresentation?: (representation: Representation) => void
   /** RF.7: minimap toggle, default off. */
   minimap?: boolean
   onToggleMinimap?: () => void
   /** Opens the hybrid turn map for the currently selected turn; absent when no turn is selected. */
   onTurnMap?: () => void
+  /** LE.8/LE.9: opens the selected ribbon/matrix segment in the node-link graph; absent outside graph mode. */
+  onExpandGraph?: () => void
   onBack?: () => void
   searching?: boolean
   /** RF.7: narrow widths collapse the secondary controls into an overflow menu. */
@@ -60,6 +77,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     const next = LEVELS[Math.min(LEVELS.length - 1, Math.max(0, index + direction))]
     if (next !== props.level) props.onLevel(next)
   }
+  // The level and layout controls drive the node-link graph only; the ribbon/matrix are overview-first.
+  const graphMode = () => props.representation === undefined || props.representation === "graph"
   const projectionAvailable = (projection: Projection) => !props.capabilities || supports(props.capabilities, projection)
   const projectionReason = (projection: Projection) =>
     projectionAvailable(projection)
@@ -80,7 +99,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         </SegmentedControlItem>
       </SegmentedControl>
 
-      <Show when={props.onStrategy}>
+      <Show when={props.onStrategy && graphMode()}>
         <SegmentedControl
           value={props.strategy ?? "lanes"}
           aria-label={i18n.t("ui.sessionGraph.toolbar.layout")}
@@ -128,6 +147,16 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           icon={<Icon name="branch" size="small" />}
         />
       </Show>
+      <Show when={props.onExpandGraph}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
+          title={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
+          onClick={() => props.onExpandGraph?.()}
+          icon={<Icon name="arrow-up-right" size="small" />}
+        />
+      </Show>
     </>
   )
 
@@ -138,13 +167,27 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
       style={props.endInset ? { "padding-inline-end": props.endInset } : undefined}
     >
+      <Show when={props.onRepresentation}>
+        <SegmentedControl
+          value={props.representation ?? "graph"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.representation")}
+          onChange={(value) => value && props.onRepresentation?.(value as Representation)}
+        >
+          {REPRESENTATIONS.map((representation) => (
+            <SegmentedControlItem value={representation}>{i18n.t(REPRESENTATION_KEY[representation])}</SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      </Show>
+
       <SegmentedControl
         value={props.level}
         aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
         onChange={(value) => value && props.onLevel(value as ZoomLevel)}
       >
         {LEVELS.map((level) => (
-          <SegmentedControlItem value={level}>{i18n.t(LEVEL_KEY[level])}</SegmentedControlItem>
+          <SegmentedControlItem value={level} disabled={!graphMode()}>
+            {i18n.t(LEVEL_KEY[level])}
+          </SegmentedControlItem>
         ))}
       </SegmentedControl>
 
@@ -154,7 +197,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           variant="ghost"
           aria-label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
           title={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
-          disabled={props.level === "overview"}
+          disabled={!graphMode() || props.level === "overview"}
           onClick={() => step(-1)}
           icon={<Icon name="expand" size="small" />}
         />
@@ -163,7 +206,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           variant="ghost"
           aria-label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
           title={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
-          disabled={props.level === "detail"}
+          disabled={!graphMode() || props.level === "detail"}
           onClick={() => step(1)}
           icon={<Icon name="plus" size="small" />}
         />

@@ -1763,6 +1763,73 @@ Notes for the remaining Phase 10 work:
 - Next in Phase 10 by plan order: LE.4 (narrow/mobile sheet-aware fit), LE.5 (Cytoscape harness parity), then
   the representation seam (LE.7) and the ribbon/matrix (LE.8/LE.9).
 
+**2026-10-18 (cont.) — Phase 10 framing and the representation seam: sheet-aware fit (LE.4), the representation
+seam (LE.7), the turn ribbon (LE.8), and the turn matrix (LE.9).**
+
+Scope for this pass: the plan's explicit next steps — the sheet-aware narrow fit and the switchable summary
+representations — shipped as seams with tests and captures. All work is in `packages/session-ui`,
+`packages/session-graph`, `packages/app`, and one `en.ts` edit; `spacegraphjs` is untouched.
+
+- **LE.4 — narrow/mobile sheet-aware fit (done).** The narrow inspector is no longer an `absolute inset-x-0
+  bottom-0` overlay over the canvas: the canvas region and the inspector are `flex-col` siblings at narrow
+  widths, so the canvas is sized to the area **above** the sheet and `fit` can never frame content under it.
+  The existing fit-on-inspector-toggle effect re-frames when the sheet opens. `component-tests/graph-refine.spec.ts`
+  asserts the canvas region's bottom edge meets the sheet's top (no overlap).
+- **LE.7 — representation seam (done).** New `representation` field on `sessionViewSchema.graph`
+  (`graph` | `ribbon` | `matrix`, default `graph`), persisted per session and read/written through the graph
+  accessor. `GraphView` gains a controlled `representation` prop and a toolbar `SegmentedControl` chooser; the
+  `GraphToolbar` disables the semantic level/zoom controls outside `graph`, since the summary representations
+  are overview-first. **Deviation:** the chooser lives in the toolbar (like the RF.2 layout chooser), not a
+  prototype-settings surface — the app has no prototype-settings page, and the toolbar keeps the option visible
+  and capturable.
+- **LE.8/LE.9 — pure representations (done).** New `packages/session-ui/src/graph/representation.ts`:
+  `Representation`, `REPRESENTATIONS`, `representationLevel` (overview for ribbon/matrix), and two pure
+  `model → GraphLayout` functions, `ribbonLayout` (one horizontal bar per turn: the turn header, then its phase
+  segments in model order, then the rest) and `matrixLayout` (turns as rows, phase categories `explore/edit/
+  verify/delegate/result` as columns, plus a trailing `signals` column for failures/retries/delegations). Both
+  place the model's **real** nodes — never synthetic ids — so selection, the inspector, search, breadcrumbs, and
+  the a11y mirror stay representation-agnostic; only overview-visible nodes participate, so a hidden node never
+  consumes a segment. `buildRenderModel` gains an `edges?: boolean` option (default true) so the summaries are
+  edge-free.
+- **Expand into graph.** `GraphCanvas` now forwards the contract `nodeDoubleClick` event; a double-click on a
+  segment (or the toolbar's new "Open in graph" control, shown once a segment is selected) switches back to the
+  `graph` representation with that node selected and framed (`jumpTo`). Wired for both adapters (Cytoscape
+  `dbltap`, SpaceGraph `node:dblclick`).
+- **Captures (LE.16, partial).** `e2e/graph/capture.spec.ts` adds `15-graph-ribbon.png` and
+  `16-graph-matrix.png`; `script/capture-graph-demo.ts --mode=verify` expects them. Both are inspected.
+- **Tests.** New `packages/session-ui/src/graph/representation.test.ts` (4 cases: determinism + every
+  overview-visible node placed, ribbon row layout, matrix category columns, `representationLevel`).
+  `component-tests/graph-refine.spec.ts` gains ribbon (segments render, level disabled, expand into graph) and
+  matrix (category columns) cases, plus the LE.4 no-overlap assertion. New stories `session-graph-view--ribbon`
+  and `session-graph-view--matrix`. App e2e `e2e/graph/session-graph.spec.ts` gains "switches to the ribbon
+  representation and persists it" (reload keeps the choice).
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 61 pass (was 57; +4); `bun run typecheck` clean.
+- `cd packages/session-graph && bun run typecheck` clean; `bun test src` → 31 pass; `bun run test:components`
+  → 30 pass (was 28; +2 ribbon/matrix).
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 15 pass
+  (was 14).
+- `bun run graph:capture --mode=compare` regenerated all images including 15/16; `bun run graph:verify` → all
+  steps passed. Root `bun run lint:changed` → 0 problems.
+
+Notes for the remaining Phase 10 work:
+- **Summary framing is the LE.1/LE.11 fit seam, not the representations.** The ribbon and matrix render the
+  correct structure (turn rows, phase-category columns, counts, status dots, signals), but at 1440×900 they sit
+  left/bottom and under-fill the canvas: the fit is centred on the previous layout's nodes at the moment the
+  representation swaps (the new ids are not yet in the graph, so `fit(ids)` no-ops), and the fixed 100-unit
+  `fitView` padding under-frames content that is wide and short. This is the same class as the timeline "thin
+  smear" (`11`). Fixing it belongs with LE.1/LE.11 — likely a `fit` that resolves after the adapter applies the
+  model, and/or proportional padding. The ribbon is also inherently a long single row per turn; wrapping
+  (LE.11's "snake rows") was prototyped but reverted this pass because the fit race, not the layout, dominated.
+- **LE.5 (Cytoscape harness parity) is not done.** The story container is still 1100×640 at a 1440×900 capture,
+  so `07`/`08` are unchanged and still `cram into a corner`; give the capture story an explicit full-size
+  container and fit after positions apply.
+- **LE.7's representation is an axis, not a verdict.** The seam and both options exist; the R7.3 protocol
+  (LE.17) decides. Nothing is removed on taste.
+- **LE.10–LE.15 remain** (lane gutter, timeline/hierarchy legibility, artifacts rail, edge bundling, depth modes,
+  depth primitives); LE.16's full capture matrix and LE.17's wiring are still open.
+
 ## 0. Mission
 
 
@@ -3168,9 +3235,12 @@ Framing and structural defects (fix regardless of representation):
   cross-lane empty box. Host `buildRenderModel`.
   Status: band count/bounds derive from the visible members; turn bands are suppressed at overview (the giant
   cross-lane box in `02`/`14`) and kept at execution/detail.
-- [ ] **LE.4 Narrow / mobile**
+- [x] **LE.4 Narrow / mobile** (done; see the Phase 10 representation-seam log)
   Size the canvas to the area above the bottom-sheet inspector and fit inside the visible region; the
   sheet never covers the framed content. Host.
+  Status: the narrow inspector is a `flex-col` sibling below the canvas (not an absolute overlay), so the
+  canvas is sized to the area above it; the fit-on-inspector-toggle re-frames. Asserted in
+  `graph-refine.spec.ts` (canvas bottom meets sheet top).
 - [ ] **LE.5 Cytoscape harness parity**
   Give the capture story an explicit container size, fit after positions apply, and assert overlay
   geometry; regenerate `07`/`08` to match the app's framing and card sizes. Component test/host.
@@ -3182,18 +3252,28 @@ Framing and structural defects (fix regardless of representation):
 
 Representation experiments (build the seam, then the options):
 
-- [ ] **LE.7 Representation seam**
+- [x] **LE.7 Representation seam** (done; see the Phase 10 representation-seam log)
   Add a `representation` field (beside `layout`/`depth`) persisted on `sessionViewSchema.graph`,
   exposed as a prototype-settings control, defaulting to `graph`. Each representation is a pure
   `model → view` function; the toolbar, inspector, search, breadcrumbs, and a11y mirror stay
   representation-agnostic. This is the enabling seam for LE.8/LE.9.
-- [ ] **LE.8 Turn ribbon representation**
+  Status: `representation` persists per session; the chooser is a toolbar `SegmentedControl` (**deviation**:
+  the app has no prototype-settings surface). The pure functions live in `session-ui/src/graph/representation.ts`
+  and lay out the model's real nodes, so the inspector/search/breadcrumbs/a11y are unchanged. The level control
+  is disabled outside `graph` (the summaries are overview-first).
+- [x] **LE.8 Turn ribbon representation** (done; see the Phase 10 representation-seam log)
   One horizontal bar per turn, segmented and tinted by phase category with counts, failure/retry
   markers, and a turn header; clicking a segment selects/expands into `graph`. Overview-first; fixes
   the empty-band problem by construction.
-- [ ] **LE.9 Turn matrix representation**
+  Status: `ribbonLayout` is one row per turn (header, phase segments in model order, then the rest), reusing the
+  real turn/phase cards (counts, tint, status dots). A segment selects on click and expands via the "Open in
+  graph" control or a double-click. **Open:** framing under-fills at 1440×900 (the LE.1/LE.11 fit seam); row
+  wrapping is deferred to LE.11.
+- [x] **LE.9 Turn matrix representation** (done; see the Phase 10 representation-seam log)
   Turns (rows) × phase categories (columns); each cell shows count/status; click to select/expand. The
   cheapest representation for the five questions; include it in the R7.3 comparison.
+  Status: `matrixLayout` is turns × (`explore/edit/verify/delegate/result` + a `signals` column), each cell a real
+  phase/turn node (count, status). Same select/expand wiring and the same open framing item as LE.8.
 
 Layout versatility (keep every option legible):
 
@@ -3228,11 +3308,13 @@ Layout versatility (keep every option legible):
 
 Experimentation harness and acceptance:
 
-- [ ] **LE.16 Option switcher + capture matrix**
+- [ ] **LE.16 Option switcher + capture matrix** (partial: the representation chooser and its captures land; see the Phase 10 representation-seam log)
   A prototype-settings switcher for `representation`/`layout`/`depth` (per §4.7), and a capture matrix
   that renders each meaningful combination into the committed screenshot set (numbered, documented),
   with `graph:capture --mode=compare` covering the options. The screenshots become the comparison
   surface for the protocol.
+  Status: the `representation` chooser is in the toolbar (deviation, LE.7) and `15`/`16` capture ribbon/matrix;
+  the full combination matrix, the `depth` axis, and a prototype-settings surface remain.
 - [ ] **LE.17 Visual acceptance + R7.3 wiring**
   Each batch regenerates and is *inspected* before "done"; the R7.3 protocol runs the five tasks
   against each representation/depth option, and the go/no-go decides the winner. No representation or

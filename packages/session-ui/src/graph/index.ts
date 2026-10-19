@@ -83,3 +83,12 @@ export {
   type LayoutStrategy,
   type Position,
 } from "./layout"
+
+export {
+  matrixLayout,
+  REPRESENTATIONS,
+  representationLevel,
+  ribbonLayout,
+  type Representation,
+  type RepresentationLayoutOptions,
+} from "./representation"

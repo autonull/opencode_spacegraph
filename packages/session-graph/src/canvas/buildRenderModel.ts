@@ -83,6 +83,8 @@ export type BuildRenderModelOptions = {
   focus?: string
   /** Enables turn/phase swimlane bands (RF.5); their bounds wrap the members visible at the level. */
   bands?: boolean
+  /** Emits edges; the ribbon/matrix representations are edge-free summaries (LE.8/LE.9). */
+  edges?: boolean
   /** Overrides the per-level DOM card budget; cards above it fall back to labels. */
   cardBudget?: number
   /** Replaces the default card markup, e.g. with localized copy. */
@@ -140,8 +142,9 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
 
   const visible = new Set(content.map((node) => node.id))
   const bands = options.bands ? buildBands(model, level, positions, renderBand, visible) : []
+  const edges = (options.edges ?? true) ? edgesAtLevel(model, level, focus).map((edge) => toRenderEdge(edge, level)) : []
 
-  return { nodes: [...bands, ...content], edges: edgesAtLevel(model, level, focus).map((edge) => toRenderEdge(edge, level)) }
+  return { nodes: [...bands, ...content], edges }
 }
 
 /** A derived cluster collapsed at this level (§5.4): it shows a member count and expands later. */

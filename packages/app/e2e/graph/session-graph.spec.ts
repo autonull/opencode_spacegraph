@@ -56,6 +56,27 @@ test("switches to the graph, renders the fixture, and persists the mode", async 
   expect(errors).toEqual([])
 })
 
+test("switches to the ribbon representation and persists it", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const ribbon = page.locator(toolbar).getByRole("button", { name: "Ribbon", exact: true })
+  await ribbon.click()
+  await expect(ribbon).toHaveAttribute("aria-pressed", "true")
+  // The ribbon is a per-turn bar of phase segments: real model nodes, still DOM cards.
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="turn"]`).count()).toBeGreaterThan(0)
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="phase"]`).count()).toBeGreaterThan(0)
+
+  await page.reload()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(toolbar).getByRole("button", { name: "Ribbon", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+
+  expect(errors).toEqual([])
+})
+
 test("selects a node from search and inspects it in the DOM panel", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

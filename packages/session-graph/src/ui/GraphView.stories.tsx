@@ -1,5 +1,5 @@
 import type { Projection, RenderTheme } from "@spacegraphjs/renderer"
-import { buildFixtureGraph, type GraphModel, type ZoomLevel } from "@opencode/session-ui/graph"
+import { buildFixtureGraph, type GraphModel, type Representation, type ZoomLevel } from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
@@ -51,6 +51,7 @@ type HarnessProps = {
   selection?: string
   level?: ZoomLevel
   projection?: Projection
+  representation?: Representation
   renderer?: RendererID
   overrides?: Partial<Record<RendererID, RendererFactory>>
   theme?: RenderTheme
@@ -86,6 +87,7 @@ const ViewHarness = (props: HarnessProps) => {
         selection={selected()}
         level={props.level}
         projection={props.projection}
+        representation={props.representation}
         preferredRenderer={renderer()}
         rendererOverrides={props.overrides}
         theme={props.theme}
@@ -138,6 +140,16 @@ export const MarkdownSummary = {
 
 export const Projection3D = {
   render: () => <ViewHarness projection="3d" selection={INITIAL_SELECTION} />,
+}
+
+/** LE.8: the turn ribbon — one horizontal bar of phase segments per turn. */
+export const Ribbon = {
+  render: () => <ViewHarness representation="ribbon" />,
+}
+
+/** LE.9: the turn matrix — turns as rows, phase categories as columns. */
+export const Matrix = {
+  render: () => <ViewHarness representation="matrix" />,
 }
 
 export const Cytoscape = {

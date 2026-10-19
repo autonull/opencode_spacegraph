@@ -167,6 +167,24 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await waitForStillCanvas(page)
   await capture(page, "12-graph-hierarchy.png")
 
+  // 15 — the turn ribbon representation (LE.8): one horizontal bar of phase segments per turn. The
+  // representation swaps the whole layout, so let the adapter settle before framing the new bounds.
+  await page.locator(toolbar).getByRole("button", { name: "Ribbon", exact: true }).click()
+  await waitForStillCanvas(page)
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "15-graph-ribbon.png")
+
+  // 16 — the turn matrix representation (LE.9): turns as rows, phase categories as columns.
+  await page.locator(toolbar).getByRole("button", { name: "Matrix", exact: true }).click()
+  await waitForStillCanvas(page)
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "16-graph-matrix.png")
+
+  // Back to the node-link graph for the narrow and light frames.
+  await page.locator(toolbar).getByRole("button", { name: "Graph", exact: true }).click()
+
   // 13 — a narrow 390×900 viewport (RF.11): the toolbar wraps and the canvas stays framed.
   await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
   await page.setViewportSize({ width: 390, height: 900 })

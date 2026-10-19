@@ -20,6 +20,8 @@ export type GraphCanvasProps = {
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
   overrides?: Partial<Record<RendererID, RendererFactory>>
   onSelect?: (ids: readonly string[]) => void
+  /** LE.8/LE.9: a double-click expands a ribbon/matrix segment into the node-link graph. */
+  onNodeDoubleClick?: (id: string) => void
   onReady?: (info: GraphCanvasReady) => void
   onError?: (error: unknown) => void
   onViewportChange?: (viewport: RendererViewport) => void
@@ -64,6 +66,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         mounted = result
         unsubscribers = [
           result.renderer.on("selectionChange", ({ ids }) => props.onSelect?.(ids)),
+          result.renderer.on("nodeDoubleClick", ({ id }) => props.onNodeDoubleClick?.(id)),
           result.renderer.on("backgroundClick", () => props.onBackgroundClick?.()),
           result.renderer.on("bandChange", ({ band }) => {
             host.dataset.graphBand = band

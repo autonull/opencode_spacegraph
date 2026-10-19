@@ -93,6 +93,8 @@ const sessionGraphSchema = Persistence.struct({
   // RF.2/RF.7: the chosen layout strategy and minimap visibility, per session.
   layout: Schema.optional(Schema.Literals(["lanes", "timeline", "hierarchy"])),
   minimap: Schema.optional(Schema.Boolean),
+  // LE.7: the contested representation axis (node-link graph | turn ribbon | turn matrix), per session.
+  representation: Schema.optional(Schema.Literals(["graph", "ribbon", "matrix"])),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
   turnMap: Schema.optional(Schema.String),
 })
@@ -568,11 +570,15 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           turnMap: createMemo(() => state()?.turnMap),
           layout: createMemo(() => state()?.layout ?? "lanes"),
           minimap: createMemo(() => state()?.minimap ?? false),
+          representation: createMemo(() => state()?.representation ?? "graph"),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
           },
           setLayout(layout: NonNullable<SessionGraphState["layout"]>) {
             write({ layout })
+          },
+          setRepresentation(representation: NonNullable<SessionGraphState["representation"]>) {
+            write({ representation })
           },
           setMinimap(minimap: boolean) {
             write({ minimap })

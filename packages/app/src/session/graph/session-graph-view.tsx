@@ -93,6 +93,7 @@ export function SessionGraphView(props: {
           preferredRenderer={graph.renderer()}
           selection={graph.selected()}
           strategy={graph.layout()}
+          representation={graph.representation()}
           minimap={graph.minimap()}
           diffSource={diffSource()}
           renderSummary={(node) =>
@@ -103,6 +104,7 @@ export function SessionGraphView(props: {
           onSelect={(id) => graph.setSelected(id)}
           onProjectionChange={(projection) => graph.setProjection(projection)}
           onStrategyChange={(layout) => graph.setLayout(layout)}
+          onRepresentationChange={(representation) => graph.setRepresentation(representation)}
           onMinimapChange={(minimap) => graph.setMinimap(minimap)}
           onTurnMap={(turnID) => graph.setTurnMap(turnID)}
           onOpenTranscript={(id) => {

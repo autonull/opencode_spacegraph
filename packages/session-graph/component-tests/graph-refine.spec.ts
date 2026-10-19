@@ -167,5 +167,63 @@ story("the inspector becomes a bottom sheet without a drag handle when narrow", 
   expect(gutterBox!.y).toBeGreaterThan(rootBox!.y + rootBox!.height / 2)
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Tool call")
 
+  // LE.4: the sheet is a real sibling below the canvas, not an overlay, so the canvas is sized to the
+  // area above it and never frames content behind the sheet.
+  const canvasBox = await root.locator('[data-slot="graph-canvas-region"]').boundingBox()
+  expect(canvasBox!.y + canvasBox!.height).toBeLessThanOrEqual(gutterBox!.y + 1)
+
+  expect(errors).toEqual([])
+})
+
+// LE.8/LE.9: the ribbon and matrix are switchable representations of the same model. The screenshot
+// batch is their acceptance contract, but the wiring (chooser, disabled level, expand into the graph)
+// is proven here deterministically.
+story("the turn ribbon renders per-turn segments and expands into the graph", async ({ mount, page }) => {
+  const errors: string[] = []
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text())
+  })
+
+  const root = await mount("session-graph-view--ribbon")
+  const host = root.locator('[data-slot="graph-canvas-host"]')
+  await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+  await expect.poll(() => host.locator('[data-kind="turn"]').count()).toBeGreaterThan(0)
+  await expect.poll(() => host.locator('[data-kind="phase"]').count()).toBeGreaterThan(0)
+
+  const toolbar = root.locator('[data-slot="graph-toolbar"]')
+  await expect(toolbar.getByRole("button", { name: "Ribbon", exact: true })).toHaveAttribute("aria-pressed", "true")
+  // The semantic level only drives the node-link graph.
+  await expect(toolbar.getByRole("button", { name: "Overview", exact: true })).toBeDisabled()
+
+  // Selecting a segment offers the expand control, which opens the graph with the node selected.
+  await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("session"))
+  const expand = toolbar.getByRole("button", { name: "Open in graph", exact: true })
+  await expect(expand).toBeVisible()
+  await expand.click()
+
+  await expect(toolbar.getByRole("button", { name: "Graph", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(toolbar.getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
+  await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Session")
+
+  expect(errors).toEqual([])
+})
+
+story("the turn matrix places phases in category columns", async ({ mount, page }) => {
+  const errors: string[] = []
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text())
+  })
+
+  const root = await mount("session-graph-view--matrix")
+  const host = root.locator('[data-slot="graph-canvas-host"]')
+  await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+  await expect.poll(() => host.locator('[data-kind="phase"]').count()).toBeGreaterThan(0)
+  await expect(root.locator('[data-slot="graph-toolbar"]').getByRole("button", { name: "Matrix", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+
   expect(errors).toEqual([])
 })

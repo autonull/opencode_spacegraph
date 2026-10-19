@@ -1,7 +1,18 @@
 import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
-import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, ZoomLevel } from "@opencode/session-ui/graph"
-import { breadcrumbs, layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors, subtree } from "@opencode/session-ui/graph"
+import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import {
+  ancestors,
+  breadcrumbs,
+  layoutGraph,
+  LEVEL_RANK,
+  matrixLayout,
+  minLevelOf,
+  nodeByID,
+  representationLevel,
+  ribbonLayout,
+  subtree,
+} from "@opencode/session-ui/graph"
 import { GraphController } from "spacegraphjs/control"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show, untrack, type JSX } from "solid-js"
@@ -32,6 +43,8 @@ export type GraphViewProps = {
   positions?: ReadonlyMap<string, Position>
   /** RF.2: controlled layout strategy; the host persists the choice. */
   strategy?: LayoutStrategy
+  /** LE.7: controlled representation (node-link graph | turn ribbon | turn matrix); the host persists it. */
+  representation?: Representation
   /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
   minimap?: boolean
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
@@ -44,6 +57,7 @@ export type GraphViewProps = {
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onStrategyChange?: (strategy: LayoutStrategy) => void
+  onRepresentationChange?: (representation: Representation) => void
   onMinimapChange?: (minimap: boolean) => void
   onOpenTranscript?: (id: string) => void
   /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
@@ -63,6 +77,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
+  const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
   const [searchOpen, setSearchOpen] = createSignal(false)
   // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
@@ -138,14 +153,21 @@ export const GraphView = (props: GraphViewProps) => {
         strategy: strategy(),
       }
 
+    if (representation() === "ribbon") return ribbonLayout(props.model)
+    if (representation() === "matrix") return matrixLayout(props.model)
+
     return layoutGraph(props.model, { strategy: strategy() })
   })
+  // LE.7: the ribbon and matrix are overview-first summaries; the graph is the only representation the
+  // semantic level control drives.
+  const effectiveLevel = createMemo<ZoomLevel>(() => representationLevel(representation()) ?? level())
   const renderModel = createMemo(() =>
     buildRenderModel(props.model, {
-      level: level(),
+      level: effectiveLevel(),
       positions: layout().positions,
-      bands: true,
-      focus: level() === "execution" ? selection()[0] : undefined,
+      bands: representation() === "graph",
+      edges: representation() === "graph",
+      focus: representation() === "graph" && level() === "execution" ? selection()[0] : undefined,
       renderCard: renderCard(),
       renderBand: renderBand(),
     }),
@@ -191,6 +213,18 @@ export const GraphView = (props: GraphViewProps) => {
   const changeStrategy = (next: LayoutStrategy) => {
     setStrategy(next)
     props.onStrategyChange?.(next)
+  }
+  const changeRepresentation = (next: Representation) => {
+    setRepresentation(next)
+    props.onRepresentationChange?.(next)
+  }
+  // LE.8/LE.9: a segment/cell expands into the node-link graph with that node selected and framed.
+  const expandToGraph = (id: string) => {
+    const node = nodeByID(props.model, id)
+
+    if (!node) return
+    if (representation() !== "graph") changeRepresentation("graph")
+    jumpTo(node)
   }
   const toggleMinimap = () => {
     setMinimap((open) => {
@@ -241,6 +275,9 @@ export const GraphView = (props: GraphViewProps) => {
     if (props.strategy !== undefined) setStrategy(props.strategy)
   })
   createEffect(() => {
+    if (props.representation !== undefined) setRepresentation(props.representation)
+  })
+  createEffect(() => {
     if (props.minimap !== undefined) setMinimap(props.minimap)
   })
   // Keep the controller's model in step with the host model; it reconciles selection + trail by id, so
@@ -268,6 +305,7 @@ export const GraphView = (props: GraphViewProps) => {
     level()
     projection()
     strategy()
+    representation()
     inspectorOpen()
     if (ready) queueMicrotask(() => renderer?.fit(untrack(contentIDs)))
   })
@@ -290,6 +328,8 @@ export const GraphView = (props: GraphViewProps) => {
         onSearch={() => setSearchOpen((open) => !open)}
         strategy={strategy()}
         onStrategy={changeStrategy}
+        representation={representation()}
+        onRepresentation={changeRepresentation}
         minimap={minimap()}
         onToggleMinimap={toggleMinimap}
         onTurnMap={
@@ -299,6 +339,9 @@ export const GraphView = (props: GraphViewProps) => {
                 if (turnID) props.onTurnMap?.(turnID)
               }
             : undefined
+        }
+        onExpandGraph={
+          representation() !== "graph" && selection().length > 0 ? () => expandToGraph(selection()[0]!) : undefined
         }
         onBack={props.onBack}
         searching={searchOpen()}
@@ -314,7 +357,7 @@ export const GraphView = (props: GraphViewProps) => {
           {i18n.t("ui.sessionGraph.fallback")}
         </div>
       </Show>
-      <div class="relative flex min-h-0 flex-1">
+      <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
         <div
           class="relative min-w-0 flex-1"
           data-slot="graph-canvas-region"
@@ -332,6 +375,7 @@ export const GraphView = (props: GraphViewProps) => {
             preferredRenderer={props.preferredRenderer}
             overrides={props.rendererOverrides}
             onSelect={(ids) => select(ids)}
+            onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => select(undefined)}
             onRenderer={(instance) => {
               renderer = instance
@@ -420,9 +464,10 @@ export const GraphView = (props: GraphViewProps) => {
           classList={{
             "shrink-0": true,
             "w-0 overflow-hidden": !selectedNode(),
-            "absolute inset-x-0 bottom-0 z-20 h-1/2 w-full border-t border-border-weaker-base": !!(
-              selectedNode() && narrow()
-            ),
+            // LE.4: at narrow widths the inspector is a real bottom sheet (a flex sibling below the
+            // canvas), not an overlay, so the canvas is sized to the area above it and fit never
+            // frames content under it.
+            "h-1/2 w-full border-t border-border-weaker-base": !!(selectedNode() && narrow()),
             "border-s border-border-weaker-base": !!(selectedNode() && !narrow()),
           }}
           style={selectedNode() && !narrow() ? { width: `${inspectorWidth()}px`, "max-width": "60%" } : undefined}
