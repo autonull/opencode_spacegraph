@@ -54,6 +54,16 @@ const ZERO: Position = { x: 0, y: 0, z: 0 }
 /** A collapsed derived cluster draws as a compact counted chip rather than a bare panel label. */
 const CHIP_SIZE: [number, number, number] = [132, 44, 0]
 
+/**
+ * LE.2 — structural kinds (`session`/`turn`/`phase`/`error`/`retry`/`approval`) are chrome, not
+ * activity: they render as compact DOM panels so they read with the theme's surface/border/text
+ * instead of a near-invisible vector box. They never consume the activity card budget.
+ */
+const STRUCTURAL_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry", "approval"])
+
+/** Minimum legible footprint for a structural panel. */
+const PANEL_SIZE: [number, number, number] = [132, 44, 0]
+
 /** Opacity applied to a node outside the selected neighborhood at execution (RF.10). */
 const DIM_OPACITY = 0.3
 
@@ -102,10 +112,11 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
     const position = positions.get(node.id) ?? ZERO
     const shape = NODE_SHAPE[node.kind]
     const chip = isClusterChip(node, level)
-    const asCard = (shape === "card" || chip) && cards < budget
+    const structural = STRUCTURAL_KINDS.has(node.kind)
+    const asCard = (shape === "card" || chip || structural) && (structural || cards < budget)
     const dimmed = lit ? !lit.has(node.id) : false
 
-    if (asCard) cards += 1
+    if (asCard && !structural) cards += 1
 
     // Cards fade through their host markup; vector panels/badges have no markup, so they carry the
     // opacity for the renderer to apply to the node itself. It is sent even when lit because the core
@@ -121,7 +132,7 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
       status: NODE_STATUS[node.status],
       shape: asCard ? "card" : shape === "card" ? "dot" : shape,
       html: asCard ? wrapDim(renderCard(node, level), dimmed) : undefined,
-      size: asCard && chip ? CHIP_SIZE : undefined,
+      size: chip || structural ? (chip ? CHIP_SIZE : PANEL_SIZE) : undefined,
       position: [position.x, position.y, position.z],
       data,
     }
@@ -167,9 +178,10 @@ function buildBands(
     }
   }
 
-  const emit = (node: GraphNode, count: number, ids: readonly string[]) => {
-    if (count === 0) return
-    const bounds = boundsOf(ids)
+  const emit = (node: GraphNode, ids: readonly string[]) => {
+    const drawn = ids.filter((id) => visible.has(id))
+    if (drawn.length === 0) return
+    const bounds = boundsOf(drawn)
     if (!bounds) return
     const width = bounds.max.x - bounds.min.x + BAND_PAD * 2
     const height = bounds.max.y - bounds.min.y + BAND_PAD * 2
@@ -179,24 +191,28 @@ function buildBands(
       label: node.label,
       shape: "panel",
       interactive: false,
-      html: renderBand(node, count, bounds),
+      html: renderBand(node, drawn.length, bounds),
       size: [width, height, 0],
       position: [(bounds.min.x + bounds.max.x) / 2, (bounds.min.y + bounds.max.y) / 2, ZERO.z - 1],
-      data: { band: node.kind === "turn" ? "turn" : "phase", count, cluster: node.id },
+      data: { band: node.kind === "turn" ? "turn" : "phase", count: drawn.length, cluster: node.id },
     })
   }
 
-  for (const turnID of model.turns) {
-    const turn = model.nodes.find((node) => node.id === turnID)
-    if (!turn) continue
-    const members = model.nodes.filter((node) => node.turnID === turnID)
-    emit(turn, members.length, members.map((node) => node.id))
-  }
+  // LE.3: a turn band would span every lane a turn touches — at overview the phase chips sit on one
+  // row and the delegated/message members sit lanes away, so the band is a large near-empty box. The
+  // columns already group the turn there, so bands are suppressed at overview and kept where the
+  // members fill the lanes (execution/detail).
+  if (level !== "overview")
+    for (const turnID of model.turns) {
+      const turn = model.nodes.find((node) => node.id === turnID)
+      if (!turn) continue
+      emit(turn, model.nodes.filter((node) => node.turnID === turnID).map((node) => node.id))
+    }
 
   for (const node of model.nodes) {
     if (node.kind !== "phase" || !node.clusterOf) continue
     if (!isClusterExpanded(level)) continue
-    emit(node, clusterCount(node), node.clusterOf)
+    emit(node, node.clusterOf)
   }
 
   return bands

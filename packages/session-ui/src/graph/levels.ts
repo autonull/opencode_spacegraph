@@ -86,12 +86,20 @@ export function clusterCount(node: GraphNode) {
  */
 export function edgesAtLevel(model: GraphModel, level: ZoomLevel, focus?: string): GraphEdge[] {
   const visible = visibleNodeIDs(model, level)
+  const kindByID = new Map(model.nodes.map((node) => [node.id, node.kind]))
 
   const allowed = model.edges.filter(
     (edge) =>
       LEVEL_RANK[EDGE_MIN_LEVEL[edge.kind]] <= LEVEL_RANK[level] &&
       // RF.4: hierarchy is demoted to the turn bands at execution, so the root does not fan out.
       !(level === "execution" && edge.kind === "part-of") &&
+      // LE.6: a turn→session `part-of` wire spans the whole canvas at overview and adds nothing (the
+      // columns and bands already group a turn), so the root is not wired at overview.
+      !(
+        level === "overview" &&
+        edge.kind === "part-of" &&
+        (kindByID.get(edge.source) === "session" || kindByID.get(edge.target) === "session")
+      ) &&
       visible.has(edge.source) &&
       visible.has(edge.target),
   )

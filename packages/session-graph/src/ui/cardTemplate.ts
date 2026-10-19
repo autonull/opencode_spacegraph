@@ -1,6 +1,6 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import type { GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
-import { phaseCategoryOf } from "@opencode/session-ui/graph"
+import { isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 
 /**
@@ -88,7 +88,9 @@ export function createCardTemplate(theme: RenderTheme): CardTemplate {
   return (node: GraphNode, level: ZoomLevel) => {
     const { solid, soft } = accent(node)
     const mono = MONO_KINDS.has(node.kind)
-    const count = node.derived && node.clusterOf ? node.clusterOf.length : 0
+    // A derived cluster shows its member count while collapsed (overview chip); once expanded the
+    // header is a plain labelled panel, so the count is dropped (RF.5/LE.2, §5.4).
+    const count = node.derived && node.clusterOf && !isClusterExpanded(level) ? node.clusterOf.length : 0
     const badge = count ? `<span style="color:${theme.textMuted};font-weight:500"> ${count}</span>` : ""
     const labelFont = mono ? `ui-monospace,SFMono-Regular,Menlo,monospace` : `inherit`
     const status = statusColor(theme, node)

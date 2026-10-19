@@ -4,7 +4,7 @@ import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Zoom
 import { breadcrumbs, layoutGraph, LEVEL_RANK, minLevelOf, nodeByID, ancestors, subtree } from "@opencode/session-ui/graph"
 import { GraphController } from "spacegraphjs/control"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show, untrack, type JSX } from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -154,6 +154,11 @@ export const GraphView = (props: GraphViewProps) => {
     const id = selection()[0]
     return id ? nodeByID(props.model, id) : undefined
   }
+  // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
+  // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
+  // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
+  const contentIDs = () => renderModel().nodes.filter((node) => node.kind !== "band").map((node) => node.id)
+  const inspectorOpen = createMemo(() => !!selectedNode())
   const selectedTurn = () => {
     const id = selection()[0]
 
@@ -255,14 +260,16 @@ export const GraphView = (props: GraphViewProps) => {
     const current = capabilities()
     if (current && projection() === "3d" && !supports(current, "3d")) changeProjection("2d")
   })
-  // §5.5: frame the model on first load, renderer switch, and an explicit level/projection change.
-  // Deferred a microtask so the canvas has applied the matching model before we measure its bounds.
+  // §5.5: frame the model on first load, renderer switch, an explicit level/projection/strategy
+  // change, and when the inspector toggles (LE.1). Deferred a microtask so the canvas has applied the
+  // matching model before we measure its bounds; the ids are read untracked so streaming does not refit.
   createEffect(() => {
     const ready = canvasReady()
     level()
     projection()
     strategy()
-    if (ready) queueMicrotask(() => renderer?.fit())
+    inspectorOpen()
+    if (ready) queueMicrotask(() => renderer?.fit(untrack(contentIDs)))
   })
 
   return (

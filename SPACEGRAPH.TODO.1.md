@@ -1700,6 +1700,69 @@ depth-stack|orbit) so contested choices are built and captured as options and se
 bar; `orbit` is a labelled experiment), not a tilt toggle. New open decisions #14–#16 record the deferred
 choices. No code changed this pass; the phase is scheduled, ordered LE.1-first (fit fixes the most images).
 
+**2026-10-18 (cont.) — Phase 10 framing batch: structural legibility (LE.2), overview bands (LE.3), edge legibility (LE.6), and fit-by-content (LE.1, partial).**
+
+Scope for this pass: the "framing and structural defects (fix regardless of representation)" cluster the plan
+orders first. All work is in `packages/session-ui` and `packages/session-graph`; `spacegraphjs` is untouched.
+
+- **LE.2 — structural nodes are legible themed panels (done; deviation).** `session`/`turn`/`phase`/`error`/
+  `retry`/`approval` now render as compact DOM panels (`shape: "card"`, `size: [132,44,0]`) built from the host
+  `createCardTemplate`, so they read with `RenderTheme.surface`/`border`/`text` in light and dark instead of a
+  near-invisible vector box. A new `STRUCTURAL_KINDS` set in `buildRenderModel` marks them and excludes them from
+  the activity DOM card budget (chrome never degrades an activity card). `createCardTemplate` shows the member
+  count only while a derived cluster is collapsed (overview chip); once expanded the header is a plain labelled
+  panel. **Deviation:** the plan said "Library + adapter" (core vector surface/border); the panels are host DOM
+  markup instead, because the core `ShapeNode` is a 3D primitive with no persistent border and its `data.stroke`
+  is dead. The core `data.opacity` vector-dim path (added last pass) is now unexercised by the app (structural
+  nodes are cards that fade through markup); it remains a library capability with its own test.
+- **LE.3 — overview band correctness (done).** `buildRenderModel.buildBands` now derives each band's count and
+  bounds from the members **drawn** at the level (an `emit(node, ids)` helper filters to visible ids) and
+  **suppresses turn bands at overview**, where a turn band would span the phase-chip row and delegated/message
+  members lanes apart — the giant near-empty box in `02`/`14`. Execution and detail keep the turn bands (members
+  fill the lanes) and phase bands (only when expanded).
+- **LE.6 — edge legibility (done).** `edgesAtLevel` drops `part-of` edges that touch the session root at
+  overview, removing the full-width dashed turn→session wires (`02`); the root is not wired at overview, where
+  the columns and chips already group a turn. The full hierarchy is intact at detail.
+- **LE.1 — fit from content, re-framed on inspector toggle (partial).** `GraphView` now fits the **content**
+  node ids (`kind !== "band"`) and re-fits when the inspector toggles (`inspectorOpen` memo) in addition to
+  first load, renderer switch, and level/projection/strategy change; the ids are read untracked so streaming
+  updates still do not refit. **Not done:** "empty structural columns" are not excluded (the layout is
+  level-agnostic by design, §5.5, so a turn column reserves its execution width at overview), and there is no
+  asymmetric inset for the open inspector/header/composer (the contract `fit(ids?)` carries no insets). The
+  overview (`02`) still shows a dominant empty region between the two turn columns because the lanes overview
+  reuses the execution spread; the plan defers that to the ribbon representation (LE.8). So LE.1's Done ("no
+  dominant empty region") is **not** met — this is a partial.
+- **Tests.** `buildRenderModel.test.ts` gains LE.3/LE.6 cases and reworks the budget/dim/expansion cases for the
+  structural-card design (an `activityCards` helper excludes chrome from the budget). `levels.test.ts` gains the
+  LE.6 root-wire case. `component-tests/graph-view.spec.ts` now asserts phase clusters are legible DOM cards at
+  execution (expanded header, no count) and the collapsed overview chip shows `Explore 5`.
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 57 pass; `bun run typecheck` clean.
+- `cd packages/session-graph && bun test src` → 31 pass; `bun run typecheck` clean; `bun run test:components`
+  → 28 pass.
+- `cd packages/app && bun run typecheck` clean; `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 14 pass.
+- `bun run graph:capture --mode=compare` regenerated all 12 images. Inspected: `02` no longer has the giant
+  empty band and no full-width dashes (still a wide empty middle); `03` shows non-overlapping neutral cards with
+  legible structural chips (`Explore`, `Delegate`, `Session`, turn headers) inside the turn bands; `14` (light)
+  reads the dark-contrast session root and chips; `07` (Cytoscape) renders the structural chips through its DOM
+  overlay. `11`/`12`/`13` are unchanged (LE.4/LE.11/LE.5 remain).
+
+Notes for the remaining Phase 10 work:
+- **The overview empty region is a layout problem, not a fit problem (LE.1/LE.8).** `layoutGraph` is
+  level-agnostic (§5.5 stability), so a turn column reserves the width its execution content needs even at
+  overview; the lanes overview therefore spreads thinly. The ribbon (LE.8) "fixes it by construction". A
+  level-aware compact overview layout is the alternative but risks position drift across levels, which §5.6
+  forbids.
+- **Asymmetric fit insets need a library/contract seam.** Fitting into the visible region beside the side
+  panel or above the bottom sheet (LE.1/LE.4) requires `fit` to accept insets; the contract `fit(ids?)` does
+  not. Add it to `GraphRenderer.fit`, both adapters, and the conformance suite when LE.4 is taken.
+- **Structural vector panels remain in the core.** `ShapeNode`/`data.stroke` is still border-less; a host that
+  keeps vector panels (not DOM cards) gets no persistent border. A core outline pass is the library-side LE.2
+  remainder if it is wanted.
+- Next in Phase 10 by plan order: LE.4 (narrow/mobile sheet-aware fit), LE.5 (Cytoscape harness parity), then
+  the representation seam (LE.7) and the ribbon/matrix (LE.8/LE.9).
+
 ## 0. Mission
 
 
@@ -3082,28 +3145,40 @@ the session vocabulary stays in `session-ui`/`session-graph`.
 
 Framing and structural defects (fix regardless of representation):
 
-- [ ] **LE.1 Fit and framing (library-first)**
+- [ ] **LE.1 Fit and framing (library-first)** (partial: fit-by-content + inspector re-fit landed; see the Phase 10 framing-batch log)
   Fit from *content* bounds: exclude band nodes and empty structural columns, add padding, and inset
   for the open inspector (side panel or bottom sheet), the header toggles, and the composer; re-fit
   when the inspector toggles and when the level/projection changes. Library seam: let `fitView` accept
   a node-id subset and/or ignore declared sizes (the adapter already passes ids). Done: `02`–`04`,
   `11`–`14` frame the whole model with no clipping and no dominant empty region; `07`/`08` too.
-- [ ] **LE.2 Structural node legibility and theming**
+  Status: `GraphView` fits the content node ids (bands excluded) and re-fits when the inspector toggles, plus
+  first load / renderer switch / level / projection / strategy change (ids read untracked, so streaming does not
+  refit). **Not done:** empty structural columns (the layout is level-agnostic, §5.5), asymmetric insets (the
+  contract `fit(ids?)` has no inset parameter), and LE.1's Done — the overview still has a dominant empty region
+  because the lanes overview reuses the execution spread (deferred to the ribbon, LE.8).
+- [x] **LE.2 Structural node legibility and theming** (done via host DOM panels; see the Phase 10 framing-batch log)
   `session`/`turn`/`phase` panels and `error`/`retry` badges take `RenderTheme.surface`/`border`/
   `text`; minimum legible size; the session root reads in light and dark (today it is a dark box in
   light mode and a dash in dark). Library + adapter.
-- [ ] **LE.3 Overview band correctness**
+  Status: rendered as compact host DOM panels (`shape: "card"`, 132×44) through `createCardTemplate`, outside the
+  activity DOM budget; the count badge shows only on a collapsed overview chip. **Deviation:** host markup, not a
+  core vector surface/border (the core `ShapeNode.data.stroke` is dead and has no persistent border).
+- [x] **LE.3 Overview band correctness** (done; see the Phase 10 framing-batch log)
   Bands wrap only the members drawn at the level and are suppressed where they add nothing; no
   cross-lane empty box. Host `buildRenderModel`.
+  Status: band count/bounds derive from the visible members; turn bands are suppressed at overview (the giant
+  cross-lane box in `02`/`14`) and kept at execution/detail.
 - [ ] **LE.4 Narrow / mobile**
   Size the canvas to the area above the bottom-sheet inspector and fit inside the visible region; the
   sheet never covers the framed content. Host.
 - [ ] **LE.5 Cytoscape harness parity**
   Give the capture story an explicit container size, fit after positions apply, and assert overlay
   geometry; regenerate `07`/`08` to match the app's framing and card sizes. Component test/host.
-- [ ] **LE.6 Edge legibility**
+- [x] **LE.6 Edge legibility** (done; see the Phase 10 framing-batch log)
   Drop cross-turn structural wires at overview; no full-width dashed lines; keep root→turn links short
   or omit. Host `edgesAtLevel`/`buildRenderModel`.
+  Status: `edgesAtLevel` drops `part-of` edges that touch the session root at overview, removing the full-width
+  dashed turn→session wires (`02`); detail keeps the full hierarchy.
 
 Representation experiments (build the seam, then the options):
 

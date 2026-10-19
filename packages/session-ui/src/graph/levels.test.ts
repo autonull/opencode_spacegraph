@@ -60,6 +60,15 @@ describe("semantic levels — edges", () => {
     expect([...kinds]).toEqual(["part-of"])
   })
 
+  test("overview drops the root part-of wires (LE.6)", () => {
+    const edges = edgesAtLevel(model, "overview")
+
+    expect(edges.length).toBeGreaterThan(0)
+    expect(edges.some((edge) => edge.source === model.root || edge.target === model.root)).toBe(false)
+    // The full hierarchy is intact at detail.
+    expect(edgesAtLevel(model, "detail").some((edge) => edge.target === model.root)).toBe(true)
+  })
+
   test("execution adds provenance and sequence", () => {
     const kinds = new Set(edgesAtLevel(model, "execution").map((edge) => edge.kind))
 

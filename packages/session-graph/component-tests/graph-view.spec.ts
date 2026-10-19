@@ -26,8 +26,11 @@ story("assembles the graph view and answers node questions without the canvas", 
   // RF.7: a wide row keeps the secondary controls inline, with no overflow menu.
   await expect(root.locator('[data-slot="graph-toolbar-overflow"]')).toHaveCount(0)
 
-  // Execution expands phase clusters into swimlane bands, not counted DOM cards.
-  await expect(host.locator('.html-node-container:has([data-kind="phase"])')).toHaveCount(0)
+  // LE.2: phase clusters are legible DOM panels at every level. Execution shows the expanded header
+  // (label only); the collapsed overview chip carries the member count instead.
+  const phases = host.locator('.html-node-container:has([data-kind="phase"])')
+  await expect(phases.filter({ hasText: "Explore" }).first()).toBeVisible()
+  await expect(phases.filter({ hasText: "Explore" }).first()).not.toContainText(/Explore\s+\d/)
 
   // The selected tool node renders as readable DOM detail, with its place in the session above it.
   await expect(inspector).toContainText("Tool call")
@@ -58,8 +61,7 @@ story("assembles the graph view and answers node questions without the canvas", 
   await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Overview" }).click()
   await expect(zoomOut).toBeDisabled()
 
-  // The level change is a representation change: the cluster must be re-created as a counted DOM card,
-  // not left as the execution panel whose node type no longer matches (the adapter remodels on type).
+  // The collapsed overview cluster is a counted DOM card ("Explore 5"), unlike the expanded header.
   const exploreChip = host.locator('.html-node-container:has([data-kind="phase"])', { hasText: "Explore" })
   await expect(exploreChip).toHaveCount(1)
   await expect(exploreChip).toContainText("Explore 5")

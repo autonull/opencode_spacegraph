@@ -8,6 +8,12 @@ const positions = layoutGraph(model).positions
 const at = (level: ZoomLevel, extra: { cardBudget?: number } = {}) =>
   buildRenderModel(model, { level, positions, ...extra })
 
+const STRUCTURAL = new Set(["session", "turn", "phase", "error", "retry", "approval"])
+
+/** Activity cards consume the DOM budget; structural panels (LE.2) are chrome and never do. */
+const activityCards = (built: ReturnType<typeof at>) =>
+  built.nodes.filter((node) => node.html !== undefined && !STRUCTURAL.has(node.kind))
+
 const kindsAt = (level: ZoomLevel) => new Set(at(level).nodes.map((node) => node.kind))
 
 test("overview shows only session, turns, phase clusters, and subagents", () => {
@@ -40,16 +46,27 @@ test("overview phase clusters render as counted cards within the DOM budget", ()
     expect(chip.size?.[0]).toBeLessThan(220)
   }
 
-  expect(built.nodes.filter((node) => node.html !== undefined).length).toBeLessThanOrEqual(12)
+  expect(activityCards(built).length).toBeLessThanOrEqual(12)
 })
 
-test("execution expands phase clusters into panels, not counted chips", () => {
+test("execution expands phase clusters into legible headers, not collapsed chips", () => {
   const phases = at("execution").nodes.filter((node) => node.kind === "phase")
 
+  expect(phases.length).toBeGreaterThan(0)
+
   for (const phase of phases) {
-    expect(phase.shape).toBe("panel")
-    expect(phase.html).toBeUndefined()
+    expect(phase.data?.expanded).toBe(true)
+    expect(phase.shape).toBe("card")
+    expect(phase.html).toBeDefined()
   }
+})
+
+test("overview drops the root part-of wires and turn bands (LE.3/LE.6)", () => {
+  const built = buildRenderModel(model, { level: "overview", positions, bands: true })
+
+  expect(built.nodes.some((node) => node.kind === "band" && node.data?.band === "turn")).toBe(false)
+
+  for (const edge of built.edges) expect(edge.source).not.toBe(model.root)
 })
 
 test("execution adds tools, files, results, errors, and retries", () => {
@@ -75,10 +92,9 @@ test("failure statuses map onto the contract vocabulary", () => {
 
 test("cards are budgeted and degrade to labels above the cap", () => {
   const model = at("execution", { cardBudget: 1 })
-  const cards = model.nodes.filter((node) => node.html !== undefined)
   const demoted = model.nodes.filter((node) => node.shape === "dot" && node.html === undefined)
 
-  expect(cards.length).toBe(1)
+  expect(activityCards(model).length).toBe(1)
   expect(demoted.length).toBeGreaterThan(0)
 })
 
@@ -170,22 +186,23 @@ test("without a focus nothing is dimmed", () => {
   expect(at("execution").nodes.some((node) => node.data?.dimmed === true)).toBe(false)
 })
 
-test("execution focus dims vector panels through node opacity, not markup (RF.10)", () => {
+test("execution focus dims demoted vector nodes through node opacity, not markup (RF.10)", () => {
   const built = buildRenderModel(model, {
     level: "execution",
     positions,
     bands: true,
     focus: "tool:prt_tool_write_1",
+    cardBudget: 1,
   })
 
-  // Bands are never dimmed; the structural panels/badges have no markup, so they carry the opacity.
+  // Cards fade through markup; the activity nodes demoted past the budget have no html, so they carry
+  // the opacity for the renderer to apply to the vector node itself. Bands are never dimmed.
   const fadedVectors = built.nodes.filter(
     (node) => node.data?.dimmed === true && node.html === undefined,
   )
 
   expect(fadedVectors.length).toBeGreaterThan(0)
   expect(fadedVectors.every((node) => node.data?.opacity === 0.3)).toBe(true)
-  expect(fadedVectors.some((node) => node.kind === "turn" || node.kind === "session")).toBe(true)
 })
 
 test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () => {
