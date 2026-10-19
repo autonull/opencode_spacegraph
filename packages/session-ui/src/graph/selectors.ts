@@ -124,6 +124,7 @@ const PROVENANCE: ReadonlySet<EdgeKind> = new Set(["writes", "reads", "produces"
 
 function provenanceOwner(model: GraphModel, node: GraphNode): GraphNode | undefined {
   const related = model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)
+
   const ordered = [
     ...related.filter((edge) => PROVENANCE.has(edge.kind)),
     ...related.filter((edge) => !PROVENANCE.has(edge.kind)),
@@ -133,6 +134,7 @@ function provenanceOwner(model: GraphModel, node: GraphNode): GraphNode | undefi
     const other = nodeByID(model, edge.source === node.id ? edge.target : edge.source)
 
     if (!other || other.id === node.id) continue
+
     if (other.id === model.root || other.turnID || ancestors(model, other.id).length > 0) return other
   }
 }

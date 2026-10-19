@@ -79,11 +79,16 @@ export function SessionGraphView(props: {
         },
         panTo: (nodeId: string) => graph.setSelected(nodeId),
       }
-      ;(window as unknown as { __sessionGraphView?: typeof harness }).__sessionGraphView = harness
+
+      // SAFETY: dev-only test harness for e2e capture control
+      const w = window as { __sessionGraphView?: typeof harness }
+      w.__sessionGraphView = harness
     })
     onCleanup(() => {
       if (import.meta.env.DEV) {
-        ;(window as unknown as { __sessionGraphView?: unknown }).__sessionGraphView = undefined
+        // SAFETY: dev-only test harness cleanup
+        const w2 = window as { __sessionGraphView?: unknown }
+        w2.__sessionGraphView = undefined
       }
     })
   }

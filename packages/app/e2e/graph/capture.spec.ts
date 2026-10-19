@@ -107,16 +107,20 @@ async function zoomIn(page: Page, clicks: number) {
 
   if (compact) await overflow.getByLabel("More controls").click()
   const zoomInBtn = page.locator(toolbar).getByRole("button", { name: "Zoom in", exact: true })
+
   for (let i = 0; i < clicks; i++) {
     await zoomInBtn.click()
     await page.waitForTimeout(50) // small delay for zoom animation
   }
+
   if (compact) await overflow.getByLabel("More controls").click()
 }
 
 async function selectViaHarness(page: Page, nodeId: string) {
   await page.evaluate((id) => {
-    const harness = (window as unknown as { __sessionGraphView?: { select: (id: string) => void } }).__sessionGraphView
+    // SAFETY: __sessionGraphView is set by SessionGraphView in dev mode only
+    const w = window as { __sessionGraphView?: { select: (id: string) => void } }
+    const harness = w.__sessionGraphView
     harness?.select(id)
   }, nodeId)
   await fit(page)

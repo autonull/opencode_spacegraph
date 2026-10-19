@@ -73,7 +73,9 @@ test("offers the graph switch on a narrow mobile viewport", async ({ page }) => 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   )
+
   expect(overflow).toBeLessThanOrEqual(1)
+
   expect(errors).toEqual([])
 })
 
@@ -293,6 +295,7 @@ test("restores the transcript position after leaving the graph", async ({ page }
     element.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -600 }))
     element.scrollTop -= 600
   })
+
   // The virtualizer settles late measurements by nudging the offset to hold the visible row; one
   // nudge is a valid position, not a restore failure, so record the offset once it stops moving.
   const before = await scroller.evaluate(async (element) => {
@@ -308,6 +311,7 @@ test("restores the transcript position after leaving the graph", async ({ page }
 
     return Math.round(previous)
   })
+
   expect(before).toBeGreaterThan(0)
 
   await page.getByRole("button", { name: "Toggle graph view" }).click()
