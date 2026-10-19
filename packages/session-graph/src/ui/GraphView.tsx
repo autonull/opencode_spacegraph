@@ -8,6 +8,7 @@ import {
   laneAnchors,
   layoutGraph,
   LEVEL_RANK,
+  isVisibleAt,
   matrixLayout,
   minLevelOf,
   nodeByID,
@@ -178,7 +179,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (representation() === "ribbon") return ribbonLayout(props.model)
     if (representation() === "matrix") return matrixLayout(props.model)
 
-    return layoutGraph(props.model, { strategy: strategy() })
+    return layoutGraph(props.model, { strategy: strategy(), level: level() })
   })
   // LE.1: whether a structural change is waiting for the canvas to apply the matching model before we
   // frame it. Streaming model updates leave it false, so they never refit.
@@ -205,6 +206,12 @@ export const GraphView = (props: GraphViewProps) => {
   const selectedNode = () => {
     const id = selection()[0]
     return id ? nodeByID(props.model, id) : undefined
+  }
+  // T1.9: the inspector can describe a node the current level does not draw. Say so and offer the
+  // level change, rather than leaving the user with an invisible selection.
+  const hiddenSelection = () => {
+    const node = selectedNode()
+    return node && !isVisibleAt(node, effectiveLevel()) ? node : undefined
   }
   // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
   // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
@@ -365,11 +372,44 @@ export const GraphView = (props: GraphViewProps) => {
     files()
     setNeedsFit(true)
   })
-  const fitContent = () => renderer?.fit(untrack(contentIDs))
+  // T1.8: the fitted frame is the 100% reference for the camera zoom readout. The renderer clamps
+  // orthographic zoom to ~1/3..2.5x fit, so the control cannot empty the canvas.
+  const [fitBaseline, setFitBaseline] = createSignal(1)
+  let fitPending = false
+  let fitSettle: ReturnType<typeof setTimeout> | undefined
+  // A fit emits one viewport before the camera applies it and another as it settles; keep reading
+  // the baseline until the reports stop so the settled frame becomes the 100% reference.
+  const settleFit = () => {
+    if (fitSettle) clearTimeout(fitSettle)
+    fitSettle = setTimeout(() => {
+      fitSettle = undefined
+      fitPending = false
+    }, 120)
+  }
+  onCleanup(() => fitSettle && clearTimeout(fitSettle))
+  const requestFit = (fit: () => void) => {
+    fitPending = true
+    settleFit()
+    fit()
+  }
+  const fitContent = () => requestFit(() => renderer?.fit(untrack(contentIDs)))
   const applyModel = (instance: GraphRenderer) => {
     if (!needsFit()) return
     setNeedsFit(false)
-    instance.fit(untrack(contentIDs))
+    requestFit(() => instance.fit(untrack(contentIDs)))
+  }
+  const zoomPercent = () => {
+    const current = viewport()
+    if (!current) return 100
+    return Math.max(33, Math.round((current.zoom / fitBaseline()) * 100))
+  }
+  const zoomBy = (direction: 1 | -1) => {
+    const current = viewport()
+    if (!current || !renderer) return
+    renderer.setViewport({
+      zoom: Math.min(1, Math.max(0, current.zoom + direction * 0.08)),
+      center: current.center,
+    })
   }
 
   return (
@@ -388,6 +428,11 @@ export const GraphView = (props: GraphViewProps) => {
         capabilities={capabilities()}
         renderer={rendererID()}
         onFit={fitContent}
+        zoomPercent={zoomPercent()}
+        onZoomOut={() => zoomBy(-1)}
+        onZoomIn={() => zoomBy(1)}
+        zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= 0.01}
+        zoomInDisabled={(viewport()?.zoom ?? 0) >= 0.99}
         onSearch={() => setSearchOpen((open) => !open)}
         strategy={strategy()}
         onStrategy={changeStrategy}
@@ -414,6 +459,25 @@ export const GraphView = (props: GraphViewProps) => {
         endInset={props.endInset}
       />
       <GraphBreadcrumbs crumbs={crumbs()} onSelect={fitSubtree} />
+      <Show when={hiddenSelection()}>
+        {(node) => (
+          <div
+            data-slot="graph-selection-hidden"
+            class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-1 text-12-regular text-text-weak"
+          >
+            <span class="min-w-0 flex-1 truncate">
+              {i18n.t("ui.sessionGraph.selection.hidden", { label: node().label })}
+            </span>
+            <button
+              type="button"
+              class="shrink-0 rounded-sm px-1 text-text-base hover:text-text-strong"
+              onClick={() => jumpTo(node())}
+            >
+              {i18n.t("ui.sessionGraph.selection.show")}
+            </button>
+          </div>
+        )}
+      </Show>
       <Show when={fallback() && !error()}>
         <div
           data-slot="graph-fallback"
@@ -457,7 +521,13 @@ export const GraphView = (props: GraphViewProps) => {
               setFallback(info.fallback)
             }}
             onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
-            onViewportChange={setViewport}
+            onViewportChange={(next) => {
+              if (fitPending) {
+                setFitBaseline(next.zoom || 1)
+                settleFit()
+              }
+              setViewport(next)
+            }}
           />
           <GraphA11y
             model={renderModel()}

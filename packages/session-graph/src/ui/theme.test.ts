@@ -33,7 +33,7 @@ describe("graph theme bridge", () => {
     expect(theme.warning).toBe("#ff0")
     expect(theme.error).toBe("#f00")
     expect(theme.edge).toBe("#777")
-    expect(theme.edgeMuted).toBe("#444")
+    expect(theme.edgeMuted).toBe("#aaa")
     expect(theme.selection).toBe("#3b82f6")
     expect(theme.focus).toBe("#93c5fd")
     expect(theme.fontFamily).toBe("Inter, sans-serif")

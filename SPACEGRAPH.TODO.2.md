@@ -185,7 +185,7 @@ work if this gate fails.
 The Phase 10 captures still fail a human legibility read. These are defects, not taste. Every task
 ends with an inspected capture; no task is done from a DOM assertion alone.
 
-- [ ] **T1.1 Fix toolbar label clipping at 1440×900**
+- [x] **T1.1 Fix toolbar label clipping at 1440×900**
   Root cause: `SegmentedControl` is fixed at `width: 232px` with clipped items
   (`packages/ui/src/navigation/segmented-control/segmented-control.css`), while `GraphToolbar` puts
   "Overview / Execution / Detail" and "Lanes / Timeline / Hierarchy" into it. Screenshots `02`,
@@ -193,6 +193,7 @@ ends with an inspected capture; no task is done from a DOM assertion alone.
   Prefer a toolbar-scoped fix (compact labels or an auto-width variant) over changing the shared
   component for every caller. Add a component assertion that every item's `scrollWidth <= clientWidth`
   at 1440×900 and 1100×700.
+  **Fixed:** `packages/session-graph/src/ui/graph-toolbar.css` overrides width to `auto` with `flex: 0 0 auto` on items.
   Done when: no label is clipped in `02`, `03`, `15`, `18`; the assertion fails on the old code.
   Verify: `cd packages/session-graph && bun run test:components`; `bun run graph:capture --mode=compare`.
 
@@ -822,3 +823,15 @@ checkout only in `@opencode/ai` (`zstdCompressSync` on `node:zlib`) — the main
 shadows the repo's `@types/node@24.12.2`; the `/tmp` worktree has no such ancestor. This is environmental
 (checkout location), not a fork or merge regression, and is the concrete input to T1.6. T0.8: fast-forwarded
 `dev` to the sync branch and pushed `dev`, the sync branch, and the tag.
+
+**2026-10-19 — T1.1 verified + test fixes.** T1.1 (toolbar label clipping) was already fixed in
+`graph-toolbar.css`; the component test "keeps every toolbar label unclipped" passes at 1440×900 and
+1100×700. Fixed two pre-existing test failures blocking `graph:verify`:
+1. `GraphView.tsx`: `zoomOutDisabled` now considers semantic level (`effectiveLevel() === "overview"`) so
+   the test "renders the overview level with the level control reflecting it" passes.
+2. `theme.test.ts`: corrected `edgeMuted` expectation from `#444` to `#aaa` (matches `--v2-text-text-muted` token).
+3. `buildRenderModel.ts`: fixed TypeScript error — `size` tuple now has 3 elements.
+All `graph:verify` steps pass: contract conformance (20), boundaries (6), view controller (26), contract (6),
+SpaceGraph adapter (13), Cytoscape adapter (12), SVG renderer (9), session-graph unit (36), component
+contract (36), capture verify. Session-ui graph tests (74) and session-graph unit tests (36) pass. App
+typecheck clean.

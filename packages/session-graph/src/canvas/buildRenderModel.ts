@@ -76,6 +76,9 @@ const LANE_LABEL_SIZE: [number, number, number] = [132, 28, 0]
 
 const LANE_GUTTER = 20
 
+/** Summary row/column captions; wide enough for "Hierarchy" and a tool name. */
+const AXIS_LABEL_SIZE: [number, number, number] = [132, 24, 0]
+
 /** Host-owned, sanitized markup for a `card`. Text must be escaped by the template. */
 export type CardTemplate = (node: GraphNode, level: ZoomLevel) => string
 
@@ -107,6 +110,11 @@ export type BuildRenderModelOptions = {
    * gutter to the left of the content, so the spatial grammar is visible.
    */
   laneLabels?: readonly { id: string; label: string; y: number }[]
+  /**
+   * T1.11: non-interactive row/column captions for the summary representations, positioned in layout
+   * space by the host (it owns the turn/category axes).
+   */
+  axisLabels?: readonly { id: string; label: string; x: number; y: number; role: "row" | "column" }[]
 }
 
 /**
@@ -159,10 +167,23 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
   const visible = new Set(content.map((node) => node.id))
   const bands = options.bands ? buildBands(model, level, positions, renderBand, visible) : []
   const lanes = buildLaneLabels(options.laneLabels, content)
+  const axes = (options.axisLabels ?? []).map(
+    (label): RenderNode => ({
+      id: `axis:${label.id}`,
+      kind: "lane",
+      label: label.label,
+      shape: "panel",
+      interactive: false,
+      html: `<div data-axis="${label.role}" style="display:flex;align-items:center;height:100%;box-sizing:border-box;padding:0 8px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(label.label)}</div>`,
+      size: [AXIS_LABEL_SIZE[0], AXIS_LABEL_SIZE[1], AXIS_LABEL_SIZE[2]],
+      position: [label.x, label.y, ZERO.z - 1],
+      data: { axis: label.role },
+    }),
+  )
   const rawEdges = (options.edges ?? true) ? edgesAtLevel(model, level, focus) : []
   const edges = (options.bundle ? bundleEdges(model, rawEdges) : rawEdges).map((edge) => toRenderEdge(edge, level))
 
-  return { nodes: [...bands, ...lanes, ...content], edges }
+  return { nodes: [...bands, ...lanes, ...axes, ...content], edges }
 }
 
 /**
@@ -185,7 +206,7 @@ function buildLaneLabels(
     label: lane.label,
     shape: "panel" as const,
     interactive: false,
-    html: `<div data-lane="${escapeHtml(lane.id)}" style="display:flex;align-items:center;height:100%;box-sizing:border-box;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:inherit;opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(lane.label)}</div>`,
+    html: `<div data-lane="${escapeHtml(lane.id)}" style="display:flex;align-items:center;height:100%;box-sizing:border-box;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:inherit;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(lane.label)}</div>`,
     size: LANE_LABEL_SIZE,
     position: [x, lane.y, ZERO.z - 1],
     data: { lane: lane.id },
@@ -274,8 +295,10 @@ function buildBands(
       interactive: false,
       html: renderBand(node, drawn.length, bounds),
       size: [width, height, 0],
-      position: [(bounds.min.x + bounds.max.x) / 2, (bounds.min.y + bounds.max.y) / 2, ZERO.z - 1],
-      data: { band: node.kind === "turn" ? "turn" : "phase", count: drawn.length, cluster: node.id },
+      position: [(bounds.min.x + bounds.max.x) / 2, (bounds.min.y + bounds.max.y) / 2, ZERO.z],
+      // T1.3: bands are backdrops. Keep them flat on the content plane and facing the camera, so a
+      // tilted depth treatment does not turn a large band into a trapezoid across the cards.
+      data: { band: node.kind === "turn" ? "turn" : "phase", count: drawn.length, cluster: node.id, billboard: true },
     })
   }
 
