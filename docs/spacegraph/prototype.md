@@ -21,8 +21,8 @@ where the agent retried or changed direction.
 
 | Repository | Revision | Notes |
 |---|---|---|
-| OpenCode (`opencode` monorepo) | `dev` @ `2360be5b62` + this depth pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `55ded02` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2) |
+| OpenCode (`opencode` monorepo) | `dev` @ `6479486583` + this capture-matrix pass | Branch `dev`; no `session-graph` branch, per the Phase 0 restart note |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `5abf80d` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2); `5abf80d` includes node extents in the fit bounds so edge cards are not clipped |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
 gitignored in the OpenCode repo; its commits are recorded here by SHA.
@@ -112,10 +112,40 @@ en-US, reduced motion, clock-free fixture):
 | `14-graph-light.png` | light scheme parity (RF.9) |
 | `15-graph-ribbon.png` | turn ribbon representation (LE.8) |
 | `16-graph-matrix.png` | turn matrix representation (LE.9) |
+| `17-graph-files.png` | file-first lens: changed-files rail + bundled provenance (LE.12/LE.13) |
+| `18-graph-layered.png` | `layered` 2.5D depth treatment (LE.14) |
+| `19-graph-depth-stack.png` | `depth-stack` depth treatment (LE.14/LE.16) |
 
 `02`/`03`/`04` come from the app's routed session (`packages/app/e2e/graph/capture.spec.ts`); `07`/`08`
 come from the Storybook story (`packages/session-graph/component-tests/graph-capture.spec.ts`) because
 the app has no renderer selector (renderer choice is a prototype setting, per §4.7).
+
+### Capture matrix (LE.16)
+
+The captures are one frame per option value at the benchmark state (execution level, lanes layout, flat
+depth, SpaceGraph renderer), so each axis can be read against a stable baseline. The axes are not a full
+cartesian product because they are not independent: `ribbon`/`matrix` replace the layout, and depth is a
+camera/fog treatment over the node-link layout's Z (the summaries place every node at `z = 0`).
+
+| Axis | Values | Captures |
+|---|---|---|
+| Representation | `graph` | `02` (overview), `03` (execution), `04` (selected) |
+| | `ribbon` | `15` |
+| | `matrix` | `16` |
+| Layout (graph) | `lanes` | `02`/`03`/`04` |
+| | `timeline` | `11` |
+| | `hierarchy` | `12` |
+| Depth (graph, lanes) | `flat` | `03` |
+| | `layered` | `18` |
+| | `depth-stack` | `19` |
+| | `orbit` | `06` |
+| Lens | files rail + bundled provenance | `17` |
+| Context | narrow 390×900 / light scheme | `13` / `14` |
+
+`graph:capture --mode=compare` regenerates this matrix (the app frames plus the Cytoscape story) and
+`--mode=verify` asserts the committed set exists. The depth modes are captured at the compact lanes
+framing, where the fog cue is legible; on a tall layout the absolute-distance fog over-attenuates
+distant content (see known limitation 17).
 
 ## Renderer comparison (U3.6)
 
@@ -292,6 +322,14 @@ Carry these forward explicitly; none is silently lowered.
     construction; a level-aware compact overview would risk position drift and is not taken.
 16. **Framing insets and empty-column exclusion are not implemented** (LE.1): `fit(ids?)` carries no asymmetric
     insets, and the fit frames content ids but cannot skip empty structural columns.
+17. **Depth fog attenuates by absolute camera distance** (LE.14): `layered`/`depth-stack` use `FogExp2`, so when the
+    fit has to move far away (a tall `hierarchy` or `timeline` layout) distant content fades toward the background.
+    The modes are validated and captured at the compact lanes framing; a scene-relative fade would need the
+    renderer to know the content depth extent (LE.16 capture-matrix note).
+18. **The capture matrix is one frame per option value, not the cartesian product** (LE.16): representation
+    replaces the layout and depth is a treatment over the node-link Z, so a full product would be redundant.
+    The depth axis is captured at the benchmark lanes layout; a depth treatment on the flat ribbon/matrix
+    summaries has no structural effect.
 
 ## Evaluation protocol (R7.3)
 

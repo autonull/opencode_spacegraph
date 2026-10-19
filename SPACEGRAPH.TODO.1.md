@@ -2000,6 +2000,59 @@ Notes for the remaining Phase 10 work:
 - **Library refinements unchanged:** RF.6 mesh outline (stencil pass), RF.2 `LaneLayout` folding, vector-band dimming.
 - **Lanes overview empty region persists** (`02`/`14`); the ribbon/matrix fix it by construction.
 
+**2026-10-18 (cont.) — Phase 10 LE.16 capture matrix: the depth-stack frame and an extent-aware fit.**
+
+Scope for this pass: the remaining implementable part of LE.16 — a documented capture matrix covering every
+meaningful option value — plus the framing defect the new depth frame exposed. The library change is in
+`spacegraphjs` commit `5abf80d`; host work is the capture spec, the CLI verify list, and the docs.
+
+- **LE.16 — capture matrix (done for the option values; prototype-settings stays a toolbar deviation).**
+  `packages/app/e2e/graph/capture.spec.ts` gains `19-graph-depth-stack.png`, the one depth value the matrix
+  was missing; `03` (flat), `18` (layered), `19` (depth-stack), and `06` (orbit) cover the full depth
+  spectrum at the benchmark lanes/execution state, and `11`/`12`/`15`/`16` cover the layout and representation
+  values. `script/capture-graph-demo.ts --mode=verify` expects `19`. `docs/spacegraph/prototype.md` gains the
+  screenshot row and a "Capture matrix (LE.16)" table listing every axis value and its capture, with the
+  explicit reason the axes are not a cartesian product (representation replaces the layout; depth is a
+  treatment over the node-link Z and the summaries are flat at z=0). The chooser stays in the toolbar rather
+  than the app's (unavailable placeholder) experimental settings, as recorded at LE.7.
+- **Fit includes node extents (library, `spacegraphjs` `5abf80d`).** The new depth capture exposed a real
+  framing defect that also affected the committed execution shot: `calculateFitView` expanded its box by node
+  **centres** only, so a card at the bounds edge was half clipped (`03`'s far-right card and the `timeline`
+  frame). It now expands by each node's declared footprint (`data.width`/`height` for cards, `data.size` for
+  shapes) before computing the fit. `02`/`03`/`04` and the layout frames are now fully framed (the graph reads
+  slightly smaller, with margin, instead of edge-clipped). A new `camera-fit.test.ts` case asserts a sized card
+  pushes the perspective distance out.
+- **Capture settling.** `waitForStillCanvas` now requires two consecutive equal drawing-buffer samples across
+  poll intervals; the old single pair could be equal within one frame and let a depth/camera tween finish after
+  the fit, framing the previous pose. The depth captures settle before fitting (06/18/19).
+- **Not taken: depth on a non-lanes layout.** A `timeline`/`hierarchy` + `layered` frame was prototyped and
+  rejected: the absolute-distance `FogExp2` over-attenuates distant content when the fit moves far away, so the
+  tall layouts read near-black. Recorded as known limitation 17; the depth modes stay captured at lanes.
+
+Verification:
+- `bun run graph:capture --mode=compare` → pass; regenerated `01`–`19` (SpaceGraph) and `07`/`08` (Cytoscape)
+  and inspected `02`, `03`, `11`, `12`, `18`, `19` (the extent fix removes the edge clip; `19` completes the
+  depth spectrum). `bun run graph:capture --mode=verify` → passes.
+- `cd spacegraphjs && node_modules/.bin/vitest run` → 338 tests; `test/boundaries.test.ts` → 6;
+  `packages/spacegraph-renderer bun test` → 13 and typecheck clean; `tsc --noEmit` adds no errors in
+  `CameraUtils`.
+- `cd packages/session-graph && bun run typecheck && bun test src && bun run test:components` → clean, 33, 32.
+- `cd packages/app && bun run typecheck` clean; `bun run typecheck:e2e` → the 4 pre-existing errors;
+  `bun run test:e2e -- e2e/graph/session-graph.spec.ts` → 14 pass, 1 known timeline-virtualizer flake
+  (passes in isolation in 12s).
+- Root `bun run lint:changed` → 0 problems.
+
+Notes for the remaining work:
+- **LE.17 remains** (the R7.3 protocol run and the go/no-go). The capture matrix is now the comparison surface
+  the protocol needs; execution still needs human participants.
+- **Prototype-settings surface** is still absent in the app (the experimental tab is an unavailable placeholder);
+  the representation/layout/depth choosers live in the toolbar (LE.7 deviation) and the renderer selector
+  remains a Storybook-only capture path (limitation 11).
+- **Depth fog is absolute-distance**, so non-lanes depth frames are not legible enough to commit (limitation 17);
+  a scene-relative fade is the library-side follow-up if the protocol selects a depth mode.
+- Remaining library items from earlier passes are unchanged: RF.6 mesh outline (stencil pass), RF.2 `LaneLayout`
+  folding (needs variable sizes), vector-band dimming by design.
+
 ## 0. Mission
 
 
@@ -3504,18 +3557,25 @@ Layout versatility (keep every option legible):
 
 Experimentation harness and acceptance:
 
-- [ ] **LE.16 Option switcher + capture matrix** (partial: the representation chooser and its captures land; see the Phase 10 representation-seam log)
+- [x] **LE.16 Option switcher + capture matrix** (done for the option values; prototype-settings stays a toolbar deviation — see the Phase 10 LE.16 log)
   A prototype-settings switcher for `representation`/`layout`/`depth` (per §4.7), and a capture matrix
   that renders each meaningful combination into the committed screenshot set (numbered, documented),
   with `graph:capture --mode=compare` covering the options. The screenshots become the comparison
   surface for the protocol.
-  Status: the `representation` chooser is in the toolbar (deviation, LE.7) and `15`/`16` capture ribbon/matrix,
-  with `17` capturing the LE.12 file lens and `18` capturing the LE.14 `layered` depth; the full combination matrix,
-  the `depth` axis across representations, and a prototype-settings surface remain.
+  Status: every option value has a committed frame — representation `03`/`15`/`16`, layout `03`/`11`/`12`,
+  depth `03`/`18`/`19`/`06` — plus the file lens `17` and narrow/light `13`/`14`. `--mode=compare`
+  regenerates them and `--mode=verify` asserts the set. The matrix is one frame per option value rather than a
+  cartesian product because representation replaces the layout and depth is a camera/fog treatment over the
+  node-link Z (documented in `prototype.md` §"Capture matrix (LE.16)"). The choosers stay in the toolbar (LE.7
+  deviation; the app's experimental settings tab is an unavailable placeholder), and depth is captured at the
+  lanes framing because absolute-distance fog over-attenuates tall layouts (limitation 17).
 - [ ] **LE.17 Visual acceptance + R7.3 wiring**
   Each batch regenerates and is *inspected* before "done"; the R7.3 protocol runs the five tasks
   against each representation/depth option, and the go/no-go decides the winner. No representation or
   depth mode is removed on taste alone.
+  Status: every batch now regenerates and is inspected against the committed images, and the LE.16 matrix is the
+  comparison surface the protocol needs. The protocol itself still requires human participants, so the go/no-go
+  stays open.
 
 Held requirements from this phase (do not drop):
 

@@ -58,18 +58,23 @@ function canvasSample(page: Page) {
 }
 
 // The graph paints on demand into a preserved drawing buffer, so the capture waits on the buffer itself
-// rather than on DOM state. Two consecutive equal samples prove a camera flight has settled.
+// rather than on DOM state. Two consecutive equal samples, taken across poll intervals, prove a camera
+// flight or projection tween has settled; a single same-frame pair can be equal mid-tween.
 async function waitForStillCanvas(page: Page) {
-  let previous = await canvasSample(page)
+  let previous = ""
+  let still = 0
 
   await expect
-    .poll(async () => {
-      const current = await canvasSample(page)
-      const still = current === previous
-      previous = current
+    .poll(
+      async () => {
+        const current = await canvasSample(page)
+        still = current !== "" && current === previous ? still + 1 : 0
+        previous = current
 
-      return still
-    })
+        return still >= 2
+      },
+      { intervals: [100] },
+    )
     .toBe(true)
 }
 
@@ -149,6 +154,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
+  await waitForStillCanvas(page)
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "06-graph-3d.png")
@@ -157,9 +163,20 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // billboarded and flat-card; the depth spectrum's minimum legible 2.5D bar.
   await page.locator(toolbar).getByRole("button", { name: "Layer", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
+  await waitForStillCanvas(page)
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "18-graph-layered.png")
+
+  // 19 — the `depth-stack` treatment (LE.14/LE.16): the last depth value, completing the spectrum at
+  // the benchmark lanes layout. The matrix captures one frame per option value (LE.16). The pose
+  // animates, so settle before fitting (the fit measures the projected bounds of the settled camera).
+  await page.locator(toolbar).getByRole("button", { name: "Stack", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
+  await waitForStillCanvas(page)
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "19-graph-depth-stack.png")
 
   // 11 — the Timeline layout strategy (RF.2) on the same model.
   await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
