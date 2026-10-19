@@ -1,5 +1,5 @@
 import { produce, reconcile, unwrap } from "solid-js/store"
-import { createEffect, createMemo } from "solid-js"
+import { createEffect, createMemo, type Accessor } from "solid-js"
 import { Effect, Option, Predicate, Schema, SchemaGetter } from "effect"
 import { createSimpleContext } from "@opencode/ui/context"
 import { timelinePresets, type TimelineCategory, type TimelineDetail } from "@opencode/session-ui/timeline/detail"
@@ -8,6 +8,8 @@ import { Persistence } from "@/runtime/persistence/schema"
 import { ScopedKey, type ServerScope } from "@/runtime/server/scope"
 
 export type Settings = typeof settingsSchema.Type
+
+export type { SettingsContext }
 
 export type WorkspaceDefaultDestination = Settings["workspaces"]["defaultDestination"]
 
@@ -124,6 +126,10 @@ const generalSchema = Persistence.struct({
   followUpBehavior: Schema.Literals(["queue", "steer"]),
 })
 
+const experimentalSchema = Persistence.struct({
+  sessionGraph: Schema.Boolean,
+})
+
 const appearanceSchema = Persistence.struct({
   fontSize: Schema.Number,
   mono: Schema.String,
@@ -169,6 +175,7 @@ export const settingsSchema = Persistence.struct({
   sessionSummary: Schema.optional(
     Persistence.struct({ projectExpanded: Schema.Boolean, serverExpanded: Schema.Boolean }),
   ),
+  experimental: experimentalSchema,
   appearance: appearanceSchema,
   keybinds: Persistence.record(Schema.String.pipe(Schema.catchDecoding(() => Effect.succeed(Option.none())))),
   permissions: permissionsSchema,
@@ -284,6 +291,9 @@ export const defaultSettings: Settings = {
     terminalPlacement: "side",
     followUpBehavior: "steer",
   },
+  experimental: {
+    sessionGraph: false,
+  },
   appearance: { fontSize: 14, mono: "", sans: "", terminal: "", tabLayout: "horizontal" },
   keybinds: {},
   permissions: { autoApprove: false, autoApproveProjects: {} },
@@ -299,14 +309,97 @@ export const defaultSettings: Settings = {
   },
 }
 
-function withFallback<T>(read: () => T | undefined, fallback: T) {
+function withFallback<T>(read: () => T | undefined, fallback: T): () => T {
   return createMemo(() => read() ?? fallback)
 }
 
-export const { use: useSettings, provider: SettingsProvider } = createSimpleContext({
+type SettingsContext = {
+  ready: Accessor<boolean> & { promise: undefined | Promise<unknown> }
+  get current(): Settings
+  general: {
+    showFileTree: () => boolean
+    setShowFileTree: (value: boolean) => void
+    timelineDetail: () => TimelineDetail
+    setTimelineDetail: (value: TimelineDetail) => void
+    showCustomAgents: () => boolean
+    setShowCustomAgents: (value: boolean) => void
+    showTurnDiffs: () => boolean
+    setShowTurnDiffs: (value: boolean) => void
+    mobileTitlebarPosition: () => "top" | "bottom"
+    setMobileTitlebarPosition: (value: "top" | "bottom") => void
+    terminalPlacement: () => TerminalPlacement
+    setTerminalPlacement: (value: TerminalPlacement) => void
+    followUpBehavior: () => FollowUpBehavior
+    setFollowUpBehavior: (value: FollowUpBehavior) => void
+  }
+  experimental: {
+    sessionGraph: () => boolean
+    setSessionGraph: (value: boolean) => void
+  }
+  visibility: {
+    fileTree: () => boolean
+    customAgents: () => boolean
+  }
+  appearance: {
+    fontSize: () => number
+    setFontSize: (value: number) => void
+    font: () => string
+    setFont: (value: string) => void
+    uiFont: () => string
+    setUIFont: (value: string) => void
+    terminalFont: () => string
+    setTerminalFont: (value: string) => void
+    tabLayout: () => TabLayout
+    setTabLayout: (value: TabLayout) => void
+  }
+  keybinds: {
+    get: (action: string) => string | undefined
+    set: (action: string, keybind: string) => void
+    reset: (action: string) => void
+    resetAll: () => void
+  }
+  permissions: {
+    autoApproveDefault: () => boolean
+    setAutoApproveDefault: (value: boolean) => void
+    autoApproveOverride: (project: ScopedKey | undefined) => boolean | undefined
+    setAutoApproveOverride: (project: ScopedKey, value: boolean | undefined) => void
+    autoApproves: (project: ScopedKey | undefined) => boolean
+    autoApprovesOnServer: (scope: ServerScope) => boolean
+  }
+  workspaces: {
+    defaultDestination: () => WorkspaceDefaultDestination
+    setDefaultDestination: (value: WorkspaceDefaultDestination) => void
+    lastUsed: (scope: ServerScope, projectID: string) => WorkspaceLastUsed | undefined
+    setLastUsed: (scope: ServerScope, projectID: string, value: WorkspaceLastUsed) => void
+  }
+  notifications: {
+    agent: () => boolean
+    setAgent: (value: boolean) => void
+    permissions: () => boolean
+    setPermissions: (value: boolean) => void
+    errors: () => boolean
+    setErrors: (value: boolean) => void
+  }
+  sounds: {
+    agentEnabled: () => boolean
+    setAgentEnabled: (value: boolean) => void
+    agent: () => string
+    setAgent: (value: string) => void
+    permissionsEnabled: () => boolean
+    setPermissionsEnabled: (value: boolean) => void
+    permissions: () => string
+    setPermissions: (value: string) => void
+    errorsEnabled: () => boolean
+    setErrorsEnabled: (value: boolean) => void
+    errors: () => string
+    setErrors: (value: string) => void
+  }
+}
+
+const { use: useSettings, provider: SettingsProvider } = createSimpleContext<SettingsContext, {}>({
   name: "Settings",
   gate: false,
-  init: () => {
+  init: (): SettingsContext => {
     const [store, setStore, , ready] = persisted({ key: "settings.v3" }, settingsPersistence, defaultSettings)
     const showFileTree = withFallback(() => store.general?.showFileTree, defaultSettings.general.showFileTree)
 
@@ -376,6 +469,15 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
           setStore("general", "followUpBehavior", value)
         },
       },
+      experimental: {
+        sessionGraph: withFallback<boolean>(
+          () => store.experimental?.sessionGraph,
+          defaultSettings.experimental.sessionGraph,
+        ),
+        setSessionGraph(value: boolean) {
+          setStore("experimental", "sessionGraph", value)
+        },
+      } satisfies { sessionGraph: () => boolean; setSessionGraph: (value: boolean) => void },
       visibility: {
         fileTree: showFileTree,
         customAgents: showCustomAgents,
@@ -515,3 +617,5 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
     }
   },
 })
+
+export { useSettings, SettingsProvider }

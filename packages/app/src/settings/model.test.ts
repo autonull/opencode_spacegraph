@@ -98,6 +98,9 @@ describe("settings schema", () => {
         terminalPlacement: "side",
         followUpBehavior: "steer",
       },
+      experimental: {
+        sessionGraph: false,
+      },
       appearance: {
         fontSize: 14,
         mono: "",

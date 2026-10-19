@@ -682,6 +682,8 @@ export const dict = {
   "settings.tab.extensions": "Extensions",
   "settings.tab.experimental": "Experimental",
   "settings.experimental.description": "Try experimental features",
+  "settings.experimental.sessionGraph.title": "Session graph",
+  "settings.experimental.sessionGraph.description": "Visualize session structure as an interactive graph (requires reload)",
   "settings.guiExtensions.title": "Extensions",
   "settings.guiExtensions.description": "Built-in GUI extensions in this window. Development builds only.",
   "settings.guiExtensions.reload": "Reload",

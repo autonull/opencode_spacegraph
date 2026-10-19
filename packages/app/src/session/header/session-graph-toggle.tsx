@@ -6,12 +6,19 @@ import { Tooltip } from "@opencode/ui/tooltip"
 import { useCommand } from "@/shell/commands/command"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useSessionLayout } from "@/session/session-layout"
+import { useSettings } from "@/settings/model"
 
 /** Transcript | graph mode switch for the session header (I4.5). */
 export function SessionGraphToggle() {
   const command = useCommand()
   const language = useLanguage()
   const { graph } = useSessionLayout()
+  const settings = useSettings()
+
+
+  const enabled = settings.experimental.sessionGraph()
+
+  if (!enabled) return null
 
   const active = () => graph().mode() === "graph"
 

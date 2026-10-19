@@ -69,6 +69,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   }
 
   const shown = settings.visibility.fileTree
+  const graphEnabled = settings.experimental.sessionGraph
 
   // The file the selected side tab shows; other tabs have no line selection.
   const activeFile = () => actions.region.selected()?.tab.file
@@ -447,69 +448,74 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
-  const viewCmds = () => [
-    viewCommand({
-      id: "review.toggle",
-      title: language.t("command.review.toggle"),
-      keybind: "mod+shift+r",
-      onSelect: () => actions.session.layout.view().side.toggle(),
-    }),
-    viewCommand({
-      id: "graph.toggle",
-      title: language.t("command.graph.toggle"),
-      keybind: "mod+shift+g",
-      disabled: !actions.session.identity.params.id,
-      onSelect: () => {
-        const graph = actions.session.layout.graph()
-        graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
-      },
-    }),
-    viewCommand({
-      id: "graph.projection",
-      title: language.t("command.graph.projection"),
-      keybind: "mod+alt+g",
-      disabled: !actions.session.identity.params.id,
-      onSelect: () => {
-        const graph = actions.session.layout.graph()
-        graph.setProjection(graph.projection() === "3d" ? "2d" : "3d")
-      },
-    }),
-    viewCommand({
-      id: "graph.turnmap",
-      title: language.t("command.graph.turnmap"),
-      keybind: "mod+alt+t",
-      disabled: !actions.session.identity.params.id,
-      onSelect: () => {
-        const graph = actions.session.layout.graph()
+  const viewCmds = () => {
+    const hasSession = !!actions.session.identity.params.id
+    const enabled = graphEnabled() && hasSession
 
-        if (graph.turnMap()) {
-          graph.setTurnMap(undefined)
+    return [
+      viewCommand({
+        id: "review.toggle",
+        title: language.t("command.review.toggle"),
+        keybind: "mod+shift+r",
+        onSelect: () => actions.session.layout.view().side.toggle(),
+      }),
+      viewCommand({
+        id: "graph.toggle",
+        title: language.t("command.graph.toggle"),
+        keybind: "mod+shift+g",
+        disabled: !enabled,
+        onSelect: () => {
+          const graph = actions.session.layout.graph()
+          graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
+        },
+      }),
+      viewCommand({
+        id: "graph.projection",
+        title: language.t("command.graph.projection"),
+        keybind: "mod+alt+g",
+        disabled: !enabled,
+        onSelect: () => {
+          const graph = actions.session.layout.graph()
+          graph.setProjection(graph.projection() === "3d" ? "2d" : "3d")
+        },
+      }),
+      viewCommand({
+        id: "graph.turnmap",
+        title: language.t("command.graph.turnmap"),
+        keybind: "mod+alt+t",
+        disabled: !enabled,
+        onSelect: () => {
+          const graph = actions.session.layout.graph()
 
-          return
-        }
+          if (graph.turnMap()) {
+            graph.setTurnMap(undefined)
 
-        const selected = graph.selected()
-        const turnID = selected?.startsWith("turn:") ? selected : TURN_MAP_ACTIVE
-        graph.setTurnMap(turnID)
-      },
-    }),
-    ...(shown()
-      ? [
-          viewCommand({
-            id: "fileTree.toggle",
-            title: language.t("command.fileTree.toggle"),
-            keybind: "mod+\\",
-            onSelect: () => layout.fileTree.toggle(),
-          }),
-        ]
-      : []),
-    viewCommand({
-      id: "input.focus",
-      title: language.t("command.input.focus"),
-      keybind: "ctrl+l",
-      onSelect: focusInput,
-    }),
-  ]
+            return
+          }
+
+          const selected = graph.selected()
+          const turnID = selected?.startsWith("turn:") ? selected : TURN_MAP_ACTIVE
+          graph.setTurnMap(turnID)
+        },
+      }),
+      ...(shown()
+        ? [
+            viewCommand({
+              id: "fileTree.toggle",
+              title: language.t("command.fileTree.toggle"),
+              keybind: "mod+\\",
+              onSelect: () => layout.fileTree.toggle(),
+            }),
+          ]
+        : []),
+      viewCommand({
+        id: "input.focus",
+        title: language.t("command.input.focus"),
+        keybind: "ctrl+l",
+        onSelect: focusInput,
+      }),
+    ]
+  }
 
   const messageCmds = () => [
     sessionCommand({

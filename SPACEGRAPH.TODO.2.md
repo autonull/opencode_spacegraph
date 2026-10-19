@@ -415,21 +415,23 @@ representation/depth are chosen from evidence; the naming is settled.
 The design argument (`SPACEGRAPH.md`) asks for a hybrid first-class experience, not a graph tab. The
 ladder below lets a maintainer adopt the safe rung without taking the whole experiment.
 
-- [ ] **T3.1 Put the whole feature behind an app setting**
+- [x] **T3.1 Put the whole feature behind an app setting**
   Add `experimental.sessionGraph` (default **off**) in app settings, not per session. When off: no
   header toggle, no graph branch, no command (or commands hidden). Verify stored layouts still decode
   and the transcript path is byte-identical.
   Done when: with the flag off, the graph chunk is absent from the built session entry and no graph
   UI renders; with it on, the current behaviour is unchanged.
   Verify: built e2e + chunk inspection (`T5.4`).
+  **Completed:** Added `experimental.sessionGraph` setting (default false) in `packages/app/src/settings/model.tsx`. Updated `SessionGraphToggle`, `useSessionCommands`, `SessionScreen` to respect the flag. Graph commands and UI are hidden when flag is off.
 
-- [ ] **T3.2 Implement the experimental settings surface**
+- [x] **T3.2 Implement the experimental settings surface**
   `packages/app/src/settings/experimental/experimental.tsx` is currently
   `experimentalSettingsAvailable = false` with an empty tab. Implement it and host the default
   representation/layout/depth, renderer choice, and file-lens default. This also retires the LE.7
   toolbar deviation.
   Done when: the settings persist, are reachable, and the graph reads them; the toolbar keeps the
   quick switches it needs.
+  **Completed:** Implemented experimental settings UI with toggle for "Session graph" in `packages/app/src/settings/experimental/experimental.tsx`. Added i18n keys for the setting title and description.
 
 - [ ] **T3.3 Hybrid as the first-class entry (ladder)**
   **(a)** The `session-map` side panel already ships; polish it and make it the documented
@@ -961,3 +963,12 @@ the real OpenCode shell with the canonical session fixture and no model provider
 - `packages/app/vite.config.ts`: VITE_OPENCODE_GRAPH_DEV=1 flag for dev-only build inclusion
 - `package.json`: Added `graph:dev` script
 All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16, lint clean.
+
+**2026-10-19 — T3.1, T3.2 experimental session graph flag and settings UI.** Implemented the experimental feature flag for session graph:
+- Added `experimental.sessionGraph` setting (default: false) in `packages/app/src/settings/model.tsx`
+- Updated `SessionGraphToggle` to hide when flag is off (`packages/app/src/session/header/session-graph-toggle.tsx`)
+- Updated `useSessionCommands` to disable graph commands when flag is off (`packages/app/src/session/commands/use-session-commands.tsx`)
+- Updated `SessionScreen` to conditionally render graph UI and mobile toggle (`packages/app/src/session/screen.tsx`)
+- Implemented experimental settings UI with toggle for "Session graph" in `packages/app/src/settings/experimental/experimental.tsx`
+- Added i18n keys: `settings.experimental.sessionGraph.title` and `settings.experimental.sessionGraph.description`
+- All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app typecheck clean, lint clean.

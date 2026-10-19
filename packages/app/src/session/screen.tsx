@@ -21,7 +21,7 @@ import {
 } from "@opencode/gui-extensions/sdk"
 import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
-import { useSettings } from "@/settings/model"
+import { useSettings, type SettingsContext } from "@/settings/model"
 import type { SessionModel } from "@/session/model"
 import { SESSION_PANEL_WIDTH_MIN } from "@/session/session-panel-width"
 import { SessionPanelFrame } from "@/session/session-frame"
@@ -76,7 +76,7 @@ function SessionScreenContent(props: {
   const session = props.session
   const host = useExtensionHost()
   const attachment = useExtensionAttachment()
-  const settings = useSettings()
+  const settings: SettingsContext = useSettings()
   const isDesktop = session.isDesktop
   const bottomMobileTabs = () => settings.general.mobileTitlebarPosition() === "bottom"
   const sidebar = createPanelSidebar()
@@ -99,6 +99,7 @@ function SessionScreenContent(props: {
   const timeline = createSessionTimelineInteraction(session)
 
   const graph = session.layout.graph()
+  const graphEnabled = () => settings.experimental.sessionGraph()
 
   const openGraphTranscript = (messageID: string, partID?: string) => {
     graph.setMode("transcript")
@@ -316,11 +317,11 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={selectMobile}
-          graphActive={graph.mode() === "graph"}
-          onGraphToggle={() => {
+          graphActive={graphEnabled() && graph.mode() === "graph"}
+          onGraphToggle={graphEnabled() ? () => {
             if (mobileView() !== "session") selectMobile("session")
             graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
-          }}
+          } : undefined}
         />
       )}
     </Show>
@@ -384,7 +385,7 @@ function SessionScreenContent(props: {
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
               <Switch>
-                <Match when={graph.mode() === "graph"}>
+                <Match when={graphEnabled() && graph.mode() === "graph"}>
                   <SessionGraphView session={session} onBack={() => graph.setMode("transcript")} onOpenTranscript={openGraphTranscript} />
                 </Match>
                 <Match when={true}>{timelineView()}</Match>
