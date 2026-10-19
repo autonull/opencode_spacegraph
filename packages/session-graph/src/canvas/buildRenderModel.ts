@@ -206,10 +206,12 @@ function buildLaneLabels(
     label: lane.label,
     shape: "panel" as const,
     interactive: false,
-    html: `<div data-lane="${escapeHtml(lane.id)}" style="display:flex;align-items:center;height:100%;box-sizing:border-box;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:inherit;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(lane.label)}</div>`,
+    // T1.10: use textMuted so lane labels have sufficient contrast in both light and dark.
+    // The SpaceGraph adapter maps textMuted to the label color for lane nodes.
+    html: `<div data-lane="${escapeHtml(lane.id)}" style="display:flex;align-items:center;height:100%;box-sizing:border-box;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--lane-label-color);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(lane.label)}</div>`,
     size: LANE_LABEL_SIZE,
     position: [x, lane.y, ZERO.z - 1],
-    data: { lane: lane.id },
+    data: { lane: lane.id, colorToken: "textMuted" },
   }))
 }
 

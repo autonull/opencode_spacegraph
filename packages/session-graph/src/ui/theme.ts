@@ -17,9 +17,8 @@ const TOKENS = {
   warning: "--v2-state-fg-warning",
   error: "--v2-state-fg-danger",
   edge: "--v2-text-text-faint",
-  // T1.10: the border alpha (8%) is invisible on the canvas; inferred edges keep their dashed/thin
-  // distinction but need text-grade contrast to be seen at all.
-  edgeMuted: "--v2-text-text-muted",
+  // T1.10: inferred edges need sufficient contrast in light mode; text-faint (grey-600) works in both.
+  edgeMuted: "--v2-text-text-faint",
   selection: "--v2-text-text-accent",
   focus: "--v2-icon-icon-accent",
   fontFamily: "--v2-font-family-sans",

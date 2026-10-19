@@ -91,6 +91,15 @@ cd spacegraphjs && pnpm exec vitest run && bun run test:boundaries
 The non-OpenCode reference host runs from the library repo: `pnpm run dev:demo` (vite on 5173), then
 `SG_DEMO_URL=… node_modules/.bin/playwright test test/e2e/contract-demo.spec.ts --workers=1`.
 
+## Canonical verification story (T1.6)
+
+The accepted gate for this fork is **`bun run graph:verify`** + per-package typechecks. The repo-level `bun run check`
+fails on this checkout in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`) because the checkout
+lives under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2`
+that shadows the repo's `@types/node@24.12.2`. This is an environmental issue (checkout location), not a fork
+or merge regression — `bun run check` passes on bare upstream in a clean worktree (T0.7). A reviewer should
+run `graph:verify` and the per-package typechecks listed above; any other failures are environmental.
+
 ## Screenshots
 
 Committed in `docs/spacegraph/screenshots/`, deterministic (viewport 1440×900, DPR 1, dark scheme,
@@ -148,6 +157,22 @@ camera/fog treatment over the node-link layout's Z (the summaries place every no
 `--mode=verify` asserts the committed set exists. The depth modes are captured at the compact lanes
 framing, where the fog cue is legible; on a tall layout the absolute-distance fog over-attenuates
 distant content (see known limitation 17).
+
+## Visual checklist (T1.7)
+
+Every capture batch must be inspected against this checklist before committing:
+
+- [ ] **Labels legible:** All toolbar labels, lane chips, axis labels, node labels, and inspector text are readable at 1440×900, 1100×700, and 390×900.
+- [ ] **No clipping:** No label or content is clipped at any of the three viewport sizes.
+- [ ] **No dominant empty region:** The canvas is not mostly empty; content fills the frame proportionally.
+- [ ] **Bands behind content:** Lane bands, phase bands, and depth bands render behind cards, never occluding them.
+- [ ] **Zero console errors:** No errors in the browser console during capture.
+- [ ] **Light and dark:** Both color schemes render correctly with sufficient contrast (≥ 3:1 for non-text, ≥ 4.5:1 for text).
+- [ ] **Selection visible:** The selected node is visible on the canvas, or the UI explains why it is hidden and offers a way to reveal it.
+- [ ] **Breadcrumbs coherent:** Every selected node kind has a meaningful breadcrumb path (provenance for files: Session → turn → file).
+- [ ] **Camera zoom safe:** Fit, ~1.5×, and ~2.5× are all legible and pannable; max zoom is not blank; zoom readout shows percentage.
+
+This checklist is applied by `graph:capture --mode=compare` (manual inspection) and recorded in the log.
 
 ## Renderer comparison (U3.6)
 

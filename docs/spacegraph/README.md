@@ -64,6 +64,32 @@ The authoritative list is in [prototype.md](./prototype.md) §"Known limitations
   options behind one seam; the R7.3 usability protocol decides the winner and is **not yet executed**.
 - First graph paint and pan frame rate are unmeasured; the session-entry delta is unmeasured.
 
+## Verification
+
+The canonical verification gate is `bun run graph:verify`, which runs:
+- Contract conformance (both adapters)
+- Package boundaries (no core → contract/Cytoscape imports)
+- View controller + framework bindings
+- Contract package unit tests
+- SpaceGraph adapter tests
+- Cytoscape adapter tests
+- SVG renderer tests
+- session-graph unit tests
+- session-graph component contract tests (Storybook-backed Playwright)
+- Capture verification
+
+**Environmental note:** `bun run check` fails on this checkout in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`) because the checkout lives under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2` that shadows the repo's `@types/node@24.12.2`. This is an environmental issue (checkout location), not a fork or merge regression — `bun run check` passes on bare upstream in a clean worktree. The accepted gate for this fork is `graph:verify` + per-package typechecks.
+
+To regenerate and inspect screenshots:
+```bash
+bun run graph:capture --mode=compare
+```
+
+To verify committed captures without overwriting:
+```bash
+bun run graph:capture --mode=verify
+```
+
 ## Documents
 
 - [prototype.md](./prototype.md) — hypothesis, architecture, how to run, measurements, limitations,

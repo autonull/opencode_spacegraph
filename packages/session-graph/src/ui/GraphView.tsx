@@ -444,13 +444,16 @@ export const GraphView = (props: GraphViewProps) => {
   const [fitBaseline, setFitBaseline] = createSignal(1)
   let fitPending = false
   let fitSettle: ReturnType<typeof setTimeout> | undefined
-  // A fit emits one viewport before the camera applies it and another as it settles; keep reading
-  // the baseline until the reports stop so the settled frame becomes the 100% reference.
+  // A fit emits viewports as the camera animates; keep reading the baseline until the reports stop
+  // so the settled frame becomes the 100% reference. When settling, capture the final viewport zoom.
   const settleFit = () => {
     if (fitSettle) clearTimeout(fitSettle)
     fitSettle = setTimeout(() => {
       fitSettle = undefined
       fitPending = false
+      // Capture the settled viewport zoom as the fit baseline (100% reference)
+      const current = untrack(viewport)
+      if (current) setFitBaseline(current.zoom)
     }, 120)
   }
   onCleanup(() => fitSettle && clearTimeout(fitSettle))
