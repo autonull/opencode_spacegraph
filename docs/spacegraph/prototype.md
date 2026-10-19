@@ -1,6 +1,8 @@
 # SpaceGraph prototype — final write-up
 
-Companion to `SPACEGRAPH.md` (design) and `SPACEGRAPH.TODO.1.md` (plan, with the full pass log in §0).
+Companion to `SPACEGRAPH.md` (design) and `SPACEGRAPH.TODO.2.md` (living plan). `SPACEGRAPH.TODO.1.md`
+is frozen as the Phase 0–10 specification and pass log.
+
 This is the release artifact for the prototype: what was built, how to run and reproduce it, what was
 measured, and what remains open. `R7.1` (library docs) lives in the `spacegraphjs` repo
 (`README.md`, `AGENTS.md`, `docs/host-integration.md`); the library change history is the `spacegraphjs`
@@ -330,6 +332,13 @@ Carry these forward explicitly; none is silently lowered.
     replaces the layout and depth is a treatment over the node-link Z, so a full product would be redundant.
     The depth axis is captured at the benchmark lanes layout; a depth treatment on the flat ribbon/matrix
     summaries has no structural effect.
+19. **The 2026-10-19 visual review found legibility defects** beyond the planned fixes: toolbar labels clip
+    at 1440; light-theme lane labels fail contrast; selected-file framing clips content; hierarchy collapses
+    to a tiny column; timeline reads as a collage; matrix has no axes and overlapping cells; Cytoscape is
+    clipped and theme-mismatched; depth modes shear and overlap cards; breadcrumbs are provenance-blind; and
+    camera zoom is not exposed and its normalized range is content-unaware (fit ≈ 45%, 100% blank). The Phase 0
+    spike image is stale. Tracked as T1.1–T1.16 in `SPACEGRAPH.TODO.2.md`; per-image evidence is in
+    `docs/spacegraph/visual-review.md`. The current images are pre-fix evidence, not the final set.
 
 ## Evaluation protocol (R7.3)
 

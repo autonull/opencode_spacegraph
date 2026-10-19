@@ -1,5 +1,9 @@
 # SPACEGRAPH.TODO.1 — Spatial Session Graph for OpenCode
 
+> **Frozen 2026-10-19.** This file is the Phase 0–10 specification and historical record. Remaining
+> work and all new tasks live in `SPACEGRAPH.TODO.2.md`. §6 task IDs remain citable; §7 remains the
+> canonical fixture specification.
+
 ## 0. Progress log
 
 **2026-10-18 — restart from Phase 0 (previous attempt reverted).**
