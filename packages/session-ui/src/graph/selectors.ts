@@ -103,12 +103,38 @@ export function subtree(model: GraphModel, id: string): GraphNode[] {
 }
 
 /** Breadcrumb line from the session root down to the node (root first). */
-export function breadcrumbs(model: GraphModel, id: string): GraphNode[] {
+export function breadcrumbs(model: GraphModel, id: string, seen: Set<string> = new Set()): GraphNode[] {
   const node = nodeByID(model, id)
 
-  if (!node) return []
+  if (!node || seen.has(id)) return []
+  seen.add(id)
 
-  return [...ancestors(model, id).reverse(), node]
+  const ancestry = ancestors(model, id)
+
+  if (ancestry.length > 0) return [...ancestry.reverse(), node]
+
+  // Provenance files have no `part-of` edge. Walk one provenance hop to the activity that touched
+  // them so the path still reads Session → turn → tool → file (T1.9).
+  const owner = provenanceOwner(model, node)
+
+  return owner ? [...breadcrumbs(model, owner.id, seen), node] : [node]
+}
+
+const PROVENANCE: ReadonlySet<EdgeKind> = new Set(["writes", "reads", "produces", "searches", "compacts", "evidence"])
+
+function provenanceOwner(model: GraphModel, node: GraphNode): GraphNode | undefined {
+  const related = model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)
+  const ordered = [
+    ...related.filter((edge) => PROVENANCE.has(edge.kind)),
+    ...related.filter((edge) => !PROVENANCE.has(edge.kind)),
+  ]
+
+  for (const edge of ordered) {
+    const other = nodeByID(model, edge.source === node.id ? edge.target : edge.source)
+
+    if (!other || other.id === node.id) continue
+    if (other.id === model.root || other.turnID || ancestors(model, other.id).length > 0) return other
+  }
 }
 
 /**

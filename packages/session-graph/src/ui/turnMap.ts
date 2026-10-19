@@ -21,5 +21,9 @@ export function buildTurnRenderModel(
   const scoped = turnGraphModel(model, turnID, options.limit)
   const level = options.level ?? "execution"
 
-  return buildRenderModel(scoped, { level, positions: layoutGraph(scoped).positions, renderCard: options.renderCard })
+  return buildRenderModel(scoped, {
+    level,
+    positions: layoutGraph(scoped, { level }).positions,
+    renderCard: options.renderCard,
+  })
 }

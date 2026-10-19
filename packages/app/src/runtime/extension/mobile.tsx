@@ -2,6 +2,7 @@ import { createMemo, For, lazy, Show, Suspense, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Tabs } from "@opencode/ui/tabs"
 import { Icon } from "@opencode/ui/icon"
+import { IconButton } from "@opencode/ui/icon-button"
 import {
   Panel,
   type PanelSidebar,
@@ -64,6 +65,9 @@ export function MobileViewTabs(props: {
   sidebar: PanelSidebar
   bottom?: boolean
   onSelect: (key: string) => void
+  /** T1.4: the graph mode switch, which has no header slot on narrow screens. */
+  graphActive?: boolean
+  onGraphToggle?: () => void
 }): JSX.Element {
   const language = useLanguage()
 
@@ -132,6 +136,19 @@ export function MobileViewTabs(props: {
           </Show>
         </Tabs.List>
       </Tabs>
+      <Show when={props.onGraphToggle}>
+        <IconButton
+          type="button"
+          variant="ghost-muted"
+          size="large"
+          class="shrink-0"
+          state={props.graphActive ? "pressed" : undefined}
+          onClick={props.onGraphToggle}
+          aria-label={language.t("command.graph.toggle")}
+          aria-pressed={props.graphActive}
+          icon={<Icon name="window-analytics" />}
+        />
+      </Show>
       <Show when={store.loaded}>
         <Suspense>
           <MobilePanelDrawer

@@ -30,6 +30,15 @@ describe("selectors — the five mission questions", () => {
     ])
   })
 
+  test("a provenance file derives a path through the tool that wrote it (T1.9)", () => {
+    const path = breadcrumbs(model, fileNodeID("src/auth/token.ts")).map((node) => node.id)
+
+    expect(path[0]).toBe("session")
+    expect(path.at(-1)).toBe(fileNodeID("src/auth/token.ts"))
+    expect(path).toContain(toolNodeID("prt_tool_write_1"))
+    expect(path.length).toBeGreaterThan(2)
+  })
+
   test("2. which tool calls led to this failure? — the producing tool reaches the failed result", () => {
     const failed = model.nodes.find((node) => node.kind === "result" && node.status === "failed")
     const producedBy = why(model, failed!.id).incoming.filter((edge) => edge.kind === "produces")

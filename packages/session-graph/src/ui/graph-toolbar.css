@@ -1,0 +1,14 @@
+/*
+ * T1.1: the shared segmented control has a fixed 232px width. Inside the graph toolbar that width
+ * clips the widest labels ("Execution", "Hierarchy") at 1440x900. Size the controls to their labels
+ * instead; the toolbar already wraps, so this only trades horizontal clipping for a wrapped row.
+ */
+[data-slot="graph-toolbar"] [data-slot="segmented-control-v2"] {
+  width: auto;
+  max-width: 100%;
+}
+
+[data-slot="graph-toolbar"] [data-slot="segmented-control-v2-item"] {
+  flex: 0 0 auto;
+  padding: 0 10px;
+}

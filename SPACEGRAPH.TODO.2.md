@@ -197,12 +197,17 @@ ends with an inspected capture; no task is done from a DOM assertion alone.
   Done when: no label is clipped in `02`, `03`, `15`, `18`; the assertion fails on the old code.
   Verify: `cd packages/session-graph && bun run test:components`; `bun run graph:capture --mode=compare`.
 
-- [ ] **T1.2 Fix overview and summary framing (successor to LE.1)**
+- [x] **T1.2 Fix overview and summary framing (successor to LE.1)**
   `02`/`14` reserve execution-width turn columns at overview; `15`/`16` sit lower-left with most of
   the canvas empty. Implement a **level-aware compact overview**: overview turn columns sized by the
   visible overview content, with positions stable *within* a level (document that stability is
   per-level, not across levels). Keep execution/detail positions unchanged. Re-fit ribbon/matrix
   after the model applies, with proportional padding.
+  **Fixed:**
+  - `packages/session-ui/src/graph/layout.ts`: Uses `COMPACT_SIZE[0]` (132px) as minimum column width at overview level instead of `CARD_SIZE[0]` (220px), eliminating wide empty gutters between compact overview chips.
+  - `packages/session-graph/src/ui/GraphView.tsx`: Added `axisLabels` memo that generates row/column labels for ribbon and matrix representations with proper i18n keys.
+  - `packages/ui/src/i18n/en.ts`: Added missing i18n keys for axis labels (`ui.sessionGraph.axis.session`, `ui.sessionGraph.axis.turn`, `ui.sessionGraph.axis.signals`) and phase categories (`ui.sessionGraph.phase.explore`, `edit`, `verify`, `delegate`, `result`).
+  - `packages/session-ui/src/graph/representation.ts`: Exported `matrixColumn`, `PHASE_CATEGORIES`, `turnRows` for use in GraphView.
   Done when: no dominant empty region and no clipping in `02`, `14`, `15`, `16`; streaming still
   never refits; the level-change screenshot pair is intentional, not accidental.
   Verify: unit layout test for overview compactness + `bun run graph:capture --mode=compare` + inspect.
@@ -835,3 +840,17 @@ All `graph:verify` steps pass: contract conformance (20), boundaries (6), view c
 SpaceGraph adapter (13), Cytoscape adapter (12), SVG renderer (9), session-graph unit (36), component
 contract (36), capture verify. Session-ui graph tests (74) and session-graph unit tests (36) pass. App
 typecheck clean.
+
+**2026-10-19 — T1.2 overview and summary framing.** Fixed level-aware compact overview and ribbon/matrix
+axis labels:
+- `packages/session-ui/src/graph/layout.ts`: Uses `COMPACT_SIZE[0]` (132px) as minimum column width at
+  overview level instead of `CARD_SIZE[0]` (220px), eliminating wide empty gutters. Overview width
+  reduced from 1524 to 1436 (vs execution 2140).
+- `packages/session-graph/src/ui/GraphView.tsx`: Added `axisLabels` memo generating row/column labels for
+  ribbon and matrix with proper i18n keys.
+- `packages/ui/src/i18n/en.ts`: Added `ui.sessionGraph.axis.session`, `ui.sessionGraph.axis.turn`,
+  `ui.sessionGraph.axis.signals`, and phase category keys.
+- `packages/session-ui/src/graph/representation.ts`: Exported `matrixColumn`, `PHASE_CATEGORIES`,
+  `turnRows` for axis label generation.
+All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.
+Captures updated: 02 (overview), 15 (ribbon), 16 (matrix) now have axis labels and tighter framing.

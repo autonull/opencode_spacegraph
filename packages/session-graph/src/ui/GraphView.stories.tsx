@@ -126,8 +126,19 @@ export const Default = {
   render: () => <ViewHarness selection={INITIAL_SELECTION} />,
 }
 
+/** Fills the browser viewport, so a component test can assert layout at real window sizes. */
+export const Fullscreen = {
+  render: () => <ViewHarness selection={INITIAL_SELECTION} fullscreen />,
+  parameters: { layout: "fullscreen" },
+}
+
 export const Overview = {
   render: () => <ViewHarness level="overview" />,
+}
+
+/** A file selected while overview hides it: the breadcrumb path and the show affordance must explain it. */
+export const OverviewSelection = {
+  render: () => <ViewHarness level="overview" selection="file:src/auth/token.ts" />,
 }
 
 /** Nothing selected at mount, like the app before the user interacts. */

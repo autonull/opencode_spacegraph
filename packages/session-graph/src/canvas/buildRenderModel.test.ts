@@ -176,6 +176,9 @@ test("turn and phase swimlane bands wrap the members visible at the level (RF.5)
     expect(band.interactive).toBe(false)
     expect(band.html).toBeDefined()
     expect(band.size?.[0]).toBeGreaterThan(0)
+    // T1.3: a backdrop stays on the content plane facing the camera in a tilted depth treatment.
+    expect(band.position[2]).toBe(0)
+    expect(band.data?.billboard).toBe(true)
   }
 
   // Execution draws a band per turn and per expanded phase.

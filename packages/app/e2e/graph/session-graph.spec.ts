@@ -56,6 +56,25 @@ test("switches to the graph, renders the fixture, and persists the mode", async 
   expect(errors).toEqual([])
 })
 
+test("offers the graph switch on a narrow mobile viewport", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.setViewportSize({ width: 390, height: 900 })
+  await openSession(page, graphFixture())
+
+  // T1.4: the desktop header toggle is absent, so the mobile tab surface carries the switch.
+  const toggle = page.getByRole("button", { name: "Toggle graph view" })
+  await expect(toggle).toBeVisible()
+  await toggle.click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(toolbar)).toBeVisible()
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  )
+  expect(overflow).toBeLessThanOrEqual(1)
+  expect(errors).toEqual([])
+})
+
 test("switches to the ribbon representation and persists it", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
@@ -272,7 +291,21 @@ test("restores the transcript position after leaving the graph", async ({ page }
     element.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -600 }))
     element.scrollTop -= 600
   })
-  const before = await scroller.evaluate((element) => Math.round(element.scrollTop))
+  // The virtualizer settles late measurements by nudging the offset to hold the visible row; one
+  // nudge is a valid position, not a restore failure, so record the offset once it stops moving.
+  const before = await scroller.evaluate(async (element) => {
+    const frame = () => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(element.scrollTop)))
+    let previous = await frame()
+
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const next = await frame()
+
+      if (Math.abs(next - previous) < 1) return Math.round(next)
+      previous = next
+    }
+
+    return Math.round(previous)
+  })
   expect(before).toBeGreaterThan(0)
 
   await page.getByRole("button", { name: "Toggle graph view" }).click()

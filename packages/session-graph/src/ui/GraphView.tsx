@@ -5,16 +5,20 @@ import {
   ancestors,
   breadcrumbs,
   changedFiles,
+  COMPACT_SIZE,
   laneAnchors,
   layoutGraph,
   LEVEL_RANK,
   isVisibleAt,
+  matrixColumn,
   matrixLayout,
   minLevelOf,
   nodeByID,
+  nodeSize,
   representationLevel,
   ribbonLayout,
   subtree,
+  turnRows,
 } from "@opencode/session-ui/graph"
 import { GraphController } from "spacegraphjs/control"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -187,6 +191,68 @@ export const GraphView = (props: GraphViewProps) => {
   // LE.7: the ribbon and matrix are overview-first summaries; the graph is the only representation the
   // semantic level control drives.
   const effectiveLevel = createMemo<ZoomLevel>(() => representationLevel(representation()) ?? level())
+  const axisLabels = createMemo(() => {
+    const rep = representation()
+    if (rep !== "ribbon" && rep !== "matrix") return undefined
+
+    const rows = turnRows(props.model)
+    const labels: { id: string; label: string; x: number; y: number; role: "row" | "column" }[] = []
+
+    // Row labels (turns/session)
+    rows.forEach((nodes, rowIndex) => {
+      const turnNode = nodes.find((n) => n.kind === "turn" || n.kind === "session")
+      const label = turnNode
+        ? turnNode.kind === "session"
+          ? i18n.t("ui.sessionGraph.axis.session")
+          : i18n.t("ui.sessionGraph.axis.turn", { num: props.model.turns.indexOf(turnNode.id) + 1 })
+        : ""
+      if (label) {
+        // Position at left of row
+        const y = rowIndex * (COMPACT_SIZE[1] + 20)
+        labels.push({ id: `row:${rowIndex}`, label, x: -100, y, role: "row" })
+      }
+    })
+
+    // Column labels (phase categories)
+    const categories = ["explore", "edit", "verify", "delegate", "result"]
+    if (rep === "ribbon") {
+      // Ribbon: phases laid out horizontally per row
+      let cursor = 0
+      const gap = 24
+      for (const cat of categories) {
+        const catLabel = i18n.t(`ui.sessionGraph.phase.${cat}`)
+        labels.push({ id: `col:${cat}`, label: catLabel, x: cursor, y: -30, role: "column" })
+        cursor += COMPACT_SIZE[0] + gap
+      }
+    } else {
+      // Matrix: columns have fixed positions
+      const columnWidth = new Map<number, number>()
+      const gap = 24
+      rows.forEach((nodes, row) => {
+        for (const node of nodes) {
+          const col = matrixColumn(node)
+          const width = nodeSize(node)[0]
+          columnWidth.set(col, Math.max(columnWidth.get(col) ?? COMPACT_SIZE[0], width))
+        }
+      })
+      let x = 0
+      columnWidth.forEach((width, col) => {
+        let catLabel: string
+        if (col === 0) {
+          catLabel = i18n.t("ui.sessionGraph.axis.turn")
+        } else if (col <= categories.length) {
+          catLabel = i18n.t(`ui.sessionGraph.phase.${categories[col - 1]}`)
+        } else {
+          catLabel = i18n.t("ui.sessionGraph.axis.signals")
+        }
+        labels.push({ id: `col:${col}`, label: catLabel, x: x + width / 2, y: -30, role: "column" })
+        x += width + gap
+      })
+    }
+
+    return labels
+  })
+
   const renderModel = createMemo(() =>
     buildRenderModel(props.model, {
       level: effectiveLevel(),
@@ -199,6 +265,7 @@ export const GraphView = (props: GraphViewProps) => {
         representation() === "graph" && strategy() === "lanes"
           ? laneAnchors().map((lane) => ({ id: lane.name, label: i18n.t(LANE_KEY[lane.name]), y: lane.y }))
           : undefined,
+      axisLabels: axisLabels(),
       renderCard: renderCard(),
       renderBand: renderBand(),
     }),

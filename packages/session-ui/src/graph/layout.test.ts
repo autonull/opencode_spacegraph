@@ -3,6 +3,7 @@ import type { SessionMessageInfo } from "@opencode/client/promise"
 import { buildFixtureGraph } from "./fixture"
 import { buildGraph, fileNodeID, toolNodeID, turnNodeID } from "./model"
 import { CARD_SIZE, LANES, layoutGraph, nodeSize, type GraphLayout } from "./layout"
+import { isVisibleAt } from "./levels"
 
 const user = (id: string, text = id) => ({ id, type: "user", text, time: { created: 1 } }) as const
 
@@ -98,6 +99,61 @@ describe("layout — lanes, depth and provenance anchoring", () => {
   })
 })
 
+describe("layout — level-aware overview", () => {
+  test("overview sizes turn columns from the nodes overview draws", () => {
+    const model = buildFixtureGraph()
+    const overview = layoutGraph(model, { level: "overview" })
+    const execution = layoutGraph(model, { level: "execution" })
+    const width = (layout: GraphLayout) => {
+      const xs = [...layout.positions.values()].map((point) => point.x)
+      return Math.max(...xs) - Math.min(...xs)
+    }
+
+    expect(width(overview)).toBeLessThan(width(execution))
+  })
+
+  test("overview places every visible node and no hidden one", () => {
+    const model = buildFixtureGraph()
+    const overview = layoutGraph(model, { level: "overview" })
+
+    for (const node of model.nodes) expect(overview.positions.has(node.id)).toBe(isVisibleAt(node, "overview"))
+  })
+
+  test("overview chips do not overlap within a row", () => {
+    const model = buildFixtureGraph()
+    const overview = layoutGraph(model, { level: "overview" })
+    const placed = model.nodes.filter((node) => overview.positions.has(node.id))
+
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        const [a, b] = [placed[i]!, placed[j]!]
+        const [pa, pb] = [overview.positions.get(a.id)!, overview.positions.get(b.id)!]
+
+        if (pa.y !== pb.y) continue
+
+        expect(Math.abs(pa.x - pb.x)).toBeGreaterThanOrEqual((nodeSize(a)[0] + nodeSize(b)[0]) / 2)
+      }
+    }
+  })
+
+  test("execution and detail keep the positions of the unlevelled layout", () => {
+    const model = buildFixtureGraph()
+    const base = [...layoutGraph(model).positions.entries()]
+
+    for (const level of ["execution", "detail"] as const)
+      expect([...layoutGraph(model, { level }).positions.entries()]).toEqual(base)
+  })
+
+  test("overview is stable within the level across appends", () => {
+    const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
+    const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
+    const before = layoutGraph(buildGraph(base, { type: "idle" }), { level: "overview" })
+    const after = layoutGraph(buildGraph(extended, { type: "idle" }), { level: "overview" })
+
+    for (const id of before.positions.keys()) expect(after.positions.get(id)).toEqual(before.positions.get(id))
+  })
+})
+
 describe("layout — alternate strategies", () => {
   test("timeline and hierarchy are deterministic and place every node", () => {
     const model = buildFixtureGraph()
@@ -142,18 +198,44 @@ describe("layout — alternate strategies", () => {
     }
   })
 
-  test("hierarchy gives each node its own row, indented by depth", () => {
+  test("timeline starts each turn on its own row band and labels the boundary", () => {
     const model = buildFixtureGraph()
-    const layout = layoutGraph(model, { strategy: "hierarchy" })
+    const layout = layoutGraph(model, { strategy: "timeline", columns: 5 })
+    const ranges = model.turns.map((turnID) => {
+      expect(layout.clusters.has(turnID)).toBe(true)
+      const ys = model.nodes
+        .filter((node) => node.turnID === turnID || node.id === turnID)
+        .flatMap((node) => {
+          const point = layout.positions.get(node.id)
+          return point ? [point.y] : []
+        })
+
+      return { min: Math.min(...ys), max: Math.max(...ys) }
+    })
+
+    for (let i = 1; i < ranges.length; i++) expect(ranges[i]!.min).toBeGreaterThan(ranges[i - 1]!.max)
+  })
+
+  test("hierarchy wraps its outline into capped columns, indented by depth", () => {
+    const model = buildFixtureGraph()
+    const rows = 8
+    const layout = layoutGraph(model, { strategy: "hierarchy", rows })
     const points = [...layout.positions.values()]
 
-    // One node per row, so every Y is distinct.
-    expect(new Set(points.map((point) => point.y)).size).toBe(model.nodes.length)
+    // At most `rows` rows are used, so the fitted height stays legible; extra nodes wrap columns.
+    expect(new Set(points.map((point) => point.y)).size).toBeLessThanOrEqual(rows)
+    expect(new Set(points.map((point) => point.x)).size).toBeGreaterThan(rows)
 
     // Deeper kinds sit further right and further back.
     const session = point(layout, "session")!
     const tool = point(layout, toolNodeID("prt_tool_read_1"))!
     expect(tool.x).toBeGreaterThan(session.x)
     expect(tool.z).toBeGreaterThan(session.z)
+
+    // Every node still has a position and two builds agree.
+    expect(layout.positions.size).toBe(model.nodes.length)
+    expect([...layoutGraph(model, { strategy: "hierarchy", rows }).positions.entries()]).toEqual([
+      ...layout.positions.entries(),
+    ])
   })
 })

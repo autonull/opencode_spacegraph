@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { buildFixtureGraph } from "./fixture"
 import { matrixLayout, representationLevel, ribbonLayout } from "./representation"
 import { nodesAtLevel } from "./levels"
+import { nodeSize } from "./layout"
 import { turnNodeID } from "./model"
 
 describe("representation — ribbon and matrix layouts (LE.7–LE.9)", () => {
@@ -47,6 +48,26 @@ describe("representation — ribbon and matrix layouts (LE.7–LE.9)", () => {
       const point = positions.get(phase.id)!
       expect(point.y).toBe(turnRow)
       expect(point.x).toBeGreaterThan(turnX)
+    }
+  })
+
+  test("ribbon and matrix never overlap two segments or cells (T1.11)", () => {
+    const model = buildFixtureGraph()
+    const visible = nodesAtLevel(model, "overview")
+
+    for (const layout of [ribbonLayout(model), matrixLayout(model)]) {
+      const placed = visible.map((node) => ({ node, point: layout.positions.get(node.id)! }))
+
+      for (let i = 0; i < placed.length; i++) {
+        for (let j = i + 1; j < placed.length; j++) {
+          const [a, b] = [placed[i]!, placed[j]!]
+
+          if (Math.abs(a.point.y - b.point.y) >= 1) continue
+
+          const gap = Math.abs(a.point.x - b.point.x) - (nodeSize(a.node)[0] + nodeSize(b.node)[0]) / 2
+          expect(gap).toBeGreaterThanOrEqual(0)
+        }
+      }
     }
   })
 

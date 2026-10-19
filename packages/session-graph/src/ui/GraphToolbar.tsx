@@ -5,6 +5,7 @@ import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
+import "./graph-toolbar.css"
 import {
   LAYOUT_STRATEGIES,
   REPRESENTATIONS,
@@ -50,6 +51,12 @@ export type GraphToolbarProps = {
   capabilities?: RendererCapabilities
   renderer?: string
   onFit: () => void
+  /** T1.8: camera zoom, independent of the semantic level control. */
+  zoomPercent?: number
+  onZoomOut?: () => void
+  onZoomIn?: () => void
+  zoomOutDisabled?: boolean
+  zoomInDisabled?: boolean
   onSearch: () => void
   /** RF.2: the visible layout chooser; absent when the host does not offer strategies. */
   strategy?: LayoutStrategy
@@ -84,11 +91,6 @@ export type GraphToolbarProps = {
  */
 export const GraphToolbar = (props: GraphToolbarProps) => {
   const i18n = useI18n()
-  const step = (direction: 1 | -1) => {
-    const index = LEVELS.indexOf(props.level)
-    const next = LEVELS[Math.min(LEVELS.length - 1, Math.max(0, index + direction))]
-    if (next !== props.level) props.onLevel(next)
-  }
   // The level and layout controls drive the node-link graph only; the ribbon/matrix are overview-first.
   const graphMode = () => props.representation === undefined || props.representation === "graph"
   const depthAvailable = (depth: DepthMode) => !props.capabilities || supportsDepth(props.capabilities, depth)
@@ -217,23 +219,30 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         ))}
       </SegmentedControl>
 
-      <div class="flex items-center">
+      <div class="flex items-center gap-1">
         <IconButton
           size="small"
           variant="ghost"
           aria-label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
           title={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
-          disabled={!graphMode() || props.level === "overview"}
-          onClick={() => step(-1)}
+          disabled={!graphMode() || props.zoomOutDisabled}
+          onClick={() => props.onZoomOut?.()}
           icon={<Icon name="expand" size="small" />}
         />
+        <span
+          data-slot="graph-zoom-level"
+          class="min-w-9 text-center text-12-regular tabular-nums text-text-weak"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomPercent", { percent: String(props.zoomPercent ?? 100) })}
+        >
+          {props.zoomPercent ?? 100}%
+        </span>
         <IconButton
           size="small"
           variant="ghost"
           aria-label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
           title={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
-          disabled={!graphMode() || props.level === "detail"}
-          onClick={() => step(1)}
+          disabled={!graphMode() || props.zoomInDisabled}
+          onClick={() => props.onZoomIn?.()}
           icon={<Icon name="plus" size="small" />}
         />
       </div>

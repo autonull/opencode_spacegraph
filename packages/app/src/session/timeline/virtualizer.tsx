@@ -191,6 +191,20 @@ export function createTimelineVirtualizer(input: Input) {
   // The last unpinned offset. Graph mode detaches and reattaches this scroll element without
   // recreating the virtualizer, so the live scrollTop is lost; restore this on reconnect.
   let rememberedOffset = 0
+  // Detaching can happen before the browser delivers the scroll event for the user's last move, so
+  // snapshot the live offset when this timeline deactivates (graph mode) rather than relying on it.
+  createEffect(
+    on(
+      active,
+      (isActive) => {
+        const root = listRoot()
+
+        if (isActive || !root || input.pinned()) return
+        rememberedOffset = root.scrollTop
+      },
+      { defer: true },
+    ),
+  )
   let reportOffset: ((offset: number, scrolling: boolean) => void) | undefined
   let reportRect: ((rect: { width: number; height: number }) => void) | undefined
   let batchingColdSizes = false
@@ -755,13 +769,14 @@ export function createTimelineVirtualizer(input: Input) {
   // under a viewport that was already there. Merely resting near the end is not enough, otherwise
   // a later scroll would overwrite an upward intent expressed a pixel short of the bottom.
   const handleListScroll = (event: Event & { currentTarget: HTMLDivElement }) => {
-    if (!active()) return
     const root = event.currentTarget
+    // Record a detached view's offset: the reconnect restore reads it, and no later scroll event
+    // may arrive before the element is reattached.
+    if (!input.pinned()) rememberedOffset = root.scrollTop
+    if (!active()) return
     const previousTop = scrollTop
     const previousMaxScroll = maxScroll
     scrollTop = root.scrollTop
-
-    if (!input.pinned()) rememberedOffset = root.scrollTop
     maxScroll = root.scrollHeight - root.clientHeight
     const atEnd = maxScroll - scrollTop <= endEpsilon
     const arrived = scrollTop > previousTop + endEpsilon || maxScroll < previousMaxScroll

@@ -1,5 +1,6 @@
-import type { GraphModel, GraphNode, NodeKind } from "./model"
+import type { GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
+import { nodesAtLevel } from "./levels"
 
 /**
  * Deterministic, append-only layout (§5.5): no physics, no re-layout on mutation. Positions depend
@@ -30,6 +31,15 @@ export type LayoutOptions = {
   columns?: number
   /** Timeline/hierarchy: vertical distance between rows. */
   rowGap?: number
+  /** Hierarchy: rows per column before the outline wraps into the next column. */
+  rows?: number
+  /**
+   * Semantic level the layout is sized for. Only `overview` changes the geometry: columns are sized
+   * from the nodes overview draws instead of reserving execution card widths for hidden work.
+   * Stability is per level; switching levels may move a node, but streaming never moves an existing
+   * node within the same level. `undefined` means every node participates (execution/detail).
+   */
+  level?: ZoomLevel
 }
 
 /** Rendered card footprint; keep in sync with the SpaceGraph adapter's HTML card defaults. */
@@ -162,13 +172,17 @@ function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
 
   const positions = new Map<string, Position>()
 
+  // T1.2: at overview only the nodes overview draws consume column width. Hidden execution cards
+  // would otherwise leave wide empty gutters between the compact overview chips.
+  const nodes = options.level === "overview" ? nodesAtLevel(model, "overview") : model.nodes
+
   const yFor = (node: GraphNode): number => LANES.indexOf(laneOf(node)) * laneHeight
 
   const place = (node: GraphNode, x: number) => positions.set(node.id, { x, y: yFor(node), z: DEPTH[node.kind] * depthStep })
 
   const fileOwners = new Map<string, string>()
 
-  for (const node of model.nodes) {
+  for (const node of nodes) {
     if (node.kind !== "file") continue
     const turnID = fileOwnerTurn(model, node)
 
@@ -177,7 +191,7 @@ function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
 
   const groups: NodeGroup[] = []
 
-  const sessionNodes = model.nodes.filter(
+  const sessionNodes = nodes.filter(
     (node) => node.id === model.root || (node.kind === "file" && !fileOwners.has(node.id)),
   )
 
@@ -185,7 +199,7 @@ function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
 
   for (const turnID of model.turns)
     groups.push({
-      nodes: model.nodes.filter((node) => node.turnID === turnID || fileOwners.get(node.id) === turnID),
+      nodes: nodes.filter((node) => node.turnID === turnID || fileOwners.get(node.id) === turnID),
       turnID,
     })
 
@@ -213,7 +227,8 @@ function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
 
     for (const entry of staged) place(entry.node, entry.x)
 
-    const width = Math.max(...[...cursors.values()].map((end) => end - gap - columnX), CARD_SIZE[0])
+    const minColumnWidth = options.level === "overview" ? COMPACT_SIZE[0] : CARD_SIZE[0]
+    const width = Math.max(...[...cursors.values()].map((end) => end - gap - columnX), minColumnWidth)
     columnX += width + turnGap
   }
 
@@ -261,6 +276,8 @@ function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout 
   const positions = new Map<string, Position>()
   let row = 0
 
+  // T1.13: each block starts a fresh row band and leaves one empty row before the next, so turn
+  // boundaries read top-to-bottom instead of interleaving unrelated activity.
   for (const nodes of turnBlocks(model)) {
     for (let i = 0; i < nodes.length; i += columns) {
       let cursor = 0
@@ -273,9 +290,21 @@ function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout 
 
       row += 1
     }
+
+    row += 1
   }
 
   const clusters = new Map<string, ClusterBounds>()
+
+  // Turn bands label each chronological block; without them the timeline has no visible boundaries.
+  for (const turnID of model.turns) {
+    const members = memberPositions(
+      [turnID, ...model.nodes.filter((node) => node.turnID === turnID).map((node) => node.id)],
+      positions,
+    )
+
+    if (members) clusters.set(turnID, members)
+  }
 
   for (const node of model.nodes) {
     if (node.kind !== "phase" || !node.clusterOf) continue
@@ -301,22 +330,39 @@ function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout 
  * No turn/phase bands: an indent outline has no per-turn rectangle.
  */
 function hierarchyLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
-  const gap = options.gap ?? 24
   const rowGap = options.rowGap ?? 12
   const depthStep = options.depthStep ?? 64
   const rowHeight = CARD_SIZE[1] + rowGap
+  // T1.12: a single 60-row column shrinks to an illegible sliver when fitted. Cap the column height
+  // and wrap the outline into columns so the fit stays above the legibility floor.
+  const rowsPerColumn = Math.max(1, options.rows ?? 14)
+  const indentStep = 96
+  const columnWidth = indentStep * 3 + CARD_SIZE[0]
 
   const positions = new Map<string, Position>()
-  const indent = (depth: number) => depth * (COMPACT_SIZE[0] + gap * 2)
+  const indent = (depth: number) => depth * indentStep
 
-  let row = 0
+  let column = 0
 
   for (const nodes of turnBlocks(model)) {
+    let row = 0
+
     for (const node of nodes) {
+      if (row >= rowsPerColumn) {
+        row = 0
+        column += 1
+      }
+
       const depth = DEPTH[node.kind]
-      positions.set(node.id, { x: indent(depth) + CARD_SIZE[0] / 2, y: row * rowHeight, z: depth * depthStep })
+      positions.set(node.id, {
+        x: column * columnWidth + indent(depth) + CARD_SIZE[0] / 2,
+        y: row * rowHeight,
+        z: depth * depthStep,
+      })
       row += 1
     }
+
+    column += 1
   }
 
   const all = [...positions.values()]

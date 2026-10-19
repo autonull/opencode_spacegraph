@@ -316,6 +316,11 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={selectMobile}
+          graphActive={graph.mode() === "graph"}
+          onGraphToggle={() => {
+            if (mobileView() !== "session") selectMobile("session")
+            graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
+          }}
         />
       )}
     </Show>

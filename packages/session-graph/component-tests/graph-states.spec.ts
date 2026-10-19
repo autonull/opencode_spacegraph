@@ -56,6 +56,26 @@ story("renders the overview level with the level control reflecting it", async (
   await expect(root.locator('button[aria-label="Zoom in"]')).toBeEnabled()
 })
 
+story("explains a selection the current level hides and reveals it", async ({ mount }) => {
+  const root = await mount("session-graph-view--overview-selection")
+  await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
+    timeout: 30_000,
+  })
+
+  // A provenance file has no part-of ancestry; the path comes from the tool that wrote it.
+  const breadcrumbs = root.locator('[data-slot="graph-breadcrumbs"]')
+  await expect(breadcrumbs).toContainText("Session")
+  await expect(breadcrumbs).toContainText("src/auth/token.ts")
+
+  const hidden = root.locator('[data-slot="graph-selection-hidden"]')
+  await expect(hidden).toContainText("src/auth/token.ts")
+  await hidden.getByRole("button", { name: "Show" }).click()
+
+  await expect(root.getByRole("button", { name: "Execution", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(hidden).toHaveCount(0)
+  await expect(root.locator('[data-slot="graph-inspector"]').getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
+})
+
 story("fits a narrow mobile viewport without horizontal overflow", async ({ mount }) => {
   const root = await mount("session-graph-view--narrow")
 
@@ -74,6 +94,47 @@ story("fits a narrow mobile viewport without horizontal overflow", async ({ moun
 
   const width = await root.evaluate((element) => element.scrollWidth - element.clientWidth)
   expect(width).toBeLessThanOrEqual(1)
+})
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1100, height: 700 },
+]) {
+  story(`keeps every toolbar label unclipped at ${viewport.width}x${viewport.height}`, async ({ mount, page }) => {
+    await page.setViewportSize(viewport)
+    const root = await mount("session-graph-view--fullscreen")
+
+    const controls = root.locator('[data-slot="graph-toolbar"] [data-slot="segmented-control-v2"]')
+    expect(await controls.count()).toBeGreaterThan(0)
+
+    const clipped = await root.locator('[data-slot="graph-toolbar"] [data-slot="segmented-control-v2-item-label"]').evaluateAll((labels) =>
+      labels
+        .filter((label) => label.scrollWidth > label.clientWidth + 1)
+        .map((label) => label.textContent ?? ""),
+    )
+    expect(clipped).toEqual([])
+  })
+}
+
+story("keeps content visible at both camera zoom limits", async ({ mount, page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const root = await mount("session-graph-view--fullscreen")
+  await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
+    timeout: 30_000,
+  })
+
+  const readout = root.locator('[data-slot="graph-zoom-level"]')
+  await expect(readout).toContainText("100%")
+
+  const zoomIn = root.getByRole("button", { name: "Zoom in", exact: true })
+  for (let step = 0; step < 20 && (await zoomIn.isEnabled()); step += 1) await zoomIn.click()
+  await expect(readout).not.toContainText("0%")
+  await expect(root.locator('[data-slot="graph-canvas-host"] [data-kind]').first()).toBeVisible()
+
+  const zoomOut = root.getByRole("button", { name: "Zoom out", exact: true })
+  for (let step = 0; step < 20 && (await zoomOut.isEnabled()); step += 1) await zoomOut.click()
+  await expect(readout).toContainText("%")
+  await expect(root.locator('[data-slot="graph-canvas-host"] [data-kind]').first()).toBeVisible()
 })
 
 story("re-themes the same model in dark mode without reloading the renderer", async ({ mount, page }) => {

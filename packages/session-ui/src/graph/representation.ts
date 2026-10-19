@@ -68,18 +68,26 @@ export function matrixLayout(model: GraphModel, options: RepresentationLayoutOpt
   const rowGap = options.rowGap ?? 20
   const rowHeight = COMPACT_SIZE[1] + rowGap
   const positions = new Map<string, Position>()
-  const occupancy = new Map<string, number>()
   const rows = turnRows(model)
 
-  // A column is as wide as its widest member (a card in a category column is wider than a chip), so
-  // neighbouring columns never overlap and the grid stays aligned by category.
+  // T1.11: a cell can hold several runs of one category. Give each occupant a real sub-column so
+  // cells never overlap, and widen the category column to the widest occupied cell.
+  const cells = new Map<string, GraphNode[]>()
+
+  rows.forEach((nodes, row) => {
+    for (const node of nodes) {
+      const key = `${row}:${matrixColumn(node)}`
+      cells.set(key, [...(cells.get(key) ?? []), node])
+    }
+  })
+
   const columnWidth = new Map<number, number>()
 
-  for (const nodes of rows)
-    for (const node of nodes) {
-      const column = matrixColumn(node)
-      columnWidth.set(column, Math.max(columnWidth.get(column) ?? COMPACT_SIZE[0], nodeSize(node)[0]))
-    }
+  for (const [key, nodes] of cells) {
+    const column = Number(key.slice(key.indexOf(":") + 1))
+    const cellWidth = nodes.reduce((total, node) => total + nodeSize(node)[0] + gap, 0) - gap
+    columnWidth.set(column, Math.max(columnWidth.get(column) ?? COMPACT_SIZE[0], cellWidth))
+  }
 
   const columnX = (column: number) => {
     let x = 0
@@ -89,15 +97,18 @@ export function matrixLayout(model: GraphModel, options: RepresentationLayoutOpt
     return x
   }
 
-  rows.forEach((nodes, row) => {
+  for (const [key, nodes] of cells) {
+    const separator = key.indexOf(":")
+    const row = Number(key.slice(0, separator))
+    const column = Number(key.slice(separator + 1))
+    let cursor = columnX(column)
+
     for (const node of nodes) {
-      const column = matrixColumn(node)
-      const key = `${row}:${column}`
-      const index = occupancy.get(key) ?? 0
-      occupancy.set(key, index + 1)
-      positions.set(node.id, { x: columnX(column) + index * 18, y: row * rowHeight, z: 0 })
+      const width = nodeSize(node)[0]
+      positions.set(node.id, { x: cursor + width / 2, y: row * rowHeight, z: 0 })
+      cursor += width + gap
     }
-  })
+  }
 
   return { positions, clusters: new Map(), bounds: boundsOf(positions), strategy: "lanes" }
 }
@@ -172,3 +183,5 @@ function boundsOf(positions: ReadonlyMap<string, Position>): ClusterBounds {
     max: { x: Math.max(...points.map((point) => point.x)), y: Math.max(...points.map((point) => point.y)), z: 0 },
   }
 }
+
+export { matrixColumn, PHASE_CATEGORIES, turnRows }

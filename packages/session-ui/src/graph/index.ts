@@ -88,10 +88,13 @@ export {
 } from "./layout"
 
 export {
+  matrixColumn,
   matrixLayout,
+  PHASE_CATEGORIES,
   REPRESENTATIONS,
   representationLevel,
   ribbonLayout,
+  turnRows,
   type Representation,
   type RepresentationLayoutOptions,
 } from "./representation"
