@@ -772,7 +772,9 @@ export function createTimelineVirtualizer(input: Input) {
     const root = event.currentTarget
     // Record a detached view's offset: the reconnect restore reads it, and no later scroll event
     // may arrive before the element is reattached.
+
     if (!input.pinned()) rememberedOffset = root.scrollTop
+
     if (!active()) return
     const previousTop = scrollTop
     const previousMaxScroll = maxScroll

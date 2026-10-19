@@ -20,6 +20,7 @@
     "bench:devex": "bun run --cwd packages/app test:bench:devex",
     "graph:capture": "bun script/capture-graph-demo.ts",
     "graph:verify": "bun script/graph-verify.ts",
+    "graph:dev": "bun script/graph-dev.ts",
     "lint": "oxlint && ast-grep scan -c script/ast-grep/gui-extensions/sgconfig.yml && bun script/sdk-docs.ts",
     "lint:changed": "bun script/lint-changed.ts",
     "lint:effect-patterns": "ast-grep scan -c script/ast-grep/sgconfig.yml packages/util/src packages/core/src packages/server/src packages/protocol/src packages/cli/src",

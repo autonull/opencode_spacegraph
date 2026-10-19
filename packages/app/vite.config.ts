@@ -28,27 +28,37 @@ export default defineConfig({
     icons(channel),
     serviceWorker(fileURLToPath(new URL("./dist", import.meta.url))),
     sentry,
-  ] as any,
+  ],
   server: {
     host: "0.0.0.0",
     allowedHosts: true,
     port: 3000,
   },
-  build: {
-    ...(process.env.VITE_OPENCODE_TEST_FIXTURES === "1"
-      ? {
-          rolldownOptions: {
-            input: [
-              "index.html",
-              "e2e/utils/settings-wsl.html",
-              "e2e/utils/app-direction.html",
-              "e2e/utils/windows-menu.html",
-            ],
-          },
-        }
-      : {}),
-    assetsDir: "_assets",
-    target: "esnext",
-    sourcemap: true,
-  },
+  build: (() => {
+    const base: import("vite").BuildOptions = {
+      assetsDir: "_assets",
+      target: "esnext",
+      sourcemap: true,
+    }
+
+    if (process.env.VITE_OPENCODE_TEST_FIXTURES === "1") {
+      base.rolldownOptions = {
+        input: [
+          "index.html",
+          "e2e/utils/settings-wsl.html",
+          "e2e/utils/app-direction.html",
+          "e2e/utils/windows-menu.html",
+          "graph-dev.html",
+        ],
+      }
+    }
+
+    if (process.env.VITE_OPENCODE_GRAPH_DEV === "1") {
+      base.rolldownOptions = {
+        input: ["graph-dev.html"],
+      }
+    }
+
+    return base
+  })(),
 })

@@ -592,12 +592,18 @@ green; run the library track (T6.10–T6.15) alongside T4.
 The two fixtures stay separate on purpose (portability proof); share their theme and screenshot
 framing. `00-spike-spacegraph.png` is retired by T1.16.
 
-- [ ] **T6.1 Provider-free demo mode in the real app**
+- [x] **T6.1 Provider-free demo mode in the real app**
   A reviewer should not need a model provider or a live agent to evaluate the UI. Add a dev-only
   fixture path (`bun run graph:dev`, or `OPENCODE_GRAPH_FIXTURE=1` guarded at build time) that mounts
   the real shell with the canonical fixture, reusing the e2e mocked server where possible. The path
   must not exist in production builds. This is the **host** demo; it does not replace the library
   contract demo or Storybook.
+  **Implemented:**
+  - `script/graph-dev.ts`: Starts a mock server (port 4097) with NO_PROVIDER and canonical fixture messages, then launches Vite dev server with graph-dev entry
+  - `packages/app/src/entry.graph-dev.tsx`: Dev-only entry point that loads the canonical fixture
+  - `packages/app/graph-dev.html`: HTML entry for the graph dev mode
+  - `packages/app/vite.config.ts`: Added VITE_OPENCODE_GRAPH_DEV=1 build flag to include graph-dev entry
+  - `package.json`: Added `graph:dev` script
   Done when: one command launches the app with the fixture; graph/ribbon/matrix, search, inspector,
   export, and return-to-transcript work; the README documents it.
   Verify: clean-clone manual run; the existing e2e harness still passes.
@@ -946,3 +952,12 @@ programmatic control in both the Storybook story and the app's dev-only `__sessi
 Updated the capture verify list with 10 new frames (20–24 for each renderer). All `graph:verify` steps
 pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16. Captures 20–24
 regenerated for both renderers.
+
+**2026-10-19 — T6.1 Provider-free demo mode implemented.** Added `bun run graph:dev` command that launches
+the real OpenCode shell with the canonical session fixture and no model provider. Implementation:
+- `script/graph-dev.ts`: Mock server (port 4097) with NO_PROVIDER + canonical fixture messages, starts Vite dev server
+- `packages/app/src/entry.graph-dev.tsx`: Dev-only entry point loading canonical fixture
+- `packages/app/graph-dev.html`: HTML entry for graph dev mode
+- `packages/app/vite.config.ts`: VITE_OPENCODE_GRAPH_DEV=1 flag for dev-only build inclusion
+- `package.json`: Added `graph:dev` script
+All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16, lint clean.
