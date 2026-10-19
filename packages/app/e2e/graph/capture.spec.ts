@@ -101,6 +101,28 @@ async function fit(page: Page) {
   if (compact) await overflow.getByLabel("More controls").click()
 }
 
+async function zoomIn(page: Page, clicks: number) {
+  const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
+  const compact = (await overflow.count()) > 0
+
+  if (compact) await overflow.getByLabel("More controls").click()
+  const zoomInBtn = page.locator(toolbar).getByRole("button", { name: "Zoom in", exact: true })
+  for (let i = 0; i < clicks; i++) {
+    await zoomInBtn.click()
+    await page.waitForTimeout(50) // small delay for zoom animation
+  }
+  if (compact) await overflow.getByLabel("More controls").click()
+}
+
+async function selectViaHarness(page: Page, nodeId: string) {
+  await page.evaluate((id) => {
+    const harness = (window as unknown as { __sessionGraphView?: { select: (id: string) => void } }).__sessionGraphView
+    harness?.select(id)
+  }, nodeId)
+  await fit(page)
+  await waitForStillCanvas(page)
+}
+
 test("captures the transcript, graph levels, selection, return, and 3D", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -210,6 +232,30 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // Back to the node-link graph, lanes layout, for the file lens and the narrow/light frames.
   await page.locator(toolbar).getByRole("button", { name: "Graph", exact: true }).click()
   await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
+
+  // 20 — camera zoom ~1.5× fit (150%). The toolbar zoom steps by ~8%; 6 clicks from 100% ≈ 148%.
+  await fit(page)
+  await waitForStillCanvas(page)
+  await zoomIn(page, 6)
+  await waitForStillCanvas(page)
+  await capture(page, "20-graph-zoom-150.png")
+
+  // 21 — camera zoom ~2.5× fit (250%). Additional 13 clicks from 150% ≈ 254%.
+  await zoomIn(page, 13)
+  await waitForStillCanvas(page)
+  await capture(page, "21-graph-zoom-250.png")
+
+  // 22 — pan to turn 1 (first turn with tool calls). Select the turn and fit to frame it.
+  await selectViaHarness(page, "turn:msg_plan_1")
+  await capture(page, "22-graph-turn-1.png")
+
+  // 23 — pan to turn 2 (recovery turn). Select the turn and fit to frame it.
+  await selectViaHarness(page, "turn:msg_recovery_1")
+  await capture(page, "23-graph-turn-2.png")
+
+  // 24 — detail frame centred on the failure chain. Select a failed tool and fit.
+  await selectViaHarness(page, "tool:prt_tool_shell_2")
+  await capture(page, "24-graph-failure-chain.png")
 
   // 17 — the file-first lens (LE.12): the changed-files rail with provenance bundled to turn spines.
   await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()

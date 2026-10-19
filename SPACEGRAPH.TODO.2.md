@@ -348,12 +348,18 @@ ends with an inspected capture; no task is done from a DOM assertion alone.
   Done when: 07/08 show the whole model with legible cards and the correct selected detail.
   Verify: `component-tests/cytoscape.spec.ts` + `graph-capture.spec.ts`.
 
-- [ ] **T1.15 Multi-zoom and multi-pan capture matrix**
+- [x] **T1.15 Multi-zoom and multi-pan capture matrix**
   Add committed frames beyond the fitted view: at least two camera-zoom levels (≈1.5× and ≈2.5× fit)
   and two pan locations (turn 1 / turn 2 or failure / recovery), plus a detail frame centred on the
   failure chain. Extend `capture.spec.ts`, the `graph:capture --mode=verify` list, and the docs.
   Do this **after T1.8** so the images are not immediately stale; the temporary experiment produced
   blank/mangled frames and is recorded in the visual review, not committed.
+  **Fixed:**
+  - Added `zoomTo`, `panTo`, `getViewport` to the Storybook harness (`packages/session-graph/src/ui/GraphView.stories.tsx`)
+  - Added dev-only `__sessionGraphView` harness to app's `SessionGraphView` for e2e selection (`packages/app/src/session/graph/session-graph-view.tsx`)
+  - Extended app capture test with zoom frames (20, 21) and pan frames (22, 23, 24) using harness selection (`packages/app/e2e/graph/capture.spec.ts`)
+  - Extended Cytoscape component capture test with same frames (`packages/session-graph/component-tests/graph-capture.spec.ts`)
+  - Updated verify list in `script/capture-graph-demo.ts`
   Done when: 20–24 exist, are inspected, and the matrix is documented.
   Verify: `bun run graph:capture --mode=compare` + `--mode=verify`.
 
@@ -932,3 +938,11 @@ screenshot review:
 
 All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.
 Captures 11 (timeline), 12 (hierarchy), 07 (cytoscape overview), 08 (cytoscape selected) regenerated.
+
+**2026-10-19 — T1.15 Multi-zoom and multi-pan capture matrix completed.** Added camera zoom frames at
+~1.5× (20) and ~2.5× (21) fit, plus pan frames for turn 1 (22), turn 2 (23), and failure chain (24) for
+both SpaceGraph and Cytoscape renderers. Extended the harness with `zoomTo`/`panTo`/`getViewport` for
+programmatic control in both the Storybook story and the app's dev-only `__sessionGraphView` harness.
+Updated the capture verify list with 10 new frames (20–24 for each renderer). All `graph:verify` steps
+pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16. Captures 20–24
+regenerated for both renderers.

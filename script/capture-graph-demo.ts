@@ -69,6 +69,16 @@ if (mode === "verify") {
     "17-graph-files.png",
     "18-graph-layered.png",
     "19-graph-depth-stack.png",
+    "20-graph-zoom-150.png",
+    "21-graph-zoom-250.png",
+    "22-graph-turn-1.png",
+    "23-graph-turn-2.png",
+    "24-graph-failure-chain.png",
+    "20-cytoscape-zoom-150.png",
+    "21-cytoscape-zoom-250.png",
+    "22-cytoscape-turn-1.png",
+    "23-cytoscape-turn-2.png",
+    "24-cytoscape-failure-chain.png",
   ]
   const missing = expected.filter((name) => !existsSync(join(screenshots, name)))
 

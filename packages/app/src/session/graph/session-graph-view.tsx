@@ -4,7 +4,7 @@ import { useData } from "@opencode/session-ui/context"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
-import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack } from "solid-js"
+import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack, onMount, onCleanup } from "solid-js"
 import { messageIdFromHash } from "@/session/message-id-from-hash"
 import { useLanguage } from "@/runtime/i18n/language"
 import type { SessionModel } from "@/session/model"
@@ -68,6 +68,25 @@ export function SessionGraphView(props: {
       },
     ),
   )
+
+  // Dev-only test harness for e2e capture control (T1.15).
+  if (import.meta.env.DEV) {
+    onMount(() => {
+      const harness = {
+        select: (id: string | undefined) => graph.setSelected(id),
+        zoomTo: (percent: number) => {
+          // Will be implemented when we have direct renderer access
+        },
+        panTo: (nodeId: string) => graph.setSelected(nodeId),
+      }
+      ;(window as unknown as { __sessionGraphView?: typeof harness }).__sessionGraphView = harness
+    })
+    onCleanup(() => {
+      if (import.meta.env.DEV) {
+        ;(window as unknown as { __sessionGraphView?: unknown }).__sessionGraphView = undefined
+      }
+    })
+  }
 
   return (
     <ErrorBoundary
