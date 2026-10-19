@@ -70,6 +70,11 @@ const DIM_OPACITY = 0.3
 /** Padding added to a cluster band so members sit inside it. */
 const BAND_PAD = 28
 
+/** LE.10 lane-label chip footprint and the gap between it and the leftmost content. */
+const LANE_LABEL_SIZE: [number, number, number] = [132, 28, 0]
+
+const LANE_GUTTER = 20
+
 /** Host-owned, sanitized markup for a `card`. Text must be escaped by the template. */
 export type CardTemplate = (node: GraphNode, level: ZoomLevel) => string
 
@@ -91,6 +96,11 @@ export type BuildRenderModelOptions = {
   renderCard?: CardTemplate
   /** Replaces the default swimlane band markup. */
   renderBand?: BandTemplate
+  /**
+   * LE.10: localized lane labels (with the lanes layout's Y anchors) drawn as a non-interactive
+   * gutter to the left of the content, so the spatial grammar is visible.
+   */
+  laneLabels?: readonly { id: string; label: string; y: number }[]
 }
 
 /**
@@ -142,9 +152,37 @@ export function buildRenderModel(model: GraphModel, options: BuildRenderModelOpt
 
   const visible = new Set(content.map((node) => node.id))
   const bands = options.bands ? buildBands(model, level, positions, renderBand, visible) : []
+  const lanes = buildLaneLabels(options.laneLabels, content)
   const edges = (options.edges ?? true) ? edgesAtLevel(model, level, focus).map((edge) => toRenderEdge(edge, level)) : []
 
-  return { nodes: [...bands, ...content], edges }
+  return { nodes: [...bands, ...lanes, ...content], edges }
+}
+
+/**
+ * LE.10 — the lane gutter: one non-interactive label chip per lane, left-aligned to the drawn
+ * content, so explore/edit/verify/delegate read as labelled bands. The x is derived from the
+ * leftmost content so the gutter tracks the layout without a screen-space overlay.
+ */
+function buildLaneLabels(
+  labels: BuildRenderModelOptions["laneLabels"],
+  content: readonly RenderNode[],
+): RenderNode[] {
+  if (!labels || labels.length === 0 || content.length === 0) return []
+
+  const minX = Math.min(...content.map((node) => node.position[0]))
+  const x = minX - LANE_GUTTER - LANE_LABEL_SIZE[0] / 2
+
+  return labels.map((lane) => ({
+    id: `lane:${lane.id}`,
+    kind: "lane",
+    label: lane.label,
+    shape: "panel" as const,
+    interactive: false,
+    html: `<div data-lane="${escapeHtml(lane.id)}" style="display:flex;align-items:center;height:100%;box-sizing:border-box;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:inherit;opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(lane.label)}</div>`,
+    size: LANE_LABEL_SIZE,
+    position: [x, lane.y, ZERO.z - 1],
+    data: { lane: lane.id },
+  }))
 }
 
 /** A derived cluster collapsed at this level (§5.4): it shows a member count and expands later. */

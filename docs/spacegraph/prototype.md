@@ -106,6 +106,12 @@ en-US, reduced motion, clock-free fixture):
 | `07-cytoscape-overview.png` | Cytoscape adapter, same model |
 | `08-cytoscape-selected.png` | Cytoscape adapter, selected |
 | `09-contract-demo-light.png`, `10-contract-demo-dark.png` | non-OpenCode demo, light/dark (the L1.4 check) |
+| `11-graph-timeline.png` | Timeline layout (RF.2/LE.11), wrapped per-turn rows |
+| `12-graph-hierarchy.png` | Hierarchy layout (RF.2/LE.11), indented outline |
+| `13-graph-narrow.png` | 390×900 narrow viewport with the bottom-sheet inspector |
+| `14-graph-light.png` | light scheme parity (RF.9) |
+| `15-graph-ribbon.png` | turn ribbon representation (LE.8) |
+| `16-graph-matrix.png` | turn matrix representation (LE.9) |
 
 `02`/`03`/`04` come from the app's routed session (`packages/app/e2e/graph/capture.spec.ts`); `07`/`08`
 come from the Storybook story (`packages/session-graph/component-tests/graph-capture.spec.ts`) because
@@ -278,6 +284,13 @@ Carry these forward explicitly; none is silently lowered.
     per-lane cursors first (RF.2 library-first cleanup).
 13. **Vector swimlane bands stay full-opacity under execution focus dimming** (they are structure, not
     content, and are `interactive: false`).
+14. **The lane gutter is world-space** (LE.10): the lane labels are non-interactive chips placed left of the
+    content and included in the fit, not a screen-fixed overlay (the contract has no screen-space overlay).
+15. **The lanes overview has a dominant empty region** (`02`/`14`): the lanes layout is level-agnostic (§5.5), so
+    a turn column reserves its execution width at overview. The ribbon/matrix representations fix it by
+    construction; a level-aware compact overview would risk position drift and is not taken.
+16. **Framing insets and empty-column exclusion are not implemented** (LE.1): `fit(ids?)` carries no asymmetric
+    insets, and the fit frames content ids but cannot skip empty structural columns.
 
 ## Evaluation protocol (R7.3)
 

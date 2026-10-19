@@ -1,9 +1,10 @@
 import type { GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import { supports } from "@spacegraphjs/renderer"
-import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type { GraphLayout, GraphModel, GraphNode, Lane, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 import {
   ancestors,
   breadcrumbs,
+  laneAnchors,
   layoutGraph,
   LEVEL_RANK,
   matrixLayout,
@@ -28,6 +29,18 @@ import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { createGraphTheme } from "./theme"
+
+/** LE.10 lane gutter copy, in layout order. */
+const LANE_KEY = {
+  phases: "ui.sessionGraph.lane.phases",
+  prompt: "ui.sessionGraph.lane.prompt",
+  narrative: "ui.sessionGraph.lane.narrative",
+  explore: "ui.sessionGraph.lane.explore",
+  edit: "ui.sessionGraph.lane.edit",
+  verify: "ui.sessionGraph.lane.verify",
+  delegate: "ui.sessionGraph.lane.delegate",
+  artifacts: "ui.sessionGraph.lane.artifacts",
+} as const satisfies Record<Lane, string>
 
 export type GraphViewProps = {
   model: GraphModel
@@ -96,7 +109,6 @@ export const GraphView = (props: GraphViewProps) => {
   const [rendererID, setRendererID] = createSignal<RendererID>()
   const [fallback, setFallback] = createSignal(false)
   const [error, setError] = createSignal<string>()
-  const [canvasReady, setCanvasReady] = createSignal(false)
   const [viewport, setViewport] = createSignal<RendererViewport>()
   const [narrow, setNarrow] = createSignal(false)
   const [compact, setCompact] = createSignal(false)
@@ -158,6 +170,9 @@ export const GraphView = (props: GraphViewProps) => {
 
     return layoutGraph(props.model, { strategy: strategy() })
   })
+  // LE.1: whether a structural change is waiting for the canvas to apply the matching model before we
+  // frame it. Streaming model updates leave it false, so they never refit.
+  const [needsFit, setNeedsFit] = createSignal(true)
   // LE.7: the ribbon and matrix are overview-first summaries; the graph is the only representation the
   // semantic level control drives.
   const effectiveLevel = createMemo<ZoomLevel>(() => representationLevel(representation()) ?? level())
@@ -165,9 +180,13 @@ export const GraphView = (props: GraphViewProps) => {
     buildRenderModel(props.model, {
       level: effectiveLevel(),
       positions: layout().positions,
-      bands: representation() === "graph",
+      bands: representation() === "graph" && strategy() !== "hierarchy",
       edges: representation() === "graph",
       focus: representation() === "graph" && level() === "execution" ? selection()[0] : undefined,
+      laneLabels:
+        representation() === "graph" && strategy() === "lanes"
+          ? laneAnchors().map((lane) => ({ id: lane.name, label: i18n.t(LANE_KEY[lane.name]), y: lane.y }))
+          : undefined,
       renderCard: renderCard(),
       renderBand: renderBand(),
     }),
@@ -297,18 +316,24 @@ export const GraphView = (props: GraphViewProps) => {
     const current = capabilities()
     if (current && projection() === "3d" && !supports(current, "3d")) changeProjection("2d")
   })
-  // §5.5: frame the model on first load, renderer switch, an explicit level/projection/strategy
-  // change, and when the inspector toggles (LE.1). Deferred a microtask so the canvas has applied the
-  // matching model before we measure its bounds; the ids are read untracked so streaming does not refit.
+  // LE.1: frame the drawn content (never the non-interactive bands) on first load, a renderer/level/
+  // projection/strategy/representation change, and when the inspector toggles. The fit is deferred to
+  // the canvas's `onModelApplied` (below), so the matching nodes and positions exist before we measure;
+  // the ids are read untracked, so streaming updates never refit.
   createEffect(() => {
-    const ready = canvasReady()
     level()
     projection()
     strategy()
     representation()
     inspectorOpen()
-    if (ready) queueMicrotask(() => renderer?.fit(untrack(contentIDs)))
+    setNeedsFit(true)
   })
+  const fitContent = () => renderer?.fit(untrack(contentIDs))
+  const applyModel = (instance: GraphRenderer) => {
+    if (!needsFit()) return
+    setNeedsFit(false)
+    instance.fit(untrack(contentIDs))
+  }
 
   return (
     <div
@@ -324,7 +349,7 @@ export const GraphView = (props: GraphViewProps) => {
         onProjection={changeProjection}
         capabilities={capabilities()}
         renderer={rendererID()}
-        onFit={() => renderer?.fit()}
+        onFit={fitContent}
         onSearch={() => setSearchOpen((open) => !open)}
         strategy={strategy()}
         onStrategy={changeStrategy}
@@ -377,9 +402,9 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={(ids) => select(ids)}
             onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => select(undefined)}
+            onModelApplied={applyModel}
             onRenderer={(instance) => {
               renderer = instance
-              setCanvasReady(!!instance)
             }}
             onReady={(info) => {
               setError(undefined)

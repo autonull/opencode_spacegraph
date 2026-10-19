@@ -26,6 +26,11 @@ export type GraphCanvasProps = {
   onError?: (error: unknown) => void
   onViewportChange?: (viewport: RendererViewport) => void
   onBackgroundClick?: () => void
+  /**
+   * Fires once the adapter has applied the current model, so a host can sequence a fit *after* the
+   * new nodes and positions exist (LE.1) instead of framing a stale layout.
+   */
+  onModelApplied?: (renderer: GraphRenderer) => void
   /** Exposes the live renderer so a host can call `fit`/`focus`; `undefined` after teardown. */
   onRenderer?: (renderer: GraphRenderer | undefined) => void
 }
@@ -74,6 +79,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
           result.renderer.on("viewportChange", (viewport) => props.onViewportChange?.(viewport)),
         ]
         result.renderer.setModel(props.model)
+        props.onModelApplied?.(result.renderer)
         result.renderer.setSelection(props.selection ?? [])
         host.dataset.graphRenderer = result.id
         host.dataset.graphProjection = props.projection ?? "2d"
@@ -105,7 +111,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     // the mount is pending, so the effect would not track the prop and later updates would be dropped.
     const model = props.model
 
-    mounted?.renderer.setModel(model)
+    if (!mounted) return
+    mounted.renderer.setModel(model)
+    props.onModelApplied?.(mounted.renderer)
   })
   createEffect(() => {
     const selection = props.selection

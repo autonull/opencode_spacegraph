@@ -16,6 +16,26 @@ const activityCards = (built: ReturnType<typeof at>) =>
 
 const kindsAt = (level: ZoomLevel) => new Set(at(level).nodes.map((node) => node.kind))
 
+test("lane labels are a non-interactive gutter left of the content (LE.10)", () => {
+  const labels = [
+    { id: "explore", label: "Explore", y: 288 },
+    { id: "edit", label: "Edit", y: 384 },
+  ]
+  const built = buildRenderModel(model, { level: "execution", positions, laneLabels: labels })
+  const lanes = built.nodes.filter((node) => node.kind === "lane")
+
+  expect(lanes.length).toBe(2)
+  for (const lane of lanes) expect(lane.interactive).toBe(false)
+
+  const contentLeft = Math.min(
+    ...built.nodes.filter((node) => node.kind !== "lane" && node.kind !== "band").map((node) => node.position[0]),
+  )
+
+  for (const lane of lanes) expect(lane.position[0]).toBeLessThan(contentLeft)
+  // Chrome never consumes the activity card budget.
+  expect(activityCards(built).length).toBeLessThanOrEqual(40)
+})
+
 test("overview shows only session, turns, phase clusters, and subagents", () => {
   const kinds = kindsAt("overview")
 

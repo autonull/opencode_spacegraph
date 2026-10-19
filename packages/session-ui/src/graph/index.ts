@@ -73,6 +73,7 @@ export {
   CARD_SIZE,
   COMPACT_SIZE,
   LANES,
+  laneAnchors,
   LAYOUT_STRATEGIES,
   layoutGraph,
   nodeSize,

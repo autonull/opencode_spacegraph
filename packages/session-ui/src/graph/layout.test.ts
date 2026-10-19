@@ -110,4 +110,50 @@ describe("layout — alternate strategies", () => {
       expect([...a.positions.entries()]).toEqual([...b.positions.entries()])
     }
   })
+
+  test("timeline wraps a turn's cards into rows bounded by the column count", () => {
+    const model = buildFixtureGraph()
+    const columns = 4
+    const layout = layoutGraph(model, { strategy: "timeline", columns })
+    const points = [...layout.positions.values()]
+
+    // More than one row: the turn is not a single long smear.
+    expect(new Set(points.map((point) => point.y)).size).toBeGreaterThan(1)
+    // A row never exceeds the wrapped column width (4 cards of 220 + 3 gaps of 24).
+    expect(Math.max(...points.map((point) => point.x))).toBeLessThan(columns * (CARD_SIZE[0] + 24))
+
+    // No two cards share a row and overlap.
+    const byRow = new Map<number, { x: number; width: number }[]>()
+
+    for (const node of model.nodes) {
+      const point = layout.positions.get(node.id)!
+      const row = byRow.get(point.y) ?? []
+      row.push({ x: point.x, width: nodeSize(node)[0] })
+      byRow.set(point.y, row)
+    }
+
+    for (const row of byRow.values()) {
+      const sorted = [...row].sort((a, b) => a.x - b.x)
+
+      for (let i = 1; i < sorted.length; i++)
+        expect(sorted[i]!.x - sorted[i - 1]!.x).toBeGreaterThanOrEqual(
+          (sorted[i]!.width + sorted[i - 1]!.width) / 2,
+        )
+    }
+  })
+
+  test("hierarchy gives each node its own row, indented by depth", () => {
+    const model = buildFixtureGraph()
+    const layout = layoutGraph(model, { strategy: "hierarchy" })
+    const points = [...layout.positions.values()]
+
+    // One node per row, so every Y is distinct.
+    expect(new Set(points.map((point) => point.y)).size).toBe(model.nodes.length)
+
+    // Deeper kinds sit further right and further back.
+    const session = point(layout, "session")!
+    const tool = point(layout, toolNodeID("prt_tool_read_1"))!
+    expect(tool.x).toBeGreaterThan(session.x)
+    expect(tool.z).toBeGreaterThan(session.z)
+  })
 })

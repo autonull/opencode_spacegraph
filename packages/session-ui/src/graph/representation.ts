@@ -1,5 +1,5 @@
 import type { ClusterBounds, GraphLayout, Position } from "./layout"
-import { COMPACT_SIZE } from "./layout"
+import { COMPACT_SIZE, nodeSize } from "./layout"
 import { isVisibleAt } from "./levels"
 import type { GraphModel, GraphNode, PhaseCategory } from "./model"
 import { phaseCategoryOf } from "./model"
@@ -46,7 +46,9 @@ export function ribbonLayout(model: GraphModel, options: RepresentationLayoutOpt
     let cursor = 0
 
     for (const node of nodes) {
-      const width = COMPACT_SIZE[0]
+      // Use the node's real footprint: a card (subagent, session root) is wider than a phase chip,
+      // so a fixed compact stride would overlap its neighbour.
+      const width = nodeSize(node)[0]
       positions.set(node.id, { x: cursor + width / 2, y: index * rowHeight, z: 0 })
       cursor += width + gap
     }
@@ -64,18 +66,36 @@ export function ribbonLayout(model: GraphModel, options: RepresentationLayoutOpt
 export function matrixLayout(model: GraphModel, options: RepresentationLayoutOptions = {}): GraphLayout {
   const gap = options.gap ?? 24
   const rowGap = options.rowGap ?? 20
-  const colWidth = COMPACT_SIZE[0] + gap
   const rowHeight = COMPACT_SIZE[1] + rowGap
   const positions = new Map<string, Position>()
   const occupancy = new Map<string, number>()
+  const rows = turnRows(model)
 
-  turnRows(model).forEach((nodes, row) => {
+  // A column is as wide as its widest member (a card in a category column is wider than a chip), so
+  // neighbouring columns never overlap and the grid stays aligned by category.
+  const columnWidth = new Map<number, number>()
+
+  for (const nodes of rows)
+    for (const node of nodes) {
+      const column = matrixColumn(node)
+      columnWidth.set(column, Math.max(columnWidth.get(column) ?? COMPACT_SIZE[0], nodeSize(node)[0]))
+    }
+
+  const columnX = (column: number) => {
+    let x = 0
+
+    for (let index = 0; index < column; index++) x += (columnWidth.get(index) ?? COMPACT_SIZE[0]) + gap
+
+    return x
+  }
+
+  rows.forEach((nodes, row) => {
     for (const node of nodes) {
       const column = matrixColumn(node)
       const key = `${row}:${column}`
       const index = occupancy.get(key) ?? 0
       occupancy.set(key, index + 1)
-      positions.set(node.id, { x: column * colWidth + index * 18, y: row * rowHeight, z: 0 })
+      positions.set(node.id, { x: columnX(column) + index * 18, y: row * rowHeight, z: 0 })
     }
   })
 

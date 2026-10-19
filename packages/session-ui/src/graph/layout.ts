@@ -26,6 +26,10 @@ export type LayoutOptions = {
   turnGap?: number
   /** Z distance between hierarchy depths. */
   depthStep?: number
+  /** Timeline: cards per wrapped row before a turn's block folds to the next row. */
+  columns?: number
+  /** Timeline/hierarchy: vertical distance between rows. */
+  rowGap?: number
 }
 
 /** Rendered card footprint; keep in sync with the SpaceGraph adapter's HTML card defaults. */
@@ -53,6 +57,14 @@ export const LANES = [
 ] as const
 
 export type Lane = (typeof LANES)[number]
+
+/** The vertical centre of each lane (LE.10), for a lane-label overlay aligned to the lanes layout. */
+export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: number }[] {
+  const laneGap = options.laneGap ?? 24
+  const laneHeight = CARD_SIZE[1] + laneGap
+
+  return LANES.map((name, index) => ({ name, y: index * laneHeight }))
+}
 
 export type ClusterBounds = { min: Position; max: Position }
 
@@ -130,15 +142,18 @@ export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): Gra
 
   if (strategy === "hierarchy") return hierarchyLayout(model, options)
 
-  return bandedLayout(model, options, strategy)
+  if (strategy === "timeline") return timelineLayout(model, options)
+
+  return bandedLayout(model, options)
 }
 
+type NodeGroup = { nodes: GraphNode[]; turnID?: string }
+
 /**
- * Lanes and Timeline share the banded skeleton: the session column, then one column per turn whose
- * width is its own widest lane. They differ only in how Y is chosen — semantic activity lanes
- * (`lanes`) or a strict chronological single row (`timeline`).
+ * Lanes: the session column, then one column per turn whose width is its own widest lane. Y is the
+ * semantic activity lane, so explore/edit/verify/delegate read as horizontal bands.
  */
-function bandedLayout(model: GraphModel, options: LayoutOptions, strategy: LayoutStrategy): GraphLayout {
+function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
   const gap = options.gap ?? 24
   const laneGap = options.laneGap ?? 24
   const turnGap = options.turnGap ?? 96
@@ -147,8 +162,7 @@ function bandedLayout(model: GraphModel, options: LayoutOptions, strategy: Layou
 
   const positions = new Map<string, Position>()
 
-  const yFor = (node: GraphNode): number =>
-    strategy === "timeline" ? DEPTH[node.kind] * laneHeight : LANES.indexOf(laneOf(node)) * laneHeight
+  const yFor = (node: GraphNode): number => LANES.indexOf(laneOf(node)) * laneHeight
 
   const place = (node: GraphNode, x: number) => positions.set(node.id, { x, y: yFor(node), z: DEPTH[node.kind] * depthStep })
 
@@ -188,7 +202,7 @@ function bandedLayout(model: GraphModel, options: LayoutOptions, strategy: Layou
     }
 
     const staged = group.nodes.map((node) => {
-      const lane = strategy === "timeline" ? "prompt" : laneOf(node)
+      const lane = laneOf(node)
       const start = cursorFor(lane)
       const width = nodeSize(node)[0]
       cursors.set(lane, start + width + gap)
@@ -228,37 +242,37 @@ function bandedLayout(model: GraphModel, options: LayoutOptions, strategy: Layou
     positions,
     clusters,
     bounds: all.length > 0 ? boundsOf(all) : { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
-    strategy,
+    strategy: "lanes",
   }
 }
 
 /**
- * Hierarchy (RF.2): indentation by turn and depth. X grows with hierarchy depth, Y with the turn
- * index, so ancestry reads as an indent rather than a horizontal fan.
+ * Timeline (LE.11): one chronological block per turn, wrapping every `columns` cards so it reads as
+ * rows rather than one long smear. Row 0 is the session/global block; each turn starts a fresh row so
+ * the sequence stays legible without shrinking to slivers.
  */
-function hierarchyLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
+function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
   const gap = options.gap ?? 24
-  const laneGap = options.laneGap ?? 16
+  const rowGap = options.rowGap ?? 20
   const depthStep = options.depthStep ?? 64
-  const rowHeight = COMPACT_SIZE[1] + laneGap
+  const columns = Math.max(1, options.columns ?? 6)
+  const rowHeight = CARD_SIZE[1] + rowGap
 
   const positions = new Map<string, Position>()
-  const indent = (depth: number) => depth * (CARD_SIZE[0] / 2 + gap)
-  const cursorByDepth = new Map<number, number>()
-
-  const order = [...model.turns.flatMap((turnID) => model.nodes.filter((node) => node.turnID === turnID))]
-  const seen = new Set(order.map((node) => node.id))
-  const rest = model.nodes.filter((node) => !seen.has(node.id))
-
   let row = 0
 
-  for (const node of [...rest, ...order]) {
-    const depth = DEPTH[node.kind]
-    const width = nodeSize(node)[0]
-    const start = Math.max(cursorByDepth.get(depth) ?? 0, indent(depth))
-    cursorByDepth.set(depth, start + width + gap)
-    positions.set(node.id, { x: start + width / 2, y: row * rowHeight, z: depth * depthStep })
-    row += 1
+  for (const nodes of turnBlocks(model)) {
+    for (let i = 0; i < nodes.length; i += columns) {
+      let cursor = 0
+
+      for (const node of nodes.slice(i, i + columns)) {
+        const width = nodeSize(node)[0]
+        positions.set(node.id, { x: cursor + width / 2, y: row * rowHeight, z: DEPTH[node.kind] * depthStep })
+        cursor += width + gap
+      }
+
+      row += 1
+    }
   }
 
   const clusters = new Map<string, ClusterBounds>()
@@ -277,11 +291,79 @@ function hierarchyLayout(model: GraphModel, options: LayoutOptions): GraphLayout
     positions,
     clusters,
     bounds: all.length > 0 ? boundsOf(all) : { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+    strategy: "timeline",
+  }
+}
+
+/**
+ * Hierarchy (LE.11): an indented outline. Each node takes one row and X is the hierarchy indent, so
+ * ancestry reads as a staircase rather than the diagonal scatter a shared per-depth cursor produced.
+ * No turn/phase bands: an indent outline has no per-turn rectangle.
+ */
+function hierarchyLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
+  const gap = options.gap ?? 24
+  const rowGap = options.rowGap ?? 12
+  const depthStep = options.depthStep ?? 64
+  const rowHeight = CARD_SIZE[1] + rowGap
+
+  const positions = new Map<string, Position>()
+  const indent = (depth: number) => depth * (COMPACT_SIZE[0] + gap * 2)
+
+  let row = 0
+
+  for (const nodes of turnBlocks(model)) {
+    for (const node of nodes) {
+      const depth = DEPTH[node.kind]
+      positions.set(node.id, { x: indent(depth) + CARD_SIZE[0] / 2, y: row * rowHeight, z: depth * depthStep })
+      row += 1
+    }
+  }
+
+  const all = [...positions.values()]
+
+  return {
+    positions,
+    clusters: new Map(),
+    bounds: all.length > 0 ? boundsOf(all) : { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
     strategy: "hierarchy",
   }
 }
 
-type NodeGroup = { nodes: GraphNode[]; turnID?: string }
+/**
+ * Chronological blocks shared by the timeline and hierarchy: the session/global group first (the root
+ * and any node without an owning turn), then one block per turn with its header leading its members
+ * in model order.
+ */
+function turnBlocks(model: GraphModel): GraphNode[][] {
+  const global: GraphNode[] = []
+  const byTurn = new Map<string, GraphNode[]>()
+
+  for (const node of model.nodes) {
+    const key = node.kind === "turn" ? node.id : node.turnID
+
+    if (!key) {
+      global.push(node)
+      continue
+    }
+
+    const bucket = byTurn.get(key)
+
+    if (bucket) bucket.push(node)
+    else byTurn.set(key, [node])
+  }
+
+  const blocks: GraphNode[][] = []
+
+  if (global.length > 0) blocks.push(global)
+
+  for (const turnID of model.turns) {
+    const nodes = byTurn.get(turnID)
+
+    if (nodes && nodes.length > 0) blocks.push(nodes)
+  }
+
+  return blocks
+}
 
 /** Bounds over the placed positions of a set of node ids; undefined when none are placed. */
 function memberPositions(ids: string[] | undefined, positions: ReadonlyMap<string, Position>) {

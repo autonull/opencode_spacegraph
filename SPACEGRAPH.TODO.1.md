@@ -1830,6 +1830,61 @@ Notes for the remaining Phase 10 work:
 - **LE.10–LE.15 remain** (lane gutter, timeline/hierarchy legibility, artifacts rail, edge bundling, depth modes,
   depth primitives); LE.16's full capture matrix and LE.17's wiring are still open.
 
+**2026-10-18 (cont.) — Phase 10 framing/legibility: fit after model apply (LE.1), timeline/hierarchy legibility (LE.11), lane gutter (LE.10), and Cytoscape harness parity (LE.5).**
+
+Scope for this pass (user: "continue implementing the plan"): the next Phase 10 items by plan order, verified against
+regenerated, inspected screenshots. Host work is in `packages/session-ui`, `packages/session-graph`, and one `en.ts`
+edit; the one library change is in `spacegraphjs` (`packages/spacegraph-renderer/src/index.ts`).
+
+- **LE.1 — fit after the model is applied (done; the framing race).** `GraphCanvas` gains an
+  `onModelApplied(renderer)` callback fired immediately after every `setModel` (initial mount and each update).
+  `GraphView` replaces its `queueMicrotask(... fit ...)` with a `needsFit` flag consumed in `onModelApplied`, so a
+  structural change (level/projection/strategy/representation/inspector toggle) frames the **new** nodes and
+  positions instead of the previous layout; streaming updates leave the flag false, so they never refit. The
+  adapter's programmatic `fit` is now immediate (`fitView(100, 0, ids)`) — a deterministic jump rather than an
+  animation the host cannot sequence — which is what removed the ribbon/matrix bottom-left under-fill in the
+  captures. **Still open:** empty structural columns (the layout is level-agnostic, §5.5) and asymmetric insets
+  (the contract `fit(ids?)` carries no insets); the lanes overview still spreads thinly (deferred to the ribbon).
+- **LE.11 — timeline and hierarchy legibility (done).** `session-ui/src/graph/layout.ts` gains a dedicated
+  `timelineLayout` (one chronological block per turn, wrapping every `columns` cards — default 6 — into rows; `11`
+  was a thin sliver because every node shared one long row) and rewrites `hierarchyLayout` as an indented outline
+  (one node per row, x = hierarchy indent; the old shared per-depth cursor produced the diagonal scatter and the
+  band overlap in `12`). `buildRenderModel` suppresses swimlane bands for the hierarchy strategy
+  (`bands && strategy !== "hierarchy"`). New `LayoutOptions.columns`/`rowGap`; `layout.test.ts` adds a wrap-bound
+  test and a one-node-per-row/indent test.
+- **LE.10 — lane gutter labels (done; world-space, not a fixed overlay).** New `laneAnchors(options)` in `layout.ts`
+  (lane → Y). `buildRenderModel` gains `laneLabels` and emits non-interactive `lane:<name>` label chips to the left
+  of the leftmost content; `GraphView` passes localized labels (`ui.sessionGraph.lane.*` added to
+  `packages/ui/src/i18n/en.ts`) only for the lanes strategy in graph mode. The labels are chrome (never in the
+  activity card budget; excluded from the a11y mirror) but are included in the fit so the gutter stays visible.
+  **Deviation:** the plan says a fixed left gutter; this is a world-space label column aligned to the layout (the
+  contract has no screen-space overlay), which reads the same at the default framing. The "turn header rail" half of
+  LE.10 is the existing turn band.
+- **LE.5 — Cytoscape harness parity (done).** `ViewHarness` gains a `fullscreen` mode (`100vw`/`100vh`) and the
+  `Cytoscape` story opts into `parameters.layout: "fullscreen"`, so the capture story is no longer a fixed 1100×640
+  box under a 1440×900 capture; `07`/`08` now render at the app's framing and card sizes.
+- **Ribbon/matrix width fix.** `ribbonLayout`/`matrixLayout` now use `nodeSize(node)[0]` (and per-column max widths
+  in the matrix) instead of a fixed compact stride, so a wide card (a subagent) no longer overlaps its neighbour.
+
+Verification:
+- `cd packages/session-ui && bun test src/graph` → 63 pass (was 61; +2 layout); `bun run typecheck` clean.
+- `cd packages/session-graph && bun test src` → 32 pass (was 31; +1 lane-label); `bun run typecheck` clean;
+  `bun run test:components` → 30 pass.
+- `cd spacegraphjs && vitest run` → 37 files / 327 tests; `packages/{renderer,spacegraph-renderer,cytoscape-renderer,svg-renderer} bun test` → 6/13/12/9.
+- `cd packages/app && bun run typecheck` clean; the capture spec (`e2e/graph/capture.spec.ts`) passes in demo mode.
+- `bun run graph:capture --mode=compare` regenerated all committed images; inspected `03` (lane gutter + framed
+  execution), `11` (wrapped timeline rows), `12` (indented outline, no band overlap), `15`/`16` (centered,
+  non-overlapping ribbon/matrix), `07`/`08` (Cytoscape full-size).
+
+Notes for the remaining Phase 10 work:
+- **The lanes overview empty region persists** (`02`/`14`): the lanes layout is level-agnostic (§5.5) so a turn
+  column reserves its execution width; the ribbon/matrix are the by-construction fix. LE.1's "no dominant empty
+  region" Done is met for `03`/`11`–`16` but not the lanes overview.
+- **LE.12–LE.15 remain** (artifacts rail, edge bundling, depth-mode seam + depth cue primitives); **LE.16** still
+  needs the full combination capture matrix and a `depth` axis; **LE.17** is the R7.3 wiring.
+- **`layout.ts` still computes its own cursors** rather than sitting on `spacegraphjs/layout/LaneLayout` (the
+  unchanged RF.2 cleanup).
+
 ## 0. Mission
 
 
@@ -3219,10 +3274,13 @@ Framing and structural defects (fix regardless of representation):
   a node-id subset and/or ignore declared sizes (the adapter already passes ids). Done: `02`–`04`,
   `11`–`14` frame the whole model with no clipping and no dominant empty region; `07`/`08` too.
   Status: `GraphView` fits the content node ids (bands excluded) and re-fits when the inspector toggles, plus
-  first load / renderer switch / level / projection / strategy change (ids read untracked, so streaming does not
-  refit). **Not done:** empty structural columns (the layout is level-agnostic, §5.5), asymmetric insets (the
-  contract `fit(ids?)` has no inset parameter), and LE.1's Done — the overview still has a dominant empty region
-  because the lanes overview reuses the execution spread (deferred to the ribbon, LE.8).
+  first load / renderer switch / level / projection / strategy change. The fit now runs in the canvas's
+  `onModelApplied` (after the new nodes/positions exist) and the adapter's programmatic fit is immediate
+  (`fitView(100, 0, ids)`), so a structural change no longer frames the previous layout; the ids are read
+  untracked, so streaming never refits. **Not done:** empty structural columns (the layout is level-agnostic,
+  §5.5), asymmetric insets (the contract `fit(ids?)` has no inset parameter), and LE.1's Done — the lanes
+  overview still has a dominant empty region because the lanes overview reuses the execution spread (the
+  ribbon/matrix fix it by construction, LE.8/LE.9).
 - [x] **LE.2 Structural node legibility and theming** (done via host DOM panels; see the Phase 10 framing-batch log)
   `session`/`turn`/`phase` panels and `error`/`retry` badges take `RenderTheme.surface`/`border`/
   `text`; minimum legible size; the session root reads in light and dark (today it is a dark box in
@@ -3241,9 +3299,11 @@ Framing and structural defects (fix regardless of representation):
   Status: the narrow inspector is a `flex-col` sibling below the canvas (not an absolute overlay), so the
   canvas is sized to the area above it; the fit-on-inspector-toggle re-frames. Asserted in
   `graph-refine.spec.ts` (canvas bottom meets sheet top).
-- [ ] **LE.5 Cytoscape harness parity**
+- [x] **LE.5 Cytoscape harness parity** (done; see the Phase 10 framing/legibility log)
   Give the capture story an explicit container size, fit after positions apply, and assert overlay
   geometry; regenerate `07`/`08` to match the app's framing and card sizes. Component test/host.
+  Status: `ViewHarness` has a `fullscreen` mode and the `Cytoscape` story uses `parameters.layout:
+  "fullscreen"`, so `07`/`08` render at the app's framing (the fit-after-model seam is shared with LE.1).
 - [x] **LE.6 Edge legibility** (done; see the Phase 10 framing-batch log)
   Drop cross-turn structural wires at overview; no full-width dashed lines; keep root→turn links short
   or omit. Host `edgesAtLevel`/`buildRenderModel`.
@@ -3277,13 +3337,19 @@ Representation experiments (build the seam, then the options):
 
 Layout versatility (keep every option legible):
 
-- [ ] **LE.10 Lane gutter and turn header rail**
+- [x] **LE.10 Lane gutter and turn header rail** (done; see the Phase 10 framing/legibility log)
   A fixed left gutter with lane labels (Phases / Explore / Edit / Verify / Delegate / Artifacts) and a
   per-turn header rail, so the spatial grammar is visible. An overlay on `lanes`, not a replacement.
-- [ ] **LE.11 Timeline and hierarchy legibility**
+  Status: `laneAnchors` + a `buildRenderModel` `laneLabels` gutter render non-interactive, localized lane
+  labels left of the content (lanes strategy only). **Deviation:** world-space chips aligned to the layout,
+  not a screen-fixed overlay (the contract has no screen-space overlay). The turn header rail is the band.
+- [x] **LE.11 Timeline and hierarchy legibility** (done; see the Phase 10 framing/legibility log)
   Timeline wraps (snake rows or per-turn rows) instead of one long row; hierarchy computes its own band
   bounds (or suppresses bands) and widens spacing. All three `LayoutStrategy` values stay legible at
   1440×900 and 390×900.
+  Status: `timelineLayout` wraps each turn into rows (default 6 columns); `hierarchyLayout` is an indented
+  one-node-per-row outline; hierarchy suppresses bands in `buildRenderModel`. `11`/`12` are legible and
+  covered by `layout.test.ts`.
 - [ ] **LE.12 Artifacts rail / file-first navigation**
   A persistent changed-files rail; hovering/selecting a file highlights its writers, inverting the "why
   did this file change" question. An optional lens over `graph`.

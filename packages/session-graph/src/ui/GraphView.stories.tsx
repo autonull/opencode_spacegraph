@@ -57,6 +57,8 @@ type HarnessProps = {
   theme?: RenderTheme
   width?: string
   height?: string
+  /** LE.5: fill the story viewport so the capture matches the app's canvas size. */
+  fullscreen?: boolean
 }
 
 // A selected tool node on load so the story and its component test see a populated inspector
@@ -80,8 +82,12 @@ const ViewHarness = (props: HarnessProps) => {
     selected,
   }
 
+  const size = props.fullscreen
+    ? { width: "100vw", height: "100vh" }
+    : { width: props.width ?? "1100px", height: props.height ?? "640px" }
+
   return (
-    <div style={{ width: props.width ?? "1100px", height: props.height ?? "640px", display: "flex" }}>
+    <div style={{ ...size, display: "flex" }}>
       <GraphView
         model={props.model ?? graph}
         selection={selected()}
@@ -153,7 +159,8 @@ export const Matrix = {
 }
 
 export const Cytoscape = {
-  render: () => <ViewHarness renderer="cytoscape" selection={INITIAL_SELECTION} />,
+  render: () => <ViewHarness renderer="cytoscape" selection={INITIAL_SELECTION} fullscreen />,
+  parameters: { layout: "fullscreen" },
 }
 
 export const Empty = {
