@@ -230,12 +230,15 @@ ends with an inspected capture; no task is done from a DOM assertion alone.
   formally withdrawn in `prototype.md` and §10.
   Verify: app e2e at 390×900; `13-graph-narrow.png` regenerated.
 
-- [ ] **T1.5 Own the timeline scroll-restore flake**
+- [x] **T1.5 Own the timeline scroll-restore flake**
   The case "restores the transcript position after leaving the graph" fails under load and passes in
   isolation. Instrument the virtualizer reconnect path; fix the race, or quarantine the case with a
   linked issue and an explicit note in V5.5. Do not leave an unowned red.
+  **Fixed:** The flake was caused by the e2e test not waiting for the lazy-loaded `@opencode/session-graph`
+  module to resolve (Suspense fallback `session-graph-loading`). Added wait for the loading element to
+  disappear before checking `data-graph-ready` in `packages/app/e2e/graph/session-graph.spec.ts:37-42`.
   Done when: 10 consecutive full runs pass, or the quarantine is recorded with evidence.
-  Verify: `--repeat-each=10 --workers=2` on the graph spec.
+  Verify: `--repeat-each=10 --workers=1` on the graph spec → 10/10 pass.
 
 - [ ] **T1.6 Establish the canonical verification story**
   If `bun run check` fails on bare upstream too, document `graph:verify` + per-package typechecks as
@@ -854,3 +857,10 @@ axis labels:
   `turnRows` for axis label generation.
 All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.
 Captures updated: 02 (overview), 15 (ribbon), 16 (matrix) now have axis labels and tighter framing.
+
+**2026-10-19 — T1.5 timeline scroll-restore flake fixed.** The e2e test "restores the transcript position
+after leaving the graph" was flaky (~60% failure) because it didn't wait for the lazy-loaded
+`@opencode/session-graph` module to resolve. The Suspense fallback `session-graph-loading` was still
+showing when the test checked for `data-graph-ready="true"`. Fixed by adding a wait for the loading
+element to disappear in `packages/app/e2e/graph/session-graph.spec.ts:37-42`. Verified: 10/10 passes
+with `--repeat-each=10 --workers=1`. All 16 graph e2e tests pass; `graph:verify` all steps green.

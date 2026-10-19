@@ -37,6 +37,8 @@ type GraphInput = Parameters<typeof openSession>[1]
 async function openGraph(page: Page, input: GraphInput) {
   await openSession(page, input)
   await page.getByRole("button", { name: "Toggle graph view" }).click()
+  // Wait for the lazy-loaded graph module to resolve (Suspense fallback to disappear)
+  await expect(page.locator('[data-slot="session-graph-loading"]')).toBeHidden({ timeout: 30_000 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 }
 
