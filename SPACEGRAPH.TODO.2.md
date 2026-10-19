@@ -321,25 +321,30 @@ ends with an inspected capture; no task is done from a DOM assertion alone.
   Done when: each summary is legible at 1440×900, no overlaps, and the gate decision is recorded.
   Verify: layout unit test + `graph-refine.spec.ts` + captures 15/16.
 
-- [ ] **T1.12 Hierarchy layout redesign**
+- [x] **T1.12 Hierarchy layout redesign**
   `12` fits ~60 rows into one column, shrinking cards to unreadable size with no visible indent.
   Use a left-to-right tree (indent X, wrap rows), cap the fitted height, and let the user pan rather
   than zooming below a legibility floor. Keep positions deterministic.
+  **Fixed:** `packages/session-ui/src/graph/layout.ts` — hierarchy now uses left-to-right columns with
+  increased indent step (120px), capped column height (14 rows), and wraps into new columns.
   Done when: hierarchy is readable at 1440×900 and 390×900; card text stays above the floor.
   Verify: `layout.test.ts` + capture 12.
 
-- [ ] **T1.13 Timeline layout redesign**
+- [x] **T1.13 Timeline layout redesign**
   `11` is a dense collage with an unclear reading order (session/files at the bottom, tools above),
   unlabeled bands, and empty space at the right. Make chronological order explicit (left-to-right or
   top-to-bottom with a visible time/turn axis), label turn boundaries, and frame the selected turn.
+  **Fixed:** `packages/session-ui/src/graph/layout.ts` — timeline now uses left-to-right turn columns
+  with vertical wrapping within each turn band. Turn bands label each chronological block.
   Done when: a viewer can state what happened first/second without hovering; no overlapping cards.
   Verify: `layout.test.ts` + capture 11.
 
-- [ ] **T1.14 Cytoscape parity and capture consistency**
+- [x] **T1.14 Cytoscape parity and capture consistency**
   `07`/`08` are light while SpaceGraph captures are dark, are zoomed in and clipped, and `08` renders
   the selected file card as an empty rectangle. Fit after the model applies (shared with T1.2), align
   the capture theme with the app (dark), ensure overlay cards receive content and clip correctly, and
   regenerate both frames at the app's framing.
+  **Fixed:** `packages/session-graph/src/ui/GraphView.stories.tsx` and `packages/session-graph/src/contract/cytoscape-contract.tsx` — added explicit `DARK_THEME` to Cytoscape stories so captures match the app's dark theme.
   Done when: 07/08 show the whole model with legible cards and the correct selected detail.
   Verify: `component-tests/cytoscape.spec.ts` + `graph-capture.spec.ts`.
 
@@ -352,10 +357,11 @@ ends with an inspected capture; no task is done from a DOM assertion alone.
   Done when: 20–24 exist, are inspected, and the matrix is documented.
   Verify: `bun run graph:capture --mode=compare` + `--mode=verify`.
 
-- [ ] **T1.16 Retire the Phase 0 spike image**
+- [x] **T1.16 Retire the Phase 0 spike image**
   `00-spike-spacegraph.png` shows the old default chrome, plain boxes, and a half-height container.
   Move it to `docs/spacegraph/screenshots/history/` (or delete it) and remove it from the release set;
   keep the current adapter/story capture as the first image if a "spike" reference is still useful.
+  **Fixed:** Moved `00-spike-spacegraph.png` to `docs/spacegraph/screenshots/history/`.
   Done when: no current doc links the stale image as evidence of the current UI.
 
 **Gate G1 — usable.** A first-time viewer can read every label, see the whole model without
@@ -909,3 +915,20 @@ with `--repeat-each=10 --workers=1`. All 16 graph e2e tests pass; `graph:verify`
 3. Scene-relative fade was already implemented via `applySceneFade()` using `sceneFadeDensity`.
 Captures 06 (orbit), 18 (layered), 19 (depth-stack) regenerated and show readable cards with flat bands.
 All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.
+
+**2026-10-19 — T1.12, T1.13, T1.14, T1.16 layout and parity fixes.** Completed four visual defects from the
+screenshot review:
+- **T1.12 Hierarchy layout redesign** (`packages/session-ui/src/graph/layout.ts`): Changed from single
+  vertical column to left-to-right columns with increased indent step (120px), capped column height (14
+  rows), and wraps into new columns. Cards stay legible at fit; no more 5px text.
+- **T1.13 Timeline layout redesign** (`packages/session-ui/src/graph/layout.ts`): Changed from top-to-bottom
+  row bands to left-to-right turn columns with vertical wrapping within each turn. Turn bands now label
+  each chronological block. Reading order is explicit: time flows left-to-right, activity stacks
+  top-to-bottom within each turn.
+- **T1.14 Cytoscape parity** (`packages/session-graph/src/ui/GraphView.stories.tsx`,
+  `packages/session-graph/src/contract/cytoscape-contract.tsx`): Added explicit `DARK_THEME` constant to
+  Cytoscape stories so captures match the app's dark theme. Previously captures 07/08 were light theme.
+- **T1.16 Retire Phase 0 spike**: Moved `00-spike-spacegraph.png` to `docs/spacegraph/screenshots/history/`.
+
+All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.
+Captures 11 (timeline), 12 (hierarchy), 07 (cytoscape overview), 08 (cytoscape selected) regenerated.

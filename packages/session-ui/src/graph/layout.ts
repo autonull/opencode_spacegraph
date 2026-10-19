@@ -262,9 +262,9 @@ function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
 }
 
 /**
- * Timeline (LE.11): one chronological block per turn, wrapping every `columns` cards so it reads as
- * rows rather than one long smear. Row 0 is the session/global block; each turn starts a fresh row so
- * the sequence stays legible without shrinking to slivers.
+ * Timeline (LE.11): chronological left-to-right flow. Each turn is a column band with its members
+ * laid out vertically within it. Turn boundaries are explicit bands with labels. Reading order is
+ * clear: time flows left-to-right, activity stacks top-to-bottom within each turn.
  */
 function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
   const gap = options.gap ?? 24
@@ -272,17 +272,25 @@ function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout 
   const depthStep = options.depthStep ?? 64
   const columns = Math.max(1, options.columns ?? 6)
   const rowHeight = CARD_SIZE[1] + rowGap
+  // Horizontal space per turn column: max cards per column * (card width + gap) + band padding
+  const turnColumnWidth = columns * (CARD_SIZE[0] + gap) + 48
 
   const positions = new Map<string, Position>()
-  let row = 0
 
-  // T1.13: each block starts a fresh row band and leaves one empty row before the next, so turn
-  // boundaries read top-to-bottom instead of interleaving unrelated activity.
-  for (const nodes of turnBlocks(model)) {
-    for (let i = 0; i < nodes.length; i += columns) {
-      let cursor = 0
+  const clusters = new Map<string, ClusterBounds>()
+  let turnIndex = 0
 
-      for (const node of nodes.slice(i, i + columns)) {
+  // Session/global block first (turnIndex = 0)
+  const globalNodes = turnBlocks(model)[0]
+
+  if (globalNodes && globalNodes.length > 0) {
+    let row = 0
+    let cursor = 0
+
+    for (let i = 0; i < globalNodes.length; i += columns) {
+      cursor = 0
+
+      for (const node of globalNodes.slice(i, i + columns)) {
         const width = nodeSize(node)[0]
         positions.set(node.id, { x: cursor + width / 2, y: row * rowHeight, z: DEPTH[node.kind] * depthStep })
         cursor += width + gap
@@ -291,21 +299,50 @@ function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout 
       row += 1
     }
 
-    row += 1
+    // Session band spans the global block
+    const members = memberPositions(
+      [model.root, ...globalNodes.map((node) => node.id)],
+      positions,
+    )
+
+    if (members) clusters.set("session", members)
+
+    turnIndex += 1
   }
 
-  const clusters = new Map<string, ClusterBounds>()
-
-  // Turn bands label each chronological block; without them the timeline has no visible boundaries.
+  // Each turn gets its own column band
   for (const turnID of model.turns) {
+    const turnNodes = model.nodes.filter((node) => node.turnID === turnID || node.id === turnID)
+
+    if (turnNodes.length === 0) continue
+
+    const columnX = turnIndex * turnColumnWidth
+    let row = 0
+
+    for (let i = 0; i < turnNodes.length; i += columns) {
+      let cursor = columnX
+
+      for (const node of turnNodes.slice(i, i + columns)) {
+        const width = nodeSize(node)[0]
+        positions.set(node.id, { x: cursor + width / 2, y: row * rowHeight, z: DEPTH[node.kind] * depthStep })
+        cursor += width + gap
+      }
+
+      row += 1
+    }
+
+    // Turn band spans this turn's column
     const members = memberPositions(
-      [turnID, ...model.nodes.filter((node) => node.turnID === turnID).map((node) => node.id)],
+      [turnID, ...turnNodes.filter((node) => node.id !== turnID).map((node) => node.id)],
       positions,
     )
 
     if (members) clusters.set(turnID, members)
+
+    turnIndex += 1
   }
 
+  // Phase clusters
   for (const node of model.nodes) {
     if (node.kind !== "phase" || !node.clusterOf) continue
 
@@ -325,19 +362,20 @@ function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout 
 }
 
 /**
- * Hierarchy (LE.11): an indented outline. Each node takes one row and X is the hierarchy indent, so
- * ancestry reads as a staircase rather than the diagonal scatter a shared per-depth cursor produced.
- * No turn/phase bands: an indent outline has no per-turn rectangle.
+ * Hierarchy (LE.11): a left-to-right indented outline. Depth reads as X offset (ancestry is a
+ * staircase), rows wrap within a capped column height so cards stay legible, and the user pans
+ * instead of zooming below the legibility floor. Positions are deterministic and append-only.
  */
 function hierarchyLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
   const rowGap = options.rowGap ?? 12
   const depthStep = options.depthStep ?? 64
   const rowHeight = CARD_SIZE[1] + rowGap
-  // T1.12: a single 60-row column shrinks to an illegible sliver when fitted. Cap the column height
-  // and wrap the outline into columns so the fit stays above the legibility floor.
+  // Cap column height to keep card text above the legibility floor (~14 rows at 84px = ~1176px).
   const rowsPerColumn = Math.max(1, options.rows ?? 14)
-  const indentStep = 96
-  const columnWidth = indentStep * 3 + CARD_SIZE[0]
+  // Indent step must be large enough to read at fit; 120px gives clear visual hierarchy.
+  const indentStep = 120
+  // Column width accommodates max depth (4) * indent + card width + padding.
+  const columnWidth = indentStep * 4 + CARD_SIZE[0] + 48
 
   const positions = new Map<string, Position>()
   const indent = (depth: number) => depth * indentStep

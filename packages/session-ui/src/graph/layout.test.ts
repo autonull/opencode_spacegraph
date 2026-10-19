@@ -104,8 +104,10 @@ describe("layout — level-aware overview", () => {
     const model = buildFixtureGraph()
     const overview = layoutGraph(model, { level: "overview" })
     const execution = layoutGraph(model, { level: "execution" })
+
     const width = (layout: GraphLayout) => {
       const xs = [...layout.positions.values()].map((point) => point.x)
+
       return Math.max(...xs) - Math.min(...xs)
     }
 
@@ -167,29 +169,35 @@ describe("layout — alternate strategies", () => {
     }
   })
 
-  test("timeline wraps a turn's cards into rows bounded by the column count", () => {
+  test("timeline lays out turns as left-to-right columns with vertical wrapping", () => {
     const model = buildFixtureGraph()
     const columns = 4
     const layout = layoutGraph(model, { strategy: "timeline", columns })
     const points = [...layout.positions.values()]
 
-    // More than one row: the turn is not a single long smear.
-    expect(new Set(points.map((point) => point.y)).size).toBeGreaterThan(1)
-    // A row never exceeds the wrapped column width (4 cards of 220 + 3 gaps of 24).
-    expect(Math.max(...points.map((point) => point.x))).toBeLessThan(columns * (CARD_SIZE[0] + 24))
+    // Multiple turn columns: time flows left-to-right
+    expect(new Set(points.map((point) => Math.floor(point.x / 100))).size).toBeGreaterThan(1)
+    // A column never exceeds the wrapped column width (cards wrap vertically within each turn column)
+    const maxX = Math.max(...points.map((point) => point.x))
+    const turnColumnWidth = columns * (CARD_SIZE[0] + 24) + 48
+    expect(maxX).toBeLessThan(model.turns.length * turnColumnWidth + turnColumnWidth)
 
-    // No two cards share a row and overlap.
-    const byRow = new Map<number, { x: number; width: number }[]>()
+    // No two cards in the same turn column AND same row overlap.
+    const byColumnAndRow = new Map<string, { x: number; width: number }[]>()
 
     for (const node of model.nodes) {
       const point = layout.positions.get(node.id)!
-      const row = byRow.get(point.y) ?? []
-      row.push({ x: point.x, width: nodeSize(node)[0] })
-      byRow.set(point.y, row)
+      // Determine which turn column this node belongs to
+      const col = Math.floor(point.x / turnColumnWidth)
+      const row = Math.round(point.y / (CARD_SIZE[1] + 20))
+      const key = `${col}:${row}`
+      const colData = byColumnAndRow.get(key) ?? []
+      colData.push({ x: point.x, width: nodeSize(node)[0] })
+      byColumnAndRow.set(key, colData)
     }
 
-    for (const row of byRow.values()) {
-      const sorted = [...row].sort((a, b) => a.x - b.x)
+    for (const colData of byColumnAndRow.values()) {
+      const sorted = [...colData].sort((a, b) => a.x - b.x)
 
       for (let i = 1; i < sorted.length; i++)
         expect(sorted[i]!.x - sorted[i - 1]!.x).toBeGreaterThanOrEqual(
@@ -198,22 +206,16 @@ describe("layout — alternate strategies", () => {
     }
   })
 
-  test("timeline starts each turn on its own row band and labels the boundary", () => {
+  test("timeline emits a turn band for each turn spanning its column", () => {
     const model = buildFixtureGraph()
     const layout = layoutGraph(model, { strategy: "timeline", columns: 5 })
-    const ranges = model.turns.map((turnID) => {
+
+    for (const turnID of model.turns) {
       expect(layout.clusters.has(turnID)).toBe(true)
-      const ys = model.nodes
-        .filter((node) => node.turnID === turnID || node.id === turnID)
-        .flatMap((node) => {
-          const point = layout.positions.get(node.id)
-          return point ? [point.y] : []
-        })
-
-      return { min: Math.min(...ys), max: Math.max(...ys) }
-    })
-
-    for (let i = 1; i < ranges.length; i++) expect(ranges[i]!.min).toBeGreaterThan(ranges[i - 1]!.max)
+      const cluster = layout.clusters.get(turnID)!
+      // Band spans horizontally across the turn's column
+      expect(cluster.max.x - cluster.min.x).toBeGreaterThan(100)
+    }
   })
 
   test("hierarchy wraps its outline into capped columns, indented by depth", () => {

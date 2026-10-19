@@ -2,6 +2,26 @@ import { CytoscapeRenderer } from "@spacegraphjs/cytoscape-renderer"
 import { onCleanup, onMount } from "solid-js"
 import { ADAPTER_MODEL, ADAPTER_THEME } from "./fixtures"
 
+/** Dark theme matching the app's dark mode tokens for consistent captures. */
+const DARK_THEME: typeof ADAPTER_THEME = {
+  background: "#101014",
+  surface: "#1b1b22",
+  surfaceMuted: "#2a2a33",
+  text: "#f5f5f7",
+  textMuted: "#a0a0aa",
+  border: "#3a3a44",
+  accent: "#3b82f6",
+  success: "#22c55e",
+  warning: "#f59e0b",
+  error: "#ef4444",
+  edge: "#6b7280",
+  edgeMuted: "#4b5563",
+  selection: "#60a5fa",
+  focus: "#93c5fd",
+  fontFamily: "system-ui, sans-serif",
+  fontSize: 13,
+}
+
 export const CytoscapeContract = () => {
   let host!: HTMLDivElement
   let renderer: CytoscapeRenderer | undefined
@@ -10,7 +30,7 @@ export const CytoscapeContract = () => {
   onMount(() => {
     renderer = new CytoscapeRenderer()
     renderer
-      .mount(host, { theme: ADAPTER_THEME, projection: "2d" })
+      .mount(host, { theme: DARK_THEME, projection: "2d" })
       .then(() => {
         if (disposed) {
           renderer?.dispose()
