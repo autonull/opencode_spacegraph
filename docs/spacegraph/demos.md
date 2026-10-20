@@ -1,13 +1,15 @@
-# SpaceGraph demos — three surfaces, one index
+# SpaceGraph demos — four surfaces, one index
 
 A reviewer should be able to pick the right surface in one glance. They are not interchangeable:
-one shows the **host**, one shows the **library**, one is the **test harness**.
+one shows the **host**, one shows the **library**, one shows a **consumer of the library**, one is
+the **test harness**.
 
 | Surface | Command | Shows | Needs a provider? |
 |---|---|---|---|
 | [Host demo](#1-host-demo--the-opencode-app) | `bun run graph:dev` | The real OpenCode shell with the session graph | No |
 | [Library contract demo](#2-library-contract-demo--the-library-alone) | `cd spacegraphjs && pnpm run dev:demo` → `/contract.html` | The SpaceGraphJS contract and adapters, without OpenCode | No |
-| [Test harness](#3-test-harness--not-a-demo) | `bun run test:components` | Component tests | No |
+| [Second host](#3-second-host--a-framework-free-consumer) | `cd spacegraphjs && pnpm run dev:demo` → `/second-host.html` | A host outside OpenCode running every generic module | No |
+| [Test harness](#4-test-harness--not-a-demo) | `bun run test:components` | Component tests | No |
 
 The old Phase 0 spike (`screenshots/history/00-spike-spacegraph.png`) is retired. Storybook is a test
 harness, not a demo: it exists to drive Playwright, and it is not a surface a maintainer should be
@@ -77,7 +79,44 @@ the framing reference for the host captures: the same card grammar, the same dar
 
 ---
 
-## 3. Test harness — not a demo
+## 3. Second host — a framework-free consumer
+
+```bash
+cd spacegraphjs
+pnpm run dev:demo     # then open http://localhost:5173/second-host.html
+```
+
+**What it is.** A host that is neither OpenCode nor a framework binding: plain TypeScript, a
+release pipeline as its own vocabulary, and a **capability gallery** in which every generic module
+runs against that model and reports what it produced (`contract v2 · negotiation accepted`,
+`overview · 5 nodes · 4 edges · budget 6`, `scope around "Verify": 6 nodes, 5 edges`).
+
+**Fixture.** `spacegraphjs/demo/second-host/model.ts` — a pipeline with four stages, a failing
+test, a retry, and an artifact. Its lanes, kinds, statuses, level table and card markup are its
+own.
+
+**What it proves.**
+
+- **Adoption outside OpenCode.** The contract, both interactive adapters, the static SVG renderer,
+  the model adapter, the level table, the layout strategies, the summary representations, the
+  navigation primitives, the controller, the accessibility mirror, the depth spectrum, the scoped
+  overlay and the code diff all run against a host they have never seen.
+- **The host keeps its vocabulary.** The library owns the algorithms; the host owns the words, the
+  lanes, the sizes and the markup. Changing a lane name changes nothing in the library.
+- **No framework, no OpenCode.** `spacegraphjs/test/second-host/` fails if the host imports an
+  OpenCode module, a framework, or a library surface the gallery does not claim.
+
+**Screenshots.** `screenshots/26-second-host.png` (the summary, the gallery and the evidence
+panel) and `screenshots/27-second-host-lanes.png` (the lane view, panned: the pipeline is wider
+than a legible frame, so the fit keeps a floor and the reader pans the rest).
+
+**Checks.** `cd spacegraphjs && pnpm run test:second-host` (browser) and
+`cd spacegraphjs && node_modules/.bin/vitest run test/second-host/` (the unit half). Both run in
+the library's CI.
+
+---
+
+## 4. Test harness — not a demo
 
 ```bash
 cd packages/session-graph && bun run test:components   # Storybook-backed Playwright
@@ -96,7 +135,7 @@ the adapter parity, and (T6.7) that hostile markup stays inert in both adapters.
 
 ---
 
-## 4. Two opt-in surfaces in the host demo
+## 5. Two opt-in surfaces in the host demo
 
 Both are off unless you ask for them, and neither sends anything anywhere.
 
@@ -139,6 +178,7 @@ be ambiguous.
 |---|---|
 | See whether this is useful inside OpenCode | Host demo |
 | Judge the library as a dependency | Library contract demo |
+| See the library used by a host that is not OpenCode | Second host |
 | Check that it is tested, not just demoed | `bun run graph:verify` |
 | Measure the interactions of a task | Host demo with `?graphMetrics=1` |
 | Share one node of a map | The `#graph:<node>` permalink |

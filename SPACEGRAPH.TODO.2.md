@@ -20,9 +20,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20) | `session-ui` graph 90 · `session-graph` unit 96 · `session-graph` component 44 · `spacegraphjs` 445 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 · `graph:scale` (T6.6) |
+| Last green (re-run 2026-10-20) | `session-ui` graph 90 · `session-graph` unit 96 · `session-graph` component 44 · `spacegraphjs` 453 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
-| Reference images | `docs/spacegraph/screenshots/01`–`25`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), and 25 shows a long session at the drawn window (T6.6)** |
+| Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)** |
 
 Two facts shape everything below:
 
@@ -50,8 +50,8 @@ Aim for all five; each has an observable test.
    (`#graph:<node>`), so a decision can be revisited or shared instead of re-scrolled.
 6. **A reproducible reviewer experience.** An OpenCode maintainer can launch the real shell against
    the canonical fixture, with no model provider, and reproduce every claim in the review packet.
-7. **Library adoption evidence.** A second host (React) runs the published contract and adapters,
-   and every generic capability has a runnable example outside OpenCode.
+7. **Library adoption evidence.** A second host (framework-free plain TypeScript) runs the published
+   contract and adapters, and every generic capability has a runnable example outside OpenCode.
 
 ### 0.2 Invariants carried forward
 
@@ -105,14 +105,15 @@ library; the framework bindings were dropped), T6.1 (provider-free demo), T6.3 (
 (demo index), T6.17 (the code-diff vocabulary and renderer extracted; the host keeps its markup),
 **T6.18 (the camera can be read back and jumped instantly), T6.19 (the zoom/pan matrix shows what its
 names say, and the gate proves it), T6.6 (the scale budget: the pipeline is linear, the map is capped
-and says so, and the guards are load-bearing)**.
+and says so, and the guards are load-bearing), T6.12 (the second host: a framework-free consumer
+outside OpenCode that runs every generic module, checked by the library's own CI)**.
 
 **The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
 own framework. The React and Solid packages keep the `GraphView` binding they already had and nothing
 else — the overlay and diff components that were added with the core were removed, because they duplicated
 the host's markup and had no consumer. T4.14's remaining bindings are therefore **dropped**, not pending:
-the OpenCode host is the worked example. T6.12's second host should be framework-free too (plain
-TypeScript against the contract), not a React app.
+the OpenCode host is the worked example, and T6.12's second host is framework-free too (plain
+TypeScript against the contract) — it now exists, in `spacegraphjs/demo/second-host/`.
 
 ---
 
@@ -1140,7 +1141,7 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Harness for mount/dispose cycles, pan/zoom frame time via `PerformanceObserver`, WebGL context count, model-diff cost at 100/500/1k/5k nodes. Emit JSON report per tag. Add `publint`, `attw`, bundle-size checks to publish workflow.
   Done when: report archived per release; CI fails beyond budget.
 
-- [ ] **T6.12 Second-host app and capability gallery — framework-free, not React**
+- [x] **T6.12 Second-host app and capability gallery — framework-free, not React**
   Plain-TypeScript app under `spacegraphjs/demo/second-host` using the contract + the adapters + the generic
   modules, deployed with the demo. No framework: the library is framework-agnostic, so a second host is
   plain TypeScript against the contract. Capability gallery (zoom bands, **lane layout (T4.8)**, trail, a11y,
@@ -1150,6 +1151,37 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   - **Changed (2026-10-20):** the plan said a Vite React app using `react-spacegraph`. The library dropped
     the framework bindings, so a React app would have to re-implement them; a plain-TypeScript host is both
     smaller and a better proof that the core is usable on its own.
+  - **Done (2026-10-20).** `spacegraphjs/demo/second-host/` is a plain-TypeScript app with **its own
+    vocabulary** — a release pipeline: four stages, a failing test, a retry, an artifact, its own lanes,
+    kinds, statuses, level table and card markup. It mounts the SpaceGraph adapter, the Cytoscape adapter
+    and the static SVG renderer over one model, and its **capability gallery** has one entry per library
+    surface (13 entries, 14 modules): each entry *runs* its module against the model and reports what it
+    produced (`overview · 8 nodes · 7 edges · budget 6`, `scope around "Verify": 5 nodes, 7 edges`,
+    `text 16.2:1 · muted text 7.9:1 · target 4.5`).
+  - **The gallery is the point, so it is checked, not claimed.** `spacegraphjs/test/second-host/` (8 tests)
+    runs every capability against the real model and fails if any reports nothing; it fails if the host
+    imports an OpenCode module, a framework, or a library surface the gallery does not claim (the exact
+    import set is asserted). `spacegraphjs/test/e2e/second-host.spec.ts` (8 tests) drives the real page:
+    every capability runs in a browser with no console error, the three renderers mount the same model, the
+    scoped overlay traps focus and closes on Escape, the diff renders as text and not as markup, the search
+    selects, and the minimap draws the overview.
+  - **CI runs it.** The library's workflow gained a "Second host" step (Playwright, Chromium), and the
+    fork's `bun run graph:verify` gained a unit step for the same suite. The demo build gained the
+    `second-host.html` entry, so it ships with the hosted demo.
+  - **Three defects the second host found, all in the host, none in the library.** (1) The lanes layout
+    counted every node **twice**: the host set both `turnIdFn` and `ownerTurnFn` to the same stage, and the
+    library buckets by both, so the content was 7008 units wide instead of 3648. (2) The summary views
+    still drew the stage nodes, which the summary does not place — the host's node filter now keeps only
+    the nodes the current view places, and the edges are filtered with it (the renderer was warning about
+    dangling edges). (3) The camera was not re-framed after a view change, so a new view was drawn off-screen
+    at the old frame.
+  - **One finding worth keeping.** The pipeline does not fit a legible frame in a narrow canvas: the fit's
+    floor (half a card's natural size) means the reader pans the rest. The host's default view is therefore
+    the **summary** and the lane view is the panned detail — the same trade T1.18 recorded for OpenCode.
+    Screenshots `26-second-host.png` and `27-second-host-lanes.png` show both, and both were read by eye.
+  - **Unverified:** the demo was checked in Chromium at 1440×900, not in Firefox or WebKit, and not on a
+    touch device; the hosted URL still has not been deployed (the workflow exists but has not run since the
+    second host was added); the second host's model is synthetic, so it says nothing about a real session.
 
 - [ ] **T6.13 Embedder devtools**
   Dev-only overlay/API (`sg.debug()` or `?debug=1`) showing renderer, contract version, capabilities, node/edge/LOD counts, frame time, selection; matching diagnostic panel in host.
@@ -1225,6 +1257,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Scale guard | new 1k/5k perf test | T6.6 |
 | Library benchmark | `cd spacegraphjs && bun run bench:graph` (new) | T6.11 |
 | Published packages | `cd spacegraphjs && pnpm run test:publish` | T4.2 — packs every package, installs the tarballs into a clean consumer outside the monorepo, mounts both adapters |
+| Second host | `cd spacegraphjs && pnpm run test:second-host` + `vitest run test/second-host/` | T6.12 — a framework-free consumer outside OpenCode; every generic module runs against its own model |
 | Library typecheck | `cd spacegraphjs && tsc --noEmit -p tsconfig.json` | T4.4 — clean for `src`, `test` and the five packages |
 | Pixel diff (optional) | `bun run graph:diff` (new) | T6.15 |
 
@@ -2257,5 +2290,61 @@ the scale budget and what the capture at the cap found") on `origin/dev`. The fo
 records (`@opencode/plugin-figma`'s typecheck hits `zstdCompressSync` under this checkout, and `turbo`
 dies with SIGSEGV). The graph-relevant checks — the affected packages' typechecks, every graph suite,
 `graph:verify`, `lint:changed` — all pass.
+
+**2026-10-20 — T6.12: a second host that is not OpenCode, and the gallery that proves the library.**
+The library track's last open deliverable. T2 still needs participants, so the work went where the
+plan says it can.
+
+*The second host.* `spacegraphjs/demo/second-host/` is a plain-TypeScript app with **its own
+vocabulary**: a release pipeline (four stages, a failing test, a retry, an artifact) with its own
+lanes, kinds, statuses, level table and card markup. It mounts the SpaceGraph adapter, the
+Cytoscape adapter and the static SVG renderer over one model, and it carries a **capability
+gallery**: one entry per library surface (13 entries, 14 modules). Each entry *runs* its module
+against the model and reports what it produced — `overview · 8 nodes · 7 edges · budget 6`,
+`scope around "Verify": 5 nodes, 7 edges`, `text 16.2:1 · muted text 7.9:1 · target 4.5`,
+`ribbon · 4 rows (2 + 4 + 4 + 3) · 13 placed`. A gallery entry that only claimed to work would be a
+caption; these are measurements.
+
+*The proof is the suite, not the page.* `spacegraphjs/test/second-host/` (8 tests) runs every
+capability against the real model and fails if any reports nothing; it fails if the host imports an
+OpenCode module, a framework, or a library surface the gallery does not claim (the exact import set
+is asserted, so a new dependency has to be declared). `spacegraphjs/test/e2e/second-host.spec.ts`
+(8 tests) drives the real page: every capability runs in a browser with no console error, the three
+renderers mount the same model, the scoped overlay traps focus and closes on Escape, the diff
+renders as text and not as markup, the search selects, and the minimap draws the overview.
+
+*CI runs it.* The library's workflow gained a "Second host" step (Playwright, Chromium), and the
+fork's `bun run graph:verify` gained a unit step for the same suite. The demo build gained the
+`second-host.html` entry, so it ships with the hosted demo. The demo's Playwright config now starts
+the **local** vite instead of `pnpm dlx vite` (the registry is not reachable from CI), and its port
+is overridable with `SG_DEMO_PORT`.
+
+*Three defects, all in the host, none in the library — which is the point of the exercise.* (1) The
+lanes layout counted every node **twice**: the host set both `turnIdFn` and `ownerTurnFn` to the same
+stage and the library buckets by both, so the content came out 7008 units wide instead of 3648.
+(2) The summary views still drew the stage nodes, which the summary does not place, and the renderer
+warned about the dangling edges; the host's node filter now keeps only the nodes the current view
+places, and the edges are filtered with it. (3) The camera was not re-framed after a view change, so
+a new view was drawn off-screen at the old frame.
+
+*One finding worth keeping.* The pipeline does not fit a legible frame in a narrow canvas: the fit's
+floor (half a card's natural size) means the reader pans the rest. The host's default view is
+therefore the **summary**, and the lane view is the panned detail — the same trade T1.18 recorded for
+OpenCode. Screenshots `26-second-host.png` (the summary, the gallery and the evidence panel) and
+`27-second-host-lanes.png` (the lane view, panned) were read by eye.
+
+*Also in this pass:* the fork's demo index (`docs/spacegraph/demos.md`) grew a fourth surface, the
+prototype's library capability audit was brought up to date (the modules T4.8–T4.14 added, and the
+second host as a consumer of each), and the review packet links the new demo.
+
+Commands run: `tsc --noEmit -p tsconfig.json` in `spacegraphjs` (0 errors, and the demo is now in the
+typecheck), `vitest run` in `spacegraphjs` (453 pass, 8 new), `playwright test … second-host.spec.ts`
+(8 pass), `bun run graph:verify` in the fork (all steps, including the library build, the capture
+verification, the new second-host step and the publish check), `bun run lint:changed` (0).
+
+Unverified: the second host was checked in Chromium at 1440×900 only — not in Firefox or WebKit, and
+not on a touch device; the hosted URL has not been deployed since the second host was added (the
+workflow exists but has not run); the second host's model is synthetic, so it says nothing about a
+real session. **T2.1 and T2.2 still need participants**, so the stop rule in T2.5 has not fired.
 
 

@@ -289,4 +289,6 @@ bun run graph:capture --mode=compare
 - **Living plan:** `SPACEGRAPH.TODO.2.md`
 - **Library docs:** `spacegraphjs/README.md`, `spacegraphjs/docs/host-integration.md`
 - **Demo (library contract):** `spacegraphjs/demo/contract.html` (to be deployed via GitHub Pages)
+- **Demo (second host):** `spacegraphjs/demo/second-host.html` — a framework-free consumer outside
+  OpenCode; every generic module runs against a model of its own, and the library's CI proves it
 - **Demo (OpenCode host):** `bun run graph:dev`

@@ -400,18 +400,21 @@ data assumptions appear in the library.
 
 | Capability | Module | Consumers | Gap |
 |---|---|---|---|
-| Renderer contract | `@spacegraphjs/renderer` | both adapters, OpenCode registry, conformance suite | none |
-| Model adapter | `@spacegraphjs/adapter` | OpenCode `SessionGraphAdapter`, library reference adapter | the Cytoscape card cap is not live: the host has no renderer switch yet |
-| SpaceGraph adapter | `@spacegraphjs/spacegraph-renderer` | OpenCode, library demo | node remodelling recreates a node on type change (by design) |
-| Cytoscape adapter | `@spacegraphjs/cytoscape-renderer` | OpenCode fallback, library demo | 3D is a declared no-op; minimap is host-side |
-| Static SVG renderer | `@spacegraphjs/svg-renderer` | OpenCode inline subgraph, library demo | `InlineGraph` is not exercised in a browser beyond the demo |
-| Zoom bands | `spacegraphjs/zoom` | library demo; host policy in `levels.ts` | band→level wiring is host-owned |
-| Lane layout | `spacegraphjs/layout` | library demo; host layout in `layout.ts` | `TimelineLayout`/`HierarchicalLayout` are not refactored onto it |
-| Accessibility layer | `spacegraphjs/a11y` | OpenCode a11y mirror, library demo | node list only; edges are not announced |
-| Navigation trail | `spacegraphjs/navigation` | `GraphController`, OpenCode `GraphView`, library demo | — |
-| View controller | `spacegraphjs/control` | OpenCode `GraphView` (selection), library demo | OpenCode search stays host-owned (uses the richer tool-input selector) |
+| Renderer contract | `@spacegraphjs/renderer` | both adapters, OpenCode registry, conformance suite, second host | none |
+| Model adapter | `@spacegraphjs/adapter` | OpenCode `SessionGraphAdapter`, second host | the Cytoscape card cap is not live: the host has no renderer switch yet |
+| SpaceGraph adapter | `@spacegraphjs/spacegraph-renderer` | OpenCode, contract demo, second host | node remodelling recreates a node on type change (by design) |
+| Cytoscape adapter | `@spacegraphjs/cytoscape-renderer` | OpenCode fallback, contract demo, second host | 3D is a declared no-op; minimap is host-side |
+| Static SVG renderer | `@spacegraphjs/svg-renderer` | OpenCode inline subgraph, contract demo, second host | `InlineGraph` is not exercised in a browser beyond the demo |
+| Semantic levels | `spacegraphjs/levels` | OpenCode `levels.ts`, second host | none |
+| Layout strategies | `spacegraphjs/layout` | OpenCode `layout.ts`, second host | none — the timeline and the hierarchy moved onto `Strategies` |
+| Summary representations | `spacegraphjs/representations` | OpenCode `representation.ts`, second host | none |
+| Zoom bands | `spacegraphjs/zoom` | `GraphController`, second host | band→level wiring is host-owned |
+| Accessibility layer | `spacegraphjs/a11y` | OpenCode a11y mirror, second host | none — the edges are announced too (T4.7) |
+| Navigation (search, minimap, trail) | `spacegraphjs/navigation` | `GraphController`, OpenCode `GraphView` + `GraphMinimap`, second host | OpenCode search stays host-owned (uses the richer tool-input selector) |
+| View controller | `spacegraphjs/control` | OpenCode `GraphView`, second host | — |
+| Scoped overlay and code diff | `spacegraphjs/overlays` | OpenCode turn map and diff view, second host | the host keeps its own markup and copy |
+| Depth spectrum | `spacegraphjs/depth` + contract `depths` | OpenCode depth chooser, second host | Z spread is host layout; depth fade is scene fog, not per-object DoF |
 | DOM mount | `spacegraphjs` `DOMNode` | SpaceGraph adapter | — |
-| Depth spectrum | `spacegraphjs/depth` + contract `depths` | OpenCode depth chooser, library demo | Z spread is host layout; depth fade is scene fog, not per-object DoF |
 | Minimap | host SVG (`GraphMinimap.tsx`) | OpenCode | vertical mirror under Cytoscape (documented) |
 
 ## Known limitations

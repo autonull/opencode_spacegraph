@@ -39,6 +39,11 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
   },
   { label: "overlay core (scope, focus, diff)", cwd: spacegraphjs, cmd: [vitest, "run", "test/overlays/"] },
   { label: "navigation core (search, minimap)", cwd: spacegraphjs, cmd: [vitest, "run", "test/navigation/"] },
+  {
+    label: "second host (a framework-free host outside OpenCode)",
+    cwd: spacegraphjs,
+    cmd: [vitest, "run", "test/second-host/"],
+  },
   { label: "contract package", cwd: join(spacegraphjs, "packages/renderer"), cmd: ["bun", "test"] },
   {
     label: "model adapter",
