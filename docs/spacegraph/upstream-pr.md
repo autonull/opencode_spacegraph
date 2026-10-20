@@ -134,7 +134,7 @@ order of preference:
 
 | Option | What it means | Cost |
 |---|---|---|
-| **A. Publish the packages** | `@spacegraphjs/renderer`, `-spacegraph-renderer`, `-cytoscape-renderer`, `-svg-renderer` on npm with semver tags | The library becomes a public dependency with its own release cadence (T4.2) |
+| **A. Publish the packages** | `@spacegraphjs/renderer`, `-adapter`, `-spacegraph-renderer`, `-cytoscape-renderer`, `-svg-renderer` on npm with semver tags | The library becomes a public dependency with its own release cadence (T4.2) |
 | **B. One bundled companion package** | A single package with the contract and the adapters, built from source, published | Less granular, but one dependency and one version to track |
 | **C. Extension panel only** | Take Rung 4 with a locally bundled renderer | No dependency, but the canvas work (Rung 2) is deferred |
 

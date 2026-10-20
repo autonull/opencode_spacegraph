@@ -4,7 +4,8 @@
 //
 //   - the headless contract suite against both adapters (spacegraphjs Vitest),
 //   - the framework-agnostic view controller and the React/Solid bindings (spacegraphjs Vitest),
-//   - the four dependency-free/leaf packages (contract, SpaceGraph, Cytoscape, SVG),
+//   - the four dependency-free/leaf packages (contract, SpaceGraph, Cytoscape, SVG) and the model
+//     adapter,
 //   - the browser contract + graph view through the session-graph Storybook harness,
 //   - the capture suite in verify mode (fresh renders into a temp dir; committed set asserted).
 //
@@ -32,6 +33,11 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
     ],
   },
   { label: "contract package", cwd: join(spacegraphjs, "packages/renderer"), cmd: ["bun", "test"] },
+  {
+    label: "model adapter",
+    cwd: spacegraphjs,
+    cmd: [vitest, "run", "packages/adapter/test/adapter.test.ts"],
+  },
   { label: "SpaceGraph adapter", cwd: join(spacegraphjs, "packages/spacegraph-renderer"), cmd: ["bun", "test"] },
   { label: "Cytoscape adapter", cwd: join(spacegraphjs, "packages/cytoscape-renderer"), cmd: ["bun", "test"] },
   { label: "SVG renderer", cwd: join(spacegraphjs, "packages/svg-renderer"), cmd: ["bun", "test"] },

@@ -47,6 +47,7 @@
       "packages/stats/*",
       "spacegraphjs",
       "spacegraphjs/packages/renderer",
+      "spacegraphjs/packages/adapter",
       "spacegraphjs/packages/spacegraph-renderer",
       "spacegraphjs/packages/cytoscape-renderer",
       "spacegraphjs/packages/svg-renderer"

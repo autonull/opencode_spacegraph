@@ -62,8 +62,10 @@ Session messages + status + turn diffs
   `writes`/`searches`/`produces`/`references`/`compacts`/`evidence` edges. `inferred-cause` is never
   emitted from adjacency. `levels.ts` owns the semantic policy (§5.4); `layout.ts` assigns lanes,
   ordinals, and depths deterministically (append-only).
-- **Contract + leaves** — `spacegraphjs/packages/{renderer,spacegraph-renderer,cytoscape-renderer,svg-renderer}`.
-  The core never imports the contract; only the SpaceGraph adapter imports both.
+- **Contract + leaves** — `spacegraphjs/packages/{renderer,adapter,spacegraph-renderer,cytoscape-renderer,svg-renderer}`.
+  The core never imports the contract; only the SpaceGraph adapter imports both. The model adapter
+  (`@spacegraphjs/adapter`) owns the domain-model → `RenderModel` pipeline and imports the contract
+  only, so a second host can reuse the pipeline without the renderer packages.
 - **Host UI** — `packages/session-graph` imports the contract, never a concrete backend. No
   `renderer === "cytoscape"` branch exists; differences are capability flags.
 - **Integration** — `packages/app/src/session/graph/` (lazy wrapper) + `session/header/session-graph-toggle.tsx`
@@ -350,6 +352,7 @@ data assumptions appear in the library.
 | Capability | Module | Consumers | Gap |
 |---|---|---|---|
 | Renderer contract | `@spacegraphjs/renderer` | both adapters, OpenCode registry, conformance suite | none |
+| Model adapter | `@spacegraphjs/adapter` | OpenCode `SessionGraphAdapter`, library reference adapter | the Cytoscape card cap is not live: the host has no renderer switch yet |
 | SpaceGraph adapter | `@spacegraphjs/spacegraph-renderer` | OpenCode, library demo | node remodelling recreates a node on type change (by design) |
 | Cytoscape adapter | `@spacegraphjs/cytoscape-renderer` | OpenCode fallback, library demo | 3D is a declared no-op; minimap is host-side |
 | Static SVG renderer | `@spacegraphjs/svg-renderer` | OpenCode inline subgraph, library demo | `InlineGraph` is not exercised in a browser beyond the demo |

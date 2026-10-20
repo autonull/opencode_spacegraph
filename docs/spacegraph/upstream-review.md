@@ -58,6 +58,7 @@ A negative result, honestly recorded, is a valid and publishable outcome. The li
 | Package | Purpose |
 |---|---|
 | `@spacegraphjs/renderer` | Contract types + version negotiation (zero deps) |
+| `@spacegraphjs/adapter` | Host-agnostic model → `RenderModel` pipeline + conformance suite (contract only) |
 | `@spacegraphjs/spacegraph-renderer` | 2D + 3D WebGL adapter (Three.js) |
 | `@spacegraphjs/cytoscape-renderer` | 2D Cytoscape.js adapter |
 | `@spacegraphjs/svg-renderer` | Static SVG export + inline subgraph |

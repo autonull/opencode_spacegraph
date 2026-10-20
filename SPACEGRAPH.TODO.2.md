@@ -18,9 +18,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `9fa1083`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664`, `844cf76`, `9fa1083` |
+| SpaceGraphJS | `main` @ `632292e`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664`, `844cf76`, `9fa1083`, `632292e` |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 50 · `session-graph` component 37 · `spacegraphjs` 378 + contract 12 + adapters 42 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 395 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -563,6 +563,13 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
 - **A config callback may take the model.** `ownerTurnFn(model, node)` and `edgeFilterFn(model, …)`
   need the whole model; `nodeSizeFn`, `laneOfFn`, `turnIdFn`, `clusterOfFn`, `rowKeyFn`, and
   `columnKeyFn` take the node alone.
+- **A config callback is typed with the host's model.** The adapter config (`nodeFilter`,
+  `edgeFilter`, `neighbors`) is generic over the host's domain type, so a host binds its own model
+  without a cast. A callback that only reads one node takes the node.
+- **The render model is the camera's frame of reference.** It must be built *before* the renderer
+  mounts and must not change afterwards: a model rebuilt after the fit moves the camera's frame.
+  A renderer-specific policy (a different DOM budget) therefore belongs to the adapter chosen for
+  the *requested* renderer, not to a model swapped in after the mount.
 - **The core stays dependency-free.** The new modules import nothing: no contract, no renderer, no
   framework. `test/boundaries.test.ts` still passes, and a host may import the subpaths without
   pulling `three` into its bundle.
@@ -585,7 +592,7 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
 
 
 
-- [ ] **T4.11 Extract adapter framework to SpaceGraphJS `packages/adapter/`**
+- [x] **T4.11 Extract adapter framework to SpaceGraphJS `packages/adapter/`**
   Create `packages/adapter/src/ModelAdapter.ts` with abstract `ModelAdapter<DomainModel, RenderModel>` base class and conformance suite. The base provides:
   - Pure `build(model, options): RenderModel` pipeline (level filter → node map → bands → lanes → axes → edges)
   - Configurable: `cardBudget`, `renderCardTemplate`, `renderBandTemplate`, `laneLabels`, `axisLabels`, `bundleEdges`, `buildBands`
@@ -594,6 +601,44 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Port OpenCode `buildRenderModel.ts` as reference `SessionGraphAdapter` extending base. Cytoscape adapter gets parallel subclass. Conformance suite tests pipeline + abstract method contracts.
   Done when: `spacegraphjs/packages/adapter` publishes independently; OpenCode `buildRenderModel.ts` extends base adapter; both adapters pass conformance.
   Verify: `cd spacegraphjs/packages/adapter && vitest run`; `cd packages/session-graph && bun run typecheck`
+  - **Done (2026-10-20).** `spacegraphjs/packages/adapter` is a new leaf package that depends on the
+    contract only (`@spacegraphjs/renderer`); the core never imports it and it never imports the
+    core. `ModelAdapter` owns the pipeline (level filter → node map → bands → lane gutter →
+    captions → edges), the DOM card budget, the focus neighbourhood, the collapsed-cluster chip, the
+    chrome markup, and the escaping of every label that reaches the markup.
+  - **One signature refinement.** The base is generic over `<Node, Edge, Level, Domain>` rather than
+    the plan's `<DomainModel, RenderModel>`: the render model is always the contract's `RenderModel`,
+    while the host needs its own node, edge, level, and model types in the callbacks.
+  - **The level filter is a config callback, not a base rule.** `nodeFilter`, `edgeFilter`, and
+    `neighbors` are typed with the host's `Domain`, so a host never casts. Which nodes exist at a
+    level is the host's semantic policy (§5.4); the generic filtering already lives in
+    `spacegraphjs/levels` (T4.9).
+  - **The conformance suite is runner-agnostic.** `adapterConformance(adapter, fixture)` returns
+    `{ name, check }` pairs, so a host runs it under Vitest, Bun, or Jest. The fixture declares which
+    node is the activity card, which one is chrome, which cluster is collapsed, and what the focus
+    neighbourhood is; the suite never needs to know a host's kinds. Eleven cases: one node per
+    visible id, positions honoured, the activity card drawn as DOM markup, chrome drawn whatever
+    the budget, cards degraded above the budget, the collapsed cluster drawn as a chip, the focus
+    neighbourhood dimmed, the chrome in front of the content, the lane gutter left of the content,
+    the captions carrying their role, and every edge mapped.
+  - **The host is now a thin vocabulary layer.** `packages/session-graph/src/canvas/sessionGraphAdapter.ts`
+    holds `SessionGraphAdapter` (the kinds, the statuses, the structural kinds, the node data, the
+    edge mapping, the swimlane bands, the provenance bundling) and `buildRenderModel.ts` shrank from
+    399 lines to 61. The host's 50 unit tests and 37 component tests pass unchanged, and all 24
+    committed captures are pixel-identical (RMSE 0).
+  - **The Cytoscape parallel subclass exists but is not live.** `CytoscapeSessionAdapter` caps the
+    card budget at the renderer's declared `maxDomNodes` (20), so the model never promises more
+    cards than the canvas can draw; a test asserts the constant against the renderer's own
+    capabilities. Wiring it per *mounted* renderer was tried and reverted — the render model is the
+    camera's frame of reference, so changing it after the fit moves the Cytoscape frames (the
+    capture harness caught it: RMSE 14.5 on the Cytoscape frames, 0 on the SpaceGraph ones). The
+    host has no renderer switch, so the adapter is selected when it does, and the model must then be
+    built for the *requested* renderer, before the mount.
+  - **The library proves its own base.** `packages/adapter/test/adapter.test.ts` (16 cases) covers
+    the conformance suite, the collapsed chip, the escaping, the dimming, the budget, and the bands;
+    `test/boundaries.test.ts` gained the rule that the adapter package stays on the contract.
+  - The package's tests run under Vitest (the plan's command); the other library *packages* run
+    under Bun, and `graph:verify` runs the adapter step with Vitest.
 
 - [ ] **T4.12 Extract scoped subgraph overlay to SpaceGraphJS `src/overlays/`**
   Move `packages/session-graph/src/ui/turnMap.ts` + `TurnMapOverlay.tsx` to `spacegraphjs/src/overlays/` as:
@@ -1256,3 +1301,55 @@ steps), `bun run lint:changed` (0).
 
 Unverified: the export was checked through the render model, not by opening an exported file; the
 JSON export path is `serializeRenderModel`, which keeps the node data verbatim.
+
+**2026-10-20 — T4.11: the model → `RenderModel` pipeline moved to the library.** The host's
+`buildRenderModel.ts` was a 399-line function with the whole pipeline inlined: the level filter, the
+node map, the card budget, the focus neighbourhood, the cluster chip, the lane gutter, the axis
+captions, the bands, and the escaping. That pipeline is now `spacegraphjs/packages/adapter`, a new
+leaf package that depends on the contract only, and the host is a vocabulary layer on top of it.
+
+*What the library owns.* `ModelAdapter<Node, Edge, Level, Domain>` runs the pipeline and owns the
+DOM card budget, the focus neighbourhood, the collapsed-cluster chip, the chrome markup, and the
+escaping of every label that reaches the markup. The host answers with five abstract methods
+(`nodeShape`, `nodeStatus`, `isStructuralKind`, `nodeData`, `toRenderEdge`) and two optional
+overrides (`buildBands`, `bundleEdges`); everything else — the level filter, the budget, the lane
+labels, the captions — is configuration.
+
+*What the host keeps.* `packages/session-graph/src/canvas/sessionGraphAdapter.ts` holds the session's
+kinds, statuses, structural kinds, node data, edge mapping, swimlane bands, and provenance bundling.
+`buildRenderModel.ts` is now 61 lines: the options type, the wrapper, and the re-exported
+`escapeHtml`. The 50 host unit tests pass unchanged, the 37 component tests pass unchanged, and all
+24 committed captures are pixel-identical (RMSE 0 against the committed set).
+
+*The conformance suite is runner-agnostic.* `adapterConformance(adapter, fixture)` returns
+`{ name, check }` pairs instead of calling a test framework, so the same suite runs under Vitest,
+Bun, or Jest. The fixture names the roles — the activity card, the chrome node, the collapsed
+cluster, the focus neighbourhood — and the suite never learns a session kind. Eleven cases; the host
+runs them for the session adapter and the Cytoscape adapter at two levels (39 cases).
+
+*The Cytoscape parallel subclass is not live, and that is a finding.* `CytoscapeSessionAdapter` caps
+the card budget at the renderer's declared `maxDomNodes` (20), so the model never promises more
+cards than the canvas draws. Wiring it by the *mounted* renderer was tried: the model then changes
+after the fit, and the Cytoscape frames drifted (RMSE 14.5 against the committed frames; the
+SpaceGraph frames stayed at 0). The render model is the camera's frame of reference. The wiring was
+reverted, the captures are unchanged, and the subclass stays as the seam the host selects when it
+gains a renderer switch — the model must then be built for the *requested* renderer, before the
+mount.
+
+*Where the plan's wording was refined.* The base is generic over `<Node, Edge, Level, Domain>` rather
+than `<DomainModel, RenderModel>` (the render model is always the contract's `RenderModel`); the
+level filter is a config callback rather than a base rule (which nodes exist at a level is the
+host's semantic policy, and the generic filtering already lives in `spacegraphjs/levels`); and the
+package's tests run under Vitest, so the plan's `vitest run` works from the package directory while
+the other library packages keep their Bun script.
+
+Commands run: `vitest run` in `spacegraphjs/packages/adapter` (16 pass), `vitest run` in
+`spacegraphjs` (395 pass, 17 new; the boundaries gained a rule for the adapter package), `bun run
+typecheck` in `spacegraphjs/packages/adapter` (clean), `bun test src` in `packages/session-graph`
+(93 pass, 43 new), `bun run typecheck` in `packages/session-graph` and `packages/app` (clean), `bun
+run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify` (all steps), `bun
+run graph:capture --mode=compare` (24 captures pixel-identical), `bun run lint:changed` (0).
+
+Unverified: the adapter package is not published yet (T4.2 still owns that); the Cytoscape card cap
+is exercised only by the conformance suite, not by the live canvas; `pnpm install --offline` was used
+in the library, so the new workspace link resolves from the local store.
