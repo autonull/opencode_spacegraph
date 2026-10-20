@@ -13,15 +13,9 @@ import {
   type Representation,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
-import { DEPTH_KEY, LEVEL_KEY, REPRESENTATION_KEY } from "./vocabulary"
+import { DEPTH_KEY, LEVEL_KEY, REPRESENTATION_KEY, STRATEGY_KEY } from "./vocabulary"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
-
-const STRATEGY_KEY = {
-  lanes: "ui.sessionGraph.layout.lanes",
-  timeline: "ui.sessionGraph.layout.timeline",
-  hierarchy: "ui.sessionGraph.layout.hierarchy",
-} as const satisfies Record<LayoutStrategy, string>
 
 export type GraphToolbarProps = {
   level: ZoomLevel
@@ -67,6 +61,9 @@ export type GraphToolbarProps = {
   /** T6.8: the legend toggle; absent when the host does not offer it. */
   legend?: boolean
   onToggleLegend?: () => void
+  /** T7.5: the layout gallery toggle; absent when the host does not offer it. */
+  gallery?: boolean
+  onToggleGallery?: () => void
   /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
@@ -106,15 +103,35 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       </Show>
 
       <Show when={props.onStrategy && graphMode()}>
-        <SegmentedControl
-          value={props.strategy ?? "lanes"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.layout")}
-          onChange={(value) => value && props.onStrategy?.(value as LayoutStrategy)}
-        >
-          {LAYOUT_STRATEGIES.map((strategy) => (
-            <SegmentedControlItem value={strategy}>{i18n.t(STRATEGY_KEY[strategy])}</SegmentedControlItem>
-          ))}
-        </SegmentedControl>
+        <details class="relative" data-slot="graph-toolbar-layout">
+          <summary
+            class="flex h-6 cursor-pointer list-none items-center gap-1 rounded-sm px-1 text-12-regular text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
+            title={i18n.t("ui.sessionGraph.toolbar.layout")}
+          >
+            <span data-slot="graph-layout-name">
+              {i18n.t("ui.sessionGraph.toolbar.layoutValue", { layout: i18n.t(STRATEGY_KEY[props.strategy ?? "lanes"]) })}
+            </span>
+            <Icon name="outline-chevron-down" size="small" />
+          </summary>
+          <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md min-w-[160px]">
+            {LAYOUT_STRATEGIES.map((strategy) => (
+              <button
+                type="button"
+                data-slot="graph-layout-option"
+                data-strategy={strategy}
+                aria-pressed={props.strategy === strategy}
+                class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
+                onClick={(event) => {
+                  const menu = event.currentTarget.closest("details")
+                  if (menu) menu.open = false
+                  props.onStrategy?.(strategy)
+                }}
+              >
+                {i18n.t(STRATEGY_KEY[strategy])}
+              </button>
+            ))}
+          </div>
+        </details>
       </Show>
 
       <IconButton
@@ -163,6 +180,17 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           title={i18n.t("ui.sessionGraph.toolbar.legend")}
           onClick={() => props.onToggleLegend?.()}
           icon={<Icon name="outline-sliders" size="small" />}
+        />
+      </Show>
+      <Show when={props.onToggleGallery}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          state={props.gallery ? "pressed" : "rest"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.gallery")}
+          title={i18n.t("ui.sessionGraph.toolbar.gallery")}
+          onClick={() => props.onToggleGallery?.()}
+          icon={<Icon name="dot-grid" size="small" />}
         />
       </Show>
       <Show when={props.onTurnMap}>

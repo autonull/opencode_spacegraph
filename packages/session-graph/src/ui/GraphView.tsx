@@ -36,6 +36,7 @@ import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { LANE_KEY, LEVEL_KEY, REPRESENTATION_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
+import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
 import { GraphLegend } from "./GraphLegend"
 import { GraphMinimap } from "./GraphMinimap"
@@ -131,6 +132,9 @@ export const GraphView = (props: GraphViewProps) => {
   const [searchOpen, setSearchOpen] = createSignal(false)
   // T6.8: the legend names the encoding, so a first-time reader can decode the map without a briefing.
   const [legendOpen, setLegendOpen] = createSignal(false)
+  // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
+  // committing to one.
+  const [galleryOpen, setGalleryOpen] = createSignal(false)
   // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
   // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
   const [selection, setSelection] = createSignal<readonly string[]>(props.selection ? [props.selection] : [])
@@ -219,6 +223,12 @@ export const GraphView = (props: GraphViewProps) => {
   const theme = () => props.theme ?? resolvedTheme()
   const renderCard = createMemo(() => props.renderCard ?? createCardTemplate(theme()))
   const renderBand = createMemo(() => createBandTemplate(theme()))
+  // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
+  // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
+  // a streamed session never moves a node the reader is looking at.
+  const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
+  const sessionKey = () =>
+    props.model.nodes.find((node) => node.id === props.model.root)?.data?.sessionID ?? "session"
   const layout = createMemo((): GraphLayout => {
     if (props.positions)
       return {
@@ -231,7 +241,16 @@ export const GraphView = (props: GraphViewProps) => {
     if (representation() === "ribbon") return ribbonLayout(scoped())
     if (representation() === "matrix") return matrixLayout(scoped())
 
-    return layoutGraph(props.model, { strategy: strategy(), level: level() })
+    const key = `${sessionKey()}:${strategy()}:${level()}`
+    const next = layoutGraph(props.model, {
+      strategy: strategy(),
+      level: level(),
+      previous: layoutHistory.get(key),
+    })
+
+    layoutHistory.set(key, next.positions)
+
+    return next
   })
   // LE.1: whether a structural change is waiting for the canvas to apply the matching model before we
   // frame it. Streaming model updates leave it false, so they never refit.
@@ -766,6 +785,8 @@ export const GraphView = (props: GraphViewProps) => {
         onSearch={toggleSearch}
         legend={legendOpen()}
         onToggleLegend={() => setLegendOpen((open) => !open)}
+        gallery={galleryOpen()}
+        onToggleGallery={() => setGalleryOpen((open) => !open)}
         strategy={strategy()}
         onStrategy={changeStrategy}
         representation={representation()}
@@ -937,7 +958,16 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
           <Show when={legendOpen()}>
-            <GraphLegend theme={theme()} onClose={() => setLegendOpen(false)} />
+            <GraphLegend theme={theme()} strategy={strategy()} onClose={() => setLegendOpen(false)} />
+          </Show>
+          <Show when={galleryOpen()}>
+            <GraphGallery
+              model={props.model}
+              theme={theme()}
+              current={strategy()}
+              onOpen={changeStrategy}
+              onClose={() => setGalleryOpen(false)}
+            />
           </Show>
         </div>
         <Show when={selectedNode() && !narrow()}>

@@ -34,6 +34,8 @@ describe("layout — golden positions", () => {
       execution: dump(layoutGraph(model, { level: "execution" })),
       timeline: dump(layoutGraph(model, { strategy: "timeline" })),
       hierarchy: dump(layoutGraph(model, { strategy: "hierarchy" })),
+      tree: dump(layoutGraph(model, { strategy: "tree" })),
+      force: dump(layoutGraph(model, { strategy: "force" })),
       ribbon: dump(ribbonLayout(model)),
       matrix: dump(matrixLayout(model)),
     }).toEqual(golden)
@@ -42,24 +44,26 @@ describe("layout — golden positions", () => {
 
 /** The positions, the cluster bounds, and the overall bounds as plain rows. */
 function dump(layout: GraphLayout) {
+  const round = (value: number) => Math.round(value * 100) / 100
+
   return [
-    ...[...layout.positions.entries()].map(([id, point]) => [id, point.x, point.y, point.z]),
+    ...[...layout.positions.entries()].map(([id, point]) => [id, round(point.x), round(point.y), round(point.z)]),
     ...[...layout.clusters.entries()].map(([id, bounds]) => [
       id,
-      bounds.min.x,
-      bounds.min.y,
-      bounds.min.z,
-      bounds.max.x,
-      bounds.max.y,
-      bounds.max.z,
+      round(bounds.min.x),
+      round(bounds.min.y),
+      round(bounds.min.z),
+      round(bounds.max.x),
+      round(bounds.max.y),
+      round(bounds.max.z),
     ]),
     [
-      layout.bounds.min.x,
-      layout.bounds.min.y,
-      layout.bounds.min.z,
-      layout.bounds.max.x,
-      layout.bounds.max.y,
-      layout.bounds.max.z,
+      round(layout.bounds.min.x),
+      round(layout.bounds.min.y),
+      round(layout.bounds.min.z),
+      round(layout.bounds.max.x),
+      round(layout.bounds.max.y),
+      round(layout.bounds.max.z),
     ],
   ]
 }
@@ -78,7 +82,8 @@ describe("layout — determinism and append-only", () => {
     const before = layoutGraph(buildGraph(base, { type: "idle" }))
     const after = layoutGraph(buildGraph(extended, { type: "idle" }))
 
-    for (const id of before.positions.keys()) expect(after.positions.get(id)).toEqual(before.positions.get(id))
+    for (const id of before.positions.keys())
+      expect(after.positions.get(id)).toEqual(before.positions.get(id))
   })
 })
 
@@ -194,13 +199,13 @@ describe("layout — level-aware overview", () => {
     const before = layoutGraph(buildGraph(base, { type: "idle" }), { level: "overview" })
     const after = layoutGraph(buildGraph(extended, { type: "idle" }), { level: "overview" })
 
-    for (const id of before.positions.keys()) expect(after.positions.get(id)).toEqual(before.positions.get(id))
+    for (const id of before.positions.keys())
+      expect(after.positions.get(id)).toEqual(before.positions.get(id))
   })
 })
 
 describe("layout — alternate strategies", () => {
-  test("timeline and hierarchy are deterministic and place every node", () => {
-    const model = buildFixtureGraph()
+  test("timeline and hierarchy are deterministic and place every node", () => {    const model = buildFixtureGraph()
 
     for (const strategy of ["timeline", "hierarchy"] as const) {
       const a = layoutGraph(model, { strategy })
@@ -281,5 +286,82 @@ describe("layout — alternate strategies", () => {
     expect([...layoutGraph(model, { strategy: "hierarchy", rows }).positions.entries()]).toEqual([
       ...layout.positions.entries(),
     ])
+  })
+})
+
+describe("layout — the tree and the force layout", () => {
+  test("every layout is deterministic and places every node", () => {
+    const model = buildFixtureGraph()
+
+    for (const strategy of ["lanes", "timeline", "hierarchy", "tree", "force"] as const) {
+      const a = layoutGraph(model, { strategy })
+      const b = layoutGraph(model, { strategy })
+
+      expect(a.strategy).toBe(strategy)
+      expect(a.positions.size).toBe(model.nodes.length)
+      expect([...a.positions.entries()]).toEqual([...b.positions.entries()])
+    }
+  })
+
+  test("the tree hangs a node under the turn it belongs to", () => {
+    const model = buildFixtureGraph()
+    const layout = layoutGraph(model, { strategy: "tree" })
+    const turn = point(layout, turnNodeID("msg_user_1"))!
+    const tool = point(layout, toolNodeID("prt_tool_read_1"))!
+
+    // The tree grows downward: the work sits a row below the turn it belongs to.
+    expect(tool.y).toBeLessThan(turn.y)
+
+    // And the turn sits over the middle of its own work.
+    const members = model.nodes
+      .filter((node) => node.turnID === turnNodeID("msg_user_1"))
+      .map((node) => point(layout, node.id)!.x)
+
+    expect(turn.x).toBeCloseTo((Math.min(...members) + Math.max(...members)) / 2, 5)
+  })
+
+  test("the tree keeps every placed node where it was when the session grows", () => {
+    const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
+    const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
+    const before = layoutGraph(buildGraph(base, { type: "idle" }), { strategy: "tree" })
+
+    const after = layoutGraph(buildGraph(extended, { type: "idle" }), {
+      strategy: "tree",
+      previous: before.positions,
+    })
+
+    for (const id of before.positions.keys())
+      expect(after.positions.get(id)).toEqual(before.positions.get(id))
+  })
+
+  test("the force layout keeps every placed node where it was when the session grows", () => {
+    const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
+    const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
+    const before = layoutGraph(buildGraph(base, { type: "idle" }), { strategy: "force" })
+
+    const after = layoutGraph(buildGraph(extended, { type: "idle" }), {
+      strategy: "force",
+      previous: before.positions,
+    })
+
+    for (const id of before.positions.keys())
+      expect(after.positions.get(id)).toEqual(before.positions.get(id))
+  })
+
+  test("the force layout keeps two cards from sitting on top of each other", () => {
+    const model = buildFixtureGraph()
+    const layout = layoutGraph(model, { strategy: "force" })
+    const placed = model.nodes.map((node) => ({ node, position: point(layout, node.id)! }))
+
+    for (let i = 0; i < placed.length; i++)
+      for (let j = i + 1; j < placed.length; j++) {
+        const a = placed[i]!
+        const b = placed[j]!
+        const distance = Math.hypot(a.position.x - b.position.x, a.position.y - b.position.y)
+
+        expect(distance).toBeGreaterThanOrEqual(
+          (nodeSize(a.node)[0] + nodeSize(b.node)[0]) / 2 - 1,
+        )
+      }
   })
 })

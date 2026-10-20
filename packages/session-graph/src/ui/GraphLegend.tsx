@@ -1,12 +1,12 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { GraphNode, NodeKind } from "@opencode/session-ui/graph"
+import type { GraphNode, LayoutStrategy, NodeKind } from "@opencode/session-ui/graph"
 import { LANES } from "@opencode/session-ui/graph"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { type JSX, onMount } from "solid-js"
 import { categoryAccent, kindAccent, statusAccent } from "./cardTemplate"
-import { CONFIDENCE_KEY, KIND_KEY, LANE_KEY } from "./vocabulary"
+import { CONFIDENCE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
 
 /** The phase categories a card can be grouped by, in the order the matrix lays them out. */
 const CATEGORIES = ["explore", "edit", "verify", "delegate", "result"] as const
@@ -39,6 +39,8 @@ const CONFIDENCE_STYLE = {
 
 export type GraphLegendProps = {
   theme: RenderTheme
+  /** T7: the layout on screen; the legend says what that layout encodes. */
+  strategy?: LayoutStrategy
   onClose: () => void
 }
 
@@ -102,7 +104,8 @@ export const GraphLegend = (props: GraphLegendProps) => {
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto border-t border-border-weaker-base px-3 py-2">
-        <p class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.legend.help")}</p>
+        <p class="text-12-regular text-text-base">{i18n.t(LAYOUT_HINT_KEY[props.strategy ?? "lanes"])}</p>
+        <p class="mt-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.help")}</p>
 
         {section(
           i18n.t("ui.sessionGraph.legend.lanes"),

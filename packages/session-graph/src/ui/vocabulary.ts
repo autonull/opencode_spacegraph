@@ -1,9 +1,9 @@
 import type { DepthMode } from "@spacegraphjs/renderer"
-import type { GraphEdge, GraphNode, Lane, NodeKind, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type { GraphEdge, GraphNode, Lane, LayoutStrategy, NodeKind, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 
 /**
- * The session graph's vocabulary as i18n keys. The inspector, the toolbar, and the legend all read
- * the same names, so a kind is called the same thing wherever it appears.
+ * The session graph's vocabulary as i18n keys. The inspector, the toolbar, the legend, and the
+ * gallery all read the same names, so a kind is called the same thing wherever it appears.
  */
 
 export const LEVEL_KEY = {
@@ -11,6 +11,23 @@ export const LEVEL_KEY = {
   execution: "ui.sessionGraph.level.execution",
   detail: "ui.sessionGraph.level.detail",
 } as const satisfies Record<ZoomLevel, string>
+
+export const STRATEGY_KEY = {
+  lanes: "ui.sessionGraph.layout.lanes",
+  timeline: "ui.sessionGraph.layout.timeline",
+  hierarchy: "ui.sessionGraph.layout.hierarchy",
+  tree: "ui.sessionGraph.layout.tree",
+  force: "ui.sessionGraph.layout.force",
+} as const satisfies Record<LayoutStrategy, string>
+
+/** What each layout encodes, in one sentence. The legend says it for the layout on screen. */
+export const LAYOUT_HINT_KEY = {
+  lanes: "ui.sessionGraph.layoutHint.lanes",
+  timeline: "ui.sessionGraph.layoutHint.timeline",
+  hierarchy: "ui.sessionGraph.layoutHint.hierarchy",
+  tree: "ui.sessionGraph.layoutHint.tree",
+  force: "ui.sessionGraph.layoutHint.force",
+} as const satisfies Record<LayoutStrategy, string>
 
 export const REPRESENTATION_KEY = {
   graph: "ui.sessionGraph.representation.graph",

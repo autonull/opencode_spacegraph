@@ -16,6 +16,12 @@ const cardHeight = async (page: import("@playwright/test").Page) =>
     return card?.getBoundingClientRect().height ?? 0
   })
 
+/** Picks a layout from the toolbar's layout menu. */
+const pickLayout = async (root: import("@playwright/test").Locator, layout: string) => {
+  await root.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await root.locator(`[data-slot="graph-layout-option"][data-strategy="${layout}"]`).click()
+}
+
 story("a view too large for the frame keeps a legible scale", async ({ mount, page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
@@ -24,11 +30,17 @@ story("a view too large for the frame keeps a legible scale", async ({ mount, pa
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   // The hierarchy outline spreads over several columns; the fit must not shrink it into a smudge.
-  await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Hierarchy" }).click()
+  await pickLayout(root, "hierarchy")
   await expect.poll(() => cardHeight(page)).toBeGreaterThanOrEqual(MIN_CARD_HEIGHT_PX)
 
+  // T7: the tree and the force layout are different geometries, and each one carries its own frame.
+  for (const layout of ["tree", "force"]) {
+    await pickLayout(root, layout)
+    await expect.poll(() => cardHeight(page)).toBeGreaterThanOrEqual(MIN_CARD_HEIGHT_PX)
+  }
+
   // The file lens squeezes the canvas between the changed-files rail and the inspector.
-  await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Lanes" }).click()
+  await pickLayout(root, "lanes")
   await root.locator('button[aria-label="Toggle changed files"]').click()
   await expect.poll(() => cardHeight(page)).toBeGreaterThanOrEqual(MIN_CARD_HEIGHT_PX)
 })

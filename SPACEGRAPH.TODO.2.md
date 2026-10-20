@@ -20,9 +20,10 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `cdf1440`, tagged `v8.0.0`; **publishable**: `spacegraphjs` 8.0.0 (the layout engine's contract changed — a break) + five `@spacegraphjs/*` 0.1.0 — built, proven consumable, **not uploaded** |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20, after T6.20) | `session-ui` graph 101 · `session-graph` unit 96 · `session-graph` component 47 (1 new: the zoom control stops at the renderer's limit) · `spacegraphjs` 459 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 21/21 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
+| Last green (re-run 2026-10-20, after T7.6) | `session-ui` graph 106 · `session-graph` unit 96 · `session-graph` component 48 (1 new: the layout gallery) · `spacegraphjs` 459 + the new layout seam, tree, and force suites · `graph:verify` all steps (library build first) · app typecheck · app e2e 21/21 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)**. The camera-driven frames (20–24) still vary between runs (**T6.20**) |
+| Layouts | **five**: lanes, timeline, hierarchy, **tree (T7.2)**, **force (T7.3)** — pickable from the toolbar, comparable side by side in the gallery (T7.5) |
 
 Two facts shape everything below:
 
@@ -121,7 +122,9 @@ interrupted turn is visible, and the permission node kind is decided and removed
 **T4.3 (the three layout strategies run on the generic `LaneLayout`, and the fixture's positions are
 byte-identical), T4.5 (the library's own limits are declared in `spacegraphjs/docs/limitations.md`,
 and the host's list matches the code), **T6.20 (the camera-driven frames no longer drift between runs:
-the fit measures the surface it has, and the zoom control stops at the renderer's limit)**.
+the fit measures the surface it has, and the zoom control stops at the renderer's limit)**,
+**T7.1–T7.6 (the layout variety track: the placement seam, a block tree, a force placement, the
+host's bindings, the gallery, and the per-layout invariants)**.
 
 **The pixel-diff helper is dropped (T6.15).** While the UI is in development the capture set is read by
 eye (§10); a pixel gate would re-baseline after every change and turn a moving target into a blocker.
@@ -864,7 +867,7 @@ the library, a *vocabulary binding* in the host (which nodes participate, what a
 *golden-file entry* (the fixture's positions), a *toolbar control* (the reader's choice), a *legend
 entry* (the encoding), and a *frame*. The geometry is the cheap part.
 
-- [ ] **T7.1 The placement seam: an engine interface, not a grid**
+- [x] **T7.1 The placement seam: an engine interface, not a grid**
   Give the library a `Placement` concept a strategy can implement — `place(items, previous) →
   positions` — with the grid (`LaneLayout`) as the first implementation and the new engines beside it.
   `Strategies.layoutGraph` keeps its contract (`positions`, `clusters`, `bounds`, `strategy`) and its
@@ -872,8 +875,24 @@ entry* (the encoding), and a *frame*. The geometry is the cheap part.
   Done when: a strategy can be added that never touches `LaneLayout`, and the three existing
   strategies are byte-identical for the fixture (the golden file).
   Verify: `cd spacegraphjs && vitest run test/layout/`; the host's golden comparison is unchanged.
+  - **Done (2026-10-20).** `spacegraphjs/src/layout/placement.ts` holds the seam: `PlacementItem`
+    (a box with its size, its depth, and the engine's own vocabulary), `Position`, and the
+    `Placement` interface — `place(items, previous?) → positions`. `previous` is the channel the
+    append-only rule needs: an engine that cannot keep its boxes where they were reads the
+    positions the last layout gave them.
+  - **The grid is the first implementation, and it is now an implementation of the seam.**
+    `src/layout/grid.ts` (`GridPlacement`) wraps `LaneLayout` and adds one thing the strategies
+    needed: a column can be *declared* empty (`meta.empty`), because "an empty turn is still a
+    column" is a rule about the column sequence, not about boxes. Without it the lanes layout lost
+    the gap of a turn that drew nothing — the library's own test caught it.
+  - **The three grid views are byte-identical.** The host's golden file is unchanged for
+    `lanes`, `overview`, `execution`, `timeline`, `hierarchy`, `ribbon`, and `matrix`; only the two
+    new entries were added. The strategies now build an item stream and hand it to the engine
+    instead of driving `LaneLayout` themselves.
+  - The seam is where a *new* geometry goes: `src/layout/tree.ts` and `src/layout/force.ts` are
+    engines that never touch the grid.
 
-- [ ] **T7.2 A tidy tree** — the first genuinely different geometry
+- [x] **T7.2 A tidy tree** — the first genuinely different geometry
   Parents centred over their children, leaves in model order. Deterministic, no iteration.
   **The append-only rule decides the shape:** a classic tidy tree re-centres a parent when a child is
   added, which would move a node the reader is looking at. So the tree grows *downward* from a fixed
@@ -882,8 +901,28 @@ entry* (the encoding), and a *frame*. The geometry is the cheap part.
   Done when: the tree renders the canonical fixture, the reader can pick it, and appending a node
   leaves every existing position byte-identical.
   Verify: `cd spacegraphjs && vitest run test/layout/`; a host golden entry for the new view.
+  - **Done (2026-10-20), and the shape changed once the frames were looked at.**
+    `spacegraphjs/src/layout/tree.ts` (`TreePlacement`) is a **block tree**: a parent's children are
+    packed into a block of rows under it, the parent sits over the middle of that block, and the
+    blocks of the different parents sit side by side. The tree grows **downward** (the root is the
+    highest point, the work is below it — the renderer's Y axis points up, so the rows are negative).
+  - **Why the block tree and not the textbook fan.** The first version was the textbook tidy tree:
+    one column per leaf, the parent centred over its children. It renders, but a session's forty
+    leaves are forty columns wide — 9,516 units — so no frame can hold it and the capture showed a
+    row of cards in an empty canvas. The block tree packs a turn's work into a grid of four columns
+    under the turn: the fixture is 1,952 × 960, the whole tree fits at 58 % scale, and every card is
+    legible. **A layout that cannot be read is not an option** (§6.2's rule).
+  - **The append-only rule is honoured through the seam.** The engine reads `previous` (the positions
+    the last layout gave): a box that was already placed keeps its position, and only a new box takes
+    a slot — the next free one, next to its parent when there is room. The host passes the previous
+    positions per view (`GraphView`'s `layoutHistory`), so a streamed session never moves a node.
+  - The host binds the parent relation: `parentOfFn` reads the model's `part-of` edges, and a file
+    hangs under the turn that wrote it. The host keeps the vocabulary; the library keeps the geometry.
+  - Tests: the library's `test/layout/placement.test.ts` (12) and the host's `layout.test.ts` — the
+    tree's golden entry, its determinism, the work sitting below its turn, the parent centred over
+    its children, and the append test.
 
-- [ ] **T7.3 A force-directed placement** — deterministic, and pinned where it must be
+- [x] **T7.3 A force-directed placement** — deterministic, and pinned where it must be
   A force layout is physics, and the host's layout contract says "no physics" (§5.5) for a reason:
   a live simulation jitters while the session streams. The resolution is an **append-only force
   placement**: the simulation is seeded deterministically (a fixed seed, a fixed iteration count, the
@@ -895,8 +934,28 @@ entry* (the encoding), and a *frame*. The geometry is the cheap part.
   and the reader can pick the view.
   Verify: `cd spacegraphjs && vitest run test/layout/`; a determinism test (same model → same
   positions) and an append test (existing positions unchanged).
+  - **Done (2026-10-20).** `spacegraphjs/src/layout/force.ts` (`ForcePlacement`) is a
+    **Fruchterman–Reingold** simulation: the boxes push each other apart, the links pull them
+    together, and every step is capped by a cooling temperature so the simulation settles instead of
+    oscillating. The initial placement is a golden-angle spiral (deterministic, no random number
+    generator), the steps are fixed, and the order is the model's own — so the same model always
+    yields the same positions.
+  - **The pinning is the seam's `previous` channel**, exactly as the plan describes: the boxes the
+    layout already placed are pinned, and only the new ones relax against them. The host passes the
+    previous positions per view, so streaming never moves an existing node.
+  - **Two things the simulation needed to be usable.** (a) A *collision term*: the cooling ends at
+    rest, so the last overlaps were never resolved and two cards sat on top of each other (the
+    measured minimum distance was 30 units against a 132-unit card). A short-range push plus a
+    separate separation pass after the cooling brought it to 132 — exactly the sum of the two radii.
+    (b) A *neighbour search*: the repulsion only looks at the boxes near a box (a uniform grid), so
+    the cost grows with the content instead of with its square. The step count scales down with the
+    node count.
+  - The host binds the attraction: `forceLinksFn` reads the structural edges (`part-of`, `sequence`)
+    and leaves the inferred ones out — a link is a claim about the session's shape, not about cause.
+  - The frame reads well: capture `29-graph-force.png` shows the session's own shape, with the turn
+    bands hugging their members.
 
-- [ ] **T7.4 The host binds the new layouts**
+- [x] **T7.4 The host binds the new layouts**
   The vocabulary (which nodes participate, what an edge means), the toolbar control, the legend, and
   **each layout's frame** — the thing the hierarchy lacks. A layout that cannot be read is not an
   option.
@@ -904,24 +963,80 @@ entry* (the encoding), and a *frame*. The geometry is the cheap part.
   legible at 1440×900 in the fixture (the legibility component test grows to cover the new views).
   Verify: `cd packages/session-graph && bun run test:components`; the capture set gains one frame
   per new layout.
+  - **Done (2026-10-20).** The layouts are pickable, named, and legible:
+    - The **toolbar** offers them through a *layout menu* (`Layout: Lanes ▾`) rather than a
+      segmented control. Five layouts do not fit in a segmented control, and the toolbar had become
+      wide enough to wrap — which pushed the back control under the floating header and broke the
+      app e2e that keeps that control clickable. The menu shows the current layout and the choices,
+      and the toolbar stays on one row.
+    - The **legend** says what the layout on screen encodes (`ui.sessionGraph.layoutHint.*`), one
+      sentence per layout, so the map explains itself.
+    - The **frames**: the fit's legibility floor covers the new views, and the legibility component
+      test now walks the tree and the force layout as well (`graph-legibility.spec.ts`).
+  - **The captures gained one frame per new layout**: `28-graph-tree.png`, `29-graph-force.png`, and
+    `30-graph-gallery.png` (the gallery, T7.5). The whole set was refreshed deliberately and read by
+    eye; the lanes, timeline, hierarchy, ribbon, and matrix frames are unchanged apart from the
+    toolbar's layout menu.
 
-- [ ] **T7.5 A layout gallery: the affordance the exploration needs**
+- [x] **T7.5 A layout gallery: the affordance the exploration needs**
   Small multiples: the same model rendered in every layout at once, so the reader (and the study)
   can *compare* the options instead of committing to one. This is also what the evidence task needs:
   **T2.1/T2.2 must compare layouts, not perfect one.**
   Done when: the gallery shows every layout of one model side by side, and the reader can open any of
   them in the full surface.
   Verify: a component test asserts one frame per layout; the capture set gains the gallery frame.
+  - **Done (2026-10-20).** `packages/session-graph/src/ui/GraphGallery.tsx` is a dialog with one
+    thumbnail per layout. Each thumbnail is a **static SVG** of that layout (the library's SVG
+    renderer, over the same render-model pipeline the canvas uses) — no canvas and no WebGL context
+    per thumbnail, so five layouts cost nothing. Picking one opens it in the full surface.
+  - The gallery is the toolbar's `Compare the layouts` button (the `dot-grid` icon). The component
+    test `graph-gallery.spec.ts` asserts one picture per layout, that every layout is named, and that
+    picking one switches the surface.
 
-- [ ] **T7.6 The invariant every new layout must keep**
+- [x] **T7.6 The invariant every new layout must keep**
   "Streaming never re-lays-out existing nodes" and "the same model always yields the same positions"
   are the contract, and they are cheap to state and expensive to rediscover. Each new layout adds a
   golden entry, and the append-only property is asserted per layout (not once).
   Done when: every layout has a golden entry and an append test.
   Verify: `cd spacegraphjs && vitest run test/layout/`; the host's golden comparison covers them all.
+  - **Done (2026-10-20).** The host's golden file has an entry per layout (`tree` and `force` were
+    added; the seven existing entries are byte-identical), and each new layout has its own append
+    test: the tree and the force layout keep every placed node where it was when the session grows.
+  - **The invariant needed a channel, and the channel is the seam's `previous`.** The grid layouts
+    are prefix-stable by construction (`LaneLayout` keeps a placed id's position), but the tree
+    re-centres a parent and the force simulation relaxes — so both read the positions the last
+    layout gave them. The host keeps them per view (`GraphView`'s `layoutHistory`, keyed by session,
+    strategy, and level) and hands them to `layoutGraph`.
+  - **One deviation worth recording:** the "same model always yields the same positions" invariant
+    holds for a *given* history, not across histories. A tree built fresh and a tree grown by
+    streaming differ, because the streamed tree keeps the parent's place. That is the plan's own
+    rule ("the parent's position stays put"), and it is the reason the tree reads as a map the reader
+    is looking at rather than a map that redraws itself.
+
 
 **Do not do this track's work as capture or pixel work.** The frames are read by eye (§10); T6.15's
 pixel-diff helper was written and dropped for exactly that reason.
+
+**Notes for the next pass (2026-10-20).**
+
+- **The track is closed; two things it opens are not.** The second host (T6.12) still runs the
+  generic modules it had before — the tree and the force engines are **not** in its capability
+  gallery yet, so the library's claim that every generic module runs outside OpenCode does not yet
+  cover them. That is the obvious next library-side task, and it needs the second host's exact
+  import-set assertion updated with it.
+- **The tree's block width (four leaves per row) is a policy, not a measurement.** It was chosen so
+  the canonical fixture fits one frame at a legible scale. T2.2's evidence may prefer another
+  number, and the number is one config away (`TreeConfig.columns`).
+- **The evidence task can now compare layouts instead of perfecting one.** The gallery (T7.5) is the
+  affordance the study needs: a participant can be shown the same session in five shapes. T2.1's
+  dry run should use it, and the protocol should record which layout a participant reached for.
+- **The force layout's cost at scale was not measured.** The neighbour grid bounds the repulsion, and
+  the step count scales with the node count, but the 5,000-message number (T6.6's table) has no
+  force row. It is one number in `bun run graph:scale`.
+- **The layout menu is the browser's `<details>`, not a custom menu.** It closes on Escape in the
+  browser's own way and its keyboard behaviour is the platform's. A host that wants a real menu
+  would use the UI kit's `Select`.
+
 
 
 
@@ -1473,6 +1588,8 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Published packages | `cd spacegraphjs && pnpm run test:publish` | T4.2 — packs every package, installs the tarballs into a clean consumer outside the monorepo, mounts both adapters |
 | Second host | `cd spacegraphjs && pnpm run test:second-host` + `vitest run test/second-host/` | T6.12 — a framework-free consumer outside OpenCode; every generic module runs against its own model |
 | Library typecheck | `cd spacegraphjs && tsc --noEmit -p tsconfig.json` | T4.4 — clean for `src`, `test` and the five packages |
+| Placement seam | `cd spacegraphjs && vitest run test/layout/` | T7.1 — the grid, the tree, and the force placement behind one interface |
+| Layout variety | `cd packages/session-graph && bun run test:components -- graph-gallery graph-legibility` | T7.4/T7.5 — every layout is pickable, legible, and comparable side by side |
 | Pixel diff (optional) | — | T6.16 **dropped**: while the UI is in development the frames are read by eye (§10) |
 
 Rules: run from package directories, never repo root for tests; inspect images before claiming a visual task; record unverified behaviour.
@@ -2830,6 +2947,79 @@ Neither push ran the pre-push hook's `bun run check` (red here for the reasons T
 with SIGSEGV). The graph-relevant checks all pass: the library's `vitest` (459) and its five leaf
 packages, `tsc --noEmit` (0 errors), the host's typecheck and unit tests (96), the component suite
 (`graph-view`, with the new zoom-limit assertion), the app's graph e2e (21), and `lint:changed` (0).
+
+**2026-10-20 — T7.1–T7.6: the layout variety track. Two new layouts, a placement seam, and a
+gallery to compare them.**
+
+*Why now.* The owner's correction stands: a *wide variety of fundamentally different layouts* —
+nobody knows which one is best, and perfecting the lanes view does not answer that. T2 still needs
+participants, so the work went where the plan says it can.
+
+*The seam (T7.1).* `spacegraphjs/src/layout/placement.ts` holds `PlacementItem`, `Position`, and the
+`Placement` interface: `place(items, previous?) → positions`. The grid became the first
+implementation (`grid.ts`), and the three grid-shaped views were rewritten on top of it — **byte
+identical**: the host's golden file is unchanged for `lanes`, `overview`, `execution`, `timeline`,
+`hierarchy`, `ribbon`, and `matrix`. One thing the seam had to carry: a column can be *declared*
+empty, because "an empty turn is still a column" is a rule about the column sequence and not about
+boxes — without it the lanes layout lost the gap of a turn that drew nothing (the library's own test
+caught it).
+
+*The tree (T7.2) changed shape once the frames were looked at.* The textbook tidy tree (one column
+per leaf, the parent centred over its children) renders, but a session's forty leaves are forty
+columns wide — 9,516 units — so no frame can hold it, and the first capture showed a row of cards in
+an empty canvas. The tree is now a **block tree**: a parent's children are packed into a block of
+rows under it, the parent sits over the middle of that block, and the blocks sit side by side. The
+fixture is 1,952 × 960 — the whole tree fits at 58 % scale with every card legible, which is §6.2's
+own rule ("a layout that cannot be read is not an option"). The tree grows **downward**: the root is
+the highest point and the work is below it, so the rows are negative (the renderer's Y axis points
+up).
+
+*The force layout (T7.3) needed two fixes to be usable.* A Fruchterman–Reingold simulation is
+deterministic (a golden-angle spiral, a fixed step count, the model's own order) and settles because
+every step is capped by a cooling temperature — but the cooling ends at rest, so the last overlaps
+were never resolved and two cards sat 30 units apart where the cards are 132 wide. A short-range
+collision term plus a separation pass after the cooling brought the minimum distance to exactly the
+sum of the two radii. The repulsion also only looks at the boxes near a box (a uniform grid), so the
+cost grows with the content instead of with its square.
+
+*The append-only rule needed a channel, and the seam already had one.* The grid layouts are
+prefix-stable by construction, but the tree re-centres a parent and the force simulation relaxes, so
+both read the positions the last layout gave them (`previous`). The host keeps them per view
+(`GraphView`'s `layoutHistory`, keyed by session, strategy, and level) and hands them to
+`layoutGraph`. One deviation worth recording: "the same model yields the same positions" now holds
+for a given history, not across histories — a tree built fresh and a tree grown by streaming differ,
+because the streamed tree keeps the parent's place. That is the plan's own rule.
+
+*The toolbar had to change (T7.4).* Five layouts do not fit in a segmented control: the toolbar
+became wide enough to wrap, which pushed the back control under the floating header and broke the app
+e2e that keeps that control clickable. The layout chooser is now a **menu** (`Layout: Lanes ▾`) that
+shows the current layout, and the toolbar stays on one row. The legend says what the layout on
+screen encodes, one sentence per layout.
+
+*The gallery (T7.5) costs nothing.* Five layouts side by side, each a **static SVG** of that layout
+(the library's SVG renderer over the same render-model pipeline the canvas uses) — no canvas and no
+WebGL context per thumbnail. Picking one opens it in the full surface.
+
+*The captures were refreshed deliberately and read by eye.* Three frames are new: `28-graph-tree`,
+`29-graph-force`, `30-graph-gallery`. The rest are unchanged apart from the toolbar's layout menu.
+
+Commands run: `vitest run` in `spacegraphjs` (the layout suite: 30 tests, 12 new), `tsc --noEmit` in
+`spacegraphjs` (0 errors), `pnpm run build:lib` + `pnpm run build:packages`, `bun test src/graph` in
+`packages/session-ui` (106 pass, 5 new), `bun run typecheck` + `bun test src` in `packages/session-graph`
+(96 pass), `bun run test:components` in `packages/session-graph` (48 pass, 1 new — the gallery),
+`bun run typecheck` in `packages/app` and `packages/ui` (clean), `bun run test:e2e -- e2e/graph/
+session-graph.spec.ts` in `packages/app` (21 pass), `bun run graph:capture --mode=compare` (the set
+refreshed), `bun run graph:verify` (all steps).
+
+Unverified: the tree and the force layout were looked at in Chromium at 1440×900 only, not in
+Firefox or WebKit and not on a touch device; the force layout's cost on a 5,000-message session was
+not measured (the neighbour grid bounds the repulsion, but the step count still scales with the
+model); the tree's block width (four columns) is a policy, not a measured optimum; the gallery's
+thumbnails are static pictures, so they do not show the renderer's own card styling; the "same model,
+same positions" invariant holds per history, not across histories; the layout menu's keyboard
+behaviour is the browser's own `<details>`, not a custom menu. **T2.1 and T2.2 still need
+participants**, so the stop rule in T2.5 has not fired.
+
 
 
 

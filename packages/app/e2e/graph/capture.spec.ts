@@ -66,6 +66,12 @@ function canvasSample(page: Page) {
   })
 }
 
+/** Picks a layout from the toolbar's layout menu. */
+async function pickLayout(page: Page, layout: string) {
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-layout"] summary`).click()
+  await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-strategy="${layout}"]`).click()
+}
+
 // The graph paints on demand into a preserved drawing buffer, so the capture waits on the buffer itself
 // rather than on DOM state. Two consecutive equal samples, taken across poll intervals, prove a camera
 // flight or projection tween has settled; a single same-frame pair can be equal mid-tween.
@@ -262,16 +268,37 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // 11 — the Timeline layout strategy (RF.2) on the same model.
   await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
   await setLevel(page, "Execution")
-  await page.locator(toolbar).getByRole("button", { name: "Timeline", exact: true }).click()
+  await pickLayout(page, "timeline")
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "11-graph-timeline.png")
 
   // 12 — the Hierarchy layout strategy: ancestry reads as an indent, not a horizontal fan.
-  await page.locator(toolbar).getByRole("button", { name: "Hierarchy", exact: true }).click()
+  await pickLayout(page, "hierarchy")
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "12-graph-hierarchy.png")
+
+  // 28 — the Tree layout (T7.2): the work hangs under the turn it belongs to, and the tree grows
+  // downward. A different geometry, not a redraw of the lanes.
+  await pickLayout(page, "tree")
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "28-graph-tree.png")
+
+  // 29 — the Force layout (T7.3): the session's own shape. Linked work pulls together, the rest
+  // drifts apart.
+  await pickLayout(page, "force")
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "29-graph-force.png")
+
+  // 30 — the layout gallery (T7.5): the same model in every layout, side by side.
+  await page.locator(toolbar).getByRole("button", { name: "Compare the layouts", exact: true }).click()
+  await expect(page.locator('[data-slot="graph-gallery"]')).toBeVisible()
+  await capture(page, "30-graph-gallery.png")
+  await page.keyboard.press("Escape")
+  await expect(page.locator('[data-slot="graph-gallery"]')).toHaveCount(0)
 
   // 15 — the turn ribbon representation (LE.8): one horizontal bar of phase segments per turn. The
   // representation swaps the whole layout, so let the adapter settle before framing the new bounds.
@@ -290,7 +317,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
 
   // Back to the node-link graph, lanes layout, for the file lens and the narrow/light frames.
   await page.locator(toolbar).getByRole("button", { name: "Graph", exact: true }).click()
-  await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
+  await pickLayout(page, "lanes")
 
   // 20 — camera zoom at 150% of the fit. The toolbar steps a tenth of the fit, so the readout is 150%.
   await fit(page)

@@ -91,7 +91,7 @@ const sessionGraphSchema = Persistence.struct({
   renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
   selected: Schema.optional(Schema.String),
   // RF.2/RF.7: the chosen layout strategy and minimap visibility, per session.
-  layout: Schema.optional(Schema.Literals(["lanes", "timeline", "hierarchy"])),
+  layout: Schema.optional(Schema.Literals(["lanes", "timeline", "hierarchy", "tree", "force"])),
   minimap: Schema.optional(Schema.Boolean),
   // LE.12: the file-first lens (changed-files rail + bundled provenance), per session. Absent means off.
   files: Schema.optional(Schema.Boolean),

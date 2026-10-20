@@ -15,9 +15,9 @@ export type { Position }
  *
  * The strategies live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
-export type LayoutStrategy = "lanes" | "timeline" | "hierarchy"
+export type LayoutStrategy = "lanes" | "timeline" | "hierarchy" | "tree" | "force"
 
-export const LAYOUT_STRATEGIES: LayoutStrategy[] = ["lanes", "timeline", "hierarchy"]
+export const LAYOUT_STRATEGIES: LayoutStrategy[] = ["lanes", "timeline", "hierarchy", "tree", "force"]
 
 export type LayoutOptions = {
   strategy?: LayoutStrategy
@@ -42,6 +42,12 @@ export type LayoutOptions = {
    * node within the same level. `undefined` means every node participates (execution/detail).
    */
   level?: ZoomLevel
+  /**
+   * T7: the positions the previous layout assigned. The tree re-centres a parent and the force
+   * simulation relaxes, so both read the positions they already gave and only place the boxes they
+   * have not seen — a streamed session never moves a node the reader is looking at.
+   */
+  previous?: ReadonlyMap<string, Position>
 }
 
 /** Rendered card footprint; keep in sync with the SpaceGraph adapter's HTML card defaults. */
@@ -108,6 +114,12 @@ const LAYOUT: LayoutConfig<GraphNode, GraphEdge, Lane> = {
   turnIdFn: (node) => node.turnID,
   ownerTurnFn: (model, node) => (node.kind === "file" ? fileOwners(model).get(node.id) : undefined),
   clusterOfFn: (node) => (node.kind === "phase" ? node.clusterOf : undefined),
+  // T7: the tree hangs a node under the parent it belongs to, and the force layout pulls a node
+  // towards the structure around it. Both are the session's vocabulary, not the library's. A file
+  // belongs to the turn that wrote it, so it hangs there too.
+  parentOfFn: (model, node) =>
+    parents(model).get(node.id) ?? (node.kind === "file" ? fileOwners(model).get(node.id) : undefined),
+  forceLinksFn: (model, node) => neighbours(model, node.id),
   geometry: {
     standardSize: CARD_SIZE,
     // Indent step must be large enough to read at fit; 120px gives a clear visual hierarchy.
@@ -134,6 +146,7 @@ export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): Gra
     columns: options.columns,
     rowGap: options.rowGap,
     rows: options.rows,
+    previous: options.previous,
     // T1.2: at overview only the nodes overview draws consume column width. Hidden execution cards
     // would otherwise leave wide empty gutters between the compact overview chips.
     include: options.level === "overview" ? (node) => isVisibleAt(node, "overview") : undefined,
@@ -206,4 +219,63 @@ function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphE
   FILE_OWNERS.set(model, owners)
 
   return owners
+}
+
+/**
+ * The parent of each node: the `part-of` edge that names it. The tree layout hangs a node under
+ * that parent, so the relation is the session's own — a turn owns its work, the session owns its
+ * turns.
+ */
+const PARENTS = new WeakMap<object, ReadonlyMap<string, string>>()
+
+function parents(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }) {
+  const cached = PARENTS.get(model)
+
+  if (cached) return cached
+
+  const owners = new Map<string, string>()
+
+  for (const edge of model.edges) {
+    if (edge.kind !== "part-of") continue
+
+    if (owners.has(edge.source)) continue
+
+    owners.set(edge.source, edge.target)
+  }
+
+  PARENTS.set(model, owners)
+
+  return owners
+}
+
+/**
+ * The nodes the force layout pulls a node towards: the structure around it — what it belongs to and
+ * what came before it. A link is a claim about the session's shape, not about cause, so the
+ * inferred edges stay out of it.
+ */
+const NEIGHBOURS = new WeakMap<object, ReadonlyMap<string, readonly string[]>>()
+
+function neighbours(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }, id: string) {
+  const cached = NEIGHBOURS.get(model)
+
+  if (cached) return cached.get(id) ?? []
+
+  const links = new Map<string, string[]>()
+
+  const link = (from: string, to: string) => {
+    const existing = links.get(from)
+
+    if (existing) existing.push(to)
+    else links.set(from, [to])
+  }
+
+  for (const edge of model.edges) {
+    if (edge.kind !== "part-of" && edge.kind !== "sequence") continue
+    link(edge.source, edge.target)
+    link(edge.target, edge.source)
+  }
+
+  NEIGHBOURS.set(model, links)
+
+  return links.get(id) ?? []
 }
