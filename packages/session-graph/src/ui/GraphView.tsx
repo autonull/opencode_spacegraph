@@ -1,4 +1,4 @@
-import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
+import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme, RenderModel } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
 import type { GraphLayout, GraphModel, GraphNode, Lane, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 import {
@@ -36,6 +36,7 @@ import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { createGraphTheme } from "./theme"
+import { renderToSVG, serializeRenderModel, type SvgOptions } from "@spacegraphjs/svg-renderer"
 
 /** LE.10 lane gutter copy, in layout order. */
 const LANE_KEY = {
@@ -73,7 +74,7 @@ export type GraphViewProps = {
   files?: boolean
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
   diffSource?: GraphDiffSource
-  /** Optional host renderer for a node's summary (for example Markdown); falls back to plain text. */
+  /** Optional host renderer for a node's summary (for example MarkDown); falls back to plain text. */
   renderSummary?: (node: GraphNode) => JSX.Element | undefined
   renderCard?: CardTemplate
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
@@ -89,6 +90,10 @@ export type GraphViewProps = {
   /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
   onTurnMap?: (turnID: string) => void
   onBack?: () => void
+  /** T3.4: session title for export metadata. */
+  sessionTitle?: string
+  /** T3.4: tested commit SHA for export metadata. */
+  testedCommit?: string
 }
 
 /**
@@ -270,6 +275,96 @@ export const GraphView = (props: GraphViewProps) => {
       renderBand: renderBand(),
     }),
   )
+
+  // T3.4: Export the current render model as SVG, JSON, or standalone HTML.
+  const handleExport = (format: "svg" | "json" | "html", model: RenderModel) => {
+    const theme = props.theme ?? resolvedTheme()
+    const timestamp = new Date().toISOString()
+    const sessionTitle = props.sessionTitle ?? "OpenCode Session"
+    const testedCommit = props.testedCommit ?? "unknown"
+
+    if (format === "svg") {
+      const svgOptions: SvgOptions = {
+        theme,
+        padding: 24,
+      }
+      const svg = renderToSVG(model, svgOptions)
+      downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `session-map-${timestamp}.svg`)
+      return
+    }
+
+    if (format === "json") {
+      const json = serializeRenderModel(model)
+      downloadBlob(new Blob([json], { type: "application/json" }), `session-map-${timestamp}.json`)
+      return
+    }
+
+    if (format === "html") {
+      const svgOptions: SvgOptions = {
+        theme,
+        padding: 24,
+      }
+      const svg = renderToSVG(model, svgOptions)
+      const json = serializeRenderModel(model)
+
+      // Build a standalone HTML file with inlined CSS/SVG
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(sessionTitle)} - Session Map</title>
+  <style>
+    body { margin: 0; font-family: ${escapeHtml(theme.fontFamily)}; background: ${escapeHtml(theme.background)}; color: ${escapeHtml(theme.text)}; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .meta { font-size: 13px; color: ${escapeHtml(theme.textMuted)}; margin-bottom: 24px; }
+    .meta code { background: ${escapeHtml(theme.surfaceMuted)}; padding: 2px 6px; border-radius: 4px; }
+    .graph-container { border: 1px solid ${escapeHtml(theme.border)}; border-radius: 8px; overflow: hidden; background: ${escapeHtml(theme.background)}; }
+    .graph-container svg { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${escapeHtml(sessionTitle)}</h1>
+    <div class="meta">
+      Exported: ${new Date(timestamp).toLocaleString()} | Commit: <code>${escapeHtml(testedCommit)}</code>
+    </div>
+    <div class="graph-container">
+      ${svg}
+    </div>
+    <details style="margin-top: 24px;">
+      <summary style="cursor: pointer; color: ${escapeHtml(theme.textMuted)};">Raw JSON data</summary>
+      <pre style="background: ${escapeHtml(theme.surface)}; padding: 16px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 300px;">${escapeHtml(json)}</pre>
+    </details>
+  </div>
+</body>
+</html>`
+      downloadBlob(new Blob([html], { type: "text/html" }), `session-map-${timestamp}.html`)
+      return
+    }
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+        function escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, "&" + "amp;")
+      .replace(/</g, "&" + "lt;")
+      .replace(/>/g, "&" + "gt;")
+      .replace(/"/g, "&" + "quot;")
+      .replace(/'/g, "&#039;")
+  }
+
   const selectedNode = () => {
     const id = selection()[0]
     return id ? nodeByID(props.model, id) : undefined
@@ -473,7 +568,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (!current) return 100
     return Math.max(33, Math.round((current.zoom / fitBaseline()) * 100))
   }
-  // T1.8: zoom range is ~1/3..2.5× fit (ORTHO_ZOOM_SPAN in CameraControls). Use fitBaseline to compute bounds.
+  // T1.8: zoom range is ~1/3..2.5x fit (ORTHO_ZOOM_SPAN in CameraControls). Use fitBaseline to compute bounds.
   const minZoom = () => fitBaseline() / 3
   const maxZoom = () => fitBaseline() * 2.5
   const zoomBy = (direction: 1 | -1) => {
@@ -526,6 +621,8 @@ export const GraphView = (props: GraphViewProps) => {
         onExpandGraph={
           representation() !== "graph" && selection().length > 0 ? () => expandToGraph(selection()[0]!) : undefined
         }
+        onExport={handleExport}
+        renderModel={renderModel()}
         onBack={props.onBack}
         searching={searchOpen()}
         compact={compact()}

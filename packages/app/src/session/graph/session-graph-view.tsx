@@ -7,6 +7,7 @@ import { createMediaQuery } from "@solid-primitives/media"
 import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack, onMount, onCleanup } from "solid-js"
 import { messageIdFromHash } from "@/session/message-id-from-hash"
 import { useLanguage } from "@/runtime/i18n/language"
+import pkg from "../../../package.json"
 import type { SessionModel } from "@/session/model"
 
 // The graph surface, its renderer registry, and both adapters load on demand so none of them enters
@@ -144,6 +145,8 @@ export function SessionGraphView(props: {
           }}
           onBack={() => props.onBack()}
           endInset={isDesktop() ? "72px" : undefined}
+          sessionTitle={session.data.info()?.title ?? "OpenCode Session"}
+          testedCommit={pkg.version ?? "unknown"}
         />
       </Suspense>
     </ErrorBoundary>

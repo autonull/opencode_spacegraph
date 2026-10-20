@@ -1,4 +1,4 @@
-import type { DepthMode, RendererCapabilities } from "@spacegraphjs/renderer"
+import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
@@ -74,6 +74,10 @@ export type GraphToolbarProps = {
   onTurnMap?: () => void
   /** LE.8/LE.9: opens the selected ribbon/matrix segment in the node-link graph; absent outside graph mode. */
   onExpandGraph?: () => void
+  /** T3.4: exports the current render model as SVG, JSON, or standalone HTML. */
+  onExport?: (format: "svg" | "json" | "html", model: RenderModel) => void
+  /** Current render model for export; required when onExport is provided. */
+  renderModel?: RenderModel
   onBack?: () => void
   searching?: boolean
   /** RF.7: narrow widths collapse the secondary controls into an overflow menu. */
@@ -184,6 +188,43 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           onClick={() => props.onExpandGraph?.()}
           icon={<Icon name="arrow-up-right" size="small" />}
         />
+      </Show>
+      <Show when={props.onExport && props.renderModel}>
+        <details class="relative" data-slot="graph-toolbar-export">
+          <summary
+            class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
+            aria-label={i18n.t("ui.sessionGraph.toolbar.export")}
+            title={i18n.t("ui.sessionGraph.toolbar.export")}
+          >
+            <Icon name="download" size="small" />
+          </summary>
+          <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md min-w-[160px]">
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={() => props.onExport?.("svg", props.renderModel!)}
+            >
+              <Icon name="image" size="small" />
+              <span>{i18n.t("ui.sessionGraph.toolbar.exportSvg")}</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={() => props.onExport?.("json", props.renderModel!)}
+            >
+              <Icon name="code" size="small" />
+              <span>{i18n.t("ui.sessionGraph.toolbar.exportJson")}</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={() => props.onExport?.("html", props.renderModel!)}
+            >
+              <Icon name="globe" size="small" />
+              <span>{i18n.t("ui.sessionGraph.toolbar.exportHtml")}</span>
+            </button>
+          </div>
+        </details>
       </Show>
     </>
   )

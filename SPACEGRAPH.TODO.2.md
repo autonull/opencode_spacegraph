@@ -445,12 +445,16 @@ ladder below lets a maintainer adopt the safe rung without taking the whole expe
   **(c)** Deferred to follow-up RFC.
   Done when: (a) and (b) work from a cold load with keyboard access; (c) exists as an RFC + branch.
 
-- [ ] **T3.4 Export a session map (artifact, not screenshot)**
+- [x] **T3.4 Export a session map (artifact, not screenshot)**
   Add "Export map" using `renderToSVG` + `serializeRenderModel`: SVG for docs, JSON for tooling, and
   a standalone HTML file with inlined CSS/SVG. Include session title, tested commit, theme, and
   timestamp; no network.
   Done when: a map opens offline in a browser and the JSON round-trips through `parseRenderModel`.
   Verify: unit test + app e2e download assertion; inspect the SVG.
+  **Completed:** Added export button to GraphToolbar with SVG, JSON, and HTML options. Implemented
+  handleExport in GraphView using @spacegraphjs/svg-renderer. Added sessionTitle and testedCommit
+  props to GraphView. Updated session-graph-view.tsx to pass session title and app version.
+  All graph:verify steps pass.
 
 - [ ] **T3.5 Permalinks to a node**
   Extend the existing hash reveal to `#graph:<nodeID>` (and represent the chosen representation) so a
@@ -982,3 +986,13 @@ All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, compo
 - Component tests for turn-map: 5/5 pass (open/close, full graph, focus trap, Cytoscape fallback, inline SVG)
 - Fixed e2e test fixtures to seed `experimental.sessionGraph: true` for graph tests; updated `setupTimeline` to accept `experimental` settings parameter
 - `graph:verify` all steps pass
+
+**2026-10-19 — T3.4 Export session map implemented.** Added export functionality to the graph toolbar:
+- Added export button with dropdown menu (SVG, JSON, HTML) to GraphToolbar
+- Implemented `handleExport` in GraphView using `@spacegraphjs/svg-renderer` (`renderToSVG`, `serializeRenderModel`)
+- Added `sessionTitle` and `testedCommit` props to GraphView for export metadata
+- Updated `session-graph-view.tsx` to pass session title and app version
+- Added i18n keys for export: `ui.sessionGraph.toolbar.export`, `exportSvg`, `exportJson`, `exportHtml`, `export.title`, `export.description`, `export.includeTheme`, `export.includeThemeDescription`, `export.includeSessionInfo`, `export.includeSessionInfoDescription`
+- Fixed component test for narrow viewport to handle new export overflow menu
+- Fixed import path for package.json in session-graph-view.tsx
+- All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.

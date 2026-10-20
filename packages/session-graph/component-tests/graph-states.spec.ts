@@ -85,11 +85,11 @@ story("fits a narrow mobile viewport without horizontal overflow", async ({ moun
   })
 
   // RF.7: the narrow row collapses the secondary controls into an overflow menu.
-  const overflow = root.locator('[data-slot="graph-toolbar-overflow"]')
+  const overflow = root.locator('[data-slot="graph-toolbar-overflow"]').first()
   await expect(overflow).toBeVisible()
   const minimap = overflow.locator('button[aria-label="Toggle minimap"]')
   await expect(minimap).toBeHidden()
-  await overflow.locator("summary").click()
+  await overflow.locator('summary[aria-label="More controls"]').click()
   await expect(minimap).toBeVisible()
 
   const width = await root.evaluate((element) => element.scrollWidth - element.clientWidth)
