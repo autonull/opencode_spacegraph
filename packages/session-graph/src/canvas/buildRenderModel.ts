@@ -334,6 +334,8 @@ function nodeData(node: GraphNode, level: ZoomLevel, dimmed: boolean): Record<st
     time: node.time,
     derived: node.derived ?? false,
     dimmed,
+    // T3.6: the session identity of the root, so an exported map names its session.
+    sessionID: node.data?.sessionID,
     category: node.kind === "phase" ? node.data?.category : undefined,
     count: node.kind === "phase" ? clusterCount(node) : undefined,
     expanded: node.kind === "phase" ? isClusterExpanded(level) : undefined,

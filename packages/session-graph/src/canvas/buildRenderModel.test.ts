@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { buildFixtureGraph, layoutGraph, type GraphModel, type ZoomLevel } from "@opencode/session-ui/graph"
+import { buildFixtureGraph, buildGraph, layoutGraph, type GraphModel, type ZoomLevel } from "@opencode/session-ui/graph"
 import { buildRenderModel } from "./buildRenderModel"
 
 const model = buildFixtureGraph()
@@ -251,4 +251,13 @@ test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () =
   expect(style("part-of")).toBe("dashed")
   expect(style("sequence", "explicit")).toBe("solid")
   expect(style("writes")).toBe("solid")
+})
+
+test("the render model carries the session identity of the root (T3.6)", () => {
+  const identified = buildGraph([{ id: "m1", type: "user", text: "hi", time: { created: 1 } }], { type: "idle" }, "ses_abc")
+  const built = buildRenderModel(identified, { level: "overview", positions: layoutGraph(identified).positions })
+  const root = built.nodes.find((node) => node.kind === "session")
+
+  expect(root?.id).toBe("session")
+  expect(root?.data?.sessionID).toBe("ses_abc")
 })

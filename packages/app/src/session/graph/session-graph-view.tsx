@@ -31,7 +31,12 @@ export function SessionGraphView(props: {
   // reserve that width so the graph toolbar's renderer label and back control stay clickable.
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const graph = session.layout.graph()
-  const model = createMemo(() => buildGraph(session.history.messages(), session.data.status()))
+
+  // T3.6: the session id rides on the root node, so an exported map names its session.
+  const model = createMemo(() =>
+    buildGraph(session.history.messages(), session.data.status(), session.data.info()?.id),
+  )
+
   // RF.8: the inspector's on-demand diffs read the same per-tab turn-diff cache the timeline uses,
   // scoped to the current session so the graph package never holds a session id.
   const data = useData()

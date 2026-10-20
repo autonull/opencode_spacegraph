@@ -236,7 +236,11 @@ function toolMetadata(tool: SessionMessageAssistantTool): Record<string, JsonVal
   return tool.state.metadata ?? {}
 }
 
-function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatus): GraphModel {
+function buildGraphInternal(
+  messages: SessionMessageInfo[],
+  status: SessionStatus,
+  sessionID?: string,
+): GraphModel {
   const { turnByMessageID, activeMessageID } = Timeline.constructSessionMessageRows(messages, true, status)
 
   const nodes: GraphNode[] = []
@@ -306,6 +310,9 @@ function buildGraphInternal(messages: SessionMessageInfo[], status: SessionStatu
     label: "Session",
     status: "neutral",
     minLevel: "overview",
+    // T3.6: the session identity rides on the root node, so an exported map can be attributed
+    // without changing the root's literal id.
+    data: sessionID ? { sessionID } : undefined,
   })
 
   const goal = messages.find((message) => message.type === "user")?.text
@@ -977,6 +984,15 @@ function isNotice(message: SessionMessageInfo): message is GraphNotice {
   )
 }
 
-export function buildGraph(messages: SessionMessageInfo[], status: SessionStatus): GraphModel {
-  return buildGraphInternal(messages, status)
+/**
+ * Builds the graph model. `sessionID` is optional: when the host knows the session, the root node
+ * carries it (T3.6) so an exported map names its session. The root id stays literal, so nothing
+ * that resolves a node by id changes.
+ */
+export function buildGraph(
+  messages: SessionMessageInfo[],
+  status: SessionStatus,
+  sessionID?: string,
+): GraphModel {
+  return buildGraphInternal(messages, status, sessionID)
 }

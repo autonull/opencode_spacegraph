@@ -324,9 +324,20 @@ The design argument (`SPACEGRAPH.md`) asks for a hybrid first-class experience. 
   Extend hash reveal to `#graph:<nodeID>` (and representation) so a reviewer can link to a decision/failure.
   Done when: cold-loading URL selects and frames node; unknown IDs fall back safely.
 
-- [ ] **T3.6 Namespace the model for future comparison** — future-proofing, not blocking
+- [x] **T3.6 Namespace the model for future comparison** — future-proofing, not blocking
   Add `data.sessionID` to session root (keep literal root ID for compat) so exported maps from two sessions combine later without breaking change.
   Done when: exports carry session identity; existing tests/IDs unchanged.
+  - **Done (2026-10-20).** `buildGraph(messages, status, sessionID?)` takes the session id
+    optionally and puts it on the root node's `data`; the root's literal id stays `session`, so
+    every id that resolves a node is unchanged.
+  - The id reaches the export: `buildRenderModel` copies it into the root's renderer data, so the
+    JSON and the standalone HTML exports name their session (the SVG export is a picture and
+    carries no data).
+  - The app passes it in both places that build a model (`session-graph-view.tsx` and
+    `turn-map-overlay.tsx`).
+  - Tests: the model test asserts the root carries the id (and carries none without it); the
+    render-model test asserts the exported root data carries it.
+
 
 **Gate G3 — upstreamable.** Flag off by default, published dependencies (or bundled fallback), a diff a maintainer can review in slices, and a review guide that leads with evidence.
 
@@ -1227,3 +1238,20 @@ the new connection assertions), `bun run test:e2e -- e2e/graph/session-graph.spe
 
 Unverified: the announcement text was checked in the browser component test (the live region
 contains "Connections:") but not with a real screen reader.
+
+**2026-10-20 — T3.6: the exported map names its session.** `buildGraph` takes the session id
+optionally and puts it on the root node's data; the root's literal id stays `session`, so nothing
+that resolves a node by id changes. The render model copies it into the root's renderer data, so the
+JSON and the standalone HTML exports carry the session identity (the SVG export is a picture and
+carries no data). The app passes the id in both places that build a model.
+
+This is the small half of the sharing story: two exported maps from two sessions can now be told
+apart without changing any id, which is what a future cross-session comparison (D4) would need.
+
+Commands run: `bun test src/graph` in `packages/session-ui` (77 pass, 2 new), `bun run typecheck` +
+`bun test src` in `packages/session-graph` (50 pass, 1 new), `bun run typecheck` in `packages/app`
+(clean), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify` (all
+steps), `bun run lint:changed` (0).
+
+Unverified: the export was checked through the render model, not by opening an exported file; the
+JSON export path is `serializeRenderModel`, which keeps the node data verbatim.

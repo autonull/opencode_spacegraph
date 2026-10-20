@@ -320,3 +320,18 @@ describe("graph model — semantic phases", () => {
     expect(phases.map((phase) => phase.data?.category)).toEqual(["explore", "edit", "explore"])
   })
 })
+
+describe("model — session identity (T3.6)", () => {
+  test("the root node carries the session id while its literal id stays", () => {
+    const model = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc")
+
+    expect(model.root).toBe("session")
+    expect(model.nodes.find((node) => node.id === model.root)?.data?.sessionID).toBe("ses_abc")
+  })
+
+  test("a model built without a session id carries none", () => {
+    const model = buildGraph(buildFixtureMessages(), { type: "idle" })
+
+    expect(model.nodes.find((node) => node.id === model.root)?.data?.sessionID).toBeUndefined()
+  })
+})

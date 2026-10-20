@@ -23,7 +23,11 @@ export function SessionTurnMapOverlay(props: {
   onOpenFullGraph: (turnID: string) => void
 }) {
   const language = useLanguage()
-  const model = createMemo(() => buildGraph(props.session.history.messages(), props.session.data.status()))
+
+  // T3.6: the session id rides on the root node, so an exported map names its session.
+  const model = createMemo(() =>
+    buildGraph(props.session.history.messages(), props.session.data.status(), props.session.data.info()?.id),
+  )
 
   // A stored turn can outlive the model (a reload after history changes); fall back to the live turn.
   const turnID = () => {
