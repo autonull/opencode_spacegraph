@@ -16,7 +16,7 @@ const positions = layoutGraph(model).positions
 const at = (level: ZoomLevel, extra: { cardBudget?: number } = {}) =>
   buildRenderModel(model, { level, positions, ...extra })
 
-const STRUCTURAL = new Set(["session", "turn", "phase", "error", "retry", "approval"])
+const STRUCTURAL = new Set(["session", "turn", "phase", "error", "retry"])
 
 /** Activity cards consume the DOM budget; structural panels (LE.2) are chrome and never do. */
 const activityCards = (built: ReturnType<typeof at>) =>

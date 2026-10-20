@@ -12,7 +12,7 @@ import { cytoscapeSessionAdapter, sessionGraphAdapter } from "./sessionGraphAdap
 const model = buildFixtureGraph()
 const positions = layoutGraph(model).positions
 
-const STRUCTURAL = new Set(["session", "turn", "phase", "error", "retry", "approval"])
+const STRUCTURAL = new Set(["session", "turn", "phase", "error", "retry"])
 
 /** The nodes the adapter must draw at a level, in the model's own order. */
 const visibleAt = (level: ZoomLevel) => nodesAtLevel(model, level).map((node) => node.id)

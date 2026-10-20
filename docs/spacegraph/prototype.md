@@ -474,6 +474,24 @@ Carry these forward explicitly; none is silently lowered.
     measures the whole session, so a node that stays in the window does not move when the window
     slides. The transcript carries the rest.
 
+## Edge cases (T6.5)
+
+The cases a real session produces that the canonical fixture does not. Each one has a model test, and
+the ones a reader can see have a component or app test.
+
+| Case | What the graph shows | Where it is proved |
+|---|---|---|
+| A session forked from another | The root node carries the origin and the message it branched at; the inspector names both and opens the origin | `model.test.ts` (lineage), `graph-session-links.spec.ts`, the app e2e "names the session a fork came from and opens it" |
+| A child session (a subagent's own session) | The root node names its parent, and the inspector opens it | `model.test.ts` (lineage) |
+| A delegation to a child session | The delegated node carries the child session id; the inspector opens it. When the child has no node in this session, the id stays on the node and **no edge is drawn** — an edge to a node that does not exist is a dangling connection | `model.test.ts` (child sessions), `graph-session-links.spec.ts` |
+| A compaction | One node: the summary it left, or the fact that the provider's replacement window was replayed instead. A failed compaction carries the error that stopped it | `model.test.ts` (compaction) |
+| A permission request | **Nothing.** Permissions are session state, not a step in the transcript, so there is no node for one (ADR-023) | the vocabulary carries no `approval` kind |
+| An aborted or interrupted step | An `error` node with the `interrupted` status and the provider's message — an interrupted turn is visible as interrupted, not as silence (ADR-025) | `model.test.ts` (interruption) |
+| The three idle outcomes | `succeeded` adds no node, `failed` adds a failed one, `interrupted` an interrupted one | `model.test.ts` (outcomes) |
+
+**Not covered, deliberately:** the child session's own work is not in this graph. Reading across
+sessions is D4 (cross-session graphs), and it waits for a validated single-session win.
+
 ## Evaluation protocol (R7.3)
 
 **Status: protocol defined; not executed** (requires human participants, which this environment cannot

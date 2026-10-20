@@ -47,10 +47,10 @@ export type LayoutOptions = {
 /** Rendered card footprint; keep in sync with the SpaceGraph adapter's HTML card defaults. */
 export const CARD_SIZE: readonly [number, number] = [220, 72]
 
-/** Compact footprint for structural chips (session, turn, phase, error, retry, approval). */
+/** Compact footprint for structural chips (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
 
-const COMPACT_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry", "approval"])
+const COMPACT_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry"])
 
 /** The box a node occupies in layout space, chosen from the shape the renderer will draw. */
 export function nodeSize(node: GraphNode): readonly [number, number] {
@@ -89,7 +89,6 @@ const DEPTH: Record<NodeKind, number> = {
   subagent: 2,
   notice: 2,
   compaction: 2,
-  approval: 2,
   file: 3,
   result: 3,
   diff: 3,

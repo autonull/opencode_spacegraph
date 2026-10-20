@@ -24,6 +24,7 @@ export {
   type NodeKind,
   type NodeStatus,
   type PhaseCategory,
+  type SessionLineage,
   type ZoomLevel,
 } from "./model"
 

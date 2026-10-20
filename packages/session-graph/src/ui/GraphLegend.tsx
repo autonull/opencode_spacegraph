@@ -26,7 +26,6 @@ const KINDS: NodeKind[] = [
   "compaction",
   "notice",
   "diff",
-  "approval",
 ]
 
 const STATUSES: GraphNode["status"][] = ["pending", "running", "success", "failed", "interrupted", "neutral"]

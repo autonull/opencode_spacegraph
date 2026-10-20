@@ -34,6 +34,11 @@ export type GraphInspectorProps = {
   link?: string
   onSelect: (id: string) => void
   onOpenTranscript?: (id: string) => void
+  /**
+   * T6.5: opens another session — the child of a delegation, the session a fork came from, or the
+   * parent of a child session. The host owns the navigation; the graph only names the session.
+   */
+  onOpenSession?: (sessionID: string) => void
 }
 
 /**
@@ -76,6 +81,40 @@ export const GraphInspector = (props: GraphInspectorProps) => {
   }
 
   const time = (value: number | undefined) => (value === undefined ? undefined : new Date(value).toLocaleTimeString())
+
+  /**
+   * T6.5 — the other session a node points at, if any: the child of a delegation, the session a
+   * fork branched from, or the parent of a child session. The graph names the session; the host
+   * opens it.
+   */
+  const sessionLink = () => {
+    const node = props.node
+    if (!node) return undefined
+
+    const child = text(node.data?.childSessionID)
+    if (child) return { id: child, label: i18n.t("ui.sessionGraph.inspector.openChildSession") }
+
+    const forked = text(node.data?.forkedFrom)
+    if (forked) return { id: forked, label: i18n.t("ui.sessionGraph.inspector.openForkedSession") }
+
+    const parent = text(node.data?.parentSessionID)
+    if (parent) return { id: parent, label: i18n.t("ui.sessionGraph.inspector.openParentSession") }
+
+    return undefined
+  }
+
+  /**
+   * T6.5 — where a fork branched. A fork *before* a message leaves it out of this session; a fork
+   * *through* it keeps it, so the label says which one it was.
+   */
+  const forkBoundaryLabel = () => {
+    const type = data()?.forkBoundaryType
+
+    if (type === "before") return i18n.t("ui.sessionGraph.inspector.forkedBefore")
+    if (type === "through") return i18n.t("ui.sessionGraph.inspector.forkedThrough")
+
+    return i18n.t("ui.sessionGraph.inspector.forkBoundary")
+  }
 
   // A diff node's turn is `turn:${opener}`; the turn node carries the opening message id the host
   // turn-diff source keys on.
@@ -147,6 +186,18 @@ export const GraphInspector = (props: GraphInspectorProps) => {
                   icon={<Icon name="outline-square-arrow" size="small" />}
                 />
               </Show>
+              <Show when={props.onOpenSession && sessionLink()}>
+                {(link) => (
+                  <IconButton
+                    size="small"
+                    variant="ghost"
+                    aria-label={link().label}
+                    title={link().label}
+                    onClick={() => props.onOpenSession?.(link().id)}
+                    icon={<Icon name="outline-arrow-to-corner-top-right" size="small" />}
+                  />
+                )}
+              </Show>
             </header>
 
             <div class="min-h-0 flex-1 overflow-y-auto px-3 py-2">
@@ -168,9 +219,19 @@ export const GraphInspector = (props: GraphInspectorProps) => {
                 {field(i18n.t("ui.sessionGraph.inspector.path"), text(data()?.path))}
                 {field(i18n.t("ui.sessionGraph.inspector.agent"), text(data()?.agent))}
                 {field(i18n.t("ui.sessionGraph.inspector.childSession"), text(data()?.childSessionID))}
+                {field(i18n.t("ui.sessionGraph.inspector.forkedFrom"), text(data()?.forkedFrom))}
+                {field(forkBoundaryLabel(), text(data()?.forkBoundary))}
+                {field(i18n.t("ui.sessionGraph.inspector.parentSession"), text(data()?.parentSessionID))}
                 {field(i18n.t("ui.sessionGraph.inspector.attempt"), count(data()?.attempt))}
                 {field(i18n.t("ui.sessionGraph.inspector.exit"), count(data()?.exit))}
               </dl>
+
+              <Show when={flag(data()?.replayed)}>
+                <div class="mt-2 grid grid-cols-[7rem_1fr] gap-2" data-slot="graph-inspector-field">
+                  <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.replayed")}</dt>
+                  <dd class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.inspector.replayedHint")}</dd>
+                </div>
+              </Show>
 
               <Show when={flag(data()?.timeout)}>
                 <div class="mt-2 grid grid-cols-[7rem_1fr] gap-2" data-slot="graph-inspector-field">

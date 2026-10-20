@@ -25,7 +25,6 @@ const GLYPH: Record<NodeKind, string> = {
   compaction: "M2 4h12M4 8h8M6 12h4",
   notice: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 7.5v4M8 4.5v.5",
   diff: "M4 2v12M12 2v12M4 5h4M4 10h4M9 13.5 12 13.5M10.5 12v3M9 2.5l3 0M10.5 1v3",
-  approval: "M3 7.5 6.5 11 13 3.5",
 }
 
 const CATEGORY_HUE: Record<string, number> = {
@@ -49,7 +48,6 @@ const KIND_HUE: Partial<Record<NodeKind, number>> = {
   retry: 28,
   notice: 220,
   compaction: 220,
-  approval: 145,
   phase: 210,
   tool: 210,
 }

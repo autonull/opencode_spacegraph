@@ -20,7 +20,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20) | `session-ui` graph 90 · `session-graph` unit 96 · `session-graph` component 44 · `spacegraphjs` 453 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
+| Last green (re-run 2026-10-20, after T6.5) | `session-ui` graph 101 · `session-graph` unit 96 · `session-graph` component 47 · `spacegraphjs` 453 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 21/21 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)** |
 
@@ -106,7 +106,9 @@ library; the framework bindings were dropped), T6.1 (provider-free demo), T6.3 (
 **T6.18 (the camera can be read back and jumped instantly), T6.19 (the zoom/pan matrix shows what its
 names say, and the gate proves it), T6.6 (the scale budget: the pipeline is linear, the map is capped
 and says so, and the guards are load-bearing), T6.12 (the second host: a framework-free consumer
-outside OpenCode that runs every generic module, checked by the library's own CI)**.
+outside OpenCode that runs every generic module, checked by the library's own CI), T6.5 (the edge
+cases: forks and child sessions are named and openable, a compaction says what it was, an
+interrupted turn is visible, and the permission node kind is decided and removed)**.
 
 **The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
 own framework. The React and Solid packages keep the `GraphView` binding they already had and nothing
@@ -989,10 +991,41 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Done when: corpus replays through model and one app e2e; nothing sensitive committed; size bounded.
   Verify: corpus unit tests + e2e.
 
-- [ ] **T6.5 Edge-case coverage: forks, child sessions, compaction, permissions**
+- [x] **T6.5 Edge-case coverage: forks, child sessions, compaction, permissions**
   Upstream has `session.forked`; subagent nodes link child session but cannot open it; compaction summary-only; approval/permission declared but unbuilt. Add "open child session" action, fork/lineage attribution without cross-session edges, compaction/replay-only coverage, explicit decision on permission nodes. Cover interrupted, aborted, idle outcomes.
   Done when: each case has fixture/test and documented UI behavior.
   Verify: model tests + one component/e2e per user-visible action.
+  - **Done (2026-10-20).** Every case the plan names now has a test and a documented behaviour;
+    the table is in `prototype.md` §"Edge cases" and the decisions are ADRs 023–025 in
+    `docs/spacegraph/decisions.md`.
+  - **A fork is attribution, not a cross-session edge (ADR-024).** The lineage rides on the root
+    node's data — the session it was forked from, the message it branched at, and its parent
+    session — and the inspector names it and opens it. No edge crosses the session boundary, and
+    the model now guarantees that **every edge's endpoints are nodes of this model**: a delegation
+    to a child session that has no node here used to leave a dangling wire, and the notice keeps the
+    child session id instead.
+  - **"Open child session" is a real action.** The inspector offers it on a delegation (and on the
+    fork's origin, and on a child session's parent). The app wires it to the *transcript's own*
+    session-opening path (`useMarkdown().openSession`), so a missing or foreign session behaves the
+    way it does everywhere else, and the action is proved end to end in the app e2e.
+  - **A compaction says what it was (ADR-025).** One node: the summary it left, or the fact that
+    the provider's replacement window was replayed instead; a failed compaction carries the error
+    that stopped it.
+  - **A permission request is not a node (ADR-023).** The `approval` kind was declared from the
+    start and nothing could ever produce one: the message stream has no permission type. The kind
+    is **removed** rather than left declared — the legend no longer advertises a card colour that
+    no card can have.
+  - **An interrupted turn is visible (ADR-025).** An aborted assistant step used to be dropped
+    entirely, so an interrupted turn looked like a turn that never happened. It is now an `error`
+    node with the `interrupted` status and the provider's message, the same status a killed shell
+    gets. The three idle outcomes (succeeded / failed / interrupted) are covered.
+  - Tests: `packages/session-ui/src/graph/model.test.ts` (33, +12),
+    `packages/session-graph/component-tests/graph-session-links.spec.ts` (3, new),
+    `packages/app/e2e/graph/session-graph.spec.ts` (+1: "names the session a fork came from and
+    opens it"). The e2e's mock server learned to serve a session's `fork` lineage.
+  - **The diff budget was re-audited** (`upstream-review.md` §5): the app integration is now 20
+    files, +916/−36. The audit had **omitted `graph-permalink.test.ts`** (+45) and its per-file
+    numbers had drifted by the T6.18/T6.19 pass; both are corrected.
 
 - [x] **T6.6 Scale and streaming budget**
   Benchmark 1k and 5k message sessions: model build, layout, render-model build, adapter diff, first paint. Decide whether P8.8 incremental patches needed **from data**, not speculation. Add auto-collapse/cap policy at scale.
@@ -2357,5 +2390,84 @@ typechecks, every graph suite, `graph:verify`, `lint:changed` — all pass. The 
 tags were left where they are: this pass changes no published artifact (the demo, the CI and the
 build configuration are not in the packages), so `v7.1.0` and the five `@spacegraphjs/*@0.1.0` still
 mark the commit that produced them.
+
+**2026-10-20 — T6.5: the cases a real session produces, and the fixture does not.** T2 still needs
+participants, so the work went where the plan says it can: the evidence-hardening half that needs
+no human. T6.5 was the open item in that group (T6.4's corpus needs real session data, which this
+environment does not have).
+
+*The fork is an attribution, never a cross-session edge.* The lineage rides on the root node's
+data — the session it was forked from, the message it branched at, and its parent session — and the
+inspector names it and opens it. The reason is ADR-002: an edge into another session would be a
+claim about work this session did not do, and the graph has one session's transcript. The model now
+also **guarantees that every edge's endpoints are nodes of this model**; a delegation to a child
+session that has no node here used to leave a dangling wire that the renderer had to warn about, and
+the notice keeps the child session id instead.
+
+*"Open child session" is a real action, and it is the transcript's action.* The inspector offers it
+on a delegation, on a fork's origin and on a child session's parent; the app wires it to
+`useMarkdown().openSession`, the same path the transcript uses for a session it links to, so a
+missing or foreign session behaves the way it does everywhere else.
+
+*Two declarations were made instead of left dangling.* The `approval` node kind is **removed**: the
+session message stream has no permission type, so nothing could ever produce one, and the legend
+was advertising a card colour that no card can have (ADR-023). A compaction now says whether it
+left a summary or replayed the provider's replacement window, and a failed compaction carries the
+error that stopped it.
+
+*One defect the cases exposed.* An assistant step aborted mid-flight was **dropped** from the
+model, so an interrupted turn looked like a turn that never happened: the reader saw the prompt and
+nothing else. It is now an `error` node with the `interrupted` status and the provider's message —
+the same status a killed shell gets. The three idle outcomes (succeeded / failed / interrupted) are
+covered by the same test.
+
+*The diff budget was stale.* The re-audit against upstream `dev` (`d249607e90`) found the app
+integration is **20 files, +916/−36**, not the 19 files / +863 the packet claimed: the audit had
+**omitted `graph-permalink.test.ts`** (+45), and the T6.18/T6.19 pass had moved the per-file
+numbers. `upstream-review.md` §5 now carries the measured numbers and the missing file.
+
+*One pre-existing red fixed on the way.* `packages/session-ui`'s typecheck failed on
+`scale.test.ts`: an `as const` helper made the assistant message's `content` a readonly tuple,
+which the client's mutable array type rejects. The helper now has an explicit return type. The
+failure was **pre-existing** — it reproduces on a clean tree at `143fe3f685` — and it was hiding
+the package's typecheck from every pass that touched the graph.
+
+Commands run: `bun run typecheck` in `packages/session-ui`, `packages/session-graph` and
+`packages/app` (clean), `bun test src/graph` in `packages/session-ui` (101 pass, 12 new),
+`bun test src` in `packages/session-graph` (96 pass), `bun run test:components` in
+`packages/session-graph` (47 pass, 3 new), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in
+`packages/app` (21 pass, 1 new), `bun run graph:verify` in the fork (all steps, including the
+library build, the capture verification and the publish check), `bun run lint:changed` (0).
+
+Unverified: the fork lineage was checked in Chromium at 1440×900 through the app e2e and the
+component test, not against a real forked session (the e2e's mock serves the lineage); the
+"open the other session" action reuses the transcript's path, so a session on another server is
+handled by that path's own resolution, not by this change; the compaction's replay flag is read
+from `native.messages` and a provider that stores the window elsewhere would not set it; the
+permission decision is a decision, not a measurement — a protocol that carries approvals in the
+transcript would bring the kind back with a builder. **T2.1 and T2.2 still need participants**, so
+the stop rule in T2.5 has not fired.
+
+**Notes for the next pass.**
+- **What is left, in the order the plan wants it:** **T2.1 and T2.2** (the dry run and the R7.3
+  protocol) are the only things that can settle the product claim, and they need people; then
+  **T2.4** (the naming/representation/depth/file-lens decisions, from the protocol data) and
+  **T2.5** (the stop rule). **T3.7's RFC** follows the measurement, and the issue text is already
+  `upstream-pr.md` + `upstream-review.md`. **T5** (release) waits for the upstream decision. The
+  rest is refinement: **T4.3** (fold the three strategies onto `LaneLayout`), **T4.5** (the
+  stencil/backface outline, or declare it), **T6.4** (the real-session corpus — blocked on real
+  session data), **T6.10–T6.14** (contract v3's fit insets, the benchmark CI, the embedder
+  devtools, the API docs, the stale `vue-spacegraph`), and **T6.16** (the optional pixel diff).
+- **Two things a next pass should know.** The host's model now has a **fourth argument**
+  (`buildGraph(messages, status, sessionID?, lineage?)`); the two surfaces that build a model are
+  `packages/app/src/session/graph/session-graph-view.tsx` (which passes the lineage) and
+  `packages/app/src/session/graph/turn-map-overlay.tsx` (which does not need it — the turn map's
+  scope drops the root node). And the **diff-budget numbers in `upstream-review.md` §5 drift with
+  every app edit**; re-audit them before the RFC rather than trusting the table.
+- **A repeatable way to check this work:** `bun run graph:verify` is the whole gate (library build,
+  the contract suites, the host's unit and component contracts, the capture verification, the
+  publish check), `bun run lint:changed` is the style gate, and the app e2e
+  (`bun run test:e2e -- e2e/graph/session-graph.spec.ts`) is the only place the graph's behaviour
+  is seen as a user sees it.
 
 

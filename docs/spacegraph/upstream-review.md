@@ -90,19 +90,20 @@ A negative result, honestly recorded, is a valid and publishable outcome. The li
 Re-audited 2026-10-19 against the merge base with upstream `dev` (`594af423e8`). Every edit inside
 `packages/app/src` and the core packages is listed with the reason it cannot live elsewhere.
 
-### 5.1 App integration (`packages/app/src`, 19 files, +863/−36)
+### 5.1 App integration (`packages/app/src`, 20 files, +916/−36)
 
 Re-audited 2026-10-20 against the current upstream `dev` (`d249607e90`), so the numbers are the
-fork's own work and not upstream's. The 2026-10-19 audit said 16 files, +689/−36; the three files
-below are what the permalink and the interaction counter added.
+fork's own work and not upstream's. The 2026-10-19 audit said 16 files, +689/−36; the files below
+are what the permalink, the interaction counter and the T6.5 edge cases added.
 
 | File | Δ | Why it cannot live elsewhere |
 |---|---|---|
-| `session/graph/session-graph-view.tsx` | +181 | Lazy wrapper that turns session messages into a graph model. It is the only app file that knows graph semantics exist; it imports the model package and hands plain data to `@opencode/session-graph`. |
-| `session/graph/graph-permalink.ts` | +51 | The `#graph:<node>` link format. A URL format is an app concern (the hash is the app's), and the format must be read by the session screen, the graph view, and the transcript's hash handling — three app files, one module. |
-| `session/graph/graph-metrics-readout.tsx` | +49 | The dry-run counter's readout. It is a dev-only affordance of the session screen, so it belongs to the app, not to the graph package. |
-| `session/graph/turn-map-overlay.tsx` | +64 | Hybrid affordance: mounts the overlay for one turn over the transcript. App-side because it owns the transcript routing. |
-| `session/screen.tsx` | +89/−6 | The transcript/graph branch. Routing belongs to the screen; a graph mode is a sibling of the timeline. It also opens the graph on a permalink and mounts the counter's readout. |
+| `session/graph/session-graph-view.tsx` | +180 | Lazy wrapper that turns session messages into a graph model. It is the only app file that knows graph semantics exist; it imports the model package and hands plain data to `@opencode/session-graph`. |
+| `session/graph/graph-permalink.ts` | +55 | The `#graph:<node>` link format. A URL format is an app concern (the hash is the app's), and the format must be read by the session screen, the graph view, and the transcript's hash handling — three app files, one module. |
+| `session/graph/graph-permalink.test.ts` | +45 | The link format's test. It sits with the format it pins. |
+| `session/graph/graph-metrics-readout.tsx` | +51 | The dry-run counter's readout. It is a dev-only affordance of the session screen, so it belongs to the app, not to the graph package. |
+| `session/graph/turn-map-overlay.tsx` | +68 | Hybrid affordance: mounts the overlay for one turn over the transcript. App-side because it owns the transcript routing. |
+| `session/screen.tsx` | +92/−6 | The transcript/graph branch. Routing belongs to the screen; a graph mode is a sibling of the timeline. It also opens the graph on a permalink and mounts the counter's readout. |
 | `session/header/session-graph-toggle.tsx` | +61 | Header chrome for the mode switch. |
 | `session/commands/use-session-commands.tsx` | +73/−24 | Command registration and keybinds (`mod+alt+t` for the turn map). |
 | `session/use-session-hash-scroll.ts` | +5 | The transcript's hash handling ignores a graph permalink, so leaving the graph keeps the position the transcript restores. Three lines of glue in the file that owns the hash. |
@@ -124,7 +125,7 @@ scroll position, or the URL.
 
 ### 5.2 Dev-only demo (excluded from an upstream diff)
 
-`entry.graph-dev.tsx` (+107), `graph-dev.html` (+14), `vite.config.ts` (+28/−18) implement
+`entry.graph-dev.tsx` (+140), `graph-dev.html` (+20), `vite.config.ts` (+43/−18) implement
 `bun run graph:dev`, the provider-free review demo. They are excluded from the upstream diff: the
 demo is a review artifact, not product code.
 
@@ -132,10 +133,10 @@ demo is a review artifact, not product code.
 
 | Package | Δ | Note |
 |---|---|---|
-| `packages/session-ui/src/graph/` | +3,487 (13 files) | Pure model: ids, turns, levels, layout, selectors, representations. No DOM, no renderer dependency. |
-| `packages/session-graph/` | +5,660 (57 files) | Host UI: canvas, toolbar, inspector, breadcrumbs, search, minimap, a11y, turn-map overlay. Imports the renderer contract only. |
-| `packages/gui-extensions/src/session-map/` | +274 | Side-panel overview, mounted as a built-in extension. The `TranscriptScreen` addition to the extension SDK (`+22`) gives a panel a way to link a map node back to its message. |
-| `packages/ui/src/i18n/en.ts` | +134 | Shared UI copy for the graph surfaces. |
+| `packages/session-ui/src/graph/` | +4,039 (18 files) | Pure model: ids, turns, levels, layout, selectors, representations. No DOM, no renderer dependency. |
+| `packages/session-graph/` | +6,924 (69 files) | Host UI: canvas, toolbar, inspector, breadcrumbs, search, minimap, a11y, turn-map overlay. Imports the renderer contract only. |
+| `packages/gui-extensions/src/session-map/` | +244 (5 files) | Side-panel overview, mounted as a built-in extension. The `TranscriptScreen` addition to the extension SDK (`+22`) gives a panel a way to link a map node back to its message. |
+| `packages/ui/src/i18n/en.ts` | +158 | Shared UI copy for the graph surfaces. |
 | `packages/session-ui/src/timeline/projection.ts` | +10 | Publishes the message → owning-turn map the graph reads, from the same walk the timeline already does. One source of truth for turn ownership. |
 
 ### 5.4 Accepted exceptions
@@ -271,7 +272,7 @@ bun run graph:capture --mode=compare
    - B. Bundled companion package with contract + adapters — no source workspace
    - C. Extension panel only (H6.5) — minimal diff, no library dependency
 
-4. **Are the known limitations acceptable?** See `prototype.md` §"Known limitations" (19 items, explicitly carried forward).
+4. **Are the known limitations acceptable?** See `prototype.md` §"Known limitations" (20 items, explicitly carried forward) and §"Edge cases" (the cases a real session produces that the fixture does not).
 
 5. **Is the hybrid ladder the right adoption path?** Four rungs (T3.7):
    1. `session-ui` graph model + tests (pure, no UI)

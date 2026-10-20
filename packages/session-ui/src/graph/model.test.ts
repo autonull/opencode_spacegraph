@@ -335,3 +335,186 @@ describe("model — session identity (T3.6)", () => {
     expect(model.nodes.find((node) => node.id === model.root)?.data?.sessionID).toBeUndefined()
   })
 })
+
+describe("model — session lineage (T6.5)", () => {
+  test("the root node carries where the session came from", () => {
+    const model = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc", {
+      forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
+      parentSessionID: "ses_parent",
+    })
+
+    const root = model.nodes.find((node) => node.id === model.root)
+
+    expect(root?.data?.forkedFrom).toBe("ses_origin")
+    expect(root?.data?.forkBoundary).toBe("msg_user_1")
+    expect(root?.data?.parentSessionID).toBe("ses_parent")
+  })
+
+  test("a model built without lineage carries none", () => {
+    const root = buildGraph(buildFixtureMessages(), { type: "idle" }).nodes.find(
+      (node) => node.id === "session",
+    )
+
+    expect(root?.data?.forkedFrom).toBeUndefined()
+    expect(root?.data?.parentSessionID).toBeUndefined()
+  })
+
+  test("the lineage is attribution, not a cross-session edge", () => {
+    const model = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc", {
+      forkedFrom: { sessionID: "ses_origin", boundary: { type: "before", messageID: "msg_user_1" } },
+    })
+
+    // Every edge stays inside this session: no node of another session is drawn.
+    for (const edge of model.edges) {
+      expect(ids(model)).toContain(edge.source)
+      expect(ids(model)).toContain(edge.target)
+    }
+  })
+})
+
+describe("model — child sessions and dangling edges (T6.5)", () => {
+  test("a delegation to a session with no node here keeps the session but draws no edge", () => {
+    const messages = [
+      user("u1"),
+      {
+        id: "s1",
+        type: "synthetic",
+        text: "Subagent finished: Design",
+        description: "Design",
+        metadata: { source: "subagent", childID: "ses_missing" },
+        time: { created: 1 },
+      },
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const model = buildGraph(messages, { type: "idle" })
+    const notice = model.nodes.find((node) => node.kind === "notice")
+
+    expect(model.edges.filter((edge) => edge.kind === "delegates")).toHaveLength(0)
+    expect(notice?.data?.childSessionID).toBe("ses_missing")
+  })
+
+  test("a delegation to a session that has a node keeps its edge", () => {
+    const model = buildFixtureGraph()
+    const delegate = edgesOf(model, "delegates").find((edge) => edge.target === subagentNodeID("ses_child_auth"))
+
+    expect(delegate?.source).toBe(messageNodeID("msg_synthetic_1"))
+  })
+
+  test("no edge ever points at a node the model does not have", () => {
+    const model = buildFixtureGraph()
+
+    for (const edge of model.edges) {
+      expect(ids(model)).toContain(edge.source)
+      expect(ids(model)).toContain(edge.target)
+    }
+  })
+})
+
+describe("model — interruption, compaction and outcomes (T6.5)", () => {
+  test("an aborted step is visible as interrupted instead of vanishing", () => {
+    const messages = [
+      user("u1"),
+      {
+        id: "a1",
+        type: "assistant",
+        agent: "build",
+        model: { id: "m", providerID: "p" },
+        content: [{ type: "text", text: "starting" }],
+        error: { type: "aborted", message: "Step interrupted" },
+        time: { created: 1, completed: 2 },
+      },
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const error = nodesOf(buildGraph(messages, { type: "idle" }), "error")[0]
+
+    expect(error?.status).toBe("interrupted")
+    expect(error?.label).toBe("Interrupted")
+    expect(error?.summary).toBe("Step interrupted")
+  })
+
+  test("a failed compaction carries the error that stopped it", () => {
+    const messages = [
+      user("u1"),
+      {
+        id: "c1",
+        type: "compaction",
+        status: "failed",
+        reason: "manual",
+        error: { type: "provider_error", message: "Compaction failed" },
+        time: { created: 1 },
+      },
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const compaction = nodesOf(buildGraph(messages, { type: "idle" }), "compaction")[0]
+
+    expect(compaction?.status).toBe("failed")
+    expect(compaction?.summary).toBe("Compaction failed")
+  })
+
+  test("a compaction that replays a provider window says so", () => {
+    const messages = [
+      user("u1"),
+      {
+        id: "c1",
+        type: "compaction",
+        status: "completed",
+        reason: "auto",
+        summary: "",
+        native: { messages: [{ role: "user", content: "earlier work" }] },
+        time: { created: 1 },
+      },
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const compaction = nodesOf(buildGraph(messages, { type: "idle" }), "compaction")[0]
+
+    expect(compaction?.data?.replayed).toBe(true)
+  })
+
+  test("a summary compaction is not a replay", () => {
+    const messages = [
+      user("u1"),
+      {
+        id: "c1",
+        type: "compaction",
+        status: "completed",
+        reason: "auto",
+        summary: "Earlier work, summarised.",
+        time: { created: 1 },
+      },
+      idle("i1"),
+    ] satisfies SessionMessageInfo[]
+
+    const compaction = nodesOf(buildGraph(messages, { type: "idle" }), "compaction")[0]
+
+    expect(compaction?.data?.replayed).toBe(false)
+    expect(compaction?.summary).toBe("Earlier work, summarised.")
+  })
+
+  test("the idle outcome decides what the turn shows", () => {
+    const succeeded = buildGraph([user("u1"), idle("i1")], { type: "idle" })
+
+    const failed = buildGraph(
+      [
+        user("u1"),
+        { id: "i1", type: "idle", outcome: "failed", error: { type: "provider_error", message: "It failed" }, time: { created: 1 } },
+      ],
+      { type: "idle" },
+    )
+
+    const interrupted = buildGraph(
+      [
+        user("u1"),
+        { id: "i1", type: "idle", outcome: "interrupted", error: { type: "aborted", message: "Stopped" }, time: { created: 1 } },
+      ],
+      { type: "idle" },
+    )
+
+    expect(nodesOf(succeeded, "error")).toHaveLength(0)
+    expect(nodesOf(failed, "error")[0]?.status).toBe("failed")
+    expect(nodesOf(interrupted, "error")[0]?.status).toBe("interrupted")
+  })
+})

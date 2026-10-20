@@ -52,7 +52,6 @@ export const KIND_KEY = {
   compaction: "ui.sessionGraph.kind.compaction",
   notice: "ui.sessionGraph.kind.notice",
   diff: "ui.sessionGraph.kind.diff",
-  approval: "ui.sessionGraph.kind.approval",
 } as const satisfies Record<NodeKind, string>
 
 export const STATUS_KEY = {

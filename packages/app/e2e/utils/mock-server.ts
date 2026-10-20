@@ -1508,6 +1508,7 @@ export function currentSession(session: MockSession, fallbackDirectory?: string)
   return {
     id: session.id,
     parentID: session.parentID,
+    fork: decodeSessionFork(session).fork,
     projectID: session.projectID ?? "project",
     agent: session.agent ?? "build",
     model: session.model,
@@ -1610,3 +1611,20 @@ const decodeSession = Schema.decodeUnknownSync(
 )
 
 const decodeSessionOutcome = Schema.decodeUnknownSync(Schema.Struct({ outcome: lenient(Schema.String) }))
+
+// A session's fork lineage: the session it branched off and the message it branched at.
+const decodeSessionFork = Schema.decodeUnknownSync(
+  Schema.Struct({
+    fork: lenient(
+      Schema.Struct({
+        sessionID: lenient(Schema.String),
+        boundary: lenient(
+          Schema.Struct({
+            type: lenient(Schema.Literals(["before", "through"])),
+            messageID: lenient(Schema.String),
+          }),
+        ),
+      }),
+    ),
+  }),
+)

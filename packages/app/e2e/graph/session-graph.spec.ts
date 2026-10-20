@@ -449,3 +449,34 @@ test("falls back to the transcript when the graph module fails to load", async (
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
   await expect(page.locator(canvasHost)).toHaveCount(0)
 })
+
+test("names the session a fork came from and opens it", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, {
+    ...graphFixture(),
+    sessions: [
+      {
+        id: sessionID,
+        title: "Session graph",
+        fork: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
+      },
+      { id: "ses_origin", title: "Original session" },
+    ],
+  })
+
+  // The root node carries the attribution, so the inspector can name where this session came from.
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  const search = page.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("combobox").fill("Session")
+  await search.locator('[data-node-id="session"]').click()
+
+  const panel = page.locator(inspector)
+  await expect(panel).toContainText("Forked from")
+  await expect(panel).toContainText("ses_origin")
+
+  // The action opens the other session, the way the transcript opens a session it links to.
+  await panel.getByRole("button", { name: "Open the session this was forked from" }).click()
+  await expect(page).toHaveURL(new RegExp("ses_origin"))
+
+  expect(errors).toEqual([])
+})

@@ -39,7 +39,6 @@ const NODE_SHAPE: Record<NodeKind, Shape> = {
   compaction: "panel",
   notice: "panel",
   diff: "card",
-  approval: "badge",
 }
 
 const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {
@@ -52,11 +51,11 @@ const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {
 }
 
 /**
- * LE.2 — structural kinds (`session`/`turn`/`phase`/`error`/`retry`/`approval`) are chrome, not
+ * LE.2 — structural kinds (`session`/`turn`/`phase`/`error`/`retry`) are chrome, not
  * activity: they render as compact DOM panels so they read with the theme's surface/border/text
  * instead of a near-invisible vector box. They never consume the activity card budget.
  */
-const STRUCTURAL_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry", "approval"])
+const STRUCTURAL_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry"])
 
 /** LE.13: provenance edges that a file-first lens rebases onto the owning turn node. */
 const BUNDLED_KINDS = new Set<EdgeKind>(["writes", "reads", "searches", "references", "produces"])
@@ -104,8 +103,12 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       time: node.time,
       derived: node.derived ?? false,
       dimmed,
-      // T3.6: the session identity of the root, so an exported map names its session.
+      // T3.6: the session identity of the root, so an exported map names its session. T6.5: so does
+      // the lineage, so an exported map says where the session came from.
       sessionID: node.data?.sessionID,
+      forkedFrom: node.data?.forkedFrom,
+      forkBoundary: node.data?.forkBoundary,
+      parentSessionID: node.data?.parentSessionID,
       category: node.kind === "phase" ? node.data?.category : undefined,
       count: node.kind === "phase" ? clusterCount(node) : undefined,
       expanded: node.kind === "phase" ? isClusterExpanded(level) : undefined,

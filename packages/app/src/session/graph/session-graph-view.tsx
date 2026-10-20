@@ -1,6 +1,7 @@
 import { Button } from "@opencode/ui/button"
-import { buildGraph, nodeByID, openInTranscript, turnNodeID } from "@opencode/session-ui/graph"
+import { buildGraph, nodeByID, openInTranscript, turnNodeID, type SessionLineage } from "@opencode/session-ui/graph"
 import { useData } from "@opencode/session-ui/context"
+import { useMarkdown } from "@opencode/session-ui/context/markdown"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
@@ -32,10 +33,28 @@ export function SessionGraphView(props: {
   // reserve that width so the graph toolbar's renderer label and back control stay clickable.
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const graph = session.layout.graph()
+  // T6.5: opening another session is the transcript's own action, so the graph reuses it.
+  const markdown = useMarkdown()
+  const openSession = (sessionID: string) => markdown?.openSession?.(sessionID)
+
+  // T6.5: where the session came from — a fork names the session it branched off, a child session
+  // names its parent. The graph records the attribution; it draws no cross-session edge.
+  const lineage = createMemo<SessionLineage | undefined>(() => {
+    const info = session.data.info()
+    const fork = info?.fork
+    const parentID = info?.parentID
+
+    if (!fork && !parentID) return undefined
+
+    return {
+      forkedFrom: fork ? { sessionID: fork.sessionID, boundary: fork.boundary } : undefined,
+      parentSessionID: parentID,
+    }
+  })
 
   // T3.6: the session id rides on the root node, so an exported map names its session.
   const model = createMemo(() =>
-    buildGraph(session.history.messages(), session.data.status(), session.data.info()?.id),
+    buildGraph(session.history.messages(), session.data.status(), session.data.info()?.id, lineage()),
   )
 
   // RF.8: the inspector's on-demand diffs read the same per-tab turn-diff cache the timeline uses,
@@ -147,6 +166,8 @@ export function SessionGraphView(props: {
             props.onBack()
             props.onOpenTranscript(ref.messageID, ref.partID)
           }}
+          // T6.5: open the child session of a delegation, or the session a fork came from.
+          onOpenSession={markdown?.openSession ? openSession : undefined}
           onBack={() => props.onBack()}
           endInset={isDesktop() ? "72px" : undefined}
           frame={permalink()?.nodeID}

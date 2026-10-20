@@ -6,15 +6,14 @@ import { scaleWindow, scopeToTurns, TURN_WINDOW } from "./scale"
 
 const user = (id: string) => ({ id, type: "user", text: id, time: { created: 1 } }) as const
 
-const text = (id: string) =>
-  ({
-    id,
-    type: "assistant",
-    agent: "build",
-    model: { id: "m", providerID: "p" },
-    content: [{ type: "text", text: "hi" }],
-    time: { created: 1, completed: 2 },
-  }) as const
+const text = (id: string): SessionMessageInfo => ({
+  id,
+  type: "assistant",
+  agent: "build",
+  model: { id: "m", providerID: "p" },
+  content: [{ type: "text", text: "hi" }],
+  time: { created: 1, completed: 2 },
+})
 
 const idle = (id: string) => ({ id, type: "idle", outcome: "succeeded", time: { created: 1 } }) as const
 

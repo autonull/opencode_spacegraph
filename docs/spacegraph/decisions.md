@@ -405,6 +405,77 @@ renderer allows.
 
 ---
 
+## ADR-023: A permission request is not a graph node
+
+**Date:** 2026-10-20
+**Status:** Accepted
+
+**Context:** The model declared an `approval` node kind from the start, and the legend, the card
+template, the level table and the adapter all carried it. Nothing ever produced one: the session
+message stream has no message type for a permission request — permissions are session state, not a
+step in the transcript. The kind was a promise the graph could not keep, and the legend advertised a
+card colour that no card could have.
+
+**Decision:** The `approval` kind is **removed** rather than left declared. The graph draws the work
+that happened; a permission prompt is a question the host asked outside that work, and a node for it
+would be a step the agent never took. If a future protocol carries approvals in the transcript, the
+kind returns with the builder that produces it.
+
+**Consequences:**
+- The legend, the card template, the level table and the adapter no longer name a kind that cannot
+  exist.
+- Permission requests stay where they are: in the transcript, in the composer's prompt, and in the
+  session's own permission rules.
+- The plan's "capability differences are declared and explained" rule is kept by *deciding* the
+  difference here, not by leaving a placeholder in the vocabulary.
+
+---
+
+## ADR-024: A fork is an attribution on the root, never a cross-session edge
+
+**Date:** 2026-10-20
+**Status:** Accepted
+
+**Context:** A session can be forked from another session, and it can be a child session of one. The
+plan asks for "fork/lineage attribution without cross-session edges". An edge into the other
+session would need that session's nodes in this graph; the graph has one session's transcript, and a
+cross-session edge would be a claim about work this session did not do.
+
+**Decision:** The lineage rides on the **root node's data** — the session it was forked from, the
+message it branched at, and the parent session — and the inspector names it and offers to open that
+session. No edge crosses the session boundary, and the model guarantees that every edge's endpoints
+are nodes of this model.
+
+**Consequences:**
+- The root node stays `session`, so nothing that resolves a node by id changes.
+- The attribution reaches the exports (the render model's root data carries it), so an exported map
+  says which session it came from.
+- The "open the other session" action is the transcript's own session-opening path, reused by the
+  graph, so a missing or foreign session behaves the way it does everywhere else.
+
+---
+
+## ADR-025: An interrupted step is a node, not a silence
+
+**Date:** 2026-10-20
+**Status:** Accepted
+
+**Context:** The model dropped an assistant message whose error was an abort or an interruption, on
+the grounds that an interruption is not a failure. The effect was that an interrupted turn looked
+like a turn that never happened: the reader saw the prompt and nothing else, with no explanation.
+
+**Decision:** An aborted step is drawn as an `error` node with the `interrupted` status — the same
+status a killed shell gets — and it carries the provider's message. The idle marker, the shell
+outcome and the assistant error all report the same three outcomes the protocol does: succeeded,
+failed, interrupted.
+
+**Consequences:**
+- A turn that was stopped is visible as stopped, which is what the reader needs to know.
+- A compaction says whether it left a summary or a replayed provider window, and a failed
+  compaction carries the error that stopped it.
+
+---
+
 ## Open decisions (to close in T2.4)
 
 | ID | Decision | Options | Evidence needed |

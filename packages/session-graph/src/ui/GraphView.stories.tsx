@@ -1,6 +1,8 @@
 import type { DepthMode, Projection, RenderTheme, GraphRenderer } from "@spacegraphjs/renderer"
 import {
   buildFixtureGraph,
+  buildFixtureMessages,
+  buildGraph,
   type GraphEdge,
   type GraphModel,
   type GraphNode,
@@ -101,6 +103,34 @@ const SCALE_MODEL: GraphModel = (() => {
   return { root: "session", nodes, edges, turns, turnByMessageID: new Map() }
 })()
 
+/**
+ * T6.5: a session that was forked from another one. The attribution rides on the root node, so the
+ * inspector can name where this session came from and offer to open it.
+ */
+const FORKED_MODEL: GraphModel = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc", {
+  forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
+})
+
+/**
+ * T6.5: a compaction that replayed the provider's replacement window instead of leaving a summary.
+ * The node says which one it was, so the reader knows what the agent could still see.
+ */
+const COMPACTED_MODEL: GraphModel = buildGraph(
+  [
+    ...buildFixtureMessages().slice(0, 2),
+    {
+      id: "msg_compact_1",
+      type: "compaction",
+      status: "completed",
+      reason: "auto",
+      summary: "",
+      native: { messages: [{ role: "user", content: "earlier work" }] },
+      time: { created: 3 },
+    },
+  ],
+  { type: "idle" },
+)
+
 /** A failing adapter factory pair forces the registry to throw, exercising the error state. */
 const FAILING: Partial<Record<RendererID, RendererFactory>> = {
   spacegraph: () => Promise.reject(new Error("spacegraph unavailable")),
@@ -146,6 +176,8 @@ const INITIAL_SELECTION = "tool:prt_tool_read_1"
 const ViewHarness = (props: HarnessProps) => {
   const [renderer, setRenderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
+  // T6.5: the session the reader asked to open, recorded in the DOM so a component test can see it.
+  const [openedSession, setOpenedSession] = createSignal<string | undefined>()
   // On-demand turn diffs: nothing is available until a diff node is inspected and calls `load`.
   const [diffLoaded, setDiffLoaded] = createSignal(false)
   const diffSource: GraphDiffSource = {
@@ -170,7 +202,7 @@ const ViewHarness = (props: HarnessProps) => {
     : { width: props.width ?? "1100px", height: props.height ?? "640px" }
 
   return (
-    <div style={{ ...size, display: "flex" }}>
+    <div style={{ ...size, display: "flex" }} data-opened-session={openedSession()}>
       <GraphView
         model={props.model ?? graph}
         selection={selected()}
@@ -190,6 +222,7 @@ const ViewHarness = (props: HarnessProps) => {
         }
         onSelect={setSelected}
         onOpenTranscript={() => undefined}
+        onOpenSession={setOpenedSession}
         onBack={() => undefined}
         onRenderer={(r) => {
           graphRenderer = r
@@ -285,6 +318,21 @@ export const Empty = {
 export const Scale = {
   render: () => <ViewHarness model={SCALE_MODEL} level="overview" fullscreen />,
   parameters: { layout: "fullscreen" },
+}
+
+/** T6.5: the delegated child session, so the inspector can offer to open it. */
+export const ChildSession = {
+  render: () => <ViewHarness selection="sub:ses_child_auth" />,
+}
+
+/** T6.5: a session forked from another one, so its origin is named and reachable. */
+export const ForkedSession = {
+  render: () => <ViewHarness model={FORKED_MODEL} selection="session" />,
+}
+
+/** T6.5: a compaction that replayed the provider's window instead of leaving a summary. */
+export const Compacted = {
+  render: () => <ViewHarness model={COMPACTED_MODEL} selection="msg:msg_compact_1" />,
 }
 
 export const ErrorState = {

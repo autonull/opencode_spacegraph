@@ -33,7 +33,6 @@ export type NodeKind =
   | "compaction"
   | "notice"
   | "diff"
-  | "approval"
 
 export type EdgeKind =
   | "part-of"
@@ -104,6 +103,23 @@ export type GraphModel = {
   turnByMessageID: Map<string, string>
   /** The active turn node ID, when the session still owns work. */
   activeTurn?: string
+}
+
+/**
+ * T6.5 — where a session came from.
+ *
+ * A fork names the session it branched off and the message it branched at; a child session names its
+ * parent. The graph records that attribution on the root node and never draws an edge into the
+ * other session: a cross-session edge would be a claim about work this session did not do, and the
+ * plan's invariant is that the graph never infers causality from adjacency.
+ */
+export type SessionLineage = {
+  forkedFrom?: {
+    sessionID: string
+    boundary?: { type: "before" | "through"; messageID: string }
+  }
+  /** The parent session, when this session is a child of another (a subagent's own session). */
+  parentSessionID?: string
 }
 
 const SESSION_NODE_ID = "session"
@@ -236,10 +252,34 @@ function toolMetadata(tool: SessionMessageAssistantTool): Record<string, JsonVal
   return tool.state.metadata ?? {}
 }
 
+/**
+ * T3.6/T6.5 — what the root node carries about the session itself: its identity, and where it
+ * came from. The root's literal id stays `session`, so nothing that resolves a node by id changes.
+ */
+function rootData(sessionID?: string, lineage?: SessionLineage): Record<string, JsonValue> | undefined {
+  const data: Record<string, JsonValue> = {}
+
+  if (sessionID) data.sessionID = sessionID
+
+  if (lineage?.forkedFrom) {
+    data.forkedFrom = lineage.forkedFrom.sessionID
+
+    if (lineage.forkedFrom.boundary) {
+      data.forkBoundary = lineage.forkedFrom.boundary.messageID
+      data.forkBoundaryType = lineage.forkedFrom.boundary.type
+    }
+  }
+
+  if (lineage?.parentSessionID) data.parentSessionID = lineage.parentSessionID
+
+  return Object.keys(data).length > 0 ? data : undefined
+}
+
 function buildGraphInternal(
   messages: SessionMessageInfo[],
   status: SessionStatus,
   sessionID?: string,
+  lineage?: SessionLineage,
 ): GraphModel {
   const { turnByMessageID, activeMessageID } = Timeline.constructSessionMessageRows(messages, true, status)
 
@@ -311,8 +351,9 @@ function buildGraphInternal(
     status: "neutral",
     minLevel: "overview",
     // T3.6: the session identity rides on the root node, so an exported map can be attributed
-    // without changing the root's literal id.
-    data: sessionID ? { sessionID } : undefined,
+    // without changing the root's literal id. T6.5: so does the lineage, so a forked session says
+    // where it came from without an edge into another session.
+    data: rootData(sessionID, lineage),
   })
 
   const goal = messages.find((message) => message.type === "user")?.text
@@ -626,14 +667,17 @@ function buildGraphInternal(
       appendTool(content, message, turnID)
     }
 
-    if (message.error && !isInterrupted(message.error)) {
+    if (message.error) {
+      // T6.5: an aborted step is a real outcome. It used to be dropped, which made an interrupted
+      // turn look like a turn that never happened.
+      const interrupted = isInterrupted(message.error)
       const nodeID = errorNodeID(message.id, "assistant")
       addNode({
         id: nodeID,
         kind: "error",
-        label: truncate(message.error.message),
+        label: interrupted ? "Interrupted" : truncate(message.error.message),
         summary: message.error.message,
-        status: "failed",
+        status: interrupted ? "interrupted" : "failed",
         turnID,
         messageID: message.id,
         time: message.time.completed ?? message.time.created,
@@ -795,6 +839,7 @@ function buildGraphInternal(
         id: nodeID,
         kind: "error",
         label: "Interrupted",
+        summary: message.error?.message,
         status: "interrupted",
         turnID,
         messageID: message.id,
@@ -833,13 +878,15 @@ function buildGraphInternal(
       id: nodeID,
       kind: "compaction",
       label: message.status === "completed" ? "Compacted context" : `Compaction ${message.status}`,
-      summary: message.status === "completed" ? truncate(message.summary, 200) : undefined,
+      summary: compactionSummary(message),
       status: compactionStatus(message),
       turnID,
       messageID: message.id,
       time: message.time.created,
       minLevel: "execution",
-      data: { reason: message.reason },
+      // T6.5: a compaction either replaces the context with a summary or replays a provider's
+      // replacement window. The two are different facts about what the agent can still see.
+      data: { reason: message.reason, replayed: compactionReplays(message) },
     })
     partOf(nodeID, turnID)
     sequence(turnID, nodeID)
@@ -865,12 +912,20 @@ function buildGraphInternal(
       messageID: message.id,
       time: message.time.created,
       minLevel: "detail",
-      data: { type: message.type, source: stringField(metadata, "source") ?? null },
+      // T6.5: the child session is the notice's own fact, so it stays on the notice whether or not
+      // the delegation has a node in this graph.
+      data: { type: message.type, source: stringField(metadata, "source") ?? null, childSessionID: childID ?? null },
     })
     partOf(nodeID, turnID)
     sequence(turnID, nodeID)
 
-    if (childID) addEdge({ kind: "delegates", source: nodeID, target: subagentNodeID(childID), confidence: "explicit" })
+    if (!childID) return
+
+    const childNodeID = subagentNodeID(childID)
+
+    // T6.5: only wire the delegation when the child session has a node here. An edge to a node that
+    // does not exist is a dangling connection the renderer would have to warn about.
+    if (nodeIDs.has(childNodeID)) addEdge({ kind: "delegates", source: nodeID, target: childNodeID, confidence: "explicit" })
   }
 
   // A leading assistant turn has no user message; give the session goal from its text when absent.
@@ -945,6 +1000,24 @@ function compactionStatus(message: Extract<SessionMessageInfo, { type: "compacti
   return "running"
 }
 
+/** What the compaction left behind: its summary, or the error that stopped it. */
+function compactionSummary(message: Extract<SessionMessageInfo, { type: "compaction" }>): string | undefined {
+  if (message.status === "failed") return message.error?.message ? truncate(message.error.message, 200) : undefined
+
+  return message.summary ? truncate(message.summary, 200) : undefined
+}
+
+/**
+ * T6.5 — a provider compaction stores its replacement window in `native.messages` and replays it
+ * instead of using a summary. That is a different fact about the context than a summary, so the
+ * node says which one it was.
+ */
+function compactionReplays(message: Extract<SessionMessageInfo, { type: "compaction" }>): boolean {
+  if (message.status !== "completed") return false
+
+  return message.native !== undefined && "messages" in message.native
+}
+
 function toolResultLabel(status: NodeStatus) {
   if (status === "failed") return "failed"
 
@@ -987,12 +1060,14 @@ function isNotice(message: SessionMessageInfo): message is GraphNotice {
 /**
  * Builds the graph model. `sessionID` is optional: when the host knows the session, the root node
  * carries it (T3.6) so an exported map names its session. The root id stays literal, so nothing
- * that resolves a node by id changes.
+ * that resolves a node by id changes. `lineage` is optional too (T6.5): it records where the
+ * session came from, without drawing an edge into another session.
  */
 export function buildGraph(
   messages: SessionMessageInfo[],
   status: SessionStatus,
   sessionID?: string,
+  lineage?: SessionLineage,
 ): GraphModel {
-  return buildGraphInternal(messages, status, sessionID)
+  return buildGraphInternal(messages, status, sessionID, lineage)
 }

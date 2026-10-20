@@ -98,6 +98,11 @@ export type GraphViewProps = {
   onMinimapChange?: (minimap: boolean) => void
   onFilesChange?: (files: boolean) => void
   onOpenTranscript?: (id: string) => void
+  /**
+   * T6.5: opens another session — a delegation's child, a fork's origin, a child session's parent.
+   * The host owns the navigation; the graph only names the session.
+   */
+  onOpenSession?: (sessionID: string) => void
   /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
   onTurnMap?: (turnID: string) => void
   onBack?: () => void
@@ -959,6 +964,7 @@ export const GraphView = (props: GraphViewProps) => {
             link={props.link}
             onSelect={select}
             onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+            onOpenSession={props.onOpenSession}
           />
         </div>
       </div>

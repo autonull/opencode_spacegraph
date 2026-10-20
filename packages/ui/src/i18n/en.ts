@@ -370,6 +370,16 @@ const source = {
   "ui.sessionGraph.inspector.attempt": "Attempt",
   "ui.sessionGraph.inspector.agent": "Agent",
   "ui.sessionGraph.inspector.childSession": "Child session",
+  "ui.sessionGraph.inspector.forkedFrom": "Forked from",
+  "ui.sessionGraph.inspector.forkBoundary": "Forked at",
+  "ui.sessionGraph.inspector.forkedBefore": "Forked before",
+  "ui.sessionGraph.inspector.forkedThrough": "Forked through",
+  "ui.sessionGraph.inspector.parentSession": "Parent session",
+  "ui.sessionGraph.inspector.openChildSession": "Open child session",
+  "ui.sessionGraph.inspector.openForkedSession": "Open the session this was forked from",
+  "ui.sessionGraph.inspector.openParentSession": "Open parent session",
+  "ui.sessionGraph.inspector.replayed": "Context",
+  "ui.sessionGraph.inspector.replayedHint": "Replayed from the provider's replacement window",
   "ui.sessionGraph.inspector.path": "Path",
   "ui.sessionGraph.inspector.files": "Changed files",
   "ui.sessionGraph.toolbar.export": "Export map",
@@ -432,7 +442,6 @@ const source = {
   "ui.sessionGraph.kind.compaction": "Compaction",
   "ui.sessionGraph.kind.notice": "Notice",
   "ui.sessionGraph.kind.diff": "Diff",
-  "ui.sessionGraph.kind.approval": "Approval",
 } satisfies Record<string, string>
 
 export type Key = keyof typeof source
