@@ -126,6 +126,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
   const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
   const [cardFacing, setCardFacing] = createSignal<'plane' | 'camera'>('plane')
+  const toggleBillboard = () => setCardFacing((current) => (current === 'camera' ? 'plane' : 'camera'))
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
   const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
@@ -788,6 +789,8 @@ export const GraphView = (props: GraphViewProps) => {
         onToggleLegend={() => setLegendOpen((open) => !open)}
         gallery={galleryOpen()}
         onToggleGallery={() => setGalleryOpen((open) => !open)}
+        billboard={cardFacing() === "camera"}
+        onToggleBillboard={toggleBillboard}
         strategy={strategy()}
         onStrategy={changeStrategy}
         representation={representation()}

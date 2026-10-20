@@ -64,25 +64,37 @@ story("switches the depth treatment through the spectrum", async ({ mount, page 
   expect(errors).toEqual([])
 })
 
-// T1.19: a tilted camera must not tilt the cards. A card lying in the content plane is sheared into
-// a quadrilateral the moment the camera tilts, and its text stops being readable; the 3D treatments
-// turn the cards to face the camera, so a card keeps its shape on screen.
-story("keeps the cards square to the screen in a tilted depth treatment", async ({ mount, page }) => {
+// T1.19: a tilted camera must not tilt the cards — unless the reader asked for the honest
+// perspective. The billboard is off by default, so a card lies in the content plane and the camera
+// foreshortens it; the toolbar's switch turns the cards to face the reader, and then a card keeps
+// its shape on screen.
+story("shears the cards in a tilted depth treatment until the billboard is turned on", async ({ mount, page }) => {
   const root = await mount("session-graph-view--depth-stack")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
   await expect(host).toHaveAttribute("data-graph-depth", "depth-stack")
+  await expect(host).toHaveAttribute("data-graph-card-facing", "plane")
 
-  const card = await page.evaluate(() => {
-    const element = document.querySelector<HTMLElement>('[data-node-id^="tool:"]')
-    if (!element) return null
-    const rect = element.getBoundingClientRect()
+  const measure = () =>
+    page.evaluate(() => {
+      const element = document.querySelector<HTMLElement>('[data-node-id^="tool:"]')
+      if (!element) return null
+      const rect = element.getBoundingClientRect()
 
-    return { ratio: rect.width / rect.height }
-  })
+      return { ratio: rect.width / rect.height }
+    })
 
-  expect(card).not.toBeNull()
-  // The card is 220 × 72 world units. A card that faces the camera keeps that ratio on screen; a
-  // card lying in the content plane is foreshortened by the camera's tilt and comes out wider.
-  expect(card!.ratio).toBeCloseTo(220 / 72, 1)
+  const sheared = await measure()
+  expect(sheared).not.toBeNull()
+  // The card is 220 × 72 world units. Lying in the content plane, the camera's tilt foreshortens
+  // it, so it no longer keeps that ratio on screen.
+  expect(sheared!.ratio).not.toBeCloseTo(220 / 72, 1)
+
+  await root.locator(toolbar).getByRole("button", { name: "Billboard cards" }).click()
+  await expect(host).toHaveAttribute("data-graph-card-facing", "camera")
+
+  const squared = await measure()
+  expect(squared).not.toBeNull()
+  // A card that faces the camera keeps the card's ratio on screen.
+  expect(squared!.ratio).toBeCloseTo(220 / 72, 1)
 })

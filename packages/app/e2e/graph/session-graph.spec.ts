@@ -67,6 +67,26 @@ test("switches to the graph, renders the fixture, and persists the mode", async 
   expect(errors).toEqual([])
 })
 
+test("turns the billboard off and on from the toolbar", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // T1.19: the cards lie in the content plane by default, so a tilted camera shows the honest
+  // perspective. The billboard switch turns them to face the reader.
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
+
+  const billboard = page.locator(toolbar).getByRole("button", { name: "Billboard cards" })
+  await expect(billboard).toHaveAttribute("aria-pressed", "false")
+  await billboard.click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "camera")
+  await expect(billboard).toHaveAttribute("aria-pressed", "true")
+
+  await billboard.click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
+
+  expect(errors).toEqual([])
+})
+
 test("offers the graph switch on a narrow mobile viewport", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.setViewportSize({ width: 390, height: 900 })

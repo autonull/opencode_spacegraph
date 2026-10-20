@@ -53,6 +53,8 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   // Depth defaults to the projection's coarse treatment; the adapter derives it at mount, so an unset
   // depth is not a conflict (LE.14).
   const depth = () => props.depth ?? (props.projection === "3d" ? "orbit" : "flat")
+  // The cards lie in the content plane unless the host asks for the billboard (T1.19).
+  const cardFacing = () => props.cardFacing ?? "plane"
 
   const teardown = () => {
     for (const unsubscribe of unsubscribers) unsubscribe()
@@ -89,9 +91,11 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         props.onModelApplied?.(result.renderer)
         result.renderer.setSelection(props.selection ?? [])
         result.renderer.setDepth(depth())
+        result.renderer.setCardFacing?.(cardFacing())
         host.dataset.graphRenderer = result.id
         host.dataset.graphProjection = props.projection ?? "2d"
         host.dataset.graphDepth = depth()
+        host.dataset.graphCardFacing = cardFacing()
         host.dataset.graphReady = "true"
         setReady(true)
         props.onRenderer?.(result.renderer)

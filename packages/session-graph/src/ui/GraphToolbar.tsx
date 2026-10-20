@@ -64,6 +64,9 @@ export type GraphToolbarProps = {
   /** T7.5: the layout gallery toggle; absent when the host does not offer it. */
   gallery?: boolean
   onToggleGallery?: () => void
+  /** T1.19: the billboard switch — the cards face the reader, or lie in the content plane. */
+  billboard?: boolean
+  onToggleBillboard?: () => void
   /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
@@ -193,16 +196,15 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           icon={<Icon name="dot-grid" size="small" />}
         />
       </Show>
-      <Show when={props.capabilities?.cardFacing}>
+      <Show when={props.capabilities?.cardFacing && props.onToggleBillboard}>
         <IconButton
           size="small"
           variant="ghost"
+          state={props.billboard ? "pressed" : "rest"}
+          aria-pressed={props.billboard ? "true" : "false"}
           aria-label={i18n.t("ui.sessionGraph.toolbar.billboard")}
-          title={i18n.t("ui.sessionGraph.toolbar.billboard")}
-          state={depth() !== "flat" && props.renderer === "spacegraph" ? "pressed" : "rest"}
-          onClick={() => {
-            setDepth((prev) => (prev === "flat" || prev === "camera" ? "camera" : "flat"))
-          }}
+          title={i18n.t(props.billboard ? "ui.sessionGraph.toolbar.billboard" : "ui.sessionGraph.toolbar.billboardOff")}
+          onClick={() => props.onToggleBillboard?.()}
           icon={<Icon name="cube" size="small" />}
         />
       </Show>

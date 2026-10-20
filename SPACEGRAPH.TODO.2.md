@@ -24,7 +24,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)**. The camera-driven frames (20–24) still vary between runs (**T6.20**) |
 | Layouts | **five**: lanes, timeline, hierarchy, **tree (T7.2)**, **force (T7.3)** — pickable from the toolbar, comparable side by side in the gallery (T7.5) |
-| The 3D renderer | **fixed (T1.19)**: the billboard was inverted, so bands were rolled 50° and cards sheared; a target move re-aimed the camera, so the flat view tilted after a selection. Both fixed, both proven by tests, the capture set refreshed |
+| The 3D renderer | **fixed (T1.19)**: the billboard was inverted, so bands were rolled 50° and cards sheared; a target move re-aimed the camera, so the flat view tilted after a selection. Both fixed, both proven by tests, the capture set refreshed. **The billboard is now a switch, off by default** (2026-10-20): the cards lie in the content plane, the camera's shear is visible, and the toolbar turns them back to face the reader |
 
 Two facts shape everything below:
 
@@ -369,11 +369,15 @@ viewer reads every label, sees the whole model, understands overview without leg
 
 The billboard toggle in the UI now controls whether DOM cards face the camera or lie in the content plane. **Default: disabled** (`'plane'`). When the toggle is on, cards face the reader (camera-facing), making text readable in tilted depth treatments. When the toggle is off, cards lie in the content plane, showing the honest perspective with perspective shear. This is a host-controlled affordance: the library's depth treatments no longer decide the facing — the host does through the UI control.
 
-The core's `CardFacingMode` type is `'auto' | 'plane' | 'camera'` in the contract. The default resolution is `'auto'` → the depth treatment's facing (now `'plane'` for all modes). The host's billboard toggle sends `'camera'` to enable billboarding or `'plane'` to disable it. This is an additive interface change: `CONTRACT_VERSION` stays 2, and `setCardFacing` is optional on `GraphRenderer`.
+**The contract grew, additively.** The renderer contract carries `CardFacing = 'auto' | 'plane' | 'camera'`, an optional `GraphRenderer.setCardFacing?(facing)`, and an optional `RendererCapabilities.cardFacing` flag. `CONTRACT_VERSION` stays 2 — the method is optional, so a renderer that cannot honour it simply does not implement it. The core resolves `'auto'` against the depth treatment; the treatments now all say `'plane'`, so the core's default is also no billboarding. The library is **8.3.0** and the five `@spacegraphjs/*` packages are **0.2.0** (their published dependency on the contract moved).
 
-A new capture frame was added to the verification matrix: `31-graph-perspective.png` — the orbit-depth treatment with billboarding explicitly off, proving the perspective rendering is correct. The existing 3D captures (06/18/19) now show the honest perspective (sheared cards) since billboarding is off by default.
+**The renderer decides, not the node.** A card used to face the camera when the *node* asked for it (`data.billboard`), and the renderer's `cardFacing` only decided the rest. That split is gone: `cardFacing === 'camera'` turns every card to face the reader, and anything else lays the whole scene in the content plane — the bands included, so a tilted view is one consistent perspective. The library's `test/card-facing.test.ts` was rewritten around the new rule (a card that asked to billboard is denied in the plane, and every card faces the reader in the camera mode).
 
-The billboard control appears in the toolbar when the renderer supports card facing (SpaceGraph adapter only; Cytoscape and SVG renderers declare the capability false and hide the control).
+A new capture frame was added to the verification matrix: `31-graph-perspective.png` — the orbit depth at the Detail level with the billboard off, proving the perspective rendering is correct. The existing 3D captures (06/18/19) now show the honest perspective (sheared cards) since billboarding is off by default, and the whole set was refreshed and read by eye.
+
+The billboard control appears in the toolbar when the renderer supports card facing (the SpaceGraph adapter declares it; the Cytoscape adapter declares `cardFacing: false` and the control is hidden, because Cytoscape draws in screen space and has no camera facing to change). It is an icon button with `aria-pressed`, so the state is announced.
+
+**The proofs.** The app e2e ("turns the billboard off and on from the toolbar") asserts the canvas's `data-graph-card-facing` flips between `plane` and `camera` and that the button's pressed state follows. The component test `graph-3d.spec.ts` now asserts the *pair*: a card in the tilted treatment does **not** keep its 220:72 ratio while the billboard is off, and keeps it once the switch is on. The old test asserted only the billboarded half, and it would have passed on a renderer that never sheared anything.
 ## 3. T2 — Evidence (THE CRITICAL PATH — blocks everything downstream)
 
 **Stop rule:** Do not add T3 features before T2's decision (see §10). The flag/settings work (T3.1, T3.2) is only justified by a positive or promising result.
@@ -1628,6 +1632,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Boundaries | `cd spacegraphjs && bun run test:boundaries` | No core→contract/Cytoscape import |
 | All graph steps | `bun run graph:verify` | The canonical gate |
 | Captures | `bun run graph:capture --mode=compare` + manual inspection | Visual acceptance — **a deliberate refresh, not a per-change check** (it overwrites the committed set) |
+| The perspective proof | `docs/spacegraph/screenshots/31-graph-perspective.png` | The tilted camera with the billboard off: the cards lie in the content plane, so the camera's shear is visible |
 | Capture verify | `bun run graph:capture --mode=verify` | The routine gate: fresh renders into a temp dir, committed set asserted, and **no two frames of the zoom/pan matrix are the same picture** (T6.19) |
 | Scale budget | `bun run graph:scale` | T6.6 — the model/layout/render pipeline at 100, 1k and 5k messages |
 | Lint | `bun run lint:changed` | Changed files |
@@ -3158,6 +3163,57 @@ host's typecheck and unit tests (96), the component suite (49), the app's graph 
 the publish check).
 
 
+**2026-10-20 — The billboard becomes a switch, and billboarding is off by default.** The owner asked
+for a dynamic billboard toggle in the UI and for a screenshot of a tilted camera *without*
+billboarding, and then corrected the default: billboarding is disabled.
 
+*What changed in the library.* The renderer contract grew `CardFacing = 'auto' | 'plane' | 'camera'`,
+an optional `GraphRenderer.setCardFacing?(facing)`, and an optional `RendererCapabilities.cardFacing`
+flag. `CONTRACT_VERSION` stays 2 — the method is optional, and a renderer that draws in screen space
+simply does not implement it (the Cytoscape adapter declares `cardFacing: false` and says why in a
+comment). The core's `SpaceGraph` owns the facing: `'auto'` resolves against the depth treatment,
+and the treatments now all say `'plane'`, so the core's default is no billboarding either.
 
+*The node's own flag is gone.* A card used to face the camera when the *node* asked for it
+(`data.billboard`), while the renderer's `cardFacing` only decided the rest. That split is gone:
+`cardFacing === 'camera'` turns every card to face the reader, and anything else lays the whole
+scene in the content plane — the bands included, so a tilted view is one consistent perspective
+instead of screen-aligned bands around sheared cards. The library's `test/card-facing.test.ts` was
+rewritten around the new rule.
 
+*What changed in the host.* The toolbar grew a billboard icon button (pressed = the cards face the
+reader), shown only when the renderer declares the capability, with `aria-pressed` so the state is
+announced. `GraphView` owns the state and hands it to `GraphCanvas`, which calls
+`setCardFacing?.()` on mount and on every change, and mirrors it to `data-graph-card-facing`.
+
+*The proofs are pairs, not claims.* The app e2e ("turns the billboard off and on from the toolbar")
+asserts the canvas attribute flips and the button's pressed state follows. The component test
+`graph-3d.spec.ts` now asserts both halves: a card in the tilted treatment does **not** keep its
+220:72 ratio while the billboard is off, and keeps it once the switch is on. The old test asserted
+only the billboarded half, so it would have passed on a renderer that never sheared anything.
+
+*The new frame.* `31-graph-perspective.png`: the orbit depth at the Detail level with the billboard
+off — the cards lie in the content plane and the camera's shear is visible, which is the proof that
+the perspective rendering is right. The 3D frames (06/18/19) changed with the default, and the
+whole set was refreshed and read by eye.
+
+*One thing the change exposed.* The library's depth test asserted the treatments face the camera; it
+now asserts they do not, and the card-facing test's "a card that asked to billboard is denied in the
+plane" case is new. The host's component test was rewritten rather than deleted, because the
+billboarded half of its assertion is still worth keeping.
+
+Commands run: `vitest run` in `spacegraphjs` (480 pass, 1 new), `tsc --noEmit` in `spacegraphjs`
+(0 errors), `pnpm run test:publish` (6 packages packed, node check 6/6, browser check 4/4),
+`bun run build:lib` + `bun run build:packages`, `bun run typecheck` in `packages/session-ui`,
+`packages/session-graph` and `packages/app` (clean), `bun test src` in `packages/session-graph`
+(96 pass), `bun test src/graph` in `packages/session-ui` (106 pass), `bun run test:components` in
+`packages/session-graph` (49 pass, 1 rewritten), `bun run test:e2e -- e2e/graph/session-graph.spec.ts`
+in `packages/app` (22 pass, 1 new), `bun run graph:capture --mode=compare` (the set refreshed) and
+`bun run graph:verify` (all steps), `bun run lint:changed` (0).
+
+Unverified: the frames were read by eye, not by a reviewer who did not write them; the toggle was
+checked in Chromium at 1440×900 only, not in Firefox or WebKit and not on a touch device; the
+billboard is a per-view state in the host, not persisted per session (the depth is); the card that
+the component test measures is one card of the fixture, not a sweep over every card; and the band
+bounds in a tilted view are still approximate, as T1.19 declared. **T2.1 and T2.2 still need
+participants**, so the stop rule in T2.5 has not fired.

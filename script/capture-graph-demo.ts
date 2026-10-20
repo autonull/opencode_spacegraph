@@ -79,6 +79,7 @@ if (mode === "verify") {
     "28-graph-tree.png",
     "29-graph-force.png",
     "30-graph-gallery.png",
+    "31-graph-perspective.png",
     "20-cytoscape-zoom-150.png",
     "21-cytoscape-zoom-max.png",
     "22-cytoscape-turn-1.png",

@@ -265,6 +265,19 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await waitForStillCanvas(page)
   await capture(page, "19-graph-depth-stack.png")
 
+  // 31 — the tilted camera with the billboard off: the cards lie in the content plane, so the
+  // perspective shears them. That shear is the camera working, not a broken renderer (T1.19), and
+  // this frame is the proof. The billboard is off by default; the toggle is exercised to show it
+  // is the switch that turns the cards back to face the reader.
+  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
+  await setLevel(page, "Detail")
+  await waitForStillCanvas(page)
+  await fit(page)
+  await waitForStillCanvas(page)
+  await capture(page, "31-graph-perspective.png")
+
   // 11 — the Timeline layout strategy (RF.2) on the same model.
   await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
   await setLevel(page, "Execution")
