@@ -425,6 +425,7 @@ data assumptions appear in the library.
 | Capability | Module | Consumers | Gap |
 |---|---|---|---|
 | Renderer contract | `@spacegraphjs/renderer` | both adapters, OpenCode registry, conformance suite, second host | none |
+| Fit options (padding, insets) | contract `FitOptions` + the core's fit + the Cytoscape adapter's `fit.ts` | OpenCode `GraphView` (the minimap), second host | the perspective path's insets are approximate; a tilted camera has no single screen-to-world scale |
 | Model adapter | `@spacegraphjs/adapter` | OpenCode `SessionGraphAdapter`, second host | the Cytoscape card cap is not live: the host has no renderer switch yet |
 | SpaceGraph adapter | `@spacegraphjs/spacegraph-renderer` | OpenCode, contract demo, second host | node remodelling recreates a node on type change (by design) |
 | Cytoscape adapter | `@spacegraphjs/cytoscape-renderer` | OpenCode fallback, contract demo, second host | 3D is a declared no-op; minimap is host-side |
@@ -472,8 +473,9 @@ Carry these forward explicitly; none is silently lowered.
 14. **The lanes overview has a dominant empty region** (`02`/`14`): the lanes layout is level-agnostic (§5.5), so
     a turn column reserves its execution width at overview. The ribbon/matrix representations fix it by
     construction; a level-aware compact overview would risk position drift and is not taken.
-15. **Framing insets and empty-column exclusion are not implemented** (LE.1): `fit(ids?)` carries no asymmetric
-    insets, and the fit frames content ids but cannot skip empty structural columns.
+15. **Empty-column exclusion is not implemented** (LE.1): the fit frames content ids but cannot skip empty
+    structural columns. The asymmetric framing it used to lack is now in the contract (T6.10): `fit(ids?, { padding,
+    insets })` takes the frame the host wants, and both adapters honour it.
 16. **The depth fade is a scene fog, and DOM cards do not fade with it** (LE.14): `layered`/`depth-stack` use
     `FogExp2` with a scene-relative density, so the fade no longer follows the absolute camera distance. The fog
     attenuates the scene's materials; a DOM card is an HTML element over the canvas, so the cards the host
