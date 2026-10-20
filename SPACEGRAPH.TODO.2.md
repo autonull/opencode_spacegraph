@@ -884,8 +884,8 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Library | `cd spacegraphjs && node_modules/.bin/vitest run` | Core + packages + contract |
 | Boundaries | `cd spacegraphjs && bun run test:boundaries` | No core→contract/Cytoscape import |
 | All graph steps | `bun run graph:verify` | The canonical gate |
-| Captures | `bun run graph:capture --mode=compare` + manual inspection | Visual acceptance |
-| Capture verify | `bun run graph:capture --mode=verify` | Committed set exists |
+| Captures | `bun run graph:capture --mode=compare` + manual inspection | Visual acceptance — **a deliberate refresh, not a per-change check** (it overwrites the committed set) |
+| Capture verify | `bun run graph:capture --mode=verify` | The routine gate: fresh renders into a temp dir, committed set asserted |
 | Lint | `bun run lint:changed` | Changed files |
 | Repo check | `bun run check` | Canonical, but red for known environmental reasons; see T1.6 |
 | Provider-free demo | `bun run graph:dev` | T6.1 |
@@ -895,6 +895,14 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Pixel diff (optional) | `bun run graph:diff` (new) | T6.15 |
 
 Rules: run from package directories, never repo root for tests; inspect images before claiming a visual task; record unverified behaviour.
+
+**The capture set is not a per-change gate.** The committed images exist to inform and to show the
+work; they are refreshed on purpose (T0.6 after an upstream sync, T5.1 for the final set) and then read
+by eye. `--mode=compare` overwrites the committed set, so running it after an unrelated change only
+produces noise to undo. The routine check is `--mode=verify`, which renders into a temp directory and
+asserts the committed set exists; `graph:verify` already runs it. When a change really does alter the
+rendering, refresh the affected images and *look* at them — a pixel-difference report is a tool for
+that review (T6.16), never a substitute for it and never a gate.
 
 ---
 
@@ -1448,11 +1456,14 @@ typecheck` in `packages/session-ui` and `packages/app` (clean), `bun run test:co
 (5 pass), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify` (all
 steps, now including the overlay and navigation library steps), `bun run lint:changed` (0).
 
-*Captures: noise, not a change.* `bun run graph:capture --mode=compare` rewrote 24 frames. Measured against
-the committed set, the difference is RMSE ≈ 0.36 on a 0–255 scale over ~0.004 % of the pixels, and the value
-is the same on every frame it rewrote — including the Cytoscape frames, which the overlay never touches. That
-is antialiasing noise from this environment, not a rendering change, so the images were reverted.
-`graph:verify`'s capture step (verify mode: fresh renders into a temp dir, committed set asserted) passes.
+*Captures: not refreshed, and that is the correct outcome.* This change touches no render path, so
+the image set stays as it is. `--mode=compare` was run once to confirm that, and it rewrote all 24
+frames with uniform antialiasing noise (RMSE ≈ 0.36 on a 0–255 scale over ~0.004 % of the pixels, the
+same value on every frame, including the Cytoscape ones the overlay never touches), so the images were
+reverted. That run was a mistake of habit, not a check: `--mode=compare` overwrites the committed set,
+so it is a deliberate refresh (T0.6, T5.1) and not something to run after an unrelated change. The
+routine gate is `--mode=verify` (fresh renders into a temp dir, committed set asserted), which
+`graph:verify` runs and which passes. See §10 for the rule.
 
 Unverified: the framework bindings are exercised by their own suites, not by a real second host (T6.12 has no
 demo app yet); the overlay's focus restore was checked in the browser component test, not with a screen
