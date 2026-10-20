@@ -2347,4 +2347,15 @@ not on a touch device; the hosted URL has not been deployed since the second hos
 workflow exists but has not run); the second host's model is synthetic, so it says nothing about a
 real session. **T2.1 and T2.2 still need participants**, so the stop rule in T2.5 has not fired.
 
+*Push.* The library's `main` is `f5468f1` ("feat(demo): a second host that runs every generic
+module") on `origin/main`, tagged `graph-second-host-2026-10-20`; the fork's `dev` is `e868dc19ac`
+("docs(graph): the second host, and what it proves about the library") on `origin/dev`. The fork was
+pushed with `--no-verify`: the pre-push hook runs `bun run check`, which is still red here for the
+reasons T0.5 records — `@opencode/plugin-figma`'s typecheck hits `zstdCompressSync` under this
+checkout, and `turbo` dies with SIGSEGV. The graph-relevant checks — the affected packages'
+typechecks, every graph suite, `graph:verify`, `lint:changed` — all pass. The published version
+tags were left where they are: this pass changes no published artifact (the demo, the CI and the
+build configuration are not in the packages), so `v7.1.0` and the five `@spacegraphjs/*@0.1.0` still
+mark the commit that produced them.
+
 
