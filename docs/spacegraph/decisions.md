@@ -476,6 +476,33 @@ failed, interrupted.
 
 ---
 
+## ADR-026: The fit frames what the host says is free
+
+**Date:** 2026-10-20
+**Status:** Accepted
+
+**Context:** A host that draws its chrome *over* the canvas — a floating inspector, a header, a
+bottom sheet, a minimap — has no way to say "frame the content in what is left". Every host solves
+it the same way: the canvas gets narrower, or the content hides under the chrome. The contract's fit
+took a list of ids and nothing else, so the workaround was baked in.
+
+**Decision:** The contract's fit options carry the frame the host wants: `padding` (a margin in the
+graph's own world units, so two renderers agree) and `insets` (screen-space margins in CSS pixels,
+so a host can state where its chrome is). `CONTRACT_VERSION` is 3; the options are additive, so a
+v3 host still accepts a v2 adapter (`SUPPORTED_CONTRACT_VERSIONS` is `[2, 3]`) and a v2 adapter
+simply frames the whole surface. `capabilities.fitInsets` declares whether a renderer honours them.
+
+**Consequences:**
+- The OpenCode host's chrome is a *sibling* of the canvas, not an overlay, so it had no insets to
+  pass — the one exception is the minimap, which is drawn over the canvas and now gets them.
+- The library's second host has the same case (its minimap is an overlay) and is the proof: the
+  force layout reaches the corner, and the frame keeps it clear.
+- The legibility floor wins over the frame: when the content does not fit the region, the frame
+  starts at the region's corner and the reader pans — the content may still pass under the chrome,
+  which is the price of readable text.
+
+---
+
 ## Open decisions (to close in T2.4)
 
 | ID | Decision | Options | Evidence needed |

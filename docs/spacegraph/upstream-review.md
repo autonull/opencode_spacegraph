@@ -2,7 +2,7 @@
 
 **Target:** `anomalyco/opencode` `dev` branch
 **Fork:** `dev` synced with upstream @ `ba06ff9e0b` (merge `f802f5e707`)
-**Library:** `spacegraphjs` @ `5abf80d` (contract v2, depth spectrum)
+**Library:** `spacegraphjs` @ `8.4.0` (contract v3 — the fit options)
 **Status:** Experimental feature flag off by default; ready for maintainer review
 
 ---

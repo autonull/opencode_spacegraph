@@ -9,6 +9,11 @@ const BOX_H = 132
 const PAD = 8
 const DOT_R = 2.5
 
+/** The minimap's footprint on the canvas, in CSS pixels. The frame keeps the content clear of it. */
+export const MINIMAP_SIZE = { width: BOX_W, height: BOX_H }
+/** The gap between the minimap and the canvas edges (`bottom-2 end-2`). */
+export const MINIMAP_GAP = 8
+
 export type GraphMinimapProps = {
   model: GraphModel
   positions: ReadonlyMap<string, Position>

@@ -88,7 +88,7 @@ pnpm run dev:demo     # then open http://localhost:5173/second-host.html
 
 **What it is.** A host that is neither OpenCode nor a framework binding: plain TypeScript, a
 release pipeline as its own vocabulary, and a **capability gallery** in which every generic module
-runs against that model and reports what it produced (`contract v2 · negotiation accepted`,
+runs against that model and reports what it produced (`contract v3 · a v2 adapter is still accepted`,
 `overview · 5 nodes · 4 edges · budget 6`, `scope around "Verify": 6 nodes, 5 edges`).
 
 **Fixture.** `spacegraphjs/demo/second-host/model.ts` — a pipeline with four stages, a failing

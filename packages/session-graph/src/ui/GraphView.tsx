@@ -39,7 +39,7 @@ import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
 import { GraphLegend } from "./GraphLegend"
-import { GraphMinimap } from "./GraphMinimap"
+import { GraphMinimap, MINIMAP_GAP, MINIMAP_SIZE } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { createGraphTheme } from "./theme"
@@ -473,7 +473,16 @@ export const GraphView = (props: GraphViewProps) => {
   }
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
-  const fitOptions = () => ({ minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1] })
+  // T6.10: the minimap is drawn *over* the canvas, so the frame keeps the content clear of it.
+  const fitOptions = () => ({
+    minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1],
+    insets: minimap()
+      ? {
+          right: MINIMAP_SIZE.width + MINIMAP_GAP,
+          bottom: MINIMAP_SIZE.height + MINIMAP_GAP,
+        }
+      : undefined,
+  })
   const inspectorOpen = createMemo(() => !!selectedNode())
 
   // Breadcrumbs are the `part-of` ancestry, seeded into the controller's trail so one library
@@ -678,6 +687,7 @@ export const GraphView = (props: GraphViewProps) => {
   // projection/strategy/representation change, and when the inspector toggles. The fit is deferred to
   // the canvas's `onModelApplied` (below), so the matching nodes and positions exist before we measure;
   // the ids are read untracked, so streaming updates never refit.
+  // T6.10: the minimap toggles too — it is drawn over the canvas, so the frame moves with it.
   createEffect(() => {
     level()
     projection()
@@ -686,6 +696,7 @@ export const GraphView = (props: GraphViewProps) => {
     representation()
     inspectorOpen()
     files()
+    minimap()
     setNeedsFit(true)
   })
   // T1.8: the fitted frame is the 100% reference for the camera zoom readout. The renderer clamps
