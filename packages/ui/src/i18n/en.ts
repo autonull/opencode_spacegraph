@@ -342,6 +342,7 @@ const source = {
   "ui.sessionGraph.breadcrumbs.label": "Graph location",
   "ui.sessionGraph.selection.hidden": "{{label}} is hidden at this level",
   "ui.sessionGraph.selection.show": "Show",
+  "ui.sessionGraph.scale.notice": "Showing {{shown}} of {{total}} turns. The transcript has the rest.",
   "ui.sessionGraph.a11y.label": "Graph contents",
   "ui.sessionGraph.a11y.instructions": "Press Tab to enter the node list, use the arrow keys to move between nodes, Enter to inspect a node, and Escape to clear the selection.",
   "ui.sessionGraph.a11y.view": "Now showing the {{level}} level, {{representation}}, {{depth}} depth.",

@@ -1,5 +1,12 @@
 import type { DepthMode, Projection, RenderTheme, GraphRenderer } from "@spacegraphjs/renderer"
-import { buildFixtureGraph, type GraphModel, type Representation, type ZoomLevel } from "@opencode/session-ui/graph"
+import {
+  buildFixtureGraph,
+  type GraphEdge,
+  type GraphModel,
+  type GraphNode,
+  type Representation,
+  type ZoomLevel,
+} from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
@@ -47,6 +54,52 @@ const FIXTURE_DIFFS = [
 
 /** The fixture has a session root; a truly empty model proves the empty state. */
 const EMPTY_MODEL: GraphModel = { root: "session", nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
+
+/**
+ * T6.6: a session long enough to hit the drawn window. The map shows its recent tail and says how
+ * much of the session it left out, so a capped view is never a silent one.
+ */
+const SCALE_MODEL: GraphModel = (() => {
+  const nodes: GraphNode[] = [
+    { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },
+  ]
+  const edges: GraphEdge[] = []
+  const turns: string[] = []
+
+  for (let index = 0; index < 80; index++) {
+    const turnID = `turn:msg_user_${index}`
+
+    turns.push(turnID)
+    nodes.push({
+      id: turnID,
+      kind: "turn",
+      label: `Turn ${index + 1}`,
+      status: "neutral",
+      turnID,
+      minLevel: "overview",
+    })
+
+    const toolID = `tool:prt_tool_${index}`
+
+    nodes.push({
+      id: toolID,
+      kind: "tool",
+      label: "read",
+      summary: `src/module${index % 12}/file${index}.ts`,
+      status: "success",
+      turnID,
+    })
+    edges.push({
+      id: `sequence:${turnID}->${toolID}`,
+      kind: "sequence",
+      source: turnID,
+      target: toolID,
+      confidence: "explicit",
+    })
+  }
+
+  return { root: "session", nodes, edges, turns, turnByMessageID: new Map() }
+})()
 
 /** A failing adapter factory pair forces the registry to throw, exercising the error state. */
 const FAILING: Partial<Record<RendererID, RendererFactory>> = {
@@ -226,6 +279,12 @@ export const Cytoscape = {
 
 export const Empty = {
   render: () => <ViewHarness model={EMPTY_MODEL} />,
+}
+
+/** T6.6: a long session, so the drawn window and its notice are visible. */
+export const Scale = {
+  render: () => <ViewHarness model={SCALE_MODEL} level="overview" fullscreen />,
+  parameters: { layout: "fullscreen" },
 }
 
 export const ErrorState = {

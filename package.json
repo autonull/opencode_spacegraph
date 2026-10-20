@@ -19,6 +19,7 @@
     "dev:storybook": "bun --cwd packages/storybook storybook",
     "bench:devex": "bun run --cwd packages/app test:bench:devex",
     "graph:capture": "bun script/capture-graph-demo.ts",
+    "graph:scale": "bun run --cwd packages/session-graph script/scale-bench.ts",
     "graph:verify": "bun script/graph-verify.ts",
     "graph:dev": "bun script/graph-dev.ts",
     "lint": "oxlint && ast-grep scan -c script/ast-grep/gui-extensions/sgconfig.yml && bun script/sdk-docs.ts",

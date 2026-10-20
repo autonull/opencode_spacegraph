@@ -19,6 +19,8 @@ import {
   nodeSize,
   representationLevel,
   ribbonLayout,
+  scaleWindow,
+  scopeToTurns,
   subtree,
   turnRows,
 } from "@opencode/session-ui/graph"
@@ -147,6 +149,31 @@ export const GraphView = (props: GraphViewProps) => {
   let renderer: GraphRenderer | undefined
   let rootEl!: HTMLDivElement
 
+  // The turn a node belongs to: a turn node owns itself, anything else inherits from its ancestry.
+  const turnOf = (id: string | undefined) => {
+    if (!id) return undefined
+    const node = nodeByID(props.model, id)
+
+    if (!node) return undefined
+    if (node.kind === "turn") return node.id
+
+    return ancestors(props.model, id).find((ancestor) => ancestor.kind === "turn")?.id
+  }
+  const selectedTurn = () => turnOf(selection()[0])
+  // T6.6: a long session is drawn as its recent tail. The window is declared — the view says how
+  // much of the session it shows — and it keeps the turn the reader is looking at.
+  const scale = createMemo(() =>
+    scaleWindow(props.model, [selectedTurn(), turnOf(props.frame)].filter((id): id is string => !!id)),
+  )
+  const scoped = createMemo(() => scopeToTurns(props.model, scale().turns))
+  // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
+  // capped map is a readable window instead of an empty stretch of the session.
+  const windowAnchor = createMemo(() => {
+    if (scale().hidden === 0) return undefined
+
+    return [...scale().turns][0]
+  })
+
   // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
   // RF.7: below 640px the toolbar collapses its secondary controls into an overflow menu.
   // Only thresholds are tracked, so a resize does not re-render (and re-observe) on every pixel.
@@ -196,8 +223,8 @@ export const GraphView = (props: GraphViewProps) => {
         strategy: strategy(),
       }
 
-    if (representation() === "ribbon") return ribbonLayout(props.model)
-    if (representation() === "matrix") return matrixLayout(props.model)
+    if (representation() === "ribbon") return ribbonLayout(scoped())
+    if (representation() === "matrix") return matrixLayout(scoped())
 
     return layoutGraph(props.model, { strategy: strategy(), level: level() })
   })
@@ -219,7 +246,7 @@ export const GraphView = (props: GraphViewProps) => {
     const rep = representation()
     if (rep !== "ribbon" && rep !== "matrix") return undefined
 
-    const rows = turnRows(props.model)
+    const rows = turnRows(scoped())
     const labels: { id: string; label: string; x: number; y: number; role: "row" | "column" }[] = []
 
     // Row labels (turns/session)
@@ -278,7 +305,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   const renderModel = createMemo(() =>
-    buildRenderModel(props.model, {
+    buildRenderModel(scoped(), {
       level: effectiveLevel(),
       positions: layout().positions,
       bands: representation() === "graph" && strategy() !== "hierarchy",
@@ -287,7 +314,13 @@ export const GraphView = (props: GraphViewProps) => {
       focus: representation() === "graph" && level() === "execution" ? selection()[0] : undefined,
       laneLabels:
         representation() === "graph" && strategy() === "lanes"
-          ? laneAnchors().map((lane) => ({ id: lane.name, label: i18n.t(LANE_KEY[lane.name]), y: lane.y }))
+          ? laneAnchors().map((lane) => ({
+              id: lane.name,
+              label: i18n.t(LANE_KEY[lane.name]),
+              y: lane.y,
+              // T6.6: the gutter belongs to the drawn window, not to the session root far to the left.
+              anchorNodeId: windowAnchor(),
+            }))
           : undefined,
       axisLabels: axisLabels(),
       renderCard: renderCard(),
@@ -394,24 +427,28 @@ export const GraphView = (props: GraphViewProps) => {
     const node = selectedNode()
     return node && !isVisibleAt(node, effectiveLevel()) ? node : undefined
   }
+  // T6.6: the map says how much of the session it shows, so a capped view is never a silent one.
+  const scaleNotice = createMemo(() => {
+    const { turns, total, hidden } = scale()
+
+    if (hidden === 0) return undefined
+
+    return { shown: turns.size, total, text: i18n.t("ui.sessionGraph.scale.notice", { shown: turns.size, total }) }
+  })
   // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
   // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
   // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
-  const contentIDs = () => renderModel().nodes.filter((node) => node.kind !== "band").map((node) => node.id)
+  // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
+  // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
+  const contentIDs = () => {
+    const ids = renderModel().nodes.filter((node) => node.kind !== "band").map((node) => node.id)
+
+    return scale().hidden > 0 ? ids.filter((id) => id !== props.model.root) : ids
+  }
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
   const fitOptions = () => ({ minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1] })
   const inspectorOpen = createMemo(() => !!selectedNode())
-  const selectedTurn = () => {
-    const id = selection()[0]
-
-    if (!id) return undefined
-    const node = nodeByID(props.model, id)
-
-    if (node?.kind === "turn") return node.id
-
-    return ancestors(props.model, id).find((ancestor) => ancestor.kind === "turn")?.id
-  }
 
   // Breadcrumbs are the `part-of` ancestry, seeded into the controller's trail so one library
   // primitive backs both selection and the path (U3.11/P8.1).
@@ -744,6 +781,16 @@ export const GraphView = (props: GraphViewProps) => {
         endInset={props.endInset}
       />
       <GraphBreadcrumbs crumbs={crumbs()} onSelect={fitSubtree} />
+      <Show when={scaleNotice()}>
+        {(notice) => (
+          <div
+            data-slot="graph-scale-notice"
+            class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-1 text-12-regular text-text-weak"
+          >
+            <span class="min-w-0 flex-1 truncate">{notice().text}</span>
+          </div>
+        )}
+      </Show>
       <Show when={hiddenSelection()}>
         {(node) => (
           <div

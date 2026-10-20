@@ -107,7 +107,7 @@ const LAYOUT: LayoutConfig<GraphNode, GraphEdge, Lane> = {
   laneOfFn: laneOf,
   depthMap: DEPTH,
   turnIdFn: (node) => node.turnID,
-  ownerTurnFn: (model, node) => (node.kind === "file" ? fileOwnerTurn(model, node) : undefined),
+  ownerTurnFn: (model, node) => (node.kind === "file" ? fileOwners(model).get(node.id) : undefined),
   clusterOfFn: (node) => (node.kind === "phase" ? node.clusterOf : undefined),
   geometry: {
     standardSize: CARD_SIZE,
@@ -173,21 +173,38 @@ function laneOf(node: GraphNode): Lane {
   return "artifacts"
 }
 
-/** The turn a file belongs to: the turn of the other endpoint of its first incident edge. */
-function fileOwnerTurn(
-  model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] },
-  node: GraphNode,
-): string | undefined {
-  const writes = model.edges.filter((edge) => edge.target === node.id && edge.kind === "writes")
+/**
+ * The turn that owns each file: the turn of the other endpoint of its first incident edge. The
+ * answer is the same for every call on the same model, so it is built once per model — asking each
+ * file for its owner one edge at a time was quadratic in the size of the session (T6.6).
+ */
+const FILE_OWNERS = new WeakMap<object, ReadonlyMap<string, string>>()
 
-  const ordered = [...writes, ...model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)]
+function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }) {
+  const cached = FILE_OWNERS.get(model)
 
-  for (const edge of ordered) {
-    const otherID = edge.source === node.id ? edge.target : edge.source
-    const other = model.nodes.find((candidate) => candidate.id === otherID)
+  if (cached) return cached
 
-    if (other?.turnID) return other.turnID
+  const turnByNode = new Map(model.nodes.map((node) => [node.id, node.turnID]))
+  const owners = new Map<string, string>()
+
+  const claim = (node: string, turn: string | undefined) => {
+    if (turn === undefined || owners.has(node)) return
+    owners.set(node, turn)
   }
 
-  return undefined
+  // A write names the turn that produced the file, so it outranks the file's other incident edges.
+  for (const edge of model.edges) {
+    if (edge.kind !== "writes") continue
+    claim(edge.target, turnByNode.get(edge.source))
+  }
+
+  for (const edge of model.edges) {
+    claim(edge.target, turnByNode.get(edge.source))
+    claim(edge.source, turnByNode.get(edge.target))
+  }
+
+  FILE_OWNERS.set(model, owners)
+
+  return owners
 }

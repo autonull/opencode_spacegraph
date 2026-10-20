@@ -75,6 +75,7 @@ if (mode === "verify") {
     "22-graph-turn-1.png",
     "23-graph-turn-2.png",
     "24-graph-failure-chain.png",
+    "25-graph-scale-window.png",
     "20-cytoscape-zoom-150.png",
     "21-cytoscape-zoom-max.png",
     "22-cytoscape-turn-1.png",

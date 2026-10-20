@@ -173,12 +173,27 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
     // row and the delegated/message members sit lanes away, so the band is a large near-empty box. The
     // columns already group the turn there, so bands are suppressed at overview and kept where the
     // members fill the lanes (execution/detail).
-    if (level !== "overview")
-      for (const turnID of model.turns) {
-        const turn = model.nodes.find((node) => node.id === turnID)
-        if (!turn) continue
-        emit(turn, model.nodes.filter((node) => node.turnID === turnID).map((node) => node.id))
+    if (level !== "overview") {
+      // One pass over the model builds the per-turn buckets: a filter per turn was quadratic, and a
+      // long session paid for it in the render-model build (T6.6).
+      const byTurn = new Map<string, GraphNode[]>()
+
+      for (const node of model.nodes) {
+        if (!node.turnID) continue
+        const bucket = byTurn.get(node.turnID)
+
+        if (bucket) bucket.push(node)
+        else byTurn.set(node.turnID, [node])
       }
+
+      const byID = this.nodeIndex(model)
+
+      for (const turnID of model.turns) {
+        const turn = byID.get(turnID)
+        if (!turn) continue
+        emit(turn, (byTurn.get(turnID) ?? []).map((node) => node.id))
+      }
+    }
 
     for (const node of model.nodes) {
       if (node.kind !== "phase" || !node.clusterOf) continue

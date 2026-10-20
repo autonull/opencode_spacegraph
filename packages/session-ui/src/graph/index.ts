@@ -100,3 +100,5 @@ export {
   type Representation,
   type RepresentationLayoutOptions,
 } from "./representation"
+
+export { scaleWindow, scopeToTurns, TURN_WINDOW, type ScaleWindow } from "./scale"
