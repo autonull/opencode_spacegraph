@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { RenderTheme } from "@spacegraphjs/renderer"
-import { contrastRatio, failingRoles, themeContrast } from "./contrast"
+import { ContrastAuditor, contrastRatio, type RenderTheme } from "@spacegraphjs/renderer"
 import { graphThemeFromTokens } from "./theme"
 
 // T1.10: both schemes must clear WCAG AA for the roles the canvas draws. The light palette mirrors
@@ -25,6 +24,7 @@ const LIGHT: RenderTheme = {
 }
 
 const dark = () => graphThemeFromTokens(() => "")
+const auditor = new ContrastAuditor()
 
 describe("graph theme contrast", () => {
   test("computes WCAG ratios and ignores unparseable colours", () => {
@@ -35,13 +35,14 @@ describe("graph theme contrast", () => {
 
   test("dark and light both clear the text and non-text targets", () => {
     for (const theme of [dark(), LIGHT]) {
-      expect(failingRoles(theme)).toEqual([])
-      expect(themeContrast(theme).textMuted!).toBeGreaterThanOrEqual(4.5)
-      expect(themeContrast(theme).edgeMuted!).toBeGreaterThanOrEqual(3)
+      expect(auditor.failingRoles(theme)).toEqual([])
+      expect(auditor.contrast(theme).textMuted!).toBeGreaterThanOrEqual(4.5)
+      expect(auditor.contrast(theme).edgeMuted!).toBeGreaterThanOrEqual(3)
+      expect(auditor.audit(theme).passed).toBe(true)
     }
   })
 
   test("the audit catches a cue that would vanish on the canvas", () => {
-    expect(failingRoles({ ...LIGHT, edgeMuted: "#f2f2f2" })).toEqual(["edgeMuted"])
+    expect(auditor.failingRoles({ ...LIGHT, edgeMuted: "#f2f2f2" })).toEqual(["edgeMuted"])
   })
 })

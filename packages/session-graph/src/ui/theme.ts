@@ -1,4 +1,4 @@
-import type { RenderTheme } from "@spacegraphjs/renderer"
+import { DEFAULT_THEME, resolveTheme, type RenderTheme } from "@spacegraphjs/renderer"
 import { createSignal, onCleanup, onMount } from "solid-js"
 
 /**
@@ -24,51 +24,12 @@ const TOKENS = {
   fontFamily: "--v2-font-family-sans",
 } as const
 
-/** Used only when a token is absent (no stylesheet, a non-browser test); the token value wins. */
-const FALLBACK: RenderTheme = {
-  background: "#101014",
-  surface: "#1b1b22",
-  surfaceMuted: "#2a2a33",
-  text: "#f5f5f7",
-  textMuted: "#a0a0aa",
-  border: "#3a3a44",
-  accent: "#3b82f6",
-  success: "#22c55e",
-  warning: "#f59e0b",
-  error: "#ef4444",
-  edge: "#6b7280",
-  edgeMuted: "#a0a0aa",
-  selection: "#60a5fa",
-  focus: "#93c5fd",
-  fontFamily: "system-ui, sans-serif",
-  fontSize: 13,
-}
-
 /**
  * Builds a `RenderTheme` from a token reader. Pure so it can be unit-tested without a DOM: an empty
- * token falls back, and the font size matches the app body copy (13px).
+ * token falls back to the renderer's palette, and the font size matches the app body copy (13px).
  */
 export function graphThemeFromTokens(read: (name: string) => string): RenderTheme {
-  const pick = (name: string, fallback: string) => read(name).trim() || fallback
-
-  return {
-    background: pick(TOKENS.background, FALLBACK.background),
-    surface: pick(TOKENS.surface, FALLBACK.surface),
-    surfaceMuted: pick(TOKENS.surfaceMuted, FALLBACK.surfaceMuted),
-    text: pick(TOKENS.text, FALLBACK.text),
-    textMuted: pick(TOKENS.textMuted, FALLBACK.textMuted),
-    border: pick(TOKENS.border, FALLBACK.border),
-    accent: pick(TOKENS.accent, FALLBACK.accent),
-    success: pick(TOKENS.success, FALLBACK.success),
-    warning: pick(TOKENS.warning, FALLBACK.warning),
-    error: pick(TOKENS.error, FALLBACK.error),
-    edge: pick(TOKENS.edge, FALLBACK.edge),
-    edgeMuted: pick(TOKENS.edgeMuted, FALLBACK.edgeMuted),
-    selection: pick(TOKENS.selection, FALLBACK.selection),
-    focus: pick(TOKENS.focus, FALLBACK.focus),
-    fontFamily: pick(TOKENS.fontFamily, FALLBACK.fontFamily),
-    fontSize: 13,
-  }
+  return resolveTheme(TOKENS, read, DEFAULT_THEME)
 }
 
 /** Reads the resolved theme from an element's computed style. Browser-only. */
@@ -86,7 +47,7 @@ export function resolveGraphTheme(root: HTMLElement = document.documentElement):
  * what a token is.
  */
 export function createGraphTheme(root: () => HTMLElement | undefined = () => document.documentElement) {
-  const [theme, setTheme] = createSignal<RenderTheme>(FALLBACK)
+  const [theme, setTheme] = createSignal<RenderTheme>(DEFAULT_THEME)
 
   onMount(() => {
     const resolve = () => setTheme(resolveGraphTheme(root() ?? document.documentElement))

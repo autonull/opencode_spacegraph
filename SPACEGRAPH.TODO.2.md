@@ -20,7 +20,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
 | SpaceGraphJS | `main` @ `e07e664`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664` |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-20) | `session-ui` graph 75 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 375 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 75 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 375 + contract 12 + adapters 39 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -94,7 +94,8 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - T6.16 Demo index — documentation, helpful but not blocking
 
 **Already complete (do not redo):**
-T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.8–T4.10 (layout, levels, and representations extracted to the library).
+T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.8–T4.10 (layout, levels, and representations extracted to the library),
+T4.13 (theme and contrast extracted to the contract and the renderers).
 
 ---
 
@@ -545,6 +546,12 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
 - **The subpath must be registered.** Each new module needs an entry in the library's `package.json`
   `exports`, and the fork consumes the library as a bun workspace (`packages/session-ui` now depends
   on `spacegraphjs`). A new dependency edge needs `bun install` before the typechecker resolves it.
+- **The host must not import a renderer package at module scope.** The adapters load behind dynamic
+  `import()` so a failing adapter falls through to the next one; a static import in the host (T4.13
+  first did this for the theme palette) turns "the SpaceGraph adapter fails to load" into "the whole
+  graph module fails to load". The host may import the **contract** package at module scope; a
+  renderer package only behind a dynamic import. The app e2e ("falls back to Cytoscape…", "returns to
+  the transcript when no renderer can mount") is the keeper of this rule.
 
 
 
@@ -567,7 +574,7 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Done when: OpenCode `TurnMapOverlay.tsx` wraps SpaceGraphJS overlay with its slots; overlay works in `react-spacegraph` demo; keyboard focus trap + Escape close verified.
   Verify: `cd packages/session-graph && bun run test:components -- turn-map`; `cd spacegraphjs/packages/react-spacegraph && vitest run`
 
-- [ ] **T4.13 Extract theme/contrast system to `spacegraph-renderer`**
+- [x] **T4.13 Extract theme/contrast system to `spacegraph-renderer`**
   Move `packages/session-graph/src/ui/theme.ts` + `contrast.ts` semantic token → renderer color mapping to `spacegraphjs/packages/spacegraph-renderer/src/theme.ts`:
   - `SemanticTokenMap: Record<string, CSSVariable>` — host semantic token (e.g., `textMuted`) → CSS variable (e.g., `--v2-text-text-muted`)
   - `RendererTheme = { surface, border, text, textMuted, textFaint, accent, success, warning, error, ... }` — renderer-internal palette
@@ -576,6 +583,34 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Cytoscape renderer gets parallel `CytoscapeThemeBridge` with its own token map.
   Done when: Both renderers import theme from SpaceGraphJS; contrast tests pass in library CI; OpenCode theme tokens unchanged.
   Verify: `cd spacegraphjs/packages/spacegraph-renderer && vitest run`; `cd packages/session-graph && bun test src/ui/contrast.test.ts`
+  - **Done (2026-10-20), with one placement correction.** The shared, dependency-free pieces live in
+    the **contract** package (`packages/renderer/src/theme.ts`): `SemanticTokenMap`, `resolveTheme`,
+    `contrastRatio`, `ContrastRole`, `ContrastReport`, and the `ContrastAuditor` class (targets 4.5:1
+    for text, 3:1 for the non-text cues, overridable per role). Each renderer package keeps its own
+    theme module: `spacegraph-renderer/src/theme.ts` (`RENDERER_THEME`, `resolveRendererTheme`) and
+    `cytoscape-renderer/src/theme.ts` (`CYTOSCAPE_THEME`, `CYTOSCAPE_TOKENS`, `CytoscapeThemeBridge`,
+    which normalizes 8-digit hex for the Cytoscape stylesheet).
+  - **Why the palette sits in the contract and not in the renderer package.** The host resolves *one*
+    theme for every renderer it may mount, and the adapters load behind dynamic `import()` so a
+    failing adapter can fall through to the next one. A host that imported the palette from
+    `@spacegraphjs/spacegraph-renderer` would pull that package into module scope — the first
+    version of this change did exactly that and **broke the app e2e**: "falls back to Cytoscape when
+    the SpaceGraph adapter fails to load" and "returns to the transcript when no renderer can mount"
+    both failed, because aborting the adapter module aborted the host's theme module with it. The
+    palette is now `DEFAULT_THEME` in the contract package, and the host imports only from there.
+  - **The boundary test was relaxed, deliberately and narrowly:** `test/boundaries.test.ts` now allows
+    the contract package to import *its own* modules and forbids everything else. The contract is
+    still dependency-free; a self-import is not a dependency.
+  - The host keeps the DOM and framework parts: `packages/session-graph/src/ui/theme.ts` holds the
+    token map (`TOKENS`), `resolveGraphTheme` (reads the computed style) and `createGraphTheme` (the
+    reactive Solid signal). `packages/session-graph/src/ui/contrast.ts` is **gone**; its test now uses
+    the library's `ContrastAuditor` directly, and the same light/dark verdicts still hold.
+  - OpenCode's theme tokens are unchanged: the same 15 CSS variables, the same fallback palette
+    values, and `fontSize: 13`.
+  - Library tests: `packages/renderer/src/theme.test.ts` (6), `packages/spacegraph-renderer/src/theme.test.ts`
+    (2), `packages/cytoscape-renderer/src/theme.test.ts` (3) — the token resolution, the blank-token
+    fallback, the WCAG ratios, the failing roles, the custom targets, and the Cytoscape normalization.
+
 
 - [ ] **T4.14 Extract graph search/minimap/a11y to SpaceGraphJS packages**
   - **Search:** `spacegraphjs/src/navigation/search.ts` — headless `search(model, query, fieldsFn?) => Node[]` where `fieldsFn: (node) => string[]` extracts searchable text (label, summary, tool name, path, command). React/Solid bindings: `GraphSearch` component with keyboard nav, ARIA, result list.
@@ -1121,3 +1156,38 @@ Unverified: the library's `eslint` cannot run in this environment (`typescript-e
 support TS 7.0`) and its `prettier` config (`tabWidth: 4`) disagrees with the committed source
 (2 spaces), so the new library files follow the surrounding source, not the config; the RFC is
 still deferred; T2.1/T2.2 still need human participants.
+
+**2026-10-20 — T4.13: the theme and contrast system moved to the library.** The semantic-token
+bridge and the contrast auditor now live beside the contract
+(`spacegraphjs/packages/renderer/src/theme.ts`), each renderer package keeps its own theme module
+(`RENDERER_THEME` / `resolveRendererTheme`, and `CytoscapeThemeBridge` with its own token map), and
+the host keeps only its token map, the DOM reader, and the reactive Solid signal.
+`packages/session-graph/src/ui/contrast.ts` is gone; its test now drives the library's
+`ContrastAuditor`. OpenCode's theme tokens, the fallback palette, and the light/dark verdicts are
+unchanged.
+
+*One placement correction, and it was found by the e2e.* The first version imported the palette from
+`@spacegraphjs/spacegraph-renderer` — the plan's literal wording. That put a renderer package into
+the host's module scope, and the adapters are supposed to load behind a dynamic `import()` so a
+failing adapter falls through to the next one. Two app e2e tests failed immediately: "falls back to
+Cytoscape when the SpaceGraph adapter fails to load" and "returns to the transcript when no renderer
+can mount" — aborting the adapter module also aborted the host's theme module, so the fallback never
+happened. The palette is now `DEFAULT_THEME` in the contract package; the host imports only the
+contract, and both e2e tests pass again (16/16). The rule is now written down in §6.1: the host may
+import the contract at module scope, a renderer package only behind a dynamic import.
+
+*One gate was relaxed, narrowly.* `test/boundaries.test.ts` asserted that the contract package has
+**no** static import at all; the contract now has a second module and a type-only self-import, so the
+assertion became "no import that is not one of the contract's own modules". The contract is still
+dependency-free; a self-import is not a dependency.
+
+Commands run: `bun test` in `spacegraphjs/packages/renderer` (12 pass), `bun test` in
+`spacegraphjs/packages/spacegraph-renderer` (15 pass) and in `.../cytoscape-renderer` (15 pass),
+`bun run typecheck` + `bun test src` in `packages/session-graph` (49 pass, clean),
+`bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify` (all steps),
+`bun run lint:changed` (0), `vitest run` in `spacegraphjs` (375 pass, unchanged: the new package
+tests run under `bun test`, which is what `graph:verify` and the package scripts use).
+
+Unverified: the theme extraction is proven by the unit tests and the e2e, but no capture was
+re-inspected for a colour change — the palette values are identical, so the committed images still
+describe the current output.
