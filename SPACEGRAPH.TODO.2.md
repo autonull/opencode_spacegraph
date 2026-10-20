@@ -20,7 +20,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
 | SpaceGraphJS | `main` @ `632292e`; pushed and tagged `graph-adapter-2026-10-20` (nothing unpushed) |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 395 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 435 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -95,8 +95,10 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 
 **Already complete (do not redo):**
 T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10 (layout, levels,
-and representations extracted to the library), T4.13 (theme and contrast extracted to the contract
-and the renderers), T3.6 (the exported map names its session).
+and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour extracted; the framework bindings
+live in the library's React/Solid packages), T4.13 (theme and contrast extracted to the contract
+and the renderers), T3.6 (the exported map names its session), T6.17 (the code-diff vocabulary and
+renderer extracted; the host keeps its markup).
 
 ---
 
@@ -645,7 +647,7 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   - The package's tests run under Vitest (the plan's command); the other library *packages* run
     under Bun, and `graph:verify` runs the adapter step with Vitest.
 
-- [ ] **T4.12 Extract scoped subgraph overlay to SpaceGraphJS `src/overlays/`**
+- [x] **T4.12 Extract scoped subgraph overlay to SpaceGraphJS `src/overlays/`**
   Move `packages/session-graph/src/ui/turnMap.ts` + `TurnMapOverlay.tsx` to `spacegraphjs/src/overlays/` as:
   - **Headless core:** `extractSubgraph(model, nodeId, limit) => subgraph`, `buildSubgraphRenderModel(subgraph, options) => RenderModel`
   - **React binding:** `ScopedSubgraphOverlay` — focus-trapped, scroll-preserving (host owns container `position: relative`), Escape closes + restores focus, expand-to-full callback, slot-based header/inspector/actions
@@ -653,6 +655,24 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Host provides: `model`, `nodeId` (turn or any node), `limit`, `renderCard`, `onOpenFull`, `onClose`, `onSelect`, custom header/inspector slots.
   Done when: OpenCode `TurnMapOverlay.tsx` wraps SpaceGraphJS overlay with its slots; overlay works in `react-spacegraph` demo; keyboard focus trap + Escape close verified.
   Verify: `cd packages/session-graph && bun run test:components -- turn-map`; `cd spacegraphjs/packages/react-spacegraph && vitest run`
+  - **Done (2026-10-20).** `spacegraphjs/src/overlays/` holds the two generic pieces: `extractSubgraph(model, nodeId, options)`
+    (the scope: the node, its highest-ranked children, and the edges between them) and `ScopedOverlay` (the dialog
+    behaviour: the focus trap, Escape, and the focus restore). The core imports nothing, so `spacegraphjs/overlays`
+    stays contract-free and framework-free.
+  - **One placement correction, and it follows §6.1.** The plan names `buildSubgraphRenderModel(subgraph, options) =>
+    RenderModel` as a core function. The core may not import the contract (`test/boundaries.test.ts` forbids it), and
+    contract-speaking code lives in the packages. The render-model step is therefore not a new function: the scoped
+    model is fed to the host's existing `@spacegraphjs/adapter` pipeline, which already owns model → `RenderModel`.
+    What moved to the library is the *scope*.
+  - The bindings live in the two framework packages: `react-spacegraph` and `solid-spacegraph` export
+    `ScopedSubgraphOverlay` (focus-trapped, Escape closes, focus restored, slot-based header/content/inspector/actions)
+    and `CodeDiffOverlay`.
+  - **The host keeps its own markup.** `TurnMapOverlay.tsx` delegates the focus behaviour to `ScopedOverlay` and its scope
+    to the library (through `turnSubgraph`); the copy, the icons, and the canvas/inspector slots stay host-owned. The host
+    does **not** import the library's Solid binding: the fork consumes the library as source, and a second `solid-js`
+    copy (the library's own `1.9.12` against the fork's catalog `1.9.15`) would give the overlay its own reactivity graph.
+  - Proof: `spacegraphjs/test/overlays/` (20 tests over the scope, the focus scope, and the diff), the two binding suites
+    (4 tests each), the host's turn-map component tests (5, unchanged), and `bun run graph:verify` (all steps).
 
 - [x] **T4.13 Extract theme/contrast system to `spacegraph-renderer`**
   Move `packages/session-graph/src/ui/theme.ts` + `contrast.ts` semantic token → renderer color mapping to `spacegraphjs/packages/spacegraph-renderer/src/theme.ts`:
@@ -698,6 +718,18 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   - **A11y:** `spacegraphjs/src/a11y/AccessibilityLayer.ts` (already exists) — extend with `edgeAnnouncer: (edges) => EdgeSummary[]` for edge announcement (T4.7). React/Solid bindings: `GraphA11y` component.
   Done when: OpenCode components wrap SpaceGraphJS primitives; each has library tests; T6.12 capability gallery includes all three.
   Verify: `cd spacegraphjs && vitest run test/search/ test/minimap/ test/a11y/`; OpenCode component tests pass
+  - **Half done (2026-10-20): the headless core and the host's use of it.** `spacegraphjs/src/navigation/search.ts`
+    holds the headless `search(model, query, fieldsFn)`; `spacegraphjs/src/navigation/minimap.ts` holds the headless
+    `project({ positions, box, padding, viewport })` — the scale, the Y flip, the centring, and the view rectangle. The
+    a11y half was already in the library (`AccessibilityLayer`, T4.7).
+  - **One naming decision.** The navigation module exports the two functions as the `Navigation` namespace, because the
+    host already exports `search` and the repository forbids aliased imports (§6.1's rule).
+  - The host's `search` (`packages/session-ui/src/graph/selectors.ts`) is now a thin call to `Navigation.search` with the
+    session's fields; the host's `GraphMinimap.tsx` uses `Navigation.project` and keeps its dots, colours, and pointer
+    handling. The host's behaviour is unchanged (the scope, the ranking, the flip, and the pan maths are the same).
+  - **Still open:** the React/Solid `GraphSearch`, `GraphMinimap`, and `GraphA11y` bindings, and the capability-gallery
+    entries (T6.12). The bindings need a framework-free DOM panel per capability (the pattern `AccessibilityLayer`
+    already uses) so the two frameworks do not each re-implement the same widget.
 
 **Gate G4 — sustainable.** Published, type-clean, CI-backed, no stopgap blocking second host; **generic primitives extracted from OpenCode; OpenCode is a thin vocabulary layer.**
 
@@ -802,7 +834,7 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   `graph:diff` compares fresh captures to committed set with threshold and per-image report. Reduces inspection toil; does not replace human review; not a hard gate.
   Done when: flags deliberate change and ignores normal GPU/font noise.
 
-- [ ] **T6.17 Extract code diff visualization to SpaceGraphJS `src/overlays/`**
+- [x] **T6.17 Extract code diff visualization to SpaceGraphJS `src/overlays/`**
   Move `packages/session-graph/src/ui/GraphDiff.tsx` to `spacegraphjs/src/overlays/CodeDiffOverlay.tsx` (React/Solid). **Specifically for unified diff patches (code changes)**, not a generic graph model diff. Renders:
   - File header with path, +additions/-deletions counts
   - Syntax-highlighted unified diff (green for +, red for -, muted for headers/hunks)
@@ -811,6 +843,16 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Generic "graph model diff" (added/removed/changed nodes between two render models) is a separate future feature (D4); this extraction is only for the code diff viewer.
   Done when: OpenCode wraps SpaceGraphJS `CodeDiffOverlay`; library tests verify diff rendering; T6.12 capability gallery includes code diff demo.
   Verify: `cd spacegraphjs && vitest run test/overlays/code-diff.test.ts`; OpenCode component test passes
+  - **Done (2026-10-20), with one placement correction.** The diff vocabulary and the renderer live in the library
+    (`spacegraphjs/src/overlays/codeDiff.ts`): `CodeDiff`, `CodeDiffSource`, `diffTone`, `parsePatch`, and `renderCodeDiff`.
+    The patch text is written with `textContent`, so a hostile file path or patch line is never markup — the library test
+    asserts that a `<script>` payload reaches the DOM as text and as no element.
+  - **The core stays framework-free**, so the components live in the two framework packages (`CodeDiffOverlay` in
+    `react-spacegraph` and `solid-spacegraph`) rather than in `src/overlays/CodeDiffOverlay.tsx` (§6.1's rule).
+  - The host's `GraphDiff.tsx` now *aliases* the library's types (`GraphDiff = CodeDiff`,
+    `GraphDiffSource = CodeDiffSource`) and takes its line tone from `diffTone`; its markup, its Tailwind classes, and
+    its line splitting are unchanged, so the inspector renders exactly as before.
+  - **Still open:** the capability-gallery demo (T6.12). The generic "graph model diff" (D4) is untouched, as planned.
 
 ---
 
@@ -1372,3 +1414,47 @@ graph-adapter-2026-10-20`, `git ls-remote origin refs/heads/main refs/tags/graph
 
 Unverified: the tag was pushed to `github.com:autonull/spacegraphjs7.git`; nothing was published to
 npm, and the fork's `dev` branch was not pushed in this pass.
+
+**2026-10-20 — T4.12, T6.17, and the T4.14 core: the overlays and the navigation primitives moved to
+the library.** `spacegraphjs/src/overlays/` now holds the scoped-subgraph algorithm (`extractSubgraph`), the
+overlay's dialog behaviour (`ScopedOverlay`: focus trap, Escape, focus restore), and the unified-diff
+vocabulary and renderer (`CodeDiff`, `CodeDiffSource`, `diffTone`, `parsePatch`, `renderCodeDiff`).
+`spacegraphjs/src/navigation/` gained the headless `search` and the minimap `project`. The React and Solid
+packages export `ScopedSubgraphOverlay` and `CodeDiffOverlay`.
+
+*Why the scope moved but the render model did not.* The plan's `buildSubgraphRenderModel(subgraph, options)
+=> RenderModel` cannot live in the core: the core may not import the contract, and §6.1 already decided that
+contract-speaking code lives in the packages. The scoped model goes through the host's existing
+`@spacegraphjs/adapter` pipeline instead — the adapter already owns model → `RenderModel` — so what the
+library needed was the *scope*, and that is what moved. The same rule moved the diff components into the
+framework packages instead of `src/overlays/CodeDiffOverlay.tsx`.
+
+*Why the host keeps its markup.* `TurnMapOverlay.tsx` delegates the focus behaviour to `ScopedOverlay` and
+its scope to the library, but the host does **not** import the library's Solid binding: the fork consumes the
+library as source, and the library's own `solid-js` (1.9.12) against the fork's catalog (1.9.15) would give
+the overlay a second reactivity graph. The bindings exist for the second host (T6.12).
+
+*The host's behaviour is unchanged.* `turnSubgraph` (session-ui) and the minimap (session-graph) keep their
+public surface and their results; the algorithm behind them is the library's. The diff view keeps its markup
+and its classes; only its types and its line tone come from the library.
+
+*The navigation module is a namespace.* The host already exports `search`, and the repository forbids aliased
+imports, so `spacegraphjs/navigation` exposes `Navigation.search` and `Navigation.project` (§6.1's rule).
+
+Commands run: `vitest run` in `spacegraphjs` (435 pass, 40 new), `vitest run test/overlays/` (20) and
+`test/navigation/` (12), the two binding suites (4 each), `bun test src/graph` in `packages/session-ui`
+(77 pass), `bun run typecheck` + `bun test src` in `packages/session-graph` (93 pass, clean), `bun run
+typecheck` in `packages/session-ui` and `packages/app` (clean), `bun run test:components -- turn-map`
+(5 pass), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify` (all
+steps, now including the overlay and navigation library steps), `bun run lint:changed` (0).
+
+*Captures: noise, not a change.* `bun run graph:capture --mode=compare` rewrote 24 frames. Measured against
+the committed set, the difference is RMSE ≈ 0.36 on a 0–255 scale over ~0.004 % of the pixels, and the value
+is the same on every frame it rewrote — including the Cytoscape frames, which the overlay never touches. That
+is antialiasing noise from this environment, not a rendering change, so the images were reverted.
+`graph:verify`'s capture step (verify mode: fresh renders into a temp dir, committed set asserted) passes.
+
+Unverified: the framework bindings are exercised by their own suites, not by a real second host (T6.12 has no
+demo app yet); the overlay's focus restore was checked in the browser component test, not with a screen
+reader; T4.14's React/Solid `GraphSearch`, `GraphMinimap`, and `GraphA11y` bindings are still open, and the
+capability-gallery entries wait on T6.12.
