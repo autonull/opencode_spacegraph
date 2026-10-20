@@ -64,11 +64,7 @@ type Harness = {
   select: (id: string | undefined) => void
   setRenderer: (id: RendererID) => void
   selected: () => string | undefined
-  /** Zoom to a specific percentage of fit (100% = fit, 150% = 1.5x fit, 250% = 2.5x fit). */
-  zoomTo: (percent: number) => void
-  /** Pan to center on a specific node ID. */
-  panTo: (nodeId: string) => void
-  /** Get the current viewport for verification. */
+  /** The camera's frame, read back from the renderer (T6.18). */
   getViewport: () => { zoom: number; center: number[] } | undefined
 }
 
@@ -106,34 +102,14 @@ const ViewHarness = (props: HarnessProps) => {
     },
   }
 
-  // Store the live renderer instance for zoom/pan control
-  let graphRenderer: import("@spacegraphjs/renderer").GraphRenderer | undefined
+  // The live renderer, so a test can read the camera back (T6.18).
+  let graphRenderer: GraphRenderer | undefined
 
   ;(window as unknown as { __graphView?: Harness }).__graphView = {
     select: setSelected,
     setRenderer,
     selected,
-    zoomTo: (percent: number) => {
-      if (graphRenderer) {
-        const viewport = graphRenderer.getViewport?.()
-        if (viewport) {
-          // Convert percentage to zoom value (100% = fit = viewport.zoom at fit)
-          // The zoom is relative to the fit baseline stored in GraphView
-          graphRenderer.setViewport({ zoom: viewport.zoom * (percent / 100), center: viewport.center })
-        }
-      }
-    },
-    panTo: (nodeId: string) => {
-      if (graphRenderer) {
-        graphRenderer.focus(nodeId)
-      }
-    },
-    getViewport: () => {
-      if (graphRenderer) {
-        return graphRenderer.getViewport?.()
-      }
-      return undefined
-    },
+    getViewport: () => graphRenderer?.getViewport?.(),
   }
 
   const size = props.fullscreen
@@ -252,7 +228,7 @@ export const Empty = {
   render: () => <ViewHarness model={EMPTY_MODEL} />,
 }
 
-export const Error = {
+export const ErrorState = {
   render: () => <ViewHarness overrides={FAILING} />,
 }
 

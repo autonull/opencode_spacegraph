@@ -86,6 +86,8 @@ export type GraphViewProps = {
   frame?: string
   /** T3.5: the shareable link to the selected node; the inspector offers to copy it. */
   link?: string
+  /** Exposes the live renderer so a host can drive the camera (T6.18/T6.19). */
+  onRenderer?: (renderer: GraphRenderer | undefined) => void
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onDepthChange?: (depth: DepthMode) => void
@@ -470,11 +472,24 @@ export const GraphView = (props: GraphViewProps) => {
   }
   // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
   const changedFilesList = createMemo(() => changedFiles(props.model))
+  // T6.18: the reader may have asked for less motion, so the camera jumps instead of gliding. The
+  // host knows the node's world position from the layout, and the contract's setViewport is instant.
+  const focusNode = (id: string) => {
+    const instance = renderer
+    if (!instance) return
+    const position = layout().positions.get(id)
+    const current = viewport()
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches || !position || !current) {
+      instance.focus(id)
+      return
+    }
+    instance.setViewport({ zoom: current.zoom, center: [position.x, position.y, position.z] })
+  }
   const jumpTo = (node: GraphNode) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
     select(node.id)
-    renderer?.focus(node.id)
+    focusNode(node.id)
   }
   // U3.11: clicking a breadcrumb selects it and frames its subtree, so the canvas follows the trail.
   const fitSubtree = (id: string) => {
@@ -495,15 +510,22 @@ export const GraphView = (props: GraphViewProps) => {
     setLevel(minimum)
     return true
   }
-  const focusFrame = (instance: GraphRenderer) => {
+  const focusFrame = (instance: GraphRenderer | undefined) => {
     const id = props.frame
-    if (!id || framed() === id) return
+    if (!id || !instance || framed() === id) return
     const node = nodeByID(props.model, id)
     if (!node) return
     select(id, false)
-    instance.focus(id)
+    focusNode(id)
     setFramed(id)
   }
+  // A permalink that changes while the graph is open frames its node too, not only on load.
+  createEffect(() => {
+    const id = props.frame
+    const node = id ? nodeByID(props.model, id) : undefined
+    if (!node) return
+    focusFrame(renderer)
+  })
 
   // T2.3: returning to the transcript is an interaction.
   const openInTranscript = (id: string) => {
@@ -626,6 +648,14 @@ export const GraphView = (props: GraphViewProps) => {
     settleFit()
     fit()
   }
+  // A zoom is the reader's own act: it ends the fit window, so the 100% reference stops following
+  // the camera and the readout keeps telling the truth.
+  const endFitWindow = () => {
+    if (!fitPending) return
+    fitPending = false
+    if (fitSettle) clearTimeout(fitSettle)
+    fitSettle = undefined
+  }
   const fitContent = () => {
     Metrics.count("fit")
     requestFit(() => renderer?.fit(untrack(contentIDs), fitOptions()))
@@ -651,8 +681,12 @@ export const GraphView = (props: GraphViewProps) => {
     const current = viewport()
     if (!current || !renderer) return
     Metrics.count("zoom")
+    endFitWindow()
+    // The step is a tenth of the fit, so one click is the same step at any fit and the readout lands
+    // on whole tens (T6.19: the capture frames are named after the percentage they show).
+    const step = fitBaseline() * 0.1
     renderer.setViewport({
-      zoom: Math.min(maxZoom(), Math.max(minZoom(), current.zoom + direction * 0.08)),
+      zoom: Math.min(maxZoom(), Math.max(minZoom(), current.zoom + direction * step)),
       center: current.center,
     })
   }
@@ -764,6 +798,7 @@ export const GraphView = (props: GraphViewProps) => {
             onModelApplied={applyModel}
             onRenderer={(instance) => {
               renderer = instance
+              props.onRenderer?.(instance)
             }}
             onReady={(info) => {
               setError(undefined)

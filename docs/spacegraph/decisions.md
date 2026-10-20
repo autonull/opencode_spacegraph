@@ -345,6 +345,66 @@ Each record documents a significant architectural decision, its context, and its
 
 ---
 
+## ADR-021: The camera is a two-way surface, and the reader's motion preference is honoured
+
+**Date:** 2026-10-20
+**Status:** Accepted
+
+**Context:** The contract could place the camera (`setViewport`) but not read it back. A host that must
+put the camera somewhere exact — a permalink, a reduced-motion jump — had to guess the renderer's
+zoom scale, and the one animated transition left (`focus`) was a one-second flight the reader could
+not turn off.
+
+**Decision:** The contract exposes the camera in both directions. `GraphRenderer.getViewport?()` reads
+the current frame; it is **optional**, so the addition is not a breaking change to the interface and
+`CONTRACT_VERSION` stays 2. A renderer that cannot report its camera leaves it undefined, and a host
+reads that as "no read-back", never as a broken camera.
+
+The host honours `prefers-reduced-motion`: under the preference the camera **jumps** to the node (the
+host knows its world position from the layout, and `setViewport` is instant) instead of gliding (the
+renderer's `focus` animates for a second). The jump keeps the zoom, so the reader lands on the node at
+the size they chose.
+
+**Consequences:**
+- Both adapters implement the read-back; the Cytoscape adapter's `viewportChange` event *is* that
+  read-back rather than a second copy of the same maths.
+- The Cytoscape adapter's `focus` resolves the host's model id against the render model and returns
+  early for an unknown id, instead of asking Cytoscape to centre an empty collection.
+- The host's camera moves are assertable: the reduced-motion branch is covered by a component test
+  that times the flight on the page's own clock.
+- A permalink frames its node when the hash changes, not only on load.
+
+---
+
+## ADR-022: The zoom readout is renderer-local; the capture frames are named after what they show
+
+**Date:** 2026-10-20
+**Status:** Accepted
+
+**Context:** The two backends report the zoom on different scales: the SpaceGraph zoom is
+logarithmic over the band the fit chose (its closest zoom reads 183% of the fit), while the Cytoscape
+zoom is linear (its closest zoom reads 250%). The same magnification therefore has two readouts. The
+capture matrix compounded this: five frames were named for percentages they did not show, and the
+gate only asserted that the files existed.
+
+**Decision:** The readout stays renderer-local — the host measures the zoom *relative to the fit*,
+which is the only reference both backends share — and the **frames are named after what they show**.
+The zoom step is a tenth of the fit, so the readout lands on whole tens and 150% is exactly
+reachable. The frame that used to claim "250%" is renamed `21-*-zoom-max.png`: the closest zoom the
+renderer allows.
+
+**Consequences:**
+- `20-*-zoom-150.png` reads exactly 150% on both backends.
+- `21-*-zoom-max.png` is the same magnification on both backends; only the readout differs (183%
+  against 250%). Reconciling the readouts would mean the contract's zoom carries a magnification
+  ratio rather than a renderer-local scale — a contract change of its own (T6.10).
+- `graph:capture --mode=verify` hashes the ten matrix frames and fails when two are the same
+  picture, so a frame that stops being what its name says fails the gate instead of the review.
+- The zoom step is relative to the fit, so one click is the same step at any fit — and, on the
+  logarithmic backend, one click is no longer a doubling of the magnification.
+
+---
+
 ## Open decisions (to close in T2.4)
 
 | ID | Decision | Options | Evidence needed |

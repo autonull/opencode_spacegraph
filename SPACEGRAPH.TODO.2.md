@@ -20,9 +20,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20) | `session-ui` graph 81 · `session-graph` unit 94 · `session-graph` component 40 · `spacegraphjs` 436 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 81 · `session-graph` unit 94 · `session-graph` component 42 · `spacegraphjs` 438 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
-| Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed — **but 20–24 are not what their names say (T6.19)** |
+| Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19)** |
 
 Two facts shape everything below:
 
@@ -96,13 +96,15 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 **Already complete (do not redo):**
 T0 (sync), T1 (all usability defects, T1.17 and T1.18 closed on 2026-10-20), T2.3 (the interaction
 counter), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.5 (permalinks), T3.6 (the
-exported map names its session), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3
-(review packet), T6.7 (security suite), T6.8 (legend, help, and the mode announcements — the camera
-half is T6.18), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10
-(layout, levels, and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour
-extracted), T4.13 (theme and contrast extracted to the contract
-and the renderers), T6.17 (the code-diff vocabulary and
-renderer extracted; the host keeps its markup).
+exported map names its session), T3.7 (ladder), T3.8 (diff budget), T4.7 (edge accessibility decided
+and implemented), T4.8–T4.10 (layout, levels, and representations extracted to the library), T4.12
+(the scoped-subgraph overlay's scope and focus behaviour extracted), T4.13 (theme and contrast
+extracted to the contract and the renderers), T4.14 (the search, minimap and a11y cores are in the
+library; the framework bindings were dropped), T6.1 (provider-free demo), T6.3 (review packet), T6.7
+(security suite), T6.8 (legend, help, and the mode announcements — the camera half is T6.18), T6.16
+(demo index), T6.17 (the code-diff vocabulary and renderer extracted; the host keeps its markup),
+**T6.18 (the camera can be read back and jumped instantly), T6.19 (the zoom/pan matrix shows what its
+names say, and the gate proves it)**.
 
 **The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
 own framework. The React and Solid packages keep the `GraphView` binding they already had and nothing
@@ -903,13 +905,13 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
     fallback, the WCAG ratios, the failing roles, the custom targets, and the Cytoscape normalization.
 
 
-- [ ] **T4.14 Extract graph search/minimap/a11y to SpaceGraphJS packages**
+- [x] **T4.14 Extract graph search/minimap/a11y to SpaceGraphJS packages**
   - **Search:** `spacegraphjs/src/navigation/search.ts` — headless `search(model, query, fieldsFn?) => Node[]` where `fieldsFn: (node) => string[]` extracts searchable text (label, summary, tool name, path, command). React/Solid bindings: `GraphSearch` component with keyboard nav, ARIA, result list.
   - **Minimap:** `spacegraphjs/src/navigation/Minimap.ts` — headless `project(positions, bounds, viewport) => { dots, viewRect }` + SVG renderer. React/Solid bindings: `GraphMinimap` component with drag-to-pan, viewport sync.
   - **A11y:** `spacegraphjs/src/a11y/AccessibilityLayer.ts` (already exists) — extend with `edgeAnnouncer: (edges) => EdgeSummary[]` for edge announcement (T4.7). React/Solid bindings: `GraphA11y` component.
   Done when: OpenCode components wrap SpaceGraphJS primitives; each has library tests; T6.12 capability gallery includes all three.
   Verify: `cd spacegraphjs && vitest run test/search/ test/minimap/ test/a11y/`; OpenCode component tests pass
-  - **Half done (2026-10-20): the headless core and the host's use of it.** `spacegraphjs/src/navigation/search.ts`
+  - **Done (2026-10-20): the headless core and the host's use of it.** `spacegraphjs/src/navigation/search.ts`
     holds the headless `search(model, query, fieldsFn)`; `spacegraphjs/src/navigation/minimap.ts` holds the headless
     `project({ positions, box, padding, viewport })` — the scale, the Y flip, the centring, and the view rectangle. The
     a11y half was already in the library (`AccessibilityLayer`, T4.7).
@@ -1016,51 +1018,80 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
     the reason is in the plan: the contract has no viewport read-back, so "the camera did not glide"
     cannot be asserted from the host today.
 
-- [ ] **T6.18 Respect `prefers-reduced-motion` for the camera transitions**
+- [x] **T6.18 Respect `prefers-reduced-motion` for the camera transitions**
   The host must be able to say "jump, do not glide" when the reader asked for less motion.
   Done when: under the preference the camera reaches a node at once, and a test proves it.
   Verify: a component test that emulates the preference and asserts the camera's position.
-  - **What is already instant.** The fit never glides: the SpaceGraph adapter calls
-    `fitView(100, 0, …)` (duration 0), so the first frame and every *Fit to view* are a jump. The
-    Cytoscape adapter's `focus` (`cy.center`) is instant too. The depth treatment is a camera
-    parameter, not a tween.
-  - **The one animated transition left is `focus(id)`.** The adapter calls `sg.focusNode(id)`, whose
-    `flyTo` animates over a second. The host uses it for the search-result jump, the breadcrumb
-    framing, and the permalink frame. The host can jump instead — it knows the node's world position
-    from the layout, and the contract's `setViewport` is instant — but the *test* is the blocker.
-  - **The contract has no viewport read-back.** The SpaceGraph core has `getViewport()` (the camera
-    target and the zoom) and both adapters emit `viewportChange`, but `GraphRenderer` exposes
-    neither, so the host cannot assert where the camera is. This is also what broke the capture
-    harness (T6.19): the Storybook story calls `graphRenderer.getViewport?.()`, which is `undefined`
-    on both adapters.
-  - **So the work is two changes, in this order.** (1) Add `getViewport(): RendererViewport` to the
-    contract and implement it in both adapters (`SpaceGraph.getViewport()` and `cy.viewport()`), and
-    make `focus` resolve a *model* node id in the Cytoscape adapter. (2) Then the host can branch on
-    `matchMedia("(prefers-reduced-motion: reduce)")` and assert the camera is at the node
-    immediately, and still gliding without the preference. Doing (2) without (1) leaves an
-    unasserted branch; the plan prefers (1) first.
+  - **Done (2026-10-20).** The work was the two changes the plan named, in the order it named them.
+    (1) The contract grew a camera read-back: `GraphRenderer.getViewport?(): RendererViewport`. It is
+    **optional**, so the addition is not a breaking change to the interface and `CONTRACT_VERSION`
+    stays 2; a renderer that cannot report its camera leaves it undefined and a host reads that as
+    "no read-back", never as a broken camera. Both adapters implement it (SpaceGraph from
+    `sg.viewport`, Cytoscape from `cy.zoom()`/`cy.pan()`), and the Cytoscape adapter's
+    `viewportChange` event now *is* that read-back instead of a second copy of the same maths.
+    (2) The host branches on `matchMedia("(prefers-reduced-motion: reduce)")`: the camera **jumps**
+    to the node (the host knows its world position from the layout, and the contract's
+    `setViewport` is instant) instead of gliding (the renderer's `focus` animates for a second).
+    The jump keeps the zoom, so the reader lands on the node at the size they chose.
+  - **The proof is a component test that measures the flight.** `packages/session-graph/component-
+    tests/graph-motion.spec.ts` picks a node through the search and times how long the camera took
+    to reach it, on the page's own clock: under the preference the card is at the centre of the
+    canvas in well under 400 ms; without it the flight is over 500 ms. The test also asserts the
+    camera *moved* and kept its zoom, through the contract's new read-back.
+  - **The Cytoscape adapter's `focus` no longer centres nothing.** It resolves the host's model id
+    against the render model it was given and returns early for an unknown id, instead of asking
+    Cytoscape to centre an empty collection.
+  - **A permalink now frames its node when the hash changes, not only on load.** The frame used to
+    be a side effect of the next model application, so a hash change on an open graph did nothing.
+  - **The zoom readout stopped following the camera.** A zoom is the reader's own act, so it ends
+    the "fit is settling" window: before, a zoom inside the 120 ms settle window moved the 100%
+    reference with it and the readout stayed at 100% while the camera zoomed.
+  - **The zoom step is now a tenth of the fit, not a flat 0.08 of the normalized zoom.** The step is
+    the same at any fit, and the readout lands on whole tens (100 → 110 → … → 150). The old flat
+    step made one click a *doubling* of the magnification on the SpaceGraph backend, because that
+    zoom is logarithmic.
+  - Unverified: the jump was checked in Chromium at 1440×900, not with a real screen reader or on
+    a touch device; the reduced-motion preference is read at the moment of the camera move, so a
+    reader who changes the preference while the graph is open sees the new behaviour on the next
+    move, not immediately.
 
-- [ ] **T6.19 The capture matrix is not what its names say**
+- [x] **T6.19 The capture matrix is not what its names say**
   Frames 20–24 are presented as a zoom/pan matrix. Five of them are the same picture.
   Done when: every frame shows what its name says, regenerated and read by eye.
   Verify: the ten frames differ from each other; the capture diff reports no duplicates.
-  - **The evidence (2026-10-20).** `20-cytoscape-zoom-150.png`, `21-cytoscape-zoom-250.png`,
-    `22-cytoscape-turn-1.png`, `23-cytoscape-turn-2.png` and `24-cytoscape-failure-chain.png` are
-    **byte-identical** to `08-cytoscape-selected.png` (md5 `da5105633acc224eef21fcb228842e14`).
-    They are named as a zoom and pan matrix and they show one frame five times.
-  - **Why.** The Storybook capture harness's `zoomTo` reads `graphRenderer.getViewport?.()`, which is
-    `undefined` on both adapters (the contract has no read-back, T6.18), so it changes nothing; and
-    `panTo` calls `focus` with a *model* node id, which the Cytoscape adapter looks up in its own
-    element map and does not find. The app-side frames 22–24 have their own defect: the capture
-    selects a node through the dev harness and screenshots, but a selection does not move the
-    camera, and the comment's "and fit to frame it" is not in the code — so they show the fit with a
-    different node selected, not the node framed. The app-side zoom frames (20, 21) are real: they
-    click the toolbar's zoom control six and thirteen times.
-  - **Why nothing caught it.** The capture verification asserts that the committed files *exist*; it
-    does not compare them. A pixel-diff gate (T6.16) would have.
-  - **The fix is the same work as T6.18**, plus a regenerated set: give the host a camera it can
-    drive, make the app's dev harness and the Storybook harness use it, regenerate the ten frames,
-    and read them by eye. Until then the review packet must not present 20–24 as a zoom/pan matrix.
+  - **Done (2026-10-20), and the cause was smaller than the symptom.** The Storybook story passed
+    an `onRenderer` prop to `GraphView` — **which has no such prop** — so the harness never held a
+    renderer and its `zoomTo`/`panTo` were no-ops. The app-side frames used a dev harness whose
+    `zoomTo` was an empty function and whose `panTo` only selected a node; a selection does not
+    move a camera. And the node ids the harness used (`turn:msg_plan_1`, `turn:turn_1`) are not in
+    the fixture at all: a turn is opened by a *user* message, so the ids are `turn:msg_user_1` and
+    `turn:msg_user_2`.
+  - **Why nothing caught it.** The stories were excluded from the package's typecheck, so a prop
+    the component does not accept compiled fine. The stories are now **in** the typecheck
+    (`packages/session-graph/tsconfig.json` no longer excludes `**/*.stories.*`), and that surfaced
+    a second defect in the same file: a story exported as `export const Error` **shadowed the global
+    `Error`**, so the failing-adapter fixture rejected with a story object instead of an error. The
+    story is now `ErrorState` (the component test's mount id changed with it).
+  - **The frames are now driven the way a reader drives them.** The toolbar's zoom control and the
+    search dialog, on both backends, instead of a test-only camera API. The app's dev harness
+    (`__sessionGraphView`) is gone: it had no consumer left, and the capture no longer needs a seam
+    the product does not have.
+  - **The names are now true.** `20` reads exactly 150% (the step is a tenth of the fit, so five
+    clicks land on 150). `21` is the **closest zoom the renderer allows**, not "250%": the SpaceGraph
+    zoom is logarithmic over the fitted band, so its closest zoom reads 183% while the Cytoscape
+    zoom is linear and reads 250% — the same magnification, two readouts. The frame is therefore
+    named `21-*-zoom-max.png`, and `21-*-zoom-250.png` is gone. `22`/`23` centre the camera on the
+    first and second turn, `24` on the failing test run, at the closest zoom.
+  - **The gate now proves it.** `graph:capture --mode=verify` hashes the ten matrix frames and
+    fails when two are the same picture. It was checked by hand: copying one frame over another
+    makes the gate fail with the pair it found.
+  - **The frames are deterministic.** Two consecutive captures differ by RMSE 0.007 on the
+    transcript frames and 0 on the graph frames, except `21-graph-zoom-max.png` (0.057, antialiasing).
+    The old set was not: `04`, `13`, `14` and `17` had been captured *before* the renderer applied
+    the selected node's dimming, so they showed a half-dimmed map.
+  - **What the frames now show, read by eye:** `20` the whole session at 150%, `21` the same session
+    at the closest zoom, `22` the camera centred on the first turn (its card at the centre of the
+    canvas), `23` the same on the second turn, `24` the failing `bun test` run.
 
 **Library roadmap (independent of OpenCode decision):**
 
@@ -1147,7 +1178,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Boundaries | `cd spacegraphjs && bun run test:boundaries` | No core→contract/Cytoscape import |
 | All graph steps | `bun run graph:verify` | The canonical gate |
 | Captures | `bun run graph:capture --mode=compare` + manual inspection | Visual acceptance — **a deliberate refresh, not a per-change check** (it overwrites the committed set) |
-| Capture verify | `bun run graph:capture --mode=verify` | The routine gate: fresh renders into a temp dir, committed set asserted |
+| Capture verify | `bun run graph:capture --mode=verify` | The routine gate: fresh renders into a temp dir, committed set asserted, and **no two frames of the zoom/pan matrix are the same picture** (T6.19) |
 | Lint | `bun run lint:changed` | Changed files |
 | Repo check | `bun run check` | Canonical, but red for known environmental reasons; see T1.6 |
 | Provider-free demo | `bun run graph:dev` | T6.1 |
@@ -2034,4 +2065,78 @@ a second browser. The legend was read in the component test, not by a first-time
 user decodes the graph without a briefing" is still a claim, not a measurement. The capture set was
 **not** refreshed: the legend adds one toolbar button, which does not change the canvas at 1440×900,
 and the frames 20–24 are wrong for a reason that is not this change's fault (T6.19).
+
+**2026-10-20 — T6.18 and T6.19: the camera can be read back and jumped, and the zoom/pan matrix
+finally shows what its names say.** Two plan items closed, one contract addition, one capture refresh,
+and three defects the refresh exposed.
+
+*The contract grew a camera read-back.* `GraphRenderer.getViewport?(): RendererViewport` — optional,
+so the interface change is additive and `CONTRACT_VERSION` stays 2. Both adapters implement it, and
+the Cytoscape adapter's `viewportChange` event is now that read-back rather than a second copy of the
+same maths. The Cytoscape `focus` resolves the host's model id against the render model and returns
+early for an unknown id instead of asking Cytoscape to centre an empty collection.
+
+*The host jumps when the reader asked for less motion.* `GraphView` branches on
+`matchMedia("(prefers-reduced-motion: reduce)")`: the camera jumps to the node (the host knows its
+world position from the layout, and `setViewport` is instant) instead of gliding (the renderer's
+`focus` animates for a second). The jump keeps the zoom.
+
+*Two more defects, found on the way.* (a) The **zoom readout followed the camera**: a zoom is the
+reader's own act, so it now ends the "fit is settling" window — before, a zoom inside the 120 ms
+settle moved the 100% reference with it and the readout stayed at 100% while the camera zoomed.
+(b) The **zoom step was a flat 0.08 of the normalized zoom**, which on the SpaceGraph backend (a
+logarithmic zoom) made one click a *doubling* of the magnification. The step is now a tenth of the
+fit: the same step at any fit, and the readout lands on whole tens.
+
+*Why the capture matrix was one picture five times.* The Storybook story passed an `onRenderer` prop
+to `GraphView` — **which has no such prop** — so the harness never held a renderer and its
+`zoomTo`/`panTo` were no-ops. The app-side frames used a dev harness whose `zoomTo` was an empty
+function; its `panTo` only selected a node, and a selection does not move a camera. The node ids were
+bogus too (`turn:msg_plan_1`): a turn is opened by a *user* message, so the ids are `turn:msg_user_1`
+and `turn:msg_user_2`. **The stories were excluded from the package's typecheck**, so a prop the
+component does not accept compiled fine; they are now in it, and that immediately surfaced a second
+defect in the same file — a story exported as `export const Error` **shadowed the global `Error`**,
+so the failing-adapter fixture rejected with a story object instead of an error. The story is now
+`ErrorState`.
+
+*The frames are driven the way a reader drives them* — the toolbar's zoom control and the search
+dialog, on both backends — and the app's dev harness (`__sessionGraphView`) is gone: it had no
+consumer left. `20` reads exactly 150%. `21` is the **closest zoom the renderer allows**, not
+"250%": the SpaceGraph zoom is logarithmic over the fitted band, so its closest zoom reads 183%
+while the Cytoscape zoom is linear and reads 250% — the same magnification, two readouts — so the
+frame is `21-*-zoom-max.png` and `21-*-zoom-250.png` is gone. `22`/`23` centre the camera on the
+first and second turn, `24` on the failing `bun test` run.
+
+*The gate proves it.* `graph:capture --mode=verify` hashes the ten matrix frames and fails when two
+are the same picture; checked by hand (copying one frame over another fails the gate with the pair
+it found). The frames are also **deterministic now**: two consecutive captures differ by RMSE 0.007
+on the transcript frames and 0 on the graph frames, except `21-graph-zoom-max.png` (0.057,
+antialiasing). The old set was not: `04`, `13`, `14` and `17` had been captured *before* the renderer
+applied the selected node's dimming, so they showed a half-dimmed map.
+
+*The proof of the reduced-motion branch is a component test that times the flight.*
+`packages/session-graph/component-tests/graph-motion.spec.ts` picks a node through the search and
+times how long the camera took to reach it on the page's own clock: under the preference the card is
+at the centre of the canvas in well under 400 ms, without it the flight is over 500 ms. It also
+asserts the camera moved and kept its zoom, through the contract's new read-back.
+
+Commands run: `bun run typecheck` in `packages/session-ui`, `packages/session-graph` and
+`packages/app` (clean), `bun test src/graph` in `packages/session-ui` (81 pass), `bun test src` in
+`packages/session-graph` (94 pass), `bun run test:components` in `packages/session-graph` (42 pass, 2
+new), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (20 pass),
+`bun run graph:capture --mode=compare` (the set refreshed and read by eye),
+`bun run graph:capture --mode=verify` (passes, and fails on a deliberately duplicated frame),
+`bun run graph:verify` (all steps, including the library build and the publish check),
+`bun run lint:changed` (0), `vitest run` in `spacegraphjs` (438 pass, 1 new),
+`tsc --noEmit` in `spacegraphjs` (0 errors).
+
+Unverified: the jump was checked in Chromium at 1440×900, not with a screen reader or on a touch
+device; the reduced-motion preference is read at the moment of the camera move, so a reader who
+changes it while the graph is open sees the new behaviour on the next move. The frames were read by
+eye, not by a reviewer who did not write them. The zoom readouts of the two backends differ at the
+same magnification (183% against 250%) — documented, not reconciled: reconciling them would mean the
+contract's zoom carries a magnification ratio rather than a renderer-local scale, which is a contract
+change of its own (T6.10). **T2.1 and T2.2 still need participants**, so the stop rule in T2.5 has
+not fired.
+
 

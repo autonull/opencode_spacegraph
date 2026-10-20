@@ -128,6 +128,12 @@ en-US, reduced motion, clock-free fixture):
 | `17-graph-files.png` | file-first lens: changed-files rail + bundled provenance (LE.12/LE.13) |
 | `18-graph-layered.png` | `layered` 2.5D depth treatment (LE.14) |
 | `19-graph-depth-stack.png` | `depth-stack` depth treatment (LE.14/LE.16) |
+| `20-graph-zoom-150.png` | camera at 150% of the fit |
+| `21-graph-zoom-max.png` | the closest zoom the renderer allows |
+| `22-graph-turn-1.png` | camera centred on the first turn |
+| `23-graph-turn-2.png` | camera centred on the second turn |
+| `24-graph-failure-chain.png` | the failing test run, at the closest zoom |
+| `20`–`24-cytoscape-*.png` | the same five frames over the Cytoscape adapter |
 
 `02`/`03`/`04` come from the app's routed session (`packages/app/e2e/graph/capture.spec.ts`); `07`/`08`
 come from the Storybook story (`packages/session-graph/component-tests/graph-capture.spec.ts`) because
@@ -154,11 +160,14 @@ camera/fog treatment over the node-link layout's Z (the summaries place every no
 | | `orbit` | `06` |
 | Lens | files rail + bundled provenance | `17` |
 | Context | narrow 390×900 / light scheme | `13` / `14` |
+| Camera | 150% of fit / closest zoom | `20` / `21` |
+| Camera | centred on turn 1 / turn 2 / the failed run | `22` / `23` / `24` |
 
 `graph:capture --mode=compare` regenerates this matrix (the app frames plus the Cytoscape story) and
-`--mode=verify` asserts the committed set exists. The depth modes are captured at the compact lanes
-framing, where the fog cue is legible; on a tall layout the absolute-distance fog over-attenuates
-distant content (see known limitation 17).
+`--mode=verify` asserts the committed set exists **and that no two frames of the zoom/pan matrix are
+the same picture** (T6.19: five of the ten used to be one picture under five names). The depth modes
+are captured at the compact lanes framing, where the fog cue is legible; on a tall layout the
+absolute-distance fog over-attenuates distant content (see known limitation 17).
 
 ## Visual checklist (T1.7)
 
@@ -172,7 +181,7 @@ Every capture batch must be inspected against this checklist before committing:
 - [ ] **Light and dark:** Both color schemes render correctly with sufficient contrast (≥ 3:1 for non-text, ≥ 4.5:1 for text).
 - [ ] **Selection visible:** The selected node is visible on the canvas, or the UI explains why it is hidden and offers a way to reveal it.
 - [ ] **Breadcrumbs coherent:** Every selected node kind has a meaningful breadcrumb path (provenance for files: Session → turn → file).
-- [ ] **Camera zoom safe:** Fit, ~1.5×, and ~2.5× are all legible and pannable; max zoom is not blank; zoom readout shows percentage.
+- [ ] **Camera zoom safe:** Fit, 150%, and the closest zoom are all legible and pannable; the closest zoom is not blank; the zoom readout shows a percentage.
 
 This checklist is applied by `graph:capture --mode=compare` (manual inspection) and recorded in the log.
 

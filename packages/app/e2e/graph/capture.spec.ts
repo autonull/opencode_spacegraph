@@ -110,29 +110,77 @@ async function fit(page: Page) {
   if (compact) await overflow.getByLabel("More controls").click()
 }
 
-async function zoomIn(page: Page, clicks: number) {
+async function zoomPercent(page: Page) {
+  const text = await page.locator('[data-slot="graph-zoom-level"]').textContent()
+
+  return Number.parseInt((text ?? "0").replace("%", ""), 10)
+}
+
+async function clickZoom(page: Page, label: "Zoom in" | "Zoom out") {
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
   const compact = (await overflow.count()) > 0
 
   if (compact) await overflow.getByLabel("More controls").click()
-  const zoomInBtn = page.locator(toolbar).getByRole("button", { name: "Zoom in", exact: true })
-
-  for (let i = 0; i < clicks; i++) {
-    await zoomInBtn.click()
-    await page.waitForTimeout(50) // small delay for zoom animation
-  }
+  await page.locator(toolbar).getByRole("button", { name: label, exact: true }).click()
 
   if (compact) await overflow.getByLabel("More controls").click()
 }
 
-async function selectViaHarness(page: Page, nodeId: string) {
-  await page.evaluate((id) => {
-    // SAFETY: __sessionGraphView is set by SessionGraphView in dev mode only
-    const w = window as { __sessionGraphView?: { select: (id: string) => void } }
-    const harness = w.__sessionGraphView
-    harness?.select(id)
-  }, nodeId)
-  await fit(page)
+async function zoomEnabled(page: Page, label: "Zoom in" | "Zoom out") {
+  const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
+  const compact = (await overflow.count()) > 0
+
+  if (compact) await overflow.getByLabel("More controls").click()
+  const enabled = await page.locator(toolbar).getByRole("button", { name: label, exact: true }).isEnabled()
+
+  if (compact) await overflow.getByLabel("More controls").click()
+
+  return enabled
+}
+
+// The toolbar steps a tenth of the fit, so the readout lands within one step of the target.
+async function zoomToPercent(page: Page, target: number) {
+  for (let step = 0; step < 60; step += 1) {
+    const current = await zoomPercent(page)
+
+    if (Math.abs(current - target) <= 4) return current
+
+    const label = current < target ? "Zoom in" : "Zoom out"
+
+    if (!(await zoomEnabled(page, label))) return current
+
+    await clickZoom(page, label)
+  }
+
+  throw new Error(`graph:capture: the camera never reached ${target}%`)
+}
+
+// The closest zoom the renderer allows. The readout's scale differs per backend (the SpaceGraph
+// zoom is logarithmic, the Cytoscape one linear), but both stop at the same magnification.
+async function zoomToMax(page: Page) {
+  let previous = await zoomPercent(page)
+
+  for (let step = 0; step < 60; step += 1) {
+    if (!(await zoomEnabled(page, "Zoom in"))) return previous
+
+    await clickZoom(page, "Zoom in")
+
+    const current = await zoomPercent(page)
+
+    if (current === previous) return current
+    previous = current
+  }
+
+  throw new Error("graph:capture: the camera never reached its maximum zoom")
+}
+
+// The search is the reader's own way of moving the camera: picking a result selects the node and
+// centres the camera on it.
+async function focusNode(page: Page, nodeId: string, query: string) {
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  const search = page.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("combobox").fill(query)
+  await search.locator(`[data-node-id="${nodeId}"]`).click()
   await waitForStillCanvas(page)
 }
 
@@ -246,28 +294,32 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await page.locator(toolbar).getByRole("button", { name: "Graph", exact: true }).click()
   await page.locator(toolbar).getByRole("button", { name: "Lanes", exact: true }).click()
 
-  // 20 — camera zoom ~1.5× fit (150%). The toolbar zoom steps by ~8%; 6 clicks from 100% ≈ 148%.
+  // 20 — camera zoom at 150% of the fit. The toolbar steps a tenth of the fit, so the readout is 150%.
   await fit(page)
   await waitForStillCanvas(page)
-  await zoomIn(page, 6)
+  await zoomToPercent(page, 150)
   await waitForStillCanvas(page)
   await capture(page, "20-graph-zoom-150.png")
 
-  // 21 — camera zoom ~2.5× fit (250%). Additional 13 clicks from 150% ≈ 254%.
-  await zoomIn(page, 13)
+  // 21 — the closest zoom the renderer allows.
+  await zoomToMax(page)
   await waitForStillCanvas(page)
-  await capture(page, "21-graph-zoom-250.png")
+  await capture(page, "21-graph-zoom-max.png")
 
-  // 22 — pan to turn 1 (first turn with tool calls). Select the turn and fit to frame it.
-  await selectViaHarness(page, "turn:msg_plan_1")
+  // 22 — the camera centred on the first turn, read at the 150% zoom.
+  await fit(page)
+  await waitForStillCanvas(page)
+  await zoomToPercent(page, 150)
+  await focusNode(page, "turn:msg_user_1", "authentication test failures")
   await capture(page, "22-graph-turn-1.png")
 
-  // 23 — pan to turn 2 (recovery turn). Select the turn and fit to frame it.
-  await selectViaHarness(page, "turn:msg_recovery_1")
+  // 23 — the camera centred on the second turn.
+  await focusNode(page, "turn:msg_user_2", "cover the refresh path")
   await capture(page, "23-graph-turn-2.png")
 
-  // 24 — detail frame centred on the failure chain. Select a failed tool and fit.
-  await selectViaHarness(page, "tool:prt_tool_shell_2")
+  // 24 — the failure chain: the failing test run, read at the closest zoom.
+  await zoomToMax(page)
+  await focusNode(page, "tool:prt_tool_shell_2", "FAIL auth refresh token")
   await capture(page, "24-graph-failure-chain.png")
 
   // 17 — the file-first lens (LE.12): the changed-files rail with provenance bundled to turn spines.

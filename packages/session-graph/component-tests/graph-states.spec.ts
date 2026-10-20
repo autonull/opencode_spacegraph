@@ -26,7 +26,7 @@ story("shows a recoverable error state when no renderer can mount", async ({ mou
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view--error")
+  const root = await mount("session-graph-view--error-state")
 
   const error = root.locator('[data-slot="graph-error"]')
   await expect(error).toBeVisible({ timeout: 30_000 })

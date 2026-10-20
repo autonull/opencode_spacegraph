@@ -10,6 +10,7 @@
 // The SpaceGraph frames come from the app's own mocked-server harness; the Cytoscape frames come from
 // its Storybook story, because the app has no renderer switch yet (see the plan's V5.4 note).
 import { $ } from "bun"
+import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { mkdtemp } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -70,12 +71,12 @@ if (mode === "verify") {
     "18-graph-layered.png",
     "19-graph-depth-stack.png",
     "20-graph-zoom-150.png",
-    "21-graph-zoom-250.png",
+    "21-graph-zoom-max.png",
     "22-graph-turn-1.png",
     "23-graph-turn-2.png",
     "24-graph-failure-chain.png",
     "20-cytoscape-zoom-150.png",
-    "21-cytoscape-zoom-250.png",
+    "21-cytoscape-zoom-max.png",
     "22-cytoscape-turn-1.png",
     "23-cytoscape-turn-2.png",
     "24-cytoscape-failure-chain.png",
@@ -84,6 +85,24 @@ if (mode === "verify") {
 
   if (missing.length) {
     console.error(`graph:capture: committed screenshots missing: ${missing.join(", ")}`)
+    process.exit(1)
+  }
+
+  // T6.19: the zoom/pan matrix is ten frames of ten different pictures. Five of them used to be one
+  // picture under five names, and nothing caught it because the gate only asserted that the files
+  // existed. A duplicate now fails the gate.
+  const matrix = expected.filter((name) => /^(2[0-4])-/.test(name))
+  const hashes = new Map<string, string[]>()
+  for (const name of matrix) {
+    const hash = createHash("sha256")
+      .update(new Uint8Array(await Bun.file(join(screenshots, name)).arrayBuffer()))
+      .digest("hex")
+    hashes.set(hash, [...(hashes.get(hash) ?? []), name])
+  }
+  const duplicates = [...hashes.values()].filter((names) => names.length > 1)
+
+  if (duplicates.length) {
+    console.error(`graph:capture: the capture matrix repeats a frame: ${duplicates.map((names) => names.join(" = ")).join(", ")}`)
     process.exit(1)
   }
 

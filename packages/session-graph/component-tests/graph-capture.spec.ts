@@ -5,14 +5,14 @@ import { expect, story } from "../../storybook/playwright/story"
 // The Cytoscape half of the Phase 5 capture (V5.4). The app has no renderer switch, so the second
 // backend is captured through its Storybook story over the same canonical fixture. Writes only when
 // GRAPH_CAPTURE_DIR is set, exactly like the app-side `capture.spec.ts`.
+//
+// The camera is driven the way a reader drives it — the toolbar's zoom control and the search — so
+// the frames show what their names say on both backends (T6.19).
 
 const captureDir = process.env.GRAPH_CAPTURE_DIR
 
 type Harness = {
   select: (id: string | undefined) => void
-  zoomTo: (percent: number) => void
-  panTo: (nodeId: string) => void
-  getViewport: () => { zoom: number; center: number[] } | undefined
 }
 
 story.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })
@@ -43,19 +43,55 @@ async function waitForStillCanvas(page: import("@playwright/test").Page) {
     .toBe(true)
 }
 
-async function zoomTo(page: import("@playwright/test").Page, percent: number) {
-  await page.evaluate((p) => {
-    const harness = (window as unknown as { __graphView?: Harness }).__graphView
-    harness?.zoomTo(p)
-  }, percent)
-  await waitForStillCanvas(page)
+async function zoomPercent(page: import("@playwright/test").Page, root: import("@playwright/test").Locator) {
+  const text = await root.locator('[data-slot="graph-zoom-level"]').textContent()
+  return Number.parseInt((text ?? "0").replace("%", ""), 10)
 }
 
-async function panTo(page: import("@playwright/test").Page, nodeId: string) {
-  await page.evaluate((id) => {
-    const harness = (window as unknown as { __graphView?: Harness }).__graphView
-    harness?.panTo(id)
-  }, nodeId)
+// The toolbar steps a tenth of the fit, so the readout lands within one step of the target.
+async function zoomToPercent(
+  page: import("@playwright/test").Page,
+  root: import("@playwright/test").Locator,
+  target: number,
+) {
+  for (let step = 0; step < 60; step += 1) {
+    const current = await zoomPercent(page, root)
+    if (Math.abs(current - target) <= 4) return current
+    const button = root.getByRole("button", { name: current < target ? "Zoom in" : "Zoom out", exact: true })
+    if (!(await button.isEnabled())) return current
+    await button.click()
+  }
+
+  throw new Error(`graph:capture: the camera never reached ${target}%`)
+}
+
+// The closest zoom the renderer allows.
+async function zoomToMax(page: import("@playwright/test").Page, root: import("@playwright/test").Locator) {
+  let previous = await zoomPercent(page, root)
+  const zoomIn = root.getByRole("button", { name: "Zoom in", exact: true })
+
+  for (let step = 0; step < 60; step += 1) {
+    if (!(await zoomIn.isEnabled())) return previous
+    await zoomIn.click()
+    const current = await zoomPercent(page, root)
+    if (current === previous) return current
+    previous = current
+  }
+
+  throw new Error("graph:capture: the camera never reached its maximum zoom")
+}
+
+// Picking a search result selects the node and centres the camera on it.
+async function focusNode(
+  page: import("@playwright/test").Page,
+  root: import("@playwright/test").Locator,
+  nodeId: string,
+  query: string,
+) {
+  await root.getByRole("button", { name: "Search the graph" }).click()
+  const search = root.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("combobox").fill(query)
+  await search.locator(`[data-node-id="${nodeId}"]`).click()
   await waitForStillCanvas(page)
 }
 
@@ -79,24 +115,30 @@ story("captures the Cytoscape adapter over the canonical fixture", async ({ moun
   await root.getByRole("button", { name: "Fit to view", exact: true }).click()
   await capture(page, "08-cytoscape-selected.png")
 
-  // 20 — camera zoom ~1.5× fit (150%)
-  await zoomTo(page, 150)
+  // 20 — camera zoom at 150% of the fit. The toolbar steps a tenth of the fit, so the readout is 150%.
+  await root.getByRole("button", { name: "Fit to view", exact: true }).click()
+  await zoomToPercent(page, root, 150)
+  await waitForStillCanvas(page)
   await capture(page, "20-cytoscape-zoom-150.png")
 
-  // 21 — camera zoom ~2.5× fit (250%)
-  await zoomTo(page, 250)
-  await capture(page, "21-cytoscape-zoom-250.png")
+  // 21 — the closest zoom the renderer allows.
+  await zoomToMax(page, root)
+  await waitForStillCanvas(page)
+  await capture(page, "21-cytoscape-zoom-max.png")
 
-  // 22 — pan to turn 1
-  await panTo(page, "turn:turn_1")
+  // 22 — the camera centred on the first turn, read at the 150% zoom.
+  await root.getByRole("button", { name: "Fit to view", exact: true }).click()
+  await zoomToPercent(page, root, 150)
+  await focusNode(page, root, "turn:msg_user_1", "authentication test failures")
   await capture(page, "22-cytoscape-turn-1.png")
 
-  // 23 — pan to turn 2
-  await panTo(page, "turn:turn_2")
+  // 23 — the camera centred on the second turn.
+  await focusNode(page, root, "turn:msg_user_2", "cover the refresh path")
   await capture(page, "23-cytoscape-turn-2.png")
 
-  // 24 — detail frame centred on the failure chain (failed tool)
-  await panTo(page, "tool:prt_tool_shell_2")
+  // 24 — the failure chain: the failing test run, read at the closest zoom.
+  await zoomToMax(page, root)
+  await focusNode(page, root, "tool:prt_tool_shell_2", "FAIL auth refresh token")
   await capture(page, "24-cytoscape-failure-chain.png")
 
   expect(errors).toEqual([])

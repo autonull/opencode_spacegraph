@@ -4,6 +4,8 @@ type CytoscapeGlobal = {
   __sessionGraphCytoscape?: {
     setSelection: (ids: string[]) => void
     setProjection: (projection: string) => void
+    setViewport: (viewport: { zoom: number; center: [number, number, number] }) => void
+    getViewport: () => { zoom: number; center: [number, number, number] } | undefined
     fit: (ids?: string[]) => void
     dispose: () => void
   }
@@ -33,6 +35,16 @@ story("mounts the Cytoscape adapter behind the renderer contract", async ({ moun
   await page.evaluate(() => (window as unknown as CytoscapeGlobal).__sessionGraphCytoscape!.setProjection("3d"))
   await page.evaluate(() => (window as unknown as CytoscapeGlobal).__sessionGraphCytoscape!.setSelection(["card-1", "dot-2"]))
   await page.evaluate(() => (window as unknown as CytoscapeGlobal).__sessionGraphCytoscape!.fit(["card-1", "dot-1"]))
+
+  // The camera is readable back, so a host can place it exactly (T6.18).
+  const viewport = await page.evaluate(() => {
+    const renderer = (window as unknown as CytoscapeGlobal).__sessionGraphCytoscape!
+    renderer.setViewport({ zoom: 1.5, center: [120, 80, 0] })
+    return renderer.getViewport()
+  })
+  expect(viewport?.zoom).toBeCloseTo(1.5, 3)
+  expect(viewport?.center[0]).toBeCloseTo(120, 0)
+  expect(viewport?.center[1]).toBeCloseTo(80, 0)
 
   await host.evaluate((element) => {
     ;(element as HTMLElement).style.height = "320px"
