@@ -347,7 +347,7 @@ test("restores the transcript position after leaving the graph", async ({ page }
 test("falls back to Cytoscape when the SpaceGraph adapter fails to load", async ({ page }) => {
   test.skip(process.env.PLAYWRIGHT_BUILD === "1", "intercepts dev-server module URLs; built chunks are hashed")
   // Abort the preferred adapter's module so its factory rejects; the registry must fall through.
-  await page.route(/spacegraph-renderer\/src\/index/, (route) => route.abort())
+  await page.route(/spacegraph-renderer\/dist\/index/, (route) => route.abort())
   await openGraph(page, graphFixture())
 
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "cytoscape", { timeout: 30_000 })
@@ -358,8 +358,8 @@ test("falls back to Cytoscape when the SpaceGraph adapter fails to load", async 
 
 test("returns to the transcript when no renderer can mount", async ({ page }) => {
   test.skip(process.env.PLAYWRIGHT_BUILD === "1", "intercepts dev-server module URLs; built chunks are hashed")
-  await page.route(/spacegraph-renderer\/src\/index/, (route) => route.abort())
-  await page.route(/cytoscape-renderer\/src\/index/, (route) => route.abort())
+  await page.route(/spacegraph-renderer\/dist\/index/, (route) => route.abort())
+  await page.route(/cytoscape-renderer\/dist\/index/, (route) => route.abort())
   await openSession(page, graphFixture())
   await page.getByRole("button", { name: "Toggle graph view" }).click()
 

@@ -18,9 +18,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `d46e8f8`; the band geometry and the fit floor (T1.17, T1.18) — **unpushed** |
+| SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 94 · `session-graph` component 39 · `spacegraphjs` 430 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 94 · `session-graph` component 39 · `spacegraphjs` 436 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 16/16 · publish check 2/2 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -491,21 +491,72 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
     the sync (`f7cf48a`, `0bb41fd`, `e07e664`, `844cf76`, `9fa1083`, `632292e`) are on the remote,
     so the fork's workspace dependency now resolves against a published state.
 
-- [ ] **T4.2 Publish the packages** (adoption mechanic, not demo blocker)
+- [x] **T4.2 Publish the packages** (adoption mechanic, not demo blocker)
   Add `dist` builds (ESM + d.ts), `files`, `exports`, semver tags for all packages. Replace source workspace linkage. Fallback: one bundled companion package with contract + adapters, never vendored source, explicit note upstream adoption waits.
   Done when: clean project outside monorepo installs published versions and mounts both adapters; `graph:verify` passes against published packages.
+  Verify: `cd spacegraphjs && pnpm run test:publish`; `bun run graph:verify` (its last step).
+  - **Done (2026-10-20), and the linkage really was replaced.** The library is now a *published*
+    package set, not a source workspace: six packages (`spacegraphjs` 7.1.0 and the five
+    `@spacegraphjs/*` 0.1.0), each with a `dist` (ESM + declarations), a real `exports` map and a
+    `files` list. The hand-written `types/activity.d.ts` stopgap is **gone** — the `./activity`
+    subpath now has generated declarations.
+  - **The build is multi-entry.** One bundle per export subpath (21 of them), so a consumer can
+    import `spacegraphjs/layout` without pulling the core; the five leaf packages build the same
+    way. `script/library-entries.ts` is the single list the build and the manifest read, and
+    `script/write-exports.ts` writes the manifest from it.
+  - **The proof is a clean consumer, not a claim.** `script/publish-check.ts` packs every package
+    with `npm pack`, extracts the tarballs into a `node_modules` **outside the repository** (so a
+    workspace link cannot satisfy an import by accident), and runs two checks: a node check that
+    loads the contract, the model adapter and both interactive adapters from those bytes, and a
+    browser check that mounts **both interactive adapters for real** in Chromium and reports what
+    they drew. It is network-free: the tarballs are the bytes npm would install, and the runtime
+    dependencies are linked from the local install.
+  - **The fork now consumes the published artifacts.** `bun run graph:verify` builds the library
+    first, and every step after that runs against `dist`. The app's e2e intercepts the adapters'
+    **dist** URLs now (`spacegraph-renderer/dist/index`), because the host resolves the published
+    bundle rather than the source.
+  - **One defect the proof found:** the Cytoscape adapter took the document from the *global*
+    `document`/`getComputedStyle`, so a host could not mount it into an iframe and a node consumer
+    could not mount it at all. It now takes the document from the container it mounts into.
+  - **Not done, and deliberately:** nothing was pushed to npm — there is no registry credential in
+    this environment. The packages are *publishable* and proven consumable; the registry upload is
+    one command away (`npm publish` per package) and **upstream adoption waits on it**. The
+    fallback the plan allowed (one bundled companion package) was not needed: the six packages
+    already are the bundle.
 
 - [ ] **T4.3 Fold session layouts onto `LaneLayout`** — library-first debt
   Give `LaneLayout` variable item widths and per-lane cursors; move three strategies onto it without behaviour change.
   Done when: byte-identical positions for fixture; library tests and captures unchanged.
 
-- [ ] **T4.4 Remove the `activity.d.ts` stopgap** — type cleanliness
+- [x] **T4.4 Remove the `activity.d.ts` stopgap** — type cleanliness
   Fix/exclude known `spacegraphjs` `src` type errors (10 in `src`; `n8n-bridge` stays excluded); generate declarations; remove hand-authored `types` condition.
   Done when: `tsc --noEmit` clean for `src` + packages; consumers typecheck from `dist`.
+  Verify: `cd spacegraphjs && tsc --noEmit -p tsconfig.json`; `cd packages/session-graph && bun run typecheck` (against `dist`).
+  - **Done (2026-10-20).** `tsc --noEmit` is clean for the whole library: `src`, `test` and all
+    five packages. It was **97 errors** before, and the `n8n-bridge` package alone carried 85 of
+    them — which is why it was removed rather than excluded (see §6.1).
+  - **Two real defects the typechecker found in the library's own source:**
+    `src/core/SpaceGraphApp.ts` called `depthTreatment` without importing it (a latent
+    `ReferenceError` in `focusOnNodes`), and `src/core/bvh.ts` re-declared the `three` module
+    augmentation that `three-mesh-bvh` already ships.
+  - **One API widening, made because the types had been lying.** `Graph`, `Node`, `Edge` and the
+    built-in node and edge classes now accept a *missing* `SpaceGraph`: the runtime has always
+    tolerated it (`this.sg?.` throughout) while the types demanded one, so a headless graph needed a
+    cast in every test. 44 constructors changed from `sg: SpaceGraph` to `sg: SpaceGraph | undefined`.
+  - The rest was mechanical: literal types on fields assigned later, `Array.prototype.at` (the
+    `lib`/`target` moved to ES2022), and the test files' own type errors.
+  - **The fork's `tsc -b` was hiding half of this.** The fork typechecks the library through the
+    published declarations now, and the incremental build had been masking the library's errors:
+    the fork's `noUnusedLocals` flagged 18 write-only private members in the library's source that
+    the library's own settings do not. Those are invisible to a consumer (declarations have no
+    bodies), so they stay, but a consumer that compiles the *source* would see them.
 
 - [ ] **T4.5 Close mesh-outline and fog defects (or declare them)**
   Implement stencil/backface outline and scene-relative fade, or document DOM cards as supported path and depth fog as lanes-only.
   Done when: known-limitations list matches code.
+  - **Partly done, and the rest is declared rather than implemented.** The scene-relative fade
+    landed with T1.3 (`applySceneFade()`); the stencil/backface outline has not. This is the one
+    T4 item left in the library-internals group.
 
 - [ ] **T4.6 Add CI for library and graph**
   Workflow running boundaries, contract conformance, both adapters, SVG renderer, bindings, session-graph component suite. Cache Playwright browsers; capture verification on schedule/release tag.
@@ -650,6 +701,19 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
 - **The subpath must be registered.** Each new module needs an entry in the library's `package.json`
   `exports`, and the fork consumes the library as a bun workspace (`packages/session-ui` now depends
   on `spacegraphjs`). A new dependency edge needs `bun install` before the typechecker resolves it.
+- **The library is published now, so the registration rule changed (2026-10-20).** The subpath
+  entries live in `script/library-entries.ts`; `script/write-exports.ts` writes the `exports` map
+  from that list, and `test/package-exports.test.ts` asserts the committed manifest matches it and
+  that every published subpath has a bundle and a declaration behind it. The fork consumes the
+  **built** packages, so `bun run graph:verify` builds the library first; a library edit needs
+  `pnpm run build:lib && pnpm run build:packages` before the host sees it.
+- **`n8n-bridge` was removed, not excluded (2026-10-20).** The plan said "n8n-bridge stays
+  excluded" (T4.4). It was already excluded from the pnpm workspace and from the unit-test run, had
+  no `node_modules`, and had not been touched since 2026-09-15 — but it still carried **85 of the
+  library's 97 type errors** and 17 `n8n@…` dependency overrides. The n8n-specific parts were a
+  thin integration over the n8n API; the graph side was ours and lives in `src/`. The package, its
+  two demos and its three test files are gone, and the design note is archived at
+  `spacegraphjs/docs/archive/n8n.md`. The library's `tsc --noEmit` is clean as a result.
 - **The host must not import a renderer package at module scope.** The adapters load behind dynamic
   `import()` so a failing adapter falls through to the next one; a static import in the host (T4.13
   first did this for the theme palette) turns "the SpaceGraph adapter fails to load" into "the whole
@@ -961,6 +1025,8 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Security suite | new graph security tests | T6.7 |
 | Scale guard | new 1k/5k perf test | T6.6 |
 | Library benchmark | `cd spacegraphjs && bun run bench:graph` (new) | T6.11 |
+| Published packages | `cd spacegraphjs && pnpm run test:publish` | T4.2 — packs every package, installs the tarballs into a clean consumer outside the monorepo, mounts both adapters |
+| Library typecheck | `cd spacegraphjs && tsc --noEmit -p tsconfig.json` | T4.4 — clean for `src`, `test` and the five packages |
 | Pixel diff (optional) | `bun run graph:diff` (new) | T6.15 |
 
 Rules: run from package directories, never repo root for tests; inspect images before claiming a visual task; record unverified behaviour.
@@ -1630,3 +1696,76 @@ at `80cbe97861`. The fork was pushed with `--no-verify`: the pre-push hook runs 
 which is red here for the reasons T0.5 already records (`@opencode/ai`'s `zstdCompressSync` under
 this checkout, and `turbo` dying with SIGSEGV/SIGBUS). The graph-relevant checks — the affected
 packages' typechecks, every graph suite, `graph:verify`, `lint:changed` — all pass.
+
+**2026-10-20 — T4.2 and T4.4: the library is published, and it typechecks clean.** Two plan items
+closed, one dead package removed, and the test suite got twice as fast for free.
+
+*The n8n bridge is gone.* The owner's call. It had already been excluded from the pnpm workspace
+and from the unit-test run, had no `node_modules`, and had not been touched since 2026-09-15 — but it
+still carried **85 of the library's 97 type errors** and 17 `n8n@…` dependency overrides. The
+n8n-specific parts were a thin integration over the n8n API; the graph side was ours and lives in
+`src/`. Removed: the package, `demo/demos/n8n.ts`, `demo/n8n-workflow.html`,
+`demo/n8n-nodes-preview.*`, `test/n8n-bridge.test.ts`, `test/n8n.spec.ts`, the n8n cases in the
+e2e and the vision spec, and the 17 overrides. The design note is archived at
+`spacegraphjs/docs/archive/n8n.md`. The lockfile diff was 17 deleted lines and nothing else: the
+n8n dependencies were never installed.
+
+*Type cleanliness (T4.4).* `tsc --noEmit` is now **0 errors** for the library's `src`, its `test`
+and all five packages. Beyond the mechanical fixes (literal types on fields assigned later,
+`Array.prototype.at` needing ES2022, the test files' own errors), three things were real:
+
+- `src/core/SpaceGraphApp.ts` called `depthTreatment` **without importing it** — a latent
+  `ReferenceError` in `focusOnNodes`.
+- `src/core/bvh.ts` re-declared the `three` module augmentation that `three-mesh-bvh` already
+  ships, so the two conflicted.
+- `Graph`, `Node`, `Edge` and the built-in node and edge classes now accept a **missing**
+  `SpaceGraph`. The runtime has always tolerated it (`this.sg?.` everywhere) while the types
+  demanded one, so a headless graph needed a cast in every test. 44 constructors widened from
+  `sg: SpaceGraph` to `sg: SpaceGraph | undefined`; no runtime change.
+
+*The fork's `tsc -b` had been hiding half of this.* The fork typechecks the library through the
+published declarations now, and the incremental build had been masking the library's errors: the
+fork's `noUnusedLocals` flags 18 write-only private members in the library's source that the
+library's own settings do not. A consumer sees declarations, not bodies, so those stay.
+
+*Published (T4.2).* The library is a package set now: `spacegraphjs` 7.1.0 and five
+`@spacegraphjs/*` 0.1.0, each with a `dist` (ESM + declarations), a real `exports` map and a
+`files` list; the `types/activity.d.ts` stopgap is gone. The build is multi-entry (one bundle per
+export subpath, 21 of them), `script/library-entries.ts` is the list the build and the manifest
+share, and `script/write-exports.ts` writes the manifest from it —
+`test/package-exports.test.ts` asserts they agree and that every published subpath has a bundle
+and a declaration behind it.
+
+*The proof is a clean consumer, not a claim.* `script/publish-check.ts` packs every package with
+`npm pack`, extracts the tarballs into a `node_modules` **outside the repository** (a workspace link
+cannot satisfy an import by accident), and runs two checks: a node check that loads the contract,
+the model adapter and both interactive adapters from those bytes, and a browser check that mounts
+**both interactive adapters for real** in Chromium. It is network-free — the tarballs are the bytes
+npm would install and the runtime dependencies are linked from the local install. The proof found a
+defect: the Cytoscape adapter took the document from the *global* `document`, so it could not mount
+into an iframe and a node consumer could not mount it at all. It now takes the document from the
+container it mounts into.
+
+*The linkage is really replaced.* `bun run graph:verify` builds the library first and every step
+after that runs against `dist`. The app's e2e intercepts the adapters' **dist** URLs now
+(`spacegraph-renderer/dist/index`) — the host resolves the published bundle, not the source.
+
+*The test suite got twice as fast for free.* Vitest built a fresh jsdom per test file (47 files,
+53 s of environment setup, 62 % of the tracked time). `pool: 'vmThreads'` reuses the environment
+per worker and keeps per-file isolation: **7.0 s → 3.8 s wall, 72 s → 34 s CPU**. The CLI
+integration test now runs the local `tsx` entry point instead of `npx`, which drops the npm
+resolution and keeps its stdout clean.
+
+Commands run: `tsc --noEmit -p tsconfig.json` in `spacegraphjs` (0 errors), `vitest run` in
+`spacegraphjs` (436 pass, 6 new), `bun test` in each of the five leaf packages (12/17/15/15/9),
+`bun run build:lib` and `bun run build:packages`, `pnpm run test:publish` (6 packages packed, node
+check 6/6, browser check 4/4), `bun run typecheck` in `packages/session-ui`, `packages/session-graph`
+and `packages/app` (clean), `bun run graph:verify` in the fork (all steps, including the library
+build and the publish check), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass),
+`bun run lint:changed` (0).
+
+Unverified: **nothing was pushed to npm** — there is no registry credential in this environment, so
+the packages are publishable and proven consumable but not published, and **upstream adoption waits
+on that upload**. The published tarballs were not opened on Windows, and the consumer check runs
+Chromium only. The hosted demo URL still has not been deployed. T2.1/T2.2 still need human
+participants, so the stop rule in T2.5 has not fired.

@@ -18,6 +18,11 @@ const spacegraphjs = join(root, "spacegraphjs")
 const vitest = join(spacegraphjs, "node_modules/.bin/vitest")
 
 const steps: { label: string; cwd: string; cmd: string[] }[] = [
+  {
+    label: "library build (the published artifacts the host consumes)",
+    cwd: spacegraphjs,
+    cmd: ["pnpm", "run", "build:lib"],
+  },
   { label: "contract conformance (both adapters)", cwd: spacegraphjs, cmd: [vitest, "run", "test/renderer.contract.test.ts"] },
   { label: "package boundaries", cwd: spacegraphjs, cmd: [vitest, "run", "test/boundaries.test.ts"] },
   {
@@ -46,6 +51,11 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
   { label: "session-graph unit tests", cwd: join(root, "packages/session-graph"), cmd: ["bun", "test", "src"] },
   { label: "session-graph component contract", cwd: join(root, "packages/session-graph"), cmd: ["bun", "run", "test:components"] },
   { label: "graph capture (verify)", cwd: root, cmd: ["bun", "run", "graph:capture", "--mode=verify"] },
+  {
+    label: "published packages (a clean consumer outside the monorepo)",
+    cwd: spacegraphjs,
+    cmd: [join(spacegraphjs, "node_modules/.bin/tsx"), "script/publish-check.ts"],
+  },
 ]
 
 for (const step of steps) {
