@@ -31,6 +31,8 @@ export type LayoutOptions = {
   depthStep?: number
   /** Timeline: cards per wrapped row before a turn's block folds to the next row. */
   columns?: number
+  /** Tree: leaves a block holds before it folds to the next row. */
+  treeColumns?: number
   /** Timeline/hierarchy: vertical distance between rows. */
   rowGap?: number
   /** Hierarchy: rows per column before the outline wraps into the next column. */
@@ -144,6 +146,7 @@ export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): Gra
     turnGap: options.turnGap,
     depthStep: options.depthStep,
     columns: options.columns,
+    treeColumns: options.treeColumns,
     rowGap: options.rowGap,
     rows: options.rows,
     previous: options.previous,

@@ -70,6 +70,8 @@ type Row = {
   edges: number
   modelMs: number
   layoutMs: number
+  treeMs: number
+  forceMs: number
   renderMs: number
   diffMs: number
   updateMs: number
@@ -90,6 +92,9 @@ for (const messages of SIZES) {
   const model = built.value
   const laid = timed(() => layoutGraph(model))
   const layout = laid.value
+  // The two free geometries: a tree and a force simulation place the same model in other shapes.
+  const treed = timed(() => layoutGraph(model, { strategy: "tree" }))
+  const forced = timed(() => layoutGraph(model, { strategy: "force" }))
   const rendered = timed(() =>
     buildRenderModel(model, { level: "execution", positions: layout.positions, bands: true }),
   )
@@ -120,6 +125,8 @@ for (const messages of SIZES) {
     edges: model.edges.length,
     modelMs: built.ms,
     layoutMs: laid.ms,
+    treeMs: treed.ms,
+    forceMs: forced.ms,
     renderMs: rendered.ms,
     diffMs: diffed.ms,
     updateMs: update.ms,
@@ -130,13 +137,27 @@ for (const messages of SIZES) {
 if (values.json) {
   console.log(JSON.stringify(rows, null, 2))
 } else {
-  const head = ["messages", "nodes", "edges", "model", "layout", "render", "diff", "update", "changed"]
+  const head = [
+    "messages",
+    "nodes",
+    "edges",
+    "model",
+    "layout",
+    "tree",
+    "force",
+    "render",
+    "diff",
+    "update",
+    "changed",
+  ]
   const body = rows.map((row) => [
     String(row.messages),
     String(row.nodes),
     String(row.edges),
     `${row.modelMs.toFixed(1)}ms`,
     `${row.layoutMs.toFixed(1)}ms`,
+    `${row.treeMs.toFixed(1)}ms`,
+    `${row.forceMs.toFixed(1)}ms`,
     `${row.renderMs.toFixed(1)}ms`,
     `${row.diffMs.toFixed(1)}ms`,
     `${row.updateMs.toFixed(1)}ms`,

@@ -20,9 +20,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `cdf1440`, tagged `v8.0.0`; **publishable**: `spacegraphjs` 8.0.0 (the layout engine's contract changed — a break) + five `@spacegraphjs/*` 0.1.0 — built, proven consumable, **not uploaded** |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20, after T7.6) | `session-ui` graph 106 · `session-graph` unit 96 · `session-graph` component 48 (1 new: the layout gallery) · `spacegraphjs` 459 + the new layout seam, tree, and force suites · `graph:verify` all steps (library build first) · app typecheck · app e2e 21/21 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
+| Last green (re-run 2026-10-20, after the placement-engine pass) | `session-ui` graph 106 · `session-graph` unit 96 · `session-graph` component 49 · `spacegraphjs` 482 (1 new: the tree's block width) · `graph:verify` all steps (library build first) · app typecheck · app e2e 22/22 · publish check 2/2 · `graph:scale` (T6.6, now with the tree and the force row) · the second host's unit 9 + browser 9 (T6.12) |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
-| Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)**. The camera-driven frames (20–24) still vary between runs (**T6.20**) |
+| Reference images | `docs/spacegraph/screenshots/01`–`27` plus the second host's two placement frames (`26-second-host-tree.png`, `26-second-host-force.png`), all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)**. The camera-driven frames (20–24) still vary between runs (**T6.20**) |
 | Layouts | **five**: lanes, timeline, hierarchy, **tree (T7.2)**, **force (T7.3)** — pickable from the toolbar, comparable side by side in the gallery (T7.5) |
 | The 3D renderer | **fixed (T1.19)**: the billboard was inverted, so bands were rolled 50° and cards sheared; a target move re-aimed the camera, so the flat view tilted after a selection. Both fixed, both proven by tests, the capture set refreshed. **The billboard is now a switch, off by default** (2026-10-20): the cards lie in the content plane, the camera's shear is visible, and the toolbar turns them back to face the reader |
 
@@ -1074,16 +1074,19 @@ entry* (the encoding), and a *frame*. The geometry is the cheap part.
 **Do not do this track's work as capture or pixel work.** The frames are read by eye (§10); T6.15's
 pixel-diff helper was written and dropped for exactly that reason.
 
-**Notes for the next pass (2026-10-20).**
+**Notes for the next pass (2026-10-20, updated after the placement-engine pass).**
 
-- **The track is closed; two things it opens are not.** The second host (T6.12) still runs the
-  generic modules it had before — the tree and the force engines are **not** in its capability
-  gallery yet, so the library's claim that every generic module runs outside OpenCode does not yet
-  cover them. That is the obvious next library-side task, and it needs the second host's exact
-  import-set assertion updated with it.
+- **The track is closed; the two things it opened are now open too.** The second host (T6.12) runs the
+  tree and the force engines in its capability gallery and picks a layout from its own toolbar, so
+  the library's claim that every generic module runs outside OpenCode covers them. The force layout's
+  cost at scale is measured (`bun run graph:scale`): **209 ms at 409 nodes and 9.3 s at 20,005** —
+  the simulation is two orders of magnitude above the lanes layout on the same model, which is why it
+  is frozen after one run and why the host's 60-turn window is what keeps the reader-visible cost
+  near 0.2 s.
 - **The tree's block width (four leaves per row) is a policy, not a measurement.** It was chosen so
   the canonical fixture fits one frame at a legible scale. T2.2's evidence may prefer another
-  number, and the number is one config away (`TreeConfig.columns`).
+  number, and the number is now really one option away (`LayoutOptions.treeColumns` — the strategy
+  did not forward it before this pass).
 - **The evidence task can now compare layouts instead of perfecting one.** The gallery (T7.5) is the
   affordance the study needs: a participant can be shown the same session in five shapes. T2.1's
   dry run should use it, and the protocol should record which layout a participant reached for.
@@ -1367,6 +1370,13 @@ pixel-diff helper was written and dropped for exactly that reason.
     open); the first paint and the pan frame rate are still unmeasured (there is no harness); the
     60-turn window is a policy choice, not a measured optimum — the plan's evidence task (T2.2) may
     change it.
+  - **The two free geometries joined the table (2026-10-20).** `bun run graph:scale` now also
+    measures the tree and the force simulation, which the T7 track left out: the tree is a linear
+    pass (6 / 11 / 76 ms at 409 / 4,009 / 20,005 nodes), the force simulation is **not** (209 ms /
+    2.3 s / **9.3 s**). The simulation's cost grows with the content because it runs a fixed number
+    of cooling steps over a neighbour grid; the reason the reader does not pay that is the host's
+    60-turn window, which keeps the layout's input at a few hundred boxes (~0.2 s), paid once per
+    view switch. The uncapped number is also the reason the simulation is frozen after one run.
 
 - [x] **T6.8 First-run legend, help, and reduced motion**
   Make encoding discoverable: lane labels/colors, edge kinds/confidence, status dots, help popover; respect `prefers-reduced-motion` for camera/depth transitions; announce mode changes. Removes bias from usability protocol.
@@ -1556,6 +1566,21 @@ pixel-diff helper was written and dropped for exactly that reason.
   - **Unverified:** the demo was checked in Chromium at 1440×900, not in Firefox or WebKit, and not on a
     touch device; the hosted URL still has not been deployed (the workflow exists but has not run since the
     second host was added); the second host's model is synthetic, so it says nothing about a real session.
+  - **Extended (2026-10-20): the gallery now covers the placement engines, and the host picks a
+    layout.** The tree and the force simulation were the two library surfaces the gallery did not
+    claim, so the library's claim that *every* generic module runs outside OpenCode did not cover
+    them. They do now: the host binds its own vocabulary (`parentOfFn` reads its `part-of` edges,
+    `forceLinksFn` its structural edges), the gallery has a **"The placement engines"** entry that
+    runs both over the host's model and reports what each produced (`tree · 18 boxes placed · bounds
+    1240 × 616`, `force · 18 boxes placed · bounds …`), and the page grew a **layout picker**
+    (`ribbon · matrix · lanes · timeline · hierarchy · tree · force`) so the reader can see the same
+    model in every shape — the affordance T2.1 needs to compare layouts instead of perfecting one.
+  - **One gap the pass closed in the library, not the host.** The plan's note said the tree's block
+    width was "one config away (`TreeConfig.columns`)". It was not: the strategy never passed the
+    option down, so a host could not choose it. `LayoutOptions.treeColumns` now reaches the engine,
+    the fork's `layoutGraph` forwards it, and the second host uses **two** leaves per block — with
+    the default of four the tree was 3,284 units wide and no frame could hold it; at two it is 1,240
+    and the whole tree fits one frame, legible. The library's own test asserts the fold.
 
 - [ ] **T6.13 Embedder devtools**
   Dev-only overlay/API (`sg.debug()` or `?debug=1`) showing renderer, contract version, capabilities, node/edge/LOD counts, frame time, selection; matching diagnostic panel in host.
@@ -1634,7 +1659,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Captures | `bun run graph:capture --mode=compare` + manual inspection | Visual acceptance — **a deliberate refresh, not a per-change check** (it overwrites the committed set) |
 | The perspective proof | `docs/spacegraph/screenshots/31-graph-perspective.png` | The tilted camera with the billboard off: the cards lie in the content plane, so the camera's shear is visible |
 | Capture verify | `bun run graph:capture --mode=verify` | The routine gate: fresh renders into a temp dir, committed set asserted, and **no two frames of the zoom/pan matrix are the same picture** (T6.19) |
-| Scale budget | `bun run graph:scale` | T6.6 — the model/layout/render pipeline at 100, 1k and 5k messages |
+| Scale budget | `bun run graph:scale` | T6.6 — the model/layout/render pipeline at 100, 1k and 5k messages, plus the tree and the force rows |
 | Lint | `bun run lint:changed` | Changed files |
 | Repo check | `bun run check` | Canonical, but red for known environmental reasons; see T1.6 |
 | Provider-free demo | `bun run graph:dev` | T6.1 |
@@ -1644,7 +1669,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Scale guard | new 1k/5k perf test | T6.6 |
 | Library benchmark | `cd spacegraphjs && bun run bench:graph` (new) | T6.11 |
 | Published packages | `cd spacegraphjs && pnpm run test:publish` | T4.2 — packs every package, installs the tarballs into a clean consumer outside the monorepo, mounts both adapters |
-| Second host | `cd spacegraphjs && pnpm run test:second-host` + `vitest run test/second-host/` | T6.12 — a framework-free consumer outside OpenCode; every generic module runs against its own model |
+| Second host | `cd spacegraphjs && pnpm run test:second-host` + `vitest run test/second-host/` | T6.12 — a framework-free consumer outside OpenCode; every generic module runs against its own model, including the tree and the force placement |
 | Library typecheck | `cd spacegraphjs && tsc --noEmit -p tsconfig.json` | T4.4 — clean for `src`, `test` and the five packages |
 | Placement seam | `cd spacegraphjs && vitest run test/layout/` | T7.1 — the grid, the tree, and the force placement behind one interface |
 | Layout variety | `cd packages/session-graph && bun run test:components -- graph-gallery graph-legibility` | T7.4/T7.5 — every layout is pickable, legible, and comparable side by side |
@@ -3217,3 +3242,95 @@ billboard is a per-view state in the host, not persisted per session (the depth 
 the component test measures is one card of the fixture, not a sweep over every card; and the band
 bounds in a tilted view are still approximate, as T1.19 declared. **T2.1 and T2.2 still need
 participants**, so the stop rule in T2.5 has not fired.
+
+**2026-10-20 — the second host picks a layout, and the force simulation gets its number.** The
+plan's own notes named two things the last pass left open, and this pass took both. T2 still needs
+participants, so the work went where the plan says it can.
+
+*The gallery now covers the placement engines.* The tree and the force simulation were the only
+library surfaces the second host's capability gallery did not claim, so the library's claim that
+*every* generic module runs outside OpenCode did not cover them. They do now. The host binds its own
+vocabulary — `parentOfFn` reads the `part-of` edges (a stage hangs under the release, its work under
+the stage), `forceLinksFn` reads the structural edges (the `evidence` edge stays out: a link is a
+claim about the pipeline's shape, not about cause) — and a new gallery entry, **"The placement
+engines"**, runs both over the host's model and reports what each produced (`tree · 18 boxes placed ·
+bounds 1240 × 616`, `force · 18 boxes placed · bounds …`). The second host's unit suite grew to 9 and
+its browser suite to 9; the import-set assertion needed no change, because the tree and the force
+engines live in `spacegraphjs/layout`, which the gallery already claimed.
+
+*The host grew a layout picker.* Seven views did not fit in the gallery, and a gallery entry that
+changes the canvas is not a control: the page now has a `Layout` group in the header
+(`ribbon · matrix · lanes · timeline · hierarchy · tree · force`) that switches the view and re-frames
+the camera. This is the affordance T2.1 needs — a participant can be shown the same session in seven
+shapes and asked which one they reached for.
+
+*The plan was wrong about one config, and the fix was in the library.* The T7 notes said the tree's
+block width was "one config away (`TreeConfig.columns`)". It was not: `Strategies.treeLayout` never
+passed the option down, so a host could not choose it. `LayoutOptions.treeColumns` now reaches the
+engine, the fork's `layoutGraph` forwards it, and the second host uses **two** leaves per block. With
+the default of four the tree was 3,284 units wide and *no frame could hold it* — the fit's floor
+anchors the frame at the content's beginning, so the reader saw the leaves and had to pan to the
+root. At two the tree is 1,240 wide, the whole pipeline fits one frame, and the new
+`26-second-host-tree.png` shows the release over its stages with the work under each stage. The
+library's own test asserts the fold (three leaves in a row of four; two leaves per row folds the
+third to the next row).
+
+*The force simulation got the number the plan asked for.* `bun run graph:scale` now measures the tree
+and the force layout too:
+
+| Messages | Nodes | Tree | Force |
+|---|---|---|---|
+| 102 | 409 | 6.0 ms | 208.7 ms |
+| 1,002 | 4,009 | 11.4 ms | 2,318.5 ms |
+| 5,001 | 20,005 | 75.9 ms | 9,319.8 ms |
+
+The tree is a linear pass. The simulation is two orders of magnitude above the lanes layout on the
+same model — its cost grows with the content, because it runs a fixed number of cooling steps over a
+neighbour grid. The number a reader pays is much smaller: the host draws a long session as its
+recent tail (the last 60 turns), so the simulation sees a few hundred boxes, not twenty thousand —
+**~0.2 s, once per view switch**. The uncapped 9.3 s is also the reason the simulation is frozen
+after one run rather than live.
+
+*One capture defect, found by reading the frame.* The second host's frames were captured 600 ms after
+a click, but the camera flies to a new frame over 1.5 s, so the captures caught it mid-flight — the
+tree looked unframed because it was still moving. The capture now waits 2.2 s. The frames were
+refreshed and read by eye: the tree fits one frame, the force layout draws all eighteen boxes
+legibly with no overlaps, and the ribbon (the host's default view) still reads.
+
+*What did not change.* The OpenCode host's own capture set is byte-identical apart from the known
+noise floor (five frames at a max channel delta of 1–5, and `22-graph-turn-1.png` at 0.09 % — T6.20's
+residual), so those frames were left as they were. The library's public contract did not change:
+`treeColumns` is an additive layout option, and `CONTRACT_VERSION` stays 2.
+
+Commands run: `npx tsc --noEmit -p tsconfig.json` in `spacegraphjs` (0 errors), `npx vitest run` in
+`spacegraphjs` (482 pass, 1 new), `npx playwright test --config playwright.demo.config.ts
+test/e2e/second-host.spec.ts` in `spacegraphjs` (9 pass, 1 new), `pnpm run build:lib` +
+`pnpm run build:packages` in `spacegraphjs`, `bun run typecheck` in `packages/session-ui` and
+`packages/session-graph` (clean), `bun test src/graph` in `packages/session-ui` (106 pass), `bun test
+src` in `packages/session-graph` (96 pass), `bun run test:components` in `packages/session-graph`
+(49 pass), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (22 pass), `bun run
+graph:scale` (the table above), `bun run graph:capture --mode=compare` (the set refreshed; the
+six noise-only frames reverted) and `bun run graph:verify` (all steps, including the library build,
+the capture verification and the publish check).
+
+Unverified: the frames were read by eye, not by a reviewer who did not write them; the second host
+was checked in Chromium at 1440×900 only; the layout picker is a row of buttons, not a menu, so it
+wraps on a narrow window (the OpenCode host uses a menu for the same reason); the force layout's
+cost was measured on synthetic sessions, not on the real corpus (T6.4 is still open); and the tree's
+block width of two is the second host's policy, not a measured optimum. **T2.1 and T2.2 still need
+participants**, so the stop rule in T2.5 has not fired.
+
+*Notes for the next pass.*
+- **What is left, in the order the plan wants it:** **T2.1 and T2.2** (the dry run and the R7.3
+  protocol) are the only things that can settle the product claim, and they need people; then
+  **T2.4** (the naming/representation/depth/file-lens decisions, from the protocol data) and
+  **T2.5** (the stop rule). **T3.7's RFC** follows the measurement, and the issue text is already
+  `upstream-pr.md` + `upstream-review.md`. **T5** (release) waits for the upstream decision. The
+  rest is refinement: **T6.4** (the real-session corpus — blocked on real session data),
+  **T6.10–T6.14** (contract v3's fit insets, the benchmark CI, the embedder devtools, the API
+  docs, the stale `vue-spacegraph`), **T6.16** (the optional pixel diff, which needs **T6.20**
+  first), and **T6.20** itself.
+- **The layout picker is now in both hosts.** The OpenCode host has a *menu* (`Layout: Lanes ▾`) and
+  the second host a row of buttons; a third host should pick one and keep it.
+- **The diff-budget numbers in `upstream-review.md` §5 drift with every app edit.** This pass
+  changed no `packages/app/src` file, so they still stand; re-audit them before the RFC.

@@ -98,17 +98,21 @@ own.
 **What it proves.**
 
 - **Adoption outside OpenCode.** The contract, both interactive adapters, the static SVG renderer,
-  the model adapter, the level table, the layout strategies, the summary representations, the
-  navigation primitives, the controller, the accessibility mirror, the depth spectrum, the scoped
-  overlay and the code diff all run against a host they have never seen.
+  the model adapter, the level table, the layout strategies and the placement engines (the grid, the
+  tree, the force simulation), the summary representations, the navigation primitives, the
+  controller, the accessibility mirror, the depth spectrum, the scoped overlay and the code diff all
+  run against a host they have never seen.
 - **The host keeps its vocabulary.** The library owns the algorithms; the host owns the words, the
   lanes, the sizes and the markup. Changing a lane name changes nothing in the library.
 - **No framework, no OpenCode.** `spacegraphjs/test/second-host/` fails if the host imports an
   OpenCode module, a framework, or a library surface the gallery does not claim.
 
-**Screenshots.** `screenshots/26-second-host.png` (the summary, the gallery and the evidence
-panel) and `screenshots/27-second-host-lanes.png` (the lane view, panned: the pipeline is wider
-than a legible frame, so the fit keeps a floor and the reader pans the rest).
+**Screenshots.** `screenshots/26-second-host.png` (the summary, the gallery, the layout picker and
+the evidence panel), `screenshots/27-second-host-lanes.png` (the lane view, panned: the pipeline is
+wider than a legible frame, so the fit keeps a floor and the reader pans the rest),
+`screenshots/26-second-host-tree.png` (the same pipeline as a tree — the release over its stages, the
+work under its stage) and `screenshots/26-second-host-force.png` (the same boxes as a force
+simulation).
 
 **Checks.** `cd spacegraphjs && pnpm run test:second-host` (browser) and
 `cd spacegraphjs && node_modules/.bin/vitest run test/second-host/` (the unit half). Both run in

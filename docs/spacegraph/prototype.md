@@ -212,6 +212,7 @@ Cytoscape is the 2D fallback and benchmark and renders the same model with no ho
 |---|---|---|
 | Model build, 300-message / 1201-node synthetic stream (`performance.test.ts`) | 200 msgs < 50 ms | ~27 ms (guard ceiling 250 ms) |
 | Whole pipeline, 5,001-message / 20,005-node stream (`scale.test.ts`) | — | 55 ms model + 42 ms layout + 63 ms render (guard ceiling 400 ms) — see [Scale and streaming budget](#scale-and-streaming-budget-t66-measured-2026-10-20) |
+| Force layout, same stream | — | 9.3 s uncapped; ~0.2 s over the 60-turn window the host draws — see [The two free geometries](#the-two-free-geometries-t71t73-measured-2026-10-20) |
 | Lazy SpaceGraphJS chunk (gzip, excluding `three`) | < 400 KB | core chunk 282.0 KB gzip incl. `three`; adapter 2.0 KB gzip |
 | Lazy Cytoscape chunk (gzip) | < 250 KB | 137.9 KB |
 | Session-graph UI chunk | — | 28.3 KB min / 8.8 KB gzip |
@@ -259,6 +260,29 @@ incremental path has a seam to build on. The P8.8 work stays deferred until a se
 quadratic path (2,482 ms) breaks by 6×. The library has the matching call-count guard
 (`spacegraphjs/test/layout/strategies.test.ts`): a layout may ask each node for its turn a bounded
 number of times, which is what "not quadratic" means in a test that cannot flake.
+
+### The two free geometries (T7.1–T7.3, measured 2026-10-20)
+
+The same benchmark, with the tree and the force simulation added as columns. A second run, so the
+pipeline's own numbers move by a few percent (the model build reads 2.4 ms where the run above read
+2.3 ms, the render build 78 ms where it read 63 ms); the shape is what matters.
+
+| Messages | Nodes | Tree layout | Force layout |
+|---|---|---|---|
+| 102 | 409 | 6.0 ms | 208.7 ms |
+| 1,002 | 4,009 | 11.4 ms | 2,318.5 ms |
+| 5,001 | 20,005 | 75.9 ms | 9,319.8 ms |
+
+**The tree is a linear pass and the force simulation is not cheap.** The tree walks the model once
+and places the boxes; the simulation runs a fixed number of cooling steps over a neighbour grid, and
+its cost grows with the content — at 20,005 nodes it is **9.3 seconds**, two orders of magnitude
+above the lanes layout on the same model.
+
+**What a reader actually pays is much less.** The host draws a long session as its recent tail — the
+last 60 turns — so the force layout sees a few hundred boxes rather than twenty thousand: the
+measured 209 ms at 409 nodes is the number the reader waits for, and it is paid once per view
+switch, not per frame. The uncapped number is the reason the simulation is frozen after one run:
+a live simulation over a whole session would cost that again on every streamed message.
 
 ### Entry-delta baseline (T0.7, captured 2026-10-19)
 
@@ -406,7 +430,7 @@ data assumptions appear in the library.
 | Cytoscape adapter | `@spacegraphjs/cytoscape-renderer` | OpenCode fallback, contract demo, second host | 3D is a declared no-op; minimap is host-side |
 | Static SVG renderer | `@spacegraphjs/svg-renderer` | OpenCode inline subgraph, contract demo, second host | `InlineGraph` is not exercised in a browser beyond the demo |
 | Semantic levels | `spacegraphjs/levels` | OpenCode `levels.ts`, second host | none |
-| Layout strategies | `spacegraphjs/layout` | OpenCode `layout.ts`, second host | none — the timeline and the hierarchy moved onto `Strategies` |
+| Layout strategies and placement engines | `spacegraphjs/layout` | OpenCode `layout.ts`, second host | the tree's block width is a host policy (`treeColumns`), not a measured optimum |
 | Summary representations | `spacegraphjs/representations` | OpenCode `representation.ts`, second host | none |
 | Zoom bands | `spacegraphjs/zoom` | `GraphController`, second host | band→level wiring is host-owned |
 | Accessibility layer | `spacegraphjs/a11y` | OpenCode a11y mirror, second host | none — the edges are announced too (T4.7) |
