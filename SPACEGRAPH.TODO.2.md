@@ -1830,3 +1830,28 @@ and `packages/app` (clean), `bun test src/graph` (77 pass), `bun test src` in `p
 
 Unverified: the built e2e (`PLAYWRIGHT_BUILD=1`) was not run after the sync; the app's bundle
 chunks were not re-measured, so the T0.7 entry-delta table still describes the previous sync.
+
+**2026-10-20 — Wrap-up: both repositories pushed, both tags on the tested commit.** Final state of
+this pass.
+
+| Repository | State |
+|---|---|
+| OpenCode fork (`dev`) | `90ff43040f` on `origin/dev`, **0/0**, **0 behind upstream `dev`** (`d249607e90`) |
+| SpaceGraphJS (`main`) | `c15f879` on `origin/main`, **0/0**; tags `v7.1.0` and the five `@spacegraphjs/*@0.1.0` moved to it |
+
+*The tags were moved.* They were created on the publish commit and then two commits landed (the
+test speedup and the CI), neither of which changes a published artifact. The plan's rule is that a
+tag marks the **tested** SHA, and the tested SHA is the tip, so the tags were moved. Nothing was
+published to npm, so no consumer can be affected by moving them.
+
+*Verified at the tip:* `bun run graph:verify` (all steps, including the library build, the capture
+verification and the publish check), `bun run typecheck` in `packages/session-ui`,
+`packages/session-graph` and `packages/app`, `bun run test:e2e -- e2e/graph/session-graph.spec.ts`
+(16 pass), `bun run lint:changed` (0), `tsc --noEmit` in `spacegraphjs` (0 errors), `vitest run` in
+`spacegraphjs` (436 pass).
+
+*Still open, in the order the plan wants them:* **T2.1 and T2.2** — the dry run and the R7.3
+protocol — need human participants, and everything about the product claim waits on them. The
+library track is now clear enough to carry the work if the product claim does not land: the
+packages are publishable, the contract and both adapters are proven consumable outside OpenCode, and
+the fork's gate runs against the published artifacts.
