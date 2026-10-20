@@ -16,8 +16,8 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Item | State |
 |---|---|
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
-| OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
-| Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
+| OpenCode fork | `dev` synced with upstream @ merge `098e601068` (upstream `d249607e90`); **0 commits behind upstream `dev`** |
+| Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
 | Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 94 · `session-graph` component 39 · `spacegraphjs` 436 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 16/16 · publish check 2/2 |
@@ -1769,3 +1769,45 @@ the packages are publishable and proven consumable but not published, and **upst
 on that upload**. The published tarballs were not opened on Windows, and the consumer check runs
 Chromium only. The hosted demo URL still has not been deployed. T2.1/T2.2 still need human
 participants, so the stop rule in T2.5 has not fired.
+
+**2026-10-20 — T0 sync (again): upstream moved 50 commits, and the fork follows.** Upstream went from
+`ba06ff9e0b` to `d249607e90` (386 files, +7017/−3944) while this pass worked on the library. The
+fork's `dev` is synced again: merge `098e601068`, branch `upstream-sync-1020` kept on the remote.
+
+*The graph did not move.* The fork's 119 graph files overlap with **none** of upstream's 386, so
+the graph's behaviour is unchanged by the sync. The one conflict was in the generated `bun.lock`
+(the fork's `packages/session-graph` workspace entry against upstream's version bump) and was
+resolved by regenerating the lockfile, so both sides survive: `spacegraphjs` 7.1.0 and
+`@opencode/session-ui` 2.1.0.
+
+*Upstream's v2.1 breaking change is `providerState` → `native` on the assistant tool part.* The
+graph model reads neither, so nothing in the graph changes; the rename lands in upstream's own e2e
+helper, which the fork no longer touches (it is byte-identical to upstream again).
+
+*Two environment facts, both worth recording.* Upstream bumped Playwright to 1.60.0, whose
+Chromium build was not on this machine: `node node_modules/.bun/playwright-core@1.60.0/node_modules/
+playwright-core/cli.js install chromium` fixed the 16 e2e tests. And the fork's `bun install`
+re-resolved the library's dependencies, which took Vitest from 5.0.4 to 5.0.5 — and **Vitest
+5.0.5 broke the `vmThreads` pool** the library used to reuse its jsdom environment. Every test
+file failed to load.
+
+*The test speedup is now taken a durable way.* The `vmThreads` pool is gone. Instead, the 26 test
+files that never touch the DOM declare `// @vitest-environment node` and skip jsdom entirely; the
+five that need a DOM indirectly keep it. The suite runs in **3.4 s** (from 6.4 s on Vitest 5.0.5's
+default pool, and 7.0 s before any of this) and no longer depends on a pool option the next Vitest
+release can break.
+
+*`typecheck:e2e` is red, and it is upstream's red.* Four files fail
+(`e2e/performance/terminals/probe.ts`, `e2e/performance/timeline/session-timeline-stream-probe.ts`,
+`e2e/regression/review.spec.ts`, `e2e/regression/timeline-stream.spec.ts`). All four are
+**byte-identical to upstream**, and the *same four files fail the same way on a bare `upstream/dev`
+worktree* with its own install. Proven pre-existing, not merge fallout.
+
+Commands run: `bun install`, `bun run typecheck` in `packages/session-ui`, `packages/session-graph`
+and `packages/app` (clean), `bun test src/graph` (77 pass), `bun test src` in `packages/session-graph`
+(94 pass), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify`
+(all steps), `bun run lint:changed` (0), `vitest run` in `spacegraphjs` (436 pass), and the same
+`typecheck:e2e` on a bare upstream worktree (the same four files fail).
+
+Unverified: the built e2e (`PLAYWRIGHT_BUILD=1`) was not run after the sync; the app's bundle
+chunks were not re-measured, so the T0.7 entry-delta table still describes the previous sync.
