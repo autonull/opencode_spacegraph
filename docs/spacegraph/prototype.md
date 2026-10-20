@@ -24,7 +24,7 @@ where the agent retried or changed direction.
 | Repository | Revision | Notes |
 |---|---|---|
 | OpenCode (`opencode` monorepo) | `dev` synced with upstream `dev` @ `ba06ff9e0b` (merge `f802f5e707`) | Branch `dev`; the upstream sync merged 41 commits with no textual or semantic conflicts (upstream touched no `packages/app/src` or `packages/ui`). Prior fork tip was `6479486583`. |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `5abf80d` (docs `3c87c3c`) | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2); `5abf80d` includes node extents in the fit bounds so edge cards are not clipped |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `f7cf48a` | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2); `5abf80d` includes node extents in the fit bounds so edge cards are not clipped; `4e5f733` fixes the billboard, fit and camera-zoom behaviour; `0bb41fd` publishes the contract demo to GitHub Pages |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
 gitignored in the OpenCode repo; its commits are recorded here by SHA.
@@ -232,6 +232,31 @@ under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modu
 and shadows the repo's `@types/node@24.12.2`; the `/tmp` upstream worktree has no such ancestor and
 resolves the repo copy. This is environmental (checkout location), not a fork or merge regression; see
 T1.6.
+
+## Upstream readiness
+
+The contribution is prepared as four independently reviewable rungs, so a maintainer can take the
+low-risk one without taking the whole experiment.
+
+| Document | What it carries |
+|---|---|
+| [`upstream-pr.md`](./upstream-pr.md) | The ladder: model → host package → app wiring → hybrid affordance. Each rung names its files, diff size, tests, screenshots, rollback, and the one review question it answers. Names the dependency blocker (published library packages) and the RFC deferral. |
+| [`upstream-review.md`](./upstream-review.md) | The maintainer packet: problem, hypothesis, measured results, **diff-budget table (§5)**, flag and rollback, bundle numbers, a11y, security, ownership, review commands, and 12 review questions. |
+| [`security.md`](./security.md) | The sanitization contract: what is untrusted, who escapes what, the CSP expectation per renderer, and the deliberate non-goals (`javascript:` URLs, bidi overrides, raw text in the JSON export). |
+| [`demos.md`](./demos.md) | The three demo surfaces and which one to open. |
+| [`decisions.md`](./decisions.md) | 20 ADRs: every major choice, with its reason and its fallback. |
+
+**Diff budget (T3.8), re-audited 2026-10-19** against the upstream merge base:
+
+| Area | Δ | Verdict |
+|---|---|---|
+| `packages/app/src` (16 files) | +689 / −36 | Setting, mode branch, commands, toggle, per-session state, scroll restore. No graph semantics outside `session/graph/*.tsx`. |
+| `packages/app` dev-only demo | +149 / −18 | `bun run graph:dev`; excluded from an upstream diff. |
+| `packages/session-ui/src/graph/` (13 files) | +3,487 | New pure model package. |
+| `packages/session-graph/` (57 files) | +5,660 | New host package; imports the renderer contract only. |
+| `packages/gui-extensions/src/session-map/` | +274 | Side panel, mounted as a built-in extension. |
+
+The per-file table with a justification for every app edit is in `upstream-review.md` §5.
 
 ## Accessibility (V5.8)
 

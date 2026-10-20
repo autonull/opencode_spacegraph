@@ -48,9 +48,12 @@ The non-OpenCode reference host (no OpenCode import) runs from the library repo:
 cd spacegraphjs && pnpm run dev:demo   # then open /contract.html
 ```
 
+All three surfaces — host demo, library demo, test harness — are indexed in
+[demos.md](./demos.md).
+
 ## Tested commit
 
-OpenCode `dev` synced with upstream `dev` `ba06ff9e0b` (merge `f802f5e707`); SpaceGraphJS code `5abf80d`. See
+OpenCode `dev` synced with upstream `dev` `ba06ff9e0b` (merge `f802f5e707`); SpaceGraphJS code `f7cf48a`. See
 [prototype.md](./prototype.md) for the full tested-revision table, measurements, and the per-pass log.
 
 ## Limitations
@@ -92,6 +95,15 @@ bun run graph:capture --mode=verify
 
 ## Documents
 
+- [demos.md](./demos.md) — the three surfaces (host demo, library contract demo, test harness) and
+  which one to open.
+- [upstream-pr.md](./upstream-pr.md) — the upstream contribution ladder: four independently
+  reviewable rungs, with the dependency blocker named.
+- [upstream-review.md](./upstream-review.md) — the maintainer review packet: problem, hypothesis,
+  diff budget, measurements, security, ownership, review commands.
+- [security.md](./security.md) — the sanitization contract: who escapes what, and the CSP
+  expectations per renderer.
+- [decisions.md](./decisions.md) — the ADR log: every major choice, with its reason.
 - [prototype.md](./prototype.md) — hypothesis, architecture, how to run, measurements, limitations,
   evaluation protocol, capability audit, and the dependency migration plan.
 - `SPACEGRAPH.md` (design), `SPACEGRAPH.TODO.2.md` (living plan), and `SPACEGRAPH.TODO.1.md`
