@@ -18,7 +18,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `632292e`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664`, `844cf76`, `9fa1083`, `632292e` |
+| SpaceGraphJS | `main` @ `632292e`; pushed and tagged `graph-adapter-2026-10-20` (nothing unpushed) |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
 | Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 395 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
@@ -421,8 +421,13 @@ These attack the two things that decide whether this work matters: a reviewer mu
 
 These are sustainability work, invisible to reviewers. Do after G3 or in parallel if capacity.
 
-- [ ] **T4.1 Push and tag the library**
+- [x] **T4.1 Push and tag the library**
   Push `main` and tag the tested SHA (`5abf80d` or newer). Done when: `origin/main` matches HEAD and tag exists.
+  Verify: `git ls-remote origin refs/heads/main refs/tags/graph-adapter-2026-10-20` (both repos).
+  - **Done (2026-10-20).** `origin/main` is `632292e` (the adapter extraction) and the tag
+    `graph-adapter-2026-10-20` points at the same commit. The six commits that were unpushed since
+    the sync (`f7cf48a`, `0bb41fd`, `e07e664`, `844cf76`, `9fa1083`, `632292e`) are on the remote,
+    so the fork's workspace dependency now resolves against a published state.
 
 - [ ] **T4.2 Publish the packages** (adoption mechanic, not demo blocker)
   Add `dist` builds (ESM + d.ts), `files`, `exports`, semver tags for all packages. Replace source workspace linkage. Fallback: one bundled companion package with contract + adapters, never vendored source, explicit note upstream adoption waits.
@@ -1353,3 +1358,17 @@ run graph:capture --mode=compare` (24 captures pixel-identical), `bun run lint:c
 Unverified: the adapter package is not published yet (T4.2 still owns that); the Cytoscape card cap
 is exercised only by the conformance suite, not by the live canvas; `pnpm install --offline` was used
 in the library, so the new workspace link resolves from the local store.
+
+**2026-10-20 — T4.1: the library is pushed and tagged.** The sibling library had six commits that
+existed only on this machine. `origin/main` is now `632292e` and the tag
+`graph-adapter-2026-10-20` points at the same commit, so the fork's workspace dependency resolves
+against a published state and the work is not one checkout away from being lost. The tag name
+follows the `pre-sync-2026-10-19` convention (a dated state marker); no npm release is implied —
+T4.2 still owns the published packages.
+
+Commands run: `git push origin main`, `git tag graph-adapter-2026-10-20`, `git push origin
+graph-adapter-2026-10-20`, `git ls-remote origin refs/heads/main refs/tags/graph-adapter-2026-10-20`
+(both at `632292e`).
+
+Unverified: the tag was pushed to `github.com:autonull/spacegraphjs7.git`; nothing was published to
+npm, and the fork's `dev` branch was not pushed in this pass.
