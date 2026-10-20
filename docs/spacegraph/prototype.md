@@ -133,6 +133,7 @@ en-US, reduced motion, clock-free fixture):
 | `22-graph-turn-1.png` | camera centred on the first turn |
 | `23-graph-turn-2.png` | camera centred on the second turn |
 | `24-graph-failure-chain.png` | the failing test run, at the closest zoom |
+| `25-graph-scale-window.png` | a long session at the drawn window: 60 of 80 turns, with the notice |
 | `20`–`24-cytoscape-*.png` | the same five frames over the Cytoscape adapter |
 
 `02`/`03`/`04` come from the app's routed session (`packages/app/e2e/graph/capture.spec.ts`); `07`/`08`
@@ -210,6 +211,7 @@ Cytoscape is the 2D fallback and benchmark and renders the same model with no ho
 | Metric | Budget (§9) | Measured |
 |---|---|---|
 | Model build, 300-message / 1201-node synthetic stream (`performance.test.ts`) | 200 msgs < 50 ms | ~27 ms (guard ceiling 250 ms) |
+| Whole pipeline, 5,001-message / 20,005-node stream (`scale.test.ts`) | — | 55 ms model + 42 ms layout + 63 ms render (guard ceiling 400 ms) — see [Scale and streaming budget](#scale-and-streaming-budget-t66-measured-2026-10-20) |
 | Lazy SpaceGraphJS chunk (gzip, excluding `three`) | < 400 KB | core chunk 282.0 KB gzip incl. `three`; adapter 2.0 KB gzip |
 | Lazy Cytoscape chunk (gzip) | < 250 KB | 137.9 KB |
 | Session-graph UI chunk | — | 28.3 KB min / 8.8 KB gzip |
@@ -219,6 +221,44 @@ Cytoscape is the 2D fallback and benchmark and renders the same model with no ho
 `packages/session-ui/src/graph/performance.test.ts` is the complexity guard: a 300-message, tool-heavy
 stream must build and lay out under a generous ceiling, catching an accidental O(n²) join without
 flaking under CI load. The unmeasured row is recorded, not lowered.
+
+### Scale and streaming budget (T6.6, measured 2026-10-20)
+
+`bun run graph:scale` runs the whole pipeline on synthetic sessions and prints the table below
+(`packages/session-graph/script/scale-bench.ts`). One "turn" is a user message, an assistant answer
+with a read, an edit and a shell call, and an idle marker.
+
+| Messages | Nodes | Edges | Model build | Layout | Render model | Render diff | One streamed update |
+|---|---|---|---|---|---|---|---|
+| 102 | 409 | 747 | 2.3 ms | 3.2 ms | 7.5 ms | 1.1 ms | 6.5 ms |
+| 1,002 | 4,009 | 7,347 | 9.8 ms | 7.3 ms | 12.8 ms | 9.9 ms | 37.8 ms |
+| 5,001 | 20,005 | 36,673 | 55.3 ms | 41.7 ms | 63.0 ms | 57.7 ms | 227.1 ms |
+
+**The pipeline was quadratic and now is not.** The first run of this benchmark took **27.5 seconds**
+to build the render model of a 5,001-message session. Two passes were to blame, and both are now
+single passes: the library's band geometry re-indexed the whole model for every band, and the
+host's band builder filtered the whole node list for every turn. The render build is now 63 ms at
+the same size — **436× faster** — and the numbers above grow linearly with the session.
+
+**The map does not carry the whole session.** A long session is drawn as its recent tail: the map
+shows the last 60 turns (plus the turn the reader is looking at), and the view says so
+("Showing 60 of 1,666 turns. The transcript has the rest."). The cap is a host policy
+(`packages/session-ui/src/graph/scale.ts`), not a silent drop: the layout still measures the whole
+session, so the position of a node that stays in the window does not move when the window slides.
+
+**Incremental patches stay deferred, with the number that would reopen them.** The host rebuilds
+the model, the layout, and the render model on every streamed chunk, and the renderer is handed the
+whole thing. That costs 38 ms at 1,002 messages and 227 ms at 5,001. The diff between two
+consecutive render models is now a library primitive (`diffRenderModels` in
+`@spacegraphjs/adapter`) and it says how little actually moved — 3 nodes of 20,005 — so an
+incremental path has a seam to build on. The P8.8 work stays deferred until a session above roughly
+2,000 messages is a normal thing to open, at which point the 227 ms update is the number to beat.
+
+**The guard.** `packages/session-graph/src/canvas/scale.test.ts` builds the render model of a
+5,000-message session and fails above 400 ms — a ceiling the measured 63 ms clears by 6×, and the
+quadratic path (2,482 ms) breaks by 6×. The library has the matching call-count guard
+(`spacegraphjs/test/layout/strategies.test.ts`): a layout may ask each node for its turn a bounded
+number of times, which is what "not quadratic" means in a test that cannot flake.
 
 ### Entry-delta baseline (T0.7, captured 2026-10-19)
 
@@ -398,9 +438,10 @@ Carry these forward explicitly; none is silently lowered.
 10. **First graph paint and pan frame rate have no harness**, and the session-entry delta is unmeasured.
 11. **The renderer selector is not in the app toolbar**; renderer choice is a prototype setting, and
     the Cytoscape captures come from the Storybook story.
-12. **The session layout strategies compute their own cursors in `session-ui`**; folding them onto the
-    generic `spacegraphjs/layout/LaneLayout` needs that primitive to support variable item sizes and
-    per-lane cursors first (RF.2 library-first cleanup).
+12. **The three layout strategies compute their own cursors in the library** (`spacegraphjs/layout/strategies.ts`)
+    rather than on the generic `LaneLayout`, which still assumes fixed item sizes and one cursor per
+    lane; folding them onto it needs that primitive to support variable item sizes and per-lane
+    cursors first (RF.2 library-first cleanup, T4.3).
 13. **Vector swimlane bands stay full-opacity under execution focus dimming** (they are structure, not
     content, and are `interactive: false`).
 14. **The lane gutter is world-space** (LE.10): the lane labels are non-interactive chips placed left of the
@@ -425,6 +466,10 @@ Carry these forward explicitly; none is silently lowered.
     camera zoom is not exposed and its normalized range is content-unaware (fit ≈ 45%, 100% blank). The Phase 0
     spike image is stale. Tracked as T1.1–T1.16 in `SPACEGRAPH.TODO.2.md`; per-image evidence is in
     `docs/spacegraph/visual-review.md`. The current images are pre-fix evidence, not the final set.
+20. **A long session is drawn as its recent tail** (T6.6): the map shows the last 60 turns and says
+    so in a banner, because a renderer cannot carry the nodes of a thousand turns. The layout still
+    measures the whole session, so a node that stays in the window does not move when the window
+    slides. The transcript carries the rest.
 
 ## Evaluation protocol (R7.3)
 

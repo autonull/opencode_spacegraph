@@ -20,9 +20,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20) | `session-ui` graph 81 · `session-graph` unit 94 · `session-graph` component 42 · `spacegraphjs` 438 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 90 · `session-graph` unit 96 · `session-graph` component 44 · `spacegraphjs` 445 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 · `graph:scale` (T6.6) |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
-| Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19)** |
+| Reference images | `docs/spacegraph/screenshots/01`–`25`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), and 25 shows a long session at the drawn window (T6.6)** |
 
 Two facts shape everything below:
 
@@ -104,7 +104,8 @@ library; the framework bindings were dropped), T6.1 (provider-free demo), T6.3 (
 (security suite), T6.8 (legend, help, and the mode announcements — the camera half is T6.18), T6.16
 (demo index), T6.17 (the code-diff vocabulary and renderer extracted; the host keeps its markup),
 **T6.18 (the camera can be read back and jumped instantly), T6.19 (the zoom/pan matrix shows what its
-names say, and the gate proves it)**.
+names say, and the gate proves it), T6.6 (the scale budget: the pipeline is linear, the map is capped
+and says so, and the guards are load-bearing)**.
 
 **The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
 own framework. The React and Solid packages keep the `GraphView` binding they already had and nothing
@@ -992,10 +993,45 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Done when: each case has fixture/test and documented UI behavior.
   Verify: model tests + one component/e2e per user-visible action.
 
-- [ ] **T6.6 Scale and streaming budget**
+- [x] **T6.6 Scale and streaming budget**
   Benchmark 1k and 5k message sessions: model build, layout, render-model build, adapter diff, first paint. Decide whether P8.8 incremental patches needed **from data**, not speculation. Add auto-collapse/cap policy at scale.
   Done when: table in `prototype.md` and guard test fails on order-of-magnitude regression.
   Verify: new perf test + capture at cap.
+  - **Done (2026-10-20), and the benchmark found a quadratic pipeline that nobody had measured.**
+    The first run of `bun run graph:scale` took **27.5 seconds** to build the render model of a
+    5,001-message session. Two passes were to blame, and both are now single passes: the library's
+    band geometry re-indexed the whole model for every band (`ModelAdapter.bandBox`), and the host's
+    band builder filtered the whole node list for every turn. The render build is now **63 ms** at
+    the same size (436× faster) and the numbers grow linearly. The layout had the same shape: it
+    filtered the node list once per turn, and the host asked each file for its owning turn by
+    scanning every edge.
+  - **The measured table** (in `prototype.md` §"Scale and streaming budget"): 102 messages → 2.3 ms
+    model / 3.2 ms layout / 7.5 ms render; 1,002 → 9.8 / 7.3 / 12.8; 5,001 → 55.3 / 41.7 / 63.0. One
+    streamed update (the host rebuilds everything) costs 38 ms at 1k and 227 ms at 5k.
+  - **The cap policy is a host policy and it is declared.** A long session is drawn as its recent
+    tail — the last 60 turns, plus the turn the reader is looking at — and the view says so
+    ("Showing 60 of 80 turns. The transcript has the rest."). The layout still measures the whole
+    session, so a node that stays in the window does not move when the window slides.
+    `packages/session-ui/src/graph/scale.ts` owns the policy; the library is untouched.
+  - **The capture at the cap found a defect the numbers could not.** The first `25` frame opened on
+    **empty canvas**: the fit framed the session root, which sits twenty columns to the left of the
+    window, and the lane gutter followed the root instead of the window. Two fixes: the fit skips
+    the root when the window is capped, and the adapter's lane labels can name the node they are
+    anchored to (`AdapterLaneLabel.anchorNodeId`) so the gutter stays with the drawn window. The
+    frame now shows the window's first turns, legible, with its lane names.
+  - **The guards are load-bearing, and one of them is deterministic.** `packages/session-graph/src/
+    canvas/scale.test.ts` builds the render model of a 5,000-message session and fails above 400 ms
+    (measured 63 ms; the quadratic path measured 2,482 ms). The library's guard counts callbacks
+    instead of milliseconds: a layout may ask each node for its turn a bounded number of times
+    (`spacegraphjs/test/layout/strategies.test.ts`) — it fails on the old code and passes now.
+  - **D3 / P8.8 stays deferred, with the number that would reopen it.** The render-model diff is
+    now a library primitive (`diffRenderModels` in `@spacegraphjs/adapter`) and it says how little
+    moved: 3 nodes of 20,005. The seam exists; the work waits until a session above roughly 2,000
+    messages is a normal thing to open, at which point the 227 ms update is the number to beat.
+  - **Unverified:** the benchmark uses synthetic sessions, not real ones (T6.4's corpus is still
+    open); the first paint and the pan frame rate are still unmeasured (there is no harness); the
+    60-turn window is a policy choice, not a measured optimum — the plan's evidence task (T2.2) may
+    change it.
 
 - [x] **T6.8 First-run legend, help, and reduced motion**
   Make encoding discoverable: lane labels/colors, edge kinds/confidence, status dots, help popover; respect `prefers-reduced-motion` for camera/depth transitions; announce mode changes. Removes bias from usability protocol.
@@ -1179,6 +1215,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | All graph steps | `bun run graph:verify` | The canonical gate |
 | Captures | `bun run graph:capture --mode=compare` + manual inspection | Visual acceptance — **a deliberate refresh, not a per-change check** (it overwrites the committed set) |
 | Capture verify | `bun run graph:capture --mode=verify` | The routine gate: fresh renders into a temp dir, committed set asserted, and **no two frames of the zoom/pan matrix are the same picture** (T6.19) |
+| Scale budget | `bun run graph:scale` | T6.6 — the model/layout/render pipeline at 100, 1k and 5k messages |
 | Lint | `bun run lint:changed` | Changed files |
 | Repo check | `bun run check` | Canonical, but red for known environmental reasons; see T1.6 |
 | Provider-free demo | `bun run graph:dev` | T6.1 |
@@ -2146,5 +2183,71 @@ same magnification (183% against 250%) — documented, not reconciled: reconcili
 contract's zoom carries a magnification ratio rather than a renderer-local scale, which is a contract
 change of its own (T6.10). **T2.1 and T2.2 still need participants**, so the stop rule in T2.5 has
 not fired.
+
+**2026-10-20 — T6.6: the scale budget, and a quadratic pipeline nobody had measured.** The
+library track's next closed item. T2 still needs participants, so the work went where the plan says
+it can.
+
+*The benchmark found the real problem.* `bun run graph:scale` (new: `packages/session-graph/script/
+scale-bench.ts`) runs the whole pipeline on synthetic sessions of 100, 1,000 and 5,000 messages. The
+first run took **27.5 seconds** to build the render model of a 5,001-message session. Two passes were
+quadratic and both are now single passes:
+
+- the library's band geometry re-indexed the whole model for every band (`ModelAdapter.bandBox` now
+  memoises the node index per model);
+- the host's band builder filtered the whole node list for every turn (it buckets the turns in one
+  pass now);
+- the layout filtered the node list once per turn, and the timeline layout did it twice (`src/layout/
+  strategies.ts` buckets the turns in one pass now);
+- the host asked each file for its owning turn by scanning every edge (`session-ui/src/graph/layout.ts`
+  builds the owner index once per model).
+
+The render build at 5,001 messages is now **63 ms** (436× faster) and the numbers grow linearly: 2.3 /
+3.2 / 7.5 ms at 102 messages, 9.8 / 7.3 / 12.8 ms at 1,002, 55.3 / 41.7 / 63.0 ms at 5,001 (model /
+layout / render). The layout's positions are **byte-identical** for the canonical fixture — the golden
+file proves it — and the library's guard is a callback count, not a clock: a layout may ask each node
+for its turn a bounded number of times. It fails on the old code (19,000 calls instead of 500) and
+passes now.
+
+*The cap policy is a host policy, and it is declared.* A long session is drawn as its recent tail —
+the last 60 turns, plus the turn the reader is looking at — and the view says so ("Showing 60 of 80
+turns. The transcript has the rest."). `packages/session-ui/src/graph/scale.ts` owns it; the library
+is untouched. The layout still measures the whole session, so a node that stays in the window does
+not move when the window slides.
+
+*The capture at the cap found what the numbers could not.* The first `25-graph-scale-window.png`
+opened on **empty canvas**. The fit framed the session root — twenty columns to the left of the
+window — and the lane gutter followed the root instead of the window, so the map showed a column of
+lane names and nothing else. Two fixes, both small: the fit skips the root when the window is capped,
+and the adapter's lane labels can name the node they are anchored to
+(`AdapterLaneLabel.anchorNodeId`), so the gutter stays with the drawn window. The frame now shows
+the window's first turns, legible, with their lane names. The capture is the fourth frame of the
+matrix to be "the thing it says it is" (T6.19's rule applied to a new frame).
+
+*The guards are load-bearing.* `packages/session-graph/src/canvas/scale.test.ts` builds the render
+model of a 5,000-message session and fails above 400 ms (measured 63 ms; the quadratic path measured
+2,482 ms, so the guard breaks by 6× and the real cost clears it by 6×). The library's diff is a
+primitive now: `diffRenderModels` in `@spacegraphjs/adapter` says how much of a model actually
+moved — 3 nodes of 20,005 for one streamed message.
+
+*D3 / P8.8 stays deferred, with the number that would reopen it.* One streamed update costs 38 ms at
+1,002 messages and 227 ms at 5,001, because the host rebuilds the model, the layout and the render
+model and hands the renderer the whole thing. The seam for an incremental path now exists (the diff
+primitive, the contract's `setModel`); the work waits until a session above roughly 2,000 messages is
+a normal thing to open.
+
+Commands run: `bun run graph:scale` (the table above), `vitest run` in `spacegraphjs` (445 pass, 7
+new), `tsc --noEmit` in `spacegraphjs` (0 errors), `bun test src/graph` in `packages/session-ui` (90
+pass, 9 new), `bun test src` in `packages/session-graph` (96 pass, 2 new), `bun run test:components`
+in `packages/session-graph` (44 pass, 2 new), `bun run typecheck` in `packages/app` (clean), `bun run
+test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (20 pass), `bun run graph:verify` (all
+steps, including the library build and the publish check), `bun run lint:changed` (0), and the capture
+suite (the committed frames are byte-identical; only `25` is new).
+
+Unverified: the benchmark uses synthetic sessions, not real ones (T6.4's corpus is still open); the
+first paint and the pan frame rate are still unmeasured (no harness); the 60-turn window is a policy
+choice, not a measured optimum, and T2.2 may change it; the scale notice was read in the capture, not
+by a reader who did not write it. **T2.1 and T2.2 still need participants**, so the stop rule in T2.5
+has not fired.
 
 
