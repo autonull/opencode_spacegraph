@@ -27,6 +27,11 @@ against a mock server (`script/graph-dev.ts`, port 4097) that serves the canonic
 **no model provider**. The graph sits behind the `experimental.sessionGraph` setting, which the
 demo turns on.
 
+**Steps.** Open http://localhost:3000 → click **Session graph** under *Recent sessions* → click the
+graph toggle in the session header (or press `Ctrl+Shift+G`). The demo page is served at `/`; the
+shell's router knows no other path, so the demo is the app's own entry point with a different
+module.
+
 **Fixture.** `buildFixtureMessages()` from `packages/session-ui/src/graph/fixture.ts` — the same
 session used by the captures and the component tests: an authentication-test failure, a file that
 changes, a retry, and a failure chain.

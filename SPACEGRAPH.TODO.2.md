@@ -20,7 +20,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
 | SpaceGraphJS | `main` @ `632292e`; pushed and tagged `graph-adapter-2026-10-20` (nothing unpushed) |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 435 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 427 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 · the provider-free demo, in a browser |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -95,10 +95,17 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 
 **Already complete (do not redo):**
 T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10 (layout, levels,
-and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour extracted; the framework bindings
-live in the library's React/Solid packages), T4.13 (theme and contrast extracted to the contract
+and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour
+extracted), T4.13 (theme and contrast extracted to the contract
 and the renderers), T3.6 (the exported map names its session), T6.17 (the code-diff vocabulary and
 renderer extracted; the host keeps its markup).
+
+**The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
+own framework. The React and Solid packages keep the `GraphView` binding they already had and nothing
+else — the overlay and diff components that were added with the core were removed, because they duplicated
+the host's markup and had no consumer. T4.14's remaining bindings are therefore **dropped**, not pending:
+the OpenCode host is the worked example. T6.12's second host should be framework-free too (plain
+TypeScript against the contract), not a React app.
 
 ---
 
@@ -227,7 +234,27 @@ All 16 tasks done. Every visual defect from the 2026-10-19 screenshot review fix
 - Multi-zoom/pan capture matrix committed (20–24) (T1.15)
 - Phase 0 spike retired (T1.16)
 
-**Gate G1 — PASSED.** A first-time viewer reads every label, sees the whole model, understands overview without legend.
+**Reopened by the 2026-10-20 review (the demo now runs, so the surface was looked at for real):**
+
+- [ ] **T1.17 The cluster chip covers its own members**
+  A derived `phase` node draws a summary chip ("Verify 4") over the group it summarises. The chip's
+  box is sized to the group's bounds while its label sits at the group's left edge, so the chip lies
+  on top of the first member's card. Measured in the live demo: the chip's container is 534×31 px
+  with a 42 px label; the member's card is underneath it. Visible in captures 02, 03, 04, 12, and 15.
+  Done when: the chip has its own slot in the lane, or it is not drawn while its members are drawn
+  (a summary of what is already on screen is noise).
+  Verify: a component test that asserts no two card boxes overlap at the execution level; the
+  capture set inspected.
+
+- [ ] **T1.18 The hierarchy and file-lens views fit the whole graph, so they are unreadable**
+  The camera fits all the content, so a view that spreads over many rows (hierarchy) or a view
+  squeezed between the file rail and the inspector (file lens) shrinks the cards until the text is
+  a few pixels tall. The lane views are legible; these two are not.
+  Done when: the fit keeps a legible minimum scale and lets the reader pan, or the view is dropped.
+  Verify: a component test that asserts the card text height at 1440×900 in both views.
+
+**Gate G1 — PASSED for the lane views; reopened for T1.17 and T1.18.** A first-time viewer reads every
+label, sees the whole model, understands overview without legend.
 
 ---
 
@@ -727,9 +754,10 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   - The host's `search` (`packages/session-ui/src/graph/selectors.ts`) is now a thin call to `Navigation.search` with the
     session's fields; the host's `GraphMinimap.tsx` uses `Navigation.project` and keeps its dots, colours, and pointer
     handling. The host's behaviour is unchanged (the scope, the ranking, the flip, and the pan maths are the same).
-  - **Still open:** the React/Solid `GraphSearch`, `GraphMinimap`, and `GraphA11y` bindings, and the capability-gallery
-    entries (T6.12). The bindings need a framework-free DOM panel per capability (the pattern `AccessibilityLayer`
-    already uses) so the two frameworks do not each re-implement the same widget.
+  - **The React/Solid `GraphSearch`, `GraphMinimap`, and `GraphA11y` bindings are dropped, not pending.** The
+    library is framework-agnostic: a host binds the core in its own framework, and the OpenCode host already
+    does (its `GraphSearch.tsx` and `GraphMinimap.tsx` are the Solid bindings). The capability-gallery entries
+    (T6.12) wait on a framework-free second host.
 
 **Gate G4 — sustainable.** Published, type-clean, CI-backed, no stopgap blocking second host; **generic primitives extracted from OpenCode; OpenCode is a thin vocabulary layer.**
 
@@ -773,7 +801,8 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
 ## 8. T6 — Remaining leverage enablers (REFINEMENTS — after critical path)
 
 **Already complete:**
-- T6.1 Provider-free demo mode (`bun run graph:dev`) — ✅
+- T6.1 Provider-free demo mode (`bun run graph:dev`) — ✅ (implemented 2026-10-19; **it did not run** until
+  2026-10-20 — see the log)
 
 **SpaceGraphJS core extractions (vacuum from OpenCode — enables library roadmap):**
 - T4.8 Layout strategies → `spacegraphjs/src/layout/` (configurable nodeSizeFn, laneList, laneOfFn, depthMap, turnIdFn, fileOwnerTurnFn, clusterOfFn)
@@ -818,9 +847,16 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Harness for mount/dispose cycles, pan/zoom frame time via `PerformanceObserver`, WebGL context count, model-diff cost at 100/500/1k/5k nodes. Emit JSON report per tag. Add `publint`, `attw`, bundle-size checks to publish workflow.
   Done when: report archived per release; CI fails beyond budget.
 
-- [ ] **T6.12 Second-host React app and capability gallery**
-  Vite React app under `spacegraphjs/demo/react-host` using `react-spacegraph` + contract + synthetic adapter, deployed with demo. Capability gallery (zoom bands, **lane layout (T4.8)**, trail, a11y, **minimap (T4.14)**, SVG, depth) so each generic module has runnable example. **Enabled by T4.8, T4.10, T4.12, T4.13, T4.14 extractions.**
-  Done when: CI runs it; README links it; no OpenCode imports.
+- [ ] **T6.12 Second-host app and capability gallery — framework-free, not React**
+  Plain-TypeScript app under `spacegraphjs/demo/second-host` using the contract + the adapters + the generic
+  modules, deployed with the demo. No framework: the library is framework-agnostic, so a second host is
+  plain TypeScript against the contract. Capability gallery (zoom bands, **lane layout (T4.8)**, trail, a11y,
+  **minimap (T4.14)**, SVG, depth, **the scoped overlay (T4.12)**, **the code diff (T6.17)**) so each generic
+  module has a runnable example. **Enabled by T4.8, T4.10, T4.12, T4.13, T4.14, T6.17 extractions.**
+  Done when: CI runs it; README links it; no OpenCode imports; no framework dependency.
+  - **Changed (2026-10-20):** the plan said a Vite React app using `react-spacegraph`. The library dropped
+    the framework bindings, so a React app would have to re-implement them; a plain-TypeScript host is both
+    smaller and a better proof that the core is usable on its own.
 
 - [ ] **T6.13 Embedder devtools**
   Dev-only overlay/API (`sg.debug()` or `?debug=1`) showing renderer, contract version, capabilities, node/edge/LOD counts, frame time, selection; matching diagnostic panel in host.
@@ -1469,3 +1505,41 @@ Unverified: the framework bindings are exercised by their own suites, not by a r
 demo app yet); the overlay's focus restore was checked in the browser component test, not with a screen
 reader; T4.14's React/Solid `GraphSearch`, `GraphMinimap`, and `GraphA11y` bindings are still open, and the
 capability-gallery entries wait on T6.12.
+
+**2026-10-20 — The library stays framework-agnostic, and the demo runs.** Two corrections, both from the
+owner's direction.
+
+*The framework bindings are gone.* The React and Solid `ScopedSubgraphOverlay` and `CodeDiffOverlay`
+components added with the core duplicated the host's markup and had no consumer. The library's surface
+is the framework-free core (`src/overlays`, `src/navigation`); the OpenCode host is the worked example of a
+host binding it. The two framework packages keep the `GraphView` binding they already had. The library's
+test count is 427 (the eight binding tests went with the bindings).
+
+*The provider-free demo never ran.* T6.1 was marked done on 2026-10-19, and it had been broken since: the
+mock server shared the process with a blocking `spawnSync`, so it never answered the app it served; the
+app was pointed at the real backend's port, which answered 401; the demo page was served at a path the
+shell's router does not know (`Unrecognised route!`); the demo's HTML lacked the layout classes the shell
+sizes itself with, so the shell collapsed to the height of its tab bar; and the mock answered the previous
+generation of the protocol (the session info, the message list, the provider and model catalogs), so the
+session view threw as soon as it rendered. Fixed in `script/graph-dev.ts`, `packages/app/graph-dev.html`,
+`packages/app/vite.config.ts`, and `packages/app/src/entry.graph-dev.tsx`. **Verified in a browser**: the
+home screen, the session, and the graph all render, with no console errors and no failed requests.
+
+*Looking at the surface for real found two defects the captures hid.* The cluster chip of a derived
+`phase` node lies on top of the first card of the group it summarises (its container is sized to the
+group's bounds, 534×31 px, with a 42 px label) — now T1.17. The hierarchy and file-lens views fit the
+whole graph, so their cards shrink to a few pixels of text — now T1.18. Both are open; the lane views are
+legible.
+
+*On the captures.* The set was refreshed deliberately and the frames were read by eye. The fresh frames
+differ from the committed ones by uniform antialiasing noise (RMSE ≈ 0.36 on a 0–255 scale over ~0.004 % of
+the pixels, the same value on every frame, including the ones this change cannot reach), so the committed
+set was left as it is. See §10 for the rule that the set is refreshed on purpose, never as a per-change
+gate.
+
+Commands run: `vitest run` in `spacegraphjs` (427 pass), `bun run typecheck` in `packages/app` (clean),
+`bun run lint:changed` (0), and the demo itself in a browser (home → session → graph, no console errors).
+
+Unverified: the demo was checked in Chromium at 1440×900, not in the desktop app or on a phone; the graph
+in the demo is the light theme, while the captures are dark; the mock serves one session and one project,
+so the demo cannot show a workspace with several sessions.
