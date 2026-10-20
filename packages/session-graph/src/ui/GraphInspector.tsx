@@ -1,43 +1,11 @@
-import type { GraphEdge, GraphModel, GraphNode, NodeKind } from "@opencode/session-ui/graph"
+import type { GraphEdge, GraphModel, GraphNode } from "@opencode/session-ui/graph"
 import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
-
-const KIND_KEY = {
-  session: "ui.sessionGraph.kind.session",
-  turn: "ui.sessionGraph.kind.turn",
-  phase: "ui.sessionGraph.kind.phase",
-  message: "ui.sessionGraph.kind.message",
-  reasoning: "ui.sessionGraph.kind.reasoning",
-  tool: "ui.sessionGraph.kind.tool",
-  file: "ui.sessionGraph.kind.file",
-  subagent: "ui.sessionGraph.kind.subagent",
-  result: "ui.sessionGraph.kind.result",
-  error: "ui.sessionGraph.kind.error",
-  retry: "ui.sessionGraph.kind.retry",
-  compaction: "ui.sessionGraph.kind.compaction",
-  notice: "ui.sessionGraph.kind.notice",
-  diff: "ui.sessionGraph.kind.diff",
-  approval: "ui.sessionGraph.kind.approval",
-} as const satisfies Record<NodeKind, string>
-
-const STATUS_KEY = {
-  pending: "ui.sessionGraph.status.pending",
-  running: "ui.sessionGraph.status.running",
-  success: "ui.sessionGraph.status.success",
-  failed: "ui.sessionGraph.status.failed",
-  interrupted: "ui.sessionGraph.status.interrupted",
-  neutral: "ui.sessionGraph.status.neutral",
-} as const satisfies Record<GraphNode["status"], string>
-
-const CONFIDENCE_KEY = {
-  explicit: "ui.sessionGraph.confidence.explicit",
-  structural: "ui.sessionGraph.confidence.structural",
-  inferred: "ui.sessionGraph.confidence.inferred",
-} as const satisfies Record<GraphEdge["confidence"], string>
+import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
   pending: "text-text-weak",
@@ -62,6 +30,8 @@ export type GraphInspectorProps = {
   diffSource?: GraphDiffSource
   /** Optional host renderer for a node's summary (for example Markdown); falls back to plain text. */
   renderSummary?: (node: GraphNode) => JSX.Element | undefined
+  /** T3.5: the shareable link to the selected node; the inspector offers to copy it. */
+  link?: string
   onSelect: (id: string) => void
   onOpenTranscript?: (id: string) => void
 }
@@ -75,6 +45,7 @@ export const GraphInspector = (props: GraphInspectorProps) => {
   const i18n = useI18n()
   const data = () => props.node?.data
   const [copied, setCopied] = createSignal(false)
+  const [copiedLink, setCopiedLink] = createSignal(false)
 
   const copyOutput = async () => {
     const output = text(data()?.output)
@@ -83,6 +54,13 @@ export const GraphInspector = (props: GraphInspectorProps) => {
     await navigator.clipboard?.writeText(output)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // T3.5: the link to the node, so a decision can be shared instead of re-scrolled to.
+  const copyLink = async (link: string) => {
+    await navigator.clipboard?.writeText(link)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
   }
 
   const connections = (): Connection[] => {
@@ -147,6 +125,18 @@ export const GraphInspector = (props: GraphInspectorProps) => {
                   {node().label}
                 </h2>
               </div>
+              <Show when={props.link}>
+                {(link) => (
+                  <IconButton
+                    size="small"
+                    variant="ghost"
+                    aria-label={i18n.t(copiedLink() ? "ui.message.copied" : "ui.sessionGraph.inspector.copyLink")}
+                    title={i18n.t(copiedLink() ? "ui.message.copied" : "ui.sessionGraph.inspector.copyLink")}
+                    onClick={() => copyLink(link())}
+                    icon={<Icon name={copiedLink() ? "check" : "outline-copy"} size="small" />}
+                  />
+                )}
+              </Show>
               <Show when={props.onOpenTranscript && openInTranscript(props.model, node().id)}>
                 <IconButton
                   size="small"

@@ -50,8 +50,8 @@ A negative result, honestly recorded, is a valid and publishable outcome. The li
 | `packages/app/src/settings/model.tsx` | `experimental.sessionGraph` setting (default `false`) |
 | `packages/app/src/session/header/session-graph-toggle.tsx` | Toggle hidden when flag off |
 | `packages/app/src/session/commands/use-session-commands.tsx` | Graph commands disabled when flag off |
-| `packages/app/src/session/screen.tsx` | Conditional graph mode branch |
-| `packages/app/src/session/graph/` | Lazy wrapper + turn-map overlay + mode switch |
+| `packages/app/src/session/screen.tsx` | Conditional graph mode branch; a `#graph:` permalink opens the graph |
+| `packages/app/src/session/graph/` | Lazy wrapper + turn-map overlay + mode switch + the permalink format + the dry-run counter |
 | `packages/app/src/settings/experimental/experimental.tsx` | Settings UI for the flag |
 
 ### 3.3 Library (SpaceGraphJS, sibling repo, not vendored)
@@ -90,15 +90,22 @@ A negative result, honestly recorded, is a valid and publishable outcome. The li
 Re-audited 2026-10-19 against the merge base with upstream `dev` (`594af423e8`). Every edit inside
 `packages/app/src` and the core packages is listed with the reason it cannot live elsewhere.
 
-### 5.1 App integration (`packages/app/src`, 16 files, +689/−36)
+### 5.1 App integration (`packages/app/src`, 19 files, +863/−36)
+
+Re-audited 2026-10-20 against the current upstream `dev` (`d249607e90`), so the numbers are the
+fork's own work and not upstream's. The 2026-10-19 audit said 16 files, +689/−36; the three files
+below are what the permalink and the interaction counter added.
 
 | File | Δ | Why it cannot live elsewhere |
 |---|---|---|
-| `session/graph/session-graph-view.tsx` | +154 | Lazy wrapper that turns session messages into a graph model. It is the only app file that knows graph semantics exist; it imports the model package and hands plain data to `@opencode/session-graph`. |
+| `session/graph/session-graph-view.tsx` | +181 | Lazy wrapper that turns session messages into a graph model. It is the only app file that knows graph semantics exist; it imports the model package and hands plain data to `@opencode/session-graph`. |
+| `session/graph/graph-permalink.ts` | +51 | The `#graph:<node>` link format. A URL format is an app concern (the hash is the app's), and the format must be read by the session screen, the graph view, and the transcript's hash handling — three app files, one module. |
+| `session/graph/graph-metrics-readout.tsx` | +49 | The dry-run counter's readout. It is a dev-only affordance of the session screen, so it belongs to the app, not to the graph package. |
 | `session/graph/turn-map-overlay.tsx` | +64 | Hybrid affordance: mounts the overlay for one turn over the transcript. App-side because it owns the transcript routing. |
-| `session/screen.tsx` | +59/−6 | The transcript/graph branch. Routing belongs to the screen; a graph mode is a sibling of the timeline. |
-| `session/header/session-graph-toggle.tsx` | +56 | Header chrome for the mode switch. |
-| `session/commands/use-session-commands.tsx` | +70/−24 | Command registration and keybinds (`mod+alt+t` for the turn map). |
+| `session/screen.tsx` | +89/−6 | The transcript/graph branch. Routing belongs to the screen; a graph mode is a sibling of the timeline. It also opens the graph on a permalink and mounts the counter's readout. |
+| `session/header/session-graph-toggle.tsx` | +61 | Header chrome for the mode switch. |
+| `session/commands/use-session-commands.tsx` | +73/−24 | Command registration and keybinds (`mod+alt+t` for the turn map). |
+| `session/use-session-hash-scroll.ts` | +5 | The transcript's hash handling ignores a graph permalink, so leaving the graph keeps the position the transcript restores. Three lines of glue in the file that owns the hash. |
 | `settings/model.tsx` | +108/−4 | The `experimental.sessionGraph` setting, in the settings model that persists all settings. The bulk of the delta is the settings schema, not graph code. |
 | `settings/experimental/experimental.tsx` | +17/−1 | The toggle in the experimental settings surface. |
 | `settings/model.test.ts` | +3 | Test for the new setting's default. |
@@ -112,8 +119,8 @@ Re-audited 2026-10-19 against the merge base with upstream `dev` (`594af423e8`).
 | `runtime/i18n/en.ts` | +10 | Copy for the commands, the error states and the settings toggle. |
 
 **No graph semantics leak into app-core files.** Only `session/graph/*.tsx` imports
-`@opencode/session-ui/graph`; everything else touches the mode, the setting, the commands, or the
-scroll position.
+`@opencode/session-ui/graph`; everything else touches the mode, the setting, the commands, the
+scroll position, or the URL.
 
 ### 5.2 Dev-only demo (excluded from an upstream diff)
 

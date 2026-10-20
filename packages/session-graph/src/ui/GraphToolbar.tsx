@@ -13,33 +13,15 @@ import {
   type Representation,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
+import { DEPTH_KEY, LEVEL_KEY, REPRESENTATION_KEY } from "./vocabulary"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
-
-const LEVEL_KEY = {
-  overview: "ui.sessionGraph.level.overview",
-  execution: "ui.sessionGraph.level.execution",
-  detail: "ui.sessionGraph.level.detail",
-} as const satisfies Record<ZoomLevel, string>
 
 const STRATEGY_KEY = {
   lanes: "ui.sessionGraph.layout.lanes",
   timeline: "ui.sessionGraph.layout.timeline",
   hierarchy: "ui.sessionGraph.layout.hierarchy",
 } as const satisfies Record<LayoutStrategy, string>
-
-const REPRESENTATION_KEY = {
-  graph: "ui.sessionGraph.representation.graph",
-  ribbon: "ui.sessionGraph.representation.ribbon",
-  matrix: "ui.sessionGraph.representation.matrix",
-} as const satisfies Record<Representation, string>
-
-const DEPTH_KEY = {
-  flat: "ui.sessionGraph.depth.flat",
-  layered: "ui.sessionGraph.depth.layered",
-  "depth-stack": "ui.sessionGraph.depth.depthStack",
-  orbit: "ui.sessionGraph.depth.orbit",
-} as const satisfies Record<DepthMode, string>
 
 export type GraphToolbarProps = {
   level: ZoomLevel
@@ -82,6 +64,9 @@ export type GraphToolbarProps = {
   searching?: boolean
   /** RF.7: narrow widths collapse the secondary controls into an overflow menu. */
   compact?: boolean
+  /** T6.8: the legend toggle; absent when the host does not offer it. */
+  legend?: boolean
+  onToggleLegend?: () => void
   /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
@@ -169,6 +154,17 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         onClick={props.onSearch}
         icon={<Icon name="magnifying-glass" size="small" />}
       />
+      <Show when={props.onToggleLegend}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          state={props.legend ? "pressed" : "rest"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.legend")}
+          title={i18n.t("ui.sessionGraph.toolbar.legend")}
+          onClick={() => props.onToggleLegend?.()}
+          icon={<Icon name="outline-sliders" size="small" />}
+        />
+      </Show>
       <Show when={props.onTurnMap}>
         <IconButton
           size="small"

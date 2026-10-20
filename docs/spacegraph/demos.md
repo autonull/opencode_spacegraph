@@ -96,6 +96,43 @@ the adapter parity, and (T6.7) that hostile markup stays inert in both adapters.
 
 ---
 
+## 4. Two opt-in surfaces in the host demo
+
+Both are off unless you ask for them, and neither sends anything anywhere.
+
+### The interaction counter (T2.3)
+
+```
+http://localhost:3000/?graphMetrics=1
+```
+
+A small readout appears in the corner of the session screen: the number of interactions so far, and
+a **Reset** button for the next task. It counts the surface switches, the searches, the node
+selections, the expansions, the returns to the transcript, the turn-map openings, and the camera
+actions. The count stays in the browser — no telemetry, no network, no storage.
+
+**Why it exists.** The usability protocol asks whether a task takes three interactions or fewer.
+That is a measurement, not an estimate, and the dry run has to be able to cite the number.
+
+**How to read it.** The total is the number the protocol wants. Hovering it breaks the total down
+by action (`select 3 · search 1`), so a facilitator can see *where* the interactions went.
+
+### The node permalink (T3.5)
+
+```
+http://localhost:3000/session/<id>#graph:file:src/auth/token.ts
+```
+
+The hash names one node of the map. The app opens the graph on it, selects it, and frames it; an
+unknown node id falls back to the plain map. The inspector's copy button puts the same link on the
+clipboard, so a decision or a failure can be shared instead of re-scrolled to.
+
+The representation can be named too (`#graph:ribbon:turn:msg_user_1`). The representation comes
+first because a node id may itself contain colons (`turn:msg_user_1`), so a trailing segment would
+be ambiguous.
+
+---
+
 ## Which one should I open?
 
 | If you want to… | Open |
@@ -103,3 +140,5 @@ the adapter parity, and (T6.7) that hostile markup stays inert in both adapters.
 | See whether this is useful inside OpenCode | Host demo |
 | Judge the library as a dependency | Library contract demo |
 | Check that it is tested, not just demoed | `bun run graph:verify` |
+| Measure the interactions of a task | Host demo with `?graphMetrics=1` |
+| Share one node of a map | The `#graph:<node>` permalink |

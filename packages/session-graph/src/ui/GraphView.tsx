@@ -1,6 +1,6 @@
 import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme, RenderModel } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
-import type { GraphLayout, GraphModel, GraphNode, Lane, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 import {
   ancestors,
   breadcrumbs,
@@ -13,6 +13,7 @@ import {
   isVisibleAt,
   matrixColumn,
   matrixLayout,
+  Metrics,
   minLevelOf,
   nodeByID,
   nodeSize,
@@ -30,26 +31,16 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs, type GraphBreadcrumb } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
+import { LANE_KEY, LEVEL_KEY, REPRESENTATION_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphInspector } from "./GraphInspector"
+import { GraphLegend } from "./GraphLegend"
 import { GraphMinimap } from "./GraphMinimap"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { createGraphTheme } from "./theme"
 import { renderToSVG, serializeRenderModel, type SvgOptions } from "@spacegraphjs/svg-renderer"
-
-/** LE.10 lane gutter copy, in layout order. */
-const LANE_KEY = {
-  phases: "ui.sessionGraph.lane.phases",
-  prompt: "ui.sessionGraph.lane.prompt",
-  narrative: "ui.sessionGraph.lane.narrative",
-  explore: "ui.sessionGraph.lane.explore",
-  edit: "ui.sessionGraph.lane.edit",
-  verify: "ui.sessionGraph.lane.verify",
-  delegate: "ui.sessionGraph.lane.delegate",
-  artifacts: "ui.sessionGraph.lane.artifacts",
-} as const satisfies Record<Lane, string>
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -88,6 +79,13 @@ export type GraphViewProps = {
   renderCard?: CardTemplate
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
+  /**
+   * T3.5: the node to select and frame. The view raises the semantic level when the node is hidden
+   * at the current one, then moves the camera to it once the model that carries it is applied.
+   */
+  frame?: string
+  /** T3.5: the shareable link to the selected node; the inspector offers to copy it. */
+  link?: string
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onDepthChange?: (depth: DepthMode) => void
@@ -122,6 +120,8 @@ export const GraphView = (props: GraphViewProps) => {
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
   const [files, setFiles] = createSignal<boolean>(props.files ?? false)
   const [searchOpen, setSearchOpen] = createSignal(false)
+  // T6.8: the legend names the encoding, so a first-time reader can decode the map without a briefing.
+  const [legendOpen, setLegendOpen] = createSignal(false)
   // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
   // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
   const [selection, setSelection] = createSignal<readonly string[]>(props.selection ? [props.selection] : [])
@@ -205,6 +205,14 @@ export const GraphView = (props: GraphViewProps) => {
   // LE.7: the ribbon and matrix are overview-first summaries; the graph is the only representation the
   // semantic level control drives.
   const effectiveLevel = createMemo<ZoomLevel>(() => representationLevel(representation()) ?? level())
+  // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
+  const viewAnnouncement = createMemo(() =>
+    i18n.t("ui.sessionGraph.a11y.view", {
+      level: i18n.t(LEVEL_KEY[effectiveLevel()]),
+      representation: i18n.t(REPRESENTATION_KEY[representation()]),
+      depth: i18n.t(DEPTH_KEY[depth()]),
+    }),
+  )
   const axisLabels = createMemo(() => {
     const rep = representation()
     if (rep !== "ribbon" && rep !== "matrix") return undefined
@@ -411,11 +419,13 @@ export const GraphView = (props: GraphViewProps) => {
     if (id)
       for (const node of breadcrumbs(props.model, id)) controller.trail.push({ id: node.id, label: node.label, kind: node.kind })
   }
-  const select = (target: string | readonly string[] | undefined) => {
+  const select = (target: string | readonly string[] | undefined, counted = true) => {
     const id = typeof target === "string" ? target : target?.[0]
     controller.select(target ?? null)
     seedTrail(id)
     props.onSelect?.(id)
+    // T2.3: a permalink frames a node without a participant acting, so it is not an interaction.
+    if (counted && id) Metrics.count("select")
   }
   const changeProjection = (next: Projection) => {
     setProjection(next)
@@ -442,6 +452,7 @@ export const GraphView = (props: GraphViewProps) => {
     const node = nodeByID(props.model, id)
 
     if (!node) return
+    Metrics.count("expand")
     if (representation() !== "graph") changeRepresentation("graph")
     jumpTo(node)
   }
@@ -471,6 +482,49 @@ export const GraphView = (props: GraphViewProps) => {
     renderer?.fit(subtree(props.model, id).map((node) => node.id), fitOptions())
   }
 
+  // T3.5: a permalink frames its node. The semantic level rises first when the node is hidden at the
+  // current one, and the camera moves once the model that carries the node has been applied.
+  const [framed, setFramed] = createSignal<string>()
+  const raiseLevelForFrame = () => {
+    const id = props.frame
+    if (!id) return false
+    const node = nodeByID(props.model, id)
+    if (!node) return false
+    const minimum = minLevelOf(node)
+    if (LEVEL_RANK[minimum] <= LEVEL_RANK[level()]) return false
+    setLevel(minimum)
+    return true
+  }
+  const focusFrame = (instance: GraphRenderer) => {
+    const id = props.frame
+    if (!id || framed() === id) return
+    const node = nodeByID(props.model, id)
+    if (!node) return
+    select(id, false)
+    instance.focus(id)
+    setFramed(id)
+  }
+
+  // T2.3: returning to the transcript is an interaction.
+  const openInTranscript = (id: string) => {
+    Metrics.count("return")
+    props.onOpenTranscript?.(id)
+  }
+
+  // T2.3: the search is an interaction, so it is counted once per opening.
+  const openSearch = () => {
+    if (searchOpen()) return
+    Metrics.count("search")
+    setSearchOpen(true)
+  }
+  const toggleSearch = () => {
+    if (searchOpen()) {
+      setSearchOpen(false)
+      return
+    }
+    openSearch()
+  }
+
   // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
   // originate inside the a11y list or a form control are left to their owner.
   const onRegionKeyDown = (event: KeyboardEvent) => {
@@ -480,12 +534,15 @@ export const GraphView = (props: GraphViewProps) => {
 
     if (event.key === "/") {
       event.preventDefault()
-      setSearchOpen(true)
+      openSearch()
 
       return
     }
 
-    if (event.key === "f") renderer?.fit()
+    if (event.key === "f") {
+      Metrics.count("fit")
+      renderer?.fit()
+    }
 
     const level = { "1": "overview", "2": "execution", "3": "detail" }[event.key] as ZoomLevel | undefined
 
@@ -569,11 +626,18 @@ export const GraphView = (props: GraphViewProps) => {
     settleFit()
     fit()
   }
-  const fitContent = () => requestFit(() => renderer?.fit(untrack(contentIDs), fitOptions()))
+  const fitContent = () => {
+    Metrics.count("fit")
+    requestFit(() => renderer?.fit(untrack(contentIDs), fitOptions()))
+  }
   const applyModel = (instance: GraphRenderer) => {
-    if (!needsFit()) return
-    setNeedsFit(false)
-    requestFit(() => instance.fit(untrack(contentIDs), fitOptions()))
+    // T3.5: a level change rebuilds the model, so the frame waits for the one that carries the node.
+    if (raiseLevelForFrame()) return
+    if (needsFit()) {
+      setNeedsFit(false)
+      requestFit(() => instance.fit(untrack(contentIDs), fitOptions()))
+    }
+    focusFrame(instance)
   }
   const zoomPercent = () => {
     const current = viewport()
@@ -586,6 +650,7 @@ export const GraphView = (props: GraphViewProps) => {
   const zoomBy = (direction: 1 | -1) => {
     const current = viewport()
     if (!current || !renderer) return
+    Metrics.count("zoom")
     renderer.setViewport({
       zoom: Math.min(maxZoom(), Math.max(minZoom(), current.zoom + direction * 0.08)),
       center: current.center,
@@ -613,7 +678,9 @@ export const GraphView = (props: GraphViewProps) => {
         onZoomIn={() => zoomBy(1)}
         zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= minZoom()}
         zoomInDisabled={(viewport()?.zoom ?? 0) >= maxZoom()}
-        onSearch={() => setSearchOpen((open) => !open)}
+        onSearch={toggleSearch}
+        legend={legendOpen()}
+        onToggleLegend={() => setLegendOpen((open) => !open)}
         strategy={strategy()}
         onStrategy={changeStrategy}
         representation={representation()}
@@ -626,7 +693,9 @@ export const GraphView = (props: GraphViewProps) => {
           props.onTurnMap
             ? () => {
                 const turnID = selectedTurn()
-                if (turnID) props.onTurnMap?.(turnID)
+                if (!turnID) return
+                Metrics.count("turn-map")
+                props.onTurnMap?.(turnID)
               }
             : undefined
         }
@@ -715,6 +784,7 @@ export const GraphView = (props: GraphViewProps) => {
             model={renderModel()}
             selection={selection()}
             instructionsId={a11yInstructionsId}
+            announcement={viewAnnouncement()}
             onSelect={select}
             onEscape={() => select(undefined)}
           />
@@ -770,6 +840,9 @@ export const GraphView = (props: GraphViewProps) => {
               onClose={() => setSearchOpen(false)}
             />
           </Show>
+          <Show when={legendOpen()}>
+            <GraphLegend theme={theme()} onClose={() => setLegendOpen(false)} />
+          </Show>
         </div>
         <Show when={selectedNode() && !narrow()}>
           <div
@@ -801,8 +874,9 @@ export const GraphView = (props: GraphViewProps) => {
             node={selectedNode()}
             diffSource={props.diffSource}
             renderSummary={props.renderSummary}
+            link={props.link}
             onSelect={select}
-            onOpenTranscript={props.onOpenTranscript}
+            onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
           />
         </div>
       </div>

@@ -290,6 +290,72 @@ test("selects the turn for a message hash when the graph opens", async ({ page }
   expect(errors).toEqual([])
 })
 
+test("opens the graph on a node permalink and frames the node", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openSession(page, graphFixture())
+
+  // T3.5: a shared link names the node, and the graph opens on it.
+  await page.evaluate(() => {
+    window.location.hash = "#graph:file:src/auth/token.ts"
+  })
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(inspector).getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("opens the graph on a node permalink from a cold load", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openSession(page, graphFixture())
+
+  await page.evaluate(() => {
+    window.location.hash = "#graph:turn:msg_user_1"
+  })
+  // A reload is a cold load: the app boots with the link and opens the graph on its own.
+  await page.reload()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(inspector).getByRole("heading", { name: "Fix the authentication test failures." })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("falls back safely when a permalink names an unknown node", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openSession(page, graphFixture())
+
+  await page.evaluate(() => {
+    window.location.hash = "#graph:file:does/not/exist.ts"
+  })
+  // The graph opens, nothing is selected, and the transcript stays reachable.
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(inspector).getByText("Select a node to see its details")).toBeVisible()
+  await page.locator(toolbar).getByRole("button", { name: "Back to transcript" }).click()
+  await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
+
+  expect(errors).toEqual([])
+})
+
+test("counts interactions for the usability protocol when the counter is on", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openSession(page, graphFixture())
+
+  // T2.3: the counter is opt-in through the URL and never leaves the browser.
+  await page.goto(`${sessionHref(sessionID)}?graphMetrics=1`)
+  const readout = page.locator('[data-slot="graph-metrics"]')
+  await expect(readout).toContainText("0 interactions")
+
+  // A surface switch is an interaction.
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(readout).toContainText("1 interaction")
+
+  // So is opening the search.
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  await expect(readout).toContainText("2 interactions")
+
+  expect(errors).toEqual([])
+})
+
 test("restores the transcript position after leaving the graph", async ({ page }) => {
   const errors = trackPageErrors(page)
   // A long transcript so switching modes has a position worth restoring.

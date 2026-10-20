@@ -66,8 +66,21 @@ function accent(node: GraphNode) {
   return { solid: `hsl(${h} 70% 55%)`, soft: `hsl(${h} 70% 55% / 0.16)` }
 }
 
-function statusColor(theme: RenderTheme, node: GraphNode) {
-  switch (node.status) {
+/** The tint a kind's chip carries, so the legend and the cards cannot drift apart. */
+export function kindAccent(kind: NodeKind) {
+  const h = KIND_HUE[kind] ?? 210
+  return { solid: `hsl(${h} 70% 55%)`, soft: `hsl(${h} 70% 55% / 0.16)` }
+}
+
+/** The tint a phase category's chip carries. */
+export function categoryAccent(category: string) {
+  const h = CATEGORY_HUE[category] ?? 210
+  return { solid: `hsl(${h} 70% 55%)`, soft: `hsl(${h} 70% 55% / 0.16)` }
+}
+
+/** The colour a status dot carries, so the legend and the cards cannot drift apart. */
+export function statusAccent(theme: RenderTheme, status: GraphNode["status"]) {
+  switch (status) {
     case "success":
       return theme.success
     case "failed":
@@ -80,6 +93,10 @@ function statusColor(theme: RenderTheme, node: GraphNode) {
     default:
       return theme.border
   }
+}
+
+function statusColor(theme: RenderTheme, node: GraphNode) {
+  return statusAccent(theme, node.status)
 }
 
 const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])

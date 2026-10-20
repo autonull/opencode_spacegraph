@@ -57,6 +57,8 @@ export {
   type TranscriptRef,
 } from "./selectors"
 
+export { Metrics, type GraphAction, type GraphActionCounts, type GraphMetrics } from "./metrics"
+
 export {
   clusterCount,
   domBudget,

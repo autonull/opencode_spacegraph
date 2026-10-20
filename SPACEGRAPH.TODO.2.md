@@ -20,9 +20,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
 | SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 94 · `session-graph` component 39 · `spacegraphjs` 436 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 16/16 · publish check 2/2 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 81 · `session-graph` unit 94 · `session-graph` component 40 · `spacegraphjs` 436 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps (library build first) · app typecheck · app e2e 20/20 · publish check 2/2 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
-| Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
+| Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed — **but 20–24 are not what their names say (T6.19)** |
 
 Two facts shape everything below:
 
@@ -94,10 +94,14 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - T6.16 Demo index — documentation, helpful but not blocking
 
 **Already complete (do not redo):**
-T0 (sync), T1 (all usability defects, T1.17 and T1.18 closed on 2026-10-20), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10 (layout, levels,
-and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour
+T0 (sync), T1 (all usability defects, T1.17 and T1.18 closed on 2026-10-20), T2.3 (the interaction
+counter), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.5 (permalinks), T3.6 (the
+exported map names its session), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3
+(review packet), T6.7 (security suite), T6.8 (legend, help, and the mode announcements — the camera
+half is T6.18), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10
+(layout, levels, and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour
 extracted), T4.13 (theme and contrast extracted to the contract
-and the renderers), T3.6 (the exported map names its session), T6.17 (the code-diff vocabulary and
+and the renderers), T6.17 (the code-diff vocabulary and
 renderer extracted; the host keeps its markup).
 
 **The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
@@ -309,11 +313,27 @@ viewer reads every label, sees the whole model, understands overview without leg
   as a product bet and leaves the library as the deliverable.
   Verify: `prototype.md` has results table + decision.
 
-- [ ] **T2.3 (Optional) Interaction instrumentation behind a dev flag**
+- [x] **T2.3 (Optional) Interaction instrumentation behind a dev flag**
   Count mode switches, searches, node selections, expand/return actions per task so "≤ 3
   interactions" is measured, not estimated. Local-only; no telemetry.
   Done when: counter off by default and documented; dry run can cite numbers.
   Verify: flag exists, dry run cites numbers.
+  - **Done (2026-10-20).** `Metrics` (`packages/session-ui/src/graph/metrics.ts`) counts eight
+    actions — `mode-switch`, `search`, `select`, `expand`, `return`, `turn-map`, `fit`, `zoom` — and
+    is **off by default**: nothing is counted until the app mounts the readout, which it does only
+    when the URL carries `?graphMetrics=1`. The readout (`graph-metrics-readout.tsx`) shows the total
+    and resets it between tasks; hovering breaks the total down per action.
+  - **The count is the number of user actions, not the number of code paths.** One action increments
+    one counter: the surface switch is counted at the four places a participant can flip it (the
+    header toggle, the mobile tab, the `graph.toggle` command, the graph's *Back to transcript*),
+    while the graph's own *Open in transcript* counts as `return` and the turn map's *open in full
+    graph* counts as `expand` — the mode change that follows is a consequence, not a second action.
+    A permalink's automatic entry counts as nothing: it is the start of the task, not an interaction.
+  - **Nothing leaves the browser.** No telemetry, no network, no storage: the counter is a module
+    singleton in the host, and the only way to read it is the readout.
+  - Tests: `packages/session-ui/src/graph/metrics.test.ts` (4) for the counter, and an app e2e that
+    turns it on through the URL and reads the number (0 → 1 → 2 interactions).
+  - Documented in `docs/spacegraph/demos.md` §4.
 
 - [ ] **T2.4 Close the open product decisions**
   Record decisions for #10 (naming: Graph / Map / Session map — pick one everywhere), #14
@@ -372,6 +392,13 @@ The design argument (`SPACEGRAPH.md`) asks for a hybrid first-class experience. 
     16 files, +689/−36; the dev-only demo is +149/−18 and is excluded from an upstream diff;
     `session-ui/src/graph/` +3,487; `packages/session-graph/` +5,660; `gui-extensions/session-map/`
     +274.
+  - **Re-audited again (2026-10-20), against the current upstream `dev` (`d249607e90`)** — the
+    merge base is old enough that the merge-base diff mixes in upstream's own work, so the numbers
+    are now the fork's alone. `packages/app/src` is **19 files, +863/−36**: the permalink and the
+    interaction counter added `session/graph/graph-permalink.ts` (+51),
+    `session/graph/graph-metrics-readout.tsx` (+49), and three lines in
+    `session/use-session-hash-scroll.ts` (the transcript's hash handling ignores a graph permalink).
+    The per-file table and the justification for each are in `docs/spacegraph/upstream-review.md` §5.1.
   - Per-file table with a justification for every app edit: `docs/spacegraph/upstream-review.md` §5.
     Linked from `prototype.md` §"Upstream readiness".
   - Claim checked, not assumed: only `packages/app/src/session/graph/*.tsx` imports
@@ -383,9 +410,30 @@ The design argument (`SPACEGRAPH.md`) asks for a hybrid first-class experience. 
 
 **Refinements (defer until after RFC or parallel if capacity):**
 
-- [ ] **T3.5 Permalinks to a node** — sharing polish, not blocking
+- [x] **T3.5 Permalinks to a node** — sharing polish, not blocking
   Extend hash reveal to `#graph:<nodeID>` (and representation) so a reviewer can link to a decision/failure.
   Done when: cold-loading URL selects and frames node; unknown IDs fall back safely.
+  Verify: cold-loading URL selects and frames node; unknown IDs fall back safely.
+  - **Done (2026-10-20).** The hash form is `#graph:<nodeID>`, optionally naming the representation
+    (`#graph:ribbon:<nodeID>`). The representation comes **first** because a node id may itself
+    contain colons (`turn:msg_user_1`), so a trailing segment would be ambiguous; no node id starts
+    with a representation name, so the split is unambiguous in both directions.
+  - **A shared link opens the graph.** The session screen reads the hash and switches to the graph
+    mode, so a cold load lands on the map instead of the transcript. The mode is read *untracked*, so
+    leaving the graph for the transcript does not pull it back, and the experimental flag is part of
+    the effect's sources, so a link opened before the settings load still opens the graph. With the
+    flag off, the link falls back to the transcript.
+  - **The node is framed, not just selected.** `GraphView` grew a `frame` prop: the view raises the
+    semantic level when the node is hidden at the current one, waits for the model that carries it,
+    and then centres the camera on it. The frame is applied after the fit, so the reader lands on
+    the node rather than on the whole map.
+  - **Unknown ids fall back safely.** The graph opens, nothing is selected, and the transcript stays
+    reachable. The transcript's own hash handling ignores a graph permalink, so it keeps the
+    position it restores instead of jumping to the bottom.
+  - **The link can be copied.** The inspector's copy button puts the absolute permalink on the
+    clipboard, so a decision or a failure is shared instead of re-scrolled to.
+  - Tests: `packages/app/src/session/graph/graph-permalink.test.ts` (15) for the format, and three
+    app e2e cases (a live permalink, a cold load, an unknown node).
 
 - [x] **T3.6 Namespace the model for future comparison** — future-proofing, not blocking
   Add `data.sessionID` to session root (keep literal root ID for compat) so exported maps from two sessions combine later without breaking change.
@@ -947,10 +995,72 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   Done when: table in `prototype.md` and guard test fails on order-of-magnitude regression.
   Verify: new perf test + capture at cap.
 
-- [ ] **T6.8 First-run legend, help, and reduced motion**
+- [x] **T6.8 First-run legend, help, and reduced motion**
   Make encoding discoverable: lane labels/colors, edge kinds/confidence, status dots, help popover; respect `prefers-reduced-motion` for camera/depth transitions; announce mode changes. Removes bias from usability protocol.
   Done when: new user decodes graph without briefing; reduced-motion test passes.
   Verify: component test + capture.
+  - **The discoverability half is done (2026-10-20); the camera half moved to T6.18.** The legend
+    (`packages/session-graph/src/ui/GraphLegend.tsx`) names every encoding the canvas draws: the
+    lanes, the card colours, the phase groups, the line styles, and the status dots, plus one
+    sentence of help ("Columns are turns, left to right; rows are lanes, what the agent did. A line
+    is structure, not cause."). It is opened from the toolbar and closes on Escape.
+  - **The legend cannot drift from the picture.** The swatches come from the *same* helpers the card
+    template uses (`kindAccent`, `categoryAccent`, `statusAccent` in `cardTemplate.ts`), and the
+    names come from the *same* i18n keys the inspector uses — the two key maps moved into
+    `src/ui/vocabulary.ts` so there is one source for both.
+  - **Mode changes are announced.** The a11y mirror announces the level, the representation, and the
+    depth when they change (the first state is not announced, because it is not a change).
+  - Tests: `packages/session-graph/component-tests/graph-legend.spec.ts` (1) asserts every section
+    and every name; the announcement rides the existing `graph-a11y` component test.
+  - **Not done:** the camera's own transitions under `prefers-reduced-motion` — that is T6.18, and
+    the reason is in the plan: the contract has no viewport read-back, so "the camera did not glide"
+    cannot be asserted from the host today.
+
+- [ ] **T6.18 Respect `prefers-reduced-motion` for the camera transitions**
+  The host must be able to say "jump, do not glide" when the reader asked for less motion.
+  Done when: under the preference the camera reaches a node at once, and a test proves it.
+  Verify: a component test that emulates the preference and asserts the camera's position.
+  - **What is already instant.** The fit never glides: the SpaceGraph adapter calls
+    `fitView(100, 0, …)` (duration 0), so the first frame and every *Fit to view* are a jump. The
+    Cytoscape adapter's `focus` (`cy.center`) is instant too. The depth treatment is a camera
+    parameter, not a tween.
+  - **The one animated transition left is `focus(id)`.** The adapter calls `sg.focusNode(id)`, whose
+    `flyTo` animates over a second. The host uses it for the search-result jump, the breadcrumb
+    framing, and the permalink frame. The host can jump instead — it knows the node's world position
+    from the layout, and the contract's `setViewport` is instant — but the *test* is the blocker.
+  - **The contract has no viewport read-back.** The SpaceGraph core has `getViewport()` (the camera
+    target and the zoom) and both adapters emit `viewportChange`, but `GraphRenderer` exposes
+    neither, so the host cannot assert where the camera is. This is also what broke the capture
+    harness (T6.19): the Storybook story calls `graphRenderer.getViewport?.()`, which is `undefined`
+    on both adapters.
+  - **So the work is two changes, in this order.** (1) Add `getViewport(): RendererViewport` to the
+    contract and implement it in both adapters (`SpaceGraph.getViewport()` and `cy.viewport()`), and
+    make `focus` resolve a *model* node id in the Cytoscape adapter. (2) Then the host can branch on
+    `matchMedia("(prefers-reduced-motion: reduce)")` and assert the camera is at the node
+    immediately, and still gliding without the preference. Doing (2) without (1) leaves an
+    unasserted branch; the plan prefers (1) first.
+
+- [ ] **T6.19 The capture matrix is not what its names say**
+  Frames 20–24 are presented as a zoom/pan matrix. Five of them are the same picture.
+  Done when: every frame shows what its name says, regenerated and read by eye.
+  Verify: the ten frames differ from each other; the capture diff reports no duplicates.
+  - **The evidence (2026-10-20).** `20-cytoscape-zoom-150.png`, `21-cytoscape-zoom-250.png`,
+    `22-cytoscape-turn-1.png`, `23-cytoscape-turn-2.png` and `24-cytoscape-failure-chain.png` are
+    **byte-identical** to `08-cytoscape-selected.png` (md5 `da5105633acc224eef21fcb228842e14`).
+    They are named as a zoom and pan matrix and they show one frame five times.
+  - **Why.** The Storybook capture harness's `zoomTo` reads `graphRenderer.getViewport?.()`, which is
+    `undefined` on both adapters (the contract has no read-back, T6.18), so it changes nothing; and
+    `panTo` calls `focus` with a *model* node id, which the Cytoscape adapter looks up in its own
+    element map and does not find. The app-side frames 22–24 have their own defect: the capture
+    selects a node through the dev harness and screenshots, but a selection does not move the
+    camera, and the comment's "and fit to frame it" is not in the code — so they show the fit with a
+    different node selected, not the node framed. The app-side zoom frames (20, 21) are real: they
+    click the toolbar's zoom control six and thirteen times.
+  - **Why nothing caught it.** The capture verification asserts that the committed files *exist*; it
+    does not compare them. A pixel-diff gate (T6.16) would have.
+  - **The fix is the same work as T6.18**, plus a regenerated set: give the host a camera it can
+    drive, make the app's dev harness and the Storybook harness use it, regenerate the ten frames,
+    and read them by eye. Until then the review packet must not present 20–24 as a zoom/pan matrix.
 
 **Library roadmap (independent of OpenCode decision):**
 
@@ -1041,6 +1151,8 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Lint | `bun run lint:changed` | Changed files |
 | Repo check | `bun run check` | Canonical, but red for known environmental reasons; see T1.6 |
 | Provider-free demo | `bun run graph:dev` | T6.1 |
+| Interaction counter | `?graphMetrics=1` on the session URL | T2.3 — the readout in the corner; off without the parameter |
+| Node permalink | `#graph:<nodeID>` on the session URL | T3.5 — the graph opens on the node |
 | Security suite | new graph security tests | T6.7 |
 | Scale guard | new 1k/5k perf test | T6.6 |
 | Library benchmark | `cd spacegraphjs && bun run bench:graph` (new) | T6.11 |
@@ -1855,3 +1967,71 @@ protocol — need human participants, and everything about the product claim wai
 library track is now clear enough to carry the work if the product claim does not land: the
 packages are publishable, the contract and both adapters are proven consumable outside OpenCode, and
 the fork's gate runs against the published artifacts.
+
+**2026-10-20 — T2.3, T3.5, and T6.8: the protocol can be measured, a node can be shared, and the
+encoding can be read.** Three tasks on the critical path's supporting side, all in the host.
+
+*T2.3 — the interaction counter.* The protocol's "three interactions or fewer" was an estimate;
+now it is a number. `Metrics` (`packages/session-ui/src/graph/metrics.ts`) counts eight actions and
+is off until the app mounts the readout, which it does only for `?graphMetrics=1`. The readout shows
+the total and resets it between tasks. **The count is the number of user actions, not the number of
+code paths:** the surface switch is counted where a participant can flip it (the header toggle, the
+mobile tab, the `graph.toggle` command, the graph's *Back to transcript*), while the graph's *Open
+in transcript* is a `return` and the turn map's *open in full graph* is an `expand` — the mode change
+that follows is a consequence, not a second action. A permalink's automatic entry counts as nothing:
+it is the start of the task. Nothing leaves the browser: no telemetry, no network, no storage.
+
+*T3.5 — the node permalink.* `#graph:<nodeID>`, optionally with a representation
+(`#graph:ribbon:<nodeID>`). **The representation comes first** because a node id may contain colons
+(`turn:msg_user_1`), so a trailing segment would be ambiguous; no node id starts with a
+representation name, so the split is unambiguous in both directions. A shared link opens the graph:
+the session screen reads the hash and switches the mode, with the mode read *untracked* so leaving
+the graph does not pull it back, and the experimental flag in the effect's sources so a link opened
+before the settings load still opens the graph. The node is *framed*, not just selected — `GraphView`
+grew a `frame` prop that raises the semantic level when the node is hidden at the current one, waits
+for the model that carries it, and then centres the camera on it after the fit. An unknown id falls
+back safely: the graph opens, nothing is selected, the transcript stays reachable, and the
+transcript's own hash handling ignores a graph permalink so it keeps the position it restores. The
+inspector's copy button puts the absolute permalink on the clipboard.
+
+*T6.8 — the legend.* The map now explains itself: the lanes, the card colours, the phase groups, the
+line styles, the status dots, and one sentence of help. **The legend cannot drift from the picture**:
+the swatches come from the same helpers the card template uses (`kindAccent`, `categoryAccent`,
+`statusAccent`), and the names come from the same i18n keys the inspector uses — the two key maps
+moved into `src/ui/vocabulary.ts` so there is one source for both. The a11y mirror announces the
+level, the representation, and the depth when they change (the first state is not a change, so it is
+not announced).
+
+*Two defects found while doing this, both recorded as new tasks rather than fixed here.*
+
+- **T6.19 — the capture matrix is not what its names say.** The five Cytoscape frames
+  `20`–`24` are **byte-identical** to `08-cytoscape-selected.png` (md5
+  `da5105633acc224eef21fcb228842e14`): they are named as a zoom and pan matrix and they show one
+  frame five times. The cause is the Storybook capture harness's `zoomTo`, which reads
+  `graphRenderer.getViewport?.()` — `undefined` on both adapters, because the contract has no
+  viewport read-back — and a `panTo` that hands the adapter a *model* node id it cannot resolve. The
+  app-side frames 22–24 have their own defect: the capture selects a node and screenshots, but a
+  selection does not move the camera, so they show the fit with a different node selected. The
+  capture verification only asserts that the committed files exist, so nothing caught it.
+- **T6.18 — the camera cannot be told to jump.** The fit is already instant (the adapter frames
+  with duration 0), and the Cytoscape `focus` is instant; the one animated transition left is
+  `focus(id)`, whose `flyTo` runs for a second. The host can jump instead (it knows the node's world
+  position, and `setViewport` is instant), but the *test* is the blocker: the contract exposes
+  neither a viewport read-back nor a way for a host to assert where the camera is. So the work is
+  `getViewport()` on the contract and both adapters first, and the reduced-motion branch second —
+  in that order, or the branch ships unasserted.
+
+Commands run: `bun run typecheck` in `packages/session-ui`, `packages/session-graph`, `packages/app`
+and `packages/ui` (clean), `bun test src/graph` in `packages/session-ui` (81 pass, 4 new),
+`bun test src` in `packages/session-graph` (94 pass), `bun run test:components` in
+`packages/session-graph` (40 pass, 1 new), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in
+`packages/app` (20 pass, 4 new), `bun run graph:verify` (all steps), `bun run lint:changed` (0).
+
+Unverified: the interaction counter was exercised through the app e2e, not by a human dry run —
+T2.1 and T2.2 still need participants, and they are the only thing that can settle the product
+claim. The permalink's *cold load* is covered by an e2e that reloads the page; it was not checked in
+a second browser. The legend was read in the component test, not by a first-time viewer, so "a new
+user decodes the graph without a briefing" is still a claim, not a measurement. The capture set was
+**not** refreshed: the legend adds one toolbar button, which does not change the canvas at 1440×900,
+and the frames 20–24 are wrong for a reason that is not this change's fault (T6.19).
+

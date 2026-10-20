@@ -11,6 +11,7 @@ import {
   type Accessor,
 } from "solid-js"
 import { createStore } from "solid-js/store"
+import { useLocation } from "@solidjs/router"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
 import {
   Slot,
@@ -22,6 +23,7 @@ import {
 import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings, type SettingsContext } from "@/settings/model"
+import { Metrics } from "@opencode/session-ui/graph"
 import type { SessionModel } from "@/session/model"
 import { SESSION_PANEL_WIDTH_MIN } from "@/session/session-panel-width"
 import { SessionPanelFrame } from "@/session/session-frame"
@@ -44,6 +46,8 @@ import { SessionReviewToggle } from "./header/session-header-actions"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
 import { SessionGraphView } from "./graph/session-graph-view"
 import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
+import { graphPermalinkFromHash } from "./graph/graph-permalink"
+import { GraphMetricsReadout } from "./graph/graph-metrics-readout"
 import { SessionRunningMenu } from "./header/session-running-menu"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
 import { createTimelineCache } from "./timeline/cache"
@@ -100,11 +104,34 @@ function SessionScreenContent(props: {
 
   const graph = session.layout.graph()
   const graphEnabled = () => settings.experimental.sessionGraph()
+  const location = useLocation()
+
+  // T3.5: a graph permalink opens the graph, so a shared link lands on the node it names. The mode is
+  // read untracked, so leaving the graph for the transcript does not pull it back, and the flag is part
+  // of the sources, so a link opened before the settings load still opens the graph.
+  createEffect(
+    on(
+      () => [location.hash, graphEnabled()] as const,
+      ([hash, enabled]) => {
+        if (!enabled) return
+
+        if (!graphPermalinkFromHash(hash)) return
+
+        if (untrack(graph.mode) === "graph") return
+
+        graph.setMode("graph")
+      },
+    ),
+  )
 
   const openGraphTranscript = (messageID: string, partID?: string) => {
+    // T2.3: the graph counts its own "return" action, so this switch is not counted twice.
     graph.setMode("transcript")
     timeline.actions.revealMessage(messageID, partID)
   }
+
+  // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
+  const metricsEnabled = createMemo(() => new URLSearchParams(location.search).has("graphMetrics"))
 
   // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
   props.bindTranscript({
@@ -320,6 +347,7 @@ function SessionScreenContent(props: {
           graphActive={graphEnabled() && graph.mode() === "graph"}
           onGraphToggle={graphEnabled() ? () => {
             if (mobileView() !== "session") selectMobile("session")
+            Metrics.count("mode-switch")
             graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
           } : undefined}
         />
@@ -386,7 +414,7 @@ function SessionScreenContent(props: {
             <Show when={messagesReady() && session.identity.params.id}>
               <Switch>
                 <Match when={graphEnabled() && graph.mode() === "graph"}>
-                  <SessionGraphView session={session} onBack={() => graph.setMode("transcript")} onOpenTranscript={openGraphTranscript} />
+                  <SessionGraphView session={session} onBack={() => { Metrics.count("mode-switch"); graph.setMode("transcript") }} onOpenTranscript={openGraphTranscript} />
                 </Match>
                 <Match when={true}>{timelineView()}</Match>
               </Switch>
@@ -597,6 +625,7 @@ function SessionScreenContent(props: {
                 turnID={turnID()}
                 onClose={() => graph.setTurnMap(undefined)}
                 onOpenFullGraph={(id) => {
+                  Metrics.count("expand")
                   graph.setTurnMap(undefined)
                   graph.setMode("graph")
                   graph.setSelected(id)
@@ -642,6 +671,10 @@ function SessionScreenContent(props: {
               animate={bottomDockPresence.animate()}
             />
           </div>
+        </Show>
+
+        <Show when={metricsEnabled()}>
+          <GraphMetricsReadout />
         </Show>
       </div>
     </>

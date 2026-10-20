@@ -6,6 +6,7 @@ import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
 import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack, onMount, onCleanup } from "solid-js"
 import { messageIdFromHash } from "@/session/message-id-from-hash"
+import { graphPermalinkFromHash, graphPermalinkHash } from "@/session/graph/graph-permalink"
 import { useLanguage } from "@/runtime/i18n/language"
 import pkg from "../../../package.json"
 import type { SessionModel } from "@/session/model"
@@ -51,6 +52,28 @@ export function SessionGraphView(props: {
       get: (from: string) => source.get({ sessionID, from }),
       load: (from: string) => source.load({ sessionID, from }),
     }
+  })
+
+  // T3.5: a graph permalink names the node to frame and, optionally, the representation to show.
+  const permalink = createMemo(() => graphPermalinkFromHash(location.hash))
+
+  createEffect(() => {
+    const target = permalink()
+
+    if (!target?.representation) return
+    graph.setRepresentation(target.representation)
+  })
+
+  // The shareable link to the selected node, so a decision can be shared instead of re-scrolled to.
+  const link = createMemo(() => {
+    const id = graph.selected()
+
+    if (!id) return undefined
+
+    return `${window.location.origin}${window.location.pathname}${window.location.search}${graphPermalinkHash({
+      nodeID: id,
+      representation: graph.representation(),
+    })}`
   })
 
   // I4.7: while graph mode is active, a hash that targets a message selects its owning turn instead
@@ -150,6 +173,8 @@ export function SessionGraphView(props: {
           }}
           onBack={() => props.onBack()}
           endInset={isDesktop() ? "72px" : undefined}
+          frame={permalink()?.nodeID}
+          link={link()}
           sessionTitle={session.data.info()?.title ?? "OpenCode Session"}
           testedCommit={pkg.version ?? "unknown"}
         />

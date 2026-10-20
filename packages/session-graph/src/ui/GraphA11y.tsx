@@ -8,6 +8,8 @@ export type GraphA11yProps = {
   selection?: readonly string[]
   /** Anchors the wrapper's `aria-describedby`; the instructions live here. */
   instructionsId?: string
+  /** T6.8: what the view changed (level, representation, depth); announced when it changes. */
+  announcement?: string
   onSelect: (id: string) => void
   onEscape?: () => void
 }
@@ -25,6 +27,7 @@ export const GraphA11y = (props: GraphA11yProps) => {
   const i18n = useI18n()
   let container!: HTMLDivElement
   let layer: AccessibilityLayer | undefined
+  let announced: string | undefined
 
   const items = (): AccessibleItem[] =>
     props.model.nodes
@@ -64,11 +67,20 @@ export const GraphA11y = (props: GraphA11yProps) => {
           ? i18n.t("ui.sessionGraph.a11y.connections", { edges: connections.map((edge) => edge.label).join(", ") })
           : "",
     })
+    // The first view state is not a change, so it is not announced.
+    announced = props.announcement
   })
 
   createEffect(() => layer?.setItems(items()))
   createEffect(() => layer?.setEdges(edges()))
   createEffect(() => layer?.setSelected(props.selection ?? null))
+  // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
+  createEffect(() => {
+    const message = props.announcement
+    if (!message || message === announced) return
+    announced = message
+    layer?.announce(message)
+  })
 
   onCleanup(() => {
     layer?.dispose()

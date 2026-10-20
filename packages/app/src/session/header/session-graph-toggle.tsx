@@ -7,6 +7,7 @@ import { useCommand } from "@/shell/commands/command"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useSessionLayout } from "@/session/session-layout"
 import { useSettings } from "@/settings/model"
+import { Metrics } from "@opencode/session-ui/graph"
 
 /** Transcript | graph mode switch for the session header (I4.5). */
 export function SessionGraphToggle() {
@@ -46,7 +47,11 @@ export function SessionGraphToggle() {
           "--v2-overlay-simple-overlay-pressed": "var(--v2-background-bg-layer-02)",
         }}
         state={active() ? "pressed" : undefined}
-        onClick={() => graph().setMode(active() ? "transcript" : "graph")}
+        onClick={() => {
+          // T2.3: a surface switch is an interaction the protocol measures.
+          Metrics.count("mode-switch")
+          graph().setMode(active() ? "transcript" : "graph")
+        }}
         aria-label={language.t("command.graph.toggle")}
         aria-pressed={active()}
         icon={<Icon name="window-analytics" />}

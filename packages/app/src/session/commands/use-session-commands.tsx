@@ -2,6 +2,7 @@ import { useCommand, type CommandOption } from "@/shell/commands/command"
 import { adjacentTabKey } from "@/shell/titlebar/tab-order"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { previewSelectedLines } from "@opencode/session-ui/pierre/selection-bridge"
+import { Metrics } from "@opencode/session-ui/graph"
 import { useFile, selectionFromLines, type FileSelection } from "@/workspaces/files/model"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useLayout } from "@/shell/state/layout"
@@ -466,6 +467,8 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         disabled: !enabled,
         onSelect: () => {
           const graph = actions.session.layout.graph()
+          // T2.3: a surface switch is an interaction the protocol measures.
+          Metrics.count("mode-switch")
           graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
         },
       }),
