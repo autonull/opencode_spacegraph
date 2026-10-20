@@ -465,16 +465,25 @@ Carry these forward explicitly; none is silently lowered.
     clipped and theme-mismatched; depth modes shear and overlap cards; breadcrumbs are provenance-blind; and
     camera zoom is not exposed and its normalized range is content-unaware (fit ≈ 45%, 100% blank). The Phase 0
     spike image is stale. Tracked as T1.1–T1.16 in `SPACEGRAPH.TODO.2.md`; per-image evidence is in
-    `docs/spacegraph/visual-review.md`. The current images are pre-fix evidence, not the final set.
+    `docs/spacegraph/visual-review.md`. The committed images were refreshed on 2026-10-20 and read by
+    eye; the defects listed here that were not fixed are tracked as T1.17–T1.18 and the layout-variety
+    track (T7).
 19. **A long session is drawn as its recent tail** (T6.6): the map shows the last 60 turns and says
     so in a banner, because a renderer cannot carry the nodes of a thousand turns. The layout still
     measures the whole session, so a node that stays in the window does not move when the window
     slides. The transcript carries the rest.
-20. **The camera-driven capture frames vary between runs** (T6.20): the capture waits for the canvas to stop
-    changing, but the screenshot can land just after a camera move, so `20`–`24` differ between two
-    consecutive captures (RMSE up to 462 on a 0–65535 scale). The frames are not a regression — the layout
-    that feeds them is byte-identical (the golden file) — but the capture set is not yet a pixel-exact
-    gate.
+20. **The camera-driven capture frames used to vary between runs** (T6.20, closed): the cause was a
+    product defect, not the capture — the renderer syncs its camera frustum from a `ResizeObserver`
+    that delivers asynchronously, so a fit after the inspector opened measured the canvas the map no
+    longer had. The fit now measures the live surface, and the zoom control stops at the renderer's
+    declared limit instead of accepting clicks that do nothing. Three consecutive captures are
+    identical apart from the noise floor (max channel delta 1–2 on five frames, and 10–12 pixels on
+    `23-graph-turn-2.png` — one card's rounded corner at a sub-pixel offset).
+21. **The layouts on offer are three variations of one grid** (`lanes`, `timeline`, `hierarchy`): the
+    library owns one placement primitive — columns × rows — and the three views are policies over it.
+    A force-directed or a tidy tree is a different geometry, not another policy, so the library needs a
+    placement seam before those views exist (T7 in `SPACEGRAPH.TODO.2.md`). The reader therefore cannot
+    yet compare layouts, and the evidence task (T2.2) has one layout to test rather than several.
 
 ## Edge cases (T6.5)
 

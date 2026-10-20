@@ -81,6 +81,15 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - **T3.7 Upstream contribution ladder + RFC** — the actual deliverable to upstream
 - **T3.8 Diff budget audit** — required content for the RFC
 
+**The owner's priority (2026-10-20) — do this in parallel with everything above:**
+- **T7 The layout variety track** (§6.2) — a *wide variety of fundamentally different layouts*
+  (force-directed, tidy tree, …), because nobody knows which one is best and the recent passes had
+  been perfecting the lanes view instead of exploring the space. It is not a refinement of the
+  existing views: it is a new placement seam in the library, new layouts on top of it, the host's
+  bindings and frames, and a gallery so the options can be compared.
+- **Do not spend passes on capture or pixel machinery** while the UI is in development (§10; T6.15
+  was written and dropped).
+
 **Important refinements (do after critical path, or in parallel if capacity):**
 - T3.5 Permalinks, T3.6 Namespacing — sharing polish, not blocking
 - T4.1 Push/tag library, T4.2 Publish packages — adoption mechanics, not demo blockers
@@ -833,6 +842,86 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   graph module fails to load". The host may import the **contract** package at module scope; a
   renderer package only behind a dynamic import. The app e2e ("falls back to Cytoscape…", "returns to
   the transcript when no renderer can mount") is the keeper of this rule.
+
+### 6.2 T7 — The layout variety track (the owner's priority, 2026-10-20)
+
+**Why this track exists.** The owner redirected the work on 2026-10-20: the graph must offer a **wide
+variety of fundamentally different layouts**, because nobody knows which one is best and the recent
+passes had been perfecting the lanes view instead of exploring the space. Force-directed and tree
+layouts are the named examples. Two rules follow from that, and they bind every task below:
+
+1. **A new layout is a new geometry, not a new way of drawing the lanes.** The three existing views
+   are *policies* over one grid primitive (`LaneLayout`: columns × rows, per-cell cursors). T4.3's
+   consolidation — "one geometry engine instead of four" — was right for three grid-shaped views and
+   wrong as a ceiling: a force simulation or a tidy tree cannot be expressed as a choice of column
+   and row. **The library needs a placement *seam*, not more policies.**
+2. **Every layout must be legible in its own frame.** The hierarchy collapses to a tiny column today
+   (`prototype.md` limitation 18) because it has no frame of its own. A layout that cannot be read
+   is not an option, it is a defect.
+
+**What a layout costs in this repository** (so the track is priced honestly): a *placement engine* in
+the library, a *vocabulary binding* in the host (which nodes participate, what an edge means), a
+*golden-file entry* (the fixture's positions), a *toolbar control* (the reader's choice), a *legend
+entry* (the encoding), and a *frame*. The geometry is the cheap part.
+
+- [ ] **T7.1 The placement seam: an engine interface, not a grid**
+  Give the library a `Placement` concept a strategy can implement — `place(items, previous) →
+  positions` — with the grid (`LaneLayout`) as the first implementation and the new engines beside it.
+  `Strategies.layoutGraph` keeps its contract (`positions`, `clusters`, `bounds`, `strategy`) and its
+  vocabulary role; only the *where* moves behind the seam.
+  Done when: a strategy can be added that never touches `LaneLayout`, and the three existing
+  strategies are byte-identical for the fixture (the golden file).
+  Verify: `cd spacegraphjs && vitest run test/layout/`; the host's golden comparison is unchanged.
+
+- [ ] **T7.2 A tidy tree** — the first genuinely different geometry
+  Parents centred over their children, leaves in model order. Deterministic, no iteration.
+  **The append-only rule decides the shape:** a classic tidy tree re-centres a parent when a child is
+  added, which would move a node the reader is looking at. So the tree grows *downward* from a fixed
+  parent: a new node takes the next leaf slot under its parent and the parent's position stays put.
+  The host binds the parent relation (`part-of`) and the orientation.
+  Done when: the tree renders the canonical fixture, the reader can pick it, and appending a node
+  leaves every existing position byte-identical.
+  Verify: `cd spacegraphjs && vitest run test/layout/`; a host golden entry for the new view.
+
+- [ ] **T7.3 A force-directed placement** — deterministic, and pinned where it must be
+  A force layout is physics, and the host's layout contract says "no physics" (§5.5) for a reason:
+  a live simulation jitters while the session streams. The resolution is an **append-only force
+  placement**: the simulation is seeded deterministically (a fixed seed, a fixed iteration count, the
+  model's node order), run once, and then **frozen**; when the session streams, the existing nodes
+  stay **pinned** and only the new nodes relax into place against them. The core already has the
+  pinning primitive (`pinAll`), so this is an engine, not a rewrite.
+  The host binds which edges attract and the repulsion radius (the card's footprint).
+  Done when: the same model always yields the same positions, streaming never moves an existing node,
+  and the reader can pick the view.
+  Verify: `cd spacegraphjs && vitest run test/layout/`; a determinism test (same model → same
+  positions) and an append test (existing positions unchanged).
+
+- [ ] **T7.4 The host binds the new layouts**
+  The vocabulary (which nodes participate, what an edge means), the toolbar control, the legend, and
+  **each layout's frame** — the thing the hierarchy lacks. A layout that cannot be read is not an
+  option.
+  Done when: every layout in the library is pickable from the toolbar, named in the legend, and
+  legible at 1440×900 in the fixture (the legibility component test grows to cover the new views).
+  Verify: `cd packages/session-graph && bun run test:components`; the capture set gains one frame
+  per new layout.
+
+- [ ] **T7.5 A layout gallery: the affordance the exploration needs**
+  Small multiples: the same model rendered in every layout at once, so the reader (and the study)
+  can *compare* the options instead of committing to one. This is also what the evidence task needs:
+  **T2.1/T2.2 must compare layouts, not perfect one.**
+  Done when: the gallery shows every layout of one model side by side, and the reader can open any of
+  them in the full surface.
+  Verify: a component test asserts one frame per layout; the capture set gains the gallery frame.
+
+- [ ] **T7.6 The invariant every new layout must keep**
+  "Streaming never re-lays-out existing nodes" and "the same model always yields the same positions"
+  are the contract, and they are cheap to state and expensive to rediscover. Each new layout adds a
+  golden entry, and the append-only property is asserted per layout (not once).
+  Done when: every layout has a golden entry and an append test.
+  Verify: `cd spacegraphjs && vitest run test/layout/`; the host's golden comparison covers them all.
+
+**Do not do this track's work as capture or pixel work.** The frames are read by eye (§10); T6.15's
+pixel-diff helper was written and dropped for exactly that reason.
 
 
 
@@ -2711,20 +2800,36 @@ declared by the two interactive adapters but the SVG renderer has no camera and 
 
 **Notes for the next pass — the priority changed.**
 - **The next work is the map's usability and the *variety* of layouts and modes, not more machinery.**
-  Three strategies (`lanes`, `timeline`, `hierarchy`), three representations (`graph`, `ribbon`,
-  `matrix`), three semantic levels and four depth treatments already exist, so the variety is there —
-  but `prototype.md`'s known limitations say three of those views are visibly broken (the hierarchy
-  collapses to a tiny column, the timeline reads as a collage, the matrix has no axes and overlapping
-  cells), and the design argument's *focus mode* and *follow-an-edge* are half-built with no user-facing
-  control. Those are the candidates.
-- **The library's `LaneLayout` is the cheap way to add a layout**: a strategy chooses the column and
-  the row an item belongs to and the engine places it, so a new view is a policy, not a geometry
-  engine. A new layout therefore costs a strategy, a golden-file entry and a toolbar control.
+  The owner's correction was explicit: a *wide variety of fundamentally different layouts* — force-
+  directed, tidy tree, and whatever else — because nobody knows which one is best, and perfecting the
+  lanes view does not answer that. The plan for it is **§6.2 (T7.1–T7.6)**, and the first task is
+  the *placement seam*: the library has one placement primitive (`LaneLayout`, a grid) and three
+  policies over it, so a force simulation or a tidy tree cannot be expressed as "a new strategy". The
+  seam is a `Placement` concept the library's strategies implement; the grid is the first
+  implementation.
+- **Two invariants bind every new layout**, and they are the reason the host's layout contract says
+  "no physics": streaming must never re-lay-out an existing node, and the same model must always
+  yield the same positions. A force layout therefore runs once from a fixed seed and is then frozen;
+  when the session streams, the existing nodes stay pinned and only the new ones relax into place
+  (the core already has `pinAll`). A tidy tree grows downward from fixed parents for the same reason.
+- **A layout that cannot be read is not an option.** The hierarchy collapses to a tiny column today
+  (limitation 18) because it has no frame of its own; each new layout carries one.
 - **The library is 8.1.0** (the contract's `zoomRange` and the fit's live-surface measurement) and
   the fork consumes its **built** packages: a library edit needs `pnpm run build:lib && pnpm run
   build:packages` before the host sees it.
 - **The diff-budget numbers in `upstream-review.md` §5 drift with every app edit** — this pass changed
   no `packages/app/src` file, so they still stand; re-audit them before the RFC.
+- **Do not build capture or pixel tooling.** T6.15 was written and dropped in this pass; the frames
+  are read by eye (§10).
+
+*Push.* The library's `main` is `7c7c978` ("feat(contract): the renderer declares its zoom range, and
+the fit measures the surface it has"); the fork's `dev` is `bac85f0e` ("fix(graph): frame the map
+against the canvas it has, and stop the zoom control at the limit"), with this plan update on top.
+Neither push ran the pre-push hook's `bun run check` (red here for the reasons T0.5 records:
+`@opencode/plugin-figma`'s typecheck hits `zstdCompressSync` under this checkout and `turbo` dies
+with SIGSEGV). The graph-relevant checks all pass: the library's `vitest` (459) and its five leaf
+packages, `tsc --noEmit` (0 errors), the host's typecheck and unit tests (96), the component suite
+(`graph-view`, with the new zoom-limit assertion), the app's graph e2e (21), and `lint:changed` (0).
 
 
 
