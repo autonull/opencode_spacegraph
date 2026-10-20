@@ -345,6 +345,8 @@ const source = {
   "ui.sessionGraph.a11y.instructions": "Press Tab to enter the node list, use the arrow keys to move between nodes, Enter to inspect a node, and Escape to clear the selection.",
   "ui.sessionGraph.a11y.selected": "Selected {{labels}}",
   "ui.sessionGraph.a11y.cleared": "Selection cleared",
+  "ui.sessionGraph.a11y.edgeLabel": "Graph connections",
+  "ui.sessionGraph.a11y.connections": "Connections: {{edges}}",
   "ui.sessionGraph.turnMap.label": "Turn map",
   "ui.sessionGraph.turnMap.title": "Turn map",
   "ui.sessionGraph.turnMap.close": "Close turn map",

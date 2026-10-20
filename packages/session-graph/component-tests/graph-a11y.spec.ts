@@ -70,6 +70,13 @@ story("drives selection and inspection from the keyboard mirror in both renderer
 
   // Enter selects and inspects; Escape clears and returns the inspector to its empty state.
   await inspectByKeyboard(page, ids, inspector)
+
+  // T4.7: the mirror lists the connections of the graph and announces the ones of the selection.
+  const connections = mirror.locator('ul[aria-label="Graph connections"]')
+  await expect(connections).toBeAttached()
+  expect(await connections.locator("li").count()).toBeGreaterThan(0)
+  await expect(mirror.locator('[aria-live="polite"]')).toContainText("Connections:")
+
   await page.keyboard.press("Escape")
   await expect.poll(() => selected(page)).toBeUndefined()
   await expect(inspector).toContainText("Select a node to see its details")

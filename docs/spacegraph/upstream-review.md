@@ -169,7 +169,10 @@ The graph is a separate lazy chunk referenced from the route's import map. Initi
 - **Library layer:** `spacegraphjs/test/a11y.test.ts` — roving tabindex, Arrow/Home/End, Enter/Space, Escape, `aria-live` announcements
 - **Browser traversal:** `packages/session-graph/component-tests/graph-a11y.spec.ts` — walks hidden mirror to node, activates with Enter, asserts inspector under both adapters
 - **Reduced motion:** Emulated in capture spec; adapter camera animation has no dedicated assertion
-- **Known gap:** Edge announcements not implemented (T4.7 decision pending)
+- **Edges (T4.7, decided):** the mirror announces edges. The library layer takes the connections
+  (`setEdges`) and lists them beside the nodes, and announces the ones of the selected node through
+  the host's `edgeAnnouncer`. The host composes the connection text, so the announcement is
+  localized; the edge kind itself is the model's own vocabulary and is not translated.
 
 ---
 

@@ -18,7 +18,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `e07e664`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664` |
+| SpaceGraphJS | `main` @ `844cf76`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664`, `844cf76` |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
 | Last green (re-run 2026-10-20) | `session-ui` graph 75 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 375 + contract 12 + adapters 39 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
@@ -432,9 +432,27 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
   Workflow running boundaries, contract conformance, both adapters, SVG renderer, bindings, session-graph component suite. Cache Playwright browsers; capture verification on schedule/release tag.
   Done when: workflow green on clean clone; fails on deliberately broken adapter.
 
-- [ ] **T4.7 Decide edge accessibility**
+- [x] **T4.7 Decide edge accessibility**
   a11y mirror lists nodes only. Announce edges (extend layer) or document nodes-only.
   Done when: decision in docs and tests match.
+  - **Decided: announce the edges** (2026-10-20). The mirror already reached every node; the
+    structure between them was unreachable, which is exactly what a reader asks the graph for.
+    The library layer takes the connections (`setEdges`), lists them beside the nodes in a labelled
+    list, and announces the ones of the selected node; the host supplies the text through
+    `edgeAnnouncer`, so the announcement is localized and the library stays free of copy.
+  - `spacegraphjs/src/a11y/AccessibilityLayer.ts`: `AccessibleEdge`, the `edgeLabel` and
+    `edgeAnnouncer` options, `setEdges`, and the announcement of the selected node's connections.
+    `spacegraphjs/test/a11y.test.ts` gained three tests (the connection list, the announcement, and
+    the list disappearing when the edges are cleared).
+  - `packages/session-graph/src/ui/GraphA11y.tsx` maps the render model's edges into the layer and
+    composes the connection text from the node labels; two i18n keys were added
+    (`ui.sessionGraph.a11y.edgeLabel`, `ui.sessionGraph.a11y.connections`).
+  - `packages/session-graph/component-tests/graph-a11y.spec.ts` asserts the connection list and the
+    announcement; `docs/spacegraph/upstream-review.md` §8 records the decision where the old
+    "known gap" line was.
+  - The edge *kind* stays the model's own vocabulary (`writes`, `part-of`) and is not translated;
+    only the glue is localized.
+
 
 **SpaceGraphJS core extractions (vacuum generic primitives from OpenCode):**
 
@@ -1191,3 +1209,21 @@ tests run under `bun test`, which is what `graph:verify` and the package scripts
 Unverified: the theme extraction is proven by the unit tests and the e2e, but no capture was
 re-inspected for a colour change — the palette values are identical, so the committed images still
 describe the current output.
+
+**2026-10-20 — T4.7 decided: the accessibility mirror announces the edges.** The mirror reached every
+node but not the structure between them, which is what a reader asks a graph for. The library layer
+now takes the connections (`setEdges`), lists them beside the nodes in a labelled list, and
+announces the ones of the selected node; the host supplies the text through `edgeAnnouncer`, so the
+announcement is localized and the library stays free of copy. The edge *kind* stays the model's own
+vocabulary and is not translated.
+
+The decision is recorded where the "known gap" line was (`docs/spacegraph/upstream-review.md` §8),
+so the docs and the tests agree.
+
+Commands run: `vitest run` in `spacegraphjs` (378 pass, 3 new), `bun run typecheck` + `bun test src`
+in `packages/session-graph` (49 pass, clean), `bun run test:components -- graph-a11y` (1 pass, with
+the new connection assertions), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass),
+`bun run graph:verify` (all steps), `bun run lint:changed` (0).
+
+Unverified: the announcement text was checked in the browser component test (the live region
+contains "Connections:") but not with a real screen reader.
