@@ -48,6 +48,18 @@ async function zoomPercent(page: import("@playwright/test").Page, root: import("
   return Number.parseInt((text ?? "0").replace("%", ""), 10)
 }
 
+// The camera acts asynchronously: the readout must reflect the click before the next decision is
+// made, or the capture counts clicks the camera never took (T6.20).
+async function clickZoom(
+  page: import("@playwright/test").Page,
+  root: import("@playwright/test").Locator,
+  label: "Zoom in" | "Zoom out",
+) {
+  const before = await zoomPercent(page, root)
+  await root.getByRole("button", { name: label, exact: true }).click()
+  await expect.poll(() => zoomPercent(page, root)).not.toBe(before)
+}
+
 // The toolbar steps a tenth of the fit, so the readout lands within one step of the target.
 async function zoomToPercent(
   page: import("@playwright/test").Page,
@@ -59,23 +71,20 @@ async function zoomToPercent(
     if (Math.abs(current - target) <= 4) return current
     const button = root.getByRole("button", { name: current < target ? "Zoom in" : "Zoom out", exact: true })
     if (!(await button.isEnabled())) return current
-    await button.click()
+    await clickZoom(page, root, current < target ? "Zoom in" : "Zoom out")
   }
 
   throw new Error(`graph:capture: the camera never reached ${target}%`)
 }
 
-// The closest zoom the renderer allows.
+// The closest zoom the renderer allows: the toolbar's own limit, which the renderer declares, so
+// the frame is the same magnification every run.
 async function zoomToMax(page: import("@playwright/test").Page, root: import("@playwright/test").Locator) {
-  let previous = await zoomPercent(page, root)
   const zoomIn = root.getByRole("button", { name: "Zoom in", exact: true })
 
   for (let step = 0; step < 60; step += 1) {
-    if (!(await zoomIn.isEnabled())) return previous
-    await zoomIn.click()
-    const current = await zoomPercent(page, root)
-    if (current === previous) return current
-    previous = current
+    if (!(await zoomIn.isEnabled())) return await zoomPercent(page, root)
+    await clickZoom(page, root, "Zoom in")
   }
 
   throw new Error("graph:capture: the camera never reached its maximum zoom")

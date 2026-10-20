@@ -717,8 +717,16 @@ export const GraphView = (props: GraphViewProps) => {
     return Math.max(33, Math.round((current.zoom / fitBaseline()) * 100))
   }
   // T1.8: zoom range is ~1/3..2.5x fit (ORTHO_ZOOM_SPAN in CameraControls). Use fitBaseline to compute bounds.
-  const minZoom = () => fitBaseline() / 3
-  const maxZoom = () => fitBaseline() * 2.5
+  // T6.20: the renderer's own range bounds it too — the SpaceGraph's zoom is normalized over the
+  // fitted band and stops at 1, so a control that offered more would ask for a zoom the renderer
+  // cannot deliver, and the reader would click a button that does nothing.
+  const zoomLimits = () => {
+    const range = capabilities()?.zoomRange
+    return {
+      min: Math.max(fitBaseline() / 3, range?.min ?? 0),
+      max: Math.min(fitBaseline() * 2.5, range?.max ?? Number.POSITIVE_INFINITY),
+    }
+  }
   const zoomBy = (direction: 1 | -1) => {
     const current = viewport()
     if (!current || !renderer) return
@@ -727,8 +735,9 @@ export const GraphView = (props: GraphViewProps) => {
     // The step is a tenth of the fit, so one click is the same step at any fit and the readout lands
     // on whole tens (T6.19: the capture frames are named after the percentage they show).
     const step = fitBaseline() * 0.1
+    const limits = zoomLimits()
     renderer.setViewport({
-      zoom: Math.min(maxZoom(), Math.max(minZoom(), current.zoom + direction * step)),
+      zoom: Math.min(limits.max, Math.max(limits.min, current.zoom + direction * step)),
       center: current.center,
     })
   }
@@ -752,8 +761,8 @@ export const GraphView = (props: GraphViewProps) => {
         zoomPercent={zoomPercent()}
         onZoomOut={() => zoomBy(-1)}
         onZoomIn={() => zoomBy(1)}
-        zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= minZoom()}
-        zoomInDisabled={(viewport()?.zoom ?? 0) >= maxZoom()}
+        zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= zoomLimits().min}
+        zoomInDisabled={(viewport()?.zoom ?? 0) >= zoomLimits().max}
         onSearch={toggleSearch}
         legend={legendOpen()}
         onToggleLegend={() => setLegendOpen((open) => !open)}

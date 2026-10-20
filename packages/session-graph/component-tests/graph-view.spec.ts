@@ -61,6 +61,19 @@ story("assembles the graph view and answers node questions without the canvas", 
   await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Overview" }).click()
   await expect(zoomOut).toBeDisabled()
 
+  // T6.20: the zoom control stops at the renderer's own limit. The SpaceGraph's zoom is normalized
+  // over the fitted band and cannot pass 1, so the control disables itself there instead of
+  // accepting clicks that do nothing.
+  const zoomIn = root.locator('button[aria-label="Zoom in"]')
+  const readout = root.locator('[data-slot="graph-zoom-level"]')
+  for (let step = 0; step < 30; step += 1) {
+    if (await zoomIn.isDisabled()) break
+    const before = await readout.textContent()
+    await zoomIn.click()
+    await expect.poll(() => readout.textContent()).not.toBe(before)
+  }
+  await expect(zoomIn).toBeDisabled()
+
   // The collapsed overview cluster is a counted DOM card ("Explore 5"), unlike the expanded header.
   const exploreChip = host.locator('.html-node-container:has([data-kind="phase"])', { hasText: "Explore" })
   await expect(exploreChip).toHaveCount(1)

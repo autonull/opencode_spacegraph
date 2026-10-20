@@ -116,7 +116,10 @@ async function zoomPercent(page: Page) {
   return Number.parseInt((text ?? "0").replace("%", ""), 10)
 }
 
+// The camera acts asynchronously: the readout must reflect the click before the next decision is
+// made, or the capture counts clicks the camera never took (T6.20).
 async function clickZoom(page: Page, label: "Zoom in" | "Zoom out") {
+  const before = await zoomPercent(page)
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
   const compact = (await overflow.count()) > 0
 
@@ -124,6 +127,8 @@ async function clickZoom(page: Page, label: "Zoom in" | "Zoom out") {
   await page.locator(toolbar).getByRole("button", { name: label, exact: true }).click()
 
   if (compact) await overflow.getByLabel("More controls").click()
+
+  await expect.poll(() => zoomPercent(page)).not.toBe(before)
 }
 
 async function zoomEnabled(page: Page, label: "Zoom in" | "Zoom out") {
@@ -155,20 +160,13 @@ async function zoomToPercent(page: Page, target: number) {
   throw new Error(`graph:capture: the camera never reached ${target}%`)
 }
 
-// The closest zoom the renderer allows. The readout's scale differs per backend (the SpaceGraph
-// zoom is logarithmic, the Cytoscape one linear), but both stop at the same magnification.
+// The closest zoom the renderer allows: the toolbar's own limit, which the renderer declares, so
+// the frame is the same magnification every run.
 async function zoomToMax(page: Page) {
-  let previous = await zoomPercent(page)
-
   for (let step = 0; step < 60; step += 1) {
-    if (!(await zoomEnabled(page, "Zoom in"))) return previous
+    if (!(await zoomEnabled(page, "Zoom in"))) return await zoomPercent(page)
 
     await clickZoom(page, "Zoom in")
-
-    const current = await zoomPercent(page)
-
-    if (current === previous) return current
-    previous = current
   }
 
   throw new Error("graph:capture: the camera never reached its maximum zoom")

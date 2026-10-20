@@ -1043,7 +1043,7 @@
     },
     "spacegraphjs": {
       "name": "spacegraphjs",
-      "version": "8.0.0",
+      "version": "8.1.0",
       "dependencies": {
         "@monaco-editor/loader": "^1.7.0",
         "gsap": "^3.15.0",
