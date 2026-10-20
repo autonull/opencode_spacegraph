@@ -63,3 +63,26 @@ story("switches the depth treatment through the spectrum", async ({ mount, page 
 
   expect(errors).toEqual([])
 })
+
+// T1.19: a tilted camera must not tilt the cards. A card lying in the content plane is sheared into
+// a quadrilateral the moment the camera tilts, and its text stops being readable; the 3D treatments
+// turn the cards to face the camera, so a card keeps its shape on screen.
+story("keeps the cards square to the screen in a tilted depth treatment", async ({ mount, page }) => {
+  const root = await mount("session-graph-view--depth-stack")
+  const host = root.locator('[data-slot="graph-canvas-host"]')
+  await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+  await expect(host).toHaveAttribute("data-graph-depth", "depth-stack")
+
+  const card = await page.evaluate(() => {
+    const element = document.querySelector<HTMLElement>('[data-node-id^="tool:"]')
+    if (!element) return null
+    const rect = element.getBoundingClientRect()
+
+    return { ratio: rect.width / rect.height }
+  })
+
+  expect(card).not.toBeNull()
+  // The card is 220 × 72 world units. A card that faces the camera keeps that ratio on screen; a
+  // card lying in the content plane is foreshortened by the camera's tilt and comes out wider.
+  expect(card!.ratio).toBeCloseTo(220 / 72, 1)
+})

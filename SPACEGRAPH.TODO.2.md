@@ -24,6 +24,7 @@ copy TODO.1 §6 evidence into this file — cite it.
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)**. The camera-driven frames (20–24) still vary between runs (**T6.20**) |
 | Layouts | **five**: lanes, timeline, hierarchy, **tree (T7.2)**, **force (T7.3)** — pickable from the toolbar, comparable side by side in the gallery (T7.5) |
+| The 3D renderer | **fixed (T1.19)**: the billboard was inverted, so bands were rolled 50° and cards sheared; a target move re-aimed the camera, so the flat view tilted after a selection. Both fixed, both proven by tests, the capture set refreshed |
 
 Two facts shape everything below:
 
@@ -124,7 +125,9 @@ byte-identical), T4.5 (the library's own limits are declared in `spacegraphjs/do
 and the host's list matches the code), **T6.20 (the camera-driven frames no longer drift between runs:
 the fit measures the surface it has, and the zoom control stops at the renderer's limit)**,
 **T7.1–T7.6 (the layout variety track: the placement seam, a block tree, a force placement, the
-host's bindings, the gallery, and the per-layout invariants)**.
+host's bindings, the gallery, and the per-layout invariants)**,
+**T1.19 (the 3D renderer tilted everything: the billboard was inverted and a target move re-aimed
+the camera, so the flat view tilted too — both fixed and proven)**.
 
 **The pixel-diff helper is dropped (T6.15).** While the UI is in development the capture set is read by
 eye (§10); a pixel gate would re-baseline after every change and turn a moving target into a blocker.
@@ -285,12 +288,12 @@ All 16 tasks done. Every visual defect from the 2026-10-19 screenshot review fix
     gutter now clears the content's left edge. Both are measured by the new component test
     `packages/session-graph/component-tests/graph-bands.spec.ts`: no band header covers a card, and
     no two card boxes overlap.
-  - **Two renderer defects surfaced while fixing it, both pre-existing and both now fixed.**
-    (a) The band is flagged `billboard`, and the core's billboard rotated it *towards the camera in
-    the XY plane* — a side-view rule — so under the app's top-down camera every band was skewed by
-    up to 51° and no longer enclosed its members. A billboard now cancels the camera's rotation
-    (screen-aligned), which is what T1.3 asked for. (b) The Cytoscape overlay placed host markup in
-    world units *without* the viewport scale, so its bands and cards were drawn oversized; the
+  - **Two renderer defects surfaced while fixing it, both pre-existing.** (a) The band is flagged
+    `billboard`, and the core's billboard did not make it screen-aligned: the rotation was the
+    camera's *inverse*, so every band was rolled by 50° instead of facing the reader. The fix is
+    **T1.19** — the note in this entry that claimed "a billboard now cancels the camera's rotation"
+    was wrong, and T1.19 corrects it with the proof. (b) The Cytoscape overlay placed host markup
+    in world units *without* the viewport scale, so its bands and cards were drawn oversized; the
     overlay now scales with the zoom, like every other node.
   - The band header's line height is a fixed 16px: its height is geometry (it must clear the
     cards), not typography. The captures were refreshed deliberately and read by eye (03, 12, 17
@@ -314,6 +317,45 @@ All 16 tasks done. Every visual defect from the 2026-10-19 screenshot review fix
   - The component test `packages/session-graph/component-tests/graph-legibility.spec.ts` asserts the
     card's rendered height at 1440×900 in the hierarchy and the file lens. It fails without the
     floor (22px < 36px), so it is load-bearing, not decorative.
+
+- [x] **T1.19 The 3D renderer tilted everything, and the flat view tilted after a selection**
+  Found on 2026-10-20 by reading the committed screenshots: in the orbit frame the cards were
+  sheared parallelograms with unreadable text and the swimlane bands were rolled by ~50°; and in
+  the **flat** frames that follow a selection (04, 12, 13, 15–17, 20–24) the whole map was drawn
+  at an angle even though the toolbar said *Flat*. Two separate causes, both in the library.
+  Done when: nothing in a tilted depth treatment is tilted, and the flat view stays flat.
+  Verify: the library's card-facing and camera suites; the host's depth component test; the
+  capture set read by eye.
+  - **Cause 1 — the billboard was inverted.** `HtmlNode.faceCamera` set the card's rotation to
+    `inverse(camera.quaternion)`, but the CSS3D pipeline composes
+    `camera.matrixWorldInverse × object.matrixWorld`, so a screen-aligned node must carry the
+    **camera's** rotation. The inverse turned the card twice: a billboarded band was rolled by
+    50.0° (T1.17 recorded "skewed by up to 51°" and blamed the camera), and a card lying in the
+    content plane was sheared by the perspective into a parallelogram. The rotation is now the
+    camera's, in the node's parent frame.
+  - **Cause 2 — a target move was a re-aim, not a pan.** `CameraControls.setTarget` moved the
+    target and re-derived the spherical from the camera's *fixed* position, so the camera stayed
+    put and `lookAt(newTarget)` rotated the view: a top-down camera stopped being top-down. The
+    camera now moves with the target. This is the regression the T6.18 "instant jump" introduced
+    (`12f47a1548`): the host's reduced-motion jump calls `setViewport` → `setTarget`, while the
+    older `focus()` → `flyTo` path preserved the pose.
+  - **The depth treatment now decides how the cards face the camera.** `DepthTreatment` gained
+    `facing: 'plane' | 'camera'`: `flat` keeps the cards in the content plane (the camera is
+    perpendicular, so it is the same thing), and `layered`/`depth-stack`/`orbit` turn every DOM
+    card to face the reader. The renderer owns the camera, so the policy lives there
+    (`WebGLRenderer.setCardFacing`), not in the host.
+  - **Proof, not a claim.** The library's new `test/card-facing.test.ts` (5 cases) asserts that a
+    billboarded card's *screen* rotation is the identity under a tilted camera, under a top-down
+    camera, and after the camera moves — it fails on the old line (0.87 rad ≈ 50°). The new
+    camera-controls cases assert that a target move keeps the pose and keeps a top-down camera
+    top-down — they fail on the old `setTarget`. The host's new depth component test asserts the
+    rendered card keeps its 220:72 ratio in a tilted treatment: the old code measures 2.91, the
+    fix 3.06.
+  - **The captures were refreshed and read by eye.** The 3D frames now show clean, readable
+    rectangles; the flat frames are flat again.
+  - **One limitation, declared:** a billboarded band is scaled by its own distance while its
+    members are scaled by theirs, so in a tilted view a band's bounds are approximate and a card
+    can stick out of it. The grouping still reads; the band is a translucent backdrop.
 
 **Gate G1 — PASSED again (2026-10-20): the band headers no longer cover a card, the lane gutter no
 longer covers the session card, and the two unreadable views keep a legible scale.** A first-time
@@ -3019,6 +3061,77 @@ thumbnails are static pictures, so they do not show the renderer's own card styl
 same positions" invariant holds per history, not across histories; the layout menu's keyboard
 behaviour is the browser's own `<details>`, not a custom menu. **T2.1 and T2.2 still need
 participants**, so the stop rule in T2.5 has not fired.
+
+**2026-10-20 — T1.19: the 3D renderer tilted everything, and the flat view tilted after a
+selection.** The owner pointed at the screenshots: the objects were tilted incorrectly in 3D. Two
+separate defects, both in the library, both found by *reading the committed images* rather than by
+a failing test.
+
+*The first was an inverted billboard.* `HtmlNode.faceCamera` set a billboarded node's rotation to
+`inverse(camera.quaternion)`. The CSS3D pipeline composes `camera.matrixWorldInverse ×
+object.matrixWorld`, so a screen-aligned node has to carry the **camera's** rotation — the inverse
+turns it twice. A minimal repro (three.js + `CSS3DRenderer`, one camera pose, three candidate
+rotations) showed it at a glance: the identity gives a sheared parallelogram, the inverse gives a
+rolled sliver, the camera's rotation gives an exact rectangle. So the orbit frame's cards were
+sheared parallelograms with unreadable text, and the swimlane bands were rolled by **50.0°** —
+which is the "up to 51°" T1.17 recorded and wrongly explained as a side-view rule. The fix is one
+line, and the depth treatment now says how the cards face the camera: `DepthTreatment` gained
+`facing: 'plane' | 'camera'`, `flat` keeps them in the content plane, and the three perspective
+treatments turn every DOM card to face the reader. The renderer owns the camera, so the policy
+lives in the renderer (`WebGLRenderer.setCardFacing`), not in the host.
+
+*The second was a target move that re-aimed the camera.* `CameraControls.setTarget` moved the
+target and re-derived the spherical from the camera's **fixed** position, so the camera stayed put
+and `lookAt(newTarget)` rotated the view: a top-down camera stopped being top-down, and the map
+drew at an angle. The camera now moves with the target. This is the regression the T6.18 "instant
+jump" introduced (`12f47a1548`): the host's reduced-motion jump calls `setViewport` → `setTarget`,
+where the older `focus()` → `flyTo` path preserved the pose. The frames that show it are exactly the
+ones that follow a selection (04, 12, 13, 15–17, 20–24) — and the *old* committed `04` is tilted
+too, which is how the regression was dated.
+
+*One more thing the fix needed:* the camera now moves **before** the nodes read it in
+`SpaceGraph.animate()`, so a card that faces the camera faces the one it is drawn with rather than
+the previous frame's.
+
+*The proof is a test, not a claim.* The library's new `test/card-facing.test.ts` (5 cases) asserts
+that a billboarded card's screen rotation is the identity under a tilted camera, under a top-down
+camera, and after the camera moves — it fails on the old line (0.87 rad ≈ 50°). Two new
+camera-controls cases assert that a target move keeps the pose and keeps a top-down camera
+top-down — they fail on the old `setTarget`. The host's new depth component test asserts the
+rendered card keeps its 220:72 ratio in a tilted treatment: the old code measures 2.91, the fix
+3.06.
+
+*The captures were refreshed deliberately and read by eye.* The three 3D frames now show clean,
+readable rectangles; the flat frames are flat again. The library's test count is 479 (10 new).
+
+One limitation is declared rather than hidden: a billboarded band is scaled by its own distance
+while its members are scaled by theirs, so in a tilted view a band's bounds are approximate and a
+card can stick out of it. The grouping still reads — the band is a translucent backdrop.
+
+Commands run: `vitest run` in `spacegraphjs` (479 pass, 10 new), `tsc --noEmit -p tsconfig.json` in
+`spacegraphjs` (0 errors), `pnpm run build:lib` + `pnpm run build:packages`, `bun run typecheck` +
+`bun test src` in `packages/session-graph` (96 pass, clean), `bun run typecheck` + `bun test
+src/graph` in `packages/session-ui` (106 pass, clean), `bun run test:components` in
+`packages/session-graph` (49 pass, 1 new), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in
+`packages/app` (21 pass), `bun run graph:capture --mode=compare` (the set refreshed) and
+`bun run graph:verify` (all steps).
+
+Unverified: the frames were read by eye, not by a reviewer who did not write them; the band bounds
+in a tilted view are approximate (declared above); the fix was checked in Chromium at 1440×900
+only; the *proof* that the flat-mode tilt came from `12f47a1548` is the mechanism plus the tilted
+committed frame, not a re-capture at that commit. **T2.1 and T2.2 still need participants**, so the
+stop rule in T2.5 has not fired.
+
+*Notes for the next pass.*
+- **The library's remaining open items are unchanged:** the second host's capability gallery does
+  not yet cover the tree and force engines (the plan's "obvious next library-side task"), and the
+  force layout has no row in `bun run graph:scale`.
+- **The capture set now includes 28–30** (tree, force, gallery); the gallery frame is the one to
+  look at first when comparing layouts.
+- **A lesson worth keeping:** the screenshots were the only place the tilt was visible. Every
+  suite was green while the product was broken, twice (the billboard and the re-aim). The frames
+  are read by eye (§10) *and* the eye needs something to read them against.
+
 
 
 
