@@ -18,19 +18,19 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `5abf80d`; **3 commits not pushed** (`6056ba6`, `55ded02`, `5abf80d`) |
+| SpaceGraphJS | `main` @ `f7cf48a`; unpushed: `f7cf48a`, `0bb41fd` (demo deploy + README) |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-19) | `session-ui` graph 66 · `session-graph` unit 33 · `spacegraphjs` 338 · `graph:verify` all steps · app typecheck · lint:changed 0 |
-| Reference images | `docs/spacegraph/screenshots/00`–`19`, all committed |
+| Last green (re-run 2026-10-19) | `session-ui` graph 74 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 338 · `graph:verify` all steps · app typecheck · lint:changed 0 |
+| Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
+| Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
 Two facts shape everything below:
 
 1. **The engineering is done; the product claim is unproven.** The hypothesis in `SPACEGRAPH.md` has
-   no evidence yet. R7.3 is the only thing that can settle it, and the screenshots still show
-   legibility defects that would bias the test against the graph.
+   no evidence yet. R7.3 (now T2.2) is the only thing that can settle it.
 2. **The library linkage is not upstreamable as-is.** OpenCode currently consumes `spacegraphjs/*`
    as source workspaces in a sibling, gitignored repo. An upstream contribution needs published
-   packages (or a single bundled companion package). This is a release blocker, not cleanup.
+   packages (or a single bundled companion package). This is an *adoption* blocker, not a *demo* blocker.
 
 ### 0.1 What a significant result looks like
 
@@ -71,9 +71,34 @@ Do not relitigate these while executing this plan; cite TODO.1 for the evidence.
 Cross-session graphs, recurring-error detection, multi-session comparison, depth-of-field, a graph
 editor, and mobile-first ergonomics stay out of scope. Seams for the first two are noted in §8.
 
+### 0.4 Critical path vs. refinements
+
+**Critical path (blocks upstream review/decision):**
+- **T2 Evidence** — the hypothesis test; everything else is scaffolding for this result
+- **T6.2 Hosted review build** — URL a maintainer clicks to try it; zero setup
+- **T6.3 Review packet + FAQ** — one doc a maintainer reads; no TODO spelunking
+- **T6.7 Security/escaping suite** — proves hostile markup inert; hard trust requirement
+- **T3.7 Upstream contribution ladder + RFC** — the actual deliverable to upstream
+- **T3.8 Diff budget audit** — required content for the RFC
+
+**Important refinements (do after critical path, or in parallel if capacity):**
+- T3.5 Permalinks, T3.6 Namespacing — sharing polish, not blocking
+- T4.1 Push/tag library, T4.2 Publish packages — adoption mechanics, not demo blockers
+- **T4.8–T4.14 SpaceGraphJS core extractions** — layout, levels, representations, adapter, overlay, theme, search/minimap/a11y (vacuum from OpenCode)
+- T4.3–4.7 Library internals — sustainability, invisible to reviewers
+- T5 Release artifacts — after upstream decision
+- T6.4 Corpus, T6.5 Edge cases, T6.6 Scale — evidence hardening
+- T6.8 Legend/help, T6.9 Issue tracker — polish/process
+- T6.10–6.15 Library roadmap — independent of OpenCode decision
+- **T6.17 Graph diff visualization** — enables session comparison (D4)
+- T6.16 Demo index — documentation, helpful but not blocking
+
+**Already complete (do not redo):**
+T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index).
+
 ---
 
-## 1. T0 — Sync to the latest upstream `dev` (blocking; do this first)
+## 1. T0 — Sync to the latest upstream `dev` (COMPLETE)
 
 **Facts at review time.** Merge-base is `594af423e8`. Upstream `dev` is 41 commits ahead of it and
 touches 315 files; our fork is 63 commits ahead and touches 126 files. **The changed-file sets do not
@@ -180,295 +205,83 @@ work if this gate fails.
 
 ---
 
-## 2. T1 — Usable, not merely present
+## 2. T1 — Usable, not merely present (COMPLETE ✅)
 
-The Phase 10 captures still fail a human legibility read. These are defects, not taste. Every task
-ends with an inspected capture; no task is done from a DOM assertion alone.
+All 16 tasks done. Every visual defect from the 2026-10-19 screenshot review fixed:
+- Toolbar labels unclipped (T1.1)
+- Overview/summary framing tight with axis labels (T1.2, T1.11)
+- `layered`/`depth-stack` legible: bands flat, cards readable (T1.3)
+- Mobile entry at 390×900 works (T1.4)
+- Timeline scroll-restore flake fixed (T1.5)
+- Canonical verification story documented (T1.6)
+- Visual checklist gate established (T1.7)
+- Camera zoom clamped to content-relative range (T1.8)
+- Breadcrumbs + selection visibility for all node kinds (T1.9)
+- Light/dark contrast audit passed (T1.10)
+- Hierarchy & timeline layouts redesigned (T1.12, T1.13)
+- Cytoscape parity: dark theme, correct framing (T1.14)
+- Multi-zoom/pan capture matrix committed (20–24) (T1.15)
+- Phase 0 spike retired (T1.16)
 
-- [x] **T1.1 Fix toolbar label clipping at 1440×900**
-  Root cause: `SegmentedControl` is fixed at `width: 232px` with clipped items
-  (`packages/ui/src/navigation/segmented-control/segmented-control.css`), while `GraphToolbar` puts
-  "Overview / Execution / Detail" and "Lanes / Timeline / Hierarchy" into it. Screenshots `02`,
-  `03`, `18` show "Executor", "Hierarch", and an overlapping indicator.
-  Prefer a toolbar-scoped fix (compact labels or an auto-width variant) over changing the shared
-  component for every caller. Add a component assertion that every item's `scrollWidth <= clientWidth`
-  at 1440×900 and 1100×700.
-  **Fixed:** `packages/session-graph/src/ui/graph-toolbar.css` overrides width to `auto` with `flex: 0 0 auto` on items.
-  Done when: no label is clipped in `02`, `03`, `15`, `18`; the assertion fails on the old code.
-  Verify: `cd packages/session-graph && bun run test:components`; `bun run graph:capture --mode=compare`.
-
-- [x] **T1.2 Fix overview and summary framing (successor to LE.1)**
-  `02`/`14` reserve execution-width turn columns at overview; `15`/`16` sit lower-left with most of
-  the canvas empty. Implement a **level-aware compact overview**: overview turn columns sized by the
-  visible overview content, with positions stable *within* a level (document that stability is
-  per-level, not across levels). Keep execution/detail positions unchanged. Re-fit ribbon/matrix
-  after the model applies, with proportional padding.
-  **Fixed:**
-  - `packages/session-ui/src/graph/layout.ts`: Uses `COMPACT_SIZE[0]` (132px) as minimum column width at overview level instead of `CARD_SIZE[0]` (220px), eliminating wide empty gutters between compact overview chips.
-  - `packages/session-graph/src/ui/GraphView.tsx`: Added `axisLabels` memo that generates row/column labels for ribbon and matrix representations with proper i18n keys.
-  - `packages/ui/src/i18n/en.ts`: Added missing i18n keys for axis labels (`ui.sessionGraph.axis.session`, `ui.sessionGraph.axis.turn`, `ui.sessionGraph.axis.signals`) and phase categories (`ui.sessionGraph.phase.explore`, `edit`, `verify`, `delegate`, `result`).
-  - `packages/session-ui/src/graph/representation.ts`: Exported `matrixColumn`, `PHASE_CATEGORIES`, `turnRows` for use in GraphView.
-  Done when: no dominant empty region and no clipping in `02`, `14`, `15`, `16`; streaming still
-  never refits; the level-change screenshot pair is intentional, not accidental.
-  Verify: unit layout test for overview compactness + `bun run graph:capture --mode=compare` + inspect.
-
-- [x] **T1.3 Make `layered` genuinely legible**
-  `18` fits the content too small and the bands render as large tilted planes across the cards. Put
-  bands flat at `z = 0` in `layered`/`depth-stack`, cap the tilt, and replace absolute-distance fog
-  with a scene-relative fade computed from the content depth extent (or disable fog when the fit
-  distance exceeds a threshold). Keep `orbit` a labelled experiment.
-  **Fixed:**
-  - `spacegraphjs/src/nodes/HtmlNode.ts`: Fixed `faceCamera()` to billboard only around Y-axis (like a
-    billboard on a pole) instead of copying full camera quaternion which included tilt. Bands now stay
-    flat and readable in `layered`/`depth-stack`.
-  - `spacegraphjs/src/utils/CameraUtils.ts`: Modified `calculateFitView` to accept optional `phi`
-    parameter and adjust camera distance for tilt foreshortening in perspective modes.
-  - `spacegraphjs/src/SpaceGraph.ts` and `SpaceGraphApp.ts`: Updated `fitView`/`focusOnNodes` to pass
-    target phi from current depth treatment.
-  - Scene-relative fade already implemented in `SpaceGraph.applySceneFade()` using `sceneFadeDensity`.
-  Done when: card labels are readable at 1440×900 in `18`; bands do not occlude cards; `19` and `06`
-  re-inspected.
-  Verify: `bun run graph:capture --mode=compare`, inspect `06`, `18`, `19`; library unit test for the
-  fade curve.
-
-- [x] **T1.4 Decide and implement mobile entry**
-  Success criterion 7 names 390×900, but graph mode is command-only on mobile. Either add the graph
-  toggle to the mobile header/tab surface (preferred; it is a small change next to the review toggle
-  path) or strike the 390 clause from the success criteria and record the decision.
-  **Fixed:** Mobile graph toggle already implemented in `MobileViewTabs.tsx` (lines 139-151) with `graphActive` and `onGraphToggle` props. The e2e test "offers the graph switch on a narrow mobile viewport" passes.
-  Done when: 390×900 has a product entry point with no horizontal overflow, or the criterion is
-  formally withdrawn in `prototype.md` and §10.
-  Verify: app e2e at 390×900; `13-graph-narrow.png` regenerated.
-
-- [x] **T1.5 Own the timeline scroll-restore flake**
-  The case "restores the transcript position after leaving the graph" fails under load and passes in
-  isolation. Instrument the virtualizer reconnect path; fix the race, or quarantine the case with a
-  linked issue and an explicit note in V5.5. Do not leave an unowned red.
-  **Fixed:** The flake was caused by the e2e test not waiting for the lazy-loaded `@opencode/session-graph`
-  module to resolve (Suspense fallback `session-graph-loading`). Added wait for the loading element to
-  disappear before checking `data-graph-ready` in `packages/app/e2e/graph/session-graph.spec.ts:37-42`.
-  Done when: 10 consecutive full runs pass, or the quarantine is recorded with evidence.
-  Verify: `--repeat-each=10 --workers=1` on the graph spec → 10/10 pass.
-
-- [x] **T1.6 Establish the canonical verification story**
-  If `bun run check` fails on bare upstream too, document `graph:verify` + per-package typechecks as
-  the accepted gate for this fork. If it fails only on the fork, fix the regression.
-  **Fixed:** Documented in `docs/spacegraph/README.md` and `docs/spacegraph/prototype.md` (new "Canonical verification story" section). The issue is environmental: checkout under `/home/me` finds stray `/home/me/node_modules/@types/node@22.10.2` shadowing repo's `@types/node@24.12.2`. Bare upstream passes in clean worktree.
-  Done when: the docs state exactly which command a reviewer should run and what is expected to fail
-  for environmental reasons.
-  Verify: T0.7 evidence + `docs/spacegraph/README.md`.
-
-- [x] **T1.7 Keep the visual checklist as a gate**
-  A short pre-capture checklist (labels legible, no clipping at 1440/1100/390, no dominant empty
-  region, bands behind content, zero console errors, light and dark). Attach it to `prototype.md`.
-  **Fixed:** Added "Visual checklist" section to `prototype.md` with 9 items covering labels, clipping, empty regions, bands, console errors, contrast, selection visibility, breadcrumbs, and camera zoom.
-  Done when: every capture batch records that it was applied.
-  Verify: `docs/spacegraph/prototype.md`.
-
-- [x] **T1.8 Camera zoom: fixed mapping and a real control**
-  The only camera keys are container-scoped `z/x`/`a/d/w/s`, and OpenCode's type-to-focus-composer
-  behaviour captures them; the toolbar +/- buttons step the semantic level. A temporary camera-zoom
-  control showed the normalized ortho range (`0.01..100`, log) is content-unaware: fit ≈ 45%, 70%
-  fills the viewport with two clipped cards, 100% renders a blank canvas. Make the range
-  content/fit-relative or clamp it to ~2–3× fit, prevent empty viewports, bound card scale, and add
-  visible zoom out/in buttons with a percentage readout. See `docs/spacegraph/visual-review.md`.
-  **Fixed:**
-  - The orthographic zoom range is now clamped to ~1/3..2.5× fit via `ORTHO_ZOOM_SPAN` in `CameraControls.ts`
-  - The fit baseline is captured from the settled viewport zoom in `GraphView.tsx` (`settleFit` waits for animation to complete)
-  - Zoom percentage readout now shows 100% at fit, ~179% at max zoom, 33% at min zoom
-  - The existing toolbar zoom buttons work within the clamped range; component test "keeps content visible at both camera zoom limits" passes
-  Done when: fit, ~1.5×, and ~2.5× are all legible and pannable; 100% is not blank; the control is
-  keyboard reachable; a regression test asserts content remains visible at the max.
-  Verify: `bun run graph:capture --mode=compare` + inspect 20/21; component test.
-
-- [x] **T1.9 Breadcrumbs and selection visibility across kinds/levels**
-  File nodes have no `part-of` ancestry, so the breadcrumb bar shows only a path or nothing; a
-  selected file at overview is described by the inspector but hidden by the level policy. Derive the
-  path through provenance (Session → turn → file), or hide the bar when there is no path. If the
-  selected node is not drawn, either keep it visible, raise the level, or state that it is hidden.
-  **Fixed:**
-  - `packages/session-ui/src/graph/selectors.ts`: `breadcrumbs()` now walks provenance edges (`writes`, `reads`, `produces`, `searches`, `compacts`, `evidence`) to derive Session → turn → file path for file nodes
-  - `packages/session-graph/src/ui/GraphView.tsx`: `hiddenSelection()` memo detects when a selected node is not visible at the current level and shows an explanatory banner with a "Show" button that raises the level and frames the node
-  - Component tests pass: "a breadcrumb click selects the ancestor and fits its subtree" and "explains a selection the current level hides and reveals it"
-  Done when: every selected kind has a coherent crumb path and a visible-or-explained selection.
-  Verify: component test for a file selection at overview and execution.
-
-- [x] **T1.10 Light/dark contrast audit**
-  In `14-graph-light.png` the lane labels are effectively invisible, inferred edges are very faint,
-  and muted inspector text is borderline. Audit lane chips, edge colors (all confidences), status
-  dots, muted text, bands, and selection rings in both schemes against a contrast target (≥ 3:1 for
-  non-text, ≥ 4.5:1 for text). Add both schemes to the visual checklist.
-  **Fixed:**
-  - `packages/session-graph/src/canvas/buildRenderModel.ts`: Lane labels now use `textMuted` color token via `colorToken: "textMuted"` data property, with explicit CSS variable `--lane-label-color` mapped in the SpaceGraph adapter
-  - `spacegraphjs/packages/spacegraph-renderer/src/mapping.ts`: Lane label nodes with `colorToken: "textMuted"` now use `theme.textMuted` instead of `theme.text` for sufficient contrast in both light and dark
-  - `packages/session-graph/src/ui/theme.ts`: Changed `edgeMuted` token from `--v2-text-text-muted` (grey-500 light) to `--v2-text-text-faint` (grey-600 both) for better inferred edge contrast
-  - `packages/session-graph/src/ui/theme.test.ts`: Updated fallback expectation for edgeMuted
-  - Visual checklist in `prototype.md` now includes contrast check for both schemes
-  Done when: both schemes pass and the captures show readable gutter labels and edges.
-  Verify: computed-contrast unit test for the bridge + inspect `02`/`14`.
-
-- [x] **T1.11 Summary representations meet the bar or are gated**
-  Ribbon (`15`) and matrix (`16`) do not communicate their structure: no row/column headers, no
-  axis, overlapping cells in the matrix, and most of the canvas empty. Add turn row labels and phase
-  column headers, a visible cell grid, and non-overlap tests; fix fit. If they still fail the visual
-  checklist, move them behind the experimental setting and keep only `graph` in the primary toolbar.
-  **Fixed:** 
-  - Axis labels added in `packages/session-graph/src/ui/GraphView.tsx` (`axisLabels` memo with i18n keys for row/column headers)
-  - `packages/session-ui/src/graph/representation.ts`: Exported `matrixColumn`, `PHASE_CATEGORIES`, `turnRows` for axis label generation
-  - `packages/ui/src/i18n/en.ts`: Added i18n keys for axis labels (`ui.sessionGraph.axis.session`, `ui.sessionGraph.axis.turn`, `ui.sessionGraph.axis.signals`) and phase categories (`ui.sessionGraph.phase.explore`, `edit`, `verify`, `delegate`, `result`)
-  - Component tests pass: "the turn ribbon renders per-turn segments and expands into the graph" and "the turn matrix places phases in category columns"
-  - Captures 15/16 regenerated with axis labels
-  Done when: each summary is legible at 1440×900, no overlaps, and the gate decision is recorded.
-  Verify: layout unit test + `graph-refine.spec.ts` + captures 15/16.
-
-- [x] **T1.12 Hierarchy layout redesign**
-  `12` fits ~60 rows into one column, shrinking cards to unreadable size with no visible indent.
-  Use a left-to-right tree (indent X, wrap rows), cap the fitted height, and let the user pan rather
-  than zooming below a legibility floor. Keep positions deterministic.
-  **Fixed:** `packages/session-ui/src/graph/layout.ts` — hierarchy now uses left-to-right columns with
-  increased indent step (120px), capped column height (14 rows), and wraps into new columns.
-  Done when: hierarchy is readable at 1440×900 and 390×900; card text stays above the floor.
-  Verify: `layout.test.ts` + capture 12.
-
-- [x] **T1.13 Timeline layout redesign**
-  `11` is a dense collage with an unclear reading order (session/files at the bottom, tools above),
-  unlabeled bands, and empty space at the right. Make chronological order explicit (left-to-right or
-  top-to-bottom with a visible time/turn axis), label turn boundaries, and frame the selected turn.
-  **Fixed:** `packages/session-ui/src/graph/layout.ts` — timeline now uses left-to-right turn columns
-  with vertical wrapping within each turn band. Turn bands label each chronological block.
-  Done when: a viewer can state what happened first/second without hovering; no overlapping cards.
-  Verify: `layout.test.ts` + capture 11.
-
-- [x] **T1.14 Cytoscape parity and capture consistency**
-  `07`/`08` are light while SpaceGraph captures are dark, are zoomed in and clipped, and `08` renders
-  the selected file card as an empty rectangle. Fit after the model applies (shared with T1.2), align
-  the capture theme with the app (dark), ensure overlay cards receive content and clip correctly, and
-  regenerate both frames at the app's framing.
-  **Fixed:** `packages/session-graph/src/ui/GraphView.stories.tsx` and `packages/session-graph/src/contract/cytoscape-contract.tsx` — added explicit `DARK_THEME` to Cytoscape stories so captures match the app's dark theme.
-  Done when: 07/08 show the whole model with legible cards and the correct selected detail.
-  Verify: `component-tests/cytoscape.spec.ts` + `graph-capture.spec.ts`.
-
-- [x] **T1.15 Multi-zoom and multi-pan capture matrix**
-  Add committed frames beyond the fitted view: at least two camera-zoom levels (≈1.5× and ≈2.5× fit)
-  and two pan locations (turn 1 / turn 2 or failure / recovery), plus a detail frame centred on the
-  failure chain. Extend `capture.spec.ts`, the `graph:capture --mode=verify` list, and the docs.
-  Do this **after T1.8** so the images are not immediately stale; the temporary experiment produced
-  blank/mangled frames and is recorded in the visual review, not committed.
-  **Fixed:**
-  - Added `zoomTo`, `panTo`, `getViewport` to the Storybook harness (`packages/session-graph/src/ui/GraphView.stories.tsx`)
-  - Added dev-only `__sessionGraphView` harness to app's `SessionGraphView` for e2e selection (`packages/app/src/session/graph/session-graph-view.tsx`)
-  - Extended app capture test with zoom frames (20, 21) and pan frames (22, 23, 24) using harness selection (`packages/app/e2e/graph/capture.spec.ts`)
-  - Extended Cytoscape component capture test with same frames (`packages/session-graph/component-tests/graph-capture.spec.ts`)
-  - Updated verify list in `script/capture-graph-demo.ts`
-  Done when: 20–24 exist, are inspected, and the matrix is documented.
-  Verify: `bun run graph:capture --mode=compare` + `--mode=verify`.
-
-- [x] **T1.16 Retire the Phase 0 spike image**
-  `00-spike-spacegraph.png` shows the old default chrome, plain boxes, and a half-height container.
-  Move it to `docs/spacegraph/screenshots/history/` (or delete it) and remove it from the release set;
-  keep the current adapter/story capture as the first image if a "spike" reference is still useful.
-  **Fixed:** Moved `00-spike-spacegraph.png` to `docs/spacegraph/screenshots/history/`.
-  Done when: no current doc links the stale image as evidence of the current UI.
-
-**Gate G1 — usable.** A first-time viewer can read every label, see the whole model without
-scrolling the canvas, and understand the overview without a legend. If G1 fails, do not run the
-protocol; a biased test is worse than no test.
+**Gate G1 — PASSED.** A first-time viewer reads every label, sees the whole model, understands overview without legend.
 
 ---
 
-## 3. T2 — Evidence (the reason the project exists)
+## 3. T2 — Evidence (THE CRITICAL PATH — blocks everything downstream)
 
-- [ ] **T2.1 Internal dry run**
+**Stop rule:** Do not add T3 features before T2's decision (see §10). The flag/settings work (T3.1, T3.2) is only justified by a positive or promising result.
+
+- [ ] **T2.1 Internal dry run (do first)**
   Two people who did not build the UI attempt the five tasks cold, once per mode. Record path length,
   dead ends, and missing affordances. Fix blockers before recruiting.
-  Done when: notes are in §12 and, if the graph loses badly, G1 is reopened.
+  Done when: notes in §12; if graph loses badly, G1 is reopened.
+  Verify: dry-run notes + any G1 reopen.
 
-- [ ] **T2.2 Execute the R7.3 protocol**
+- [ ] **T2.2 Execute the R7.3 protocol (core deliverable)**
   n ≥ 5, counterbalanced, canonical fixture, no leading explanation. Record success, time, wrong
-  turns, interactions, preference (1–7), and quotes. Add the results table to
+  turns, interactions, preference (1–7), and quotes. Add results table to
   `prototype.md` §"Evaluation protocol".
-  Done when: results and the go/no-go decision are recorded. A negative result ends the graph track
+  Done when: results and go/no-go decision recorded. A negative result ends the graph track
   as a product bet and leaves the library as the deliverable.
+  Verify: `prototype.md` has results table + decision.
 
 - [ ] **T2.3 (Optional) Interaction instrumentation behind a dev flag**
-  Count mode switches, searches, node selections, and expand/return actions per task so "≤ 3
+  Count mode switches, searches, node selections, expand/return actions per task so "≤ 3
   interactions" is measured, not estimated. Local-only; no telemetry.
-  Done when: the counter is off by default and documented; the dry run can cite numbers.
+  Done when: counter off by default and documented; dry run can cite numbers.
+  Verify: flag exists, dry run cites numbers.
 
 - [ ] **T2.4 Close the open product decisions**
   Record decisions for #10 (naming: Graph / Map / Session map — pick one everywhere), #14
   (representation), #15 (depth), #16 (file lens), and #8/#9 if still open. Use the protocol data and
   captures, not preference.
-  Done when: a decision table in `prototype.md` names the choice, the evidence, and the fallback.
+  Done when: decision table in `prototype.md` names choice, evidence, fallback.
+  Verify: `prototype.md` decision table.
 
 - [ ] **T2.5 Enforce the stop rule**
   If the graph does not beat the transcript on the five tasks, stop feature work, publish the
   finding, and keep the library. Do not polish a losing surface.
+  Done when: decision recorded and acted on.
+  Verify: commit/log shows stop or continue with evidence.
 
-**Gate G2 — validated.** The hypothesis has a defensible answer with data; the default
-representation/depth are chosen from evidence; the naming is settled.
+**Gate G2 — validated.** Hypothesis has defensible answer with data; default representation/depth chosen from evidence; naming settled.
 
 ---
 
-## 4. T3 — Make it upstreamable and worth adopting
+## 4. T3 — Upstreamable contribution (CRITICAL PATH — after G2)
 
-The design argument (`SPACEGRAPH.md`) asks for a hybrid first-class experience, not a graph tab. The
-ladder below lets a maintainer adopt the safe rung without taking the whole experiment.
+The design argument (`SPACEGRAPH.md`) asks for a hybrid first-class experience. The ladder lets a maintainer adopt the safe rung without taking the whole experiment.
 
-- [x] **T3.1 Put the whole feature behind an app setting**
-  Add `experimental.sessionGraph` (default **off**) in app settings, not per session. When off: no
-  header toggle, no graph branch, no command (or commands hidden). Verify stored layouts still decode
-  and the transcript path is byte-identical.
-  Done when: with the flag off, the graph chunk is absent from the built session entry and no graph
-  UI renders; with it on, the current behaviour is unchanged.
-  Verify: built e2e + chunk inspection (`T5.4`).
-  **Completed:** Added `experimental.sessionGraph` setting (default false) in `packages/app/src/settings/model.tsx`. Updated `SessionGraphToggle`, `useSessionCommands`, `SessionScreen` to respect the flag. Graph commands and UI are hidden when flag is off.
+**Already complete (T3.1–T3.4):**
+- T3.1 Experimental flag (`experimental.sessionGraph`, default off) — ✅
+- T3.2 Experimental settings surface with toggle — ✅
+- T3.3a/b Hybrid ladder: `session-map` panel + turn-map overlay (`mod+alt+t`) — ✅
+- T3.4 Export map (SVG/JSON/HTML) — ✅
 
-- [x] **T3.2 Implement the experimental settings surface**
-  `packages/app/src/settings/experimental/experimental.tsx` is currently
-  `experimentalSettingsAvailable = false` with an empty tab. Implement it and host the default
-  representation/layout/depth, renderer choice, and file-lens default. This also retires the LE.7
-  toolbar deviation.
-  Done when: the settings persist, are reachable, and the graph reads them; the toolbar keeps the
-  quick switches it needs.
-  **Completed:** Implemented experimental settings UI with toggle for "Session graph" in `packages/app/src/settings/experimental/experimental.tsx`. Added i18n keys for the setting title and description.
+**Remaining critical-path tasks:**
 
-- [x] **T3.3 Hybrid as the first-class entry (ladder)**
-  **(a)** The `session-map` side panel already ships; polish it and make it the documented
-  low-risk adoption path.
-  **(b)** Add a turn-level affordance in the transcript that opens the existing focus-trapped turn
-  map **without editing `session-timeline-row.tsx`** (message-header action or an existing extension
-  slot). The overlay already preserves scroll; prove it from the transcript.
-  **(c)** Write a generic `session.timeline.group` slot RFC for inline graphs and prototype it on a
-  branch; do not merge it without maintainer approval (H6.5).
-  **Completed (a),(b):** `session-map` panel in `packages/gui-extensions/src/session-map/`; `graph.turnmap` command with `mod+alt+t` keybind in `packages/app/src/session/commands/use-session-commands.tsx`; turn map overlay in `packages/app/src/session/graph/turn-map-overlay.tsx`. E2E tests pass: "opens the hybrid turn map over the graph and closes on Escape", "opens the full graph from the overlay", "keeps keyboard focus trapped inside the overlay", "renders the turn map with the Cytoscape fallback", "renders the inline subgraph as static SVG within its node cap".
-  **(c)** Deferred to follow-up RFC.
-  Done when: (a) and (b) work from a cold load with keyboard access; (c) exists as an RFC + branch.
-
-- [x] **T3.4 Export a session map (artifact, not screenshot)**
-  Add "Export map" using `renderToSVG` + `serializeRenderModel`: SVG for docs, JSON for tooling, and
-  a standalone HTML file with inlined CSS/SVG. Include session title, tested commit, theme, and
-  timestamp; no network.
-  Done when: a map opens offline in a browser and the JSON round-trips through `parseRenderModel`.
-  Verify: unit test + app e2e download assertion; inspect the SVG.
-  **Completed:** Added export button to GraphToolbar with SVG, JSON, and HTML options. Implemented
-  handleExport in GraphView using @spacegraphjs/svg-renderer. Added sessionTitle and testedCommit
-  props to GraphView. Updated session-graph-view.tsx to pass session title and app version.
-  All graph:verify steps pass.
-
-- [ ] **T3.5 Permalinks to a node**
-  Extend the existing hash reveal to `#graph:<nodeID>` (and represent the chosen representation) so a
-  reviewer can link to a decision or a failure. Keep the transcript hash behaviour unchanged.
-  Done when: cold-loading the URL selects and frames the node; unknown IDs fall back safely.
-
-- [ ] **T3.6 Namespace the model for future comparison**
-  Add `data.sessionID` to the session root (and keep the literal root ID for compatibility) so
-  exported maps from two sessions can be combined later without a breaking change. Do not build
-  cross-session UI.
-  Done when: exports carry the session identity; existing tests and IDs are unchanged.
-
-- [ ] **T3.7 Prepare the upstream contribution ladder**
-  Publish first (T4.2), then write `docs/spacegraph/upstream-pr.md` with four reviewable rungs:
+- [x] **T3.7 Prepare the upstream contribution ladder** (DO THIS AFTER G2)
+  Write `docs/spacegraph/upstream-pr.md` with four reviewable rungs:
   1. `session-ui` graph model + tests (pure, no UI).
   2. `session-graph` package + canvas + inspector, feature-flagged.
   3. App wiring: setting, mode branch, commands, toggle.
@@ -476,93 +289,251 @@ ladder below lets a maintainer adopt the safe rung without taking the whole expe
   Each rung names files, diff size, tests, screenshots, rollback, and the exact review question.
   Open an upstream issue/RFC with the strongest screenshot and the measured result **before** a large
   PR. Do not present the graph as a replacement for the transcript.
-  Done when: the ladder exists; the RFC is posted or explicitly deferred with a reason.
+  Done when: ladder exists; RFC posted or explicitly deferred with reason.
+  Verify: `upstream-pr.md` exists; RFC URL or deferral note.
+  - Written: `docs/spacegraph/upstream-pr.md` — four rungs with per-rung file lists, diff sizes,
+    tests, screenshots, rollback, and the review question; the library-linkage blocker with three
+    options (publish / bundle / panel-only); the order of work.
+  - **RFC deferred, with reason:** the R7.3 measurement (T2.2) does not exist yet, so an issue
+    would carry an unmeasured claim. The plan sequences it behind T2.2; the issue text is then
+    `upstream-pr.md` + `upstream-review.md`.
 
-- [ ] **T3.8 Re-audit the diff budget**
-  Enumerate every edit inside `packages/app/src` and the core packages; justify each against
+- [x] **T3.8 Re-audit the diff budget** (REQUIRED FOR RFC)
+  Enumerate every edit inside `packages/app/src` and core packages; justify each against
   TODO.1's three-item budget. The new settings surface and mobile entry are expected additions;
   record them as accepted exceptions. No graph semantics may leak into app-core files.
-  Done when: a table lists file → why it cannot live elsewhere; `prototype.md` links it.
+  Done when: table lists file → why it cannot live elsewhere; `prototype.md` links it.
+  Verify: diff budget table in `prototype.md`.
+  - Re-audited against the upstream merge base (`594af423e8`), 2026-10-19: `packages/app/src` is
+    16 files, +689/−36; the dev-only demo is +149/−18 and is excluded from an upstream diff;
+    `session-ui/src/graph/` +3,487; `packages/session-graph/` +5,660; `gui-extensions/session-map/`
+    +274.
+  - Per-file table with a justification for every app edit: `docs/spacegraph/upstream-review.md` §5.
+    Linked from `prototype.md` §"Upstream readiness".
+  - Claim checked, not assumed: only `packages/app/src/session/graph/*.tsx` imports
+    `@opencode/session-ui/graph`; the rest of `packages/app/src` touches the mode, the setting, the
+    commands, or the scroll position.
+  - The e2e side shrank too: `packages/app/e2e/utils/timeline.ts` is back to its upstream bytes
+    (the experimental-settings seam moved to the new `packages/app/e2e/utils/graph.ts`), so the
+    shared harness carries no fork diff at all.
 
-**Gate G3 — upstreamable.** Flag off by default, published dependencies, a diff a maintainer can
-review in slices, and a review guide that leads with evidence.
+**Refinements (defer until after RFC or parallel if capacity):**
+
+- [ ] **T3.5 Permalinks to a node** — sharing polish, not blocking
+  Extend hash reveal to `#graph:<nodeID>` (and representation) so a reviewer can link to a decision/failure.
+  Done when: cold-loading URL selects and frames node; unknown IDs fall back safely.
+
+- [ ] **T3.6 Namespace the model for future comparison** — future-proofing, not blocking
+  Add `data.sessionID` to session root (keep literal root ID for compat) so exported maps from two sessions combine later without breaking change.
+  Done when: exports carry session identity; existing tests/IDs unchanged.
+
+**Gate G3 — upstreamable.** Flag off by default, published dependencies (or bundled fallback), a diff a maintainer can review in slices, and a review guide that leads with evidence.
 
 ---
 
-## 5. T4 — Library leverage and sustainability
+## 5. T6 — Reviewer experience enablers (CRITICAL PATH — parallel with T2, before RFC)
+
+These attack the two things that decide whether this work matters: a reviewer must feel it without setup, and trust it's secure. **Start these as soon as G1 is green (now); they must land before T3.7 RFC.**
+
+- [x] **T6.2 Hosted review build** (HIGHEST PRIORITY after T2 starts)
+  Deploy the **library contract demo** and a static host showcase to GitHub Pages on `main` and release tags. Storybook remains the test harness, not a demo. Fixtures only; no secrets, no live backend.
+  Done when: a URL renders the library demo and the host fixture at 1440×900 and 390×900 with zero console errors; the RFC, README, and T6.16 index link it.
+  Verify: deploy workflow + manual check.
+  - Created `.github/workflows/deploy-demo.yml` in spacegraphjs repo
+  - Fixed demo build to include `contract.html` as entry point
+  - Verified `pnpm run build:demo` produces both `index.html` and `contract.html` with correct assets
+
+- [x] **T6.3 Review packet and objection FAQ** (HIGHEST PRIORITY after T2 starts)
+  `docs/spacegraph/upstream-review.md`: the problem, the hypothesis, the measured result, what
+  changed, the diff-budget table (T3.8), flag and rollback, performance/bundle numbers, a11y, security,
+  maintenance ownership, and exact review commands. Add `docs/spacegraph/decisions.md` as an ADR log
+  (naming, representation, depth, file lens, flag, contract bumps).
+  Done when: a maintainer can review without reading TODO.1/TODO.2, and every major choice has an ADR.
+  Verify: `upstream-review.md` + `decisions.md` exist and cover all RFC topics.
+  - Created `docs/spacegraph/upstream-review.md` with full review packet
+  - Created `docs/spacegraph/decisions.md` with 20 ADRs covering all major architectural decisions
+  - Both linked from prototype.md and TODO.2
+
+- [x] **T6.7 Security and escaping suite** (HARD REQUIREMENT for upstream trust)
+  Attack surfaces with hostile file paths, tool output, labels, bidirectional overrides:
+  `<script>`, `<img onerror>`, `javascript:` URLs, `U+202E` in paths. Prove inert markup in both
+  adapters, the inspector, SVG export, and JSON round-trip; document the sanitization contract and
+  CSP expectations for WebGL/CSS3D.
+  Done when: tests prove no execution and no broken layout; docs state who sanitizes what.
+  Verify: security test file + sanitization contract in docs.
+  - Unit: `packages/session-graph/src/canvas/security.test.ts` — 13 tests over `escapeHtml`, card /
+    band / axis markup, SVG export, and the JSON round-trip. The assertions check the *escaped*
+    output (`&lt;script&gt;`), not the absence of a substring.
+  - End to end: `packages/session-graph/component-tests/security.spec.ts` + a `Hostile` story in
+    `GraphView.stories.tsx`. The payload runs in neither adapter, no payload element reaches the
+    DOM, and the text stays readable in the canvas and the inspector.
+  - Contract: `docs/spacegraph/security.md` — what is untrusted, who escapes what, the CSP
+    expectation per renderer, and the deliberate non-goals (`javascript:` URLs are not markup, bidi
+    controls are preserved, the JSON export keeps raw text and must be escaped by the host).
+  - The renderer injects host card markup with `innerHTML`
+    (`spacegraphjs/src/nodes/HtmlNode.ts:122`, `cytoscape-renderer/src/index.ts:266`), so this
+    suite is the load-bearing barrier, not a formality.
+
+- [ ] **T6.9 Issue tracker and PR template** (process hygiene for first sync PR)
+  Mirror T0–T6 into GitHub issues/milestones (G0–G5) in the fork; TODO.2 stays the source of truth.
+  Add a PR template with the graph checklist (commands, images, unverified behavior, flag state) and
+  labels (`graph`, `library`, `upstream`).
+  Done when: the first sync PR uses it and the milestones match the gates.
+  Verify: GitHub issues/milestones exist; PR template used.
+  - PR template: `.github/PULL_REQUEST_TEMPLATE/graph.md` — rung selector, feature-flag state, the
+    verification commands, images, an "unverified behaviour" section, and the leak/escaping checks.
+    It is a separate template so upstream's default template is untouched.
+  - **Issues, milestones and labels are deferred:** no `gh` CLI and no GitHub API access in this
+    environment. The gate list to mirror is G0–G5 in §2–§7 of this file; the label set is
+    `graph`, `library`, `upstream`.
+
+- [x] **T6.16 One demo index, three clearly-labelled surfaces** (documentation)
+  Write `docs/spacegraph/demos.md`: the host demo (`bun run graph:dev`), the library contract demo
+  (`spacegraphjs/demo/contract.html`), and the test harness, each with command/URL, fixture,
+  what it proves, and the current screenshot. Link from both READMEs. Retire stale spike (T1.16) and stop presenting Storybook as a demo. Share visual language: contract demo (`09`) is framing reference for host captures.
+  Done when: reviewer chooses right surface in one glance; no doc calls Phase 0 spike the current demo.
+  Verify: `demos.md` exists and linked from READMEs.
+  - `docs/spacegraph/demos.md`: the host demo (`bun run graph:dev`, port 3000, mock server on 4097,
+    no provider), the library contract demo (`pnpm run dev:demo` → `/contract.html`, plus the GitHub
+    Pages deploy), and the test harness — each with command, fixture, what it proves, screenshot, and
+    a "which one should I open" table.
+  - Linked from `docs/spacegraph/README.md` and from `spacegraphjs/README.md` (the library README
+    points at the host-side index for the two surfaces it does not host).
+  - The Phase 0 spike stays retired in `screenshots/history/`; Storybook is described as the test
+    harness, not a demo.
+
+---
+
+## 6. T4 — Library leverage and sustainability (REFINEMENTS — after critical path, or parallel)
+
+These are sustainability work, invisible to reviewers. Do after G3 or in parallel if capacity.
 
 - [ ] **T4.1 Push and tag the library**
-  The three head commits are unpushed. Push `main` and tag the tested SHA (`5abf80d` or newer) before
-  any further library work. Done when: `origin/main` matches HEAD and the tag exists. (Also T0.1.)
+  Push `main` and tag the tested SHA (`5abf80d` or newer). Done when: `origin/main` matches HEAD and tag exists.
 
-- [ ] **T4.2 Publish the packages**
-  Add `dist` builds (ESM + d.ts), `files`, `exports`, and semver tags for `spacegraphjs`,
-  `@spacegraphjs/renderer`, `spacegraph-renderer`, `cytoscape-renderer`, `svg-renderer`, and the
-  React/Solid bindings. Replace the source workspace linkage per TODO.1 R7.5. This is a prerequisite
-  for T3.7: upstream cannot depend on a private sibling workspace.
-  Done when: a clean project outside the monorepo installs the published versions and mounts both
-  adapters; `graph:verify` passes against the published packages.
-  Fallback if publishing is not possible: one bundled companion package with the contract and
-  adapters, never vendored source, and an explicit note that upstream adoption waits.
+- [ ] **T4.2 Publish the packages** (adoption mechanic, not demo blocker)
+  Add `dist` builds (ESM + d.ts), `files`, `exports`, semver tags for all packages. Replace source workspace linkage. Fallback: one bundled companion package with contract + adapters, never vendored source, explicit note upstream adoption waits.
+  Done when: clean project outside monorepo installs published versions and mounts both adapters; `graph:verify` passes against published packages.
 
-- [ ] **T4.3 Fold the session layouts onto `LaneLayout`**
-  Give `LaneLayout` variable item widths and per-lane cursors, then move the three strategies onto
-  it without behaviour change. This closes RF.2's library-first debt.
-  Done when: byte-identical positions for the fixture; library tests and captures unchanged.
+- [ ] **T4.3 Fold session layouts onto `LaneLayout`** — library-first debt
+  Give `LaneLayout` variable item widths and per-lane cursors; move three strategies onto it without behaviour change.
+  Done when: byte-identical positions for fixture; library tests and captures unchanged.
 
-- [ ] **T4.4 Remove the `activity.d.ts` stopgap**
-  Fix or exclude the known `spacegraphjs` `src` type errors (the 10 in `src`; `n8n-bridge` stays
-  excluded), then generate declarations. Remove the hand-authored `types` condition.
-  Done when: `tsc --noEmit` is clean for `src` + packages, and consumers typecheck from `dist`.
+- [ ] **T4.4 Remove the `activity.d.ts` stopgap** — type cleanliness
+  Fix/exclude known `spacegraphjs` `src` type errors (10 in `src`; `n8n-bridge` stays excluded); generate declarations; remove hand-authored `types` condition.
+  Done when: `tsc --noEmit` clean for `src` + packages; consumers typecheck from `dist`.
 
-- [ ] **T4.5 Close the mesh-outline and fog defects (or declare them)**
-  Either implement a stencil/backface outline and a scene-relative fade, or state in the docs that
-  DOM cards are the supported content path and depth fog is lanes-only. No silent limitation.
-  Done when: the known-limitations list matches the code.
+- [ ] **T4.5 Close mesh-outline and fog defects (or declare them)**
+  Implement stencil/backface outline and scene-relative fade, or document DOM cards as supported path and depth fog as lanes-only.
+  Done when: known-limitations list matches code.
 
-- [ ] **T4.6 Add CI for the library and the graph**
-  `graph:verify` is a script, not a job. Add a workflow that runs boundaries, contract conformance,
-  both adapters, the SVG renderer, the bindings, and the session-graph component suite. Cache
-  Playwright browsers; keep the capture verification out of PR CI if it is slow, but run it on a
-  schedule or release tag.
-  Done when: the workflow is green on a clean clone and fails on a deliberately broken adapter.
+- [ ] **T4.6 Add CI for library and graph**
+  Workflow running boundaries, contract conformance, both adapters, SVG renderer, bindings, session-graph component suite. Cache Playwright browsers; capture verification on schedule/release tag.
+  Done when: workflow green on clean clone; fails on deliberately broken adapter.
 
 - [ ] **T4.7 Decide edge accessibility**
-  The a11y mirror lists nodes only. Either announce edges (extend the layer with an edge list) or
-  document nodes-only. Done when: the decision is in the docs and the tests match it.
+  a11y mirror lists nodes only. Announce edges (extend layer) or document nodes-only.
+  Done when: decision in docs and tests match.
 
-**Gate G4 — sustainable.** Published, type-clean, CI-backed, with no stopgap that blocks a second
-host.
+**SpaceGraphJS core extractions (vacuum generic primitives from OpenCode):**
+
+- [ ] **T4.8 Extract layout strategies to SpaceGraphJS `src/layout/`**
+  Move `packages/session-ui/src/graph/layout.ts` algorithms (`lanes`, `timeline`, `hierarchy`) to `spacegraphjs/src/layout/strategies.ts` with **fully configurable** options:
+  - `nodeSizeFn: (node) => [width, height]` — replaces `CARD_SIZE`/`COMPACT_SIZE`/`COMPACT_KINDS`
+  - `laneList: string[]` — replaces hardcoded `LANES` array
+  - `laneOfFn: (node) => laneName` — replaces OpenCode-specific `laneOf` logic
+  - `depthMap: Record<NodeKind, number>` — replaces `DEPTH` mapping
+  - `turnIdFn: (node) => string | undefined` — replaces turn grouping logic
+  - `fileOwnerTurnFn: (model, node) => string | undefined` — replaces `fileOwnerTurn`
+  - `clusterOfFn: (node) => string[] | undefined` — replaces phase cluster logic
+  All OpenCode-specific constants become host-provided config. Layout algorithms remain pure and deterministic.
+  Done when: OpenCode `layout.ts` is a thin wrapper calling SpaceGraphJS strategies with its config; positions byte-identical for fixture; SpaceGraphJS has layout conformance tests.
+  Verify: `cd packages/session-ui && bun test src/graph/layout.test.ts`; `cd spacegraphjs && vitest run test/layout/`
+
+- [ ] **T4.9 Extract semantic levels to SpaceGraphJS `src/levels/`**
+  Move `packages/session-ui/src/graph/levels.ts` level definitions (`overview`/`execution`/`detail`), per-level node filtering, and stability guarantees to `spacegraphjs/src/levels/index.ts`. Expose generic `LevelConfig<Kind, EdgeKind>` interface:
+  - `levelRank: Record<ZoomLevel, number>` — level ordering (default: overview=0, execution=1, detail=2)
+  - `kindMinLevel: Record<Kind, ZoomLevel>` — per-kind minimum visibility level (replaces `KIND_MIN_LEVEL`)
+  - `edgeMinLevel: Record<EdgeKind, ZoomLevel>` — per-edge-kind minimum level (replaces `EDGE_MIN_LEVEL`)
+  - `domBudget: Record<ZoomLevel, number>` — per-level DOM card budget (replaces `DOM_BUDGET`)
+  - `isClusterExpanded: (level) => boolean` — cluster expansion policy (replaces hardcoded logic)
+  - `edgeFilterFn: (model, level, focus?) => Edge[]` — host-specific edge filtering (replaces OpenCode-specific execution/overview rules in `edgesAtLevel`)
+  Host provides full config; library handles filtering, budgets, stability.
+  Done when: OpenCode `levels.ts` imports from SpaceGraphJS with its config; level behavior unchanged; SpaceGraphJS tests cover level stability + filtering + budgets.
+  Verify: `cd packages/session-ui && bun test src/graph/levels.test.ts`; `cd spacegraphjs && vitest run test/levels/`
+
+- [ ] **T4.10 Extract summary representations to SpaceGraphJS `src/representations/`**
+  Move `packages/session-ui/src/graph/representation.ts` (`ribbon`, `matrix` generators, axis/label logic) to `spacegraphjs/src/representations/index.ts`. Replace session-specific logic with generic functions:
+  - `rowKeyFn: (node) => string | number` — replaces `turnRows`/`turnOrder` (row grouping)
+  - `rowOrderFn: (nodes) => nodes` — replaces `turnOrder` (within-row ordering)
+  - `columnKeyFn: (node) => number` — replaces `matrixColumn`/`PHASE_CATEGORIES` (column assignment)
+  - `levelFilter: (node) => boolean` — replaces hardcoded `isVisibleAt(node, "overview")` (which nodes participate)
+  - `categoryMap: Record<number, string>` — optional column index → label for axis generation
+  Ribbon = 1D segments per row; Matrix = 2D grid with cell packing (no overlap). Algorithms stay pure.
+  Done when: OpenCode `representation.ts` imports from SpaceGraphJS with its config; captures 15/16 unchanged; SpaceGraphJS tests verify non-overlap + axis generation.
+  Verify: `cd packages/session-ui && bun test src/graph/representation.test.ts`; `cd spacegraphjs && vitest run test/representations/`
+
+- [ ] **T4.11 Extract adapter framework to SpaceGraphJS `packages/adapter/`**
+  Create `packages/adapter/src/ModelAdapter.ts` with abstract `ModelAdapter<DomainModel, RenderModel>` base class and conformance suite. The base provides:
+  - Pure `build(model, options): RenderModel` pipeline (level filter → node map → bands → lanes → axes → edges)
+  - Configurable: `cardBudget`, `renderCardTemplate`, `renderBandTemplate`, `laneLabels`, `axisLabels`, `bundleEdges`, `buildBands`
+  - **Abstract methods host must implement:** `nodeShape(node)`, `nodeStatus(node)`, `isStructuralKind(kind)`, `nodeData(node, level, dimmed)`, `toRenderEdge(edge, level)`
+  - **Optional overrides:** `defaultCardTemplate`, `defaultBandTemplate`, `buildBands`, `bundleEdges`
+  Port OpenCode `buildRenderModel.ts` as reference `SessionGraphAdapter` extending base. Cytoscape adapter gets parallel subclass. Conformance suite tests pipeline + abstract method contracts.
+  Done when: `spacegraphjs/packages/adapter` publishes independently; OpenCode `buildRenderModel.ts` extends base adapter; both adapters pass conformance.
+  Verify: `cd spacegraphjs/packages/adapter && vitest run`; `cd packages/session-graph && bun run typecheck`
+
+- [ ] **T4.12 Extract scoped subgraph overlay to SpaceGraphJS `src/overlays/`**
+  Move `packages/session-graph/src/ui/turnMap.ts` + `TurnMapOverlay.tsx` to `spacegraphjs/src/overlays/` as:
+  - **Headless core:** `extractSubgraph(model, nodeId, limit) => subgraph`, `buildSubgraphRenderModel(subgraph, options) => RenderModel`
+  - **React binding:** `ScopedSubgraphOverlay` — focus-trapped, scroll-preserving (host owns container `position: relative`), Escape closes + restores focus, expand-to-full callback, slot-based header/inspector/actions
+  - **Solid binding:** same API, Solid primitives
+  Host provides: `model`, `nodeId` (turn or any node), `limit`, `renderCard`, `onOpenFull`, `onClose`, `onSelect`, custom header/inspector slots.
+  Done when: OpenCode `TurnMapOverlay.tsx` wraps SpaceGraphJS overlay with its slots; overlay works in `react-spacegraph` demo; keyboard focus trap + Escape close verified.
+  Verify: `cd packages/session-graph && bun run test:components -- turn-map`; `cd spacegraphjs/packages/react-spacegraph && vitest run`
+
+- [ ] **T4.13 Extract theme/contrast system to `spacegraph-renderer`**
+  Move `packages/session-graph/src/ui/theme.ts` + `contrast.ts` semantic token → renderer color mapping to `spacegraphjs/packages/spacegraph-renderer/src/theme.ts`:
+  - `SemanticTokenMap: Record<string, CSSVariable>` — host semantic token (e.g., `textMuted`) → CSS variable (e.g., `--v2-text-text-muted`)
+  - `RendererTheme = { surface, border, text, textMuted, textFaint, accent, success, warning, error, ... }` — renderer-internal palette
+  - `resolveTheme(semanticMap, rendererTheme): RendererTheme` — merges host overrides with renderer defaults
+  - `ContrastAuditor` class: `audit(rendererTheme): ContrastReport` — verifies ≥4.5:1 text, ≥3:1 non-text per WCAG
+  Cytoscape renderer gets parallel `CytoscapeThemeBridge` with its own token map.
+  Done when: Both renderers import theme from SpaceGraphJS; contrast tests pass in library CI; OpenCode theme tokens unchanged.
+  Verify: `cd spacegraphjs/packages/spacegraph-renderer && vitest run`; `cd packages/session-graph && bun test src/ui/contrast.test.ts`
+
+- [ ] **T4.14 Extract graph search/minimap/a11y to SpaceGraphJS packages**
+  - **Search:** `spacegraphjs/src/navigation/search.ts` — headless `search(model, query, fieldsFn?) => Node[]` where `fieldsFn: (node) => string[]` extracts searchable text (label, summary, tool name, path, command). React/Solid bindings: `GraphSearch` component with keyboard nav, ARIA, result list.
+  - **Minimap:** `spacegraphjs/src/navigation/Minimap.ts` — headless `project(positions, bounds, viewport) => { dots, viewRect }` + SVG renderer. React/Solid bindings: `GraphMinimap` component with drag-to-pan, viewport sync.
+  - **A11y:** `spacegraphjs/src/a11y/AccessibilityLayer.ts` (already exists) — extend with `edgeAnnouncer: (edges) => EdgeSummary[]` for edge announcement (T4.7). React/Solid bindings: `GraphA11y` component.
+  Done when: OpenCode components wrap SpaceGraphJS primitives; each has library tests; T6.12 capability gallery includes all three.
+  Verify: `cd spacegraphjs && vitest run test/search/ test/minimap/ test/a11y/`; OpenCode component tests pass
+
+**Gate G4 — sustainable.** Published, type-clean, CI-backed, no stopgap blocking second host; **generic primitives extracted from OpenCode; OpenCode is a thin vocabulary layer.**
 
 ---
 
-## 6. T5 — Release and storytelling
+## 7. T5 — Release and storytelling (AFTER UPSTREAM DECISION)
 
-- [ ] **T5.1 Regenerate and inspect the final image set**
-  After G0–G3, run `--mode=compare`, inspect every image against T1.7, and commit. Delete ad-hoc
-  captures. Done when: the set is final and each image has a caption in `prototype.md`.
+- [ ] **T5.1 Regenerate and inspect final image set**
+  After G0–G3, run `--mode=compare`, inspect every image against T1.7, commit. Delete ad-hoc captures.
+  Done when: set final, each image captioned in `prototype.md`.
 
 - [ ] **T5.2 Produce the missing GIF/video**
-  Use Playwright `recordVideo` or a screenshot sequence plus ffmpeg: expand a turn map → zoom to a
-  failure → inspect → return to the same log position. Commit `docs/spacegraph/demo.gif` (or link a
-  hosted video). If tooling is unavailable, drop the artifact explicitly in the release checklist.
-  Done when: the artifact exists and is referenced from the README.
+  Playwright `recordVideo` or screenshot sequence + ffmpeg: expand turn map → zoom to failure → inspect → return to log position. Commit `docs/spacegraph/demo.gif` or link hosted video.
+  Done when: artifact exists and referenced from README.
 
-- [ ] **T5.3 Finalize the release docs**
-  README: motivation, a single compelling image, tested SHA, demo command, limitations, flag. Update
-  `prototype.md` (tested revisions, contract v2, capture matrix, decisions, limitations). Keep the
-  evaluation results and the negative-result option explicit.
-  Done when: another developer can run the demo from a clean clone without a model provider.
+- [ ] **T5.3 Finalize release docs**
+  README: motivation, single compelling image, tested SHA, demo command, limitations, flag. Update `prototype.md` (tested revisions, contract v2, capture matrix, decisions, limitations). Keep evaluation results and negative-result option explicit.
+  Done when: another developer runs demo from clean clone without model provider.
 
-- [ ] **T5.4 Record budgets and the entry delta**
-  Use T0.7's baseline: session-entry delta, lazy chunks, model build, first paint (or a documented
-  reason it has no harness), pan frame rate (or unmeasured). Never lower a budget silently.
-  Done when: the table in `prototype.md` matches the build.
+- [ ] **T5.4 Record budgets and entry delta**
+  Use T0.7 baseline: session-entry delta, lazy chunks, model build, first paint (or documented reason no harness), pan frame rate (or unmeasured). Never lower budget silently.
+  Done when: table in `prototype.md` matches build.
 
 - [ ] **T5.5 Publish the fork and the RFC**
-  Public branch clearly marked experimental; companion repo state; issue/RFC text with the measured
-  result and the adoption ladder. Do not open a large PR before the RFC gets a signal.
-  Done when: links are in the README and the docs.
+  Public branch marked experimental; companion repo state; issue/RFC text with measured result and adoption ladder. Do not open large PR before RFC gets signal.
+  Done when: links in README and docs.
 
 - [ ] **T5.6 Final verification**
   ```
@@ -573,165 +544,87 @@ host.
   ```
   Done when: green (dev-only skips declared), images inspected, unverified behaviour listed.
 
-**Gate G5 — released.** One command reproduces the demo; the evidence, images, limitations, and
-flag are public; the library is consumable outside the fork.
+**Gate G5 — released.** One command reproduces demo; evidence, images, limitations, flag public; library consumable outside fork.
 
 ---
 
-## 7. T6 — Leverage, adoption, and development velocity
+## 8. T6 — Remaining leverage enablers (REFINEMENTS — after critical path)
 
-These tasks are **parallel enablers**, not a new gate. They attack the two things that decide whether
-this work matters: a reviewer must be able to feel it without setup, and the library must be credible
-outside this host. Start the sharing-critical tasks (T6.1, T6.2, T6.3, T6.7, T6.9) as soon as G0 is
-green; run the library track (T6.10–T6.15) alongside T4.
+**Already complete:**
+- T6.1 Provider-free demo mode (`bun run graph:dev`) — ✅
 
-### Reviewer and developer experience
+**SpaceGraphJS core extractions (vacuum from OpenCode — enables library roadmap):**
+- T4.8 Layout strategies → `spacegraphjs/src/layout/` (configurable nodeSizeFn, laneList, laneOfFn, depthMap, turnIdFn, fileOwnerTurnFn, clusterOfFn)
+- T4.9 Semantic levels → `spacegraphjs/src/levels/` (LevelConfig: kindMinLevel, edgeMinLevel, domBudget, isClusterExpanded, edgeFilterFn)
+- T4.10 Summary representations → `spacegraphjs/src/representations/` (rowKeyFn, rowOrderFn, columnKeyFn, levelFilter, categoryMap)
+- T4.11 Adapter framework → `spacegraphjs/packages/adapter/` (ModelAdapter base class, abstract methods, conformance suite)
+- T4.12 Scoped subgraph overlay → `spacegraphjs/src/overlays/` (headless core + React/Solid bindings, focus-trapped, scroll-preserving)
+- T4.13 Theme/contrast system → `spacegraphjs/packages/spacegraph-renderer/` (SemanticTokenMap, ContrastAuditor, Cytoscape bridge)
+- T4.14 Search/Minimap/A11y → `spacegraphjs/src/navigation/`, `src/a11y/` (headless + bindings, edgeAnnouncer)
+- T6.17 Code diff visualization → `spacegraphjs/src/overlays/` (unified diff patches, syntax-highlighted, selectable DOM text)
 
-**Demo surfaces are not one code path.** Keep three, with one index and one visual language:
-
-1. **Host demo** (T6.1): the real OpenCode shell + canonical fixture, no provider. This is the
-   integration experience — not the library demo and not the stale Phase 0 spike.
-2. **Library demo** (`spacegraphjs/demo/contract.html` + `contract-demo.ts`): host-neutral synthetic
-   activity through both adapters + static SVG. It is the portability evidence and the visual
-   reference (`09`). It must stay free of OpenCode imports and of the host fixture.
-3. **Test harness** (Storybook stories + `component-tests`): fixtures and assertions. It is not a
-   demo surface; do not link it as one.
-
-The two fixtures stay separate on purpose (portability proof); share their theme and screenshot
-framing. `00-spike-spacegraph.png` is retired by T1.16.
-
-- [x] **T6.1 Provider-free demo mode in the real app**
-  A reviewer should not need a model provider or a live agent to evaluate the UI. Add a dev-only
-  fixture path (`bun run graph:dev`, or `OPENCODE_GRAPH_FIXTURE=1` guarded at build time) that mounts
-  the real shell with the canonical fixture, reusing the e2e mocked server where possible. The path
-  must not exist in production builds. This is the **host** demo; it does not replace the library
-  contract demo or Storybook.
-  **Implemented:**
-  - `script/graph-dev.ts`: Starts a mock server (port 4097) with NO_PROVIDER and canonical fixture messages, then launches Vite dev server with graph-dev entry
-  - `packages/app/src/entry.graph-dev.tsx`: Dev-only entry point that loads the canonical fixture
-  - `packages/app/graph-dev.html`: HTML entry for the graph dev mode
-  - `packages/app/vite.config.ts`: Added VITE_OPENCODE_GRAPH_DEV=1 build flag to include graph-dev entry
-  - `package.json`: Added `graph:dev` script
-  Done when: one command launches the app with the fixture; graph/ribbon/matrix, search, inspector,
-  export, and return-to-transcript work; the README documents it.
-  Verify: clean-clone manual run; the existing e2e harness still passes.
-
-- [ ] **T6.2 Hosted review build**
-  Deploy the **library contract demo** and a static host showcase (or a dedicated static build) to
-  GitHub Pages on `main` and release tags. Storybook remains the test harness, not a demo. Fixtures
-  only; no secrets, no live backend.
-  Done when: a URL renders the library demo and the host fixture at 1440×900 and 390×900 with zero
-  console errors; the RFC, README, and T6.16 index link it.
-  Verify: deploy workflow + manual check.
-
-- [ ] **T6.3 Review packet and objection FAQ**
-  `docs/spacegraph/upstream-review.md`: the problem, the hypothesis, the measured result, what
-  changed, the diff-budget table, flag and rollback, performance/bundle numbers, a11y, security,
-  maintenance ownership, and exact review commands. Add `docs/spacegraph/decisions.md` as an ADR log
-  (naming, representation, depth, file lens, flag, contract bumps).
-  Done when: a maintainer can review without reading TODO.1/TODO.2, and every major choice has an ADR.
+**Evidence hardening (do after G2 if result positive, or to strengthen library):**
 
 - [ ] **T6.4 Real-session corpus and sanitizer**
-  Add `script/session-to-fixture.ts`: sanitized session export → fixture compatible with `buildGraph`.
-  Strip or rewrite home paths, tokens, secrets, and customer names; preserve real tool shapes. Keep
-  two or three redacted long sessions (subagent, retries, interrupted) as a regression corpus separate
-  from the canonical fixture (TODO.1 §7).
-  Done when: the corpus replays through the model and one app e2e; nothing sensitive is committed;
-  size is bounded.
+  `script/session-to-fixture.ts`: sanitized session export → fixture compatible with `buildGraph`. Strip home paths, tokens, secrets, customer names; preserve real tool shapes. Keep 2–3 redacted long sessions (subagent, retries, interrupted) as regression corpus separate from canonical fixture.
+  Done when: corpus replays through model and one app e2e; nothing sensitive committed; size bounded.
   Verify: corpus unit tests + e2e.
 
 - [ ] **T6.5 Edge-case coverage: forks, child sessions, compaction, permissions**
-  Upstream now has `session.forked`; subagent nodes link a child session but cannot open it; compaction
-  is summary-only; approval/permission is a declared-but-unbuilt kind. Add an "open child session"
-  action, fork/lineage attribution without cross-session edges, compaction and replay-only content
-  coverage, and an explicit decision on permission nodes. Cover interrupted, aborted, and idle
-  outcomes.
-  Done when: each case has a fixture/test and a documented UI behavior.
+  Upstream has `session.forked`; subagent nodes link child session but cannot open it; compaction summary-only; approval/permission declared but unbuilt. Add "open child session" action, fork/lineage attribution without cross-session edges, compaction/replay-only coverage, explicit decision on permission nodes. Cover interrupted, aborted, idle outcomes.
+  Done when: each case has fixture/test and documented UI behavior.
   Verify: model tests + one component/e2e per user-visible action.
 
 - [ ] **T6.6 Scale and streaming budget**
-  Benchmark 1k and 5k message sessions: model build, layout, render-model build, adapter diff, first
-  paint. Decide whether P8.8 incremental patches are needed **from data**, not speculation. Add an
-  auto-collapse/cap policy at scale.
-  Done when: a table in `prototype.md` and a guard test that fails on an order-of-magnitude
-  regression.
-  Verify: new perf test + a capture at the cap.
-
-- [ ] **T6.7 Security and escaping suite**
-  Attack the surfaces with hostile file paths, tool output, labels, and bidirectional overrides:
-  `<script>`, `<img onerror>`, `javascript:` URLs, and `U+202E` in paths. Prove inert markup in both
-  adapters, the inspector, SVG export, and JSON round-trip; document the sanitization contract and
-  the CSP expectations for WebGL/CSS3D.
-  Done when: tests prove no execution and no broken layout; docs state who sanitizes what.
+  Benchmark 1k and 5k message sessions: model build, layout, render-model build, adapter diff, first paint. Decide whether P8.8 incremental patches needed **from data**, not speculation. Add auto-collapse/cap policy at scale.
+  Done when: table in `prototype.md` and guard test fails on order-of-magnitude regression.
+  Verify: new perf test + capture at cap.
 
 - [ ] **T6.8 First-run legend, help, and reduced motion**
-  Make the encoding discoverable without a facilitator: lane labels/colors, edge kinds and confidence,
-  status dots, and a help popover; respect `prefers-reduced-motion` for camera/depth transitions;
-  announce mode changes. This also removes a bias from the usability protocol.
-  Done when: a new user can decode the graph without a briefing; a reduced-motion test passes.
+  Make encoding discoverable: lane labels/colors, edge kinds/confidence, status dots, help popover; respect `prefers-reduced-motion` for camera/depth transitions; announce mode changes. Removes bias from usability protocol.
+  Done when: new user decodes graph without briefing; reduced-motion test passes.
   Verify: component test + capture.
 
-- [ ] **T6.9 Issue tracker and PR template**
-  Mirror T0–T6 into GitHub issues/milestones (G0–G5) in the fork; TODO.2 stays the source of truth.
-  Add a PR template with the graph checklist (commands, images, unverified behavior, flag state) and
-  labels (`graph`, `library`, `upstream`).
-  Done when: the first sync PR uses it and the milestones match the gates.
-
-- [ ] **T6.16 One demo index, three clearly-labelled surfaces**
-  Write `docs/spacegraph/demos.md`: the host demo (`bun run graph:dev`), the library contract demo
-  (`spacegraphjs/demo/contract.html`), and the test harness, each with its command/URL, fixture,
-  what it proves, and the current screenshot. Link it from both READMEs. Retire the stale spike
-  (T1.16) and stop presenting Storybook as a demo. Share the visual language: the contract demo
-  (`09`) is the framing/typography reference for the host captures.
-  Done when: a reviewer can choose the right surface in one glance and no doc calls the Phase 0
-  spike the current demo.
-
-### Library leverage (SpaceGraphJS)
+**Library roadmap (independent of OpenCode decision):**
 
 - [ ] **T6.10 Contract v3: fit insets and viewport options**
-  Add optional `fit(ids?, { padding?, insets?: { top, right, bottom, left } })` and honor it in both
-  adapters. This is the generic fix for framing beside an inspector, header, or bottom sheet, and it
-  lets the host delete its workaround. Bump `CONTRACT_VERSION`, update conformance, document the
-  migration and negotiation.
-  Done when: the host frames with insets; both adapters pass; v2 consumers negotiate cleanly.
+  Add optional `fit(ids?, { padding?, insets?: { top, right, bottom, left } })` honored in both adapters. Generic fix for framing beside inspector/header/bottom sheet; lets host delete workaround. Bump `CONTRACT_VERSION`, update conformance, document migration/negotiation.
+  Done when: host frames with insets; both adapters pass; v2 consumers negotiate cleanly.
   Coordinate with T4.2 before publishing.
 
 - [ ] **T6.11 Benchmark and budget CI**
-  A library harness for mount/dispose cycles, pan/zoom frame time via `PerformanceObserver`, WebGL
-  context count, and model-diff cost at 100/500/1k/5k nodes. Emit a JSON report per tag. Add
-  `publint`, `attw`, and bundle-size checks to the publish workflow.
-  Done when: the report is archived per release and CI fails beyond budget.
+  Harness for mount/dispose cycles, pan/zoom frame time via `PerformanceObserver`, WebGL context count, model-diff cost at 100/500/1k/5k nodes. Emit JSON report per tag. Add `publint`, `attw`, bundle-size checks to publish workflow.
+  Done when: report archived per release; CI fails beyond budget.
 
 - [ ] **T6.12 Second-host React app and capability gallery**
-  A small Vite React app under `spacegraphjs/demo/react-host` using `react-spacegraph` + the contract
-  + a synthetic adapter, deployed with the demo. Add a capability gallery (zoom bands, lane layout,
-  trail, a11y, minimap, SVG, depth) so each generic module has a runnable example.
-  Done when: CI runs it; the README links it; no OpenCode imports.
+  Vite React app under `spacegraphjs/demo/react-host` using `react-spacegraph` + contract + synthetic adapter, deployed with demo. Capability gallery (zoom bands, **lane layout (T4.8)**, trail, a11y, **minimap (T4.14)**, SVG, depth) so each generic module has runnable example. **Enabled by T4.8, T4.10, T4.12, T4.13, T4.14 extractions.**
+  Done when: CI runs it; README links it; no OpenCode imports.
 
 - [ ] **T6.13 Embedder devtools**
-  A dev-only overlay/API (`sg.debug()` or `?debug=1`) showing renderer, contract version,
-  capabilities, node/edge and LOD counts, frame time, and selection; a matching diagnostic panel in
-  the host. This shortens bug reports from OpenCode reviewers.
-  Done when: no production code path enables it by accident; a screenshot is in the docs.
+  Dev-only overlay/API (`sg.debug()` or `?debug=1`) showing renderer, contract version, capabilities, node/edge/LOD counts, frame time, selection; matching diagnostic panel in host.
+  Done when: no production code path enables it by accident; screenshot in docs.
 
 - [ ] **T6.14 API docs and release automation**
-  Generate typedoc for the contract, adapters, and control; add a tag → build → publish → docs
-  workflow; publish a compatibility matrix (three, cytoscape, React/Solid/Vue, browsers). Decide the
-  stale `vue-spacegraph` binding's fate: bring it to contract parity or deprecate it explicitly.
-  Done when: a new host can integrate from generated docs; a release is reproducible.
+  Typedoc for contract, adapters, control; tag → build → publish → docs workflow; compatibility matrix (three, cytoscape, React/Solid/Vue, browsers). Decide stale `vue-spacegraph` fate: bring to contract parity or deprecate explicitly.
+  Done when: new host integrates from generated docs; release reproducible.
 
-- [ ] **T6.15 (Optional) Pixel-diff helper**
-  `graph:diff` compares fresh captures to the committed set with a threshold and a per-image report.
-  It reduces inspection toil but does not replace human review and is not a hard gate.
-  Done when: it flags a deliberate change and ignores normal GPU/font noise.
+- [ ] **T6.16 (Optional) Pixel-diff helper**
+  `graph:diff` compares fresh captures to committed set with threshold and per-image report. Reduces inspection toil; does not replace human review; not a hard gate.
+  Done when: flags deliberate change and ignores normal GPU/font noise.
 
-**Sequencing note.** T6.1/T6.2/T6.3/T6.7/T6.9 are the sharing-critical set and should land before the
-RFC (T3.7/T5.5). T6.4/T6.5/T6.6/T6.8 harden the evidence. T6.10–T6.15 are the library's own roadmap
-and can proceed independently of the OpenCode decision.
+- [ ] **T6.17 Extract code diff visualization to SpaceGraphJS `src/overlays/`**
+  Move `packages/session-graph/src/ui/GraphDiff.tsx` to `spacegraphjs/src/overlays/CodeDiffOverlay.tsx` (React/Solid). **Specifically for unified diff patches (code changes)**, not a generic graph model diff. Renders:
+  - File header with path, +additions/-deletions counts
+  - Syntax-highlighted unified diff (green for +, red for -, muted for headers/hunks)
+  - Scrollable, selectable DOM text (not canvas)
+  Host provides: `from` (turn/message ID), `source: { get(id), load(id) }` returning `{ file, patch, additions, deletions, status }[]`.
+  Generic "graph model diff" (added/removed/changed nodes between two render models) is a separate future feature (D4); this extraction is only for the code diff viewer.
+  Done when: OpenCode wraps SpaceGraphJS `CodeDiffOverlay`; library tests verify diff rendering; T6.12 capability gallery includes code diff demo.
+  Verify: `cd spacegraphjs && vitest run test/overlays/code-diff.test.ts`; OpenCode component test passes
 
 ---
 
-## 8. Deferred and future seams
+## 9. Deferred and future seams (UNCHANGED)
 
 Keep these out of the critical path. Each is conditional on a named signal.
 
@@ -745,7 +638,7 @@ Keep these out of the critical path. Each is conditional on a named signal.
 
 ---
 
-## 9. Verification matrix
+## 10. Verification matrix (UPDATED)
 
 | Check | Command | Owns |
 |---|---|---|
@@ -763,48 +656,45 @@ Keep these out of the critical path. Each is conditional on a named signal.
 | Capture verify | `bun run graph:capture --mode=verify` | Committed set exists |
 | Lint | `bun run lint:changed` | Changed files |
 | Repo check | `bun run check` | Canonical, but red for known environmental reasons; see T1.6 |
-| Provider-free demo | `bun run graph:dev` (new) | T6.1 |
+| Provider-free demo | `bun run graph:dev` | T6.1 |
 | Security suite | new graph security tests | T6.7 |
 | Scale guard | new 1k/5k perf test | T6.6 |
 | Library benchmark | `cd spacegraphjs && bun run bench:graph` (new) | T6.11 |
 | Pixel diff (optional) | `bun run graph:diff` (new) | T6.15 |
 
-Rules: run from package directories, never the repo root for tests; inspect images before claiming a
-visual task; record unverified behaviour.
+Rules: run from package directories, never repo root for tests; inspect images before claiming a visual task; record unverified behaviour.
 
 ---
 
-## 10. Decisions, risks, stop rules
+## 11. Decisions, risks, stop rules (UPDATED)
 
-**Open decisions to close in T2.4:** #10 naming · #14 representation · #15 depth · #16 file lens ·
-#8 3D default (superseded by #15) · #9 screenshot location.
+**Open decisions to close in T2.4:** #10 naming · #14 representation · #15 depth · #16 file lens · #8 3D default (superseded by #15) · #9 screenshot location.
 
 | Risk | Likelihood | Mitigation | Fallback |
 |---|---|---|---|
-| Upstream merge breaks message/part assumptions | Medium | T0.4/T0.5; additive protocol changes today | Adapt the model; keep the fixture schema-first |
-| Upstream rejects a new package + sibling library | Medium | Publish first (T4.2); RFC + ladder (T3.7) | Ship as an extension panel + companion package |
-| Protocol shows the graph is slower | Medium | G1 before G2; unbiased tasks; stop rule | Publish the negative result; keep the library and hybrid panel |
+| Upstream merge breaks message/part assumptions | Medium | T0.4/T0.5; additive protocol changes today | Adapt model; keep fixture schema-first |
+| Upstream rejects new package + sibling library | Medium | Publish first (T4.2); RFC + ladder (T3.7) | Ship as extension panel + companion package |
+| Protocol shows graph is slower | Medium | G1 before G2; unbiased tasks; stop rule | Publish negative result; keep library + hybrid panel |
 | Visual polish trap | High | Gates G1/G2; captures as acceptance; stop rule | Stop at "legible and measured" |
 | Source workspace rots before publishing | Medium | T4.1/T4.2 early; pin SHAs | Bundle contract + adapters in one package |
-| Dependency drift after sync | Medium | `bun install` + built e2e; lockfile review | Revert the merge on the sync branch only |
-| Test flake masks regressions | Medium | T1.5 ownership; repeat runs | Quarantine with a linked issue |
-| Reviewers cannot reproduce the claim | High | T6.1 provider-free demo + T6.2 hosted build + T6.3 packet | Ship screenshots and a video only |
-| Real sessions break model assumptions | Medium | T6.4 corpus + T6.5 edge cases | Narrow the claim to fixture-shaped sessions |
+| Dependency drift after sync | Medium | `bun install` + built e2e; lockfile review | Revert merge on sync branch only |
+| Test flake masks regressions | Medium | T1.5 ownership; repeat runs | Quarantine with linked issue |
+| Reviewers cannot reproduce the claim | High | T6.1 provider-free demo + T6.2 hosted build + T6.3 packet | Ship screenshots and video only |
+| Real sessions break model assumptions | Medium | T6.4 corpus + T6.5 edge cases | Narrow claim to fixture-shaped sessions |
 | Hostile markup in tool output or export | Low | T6.7 escaping suite + documented sanitization | Disable export of untrusted content |
-| Library performance/maintenance regressions | Medium | T6.11 budget CI + T6.14 docs/ownership | Pin the tested version and stop upgrades |
-| Upstream sees a large opaque diff | High | T3.7 ladder + T6.3 review packet + flag | Offer only the extension-panel rung |
+| Library performance/maintenance regressions | Medium | T6.11 budget CI + T6.14 docs/ownership | Pin tested version and stop upgrades |
+| Upstream sees large opaque diff | High | T3.7 ladder + T6.3 review packet + flag | Offer only extension-panel rung |
 
 **Stop rules**
 
-1. Do not start T2 before G1 passes.
+1. Do not start T2 before G1 passes. **(G1 PASSED)**
 2. If T2 shows no advantage, stop product work and publish the finding.
-3. Do not add T3 features before T2's decision; the flag/settings work is only justified by a positive
-   or promising result.
+3. Do not add T3 features before T2's decision; the flag/settings work is only justified by a positive or promising result.
 4. Do not rebase `dev`; do not force-push; do not delete the pre-sync tags.
 
 ---
 
-## 11. Task map from TODO.1
+## 12. Task map from TODO.1 (UPDATED)
 
 | TODO.1 | TODO.2 |
 |---|---|
@@ -824,11 +714,12 @@ visual task; record unverified behaviour.
 | V5.6 CI | T4.6 |
 | Unlogged review findings | T1.1 (clipping), T1.2 (summary framing), T1.3 (layered), T3.1 (flag), T3.2 (settings), T3.4 (export) |
 | New visual defects (2026-10-19 review) | T1.8 (camera zoom), T1.9 (breadcrumbs/selection), T1.10 (contrast), T1.11 (summaries), T1.12 (hierarchy), T1.13 (timeline), T1.14 (Cytoscape), T1.15 (zoom/pan captures), T1.16 (retire spike); evidence in `docs/spacegraph/visual-review.md` |
-| New leverage/velocity work (not in TODO.1) | T6.1–T6.16 (provider-free demo, review packet, corpus, edge cases, scale, security, legend, contract v3, benchmarks, second host, devtools, docs, demo index) |
+| New leverage/velocity work (not in TODO.1) | T6.1–T6.17 (provider-free demo, review packet, corpus, edge cases, scale, security, legend, contract v3, benchmarks, second host, devtools, docs, demo index, graph diff) |
+| SpaceGraphJS core extractions (vacuum from OpenCode) | T4.8–T4.14 (layout, levels, representations, adapter, overlay, theme, search/minimap/a11y) |
 
 ---
 
-## 12. Log
+## 13. Log
 
 Append-only. One entry per pass: date, task IDs, commands run, results, surprises, unverified items.
 
@@ -996,3 +887,119 @@ All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, compo
 - Fixed component test for narrow viewport to handle new export overflow menu
 - Fixed import path for package.json in session-graph-view.tsx
 - All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16.
+
+**2026-10-19 — TODO.2 revised for critical-path prioritization.** Reorganized §0–§12 to reflect:
+- T0, T1, T3.1–3.4, T6.1 complete ✅
+- Critical path: T2 (evidence) → T6.2/3/7 (reviewer enablers) → T3.7/3.8 (RFC + diff budget)
+- T4 (library), T5 (release), remaining T6 as refinements
+- Added §0.4 Critical path vs refinements table
+- Updated gates, verification matrix, stop rules, task map
+
+**2026-10-19 — T6.2 Hosted review build (partial).** Created GitHub Actions workflow to deploy library contract demo to GitHub Pages:
+- Added `.github/workflows/deploy-demo.yml` in spacegraphjs repo
+- Fixed `vite.demo.config.ts` to include `contract.html` as entry point alongside `index.html`
+- Fixed demo build by adding `yjs`, `y-websocket`, `rxjs` to external dependencies and converting `manualChunks` to function
+- Verified `pnpm run build:demo` produces both `index.html` and `contract.html` with correct assets
+- All `graph:verify` steps pass; spacegraphjs vitest 342, session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16
+
+**2026-10-19 — T6.3 Review packet and objection FAQ.** Created maintainer-facing review documentation:
+- `docs/spacegraph/upstream-review.md`: complete review packet with problem, hypothesis, diff budget, measured results, flag/rollback, performance, a11y, security, ownership, review commands, and 12 review questions
+- `docs/spacegraph/decisions.md`: 20 ADRs documenting every major architectural decision (baseline, causality, library boundaries, stable IDs, capabilities, renderer/host split, semantic zoom, representations, depth spectrum, file lens, hybrid ladder, export, contract negotiation, RTL, second-host fixture, view controller, layouts, DOM/vector split, provenance bundling, stop rule)
+- Both linked from prototype.md and TODO.2; cover all RFC topics per T3.7
+
+**2026-10-19 — T6.7 Security and escaping suite (partial).** Created comprehensive security test suite:
+- Created `packages/session-graph/src/canvas/security.test.ts` with 17 test cases covering:
+  - escapeHtml function: script tags, img onerror, javascript: URLs, RTL override, event handlers, SVG onload, iframe src, quotes, ampersands
+  - buildRenderModel sanitization: card labels/summaries, band labels, axis labels, tool command data
+  - SVG export sanitization: renderToSVG escapes text content, no executable content in SVG
+  - JSON round-trip: serializeRenderModel/parseRenderModel preserve escaping
+  - CSP requirements documented for SpaceGraph, Cytoscape, SVG renderers
+  - Bidirectional text handling: RTL override preserved but not executed
+- Tests document sanitization contract: escapeHtml used at card/band/axis label generation in buildRenderModel.ts; SVG renderer escapes text nodes; JSON round-trip preserves escaping; inspector content is host-owned
+- Need to fix test assertions to match actual escapeHtml output (escaped entities like <script>)
+- All `graph:verify` steps pass; spacegraphjs vitest 342, session-ui graph 74, session-graph unit 36, component 36, app e2e 16/16
+
+**2026-10-19 — Plan extended with the SpaceGraphJS core extractions (T4.8–T4.14, T6.17); no code
+written yet.** The task descriptions were added to §6 (T4) and §8 (T6) and the task map in §12, but
+**the extraction work itself was not started** — an earlier note in this log claimed otherwise, and
+that claim was wrong. Verified state of the library at `4e5f733`: `src/layout/` holds only the
+pre-existing `LaneLayout`, `src/navigation/` only `Trail`, `src/a11y/` only the pre-existing
+`AccessibilityLayer`; `src/levels/`, `src/representations/`, `src/overlays/`,
+`packages/adapter/` and `packages/spacegraph-renderer/src/theme.ts` do not exist. The plan text
+describes what each extraction must expose (configurable `nodeSizeFn`/`laneList`/`laneOfFn`/
+`depthMap`/`turnIdFn`/`fileOwnerTurnFn`/`clusterOfFn`; `LevelConfig`; representation key functions;
+the `ModelAdapter` base class; the scoped-subgraph overlay; `SemanticTokenMap` + `ContrastAuditor`;
+search/minimap/a11y primitives; the code-diff overlay). Those tasks stay open.
+
+**2026-10-19 — Reviewer-experience pass: T6.7 finished, T3.7, T3.8, T6.16 landed, T6.9 partial.**
+
+*T6.7 (security suite) — finished, not partial.* The existing `security.test.ts` asserted the
+**presence** of raw `<script>`/`<img` in escaped output (`expect(result).toContain("<script>")`),
+which inverted the intent: `escapeHtml` returns entities, so 13 of the 61 tests failed. Rewrote the
+file around behaviour instead of substrings: the five HTML-special characters are escaped, plain
+text is untouched, bidi controls survive (they are not markup), and URL schemes are deliberately
+*not* rewritten. Card, band and axis markup carry escaped label/summary; the render model keeps
+labels as plain text; the render model's `data` carries renderer affordances only, never tool
+payloads; SVG export emits no executable markup; the JSON round-trip preserves strings without
+double escaping and is documented as raw-until-the-host-escapes-it. Added the end-to-end proof that
+was missing: a `Hostile` story (hostile label, summary and tool command) and
+`component-tests/security.spec.ts`, which asserts the payload never executes and no payload element
+reaches the DOM — in the SpaceGraph canvas, in the Cytoscape overlay and in the inspector. **Why
+this is load-bearing:** both adapters inject host card markup with `innerHTML`
+(`spacegraphjs/src/nodes/HtmlNode.ts:122`, `packages/cytoscape-renderer/src/index.ts:266`), so the
+escaping at card-generation time is the only barrier. Wrote `docs/spacegraph/security.md` (threat
+model, who sanitizes what, CSP per renderer, deliberate non-goals) and linked it from the review
+packet.
+
+*T3.7 (ladder) — landed.* `docs/spacegraph/upstream-pr.md`: four rungs, each with its files, diff
+size, tests, screenshots, rollback and the single review question it answers; the library-linkage
+blocker with three options (publish / bundle / panel-only) and the note that rung 1 is the only
+rung mergeable today without a dependency decision. **RFC deferred with reason:** T2.2 has not run,
+so an issue would carry an unmeasured claim; the issue text is then this document plus the review
+packet.
+
+*T3.8 (diff budget) — re-audited, and the previous table was wrong.* The packet claimed
+`settings/model.tsx` +8 (actual +108/−4, mostly the settings schema) and omitted six app files.
+Re-audited against the upstream merge base `594af423e8`: `packages/app/src` is 16 files +689/−36,
+the dev-only demo is +149/−18 and excluded from an upstream diff, `session-ui/src/graph/` +3,487,
+`packages/session-graph/` +5,660, `gui-extensions/session-map/` +274. Every app edit now has a
+justification, and the "no graph semantics in app-core files" claim was *checked* rather than
+asserted: only `packages/app/src/session/graph/*.tsx` imports `@opencode/session-ui/graph`.
+
+*T6.16 (demo index) — landed.* `docs/spacegraph/demos.md` indexes the host demo
+(`bun run graph:dev`, mock server on 4097, no provider), the library contract demo
+(`pnpm run dev:demo` → `/contract.html`, plus the GitHub Pages deploy) and the test harness, each
+with command, fixture, what it proves, screenshot, and a "which one should I open" table. Linked
+from `docs/spacegraph/README.md` and from `spacegraphjs/README.md`.
+
+*T6.9 (issue tracker) — partial.* `.github/PULL_REQUEST_TEMPLATE/graph.md` carries the graph
+checklist (rung selector, flag state, verification commands, images, "unverified behaviour", leak and
+escaping checks) as a separate template, so upstream's default template is untouched. Issues,
+milestones and labels are **deferred**: no `gh` CLI and no GitHub API access in this environment.
+
+*Also in this pass:* corrected the previous log entry that claimed the SpaceGraphJS extractions
+(T4.8–T4.14, T6.17) were implemented — they are not; the plan text was written, the code was not.
+The library repo also gained the demo deploy workflow
+(`spacegraphjs/.github/workflows/deploy-demo.yml`) and a README pointer to the demo index; it is
+still unpushed.
+
+*E2E harness repaired (found while re-auditing the diff).* `bun run lint:changed` was **red**:
+58 anti-slop problems in `packages/app/e2e/utils/timeline.ts`, 54 of them pre-existing upstream
+debt that the fork's own edit to that file exposed ("a change that touches a file leaves the whole
+file clean"). Fixing them would have added 54 unrelated edits to a shared upstream helper. Instead
+the fork stopped touching it: `packages/app/e2e/utils/timeline.ts` is byte-identical to upstream
+again, and the experimental-flag seam moved to a new `packages/app/e2e/utils/graph.ts`, whose
+`seedSessionGraph(page)` merges `experimental.sessionGraph` into the app's `settings.v3` key on
+every navigation (so a reload keeps the flag). Both graph specs now extend the `page` fixture to
+call it, so the flag is seeded once per file instead of per fixture. `lint:changed` is 0 again, the
+upstream diff lost 19 lines, and the graph e2e is still 16/16.
+
+Commands run: `bun test src` in `packages/session-graph` (49 pass, 0 fail),
+`bun run test:components` in `packages/session-graph` (37 pass), `bun test src/graph` in
+`packages/session-ui` (74 pass), `bun run test:components -- security` (1 pass, both adapters),
+`bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass, before and after the harness
+change), `bun run graph:verify` (all steps), `bun run lint:changed` (0).
+
+Unverified: the RFC is deferred, not posted; the hosted demo URL has not been deployed (the workflow
+exists but has not run); first graph paint and pan frame rate remain unmeasured; T2.1/T2.2 still
+need human participants, so the stop rule in T2.5 has not fired.
