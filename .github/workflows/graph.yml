@@ -1,0 +1,47 @@
+name: Graph
+
+# The graph's own gate: the library's boundaries, contract conformance, both adapters, the SVG
+# renderer, the host's unit and component contracts, the capture verification, and the published
+# packages. The library is a sibling checkout, exactly as it is in development (T4.2).
+on:
+    push:
+        branches: [dev]
+    pull_request:
+        branches: [dev]
+    workflow_dispatch:
+
+jobs:
+    graph:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Checkout the library
+              uses: actions/checkout@v4
+              with:
+                  repository: autonull/spacegraphjs7
+                  path: spacegraphjs
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: '1.4.3'
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+
+            - name: Install the host dependencies
+              run: bun install
+
+            # The app owns the Playwright version the e2e uses, and the library owns its own for the
+            # publish check. Both need a browser, so both are installed.
+            - name: Install Playwright Browsers
+              run: |
+                  packages/app/node_modules/.bin/playwright install --with-deps chromium
+                  spacegraphjs/node_modules/.bin/playwright install --with-deps chromium
+
+            - name: Graph gate
+              run: bun run graph:verify

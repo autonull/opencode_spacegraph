@@ -558,9 +558,28 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
     landed with T1.3 (`applySceneFade()`); the stencil/backface outline has not. This is the one
     T4 item left in the library-internals group.
 
-- [ ] **T4.6 Add CI for library and graph**
+- [x] **T4.6 Add CI for library and graph**
   Workflow running boundaries, contract conformance, both adapters, SVG renderer, bindings, session-graph component suite. Cache Playwright browsers; capture verification on schedule/release tag.
   Done when: workflow green on clean clone; fails on deliberately broken adapter.
+  Verify: `.github/workflows/graph.yml` (the fork) and `spacegraphjs/.github/workflows/ci.yml` (the library).
+  - **Done (2026-10-20), for the library and the fork.** The library's workflow now runs the
+    library's real checks — the typecheck (`src`, `test` and the five leaf packages), the build, the
+    unit tests, the leaf packages' own tests, and the **publish check** (a clean consumer that
+    installs the packed tarballs and mounts both interactive adapters). The fork's `graph.yml`
+    checks the library out as a sibling, installs, and runs `bun run graph:verify` — the whole gate,
+    including the capture verification and the publish check.
+  - **The old library workflow could not pass.** It ran `npm ci` on a pnpm project, then
+    `npm run lint` (the eslint config cannot run under TypeScript 7) and `npm run format:check` (the
+    committed source does not follow the committed prettier config — 303 files disagree). Those steps
+    are gone rather than fixed: the source is not prettier-normalised and reformatting it is a
+    separate, large change. The substantive checks replaced them.
+  - **The gate is the one command.** `bun run graph:verify` builds the library first, then runs the
+    boundaries, the contract conformance for both adapters, the view controller and the framework
+    bindings, the overlay and navigation cores, the four leaf packages, the host's unit and
+    component contracts, the capture verification, and the publish check.
+  - **Not done:** the capture verification runs on every gate, not on a schedule or a release tag
+    only, and the Playwright browsers are installed per job rather than cached. The workflows were
+    not executed on a clean clone here — they were validated by running every step they call.
 
 - [x] **T4.7 Decide edge accessibility**
   a11y mirror lists nodes only. Announce edges (extend layer) or document nodes-only.

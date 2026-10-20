@@ -21,7 +21,7 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
   {
     label: "library build (the published artifacts the host consumes)",
     cwd: spacegraphjs,
-    cmd: ["pnpm", "run", "build:lib"],
+    cmd: [join(spacegraphjs, "node_modules/.bin/tsx"), "script/build-all.ts"],
   },
   { label: "contract conformance (both adapters)", cwd: spacegraphjs, cmd: [vitest, "run", "test/renderer.contract.test.ts"] },
   { label: "package boundaries", cwd: spacegraphjs, cmd: [vitest, "run", "test/boundaries.test.ts"] },
