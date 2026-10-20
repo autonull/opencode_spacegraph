@@ -29,9 +29,13 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
       "test/control.test.ts",
       "test/control-binding.test.ts",
       "packages/react-spacegraph/test/binding.test.ts",
+      "packages/react-spacegraph/test/overlay.test.ts",
       "packages/solid-spacegraph/test/binding.test.ts",
+      "packages/solid-spacegraph/test/overlay.test.ts",
     ],
   },
+  { label: "overlay core (scope, focus, diff)", cwd: spacegraphjs, cmd: [vitest, "run", "test/overlays/"] },
+  { label: "navigation core (search, minimap)", cwd: spacegraphjs, cmd: [vitest, "run", "test/navigation/"] },
   { label: "contract package", cwd: join(spacegraphjs, "packages/renderer"), cmd: ["bun", "test"] },
   {
     label: "model adapter",

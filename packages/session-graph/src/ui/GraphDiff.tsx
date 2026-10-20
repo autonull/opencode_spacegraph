@@ -1,31 +1,23 @@
 import { useI18n } from "@opencode/ui/context/i18n"
+import { diffTone, type CodeDiff, type CodeDiffSource } from "spacegraphjs/overlays"
 import { For, Show, createEffect, createMemo } from "solid-js"
 
 /** One changed file of a finished turn, as reported by the host's turn-diff source. */
-export type GraphDiff = {
-  file: string
-  patch: string
-  additions: number
-  deletions: number
-  status: "added" | "deleted" | "modified"
-}
+export type GraphDiff = CodeDiff
 
 /**
  * Host-provided loader for a finished turn's changed-file diffs (RF.8). `from` is the turn's opening
  * message id; the source is already scoped to the current session, so the graph never holds a session id.
  */
-export type GraphDiffSource = {
-  get: (from: string) => readonly GraphDiff[] | undefined
-  load: (from: string) => void
-}
+export type GraphDiffSource = CodeDiffSource
 
-// Colour a unified-diff line by its marker; headers and hunk markers stay muted.
-const lineTone = (line: string) => {
-  if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) return "text-text-weaker"
-  if (line.startsWith("+")) return "text-text-on-success-base"
-  if (line.startsWith("-")) return "text-text-on-critical-base"
-  return "text-text-base"
-}
+// The tone of a unified-diff line comes from the library; the classes are the host's.
+const TONE_CLASS = {
+  header: "text-text-weaker",
+  added: "text-text-on-success-base",
+  removed: "text-text-on-critical-base",
+  context: "text-text-base",
+} as const
 
 /**
  * The on-demand diff for one turn (RF.8). Loads through the host source when a diff node is inspected
@@ -59,7 +51,7 @@ export const GraphDiffView = (props: { from: string; source?: GraphDiffSource })
                 </div>
                 <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono">
                   <For each={diff.patch.split("\n")}>
-                    {(line) => <div class={lineTone(line)}>{line || " "}</div>}
+                    {(line) => <div class={TONE_CLASS[diffTone(line)]}>{line || " "}</div>}
                   </For>
                 </pre>
               </div>

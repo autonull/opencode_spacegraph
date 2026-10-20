@@ -1,5 +1,7 @@
 import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
+import { extractSubgraph } from "spacegraphjs/overlays"
+import { Navigation } from "spacegraphjs/navigation"
 import type { EdgeKind, GraphModel, GraphEdge, GraphNode, NodeKind } from "./model"
 
 export type Subgraph = {
@@ -216,6 +218,7 @@ export function forwardChain(model: GraphModel, id: string): GraphNode[] {
 
 const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))
 
+/** The text a search matches against: the label, the summary, and the tool's name, path, and command. */
 const searchable = (node: GraphNode) =>
   [
     node.label,
@@ -224,17 +227,10 @@ const searchable = (node: GraphNode) =>
     dataString(node.data?.path),
     dataString(node.data?.command),
     node.data?.input ? JSON.stringify(node.data.input) : undefined,
-  ]
-    .filter((value): value is string => !!value)
-    .join("\n")
-    .toLowerCase()
+  ].filter((value): value is string => !!value)
 
 export function search(model: GraphModel, query: string): GraphNode[] {
-  const needle = query.trim().toLowerCase()
-
-  if (!needle) return []
-
-  return model.nodes.filter((node) => searchable(node).includes(needle))
+  return Navigation.search(model, query, searchable)
 }
 
 const READ_KINDS = new Set<EdgeKind>(["reads", "searches", "references"])
@@ -325,22 +321,15 @@ const TURN_CHILD_PRIORITY: Partial<Record<NodeKind, number>> = {
  * The execution-level subgraph for one turn (H6.2/H6.4): the turn node plus its highest-signal
  * `part-of` children, capped so a compact overlay or inline graph stays legible. Phase chips and
  * failures rank above individual tools and files; ties keep model order, so the result is stable.
+ *
+ * The scope is the library's (`spacegraphjs/overlays`); the signal order below is the session's.
  */
 export function turnSubgraph(model: GraphModel, turnID: string, limit = 7): Subgraph {
-  const turn = nodeByID(model, turnID)
+  const scope = extractSubgraph(model, turnID, {
+    limit,
+    childEdgeKind: "part-of",
+    rankFn: (node) => TURN_CHILD_PRIORITY[node.kind] ?? 99,
+  })
 
-  if (!turn) return { nodes: [], edges: [] }
-
-  const children = model.edges
-    .filter((edge) => edge.kind === "part-of" && edge.target === turnID)
-    .map((edge) => nodeByID(model, edge.source))
-    .filter((node): node is GraphNode => !!node)
-    .sort((a, b) => (TURN_CHILD_PRIORITY[a.kind] ?? 99) - (TURN_CHILD_PRIORITY[b.kind] ?? 99))
-
-  const chosen = new Set([turn.id, ...children.slice(0, Math.max(0, limit - 1)).map((node) => node.id)])
-
-  return {
-    nodes: model.nodes.filter((node) => chosen.has(node.id)),
-    edges: model.edges.filter((edge) => chosen.has(edge.source) && chosen.has(edge.target)),
-  }
+  return { nodes: [...scope.nodes], edges: [...scope.edges] }
 }

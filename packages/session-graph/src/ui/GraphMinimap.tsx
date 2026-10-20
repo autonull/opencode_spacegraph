@@ -1,6 +1,7 @@
 import type { RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
 import type { GraphModel, GraphNode, Position } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
+import { Navigation } from "spacegraphjs/navigation"
 import { createMemo, For, Show, createSignal } from "solid-js"
 
 const BOX_W = 176
@@ -22,6 +23,9 @@ export type GraphMinimapProps = {
  * U3.13 — a renderer-agnostic SVG overview fed by the same layout positions as the canvas. It reads
  * node positions and the adapter's reported viewport, so it stays in sync with either renderer and
  * never runs a second scene pass. Clicking or dragging pans through the shared viewport contract.
+ *
+ * The geometry lives in the library (`spacegraphjs/navigation`); this component owns the dots, the
+ * colours, and the pointer handling.
  */
 export const GraphMinimap = (props: GraphMinimapProps) => {
   const i18n = useI18n()
@@ -33,31 +37,16 @@ export const GraphMinimap = (props: GraphMinimapProps) => {
       .filter((entry): entry is { node: GraphNode; position: Position } => entry.position !== undefined),
   )
 
-  const bounds = createMemo(() => {
-    const points = placed().map((entry) => entry.position)
-    if (points.length === 0) return undefined
-    const xs = points.map((p) => p.x)
-    const ys = points.map((p) => p.y)
-    return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) }
-  })
-
-  const scale = () => {
-    const b = bounds()
-    if (!b) return 1
-    const spanX = Math.max(b.maxX - b.minX, 1)
-    const spanY = Math.max(b.maxY - b.minY, 1)
-    return Math.min((BOX_W - PAD * 2) / spanX, (BOX_H - PAD * 2) / spanY)
-  }
-
-  // Y is flipped so the overview matches the y-up graph space the default renderer draws.
-  const project = (x: number, y: number) => {
-    const b = bounds()
-    if (!b) return { x: 0, y: 0 }
-    const s = scale()
-    const offsetX = (BOX_W - (b.maxX - b.minX) * s) / 2
-    const offsetY = (BOX_H - (b.maxY - b.minY) * s) / 2
-    return { x: (x - b.minX) * s + offsetX, y: (b.maxY - y) * s + offsetY }
-  }
+  const projection = createMemo(() =>
+    Navigation.project({
+      positions: new Map(placed().map((entry) => [entry.node.id, entry.position])),
+      box: { width: BOX_W, height: BOX_H },
+      padding: PAD,
+      viewport: props.viewport?.extent
+        ? { center: [props.viewport.center[0], props.viewport.center[1]], extent: props.viewport.extent }
+        : undefined,
+    }),
+  )
 
   const colorFor = (node: GraphNode) => {
     switch (node.status) {
@@ -75,27 +64,14 @@ export const GraphMinimap = (props: GraphMinimapProps) => {
     }
   }
 
-  const viewRect = createMemo(() => {
-    const viewport = props.viewport
-    if (!viewport?.extent) return undefined
-    const [cx, cy] = viewport.center
-    const { width, height } = viewport.extent
-    const topLeft = project(cx - width / 2, cy + height / 2)
-    return { x: topLeft.x, y: topLeft.y, width: width * scale(), height: height * scale() }
-  })
-
   const panTo = (clientX: number, clientY: number, target: SVGSVGElement) => {
+    if (placed().length === 0) return
     const rect = target.getBoundingClientRect()
-    const b = bounds()
-    if (!b) return
-    const s = scale()
-    const spanX = b.maxX - b.minX
-    const spanY = b.maxY - b.minY
-    const offsetX = (BOX_W - spanX * s) / 2
-    const offsetY = (BOX_H - spanY * s) / 2
-    const sx = ((clientX - rect.left) / rect.width) * BOX_W
-    const sy = ((clientY - rect.top) / rect.height) * BOX_H
-    props.onPan([b.minX + (sx - offsetX) / s, b.maxY - (sy - offsetY) / s])
+    const point = projection().unproject({
+      x: ((clientX - rect.left) / rect.width) * BOX_W,
+      y: ((clientY - rect.top) / rect.height) * BOX_H,
+    })
+    props.onPan([point.x, point.y])
   }
 
   return (
@@ -131,13 +107,13 @@ export const GraphMinimap = (props: GraphMinimapProps) => {
     >
       <For each={placed()}>
         {(entry) => {
-          const point = () => project(entry.position.x, entry.position.y)
+          const point = () => projection().project(entry.position)
           return (
             <circle cx={point().x} cy={point().y} r={DOT_R} fill={colorFor(entry.node)} opacity="0.85" />
           )
         }}
       </For>
-      <Show when={viewRect()}>
+      <Show when={projection().viewRect}>
         {(rect) => (
           <rect
             x={rect().x}

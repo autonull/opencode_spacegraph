@@ -4,6 +4,7 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js"
+import { ScopedOverlay } from "spacegraphjs/overlays"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { CardTemplate } from "../canvas/buildRenderModel"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -32,13 +33,16 @@ export type TurnMapOverlayProps = {
  * transcript so the reader keeps their place. It shows the same detail panel as the full graph,
  * traps focus, closes on Escape, and restores focus to the control that opened it. It is sized by
  * the host container, which must be `position: relative`.
+ *
+ * The scope and the focus behaviour live in the library (`spacegraphjs/overlays`); this component is
+ * the session's vocabulary and its slots.
  */
 export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
   const i18n = useI18n()
   const resolvedTheme = createGraphTheme()
   const [selection, setSelection] = createSignal<readonly string[]>([])
   let dialog!: HTMLDivElement
-  let restoreFocus: HTMLElement | undefined
+  let overlay: ScopedOverlay | undefined
 
   const theme = () => props.theme ?? resolvedTheme()
   const turn = createMemo(() => nodeByID(props.model, props.turnID))
@@ -55,42 +59,13 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
     props.onSelect?.(id)
   }
 
-  const focusable = () =>
-    [
-      ...dialog.querySelectorAll<HTMLElement>(
-        'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
-      ),
-    ].filter((element) => !element.hasAttribute("disabled"))
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
-      event.stopPropagation()
-      props.onClose()
-
-      return
-    }
-
-    if (event.key !== "Tab") return
-    const elements = focusable()
-
-    if (elements.length === 0) return
-    const first = elements[0]!
-    const last = elements.at(-1)!
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
-
   onMount(() => {
-    restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
-    dialog.focus()
+    overlay = new ScopedOverlay({ container: dialog, onClose: () => props.onClose() })
   })
-  onCleanup(() => restoreFocus?.focus())
+  onCleanup(() => {
+    overlay?.dispose()
+    overlay = undefined
+  })
 
   return (
     <div class="absolute inset-0 z-40 flex items-center justify-center p-4" data-component="session-graph-turn-map">
@@ -101,7 +76,6 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
         aria-modal="true"
         aria-label={i18n.t("ui.sessionGraph.turnMap.label")}
         tabindex="-1"
-        onKeyDown={onKeyDown}
         data-slot="graph-turn-map"
         class="relative flex h-[min(520px,100%)] w-[min(760px,100%)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-lg"
       >
