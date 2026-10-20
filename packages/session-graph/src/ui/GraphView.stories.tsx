@@ -302,3 +302,35 @@ const LONG_OUTPUT_MODEL: GraphModel = {
 export const LongOutput = {
   render: () => <ViewHarness model={LONG_OUTPUT_MODEL} selection="tool:long" level="execution" />,
 }
+
+/**
+ * T6.7 — hostile content in a label, a summary and a tool command. The card markup is injected with
+ * `innerHTML` by the renderer, so this story is the end-to-end proof that escaping holds.
+ */
+const HOSTILE_MODEL: GraphModel = {
+  root: "session",
+  nodes: [
+    { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },
+    { id: "turn:hostile", kind: "turn", label: "Turn 1", status: "success", minLevel: "overview" },
+    {
+      id: "tool:hostile",
+      kind: "tool",
+      label: "<script>window.__xss = 1</script>",
+      summary: '<img src=x onerror="window.__xss = 1">',
+      status: "success",
+      turnID: "turn:hostile",
+      minLevel: "execution",
+      data: { name: "shell", input: { command: "echo <script>window.__xss = 1</script>" } },
+    },
+  ],
+  edges: [
+    { id: "e1", kind: "part-of", source: "turn:hostile", target: "session", confidence: "structural" },
+    { id: "e2", kind: "sequence", source: "tool:hostile", target: "turn:hostile", confidence: "explicit" },
+  ],
+  turns: ["turn:hostile"],
+  turnByMessageID: new Map(),
+}
+
+export const Hostile = {
+  render: () => <ViewHarness model={HOSTILE_MODEL} selection="tool:hostile" level="execution" />,
+}
