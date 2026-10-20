@@ -40,6 +40,14 @@ function graphFixture() {
     directory,
     sessions: [{ id: sessionID, title: "Session graph" }],
     pageMessages: () => ({ items: buildFixtureMessages() }),
+    // Enable the experimental session graph feature flag
+    seed: {
+      settings: {
+        experimental: {
+          sessionGraph: true,
+        },
+      },
+    },
   }
 }
 

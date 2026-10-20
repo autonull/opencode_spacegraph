@@ -29,6 +29,14 @@ function graphFixture() {
     sessions: [{ id: sessionID, title: "Session graph" }],
     // The canonical session fixture (SPACEGRAPH.TODO.1 §7) is the single source for the graph model.
     pageMessages: () => ({ items: buildFixtureMessages() }),
+    // Enable the experimental session graph feature flag
+    seed: {
+      settings: {
+        experimental: {
+          sessionGraph: true,
+        },
+      },
+    },
   }
 }
 
@@ -135,7 +143,14 @@ test("renders an assistant message as Markdown in the inspector", async ({ page 
 
 test("appends a node from a live event without losing the selection", async ({ page }) => {
   const errors = trackPageErrors(page)
-  const timeline = await setupTimeline(page, { sessionMessages: buildFixtureMessages() })
+
+  const timeline = await setupTimeline(page, {
+    sessionMessages: buildFixtureMessages(),
+    experimental: {
+      sessionGraph: true,
+    },
+  })
+
   await page.getByRole("button", { name: "Toggle graph view" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
@@ -176,6 +191,14 @@ test("disposes the graph when switching sessions and restores it on return", asy
       { id: other, title: "Session graph other" },
     ],
     pageMessages: (id: string) => ({ items: id === sessionID ? buildFixtureMessages() : [] }),
+    // Enable the experimental session graph feature flag
+    seed: {
+      settings: {
+        experimental: {
+          sessionGraph: true,
+        },
+      },
+    },
   }
 
   await openGraph(page, input)
@@ -286,6 +309,14 @@ test("restores the transcript position after leaving the graph", async ({ page }
     directory,
     sessions: [{ id: sessionID, title: "Session graph" }],
     pageMessages: () => ({ items }),
+    // Enable the experimental session graph feature flag
+    seed: {
+      settings: {
+        experimental: {
+          sessionGraph: true,
+        },
+      },
+    },
   })
 
   const scroller = page.locator(".scroll-view__viewport", { has: page.locator("[data-timeline-row]") })

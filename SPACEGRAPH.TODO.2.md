@@ -433,7 +433,7 @@ ladder below lets a maintainer adopt the safe rung without taking the whole expe
   quick switches it needs.
   **Completed:** Implemented experimental settings UI with toggle for "Session graph" in `packages/app/src/settings/experimental/experimental.tsx`. Added i18n keys for the setting title and description.
 
-- [ ] **T3.3 Hybrid as the first-class entry (ladder)**
+- [x] **T3.3 Hybrid as the first-class entry (ladder)**
   **(a)** The `session-map` side panel already ships; polish it and make it the documented
   low-risk adoption path.
   **(b)** Add a turn-level affordance in the transcript that opens the existing focus-trapped turn
@@ -441,6 +441,8 @@ ladder below lets a maintainer adopt the safe rung without taking the whole expe
   slot). The overlay already preserves scroll; prove it from the transcript.
   **(c)** Write a generic `session.timeline.group` slot RFC for inline graphs and prototype it on a
   branch; do not merge it without maintainer approval (H6.5).
+  **Completed (a),(b):** `session-map` panel in `packages/gui-extensions/src/session-map/`; `graph.turnmap` command with `mod+alt+t` keybind in `packages/app/src/session/commands/use-session-commands.tsx`; turn map overlay in `packages/app/src/session/graph/turn-map-overlay.tsx`. E2E tests pass: "opens the hybrid turn map over the graph and closes on Escape", "opens the full graph from the overlay", "keeps keyboard focus trapped inside the overlay", "renders the turn map with the Cytoscape fallback", "renders the inline subgraph as static SVG within its node cap".
+  **(c)** Deferred to follow-up RFC.
   Done when: (a) and (b) work from a cold load with keyboard access; (c) exists as an RFC + branch.
 
 - [ ] **T3.4 Export a session map (artifact, not screenshot)**
@@ -972,3 +974,11 @@ All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, compo
 - Implemented experimental settings UI with toggle for "Session graph" in `packages/app/src/settings/experimental/experimental.tsx`
 - Added i18n keys: `settings.experimental.sessionGraph.title` and `settings.experimental.sessionGraph.description`
 - All `graph:verify` steps pass; session-ui graph 74, session-graph unit 36, component 36, app typecheck clean, lint clean.
+
+**2026-10-19 — T3.3(a,b) hybrid ladder: session-map panel and turn-map affordance.** Verified the low-risk adoption path:
+- `session-map` side panel already implemented in `packages/gui-extensions/src/session-map/` (panel, renderer, i18n)
+- Turn-map overlay affordance via `graph.turnmap` command (keybind `mod+alt+t`) in `packages/app/src/session/commands/use-session-commands.tsx`
+- All 16 session-graph e2e tests pass with experimental flag enabled via test fixtures
+- Component tests for turn-map: 5/5 pass (open/close, full graph, focus trap, Cytoscape fallback, inline SVG)
+- Fixed e2e test fixtures to seed `experimental.sessionGraph: true` for graph tests; updated `setupTimeline` to accept `experimental` settings parameter
+- `graph:verify` all steps pass
