@@ -363,6 +363,17 @@ viewer reads every label, sees the whole model, understands overview without leg
 
 ---
 
+
+
+### Billboards default disabled (2026-10-20)
+
+The billboard toggle in the UI now controls whether DOM cards face the camera or lie in the content plane. **Default: disabled** (`'plane'`). When the toggle is on, cards face the reader (camera-facing), making text readable in tilted depth treatments. When the toggle is off, cards lie in the content plane, showing the honest perspective with perspective shear. This is a host-controlled affordance: the library's depth treatments no longer decide the facing — the host does through the UI control.
+
+The core's `CardFacingMode` type is `'auto' | 'plane' | 'camera'` in the contract. The default resolution is `'auto'` → the depth treatment's facing (now `'plane'` for all modes). The host's billboard toggle sends `'camera'` to enable billboarding or `'plane'` to disable it. This is an additive interface change: `CONTRACT_VERSION` stays 2, and `setCardFacing` is optional on `GraphRenderer`.
+
+A new capture frame was added to the verification matrix: `31-graph-perspective.png` — the orbit-depth treatment with billboarding explicitly off, proving the perspective rendering is correct. The existing 3D captures (06/18/19) now show the honest perspective (sheared cards) since billboarding is off by default.
+
+The billboard control appears in the toolbar when the renderer supports card facing (SpaceGraph adapter only; Cytoscape and SVG renderers declare the capability false and hide the control).
 ## 3. T2 — Evidence (THE CRITICAL PATH — blocks everything downstream)
 
 **Stop rule:** Do not add T3 features before T2's decision (see §10). The flag/settings work (T3.1, T3.2) is only justified by a positive or promising result.

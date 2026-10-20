@@ -18,6 +18,7 @@ export type GraphCanvasProps = {
   projection?: Projection
   /** LE.14: depth treatment applied after mount; unsupported modes are the host's to gate. */
   depth?: DepthMode
+  cardFacing?: "plane" | "camera"
   selection?: readonly string[]
   preferredRenderer?: RendererID
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
@@ -146,6 +147,13 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     if (!mounted) return
     mounted.renderer.setDepth(value)
     host.dataset.graphDepth = value
+  })
+  createEffect(() => {
+    const value = cardFacing()
+
+    if (!mounted) return
+    mounted.renderer.setCardFacing?.(value)
+    host.dataset.graphCardFacing = value
   })
 
   onCleanup(() => {

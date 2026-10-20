@@ -125,6 +125,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
   const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
+  const [cardFacing, setCardFacing] = createSignal<'plane' | 'camera'>('plane')
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
   const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
@@ -877,6 +878,7 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={(ids) => select(ids)}
             onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => select(undefined)}
+          cardFacing={cardFacing()}
             onModelApplied={applyModel}
             onRenderer={(instance) => {
               renderer = instance

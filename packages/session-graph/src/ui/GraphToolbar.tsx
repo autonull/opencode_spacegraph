@@ -193,6 +193,19 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           icon={<Icon name="dot-grid" size="small" />}
         />
       </Show>
+      <Show when={props.capabilities?.cardFacing}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.billboard")}
+          title={i18n.t("ui.sessionGraph.toolbar.billboard")}
+          state={depth() !== "flat" && props.renderer === "spacegraph" ? "pressed" : "rest"}
+          onClick={() => {
+            setDepth((prev) => (prev === "flat" || prev === "camera" ? "camera" : "flat"))
+          }}
+          icon={<Icon name="cube" size="small" />}
+        />
+      </Show>
       <Show when={props.onTurnMap}>
         <IconButton
           size="small"
