@@ -213,7 +213,6 @@ export async function setupTimeline(
     sessionMessages?: SessionMessageInfo[]
     sessionStatus?: Record<string, SessionStatus>
     settings?: Record<string, boolean | TimelineDetail>
-    experimental?: Record<string, unknown>
     sessions?: Session[]
     cpuRate?: number
     viewport?: { width: number; height: number }
@@ -260,24 +259,20 @@ export async function setupTimeline(
   })
 
   if (input.tabs) await seed(page, { tabs: input.tabs })
-  await page.addInitScript(
-    (allSettings: { settings: Record<string, unknown>; experimental: Record<string, unknown> }) => {
-      localStorage.setItem(
-        "settings.v3",
-        JSON.stringify({
-          general: {
-            editToolPartsExpanded: false,
-            shellToolPartsExpanded: false,
-            showReasoningSummaries: false,
-            showSessionProgressBar: true,
-            ...allSettings.settings,
-          },
-          ...(allSettings.experimental ? { experimental: allSettings.experimental } : {}),
-        }),
-      )
-    },
-    { settings: input.settings ?? {}, experimental: input.experimental ?? {} },
-  )
+  await page.addInitScript((settings) => {
+    localStorage.setItem(
+      "settings.v3",
+      JSON.stringify({
+        general: {
+          editToolPartsExpanded: false,
+          shellToolPartsExpanded: false,
+          showReasoningSummaries: false,
+          showSessionProgressBar: true,
+          ...settings,
+        },
+      }),
+    )
+  }, input.settings ?? {})
 
   if (input.locale) {
     await page.addInitScript((locale) => {

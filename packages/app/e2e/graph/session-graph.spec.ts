@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test as base, type Page } from "@playwright/test"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { sessionHref } from "../utils/app"
 import { trackPageErrors } from "../utils/errors"
+import { seedSessionGraph } from "../utils/graph"
 import {
   assistantMessage,
   historyMessages,
@@ -11,6 +12,14 @@ import {
   toolPart,
 } from "../utils/timeline"
 import { openSession } from "../utils/workspace"
+
+// The graph is behind an experimental flag, so every test in this file starts with it on.
+const test = base.extend({
+  page: async ({ page }, use) => {
+    await seedSessionGraph(page)
+    await use(page)
+  },
+})
 
 const directory = "C:/OpenCode/SessionGraph"
 
@@ -29,14 +38,6 @@ function graphFixture() {
     sessions: [{ id: sessionID, title: "Session graph" }],
     // The canonical session fixture (SPACEGRAPH.TODO.1 §7) is the single source for the graph model.
     pageMessages: () => ({ items: buildFixtureMessages() }),
-    // Enable the experimental session graph feature flag
-    seed: {
-      settings: {
-        experimental: {
-          sessionGraph: true,
-        },
-      },
-    },
   }
 }
 
@@ -146,9 +147,6 @@ test("appends a node from a live event without losing the selection", async ({ p
 
   const timeline = await setupTimeline(page, {
     sessionMessages: buildFixtureMessages(),
-    experimental: {
-      sessionGraph: true,
-    },
   })
 
   await page.getByRole("button", { name: "Toggle graph view" }).click()
@@ -191,14 +189,6 @@ test("disposes the graph when switching sessions and restores it on return", asy
       { id: other, title: "Session graph other" },
     ],
     pageMessages: (id: string) => ({ items: id === sessionID ? buildFixtureMessages() : [] }),
-    // Enable the experimental session graph feature flag
-    seed: {
-      settings: {
-        experimental: {
-          sessionGraph: true,
-        },
-      },
-    },
   }
 
   await openGraph(page, input)

@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test as base, type Page } from "@playwright/test"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
+import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
 
 // The screenshot capture for Phase 5 (V5.1/V5.3/V5.4). It uses the canonical fixture (§7) through the
@@ -22,6 +23,14 @@ const inspector = '[data-slot="graph-inspector"]'
 
 const captureDir = process.env.GRAPH_CAPTURE_DIR
 
+// The graph is behind an experimental flag, so every capture starts with it on.
+const test = base.extend({
+  page: async ({ page }, use) => {
+    await seedSessionGraph(page)
+    await use(page)
+  },
+})
+
 // `baseline` writes only the transcript frame; `demo`/`compare`/`verify` walk the whole flow.
 const mode = process.env.GRAPH_CAPTURE_MODE ?? "demo"
 
@@ -40,14 +49,6 @@ function graphFixture() {
     directory,
     sessions: [{ id: sessionID, title: "Session graph" }],
     pageMessages: () => ({ items: buildFixtureMessages() }),
-    // Enable the experimental session graph feature flag
-    seed: {
-      settings: {
-        experimental: {
-          sessionGraph: true,
-        },
-      },
-    },
   }
 }
 
