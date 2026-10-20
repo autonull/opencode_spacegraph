@@ -18,9 +18,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `844cf76`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664`, `844cf76` |
+| SpaceGraphJS | `main` @ `9fa1083`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664`, `844cf76`, `9fa1083` |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-20) | `session-ui` graph 75 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 375 + contract 12 + adapters 39 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 50 · `session-graph` component 37 · `spacegraphjs` 378 + contract 12 + adapters 42 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -94,8 +94,9 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - T6.16 Demo index — documentation, helpful but not blocking
 
 **Already complete (do not redo):**
-T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.8–T4.10 (layout, levels, and representations extracted to the library),
-T4.13 (theme and contrast extracted to the contract and the renderers).
+T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10 (layout, levels,
+and representations extracted to the library), T4.13 (theme and contrast extracted to the contract
+and the renderers), T3.6 (the exported map names its session).
 
 ---
 
