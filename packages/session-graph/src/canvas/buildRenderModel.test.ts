@@ -1,5 +1,13 @@
 import { expect, test } from "bun:test"
-import { buildFixtureGraph, buildGraph, layoutGraph, type GraphModel, type ZoomLevel } from "@opencode/session-ui/graph"
+import {
+  buildFixtureGraph,
+  buildGraph,
+  layoutGraph,
+  nodeSize,
+  nodesAtLevel,
+  type GraphModel,
+  type ZoomLevel,
+} from "@opencode/session-ui/graph"
 import { buildRenderModel } from "./buildRenderModel"
 
 const model = buildFixtureGraph()
@@ -184,6 +192,32 @@ test("turn and phase swimlane bands wrap the members visible at the level (RF.5)
   // Execution draws a band per turn and per expanded phase.
   const turnBands = bands.filter((band) => band.data?.band === "turn")
   expect(turnBands.length).toBe(model.turns.length)
+})
+
+test("a band encloses the cards it groups, so its header has a slot of its own (T1.17)", () => {
+  const built = buildRenderModel(model, { level: "execution", positions, bands: true })
+  const visible = new Set(nodesAtLevel(model, "execution").map((node) => node.id))
+
+  for (const band of built.nodes.filter((node) => node.kind === "band")) {
+    const cluster = band.data?.cluster as string
+    const members =
+      band.data?.band === "turn"
+        ? model.nodes.filter((node) => node.turnID === cluster)
+        : model.nodes.filter((node) => model.nodes.find((phase) => phase.id === cluster)?.clusterOf?.includes(node.id))
+
+    for (const member of members) {
+      if (!visible.has(member.id)) continue
+      const position = positions.get(member.id)
+      if (!position) continue
+      const [width, height] = nodeSize(member)
+
+      // The band is padded around the member's box, not around its centre.
+      expect(band.position[0] - band.size![0] / 2).toBeLessThanOrEqual(position.x - width / 2)
+      expect(band.position[0] + band.size![0] / 2).toBeGreaterThanOrEqual(position.x + width / 2)
+      expect(band.position[1] - band.size![1] / 2).toBeLessThanOrEqual(position.y - height / 2)
+      expect(band.position[1] + band.size![1] / 2).toBeGreaterThanOrEqual(position.y + height / 2)
+    }
+  }
 })
 
 test("execution focus dims cards outside the selected neighborhood (RF.10)", () => {

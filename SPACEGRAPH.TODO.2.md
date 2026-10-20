@@ -18,9 +18,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `632292e`; pushed and tagged `graph-adapter-2026-10-20` (nothing unpushed) |
-| Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 93 · `session-graph` component 37 · `spacegraphjs` 427 + contract 12 + adapters 42 + model adapter 16 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 · the provider-free demo, in a browser |
+| SpaceGraphJS | `main` @ `d46e8f8`; the band geometry and the fit floor (T1.17, T1.18) — **unpushed** |
+| Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
+| Last green (re-run 2026-10-20) | `session-ui` graph 77 · `session-graph` unit 94 · `session-graph` component 39 · `spacegraphjs` 430 + contract 12 + adapters 42 + model adapter 17 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -94,7 +94,7 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - T6.16 Demo index — documentation, helpful but not blocking
 
 **Already complete (do not redo):**
-T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10 (layout, levels,
+T0 (sync), T1 (all usability defects, T1.17 and T1.18 closed on 2026-10-20), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.7 (edge accessibility decided and implemented), T4.8–T4.10 (layout, levels,
 and representations extracted to the library), T4.12 (the scoped-subgraph overlay's scope and focus behaviour
 extracted), T4.13 (theme and contrast extracted to the contract
 and the renderers), T3.6 (the exported map names its session), T6.17 (the code-diff vocabulary and
@@ -236,7 +236,7 @@ All 16 tasks done. Every visual defect from the 2026-10-19 screenshot review fix
 
 **Reopened by the 2026-10-20 review (the demo now runs, so the surface was looked at for real):**
 
-- [ ] **T1.17 The cluster chip covers its own members**
+- [x] **T1.17 The cluster chip covers its own members**
   A derived `phase` node draws a summary chip ("Verify 4") over the group it summarises. The chip's
   box is sized to the group's bounds while its label sits at the group's left edge, so the chip lies
   on top of the first member's card. Measured in the live demo: the chip's container is 534×31 px
@@ -245,16 +245,49 @@ All 16 tasks done. Every visual defect from the 2026-10-19 screenshot review fix
   (a summary of what is already on screen is noise).
   Verify: a component test that asserts no two card boxes overlap at the execution level; the
   capture set inspected.
+  - **Done (2026-10-20).** The chip is the *band header*, and the band was sized from its members'
+    **centres** — so the box was smaller than the cards it grouped and the header landed on the
+    first one. The band is now the union of the members' **boxes** (the host binds its node sizes
+    through the adapter's new `nodeSizeFn`), padded, and the header sits in the band's own strip:
+    the group's start, clear of every card. The library owns the geometry
+    (`ModelAdapter.bandBox`); the host owns the vocabulary.
+  - The same centre-vs-extent bug put the **lane gutter caption** on top of the session card; the
+    gutter now clears the content's left edge. Both are measured by the new component test
+    `packages/session-graph/component-tests/graph-bands.spec.ts`: no band header covers a card, and
+    no two card boxes overlap.
+  - **Two renderer defects surfaced while fixing it, both pre-existing and both now fixed.**
+    (a) The band is flagged `billboard`, and the core's billboard rotated it *towards the camera in
+    the XY plane* — a side-view rule — so under the app's top-down camera every band was skewed by
+    up to 51° and no longer enclosed its members. A billboard now cancels the camera's rotation
+    (screen-aligned), which is what T1.3 asked for. (b) The Cytoscape overlay placed host markup in
+    world units *without* the viewport scale, so its bands and cards were drawn oversized; the
+    overlay now scales with the zoom, like every other node.
+  - The band header's line height is a fixed 16px: its height is geometry (it must clear the
+    cards), not typography. The captures were refreshed deliberately and read by eye (03, 12, 17
+    and 07 inspected).
 
-- [ ] **T1.18 The hierarchy and file-lens views fit the whole graph, so they are unreadable**
+- [x] **T1.18 The hierarchy and file-lens views fit the whole graph, so they are unreadable**
   The camera fits all the content, so a view that spreads over many rows (hierarchy) or a view
   squeezed between the file rail and the inspector (file lens) shrinks the cards until the text is
   a few pixels tall. The lane views are legible; these two are not.
   Done when: the fit keeps a legible minimum scale and lets the reader pan, or the view is dropped.
   Verify: a component test that asserts the card text height at 1440×900 in both views.
+  - **Done (2026-10-20).** A fit now takes a **minimum scale** — the smallest on-screen size of one
+    world unit, in CSS pixels. The host declares the floor (a card never renders below half its
+    natural size, so its 13px label stays at 6.5px, the size the lane views are read at); the
+    renderer owns the camera, so the floor travels through the contract
+    (`GraphRenderer.fit(ids, { minScale })`) and both adapters honour it. When the floor applies the
+    frame starts at the content's first corner and the reader pans the rest.
+  - Measured on the canonical fixture: the hierarchy went from a 22px card (4px of text) to 36px
+    (6.5px), the file lens from 30px to 36px. The lane views are unchanged in practice (their fit
+    is 0.47–0.5, at or above the floor).
+  - The component test `packages/session-graph/component-tests/graph-legibility.spec.ts` asserts the
+    card's rendered height at 1440×900 in the hierarchy and the file lens. It fails without the
+    floor (22px < 36px), so it is load-bearing, not decorative.
 
-**Gate G1 — PASSED for the lane views; reopened for T1.17 and T1.18.** A first-time viewer reads every
-label, sees the whole model, understands overview without legend.
+**Gate G1 — PASSED again (2026-10-20): the band headers no longer cover a card, the lane gutter no
+longer covers the session card, and the two unreadable views keep a legible scale.** A first-time
+viewer reads every label, sees the whole model, understands overview without legend.
 
 ---
 
@@ -1543,3 +1576,51 @@ Commands run: `vitest run` in `spacegraphjs` (427 pass), `bun run typecheck` in 
 Unverified: the demo was checked in Chromium at 1440×900, not in the desktop app or on a phone; the graph
 in the demo is the light theme, while the captures are dark; the mock serves one session and one project,
 so the demo cannot show a workspace with several sessions.
+
+**2026-10-20 — T1.17 and T1.18: the band header stops covering the cards, and the fit stops shrinking
+the content past legibility.** The two defects the demo review found are closed; G1 is green again.
+
+*The band was sized from centres, so its header landed on the first card.* A band is the union of
+its members' **boxes**, padded, and the header sits in the band's own strip — the group's start,
+clear of every card. The library owns the geometry (`ModelAdapter.bandBox`, the adapter's new
+`nodeSizeFn`); the host binds its node sizes and keeps its vocabulary. The same centre-vs-extent
+bug put the lane gutter caption on the session card, so the gutter clears the content's left edge
+now too. `packages/session-graph/component-tests/graph-bands.spec.ts` measures both: no band header
+covers a card and no two card boxes overlap, at the execution level.
+
+*Two renderer defects surfaced on the way, both pre-existing.* (a) The band is flagged `billboard`,
+and the core's billboard rotated it towards the camera **in the XY plane** — a side-view rule — so
+under the app's top-down camera every band was skewed by up to 51° and enclosed nothing. A
+billboard now cancels the camera's rotation (screen-aligned), which is what T1.3 asked for and what
+the captures had never shown. (b) The Cytoscape overlay placed host markup in world units *without*
+the viewport scale, so its bands and cards were drawn oversized; the overlay now scales with the
+zoom. The Cytoscape view is a fallback, but a fallback that lies about the geometry is worse than
+no fallback.
+
+*The fit now has a floor.* A fit takes a **minimum scale** — the smallest on-screen size of one world
+unit, in CSS pixels. The host declares it (a card never renders below half its natural size, so its
+13px label stays at 6.5px — the size the lane views are read at); the renderer owns the camera, so
+the floor travels through the contract (`GraphRenderer.fit(ids, { minScale })`) and both adapters
+honour it. When the floor applies, the frame starts at the content's first corner and the reader
+pans the rest. Measured on the canonical fixture: the hierarchy went from a 22px card (4px of text)
+to 36px (6.5px), the file lens from 30px to 36px; the lane views are unchanged in practice. The
+component test `packages/session-graph/component-tests/graph-legibility.spec.ts` asserts the card's
+rendered height at 1440×900 in both views and **fails without the floor**, so it is load-bearing.
+
+*Captures.* The set was refreshed deliberately and read by eye: 03 (the bands enclose their groups,
+the headers sit clear), 12 (the hierarchy is readable now), 17 (the file lens is readable now) and
+07 (the Cytoscape fallback is scaled) were inspected. 02, 04–06, 08, 11, 13–16, 18–24 changed with
+them.
+
+Commands run: `vitest run` in `spacegraphjs` (430 pass, 3 new; the `vision-cli-integration` failure
+is pre-existing and fails on a clean tree too), `vitest run` in `spacegraphjs/packages/adapter` (17
+pass, 1 new), `bun test` in the cytoscape and spacegraph renderer packages (15 each), `bun run
+typecheck` + `bun test src` in `packages/session-graph` (94 pass, 1 new), `bun test src/graph` in
+`packages/session-ui` (77 pass), `bun run test:components` in `packages/session-graph` (39 pass, 2
+new), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (16 pass), `bun run
+graph:verify` (all steps), `bun run lint:changed` (0).
+
+Unverified: the floor is expressed in CSS pixels per world unit, so a host that changes its card
+size changes the floor; the hierarchy and the file lens are now panned views by design, and the
+capture set shows only their first screen; the `fit` option is additive, so a renderer that ignores
+it still fits the whole content — no adapter in this repository does.

@@ -6,6 +6,7 @@ import {
   edgesAtLevel,
   isClusterExpanded,
   neighbors,
+  nodeSize,
   nodesAtLevel,
   type ClusterBounds,
   type EdgeKind,
@@ -75,6 +76,8 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       edgeFilter: (model, level, focus) => edgesAtLevel(model, level, focus),
       isClusterExpanded: (level) => isClusterExpanded(level),
       neighbors: (model, id) => neighbors(model, id).nodes.map((node) => node.id),
+      // T1.17: the box each node occupies, so a band is sized around the cards it groups.
+      nodeSizeFn: (node) => nodeSize(node),
       ...config,
     })
   }
@@ -133,8 +136,9 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
 
   /**
    * RF.5 — turn swimlanes and phase groups drawn behind the content as non-interactive DOM bands.
-   * Each band is a translucent rounded box sized to its cluster bounds, so the canvas shows where a
-   * turn starts and ends and which activity a phase groups.
+   * Each band is a translucent rounded box sized to the boxes of the members it groups, so the
+   * canvas shows where a turn starts and ends and which activity a phase groups. The band is padded
+   * around its members, which leaves the header its own slot above them (T1.17).
    */
   buildBands(
     model: GraphModel,
@@ -145,37 +149,20 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
   ): RenderNode[] {
     const bands: RenderNode[] = []
 
-    // Bands wrap the members actually drawn at this level, so an overview turn band frames its phase
-    // chips rather than the full execution extent (which is empty at that level).
-    const boundsOf = (ids: readonly string[]): ClusterBounds | undefined => {
-      const points = ids.flatMap((id) => {
-        const point = positions.get(id)
-        return visible.has(id) && point ? [point] : []
-      })
-      if (points.length === 0) return undefined
-
-      return {
-        min: { x: Math.min(...points.map((point) => point.x)), y: Math.min(...points.map((point) => point.y)), z: 0 },
-        max: { x: Math.max(...points.map((point) => point.x)), y: Math.max(...points.map((point) => point.y)), z: 0 },
-      }
-    }
-
     const emit = (node: GraphNode, ids: readonly string[]) => {
       const drawn = ids.filter((id) => visible.has(id))
       if (drawn.length === 0) return
-      const bounds = boundsOf(drawn)
-      if (!bounds) return
-      const width = bounds.max.x - bounds.min.x + this.geometry.bandPadding * 2
-      const height = bounds.max.y - bounds.min.y + this.geometry.bandPadding * 2
+      const box = this.bandBox(model, drawn, positions, visible)
+      if (!box) return
       bands.push({
         id: `band:${node.id}`,
         kind: "band",
         label: node.label,
         shape: "panel",
         interactive: false,
-        html: renderBand(node, drawn.length, bounds),
-        size: [width, height, 0],
-        position: [(bounds.min.x + bounds.max.x) / 2, (bounds.min.y + bounds.max.y) / 2, 0],
+        html: renderBand(node, drawn.length, box),
+        size: [box.max.x - box.min.x, box.max.y - box.min.y, 0],
+        position: [(box.min.x + box.max.x) / 2, (box.min.y + box.max.y) / 2, 0],
         // T1.3: bands are backdrops. Keep them flat on the content plane and facing the camera, so a
         // tilted depth treatment does not turn a large band into a trapezoid across the cards.
         data: { band: node.kind === "turn" ? "turn" : "phase", count: drawn.length, cluster: node.id, billboard: true },

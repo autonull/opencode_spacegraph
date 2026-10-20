@@ -4,6 +4,7 @@ import type { GraphLayout, GraphModel, GraphNode, Lane, LayoutStrategy, Position
 import {
   ancestors,
   breadcrumbs,
+  CARD_SIZE,
   changedFiles,
   COMPACT_SIZE,
   laneAnchors,
@@ -49,6 +50,14 @@ const LANE_KEY = {
   delegate: "ui.sessionGraph.lane.delegate",
   artifacts: "ui.sessionGraph.lane.artifacts",
 } as const satisfies Record<Lane, string>
+
+/**
+ * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
+ * a view that cannot show everything (the hierarchy outline, the file lens between the rail and the
+ * inspector) is panned instead of shrunk to text too small to read. Half size keeps the card's 13px
+ * label at 6.5px, the size the lane views are read at.
+ */
+const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
 
 export type GraphViewProps = {
   model: GraphModel
@@ -379,6 +388,9 @@ export const GraphView = (props: GraphViewProps) => {
   // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
   // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
   const contentIDs = () => renderModel().nodes.filter((node) => node.kind !== "band").map((node) => node.id)
+  // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
+  // content past it, and the reader pans the rest.
+  const fitOptions = () => ({ minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1] })
   const inspectorOpen = createMemo(() => !!selectedNode())
   const selectedTurn = () => {
     const id = selection()[0]
@@ -456,7 +468,7 @@ export const GraphView = (props: GraphViewProps) => {
   // U3.11: clicking a breadcrumb selects it and frames its subtree, so the canvas follows the trail.
   const fitSubtree = (id: string) => {
     select(id)
-    renderer?.fit(subtree(props.model, id).map((node) => node.id))
+    renderer?.fit(subtree(props.model, id).map((node) => node.id), fitOptions())
   }
 
   // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
@@ -557,11 +569,11 @@ export const GraphView = (props: GraphViewProps) => {
     settleFit()
     fit()
   }
-  const fitContent = () => requestFit(() => renderer?.fit(untrack(contentIDs)))
+  const fitContent = () => requestFit(() => renderer?.fit(untrack(contentIDs), fitOptions()))
   const applyModel = (instance: GraphRenderer) => {
     if (!needsFit()) return
     setNeedsFit(false)
-    requestFit(() => instance.fit(untrack(contentIDs)))
+    requestFit(() => instance.fit(untrack(contentIDs), fitOptions()))
   }
   const zoomPercent = () => {
     const current = viewport()

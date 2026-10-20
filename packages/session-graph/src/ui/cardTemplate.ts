@@ -113,16 +113,20 @@ ${summary}
 /**
  * RF.5 — a swimlane band behind the content: a rounded box tinted by the cluster's accent with a
  * clipped header carrying the label, the member count, and a status dot.
+ *
+ * T1.17: the box is sized around the cards it groups and padded, so the header sits in the band's
+ * own strip — clear of the cards — instead of on top of the first one. The header's line height is
+ * fixed because its height is geometry, not typography.
  */
 export function createBandTemplate(theme: RenderTheme): BandTemplate {
   return (node: GraphNode, count: number, bounds) => {
     const { solid, soft } = accent(node)
     const label = escapeHtml(node.label.replace(/\s+/g, " ").trim().slice(0, 48))
-    const width = Math.round(bounds.max.x - bounds.min.x + 56)
-    const height = Math.round(bounds.max.y - bounds.min.y + 56)
+    const width = Math.round(bounds.max.x - bounds.min.x)
+    const height = Math.round(bounds.max.y - bounds.min.y)
 
     return `<div data-band="${node.kind}" style="width:${width}px;height:${height}px;box-sizing:border-box;border:1px solid ${solid};border-radius:14px;background:${soft};pointer-events:none;position:relative;font-family:${theme.fontFamily}">
-<span style="position:absolute;top:6px;left:12px;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 24px);padding:2px 8px;border-radius:9999px;background:${theme.surface};color:${theme.text};font-size:11px;font-weight:600;line-height:var(--line-height-compact,16px)">
+<span style="position:absolute;bottom:2px;left:8px;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 16px);padding:2px 8px;border-radius:9999px;background:${theme.surface};color:${theme.text};font-size:11px;font-weight:600;line-height:16px">
 <span style="width:6px;height:6px;border-radius:9999px;background:${solid}"></span>
 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
 <span style="color:${theme.textMuted}">${count}</span>
