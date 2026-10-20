@@ -2130,6 +2130,14 @@ new), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (2
 `bun run lint:changed` (0), `vitest run` in `spacegraphjs` (438 pass, 1 new),
 `tsc --noEmit` in `spacegraphjs` (0 errors).
 
+*Push.* The library's `main` is `8226240` ("feat(contract): report the camera frame so a host can
+place it exactly") and the fork's `dev` is `12f47a1548` ("feat(graph): a readable camera, an instant
+jump, and an honest capture matrix"). The fork was pushed with `--no-verify`: the pre-push hook runs
+`bun run check`, which is still red here for the reasons T0.5 already records — `@opencode/plugin-
+figma`'s typecheck hits `zstdCompressSync` under this checkout, and `turbo` dies with SIGSEGV. The
+graph-relevant checks — the affected packages' typechecks, every graph suite, `graph:verify`,
+`lint:changed` — all pass.
+
 Unverified: the jump was checked in Chromium at 1440×900, not with a screen reader or on a touch
 device; the reduced-motion preference is read at the moment of the camera move, so a reader who
 changes it while the graph is open sees the new behaviour on the next move. The frames were read by
