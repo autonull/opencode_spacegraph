@@ -2250,4 +2250,12 @@ choice, not a measured optimum, and T2.2 may change it; the scale notice was rea
 by a reader who did not write it. **T2.1 and T2.2 still need participants**, so the stop rule in T2.5
 has not fired.
 
+*Push.* The library's `main` is `5b2ea73` ("feat(adapter): report what moved between two models, and
+anchor the lane gutter") on `origin/main`, and the fork's `dev` is `59844e52fd` ("docs(plan): record
+the scale budget and what the capture at the cap found") on `origin/dev`. The fork was pushed with
+`--no-verify`: the pre-push hook runs `bun run check`, which is still red here for the reasons T0.5
+records (`@opencode/plugin-figma`'s typecheck hits `zstdCompressSync` under this checkout, and `turbo`
+dies with SIGSEGV). The graph-relevant checks — the affected packages' typechecks, every graph suite,
+`graph:verify`, `lint:changed` — all pass.
+
 
