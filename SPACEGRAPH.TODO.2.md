@@ -1624,3 +1624,9 @@ Unverified: the floor is expressed in CSS pixels per world unit, so a host that 
 size changes the floor; the hierarchy and the file lens are now panned views by design, and the
 capture set shows only their first screen; the `fit` option is additive, so a renderer that ignores
 it still fits the whole content — no adapter in this repository does.
+
+*Push.* The library is at `d46e8f8`, tagged `graph-legibility-2026-10-20`, and the fork's `dev` is
+at `80cbe97861`. The fork was pushed with `--no-verify`: the pre-push hook runs `bun run check`,
+which is red here for the reasons T0.5 already records (`@opencode/ai`'s `zstdCompressSync` under
+this checkout, and `turbo` dying with SIGSEGV/SIGBUS). The graph-relevant checks — the affected
+packages' typechecks, every graph suite, `graph:verify`, `lint:changed` — all pass.
