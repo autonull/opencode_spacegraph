@@ -272,7 +272,7 @@ bun run graph:capture --mode=compare
    - B. Bundled companion package with contract + adapters — no source workspace
    - C. Extension panel only (H6.5) — minimal diff, no library dependency
 
-4. **Are the known limitations acceptable?** See `prototype.md` §"Known limitations" (20 items, explicitly carried forward) and §"Edge cases" (the cases a real session produces that the fixture does not).
+4. **Are the known limitations acceptable?** See `prototype.md` §"Known limitations" (20 items, explicitly carried forward) and §"Edge cases" (the cases a real session produces that the fixture does not). The library's own limits — the mesh outline, the depth fade, the DOM card path — are declared in `spacegraphjs/docs/limitations.md`.
 
 5. **Is the hybrid ladder the right adoption path?** Four rungs (T3.7):
    1. `session-ui` graph model + tests (pure, no UI)

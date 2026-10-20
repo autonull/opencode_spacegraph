@@ -167,8 +167,8 @@ camera/fog treatment over the node-link layout's Z (the summaries place every no
 `graph:capture --mode=compare` regenerates this matrix (the app frames plus the Cytoscape story) and
 `--mode=verify` asserts the committed set exists **and that no two frames of the zoom/pan matrix are
 the same picture** (T6.19: five of the ten used to be one picture under five names). The depth modes
-are captured at the compact lanes framing, where the fog cue is legible; on a tall layout the
-absolute-distance fog over-attenuates distant content (see known limitation 17).
+are captured at the compact lanes framing, where the fog cue is legible; the fade is scene-relative,
+and the DOM cards do not fade with the scene at all (see known limitation 16).
 
 ## Visual checklist (T1.7)
 
@@ -441,38 +441,40 @@ Carry these forward explicitly; none is silently lowered.
 10. **First graph paint and pan frame rate have no harness**, and the session-entry delta is unmeasured.
 11. **The renderer selector is not in the app toolbar**; renderer choice is a prototype setting, and
     the Cytoscape captures come from the Storybook story.
-12. **The three layout strategies compute their own cursors in the library** (`spacegraphjs/layout/strategies.ts`)
-    rather than on the generic `LaneLayout`, which still assumes fixed item sizes and one cursor per
-    lane; folding them onto it needs that primitive to support variable item sizes and per-lane
-    cursors first (RF.2 library-first cleanup, T4.3).
-13. **Vector swimlane bands stay full-opacity under execution focus dimming** (they are structure, not
+12. **Vector swimlane bands stay full-opacity under execution focus dimming** (they are structure, not
     content, and are `interactive: false`).
-14. **The lane gutter is world-space** (LE.10): the lane labels are non-interactive chips placed left of the
+13. **The lane gutter is world-space** (LE.10): the lane labels are non-interactive chips placed left of the
     content and included in the fit, not a screen-fixed overlay (the contract has no screen-space overlay).
-15. **The lanes overview has a dominant empty region** (`02`/`14`): the lanes layout is level-agnostic (§5.5), so
+14. **The lanes overview has a dominant empty region** (`02`/`14`): the lanes layout is level-agnostic (§5.5), so
     a turn column reserves its execution width at overview. The ribbon/matrix representations fix it by
     construction; a level-aware compact overview would risk position drift and is not taken.
-16. **Framing insets and empty-column exclusion are not implemented** (LE.1): `fit(ids?)` carries no asymmetric
+15. **Framing insets and empty-column exclusion are not implemented** (LE.1): `fit(ids?)` carries no asymmetric
     insets, and the fit frames content ids but cannot skip empty structural columns.
-17. **Depth fog attenuates by absolute camera distance** (LE.14): `layered`/`depth-stack` use `FogExp2`, so when the
-    fit has to move far away (a tall `hierarchy` or `timeline` layout) distant content fades toward the background.
-    The modes are validated and captured at the compact lanes framing; a scene-relative fade would need the
-    renderer to know the content depth extent (LE.16 capture-matrix note).
-18. **The capture matrix is one frame per option value, not the cartesian product** (LE.16): representation
+16. **The depth fade is a scene fog, and DOM cards do not fade with it** (LE.14): `layered`/`depth-stack` use
+    `FogExp2` with a scene-relative density, so the fade no longer follows the absolute camera distance. The fog
+    attenuates the scene's materials; a DOM card is an HTML element over the canvas, so the cards the host
+    actually reads stay at full opacity while the meshes recede. The library declares this, and the mesh
+    outline it does not draw, in `spacegraphjs/docs/limitations.md`.
+17. **The capture matrix is one frame per option value, not the cartesian product** (LE.16): representation
     replaces the layout and depth is a treatment over the node-link Z, so a full product would be redundant.
     The depth axis is captured at the benchmark lanes layout; a depth treatment on the flat ribbon/matrix
     summaries has no structural effect.
-19. **The 2026-10-19 visual review found legibility defects** beyond the planned fixes: toolbar labels clip
+18. **The 2026-10-19 visual review found legibility defects** beyond the planned fixes: toolbar labels clip
     at 1440; light-theme lane labels fail contrast; selected-file framing clips content; hierarchy collapses
     to a tiny column; timeline reads as a collage; matrix has no axes and overlapping cells; Cytoscape is
     clipped and theme-mismatched; depth modes shear and overlap cards; breadcrumbs are provenance-blind; and
     camera zoom is not exposed and its normalized range is content-unaware (fit ≈ 45%, 100% blank). The Phase 0
     spike image is stale. Tracked as T1.1–T1.16 in `SPACEGRAPH.TODO.2.md`; per-image evidence is in
     `docs/spacegraph/visual-review.md`. The current images are pre-fix evidence, not the final set.
-20. **A long session is drawn as its recent tail** (T6.6): the map shows the last 60 turns and says
+19. **A long session is drawn as its recent tail** (T6.6): the map shows the last 60 turns and says
     so in a banner, because a renderer cannot carry the nodes of a thousand turns. The layout still
     measures the whole session, so a node that stays in the window does not move when the window
     slides. The transcript carries the rest.
+20. **The camera-driven capture frames vary between runs** (T6.20): the capture waits for the canvas to stop
+    changing, but the screenshot can land just after a camera move, so `20`–`24` differ between two
+    consecutive captures (RMSE up to 462 on a 0–65535 scale). The frames are not a regression — the layout
+    that feeds them is byte-identical (the golden file) — but the capture set is not yet a pixel-exact
+    gate.
 
 ## Edge cases (T6.5)
 

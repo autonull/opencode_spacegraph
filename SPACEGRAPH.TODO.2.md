@@ -18,11 +18,11 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `098e601068` (upstream `d249607e90`); **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `d249607e90` |
-| SpaceGraphJS | `main` @ `f2dd41a`; **published**: `spacegraphjs` 7.1.0 + five `@spacegraphjs/*` 0.1.0, tagged — pushed |
+| SpaceGraphJS | `main`; **publishable**: `spacegraphjs` 8.0.0 (the layout engine's contract changed — a break) + five `@spacegraphjs/*` 0.1.0 — built, proven consumable, **not uploaded** |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) + the additive `fit(ids, { minScale })` option |
-| Last green (re-run 2026-10-20, after T6.5) | `session-ui` graph 101 · `session-graph` unit 96 · `session-graph` component 47 · `spacegraphjs` 453 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 21/21 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
+| Last green (re-run 2026-10-20, after T4.3) | `session-ui` graph 101 · `session-graph` unit 96 · `session-graph` component 47 · `spacegraphjs` 459 + contract 12 + adapters 42 + model adapter 21 · `graph:verify` all steps (library build first) · app typecheck · app e2e 21/21 · publish check 2/2 · `graph:scale` (T6.6) · the second host's unit 8 + browser 8 (T6.12) |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
-| Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)** |
+| Reference images | `docs/spacegraph/screenshots/01`–`27`, all committed — **the zoom/pan matrix (20–24) now shows what its names say (T6.19), 25 shows a long session at the drawn window (T6.6), and 26–27 show the second host (T6.12)**. The camera-driven frames (20–24) still vary between runs (**T6.20**) |
 
 Two facts shape everything below:
 
@@ -108,7 +108,10 @@ names say, and the gate proves it), T6.6 (the scale budget: the pipeline is line
 and says so, and the guards are load-bearing), T6.12 (the second host: a framework-free consumer
 outside OpenCode that runs every generic module, checked by the library's own CI), T6.5 (the edge
 cases: forks and child sessions are named and openable, a compaction says what it was, an
-interrupted turn is visible, and the permission node kind is decided and removed)**.
+interrupted turn is visible, and the permission node kind is decided and removed),
+**T4.3 (the three layout strategies run on the generic `LaneLayout`, and the fixture's positions are
+byte-identical), T4.5 (the library's own limits are declared in `spacegraphjs/docs/limitations.md`,
+and the host's list matches the code)**.
 
 **The library is framework-agnostic.** The generic capabilities live in the core; a host binds them in its
 own framework. The React and Solid packages keep the `GraphView` binding they already had and nothing
@@ -578,9 +581,33 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
     fallback the plan allowed (one bundled companion package) was not needed: the six packages
     already are the bundle.
 
-- [ ] **T4.3 Fold session layouts onto `LaneLayout`** — library-first debt
+- [x] **T4.3 Fold session layouts onto `LaneLayout`** — library-first debt
   Give `LaneLayout` variable item widths and per-lane cursors; move three strategies onto it without behaviour change.
   Done when: byte-identical positions for fixture; library tests and captures unchanged.
+  - **Done (2026-10-20).** `LaneLayout` is now the one placement primitive: a grid of columns (X) and
+    rows (Y) where every (column, row) cell keeps its own cursor, so a row advances by the widths of the
+    items it holds. `strategies.ts` keeps the three **policies** (lanes, timeline, hierarchy) and no longer
+    measures anything: a strategy chooses the column and the row an item belongs to, and the engine places
+    it. The library has one geometry engine instead of four.
+  - **The positions are byte-identical.** The host's golden file (`packages/session-ui/src/graph/layout.golden.json`)
+    compares the positions, the cluster bounds and the overall bounds of the canonical fixture across all
+    seven views, and it passes unchanged. **The host did not change at all**: `packages/session-ui/src/graph/layout.ts`
+    is still the vocabulary wrapper, and the library's `Strategies` API is unchanged.
+  - **The engine's contract changed, and it is a break.** `LaneLayout` took `ordinal` (one shared slot per
+    group) and returned an item's origin. It now takes `width` (a variable box), `row` (a row the host
+    numbers itself) and `indent`, and returns the item's **centre** — the renderer's convention. The columns
+    are explicit (`open`/`close`, with a declared or a measured width) instead of the implicit `reserve`.
+    `spacegraphjs` is therefore **8.0.0**; the `v7.1.0` tag stays where it is.
+  - **Two rules the fold settled, and the golden file proves both.** (a) A node belongs to **one** cell: a
+    node that names both a turn and an owner is drawn in the **owner's** column (the old code placed it in
+    both and the last placement won). (b) An **empty turn is still a column** — the turn keeps its place in
+    the session, so the columns after it do not move; the old code advanced the column by the minimum width
+    for an empty turn, and it still does.
+  - The contract demo (`demo/contract-demo.ts`) drives the engine directly: its pipeline's per-lane order
+    now comes from the cursor instead of an explicit ordinal, and its positions are unchanged.
+  - Tests: the library's `test/lane-layout.test.ts` (12) covers the rows, the per-cell cursor, the variable
+    widths, the indent, the numeric rows, the column widths and the bounds; the strategies' suite (16) is
+    unchanged; the host's golden comparison and its 101 graph tests are unchanged.
 
 - [x] **T4.4 Remove the `activity.d.ts` stopgap** — type cleanliness
   Fix/exclude known `spacegraphjs` `src` type errors (10 in `src`; `n8n-bridge` stays excluded); generate declarations; remove hand-authored `types` condition.
@@ -605,12 +632,20 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
     the library's own settings do not. Those are invisible to a consumer (declarations have no
     bodies), so they stay, but a consumer that compiles the *source* would see them.
 
-- [ ] **T4.5 Close mesh-outline and fog defects (or declare them)**
+- [x] **T4.5 Close mesh-outline and fog defects (or declare them)**
   Implement stencil/backface outline and scene-relative fade, or document DOM cards as supported path and depth fog as lanes-only.
   Done when: known-limitations list matches code.
-  - **Partly done, and the rest is declared rather than implemented.** The scene-relative fade
-    landed with T1.3 (`applySceneFade()`); the stencil/backface outline has not. This is the one
-    T4 item left in the library-internals group.
+  - **Done (2026-10-20): declared, and the code agrees.** The scene-relative fade landed with T1.3
+    (`sceneFadeDensity`), and what is left is declared rather than implemented.
+    `spacegraphjs/docs/limitations.md` lists the four limits a host must know before it ships: the mesh
+    outline is a **bounding box** (`THREE.BoxHelper`), not a silhouette; the depth fade is a **scene fog**
+    and DOM cards do not fade with it; **DOM cards are the supported path** for readable text; and the
+    layout engine places without knowing the screen (the camera is the renderer's, through the contract).
+    The library README and the host-integration guide link it.
+  - **The host's own list was corrected to match.** `prototype.md` §"Known limitations" lost the item that
+    said the strategies computed their own cursors (that was T4.3, now done) and the depth-fog item was
+    rewritten: the fade is scene-relative now, and what remains is that the DOM cards the host actually
+    reads do not fade with the scene. The list is still 20 items.
 
 - [x] **T4.6 Add CI for library and graph**
   Workflow running boundaries, contract conformance, both adapters, SVG renderer, bindings, session-graph component suite. Cache Playwright browsers; capture verification on schedule/release tag.
@@ -1155,13 +1190,28 @@ The three extractions above set the conventions the rest of §6 and §8 must fol
   - **The gate now proves it.** `graph:capture --mode=verify` hashes the ten matrix frames and
     fails when two are the same picture. It was checked by hand: copying one frame over another
     makes the gate fail with the pair it found.
-  - **The frames are deterministic.** Two consecutive captures differ by RMSE 0.007 on the
-    transcript frames and 0 on the graph frames, except `21-graph-zoom-max.png` (0.057, antialiasing).
-    The old set was not: `04`, `13`, `14` and `17` had been captured *before* the renderer applied
-    the selected node's dimming, so they showed a half-dimmed map.
+  - **The frames are deterministic — mostly.** Two consecutive captures differ by RMSE 0.007 on the
+    transcript frames and 0 on most of the graph frames, except `21-graph-zoom-max.png` (0.057,
+    antialiasing). The old set was not: `04`, `13`, `14` and `17` had been captured *before* the renderer
+    applied the selected node's dimming, so they showed a half-dimmed map.
+  - **Corrected (2026-10-20, T4.3's pass): the camera-driven frames are not deterministic.** Measured
+    between two consecutive captures of the *same* code, `22-graph-turn-1.png` differs by RMSE 462 and
+    `24-graph-failure-chain.png` by 123 (0–65535 scale); 25 of the 27 frames are byte-identical. The
+    layout that feeds them is byte-identical (the golden file), so this is the capture harness's settle
+    check, not the renderer. It is tracked as **T6.20**.
   - **What the frames now show, read by eye:** `20` the whole session at 150%, `21` the same session
     at the closest zoom, `22` the camera centred on the first turn (its card at the centre of the
     canvas), `23` the same on the second turn, `24` the failing `bun test` run.
+
+- [ ] **T6.20 The camera-driven capture frames vary between runs** (found by T4.3's pass)
+  The capture waits for the canvas to stop changing (three equal samples), but the screenshot can land
+  just after a camera move, so `20`–`24` differ between two consecutive captures: RMSE 462 on
+  `22-graph-turn-1.png`, 123 on `24-graph-failure-chain.png`, 0 on 25 of the 27 frames. The layout that
+  feeds them is byte-identical, so the renderer is not the cause — the settle check is.
+  Done when: two consecutive captures are pixel-identical, or the variance is bounded and explained.
+  Verify: `bun run graph:capture --mode=verify` twice into two temp directories, then compare the frames.
+  - **Why it matters:** the capture set is the acceptance evidence (§10), and T6.16's pixel-diff helper
+    is only useful if two runs of the same code agree. A pixel-exact gate needs this first.
 
 **Library roadmap (independent of OpenCode decision):**
 
@@ -2469,5 +2519,97 @@ the stop rule in T2.5 has not fired.
   publish check), `bun run lint:changed` is the style gate, and the app e2e
   (`bun run test:e2e -- e2e/graph/session-graph.spec.ts`) is the only place the graph's behaviour
   is seen as a user sees it.
+
+**2026-10-20 — T4.3 and T4.5: one placement engine, and the limits declared.** The library-internals
+group is closed. T2 still needs participants, so the work went where the plan says it can.
+
+*What the fold actually was.* `LaneLayout` was a second, older placement primitive: it took an
+`ordinal` (one shared slot per group) and returned an item's **origin**, and the three session views
+in `strategies.ts` each measured their own cursors — a per-lane cursor in the lanes view, a wrapped
+row cursor in the timeline, an indent in the hierarchy. The library had two ways to place a box, and
+the second one was the one the host used.
+
+`LaneLayout` is now a **grid**: columns advance on X, rows on Y, and every (column, row) cell keeps
+its own cursor, so a row advances by the widths of the items it holds while its neighbours stay put.
+A column's width is measured from the rows it holds, or declared when the host knows it up front
+(the timeline's turn column, the hierarchy's outline column). The strategies are now **policies**:
+each one decides which column and which row an item belongs to, and the engine places it. The engine
+returns the item's **centre**, which is the renderer's convention.
+
+*The proof is the golden file, and it did not move.* `packages/session-ui/src/graph/layout.golden.json`
+records the positions, the cluster bounds and the overall bounds of the canonical fixture for all
+seven views (`lanes`, `overview`, `execution`, `timeline`, `hierarchy`, `ribbon`, `matrix`), captured
+before the strategies moved to the library in the first place. It passes unchanged, so the fold is
+byte-identical for the fixture. **The host did not change at all**: `packages/session-ui/src/graph/layout.ts`
+is still the vocabulary wrapper, and `Strategies.layoutGraph(model, config, options)` still has the
+same signature — so the second host needed no change either.
+
+*Two rules the fold settled.* (a) A node belongs to **one** cell. The old lanes view bucketed a node
+by its turn *and* by the turn that owns it, placed it twice, and let the last placement win — so a
+file's position depended on the order of the turns. Now the owner's column wins, which is where the
+node is anchored. (b) An **empty turn is still a column**: the turn keeps its place in the session,
+so the columns after it do not move. The old code advanced the column by the minimum width for an
+empty turn; the golden file proves it still does, because the fixture has an empty turn.
+
+*It is a break, and it is versioned as one.* `LaneLayout`'s contract changed (`ordinal` out, `width` /
+`row` / `indent` in, origins out and centres in, `reserve` out and `open`/`close` in), so
+`spacegraphjs` is **8.0.0** and the `v7.1.0` tag stays where it is. The five `@spacegraphjs/*`
+packages are unchanged (their artifacts do not depend on the layout), and the fork's lockfile was
+regenerated for the new version. The contract demo drives the engine directly: its pipeline's
+per-lane order now comes from the cursor instead of an explicit ordinal, and its positions are
+unchanged.
+
+*T4.5 was a declaration, not an implementation.* The stencil/backface silhouette outline is not worth
+building: the interaction outline is a `THREE.BoxHelper` around the node's geometry, and the host
+that reads text draws DOM cards, where the outline is the host's own border. What a host must know
+before it ships is now written down — `spacegraphjs/docs/limitations.md` — and the host's own list
+(`prototype.md` §"Known limitations") was corrected to match the code: the layout item is gone with
+T4.3, and the depth-fog item says what the code does now (the fade is scene-relative; the DOM cards
+the host reads do not fade with the scene at all).
+
+*A finding worth more than the task: the capture matrix is not deterministic.* Comparing two
+consecutive captures of the *same* code, 25 of the 27 frames are byte-identical, but
+`22-graph-turn-1.png` differs by RMSE 462 and `24-graph-failure-chain.png` by 123 (0–65535 scale).
+The layout that feeds them is byte-identical, so the renderer is not the cause: the capture's settle
+check (three equal canvas samples) can pass just before a camera move, and the screenshot then lands
+after it. T6.19's claim that the frames are deterministic does not hold for the camera-driven ones.
+It is now **T6.20**, and it is the prerequisite for T6.16's pixel-diff helper — a pixel-exact gate
+needs two runs of the same code to agree first.
+
+Commands run: `vitest run` in `spacegraphjs` (459 pass, 6 new), `tsc --noEmit -p tsconfig.json` in
+`spacegraphjs` (0 errors, the demo included), `pnpm run build:lib` (the library's dist, which the
+fork consumes), `bun test src/graph` in `packages/session-ui` (101 pass), `bun run typecheck` +
+`bun test src` in `packages/session-graph` (96 pass, clean), `bun run typecheck` in `packages/app`
+(clean), `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (21 pass),
+`bun run graph:verify` in the fork (all steps, including the library build, the capture verification
+and the publish check), `bun run graph:capture --mode=verify` (twice, into two temp directories, for
+the comparison above), `bun run lint:changed` (0).
+
+Unverified: the fold is proven for the canonical fixture and by the library's own suites; a host
+whose nodes name both a turn and an owner would now see the owner's column win (the OpenCode host
+has no such node — a file has no turn of its own — so the fixture does not cover it). The library's
+`8.0.0` tarballs are built and proven consumable but **not uploaded**: there is still no registry
+credential in this environment, and upstream adoption waits on that. The capture variance of T6.20 is
+measured, not fixed. **T2.1 and T2.2 still need participants**, so the stop rule in T2.5 has not
+fired.
+
+*Notes for the next pass.*
+- **What is left, in the order the plan wants it:** **T2.1 and T2.2** (the dry run and the R7.3
+  protocol) are the only things that can settle the product claim, and they need people; then
+  **T2.4** (the naming/representation/depth/file-lens decisions, from the protocol data) and
+  **T2.5** (the stop rule). **T3.7's RFC** follows the measurement, and the issue text is already
+  `upstream-pr.md` + `upstream-review.md`. **T5** (release) waits for the upstream decision. The
+  rest is refinement: **T6.4** (the real-session corpus — blocked on real session data),
+  **T6.10–T6.14** (contract v3's fit insets, the benchmark CI, the embedder devtools, the API
+  docs, the stale `vue-spacegraph`), **T6.16** (the optional pixel diff, which needs **T6.20**
+  first), and **T6.20** itself.
+- **Three things a next pass should know.** The **library's `LaneLayout` contract changed** — a host
+  that used `ordinal`, `laneGap` or `reserve` must move to `width` / `row` / `indent` and
+  `open`/`close`, and to the centre convention; the fork's own consumer (the contract demo) is
+  updated. The **library is now 8.0.0**, so the fork's `bun.lock` carries that version and a library
+  edit needs `pnpm run build:lib && pnpm run build:packages` before the host sees it. And the
+  **diff-budget numbers in `upstream-review.md` §5 drift with every app edit** — this pass changed
+  no app file, so they still stand, but re-audit them before the RFC rather than trusting the table.
+
 
 
