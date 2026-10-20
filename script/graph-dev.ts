@@ -4,7 +4,7 @@
 // then launches the Vite dev server serving the graph-dev entry.
 // This is a dev-only command; the entry is guarded by VITE_OPENCODE_GRAPH_DEV=1.
 
-import { spawnSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import { createServer } from "node:http"
 import { parse } from "node:url"
 import { readFileSync } from "node:fs"
@@ -19,7 +19,18 @@ const APP_DIR = join(ROOT, "packages/app")
 // The canonical fixture messages (same as e2e tests)
 const FIXTURE_MESSAGES = buildFixtureMessages()
 const SESSION_ID = "ses_session_graph"
-const SESSION_DIR = "C:/OpenCode/SessionGraph"
+const SESSION_DIR = "/tmp/opencode/graph-demo"
+const PROJECT_ID = "proj_sessiongraph"
+
+const SESSION_INFO = {
+  id: SESSION_ID,
+  projectID: PROJECT_ID,
+  title: "Session graph",
+  cost: 0,
+  tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+  time: { created: 1700000000000, updated: 1700000000000 },
+  location: { directory: SESSION_DIR },
+}
 
 // Simple in-memory mock server
 const mockServer = createServer(async (req, res) => {
@@ -39,68 +50,69 @@ const mockServer = createServer(async (req, res) => {
   const pathname = url.pathname
 
   try {
-    // Provider catalog — empty for provider-free demo
+    // Provider catalog — the demo has no provider, so the app's catalog stays empty. The shape is
+    // the current one: the app builds its provider map from `data`, and an empty list is a valid
+    // provider-free session.
     if (pathname === "/api/provider") {
       res.writeHead(200, { "Content-Type": "application/json" })
-      return res.end(JSON.stringify({ location: { type: "http", url: "http://localhost:4096" }, data: { all: [], connected: [], default: {} } }))
+      return res.end(JSON.stringify({ location: { directory: SESSION_DIR }, data: [] }))
     }
 
-    // Model catalog — empty
+    // Model catalog — empty, for the same reason.
     if (pathname === "/api/model") {
       res.writeHead(200, { "Content-Type": "application/json" })
-      return res.end(JSON.stringify({ location: { type: "http", url: "http://localhost:4096" }, data: [] }))
+      return res.end(JSON.stringify({ location: { directory: SESSION_DIR }, data: [] }))
+    }
+
+    // Location — the project the demo session belongs to.
+    if (pathname === "/api/location" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(
+        JSON.stringify({
+          directory: SESSION_DIR,
+          project: { id: PROJECT_ID, directory: SESSION_DIR, canonical: SESSION_DIR },
+        }),
+      )
     }
 
     // Session list
     if (pathname === "/api/session" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" })
-      return res.end(JSON.stringify({
-        data: [{
-          id: SESSION_ID,
-          slug: SESSION_ID,
-          title: "Session graph",
-          version: "dev",
-          time: { created: 1700000000000, updated: 1700000000000 },
-          projectID: "proj_sessiongraph",
-          location: { directory: SESSION_DIR },
-        }],
-        cursor: { next: undefined }
-      }))
+      return res.end(JSON.stringify({ data: [SESSION_INFO], cursor: {} }))
     }
 
     // Session get
     if (pathname === `/api/session/${SESSION_ID}` && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" })
-      return res.end(JSON.stringify({
-        data: {
-          id: SESSION_ID,
-          slug: SESSION_ID,
-          title: "Session graph",
-          version: "dev",
-          time: { created: 1700000000000, updated: 1700000000000 },
-          projectID: "proj_sessiongraph",
-          location: { directory: SESSION_DIR },
-        }
-      }))
+      return res.end(JSON.stringify(SESSION_INFO))
     }
 
-    // Session messages — the canonical fixture
-    if (pathname === `/api/session/${SESSION_ID}/messages` && req.method === "GET") {
+    // Session messages — the canonical fixture. The current protocol serves them newest-first.
+    if (pathname === `/api/session/${SESSION_ID}/message` && req.method === "GET") {
       const limit = Number(url.query.limit ?? 100)
-      const before = url.query.before as string | undefined
-
-      let items = FIXTURE_MESSAGES
-      if (before) {
-        const idx = items.findIndex(m => m.id === before)
-        if (idx >= 0) items = items.slice(0, idx)
-      }
-      items = items.slice(-limit)
+      const order = url.query.order === "asc" ? "asc" : "desc"
+      const items = order === "asc" ? FIXTURE_MESSAGES : [...FIXTURE_MESSAGES].reverse()
 
       res.writeHead(200, { "Content-Type": "application/json" })
-      return res.end(JSON.stringify({
-        items,
-        cursor: items.length > 0 && items.length === limit ? items[0].id : undefined
-      }))
+      return res.end(JSON.stringify({ data: items.slice(0, limit), cursor: {} }))
+    }
+
+    // Shells — the demo runs no commands.
+    if (pathname === "/api/shell" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(JSON.stringify({ location: { directory: SESSION_DIR }, data: [] }))
+    }
+
+    // MCP resources — none.
+    if (pathname === "/api/mcp/resource" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(JSON.stringify({ location: { directory: SESSION_DIR }, data: [] }))
+    }
+
+    // Worktree refresh — nothing to refresh.
+    if (pathname === "/api/worktree/refresh" && req.method === "POST") {
+      res.writeHead(204)
+      return res.end()
     }
 
     // Session inbox (empty)
@@ -131,12 +143,11 @@ const mockServer = createServer(async (req, res) => {
     if (pathname === "/api/project" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" })
       return res.end(JSON.stringify([{
-        id: "proj_sessiongraph",
-        worktree: SESSION_DIR,
+        id: PROJECT_ID,
         canonical: SESSION_DIR,
         name: "SessionGraph",
         vcs: "git",
-        time: { created: 1700000000000, updated: 1700000000000 },
+        time: { created: 1700000000000, updated: 1700000000000, active: 1700000000000 },
         sandboxes: [],
       }]))
     }
@@ -243,6 +254,7 @@ const mockServer = createServer(async (req, res) => {
 
     // Default: proxy to Vite dev server or serve static
     // For the dev server, we just return 404 for unhandled API routes
+    console.log(`[graph:dev] no mock route for ${req.method} ${pathname}`)
     res.writeHead(404, { "Content-Type": "application/json" })
     return res.end(JSON.stringify({ name: "NotFound", message: `No mock route for ${req.method} ${pathname}` }))
   } catch (e) {
@@ -268,6 +280,10 @@ async function main() {
   const env = {
     ...process.env,
     VITE_OPENCODE_GRAPH_DEV: "1",
+    // The app derives its server URL from these two variables in dev; without them it talks to the
+    // real backend on 4096, which answers 401 for an unauthenticated demo session.
+    VITE_OPENCODE_SERVER_HOST: "127.0.0.1",
+    VITE_OPENCODE_SERVER_PORT: String(MOCK_PORT),
     PLAYWRIGHT_SERVER_HOST: "127.0.0.1",
     PLAYWRIGHT_SERVER_PORT: String(MOCK_PORT),
     PLAYWRIGHT_PORT: "3000",
@@ -277,14 +293,24 @@ async function main() {
   console.log("[graph:dev] Starting Vite dev server on http://localhost:3000")
   console.log("[graph:dev] Press Ctrl+C to stop")
 
-  const vite = spawnSync("bun", ["run", "dev"], {
+  // The mock server shares this process, so Vite must run asynchronously: a blocking spawn would
+  // stop the event loop and the mock would never answer the app it serves.
+  const vite = spawn("bun", ["run", "dev"], {
     cwd: APP_DIR,
     env,
     stdio: "inherit",
   })
 
-  mockServer.close()
-  process.exit(vite.status ?? 0)
+  const stop = (code: number) => {
+    mockServer.close()
+    process.exit(code)
+  }
+
+  vite.on("exit", (code) => stop(code ?? 0))
+  process.on("SIGINT", () => {
+    vite.kill("SIGINT")
+    stop(0)
+  })
 }
 
 main().catch((e) => {

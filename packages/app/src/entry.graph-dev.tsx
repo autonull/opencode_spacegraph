@@ -65,6 +65,39 @@ const win = window as any
 
 win.__GRAPH_FIXTURE_MESSAGES__ = buildFixtureMessages()
 
+// The graph sits behind `experimental.sessionGraph`, which the app reads from its `settings.v3`
+// storage key. The demo exists to show the graph, so the key is seeded here: the app rewrites the
+// key while it starts, so the flag is merged into every write instead of being written once.
+const enableSessionGraph = () => {
+  const key = "settings.v3"
+  const write = Storage.prototype.setItem
+
+  const merge = (value: string) => {
+    const current = JSON.parse(value)
+
+    return JSON.stringify({
+      ...current,
+      experimental: { ...(current.experimental ?? {}), sessionGraph: true },
+    })
+  }
+
+  Storage.prototype.setItem = function (name: string, value: string) {
+    if (name !== key) {
+      write.call(this, name, value)
+
+      return
+    }
+
+    write.call(this, name, merge(value))
+  }
+
+  const stored = localStorage.getItem(key)
+
+  localStorage.setItem(key, stored ? merge(stored) : JSON.stringify({ experimental: { sessionGraph: true } }))
+}
+
+enableSessionGraph()
+
 if (root instanceof HTMLElement && root.dataset.opencodeMounted === undefined) {
   // Lazy chunks can import the entry chunk back under a distinct URL, so claim the root before async startup.
   root.dataset.opencodeMounted = ""

@@ -28,6 +28,21 @@ export default defineConfig({
     icons(channel),
     serviceWorker(fileURLToPath(new URL("./dist", import.meta.url))),
     sentry,
+    // The graph demo mounts the real shell, and the shell's router only knows its own routes, so the
+    // demo's page is served at `/` instead of at `/graph-dev.html`.
+    ...(process.env.VITE_OPENCODE_GRAPH_DEV === "1"
+      ? [
+          {
+            name: "opencode-graph-dev-entry",
+            configureServer(server: import("vite").ViteDevServer) {
+              server.middlewares.use((req, _res, next) => {
+                if (req.url === "/" || req.url === "/index.html") req.url = "/graph-dev.html"
+                next()
+              })
+            },
+          },
+        ]
+      : []),
   ],
   server: {
     host: "0.0.0.0",
