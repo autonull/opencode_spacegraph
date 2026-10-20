@@ -708,6 +708,7 @@
         "remend": "catalog:",
         "shiki": "catalog:",
         "solid-js": "catalog:",
+        "spacegraphjs": "workspace:*",
         "strip-ansi": "7.1.2",
       },
       "devDependencies": {

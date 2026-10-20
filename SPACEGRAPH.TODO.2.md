@@ -18,9 +18,9 @@ copy TODO.1 §6 evidence into this file — cite it.
 | TODO.1 | 136 / 142 checked. Six open: R7.3, LE.1, LE.17, H6.5, P8.4, P8.8 |
 | OpenCode fork | `dev` synced with upstream @ merge `f802f5e707`; **0 commits behind upstream `dev`** |
 | Upstream | `anomalyco/opencode` `dev` @ `ba06ff9e0bf2dcefbbbc3a1d6094f3572d77c84e` |
-| SpaceGraphJS | `main` @ `f7cf48a`; unpushed: `f7cf48a`, `0bb41fd` (demo deploy + README) |
+| SpaceGraphJS | `main` @ `e07e664`; unpushed: `f7cf48a`, `0bb41fd`, `e07e664` |
 | Contract | `CONTRACT_VERSION = 2` (depth spectrum) |
-| Last green (re-run 2026-10-19) | `session-ui` graph 74 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 338 · `graph:verify` all steps · app typecheck · lint:changed 0 |
+| Last green (re-run 2026-10-20) | `session-ui` graph 75 · `session-graph` unit 49 · `session-graph` component 37 · `spacegraphjs` 375 · `graph:verify` all steps · app typecheck · app e2e 16/16 · lint:changed 0 |
 | Reviewer packet | `docs/spacegraph/upstream-review.md`, `upstream-pr.md`, `security.md`, `demos.md`, `decisions.md` |
 | Reference images | `docs/spacegraph/screenshots/01`–`24`, all committed |
 
@@ -94,7 +94,7 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - T6.16 Demo index — documentation, helpful but not blocking
 
 **Already complete (do not redo):**
-T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index).
+T0 (sync), T1 (all usability defects), T3.1 (flag), T3.2 (settings), T3.3a/b (hybrid), T3.4 (export), T3.7 (ladder), T3.8 (diff budget), T6.1 (provider-free demo), T6.3 (review packet), T6.7 (security suite), T6.16 (demo index), T4.8–T4.10 (layout, levels, and representations extracted to the library).
 
 ---
 
@@ -437,7 +437,7 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
 
 **SpaceGraphJS core extractions (vacuum generic primitives from OpenCode):**
 
-- [ ] **T4.8 Extract layout strategies to SpaceGraphJS `src/layout/`**
+- [x] **T4.8 Extract layout strategies to SpaceGraphJS `src/layout/`**
   Move `packages/session-ui/src/graph/layout.ts` algorithms (`lanes`, `timeline`, `hierarchy`) to `spacegraphjs/src/layout/strategies.ts` with **fully configurable** options:
   - `nodeSizeFn: (node) => [width, height]` — replaces `CARD_SIZE`/`COMPACT_SIZE`/`COMPACT_KINDS`
   - `laneList: string[]` — replaces hardcoded `LANES` array
@@ -449,8 +449,25 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
   All OpenCode-specific constants become host-provided config. Layout algorithms remain pure and deterministic.
   Done when: OpenCode `layout.ts` is a thin wrapper calling SpaceGraphJS strategies with its config; positions byte-identical for fixture; SpaceGraphJS has layout conformance tests.
   Verify: `cd packages/session-ui && bun test src/graph/layout.test.ts`; `cd spacegraphjs && vitest run test/layout/`
+  - **Done (2026-10-20).** `spacegraphjs/src/layout/strategies.ts` holds the three strategies; the
+    module exports one namespace (`Strategies`) so a host binds its vocabulary without shadowing its
+    own public names. The config carries the plan's seven callbacks plus a `geometry` block
+    (`standardSize`, `indentStep`, `depthLevels`, `padding`) for the constants the algorithms measure
+    against, and the call options carry `include` (the host's level filter) and `minColumnWidth`
+    (the overview column width).
+  - `packages/session-ui/src/graph/layout.ts` is now a vocabulary wrapper: `LANES`, `DEPTH`, `laneOf`,
+    `fileOwnerTurn`, and the card sizes stay; the geometry, the column grouping, the band bounds, and
+    the three strategies moved to the library.
+  - **Byte-identical, proven:** `packages/session-ui/src/graph/layout.golden.json` records the
+    positions, the cluster bounds, and the overall bounds of the fixture for `lanes`, `overview`,
+    `execution`, `timeline`, `hierarchy`, `ribbon`, and `matrix`, captured **before** the extraction.
+    The new test "the fixture lands exactly where it did before the strategies moved to SpaceGraphJS"
+    compares the current output against that file.
+  - Library conformance: `spacegraphjs/test/layout/strategies.test.ts` (13 tests) covers determinism,
+    append-only placement, lane and depth mapping, owner-turn anchoring, no-overlap, the `include`
+    filter, cluster bounds, turn bands, the timeline columns, and the hierarchy indent and wrap.
 
-- [ ] **T4.9 Extract semantic levels to SpaceGraphJS `src/levels/`**
+- [x] **T4.9 Extract semantic levels to SpaceGraphJS `src/levels/`**
   Move `packages/session-ui/src/graph/levels.ts` level definitions (`overview`/`execution`/`detail`), per-level node filtering, and stability guarantees to `spacegraphjs/src/levels/index.ts`. Expose generic `LevelConfig<Kind, EdgeKind>` interface:
   - `levelRank: Record<ZoomLevel, number>` — level ordering (default: overview=0, execution=1, detail=2)
   - `kindMinLevel: Record<Kind, ZoomLevel>` — per-kind minimum visibility level (replaces `KIND_MIN_LEVEL`)
@@ -461,8 +478,22 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
   Host provides full config; library handles filtering, budgets, stability.
   Done when: OpenCode `levels.ts` imports from SpaceGraphJS with its config; level behavior unchanged; SpaceGraphJS tests cover level stability + filtering + budgets.
   Verify: `cd packages/session-ui && bun test src/graph/levels.test.ts`; `cd spacegraphjs && vitest run test/levels/`
+  - **Done (2026-10-20).** `spacegraphjs/src/levels/index.ts` exports the `Levels` namespace and the
+    `LevelConfig` type. The library owns the filtering (a node's own `minLevel` beats the kind
+    fallback; an edge needs a level *and* two visible endpoints) and the budgets.
+  - **One deliberate deviation from the plan's signature:** `edgeFilterFn` receives
+    `(model, level, focus, candidates, visible)` — the candidates the level already allows and the
+    visible ids — so a host can narrow to a neighbourhood without re-deriving the level's own rules.
+    The plan's three-parameter form would have forced the host to redo the library's filtering.
+  - `packages/session-ui/src/graph/levels.ts` keeps its whole public surface (`LEVEL_RANK`,
+    `minLevelOf`, `isVisibleAt`, `nodesAtLevel`, `visibleNodeIDs`, `edgesAtLevel`, `domBudget`,
+    `isClusterExpanded`, `clusterCount`, `labelMode`) and now holds only the session's level table
+    and its three edge rules (RF.4, LE.6, the execution focus neighbourhood).
+  - Library conformance: `spacegraphjs/test/levels/levels.test.ts` (11 tests) covers the kind
+    fallback, a node's own level, the visible set, edges to hidden nodes, an edge kind without a
+    level, the host filter, the visible ids handed to the host, the budgets, and the cluster count.
 
-- [ ] **T4.10 Extract summary representations to SpaceGraphJS `src/representations/`**
+- [x] **T4.10 Extract summary representations to SpaceGraphJS `src/representations/`**
   Move `packages/session-ui/src/graph/representation.ts` (`ribbon`, `matrix` generators, axis/label logic) to `spacegraphjs/src/representations/index.ts`. Replace session-specific logic with generic functions:
   - `rowKeyFn: (node) => string | number` — replaces `turnRows`/`turnOrder` (row grouping)
   - `rowOrderFn: (nodes) => nodes` — replaces `turnOrder` (within-row ordering)
@@ -472,6 +503,50 @@ These are sustainability work, invisible to reviewers. Do after G3 or in paralle
   Ribbon = 1D segments per row; Matrix = 2D grid with cell packing (no overlap). Algorithms stay pure.
   Done when: OpenCode `representation.ts` imports from SpaceGraphJS with its config; captures 15/16 unchanged; SpaceGraphJS tests verify non-overlap + axis generation.
   Verify: `cd packages/session-ui && bun test src/graph/representation.test.ts`; `cd spacegraphjs && vitest run test/representations/`
+  - **Done (2026-10-20).** `spacegraphjs/src/representations/index.ts` exports the `Representations`
+    namespace (`summaryRows`, `ribbonLayout`, `matrixLayout`, `summaryColumns`) over the plan's five
+    callbacks plus `nodeSizeFn` and `cellSize` (the summary cell footprint that sets the row pitch and
+    the minimum column width). The rows come from the model's ordered row keys, so the host's turns
+    drive the order.
+  - `packages/session-ui/src/graph/representation.ts` keeps `matrixColumn`, `PHASE_CATEGORIES`,
+    `turnRows`, `REPRESENTATIONS`, and `representationLevel`; the packing moved to the library.
+  - Captures 15/16 are unchanged: the golden file proves the ribbon and the matrix land on the same
+    coordinates, so the committed images still describe the current output.
+  - Library conformance: `spacegraphjs/test/representations/representations.test.ts` (9 tests) covers
+    the row order, the level filter, the ribbon segments, the matrix cells, the column separation,
+    non-overlap in both summaries, and the labelled columns.
+
+### 6.1 Notes for the remaining extractions (T4.11–T4.14, T6.17)
+
+The three extractions above set the conventions the rest of §6 and §8 must follow.
+
+- **One namespace per library module.** `Levels`, `Strategies`, and `Representations` are exported as
+  objects, not as loose functions. The reason is the host: `@opencode/session-ui/graph` already owns
+  `isVisibleAt`, `nodesAtLevel`, `edgesAtLevel`, `matrixColumn`, `turnRows`, `layoutGraph`, and
+  `laneAnchors`, and the repository forbids aliased imports. A namespace lets the library and the
+  host keep their own names for the same concept without a rename in either direction.
+- **The host keeps the vocabulary; the library keeps the algorithm.** Lane names, node kinds, depth
+  maps, turn ownership, phase categories, level tables, and the copy of a card belong to the host.
+  Anything a second host would answer differently is a config callback, never a constant in the
+  library.
+- **A config callback may take the model.** `ownerTurnFn(model, node)` and `edgeFilterFn(model, …)`
+  need the whole model; `nodeSizeFn`, `laneOfFn`, `turnIdFn`, `clusterOfFn`, `rowKeyFn`, and
+  `columnKeyFn` take the node alone.
+- **The core stays dependency-free.** The new modules import nothing: no contract, no renderer, no
+  framework. `test/boundaries.test.ts` still passes, and a host may import the subpaths without
+  pulling `three` into its bundle.
+- **Where a binding may live.** A React or Solid binding cannot live in `src/` (the core is
+  framework-free), so T4.12 and T4.14 put the headless core in `src/` and the bindings in
+  `packages/react-spacegraph` and `packages/solid-spacegraph`. T4.11 and T4.13 belong to the
+  packages, not the core, because they speak the contract.
+- **Proof of "no behaviour change".** Capture the output before moving an algorithm, then compare
+  after: `packages/session-ui/src/graph/layout.golden.json` is the pattern. A new extraction should
+  add its own golden file, or extend this one, rather than assert "looks the same".
+- **The subpath must be registered.** Each new module needs an entry in the library's `package.json`
+  `exports`, and the fork consumes the library as a bun workspace (`packages/session-ui` now depends
+  on `spacegraphjs`). A new dependency edge needs `bun install` before the typechecker resolves it.
+
+
 
 - [ ] **T4.11 Extract adapter framework to SpaceGraphJS `packages/adapter/`**
   Create `packages/adapter/src/ModelAdapter.ts` with abstract `ModelAdapter<DomainModel, RenderModel>` base class and conformance suite. The base provides:
@@ -1003,3 +1078,46 @@ change), `bun run graph:verify` (all steps), `bun run lint:changed` (0).
 Unverified: the RFC is deferred, not posted; the hosted demo URL has not been deployed (the workflow
 exists but has not run); first graph paint and pan frame rate remain unmeasured; T2.1/T2.2 still
 need human participants, so the stop rule in T2.5 has not fired.
+**2026-10-20 — T4.8, T4.9, T4.10: the layout, level, and representation primitives moved to the
+library.** The three extractions the previous log entry described as "not started" are now code.
+`spacegraphjs/src/layout/strategies.ts`, `spacegraphjs/src/levels/index.ts`, and
+`spacegraphjs/src/representations/index.ts` hold the algorithms; the session host keeps only its
+vocabulary (`packages/session-ui/src/graph/{layout,levels,representation}.ts`).
+
+*Why this shape.* The host's public surface (`@opencode/session-ui/graph`) already owns
+`isVisibleAt`, `nodesAtLevel`, `edgesAtLevel`, `matrixColumn`, `turnRows`, `layoutGraph`, and
+`laneAnchors`, and the repository forbids aliased imports, so each library module exports one
+namespace (`Levels`, `Strategies`, `Representations`) and the host binds its config into it. The
+core stays dependency-free: the new modules import nothing, `test/boundaries.test.ts` still passes,
+and a host may import the subpaths without pulling `three` into its bundle.
+
+*One deviation from the plan.* T4.9 specifies `edgeFilterFn: (model, level, focus?) => Edge[]`.
+The implementation is `(model, level, focus, candidates, visible)`: the candidates the level
+already allows (kind permitted, both endpoints visible) and the visible ids. Without them the host
+would have to redo the library's own filtering to apply RF.4, LE.6, and the execution focus
+neighbourhood. The plan text in §6 was updated to match.
+
+*The proof of "no behaviour change" is a file, not a claim.* Before touching anything,
+`packages/session-ui/src/graph/layout.golden.json` recorded the positions, the cluster bounds, and
+the overall bounds of the canonical fixture for `lanes`, `overview`, `execution`, `timeline`,
+`hierarchy`, `ribbon`, and `matrix`. The new test in `layout.test.ts` compares the current output
+against that file, so "byte-identical for the fixture" is checked by the suite and not by a reader.
+Captures 15/16 are unchanged because the ribbon and the matrix land on the same coordinates.
+
+*Cost.* `packages/session-ui` now depends on `spacegraphjs` (a bun workspace, source exports), so
+`bun install` is part of the change. The fork gains one dependency edge and loses three algorithms.
+
+Commands run: `bun test src/graph` in `packages/session-ui` (75 pass, 0 fail, including the golden
+comparison), `bun test src` in `packages/session-ui` (322 pass; the one failure is the pre-existing
+`solid-js` `jsxDEV` export problem in `src/components/markdown-solid.test.tsx`, untouched by this
+change), `bun run typecheck` in `packages/session-ui` and `packages/app` (clean),
+`bun test src` + `bun run typecheck` in `packages/session-graph` (49 pass, clean),
+`bun run test:e2e -- e2e/graph/session-graph.spec.ts` (16 pass), `bun run graph:verify` (all steps),
+`bun run lint:changed` (0), `vitest run` in `spacegraphjs` (375 pass, 33 of them new),
+`tsc --noEmit -p tsconfig.json` in `spacegraphjs` (the new modules and tests are clean; the 185
+pre-existing errors are the T4.4 debt, unchanged in count and file set).
+
+Unverified: the library's `eslint` cannot run in this environment (`typescript-eslint does not
+support TS 7.0`) and its `prettier` config (`tabWidth: 4`) disagrees with the committed source
+(2 spaces), so the new library files follow the surrounding source, not the config; the RFC is
+still deferred; T2.1/T2.2 still need human participants.

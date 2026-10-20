@@ -1,6 +1,9 @@
-import type { GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
+import { Strategies, type LayoutConfig, type Position } from "spacegraphjs/layout"
+import type { GraphEdge, GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
-import { nodesAtLevel } from "./levels"
+import { isVisibleAt } from "./levels"
+
+export type { Position }
 
 /**
  * Deterministic, append-only layout (§5.5): no physics, no re-layout on mutation. Positions depend
@@ -9,10 +12,9 @@ import { nodesAtLevel } from "./levels"
  * The geometry is card-aware (RF.1): nodes render as ~220×72 activity cards, so a lane advances by
  * each node's width plus a gap rather than a fixed 48px step. Turn columns are sized from their own
  * content, so no two cards overlap at any zoom level.
+ *
+ * The strategies live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
-export type Position = { x: number; y: number; z: number }
-
-/** Named layout strategies (RF.2). `lanes` is the semantic default; the others are alternates. */
 export type LayoutStrategy = "lanes" | "timeline" | "hierarchy"
 
 export const LAYOUT_STRATEGIES: LayoutStrategy[] = ["lanes", "timeline", "hierarchy"]
@@ -68,14 +70,6 @@ export const LANES = [
 
 export type Lane = (typeof LANES)[number]
 
-/** The vertical centre of each lane (LE.10), for a lane-label overlay aligned to the lanes layout. */
-export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: number }[] {
-  const laneGap = options.laneGap ?? 24
-  const laneHeight = CARD_SIZE[1] + laneGap
-
-  return LANES.map((name, index) => ({ name, y: index * laneHeight }))
-}
-
 export type ClusterBounds = { min: Position; max: Position }
 
 export type GraphLayout = {
@@ -101,6 +95,51 @@ const DEPTH: Record<NodeKind, number> = {
   diff: 3,
   error: 3,
   retry: 3,
+}
+
+/**
+ * The session's layout vocabulary: the lane a node belongs to, the depth of a kind, the turn a node
+ * belongs to, and the turn that owns a file. The library owns the geometry.
+ */
+const LAYOUT: LayoutConfig<GraphNode, GraphEdge, Lane> = {
+  nodeSizeFn: nodeSize,
+  laneList: LANES,
+  laneOfFn: laneOf,
+  depthMap: DEPTH,
+  turnIdFn: (node) => node.turnID,
+  ownerTurnFn: (model, node) => (node.kind === "file" ? fileOwnerTurn(model, node) : undefined),
+  clusterOfFn: (node) => (node.kind === "phase" ? node.clusterOf : undefined),
+  geometry: {
+    standardSize: CARD_SIZE,
+    // Indent step must be large enough to read at fit; 120px gives a clear visual hierarchy.
+    indentStep: 120,
+    // The depth levels the hierarchy outline budgets for (session, turn, work, artifact).
+    depthLevels: 4,
+    // The extra room around a turn column.
+    padding: 48,
+  },
+}
+
+/** The vertical centre of each lane (LE.10), for a lane-label overlay aligned to the lanes layout. */
+export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: number }[] {
+  return Strategies.laneAnchors(LAYOUT, { laneGap: options.laneGap })
+}
+
+export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): GraphLayout {
+  return Strategies.layoutGraph(model, LAYOUT, {
+    strategy: options.strategy,
+    gap: options.gap,
+    laneGap: options.laneGap,
+    turnGap: options.turnGap,
+    depthStep: options.depthStep,
+    columns: options.columns,
+    rowGap: options.rowGap,
+    rows: options.rows,
+    // T1.2: at overview only the nodes overview draws consume column width. Hidden execution cards
+    // would otherwise leave wide empty gutters between the compact overview chips.
+    include: options.level === "overview" ? (node) => isVisibleAt(node, "overview") : undefined,
+    minColumnWidth: options.level === "overview" ? COMPACT_SIZE[0] : undefined,
+  })
 }
 
 function laneOf(node: GraphNode): Lane {
@@ -134,334 +173,11 @@ function laneOf(node: GraphNode): Lane {
   return "artifacts"
 }
 
-function boundsOf(points: Position[]): ClusterBounds {
-  const [first, ...rest] = points
-  const seed = { x: first.x, y: first.y, z: first.z }
-
-  return rest.reduce(
-    (acc, point) => ({
-      min: { x: Math.min(acc.min.x, point.x), y: Math.min(acc.min.y, point.y), z: Math.min(acc.min.z, point.z) },
-      max: { x: Math.max(acc.max.x, point.x), y: Math.max(acc.max.y, point.y), z: Math.max(acc.max.z, point.z) },
-    }),
-    { min: { ...seed }, max: { ...seed } },
-  )
-}
-
-export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): GraphLayout {
-  const strategy = options.strategy ?? "lanes"
-
-  if (strategy === "hierarchy") return hierarchyLayout(model, options)
-
-  if (strategy === "timeline") return timelineLayout(model, options)
-
-  return bandedLayout(model, options)
-}
-
-type NodeGroup = { nodes: GraphNode[]; turnID?: string }
-
-/**
- * Lanes: the session column, then one column per turn whose width is its own widest lane. Y is the
- * semantic activity lane, so explore/edit/verify/delegate read as horizontal bands.
- */
-function bandedLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
-  const gap = options.gap ?? 24
-  const laneGap = options.laneGap ?? 24
-  const turnGap = options.turnGap ?? 96
-  const depthStep = options.depthStep ?? 64
-  const laneHeight = CARD_SIZE[1] + laneGap
-
-  const positions = new Map<string, Position>()
-
-  // T1.2: at overview only the nodes overview draws consume column width. Hidden execution cards
-  // would otherwise leave wide empty gutters between the compact overview chips.
-  const nodes = options.level === "overview" ? nodesAtLevel(model, "overview") : model.nodes
-
-  const yFor = (node: GraphNode): number => LANES.indexOf(laneOf(node)) * laneHeight
-
-  const place = (node: GraphNode, x: number) => positions.set(node.id, { x, y: yFor(node), z: DEPTH[node.kind] * depthStep })
-
-  const fileOwners = new Map<string, string>()
-
-  for (const node of nodes) {
-    if (node.kind !== "file") continue
-    const turnID = fileOwnerTurn(model, node)
-
-    if (turnID) fileOwners.set(node.id, turnID)
-  }
-
-  const groups: NodeGroup[] = []
-
-  const sessionNodes = nodes.filter(
-    (node) => node.id === model.root || (node.kind === "file" && !fileOwners.has(node.id)),
-  )
-
-  if (sessionNodes.length > 0) groups.push({ nodes: sessionNodes, turnID: undefined })
-
-  for (const turnID of model.turns)
-    groups.push({
-      nodes: nodes.filter((node) => node.turnID === turnID || fileOwners.get(node.id) === turnID),
-      turnID,
-    })
-
-  const clusters = new Map<string, ClusterBounds>()
-  let columnX = 0
-
-  for (const group of groups) {
-    const cursors = new Map<Lane, number>()
-
-    const cursorFor = (lane: Lane) => {
-      if (!cursors.has(lane)) cursors.set(lane, columnX)
-
-      return cursors.get(lane)!
-    }
-
-    const staged = group.nodes.map((node) => {
-      const lane = laneOf(node)
-      const start = cursorFor(lane)
-      const width = nodeSize(node)[0]
-      cursors.set(lane, start + width + gap)
-
-      // Positions are node centres (the renderer places boxes on their centre), so add half-width.
-      return { node, x: start + width / 2 }
-    })
-
-    for (const entry of staged) place(entry.node, entry.x)
-
-    const minColumnWidth = options.level === "overview" ? COMPACT_SIZE[0] : CARD_SIZE[0]
-    const width = Math.max(...[...cursors.values()].map((end) => end - gap - columnX), minColumnWidth)
-    columnX += width + turnGap
-  }
-
-  // Phase clusters keep their membership order; their bounds drive the RF.5 bands.
-  for (const node of model.nodes) {
-    if (node.kind !== "phase" || !node.clusterOf) continue
-
-    const members = memberPositions(node.clusterOf, positions)
-
-    if (members) clusters.set(node.id, members)
-  }
-
-  // Turn bands span all of a turn's members and the turn node itself.
-  for (const turnID of model.turns) {
-    const members = memberPositions(
-      [turnID, ...model.nodes.filter((node) => node.turnID === turnID).map((node) => node.id)],
-      positions,
-    )
-
-    if (members) clusters.set(turnID, members)
-  }
-
-  const all = [...positions.values()]
-
-  return {
-    positions,
-    clusters,
-    bounds: all.length > 0 ? boundsOf(all) : { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
-    strategy: "lanes",
-  }
-}
-
-/**
- * Timeline (LE.11): chronological left-to-right flow. Each turn is a column band with its members
- * laid out vertically within it. Turn boundaries are explicit bands with labels. Reading order is
- * clear: time flows left-to-right, activity stacks top-to-bottom within each turn.
- */
-function timelineLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
-  const gap = options.gap ?? 24
-  const rowGap = options.rowGap ?? 20
-  const depthStep = options.depthStep ?? 64
-  const columns = Math.max(1, options.columns ?? 6)
-  const rowHeight = CARD_SIZE[1] + rowGap
-  // Horizontal space per turn column: max cards per column * (card width + gap) + band padding
-  const turnColumnWidth = columns * (CARD_SIZE[0] + gap) + 48
-
-  const positions = new Map<string, Position>()
-
-  const clusters = new Map<string, ClusterBounds>()
-  let turnIndex = 0
-
-  // Session/global block first (turnIndex = 0)
-  const globalNodes = turnBlocks(model)[0]
-
-  if (globalNodes && globalNodes.length > 0) {
-    let row = 0
-    let cursor = 0
-
-    for (let i = 0; i < globalNodes.length; i += columns) {
-      cursor = 0
-
-      for (const node of globalNodes.slice(i, i + columns)) {
-        const width = nodeSize(node)[0]
-        positions.set(node.id, { x: cursor + width / 2, y: row * rowHeight, z: DEPTH[node.kind] * depthStep })
-        cursor += width + gap
-      }
-
-      row += 1
-    }
-
-    // Session band spans the global block
-    const members = memberPositions(
-      [model.root, ...globalNodes.map((node) => node.id)],
-      positions,
-    )
-
-    if (members) clusters.set("session", members)
-
-    turnIndex += 1
-  }
-
-  // Each turn gets its own column band
-  for (const turnID of model.turns) {
-    const turnNodes = model.nodes.filter((node) => node.turnID === turnID || node.id === turnID)
-
-    if (turnNodes.length === 0) continue
-
-    const columnX = turnIndex * turnColumnWidth
-    let row = 0
-
-    for (let i = 0; i < turnNodes.length; i += columns) {
-      let cursor = columnX
-
-      for (const node of turnNodes.slice(i, i + columns)) {
-        const width = nodeSize(node)[0]
-        positions.set(node.id, { x: cursor + width / 2, y: row * rowHeight, z: DEPTH[node.kind] * depthStep })
-        cursor += width + gap
-      }
-
-      row += 1
-    }
-
-    // Turn band spans this turn's column
-    const members = memberPositions(
-      [turnID, ...turnNodes.filter((node) => node.id !== turnID).map((node) => node.id)],
-      positions,
-    )
-
-    if (members) clusters.set(turnID, members)
-
-    turnIndex += 1
-  }
-
-  // Phase clusters
-  for (const node of model.nodes) {
-    if (node.kind !== "phase" || !node.clusterOf) continue
-
-    const members = memberPositions(node.clusterOf, positions)
-
-    if (members) clusters.set(node.id, members)
-  }
-
-  const all = [...positions.values()]
-
-  return {
-    positions,
-    clusters,
-    bounds: all.length > 0 ? boundsOf(all) : { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
-    strategy: "timeline",
-  }
-}
-
-/**
- * Hierarchy (LE.11): a left-to-right indented outline. Depth reads as X offset (ancestry is a
- * staircase), rows wrap within a capped column height so cards stay legible, and the user pans
- * instead of zooming below the legibility floor. Positions are deterministic and append-only.
- */
-function hierarchyLayout(model: GraphModel, options: LayoutOptions): GraphLayout {
-  const rowGap = options.rowGap ?? 12
-  const depthStep = options.depthStep ?? 64
-  const rowHeight = CARD_SIZE[1] + rowGap
-  // Cap column height to keep card text above the legibility floor (~14 rows at 84px = ~1176px).
-  const rowsPerColumn = Math.max(1, options.rows ?? 14)
-  // Indent step must be large enough to read at fit; 120px gives clear visual hierarchy.
-  const indentStep = 120
-  // Column width accommodates max depth (4) * indent + card width + padding.
-  const columnWidth = indentStep * 4 + CARD_SIZE[0] + 48
-
-  const positions = new Map<string, Position>()
-  const indent = (depth: number) => depth * indentStep
-
-  let column = 0
-
-  for (const nodes of turnBlocks(model)) {
-    let row = 0
-
-    for (const node of nodes) {
-      if (row >= rowsPerColumn) {
-        row = 0
-        column += 1
-      }
-
-      const depth = DEPTH[node.kind]
-      positions.set(node.id, {
-        x: column * columnWidth + indent(depth) + CARD_SIZE[0] / 2,
-        y: row * rowHeight,
-        z: depth * depthStep,
-      })
-      row += 1
-    }
-
-    column += 1
-  }
-
-  const all = [...positions.values()]
-
-  return {
-    positions,
-    clusters: new Map(),
-    bounds: all.length > 0 ? boundsOf(all) : { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
-    strategy: "hierarchy",
-  }
-}
-
-/**
- * Chronological blocks shared by the timeline and hierarchy: the session/global group first (the root
- * and any node without an owning turn), then one block per turn with its header leading its members
- * in model order.
- */
-function turnBlocks(model: GraphModel): GraphNode[][] {
-  const global: GraphNode[] = []
-  const byTurn = new Map<string, GraphNode[]>()
-
-  for (const node of model.nodes) {
-    const key = node.kind === "turn" ? node.id : node.turnID
-
-    if (!key) {
-      global.push(node)
-      continue
-    }
-
-    const bucket = byTurn.get(key)
-
-    if (bucket) bucket.push(node)
-    else byTurn.set(key, [node])
-  }
-
-  const blocks: GraphNode[][] = []
-
-  if (global.length > 0) blocks.push(global)
-
-  for (const turnID of model.turns) {
-    const nodes = byTurn.get(turnID)
-
-    if (nodes && nodes.length > 0) blocks.push(nodes)
-  }
-
-  return blocks
-}
-
-/** Bounds over the placed positions of a set of node ids; undefined when none are placed. */
-function memberPositions(ids: string[] | undefined, positions: ReadonlyMap<string, Position>) {
-  const members = (ids ?? []).flatMap((id) => {
-    const position = positions.get(id)
-
-    return position ? [position] : []
-  })
-
-  return members.length > 0 ? boundsOf(members) : undefined
-}
-
 /** The turn a file belongs to: the turn of the other endpoint of its first incident edge. */
-function fileOwnerTurn(model: GraphModel, node: GraphNode): string | undefined {
+function fileOwnerTurn(
+  model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] },
+  node: GraphNode,
+): string | undefined {
   const writes = model.edges.filter((edge) => edge.target === node.id && edge.kind === "writes")
 
   const ordered = [...writes, ...model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)]

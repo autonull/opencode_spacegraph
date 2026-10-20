@@ -3,6 +3,7 @@ import type { SessionMessageInfo } from "@opencode/client/promise"
 import { buildFixtureGraph } from "./fixture"
 import { buildGraph, fileNodeID, toolNodeID, turnNodeID } from "./model"
 import { CARD_SIZE, LANES, layoutGraph, nodeSize, type GraphLayout } from "./layout"
+import { matrixLayout, ribbonLayout } from "./representation"
 import { isVisibleAt } from "./levels"
 
 const user = (id: string, text = id) => ({ id, type: "user", text, time: { created: 1 } }) as const
@@ -21,6 +22,47 @@ const idle = (id: string) => ({ id, type: "idle", outcome: "succeeded", time: { 
 const point = (layout: GraphLayout, id: string) => layout.positions.get(id)
 
 const LANE_STRIDE = CARD_SIZE[1] + 24
+
+describe("layout — golden positions", () => {
+  test("the fixture lands exactly where it did before the strategies moved to SpaceGraphJS", async () => {
+    const golden = await Bun.file(new URL("./layout.golden.json", import.meta.url)).json()
+    const model = buildFixtureGraph()
+
+    expect({
+      lanes: dump(layoutGraph(model)),
+      overview: dump(layoutGraph(model, { level: "overview" })),
+      execution: dump(layoutGraph(model, { level: "execution" })),
+      timeline: dump(layoutGraph(model, { strategy: "timeline" })),
+      hierarchy: dump(layoutGraph(model, { strategy: "hierarchy" })),
+      ribbon: dump(ribbonLayout(model)),
+      matrix: dump(matrixLayout(model)),
+    }).toEqual(golden)
+  })
+})
+
+/** The positions, the cluster bounds, and the overall bounds as plain rows. */
+function dump(layout: GraphLayout) {
+  return [
+    ...[...layout.positions.entries()].map(([id, point]) => [id, point.x, point.y, point.z]),
+    ...[...layout.clusters.entries()].map(([id, bounds]) => [
+      id,
+      bounds.min.x,
+      bounds.min.y,
+      bounds.min.z,
+      bounds.max.x,
+      bounds.max.y,
+      bounds.max.z,
+    ]),
+    [
+      layout.bounds.min.x,
+      layout.bounds.min.y,
+      layout.bounds.min.z,
+      layout.bounds.max.x,
+      layout.bounds.max.y,
+      layout.bounds.max.z,
+    ],
+  ]
+}
 
 describe("layout — determinism and append-only", () => {
   test("two builds produce identical positions", () => {
