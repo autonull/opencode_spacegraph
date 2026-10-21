@@ -1,0 +1,706 @@
+# SPACEGRAPH.TODO.4 — the map as a workspace
+
+**Status:** successor to `SPACEGRAPH.TODO.3.md` (the wrap-up, sync and share plan, 2026-10-21) and to
+`SPACEGRAPH.TODO.2.md` (the build record) and `SPACEGRAPH.TODO.1.md` (the Phase 0–10 specification,
+frozen). `SPACEGRAPH.md` remains the design argument; `docs/spacegraph/prototype.md` remains the
+release write-up. **This file is the plan for what the map becomes once it is a *workspace* rather
+than a viewer**: surfaces the reader can open, move and size; a map that pans under the hand; a
+toolbar that fits; and a card that can be tuned.
+
+**Conventions:** carried tasks keep their IDs (`T8.x`, `T9.x`, `T10.x`, `T2.x`); new work gets
+`T11`–`T15` and the gates `G9`–`G13`. Never renumber or reuse an ID; superseded work gets a new ID.
+Every task has a `Done when` and a `Verify` command. Check tasks off here. Cite TODO.1 and TODO.3 for
+the evidence; do not copy it.
+
+---
+
+## 0. Where we are (2026-10-21)
+
+### 0.1 The two repositories
+
+| Item | State |
+|---|---|
+| OpenCode fork | `dev`, on `origin/dev`, 0/0 with origin, **24 behind** upstream `dev` (fetched 2026-10-21) |
+| Upstream | `anomalyco/opencode` `dev` — 24 commits, 150 files since the merge base; its `test` and `check` workflows are **green** on its own head |
+| SpaceGraphJS | `main`, a sibling checkout at `spacegraphjs/`, version 8.5.0; the fork's `bun.lock` names it as a workspace |
+| Contract | `CONTRACT_VERSION = 3`; `SUPPORTED_CONTRACT_VERSIONS = [2, 3]` |
+| Green today | `session-ui` graph **112** · `session-graph` unit **97** · library vitest **529** + four package suites · `session-graph` component suite **54** · app graph e2e **27** · root `bun run check` **40/40** typecheck |
+
+### 0.2 What the author found
+
+The author's own words, after using the graph with the detail modes from TODO.3's T8.8:
+
+> - 'on the node' doesn't do anything
+> - 'besides the node' is cool. What if the popup could be made durable (by clicking on a button) and
+>   could be moved and resized as an overlay node "window". Multiple windows that the user can
+>   position and size, providing plenty of room for detail and related widgets (contextual actions,
+>   logs, etc...). There could be other reasons to create windows too.
+> - dragging on the background with left button, since it otherwise has no action, should pan like it
+>   does with the right button — but only when dragging on the background.
+> - the graph toolbar is getting cluttered — we should consider how to organize it better for
+>   space-saving and intuitiveness.
+> - maybe there can be an 'equalizer' panel that adjusts sizes/styles of nodes according to their type,
+>   age, etc...
+
+Five observations, five workstreams. The first is a **defect report**, not a feature request: the
+`card` mode shipped in T8.8 and does not do what its name says. T11 fixes that before anything else
+is built on top of it.
+
+### 0.3 The seven facts that shape this plan
+
+Every number here was measured in this tree, not assumed.
+
+**F1 — A card's box belongs to the layout, and the layout reads it per node.**
+`CARD_SIZE = [220, 72]`, `COMPACT_SIZE = [132, 44]`, and one function `nodeSize(node)`
+(`packages/session-ui/src/graph/layout.ts:55-66`) decide every node's footprint. Four of the five
+strategies read the **per-node** width from it when they advance a cell cursor — `lanes`
+(`spacegraphjs/src/layout/strategies.ts:367`), `timeline` (`:432`, `:454`), `tree` (`:588`), `force`
+(`:618`); `hierarchy` hard-codes 220 for everything (`:547`). The vertical pitch is derived from
+`standardSize[1]`, never from a node's own height. So **a card cannot grow without the layout
+knowing**, and a size policy flows straight into the geometry.
+
+**F2 — The legibility floor is low, and it is deliberate.**
+The fit keeps a card at least `MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2 = 36` screen pixels tall
+(`packages/session-graph/src/ui/GraphView.tsx:57`, used as `minScale` at `:534`), which the code
+comments call "the size the lane views are read at". At that floor a 220-unit card is ~110 screen
+pixels wide, so its 13px label renders at **6.5px**, its 12px summary at **6px**, and an 11px detail
+line at **5.5px**. The tier thresholds (`far < 80`, `near ≥ 170` screen pixels,
+`packages/session-ui/src/graph/detail.ts:22`) therefore describe a reader who has **zoomed in**; at
+the fit the reader is in the `mid` tier, where a summary is already a smudge.
+
+**F3 — The `card` mode adds a line that is often empty and never visible.**
+`detailLine()` (`packages/session-graph/src/ui/cardTemplate.ts:115-123`) is `time · path · agent`.
+`time` exists on every kind except `session`, `phase` and `file`; `path` exists only on `file` (and
+there it repeats the label); `agent` only on `subagent`. So selecting a **session** or a **phase**
+node adds *literally nothing*, and everywhere else it adds one illegible line inside a box whose
+size never changes. That is the "doesn't do anything" report, and it is a **design** failure, not a
+plumbing one: the tier plumbing works (the card's markup carries `data-tier="near"`, asserted by
+`packages/session-graph/component-tests/graph-detail.spec.ts:42`).
+
+**F4 — There is no screen-space window in the library, and none is needed to build one.**
+The library's screen-space surfaces are all fixed chrome: `HUDPlugin`, `MinimapPlugin`,
+`ZoomUIPlugin`, `VisionOverlayPlugin` (the only `DOMOverlayPlugin` subclass,
+`spacegraphjs/src/plugins/VisionOverlayPlugin.ts:8`), and `HoverMetaWidget`
+(`spacegraphjs/src/plugins/interaction/HoverMetaWidget.ts:56-91`), which is `position: fixed` on
+`document.body`, positioned **once** from `worldToClient` on hover and never moved again. The
+`src/overlays/` folder is a focus-trap helper, a diff renderer and a model-level subgraph extractor —
+no positioned window anywhere. `PanelNode`'s `onPanelDragStart/Move/End` and
+`getDragMode`/`getResizeDirection` look like the panel-drag API but are **dead code** (nothing calls
+them) and are **world-space**. A host can build a movable, resizable window in plain DOM today: the
+graph container is `position: relative` (`spacegraphjs/src/core/WebGLRenderer.ts:99`) and the CSS3D
+layer sits at `z-index: 1` (`WebGLRenderer.ts:101-106`), so a host-owned panel above it is trivial.
+
+**F5 — The left button on the background does nothing, and the pan is a button bitmask.**
+The camera's mouse map is `CAMERA_GESTURES` in
+`spacegraphjs/src/input/fingerings/CameraFingerings.ts:20-23`: right (`buttons === 2`) pans, middle
+(`4`) orbits. The left button belongs to the nodes. A plain left press on empty background takes
+**no branch at all** in `InteractionPlugin.handlePointerDown`
+(`spacegraphjs/src/plugins/InteractionPlugin.ts:109-139`): a ≤5px press emits `background:click`
+(`:261-274`), a longer drag emits **nothing**. "Background" is defined by the raycast returning no
+node (`spacegraphjs/src/plugins/interaction/RaycasterHelper.ts:39-52`); the separate "is this node
+draggable" veto lives in `Node.isDraggable` (`src/nodes/Node.ts:349`) and
+`DOMNode.isDraggable` (`src/nodes/DOMNode.ts:108-135`, which protects a control inside a card).
+
+**F6 — The toolbar has nineteen controls, and four of its icons do not exist.**
+`packages/session-graph/src/ui/GraphToolbar.tsx` renders: representation, level, zoom, depth, layout,
+detail mode, peek, minimap, files, fit, search, legend, gallery, billboard, turn map, expand, export,
+the renderer label and back. The icons `cube` (billboard), `download` (export), `image` and `code`
+(export's SVG/JSON items) and `branch` (turn map) are **not in the icon catalogue**
+(`packages/ui/src/icons/catalog.ts`, `icon/additional-icons.ts`), and `Icon` falls back to `"plus"`
+for an unknown name **silently** (`packages/ui/src/icons/icon/icon.tsx:52`) — so five buttons render
+as the same plus sign. The overflow menu only appears below **640px** of the view's root width
+(`GraphView.tsx:212-225`), and the segmented controls are already squeezed to `width: auto` by
+`packages/session-graph/src/ui/graph-toolbar.css`.
+
+**F7 — The card's accents are hard-coded HSL, not theme tokens.**
+`CATEGORY_HUE` and `KIND_HUE` (`packages/session-graph/src/ui/cardTemplate.ts:30-53`) resolve to
+`hsl(h 70% 55%)` / `hsl(h 70% 55% / 0.16)`. The contract's `RenderTheme`
+(`spacegraphjs/packages/renderer/src/index.ts:89-107`) carries surface/text/border/status/accent and
+the font, but no per-kind hue. Any new styling dimension (age, size, importance) has to either
+extend the HSL scheme or introduce theme roles.
+
+### 0.4 Invariants carried forward
+
+Cite TODO.3 §0.6; do not relitigate. The transcript stays the dependable baseline; the graph is
+opt-in, lazy and reverts cleanly; no causality is inferred from adjacency; stable ids and
+append-only positions; the renderer owns geometry and camera, the host owns semantics and layout;
+detail content is always selectable DOM text, never painted into the canvas; a surface that takes
+layout width must not reframe the map.
+
+### 0.5 The gates
+
+| Gate | Means | Tasks |
+|---|---|---|
+| **G9 — the card speaks** | the selected node's detail is visible, and what a card says depends on what its kind has to say | T11 |
+| **G10 — windows** | durable, movable, resizable overlays over the map, with content the host supplies | T12 |
+| **G11 — the hand** | the background pans under the left button, and the mouse map is written down | T13 |
+| **G12 — the toolbar** | the controls fit, are grouped by axis, and every one of them is legible | T14 |
+| **G13 — the equalizer** | the reader can tune a card's size and style by rules over the graph's own vocabulary | T15 |
+
+They are independent: T13 and T14 can land before T12 exists, and T11 is a precondition for
+believing the `card` mode at all. **Nothing in this plan is a prerequisite for the TODO.3 gates
+(G5–G8)** — but the TODO.3 freeze rule (§7.3 rule 4) says no graph features after G5, so **this
+plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
+as one reviewed block rather than as a drip.
+
+### 0.6 What is *not* in this plan
+
+- **The `auto` detail mode** (the graph picks a surface by viewport). Deferred until G9 and G10 have
+  produced evidence about which surface wins.
+- **A new node type for windows.** A node is world-space: it scales, rotates and moves with the
+  camera, it is in the spec, it is in the layout, it is culled by LOD. A window that behaves like a
+  window must not be a node (F4).
+- **A world-anchored window** (a panel that lives in the map and pans with it). It is a real option
+  and T12.4 records it; it is not built by default, because a window you are reading should stay
+  still while the map moves.
+- **Multi-session windows, saved layouts, collaborative windows.** Deferred (TODO.3 D4).
+
+---
+
+## 1. T11 — The card speaks (the `card` mode, fixed)
+
+**Why this is first.** T8.8 shipped four detail modes. The popover works and the author likes it.
+The `card` mode does nothing (F3), and "on the node" is one of the two answers to the question the
+whole feature exists to answer. A reader who picks `card` and sees no change will not pick it
+again, and the mode's only value is as a comparison point — which requires it to be *visible*.
+
+### T11.1 Say exactly what "nothing" is, and prove it
+
+Write down the three independent reasons (F3), each with a measurement, before changing anything:
+
+- **Empty content.** The detail line is empty for `session` and `phase` (no time, no path, no
+  agent) and redundant for `file` (the path *is* the label). Count the kinds in the fixture and
+  state the percentage of selected nodes whose card would change.
+- **No change of box.** The card's world box is fixed at 220×72; the tier changes the composition
+  inside it. The reader sees the same rectangle before and after.
+- **Illegibility.** At the fit's floor (F2) the added line is 5.5px. The summary that is already
+  there is 6px.
+
+Done when: the three reasons are written down with the numbers, and the fixture's kinds are listed
+against "what does this kind have to say that the label does not".
+Verify: a table in this file; no code.
+
+### T11.2 Decide what "the detail on the node" can physically be
+
+Three options, with their consequences. The choice is the plan's first real decision.
+
+| Option | What the reader sees | Cost | Risk |
+|---|---|---|---|
+| **A. The camera frames the node** | selecting a node flies the camera to it; the card is then large on screen and the near tier is legible | one call to the existing `focusNode` (`GraphView.tsx:706-719`) plus a policy | the camera moves on every click, which is the interruption the popover was built to remove — but only in `card` mode |
+| **B. The card's box grows** | the selected card becomes a bigger card, overlapping its neighbours | the layout must know (F1): `nodeSize()` changes → the cell cursor moves → **the row reflows** → positions move | breaks "stable ids produce stable positions" unless the growth is excluded from the layout's cursor |
+| **C. The detail leaves the card** | the card says *identity and a summary*; the detail lives in a window (T12) | the `card` mode becomes "emphasise the card", and the detail mode loses a member | the `card` mode stops being a detail surface — it becomes a focus surface |
+
+**Recommendation: C, with A as the amplifier.** The evidence (F1, F2, F3) says the card's box cannot
+carry a detail at the distances a reader actually reads at. C is also the honest reading of the
+author's own feedback: the popover is good *because* it is not on the node. A then makes C work:
+in `card` mode, selecting a node frames it, so the card is legible and the near tier earns its
+keep.
+
+Done when: the decision is recorded in §7.1 and the plan's task list names the resulting modes.
+Verify: this file.
+
+### T11.3 The card's composition becomes a function of the kind, not of the tier alone
+
+Today the three tiers are `far` (glyph + label), `mid` (+ summary), `near` (+ one generic detail
+line). The plan's change: **the tier decides how much room there is, and the kind decides what
+fills it.** The vocabulary is already there:
+
+| Kind | What it has that the label does not | Source |
+|---|---|---|
+| `message`, `reasoning` | the text | `summary` |
+| `tool` | the tool name, the input's first line, the result's exit code | `data.name`, `data.input`, `data.exit` |
+| `file` | the path (the label) and the readers/writers | `data.path`, the graph's edges |
+| `subagent` | the agent, the child's session | `data.agent`, `data.childSessionID` |
+| `result` | the output's first line, the exit code, the timeout | `data.output`, `data.exit` |
+| `error`, `retry` | the message, the attempt | `summary`, `data.attempt` |
+| `compaction` | whether a window was replayed or a summary left | `data.replayed` |
+| `notice` | the source | `data.source` |
+| `diff` | the files, the additions/deletions | `data.files` |
+| `turn`, `phase`, `session` | the time; the category; the lineage | `time`, `data.category`, `data.sessionID` |
+
+The rule to encode: **a card shows the one thing its kind has that the label does not** — and shows
+nothing when it has nothing. A `phase` card that has no time shows a label, not an empty line.
+
+Done when: `createCardTemplate` takes the kind's content from the node's own fields, and a node
+with nothing extra shows exactly the same card as before.
+Verify: `cd packages/session-graph && bun test src/ui/cardTemplate.test.ts` — a table case per kind,
+each asserting the *absence* of an empty line.
+
+### T11.4 Re-tune the tier thresholds against the legibility floor
+
+The thresholds (80 / 170 screen pixels) were guesses; the floor (F2) says otherwise. The arithmetic
+is exact and worth writing down once:
+
+> A card is 220 world units wide, so at a screen width `W` one world unit is `W / 220` screen pixels.
+> The label is 13 world units → `0.059·W` px. The summary is 12 → `0.055·W` px. The kind's detail
+> line is 11 → `0.050·W` px.
+
+| line | readable at 8px | readable at 9px | at the fit's floor (`W = 110`) |
+|---|---|---|---|
+| the label (13) | W ≥ 135 | W ≥ 152 | 6.5px |
+| the summary (12) | W ≥ 147 | W ≥ 165 | 6.0px |
+| the kind's detail (11) | W ≥ 160 | W ≥ 180 | 5.5px |
+
+**The rule to adopt: a tier boundary is the width at which the next line reaches its reading size.**
+Under that rule, at 9px: `far` below 165, `mid` from 165 to 180, `near` from 180. At 8px: 147 / 160.
+
+Two consequences worth stating plainly:
+
+- The current `far` threshold of **80 is too low**. Between 80 and 147 the summary is 4.4–8px — a
+  smudge the tier nevertheless calls `mid`. Raising it means **the default view shows labels only**,
+  and the summaries appear when the reader zooms in far enough to read them. That is the behaviour
+  the whole tier idea was for, and it is not what shipped.
+- The `near` band is narrow (165→180 at 9px, a 9% zoom change). The hysteresis matters more there
+  than anywhere else: the separate in and out thresholds (`detail.ts:22`) must be wide enough that
+  a card sitting on the boundary does not flip.
+
+The reading size (8px or 9px) is the author's call, not the plan's: it is a judgement about the
+reader, and the author is the reader.
+
+Done when: the thresholds are derived from a stated reading size, and the numbers are in this file.
+Verify: `cd packages/session-ui && bun test src/graph/detail.test.ts` — the thresholds in the test
+are the ones in the code.
+
+### T11.5 The selected card is *selected*
+
+Whether or not the detail stays on the card, a selected card must look selected. Today the
+selection is expressed only by the neighbourhood dimming (`focus` in the render model,
+`GraphView.tsx:340`) and by the DOM card's `setSelectedStyle` (which the host never calls). The
+card's border is `theme.border` for a neutral or successful card and the status colour otherwise
+(`cardTemplate.ts:135`) — so a selected card and an unselected one look identical.
+
+Done when: the selected card carries a visible, theme-token-derived selection state (the contract
+already has `theme.selection` and `theme.focus`), and the state survives the theme change.
+Verify: `packages/session-graph/component-tests/graph-detail.spec.ts` — a case that selects a node
+and asserts the card's selected state.
+
+---
+
+## 2. T12 — Windows: durable, movable, resizable overlays over the map
+
+**The idea.** A window is a panel that floats over the map, holds content, and can be moved,
+resized, focused and closed by the reader. It is *durable*: it stays where the reader put it until
+they close it. It is a **host surface**, not a node (F4), and it is **screen-space**: it does not
+move when the camera moves, because a window you are reading should stay still.
+
+### T12.1 The window model
+
+| Property | Value | Why |
+|---|---|---|
+| Owner | the **host** (`packages/session-graph`), not the library | a window is chrome, not graph content; it must not enter the render model, the spec or the export |
+| Placement | screen space, inside the canvas region (`GraphView.tsx:1052`, `position: relative`) | a window in world space would be sheared by a tilted camera and would fight the LOD (F4) |
+| Layer | a dedicated layer above the CSS3D layer (`z-index: 1`) and the CSS2D layer (`2`), below the search/legend overlays | the library's own chrome uses 9997–10001; a window should sit *under* the modal-ish overlays |
+| Content | **host-supplied**: a render function or a slot | the library must not know what a "log" or an "action" is (the host-owns-semantics rule) |
+| Anchor | free-floating by default; optionally pinned to a node | T12.4 |
+| Persistence | per session, in the app's layout store beside the other graph preferences | the same place the detail mode and the peek live (`packages/app/src/shell/state/layout.tsx:88-106`) |
+| Keyboard | the topmost window takes focus; `Escape` closes it; focus returns to the map | the a11y contract; the turn map and the search already do this (`ScopedOverlay`, `spacegraphjs/src/overlays/ScopedOverlay.ts`) |
+
+### T12.2 The window manager
+
+One component owns the windows: create, focus, close, move, resize, z-order, and the keyboard
+contract. It holds no content of its own.
+
+- **Moving**: a title bar with a `pointerdown` → `pointermove` → `pointerup` cycle, with
+  `setPointerCapture`. In screen space the pointer delta *is* the window delta — **no pixel-to-world
+  conversion is needed** (contrast `NodeResizer`, which converts because it resizes a world-space
+  node, `spacegraphjs/src/utils/nodeResize.ts:79-96`).
+- **Resizing**: a corner handle; the same pointer cycle; the size is written in CSS pixels. Minimum
+  size, and a maximum that keeps the window inside the canvas region.
+- **Focus and z-order**: clicking a window brings it to the front; the front window is the one that
+  answers `Escape`.
+- **Clamping**: a window dragged off the canvas is clamped back, or parked as a title bar only.
+- **The library's contribution is optional.** A small exported helper (say
+  `spacegraphjs/src/utils/screenWindow.ts`: install the pointer listeners on an element, write
+  `style.left/top/width/height`) would be reusable and unit-testable without a renderer, and would
+  save every host from re-implementing pointer capture. The host may equally own it. **Do not** add
+  a node type, and **do not** build on `PanelNode`'s dead `onPanelDrag*` API (F4).
+
+Done when: a window can be opened, moved, resized, focused and closed, and the map does not move
+when it happens.
+Verify: `packages/session-graph/component-tests/` — a case that opens a window, drags it, resizes
+it, and asserts the camera's viewport is unchanged.
+
+### T12.3 The window kinds
+
+The author's list — "plenty of room for detail and related widgets (contextual actions, logs,
+etc.)" — plus the other reasons a window is wanted. Each kind is a *content contract*, not a
+feature of the window:
+
+| Kind | Content | Opened by |
+|---|---|---|
+| **node detail** | the existing `GraphDetailBody` (the shared body from T8.8) | the detail mode, or a button on a card |
+| **contextual actions** | the actions a node offers: focus, open in transcript, open the child session, copy the link, reveal the file, show the diff | a button on the card or in the detail window |
+| **output / log** | a tool's output, a session's event log, a subagent's transcript | a node action, or a "watch" action |
+| **diff** | the changed files and their patches (the host's `GraphDiffSource` already loads them) | a `diff` node |
+| **the equalizer** | T15's rules | the toolbar |
+| **the legend / the gallery** | the existing overlays, promoted to windows | the toolbar |
+| **scratch** | a free surface for notes the reader keeps next to the map | a toolbar action |
+| **a second session** | another session's map, in a window | a cross-session action (TODO.3 D4) |
+
+The point of the list: **the window is a generic surface, and each kind is a plug.** The manager
+must not know them; the host registers content.
+
+Done when: the window manager takes content as a parameter, and at least two kinds (node detail and
+one more) are implemented on top of it.
+Verify: the component test; the kinds are listed in this file.
+
+### T12.4 Anchoring: free, pinned, or world-anchored
+
+Three behaviours, one window:
+
+- **Free** (default): the window stays where it was put, in screen space, while the camera moves.
+- **Pinned to a node**: the window follows its node. The anchor is the node's screen position, which
+  the renderer already reports — `GraphRenderer.getNodeScreenPosition?`
+  (`spacegraphjs/packages/renderer/src/index.ts:218`, added in T8.8). The window re-anchors on
+  every `viewportChange`; the popover already does this
+  (`packages/session-graph/src/ui/GraphView.tsx`, the `createAnchor` helper).
+- **World-anchored**: the window lives *in the map* — it moves and scales with the camera, like a
+  card. This is the "overlay node" reading of the author's phrase, and it is the one option with a
+  real cost: the window's content becomes a CSS3D element, so it is sheared by a tilted camera, it
+  is culled by LOD, and its text is scaled by the camera. It is **deferred** (§0.6) and recorded here
+  so it is a choice, not an accident.
+
+Done when: a window can be pinned to a node and follows it across a pan, and the plan says which
+behaviour the default is.
+Verify: the component test pins a window, pans the camera, and asserts the window followed.
+
+### T12.5 The window survives a session
+
+The windows are the reader's arrangement of the map. They belong in the same per-session store as
+the detail mode (`packages/app/src/shell/state/layout.tsx:88-106`): a list of
+`{ id, kind, nodeID?, left, top, width, height, z, pinned }`. The store is a `Persistence.struct`
+with optional fields, so a new field needs no migration.
+
+The content itself is **not** persisted (a log is not worth storing; the detail is re-derived from
+the model). A window that cannot be rehydrated is dropped, not restored empty.
+
+Done when: a window's placement survives a session switch and a reload.
+Verify: the app e2e — open a window, switch sessions, come back, and assert its placement.
+
+---
+
+## 3. T13 — The background pans under the left button
+
+**The request.** "Dragging on the background with left button, since it otherwise has no action,
+should pan like it does with the right button — but only when dragging on the background."
+
+**The facts (F5).** The camera's mouse map is a bitmask on `PointerEvent.buttons`; the left button
+belongs to the nodes; a left press on empty background takes no branch at all, so a press emits
+`background:click` and a drag emits nothing.
+
+### T13.1 The change, and where it belongs
+
+**It belongs in the library's `InteractionPlugin`, not in the camera fingering.** The camera
+fingering (`spacegraphjs/src/input/fingerings/CameraFingerings.ts:20-23`) has no raycaster and does
+not claim the gesture (`claimsGesture = false`, `:27`), so a blind left-button pan there would pan
+*and* drag the node under the pointer. The interaction plugin already knows whether a node was
+picked (`spacegraphjs/src/plugins/InteractionPlugin.ts:109-113`).
+
+The branch, in outline:
+
+1. `handlePointerDown`: if `button === 0` and the raycast found **no node** and **no edge** and
+   `shiftKey` is not held → remember the start point; do not select.
+2. `handlePointerMove`: while that state is active → `cameraControls.pan(dx, dy)` with the delta
+   since the previous point, and return (no hover update while panning).
+3. `handlePointerUp`: clear the state. The existing ≤5px path still emits `background:click`, so a
+   *click* on the background keeps clearing the selection, and a *drag* does not.
+
+The gesture must be a **library option**, not a hard-coded change: the library's mouse map is
+public contract (`README.md:383-393`), and hosts that want the old behaviour must be able to keep
+it. `SpaceGraphOptions.input` already declares `enableCameraPan`, `enableBoxSelect`, `enableDrag`
+and friends — and **none of them is read anywhere** (`spacegraphjs/src/types.ts:462-490`; the
+`applyDefaultInputConfig` function ignores its config argument). T13.1 therefore includes
+**wiring the input config that already exists**, or replacing it with one honest set of options.
+
+Done when: a left drag on the background pans the map, a left drag on a card still moves the card, a
+left click on the background still clears the selection, and a host can turn the new behaviour off.
+Verify: `cd spacegraphjs && pnpm exec vitest run` — the mouse contract test
+(`test/mouse-contract.test.ts`) and the interaction e2e
+(`test/e2e/mouse-interaction.spec.ts:133-165`, the case that a left drag on a card moves the card).
+
+### T13.2 The conflicts, written down
+
+| Gesture | Today | After T13.1 |
+|---|---|---|
+| left drag on a **card** | moves the card | unchanged (the raycast found a node) |
+| left drag on a **card's control** | nothing (the card's `isDraggable` veto) | unchanged |
+| left drag on the **background** | nothing | **pans** |
+| left **click** on the background | `background:click` → clears the selection | unchanged (the ≤5px path) |
+| shift + left drag | box-select | unchanged (the shift branch is checked first) |
+| right drag | pans | unchanged |
+| middle drag | orbits | unchanged |
+| left drag on a **window's title bar** | n/a | the window moves (T12), and the map does not |
+
+The last row is why the background pan must be **gated on the pointer being over the canvas** and
+not over a host surface: a window sits over the canvas, so its pointer events must not reach the
+canvas. The library's DOM cards already relay their events to the canvas
+(`spacegraphjs/src/nodes/DOMNode.ts:230-333`); a host window must *not* — it must stop them.
+
+Done when: the table above is in the library's mouse map and every row has a test.
+Verify: the mouse contract test grows a case per row.
+
+### T13.3 The mouse map, written down and kept true
+
+The author's own guide ("the mouse map") is the reference; the library's README table
+(`README.md:383-393`) and the fork's `SPACEGRAPH.md:310-318` must agree with it. Every entry names
+the button, the target, the effect, and what it *replaces* — because the left button now has two
+meanings depending on what is under the pointer, and a reader must be able to learn that.
+
+Done when: the three documents agree, and the fork's guide is the canonical one.
+Verify: a test that reads the fork's table and checks every gesture it names is reachable.
+
+---
+
+## 4. T14 — The toolbar, organized
+
+**The problem.** Nineteen controls (F6) in one flex row, with the overflow menu only below 640px.
+The author found it cluttered before it grew: T8.8 added two more (the detail mode, the peek).
+
+### T14.1 Measure the budget first
+
+The toolbar's width at 1440 in the app, per control, and the width the panel actually has. The
+number that matters: **the toolbar's content width against the panel's width**, because the toolbar
+wraps (`flex flex-wrap`) and a wrap pushes the back control onto a second row — where the app's
+floating header hint covers it (that is a real failure the e2e caught during T8.8).
+
+Done when: the per-control widths and the total are in this file.
+Verify: a component test that measures the toolbar's rendered width at 1440 and 1100 and asserts it
+fits on one row.
+
+### T14.2 Group by axis, not by kind
+
+The controls are not nineteen things; they are four **axes**, and a reader thinks in axes:
+
+| Axis | Controls | Where it lives |
+|---|---|---|
+| **what is shown** | representation (graph/ribbon/matrix), level (overview/execution/detail) | **inline** — these are the map's *subject* |
+| **where the camera is** | zoom out/in/percent, fit | **inline** — the camera is always in play |
+| **how it is drawn** | layout strategy, depth, billboard, the file lens | one popover: "Draw" |
+| **what it says** | the detail mode, the peek, the turn map, the legend, the gallery | one popover: "Show" |
+| **commands** | export, the renderer label, back | inline at the end |
+
+The rule: **at most four things are inline; everything else is one click away.** The overflow menu
+stays for the narrow case, but it is not the primary organisation. Two of the popover's entries (the
+legend, the gallery) open a **window** rather than an overlay, once T12 exists — the popover is
+their doorway.
+
+The popovers are `<details>` dropdowns, the pattern already used for the layout chooser
+(`GraphToolbar.tsx:116-146`) and the export menu (`:284-320`); the *icon* is the affordance, the
+label names the current value.
+
+Done when: the toolbar shows at most the four inline controls of the "what is shown" and "where the
+camera is" axes, plus two popovers and the end block, at 1440.
+Verify: the component test measures the toolbar's width and counts the inline controls.
+
+### T14.3 The minimap is a window too
+
+The minimap is the one control that is *already* an overlay over the canvas
+(`packages/session-graph/src/ui/GraphMinimap.tsx`, drawn inside the canvas region at
+`GraphView.tsx`), and it is the one control that makes the toolbar's end of the row busy. Under T12
+it becomes a window: movable, resizable, and closable, like the rest.
+
+Done when: the minimap is a window and the toolbar's inline row is four controls.
+Verify: the component test.
+
+### T14.4 The icons that do not exist
+
+Five controls name icons that are not in the catalogue (F6) and therefore render as a plus sign:
+`cube` (billboard), `download` (export), `image` and `code` (export's SVG and JSON items), `branch`
+(turn map). The catalogue has good alternatives — `split` and `unified` for the billboard,
+`outline-worktree` or `filetree` for the turn map, `outline-share` or `archive` for the export — and
+the export menu's items can simply be text.
+
+**The deeper fix: a missing icon must not be silent.** `Icon` falls back to `"plus"`
+(`packages/ui/src/icons/icon/icon.tsx:52`), which is how five buttons came to look alike without
+anyone noticing. The fallback should be a development-time warning (and a visibly broken glyph in
+development), never a plausible icon in production.
+
+Done when: every icon the graph names exists in the catalogue, and an unknown icon warns in
+development.
+Verify: a test that walks the toolbar's icons and asserts each is in the catalogue.
+
+### T14.5 The narrow case
+
+The compact threshold is 640px of the *view's root* width (`GraphView.tsx:212-225`), which is not
+the toolbar's width. After T14.2 the toolbar is short enough that the overflow menu may only be
+needed much lower — or the *primary* popovers may become the only organisation, with the inline row
+kept to the subject and the camera.
+
+Done when: the compact threshold follows from the measured widths, not from a round number.
+Verify: the narrow-viewport component test.
+
+---
+
+## 5. T15 — The equalizer
+
+**The idea.** "An 'equalizer' panel that adjusts sizes/styles of nodes according to their type,
+age, etc." A set of rules over the graph's own vocabulary, applied to the cards, with a panel to
+edit them.
+
+### T15.1 The rule model
+
+A rule is a **predicate over a node** plus an **effect on the card**. The vocabulary already exists
+(F7, and `packages/session-ui/src/graph/model.ts:69-84`): `kind`, `status`, `time`, `turnID`,
+`derived`, `clusterOf`, `data.category`, `data.agent`, `data.path`, `data.exit`, `data.attempt`.
+
+| Effect | What it changes | Where it is applied | Cost |
+|---|---|---|---|
+| **size** | the card's world box | `nodeSize()` (`packages/session-ui/src/graph/layout.ts:64-66`) — the *one* function the layouts and the adapter read | the layout re-runs (F1) |
+| **style** | the accent, the border, the glyph's emphasis, the font | the card template (`cardTemplate.ts:125-158`) | a model rebuild |
+| **opacity / emphasis** | how loud a card is | the card's inline style, or the node's `data.opacity` | a model rebuild |
+| **lifetime** | a card fades as it ages | the card template, against `node.time` | a model rebuild |
+
+A rule set is a list; the panel edits the list; the list is persisted per session with the other
+graph preferences.
+
+### T15.2 The size effect has a layout cost, and it must be paid deliberately
+
+A size change reaches the layout through `nodeSize()`: the lanes, timeline, tree and force layouts
+read the per-node width to advance their cell cursor
+(`spacegraphjs/src/layout/strategies.ts:367`, `:432`, `:454`, `:588`, `:618`). So a size rule
+**re-runs the layout** and **moves nodes** — the same thing a level or strategy change does today
+(`packages/session-graph/src/ui/GraphView.tsx:234-256`, the layout history keyed by
+`session:strategy:level`).
+
+That is acceptable *if it is explicit*: changing the rules is a deliberate act, and the map
+re-lays-out under it, exactly as it does when the reader changes the level. It is not acceptable
+if a rule changes silently with time (an "age" rule that fades a card as it ages must not resize
+the layout every minute).
+
+The rule: **size effects re-lay-out; style effects rebuild the model; age effects may do neither**,
+because age is a continuous input and a continuous input must not move the map under the reader.
+
+Done when: the rule model says which effect costs what, and the age effect is excluded from the
+layout.
+Verify: `packages/session-ui` — a test that a style-only rule leaves the positions unchanged.
+
+### T15.3 The style effect needs a colour scheme that can carry it
+
+The accents are hard-coded HSL triples (F7). An age rule needs a second dimension (hue *and*
+lightness, or a separate "muted" accent), and a "by type" rule needs the kind and the category to
+be reachable from one place. The card template already resolves the hue in one function
+(`hue()`, `cardTemplate.ts:55-60`) and exports `kindAccent`/`categoryAccent` so the legend cannot
+drift. The equalizer extends that resolution: **one function maps a node to its accent**, and the
+legend, the cards and the equalizer's preview all read it.
+
+Whether the new roles become theme tokens or stay in the HSL scheme is a decision (§7.1). The
+contrast test (`packages/session-graph/src/ui/contrast.test.ts`) must cover any new colour in both
+schemes.
+
+Done when: one function maps a node to its accent, the legend and the cards read it, and the
+contrast audit covers the new colours.
+Verify: `cd packages/session-graph && bun test src/ui/contrast.test.ts`.
+
+### T15.4 The panel is a window
+
+The equalizer's UI is a window (T12), not another toolbar control: it needs room, it is edited
+rarely, and it should stay where the reader put it. Its contents: one row per rule, a preview
+swatch per rule, and a reset.
+
+Done when: the equalizer opens as a window and edits the persisted rule list.
+Verify: the component test — change a rule, assert the cards change.
+
+### T15.5 The presets
+
+A reader should not have to write rules to get value. The presets are the product: "errors are
+larger", "files older than the last turn are dimmer", "subagents are as large as their turn". The
+panel ships with a few, each a named rule set, and the reader can start from one.
+
+Done when: the panel ships with at least three presets, each of which visibly changes the map.
+Verify: the component test, with a screenshot per preset.
+
+---
+
+## 6. Deferred and future seams
+
+| ID | Item | Unblock condition | Seam already present |
+|---|---|---|---|
+| D8 | a world-anchored window (T12.4) | a reader wants a panel that travels with the map | the CSS3D layer, `HtmlNode` |
+| D9 | the `auto` detail mode | evidence from G9 and G10 about which surface wins | `DetailMode` |
+| D10 | windows in the export (a saved map with its windows) | the export grows a "workspace" format | `renderToSVG`, `serializeRenderModel` |
+| D11 | a window per session in a split view | cross-session graphs (TODO.3 D4) | the per-session store |
+| D12 | an equalizer for the *layout* (not the cards): lane pitch, column width | the layout strategies gain a policy surface | `LayoutConfig` (`standardSize`, `nodeSizeFn`) |
+| D13 | the mouse map grows a third gesture (a modifier for a third dimension) | a 3D map that earns it | the depth spectrum |
+
+---
+
+## 7. Decisions, risks, stop rules
+
+### 7.1 Decisions this plan makes
+
+| # | Decision | Reason |
+|---|---|---|
+| 1 | **The card's box belongs to the layout; the detail does not go on the card** | the box is fixed by `nodeSize()` and the layout's cell cursor (F1), and at the legibility floor a detail line is 5.5px (F2, F3) — the card can carry identity and a summary, not a record |
+| 2 | **A window is a host surface in screen space, never a node** | a node is world-space: it scales, shears, is culled by LOD and enters the spec and the export (F4) |
+| 3 | **The background pan is a library behaviour behind an option** | the mouse map is public contract, and the left button already means "the nodes" (F5) |
+| 4 | **The toolbar shows the subject and the camera inline; everything else is one click away** | nineteen controls do not fit, and the overflow menu below 640px is a fallback, not a plan (F6) |
+| 5 | **Size rules re-lay-out the map; style rules do not; age rules never do** | a continuous input must not move the map under the reader |
+| 6 | **A missing icon is a development-time error, never a plausible glyph** | five buttons rendered as the same plus sign for as long as nobody looked (F6) |
+
+### 7.2 Risks
+
+| Risk | Likelihood | Mitigation | Fallback |
+|---|---|---|---|
+| The `card` mode is dropped, and the map has one detail surface | Medium | T11 decides it explicitly before T12 builds on it | the popover stays the only surface, and the mode is removed from the toolbar |
+| Windows collide with the app's own chrome (the header toggles, the composer) | Medium | the windows live inside the canvas region, and the region's box is the clamp | a window that cannot fit is docked to the region's edge |
+| The background pan breaks the card drag or the box select | Medium | the branch is gated on the raycast; the mouse contract test grows a case per row | the behaviour is an option, and the host turns it off |
+| The toolbar loses a control nobody can find | High | the axe runs over the toolbar; every control keeps an accessible name | the control stays in the overflow menu |
+| The equalizer makes the map unreadable (everything large, or nothing distinct) | Medium | the presets are the product; the contrast audit covers the colours | the presets ship alone, and the rules are not free-form |
+| A size rule re-lays-out on every streaming append | Medium | the rules are part of the layout key, so they re-lay-out like a level does | size rules are pinned to the session, not to the model |
+
+### 7.3 Stop rules
+
+1. Do not start T12 before T11.1 and T11.2 are decided: the window's *content* is the card's
+   content, and the card's content is not yet settled.
+2. Do not add a node type for a window, and do not build on `PanelNode`'s dead drag API.
+3. A window that is open must never move the map: no window may trigger a fit, a focus or a
+   re-frame.
+4. Do not add a gesture to the mouse map without writing the row down in T13.2 and the row's test.
+5. If the toolbar needs a twentieth control, it goes into a popover — never inline.
+6. If a size rule moves a node while the reader is reading, the rule is wrong, not the reader.
+
+---
+
+## 8. Verification matrix
+
+| Check | Command | Owns |
+|---|---|---|
+| The graph's own model | `cd packages/session-ui && bun test src/graph` | ids, turns, levels, layout, tiers |
+| The graph's host | `cd packages/session-graph && bun test src` | the render model, the card template, the windows |
+| The library | `cd spacegraphjs && pnpm exec vitest run` | the core, the mouse map, the a11y layer |
+| The library's packages | `cd spacegraphjs/packages/<p> && bun test` | the contract and the adapters |
+| The component suite | `cd packages/session-graph && bun run test:components` | the toolbar, the windows, the card |
+| The app's e2e | `cd packages/app && bunx playwright test e2e/graph` | the graph in the app, end to end |
+| The whole fork | `bun run check` from the repository root | lint and types |
+
+---
+
+## 9. Log
+
+Append-only. One entry per pass: date, task IDs, commands run, results, surprises, unverified items.
+
+**2026-10-21 — TODO.4 created; the author's five observations, and what was measured.**
+No code changed by this pass. What was measured:
+
+- the author's report: the `card` mode "doesn't do anything", the popover is good and should
+  become a durable, movable, resizable window, the background should pan under the left button, the
+  toolbar is cluttered, and an equalizer could tune card size and style by type and age;
+- the **`card` mode's** three reasons for doing nothing, all confirmed in the code: the detail line
+  is empty for `session` and `phase` and repeats the label for `file`; the card's box never changes
+  (the layout owns it); and at the fit's legibility floor the added line is 5.5 screen pixels;
+- the **library's mouse map**: the camera pans on the right button by a bitmask on
+  `PointerEvent.buttons`, and a left press on empty background takes no branch at all — a press
+  emits `background:click`, a drag emits nothing;
+- the **library's screen-space surfaces**: all fixed chrome; `HoverMetaWidget` is the closest
+  precedent (fixed to the viewport, positioned once, never moved); `PanelNode`'s drag API is dead
+  code and world-space; a host can build a movable window in plain DOM today;
+- the **toolbar**: nineteen controls, five of whose icons are not in the catalogue and therefore
+  render as a plus sign, and an overflow menu that only appears below 640 pixels;
+- the **card's size seam**: `nodeSize()` is the one function the layouts and the adapter read, so a
+  size policy reaches the geometry — four of the five strategies read the per-node width, and
+  `hierarchy` hard-codes 220;
+- the **upstream branch does not fix any of this**: its `test` and `check` workflows are green on
+  its own head with the same manifests and the same tsconfigs.
+
+Unverified: the plan's own claims about the *feel* of a window (a drag that feels right, a size that
+reads well) cannot be measured from here; they need the author's hands on the build.
