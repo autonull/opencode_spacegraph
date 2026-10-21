@@ -1,6 +1,6 @@
 # SpaceGraph for OpenCode — Design, Progress & Evidence
 
-> **Status (2026-10-21):** The prototype is built and verified. The hypothesis remains unproven — it requires human evaluation (T2.2). This document is the design argument and architectural record; `docs/spacegraph/prototype.md` is the release write-up; `SPACEGRAPH.TODO.3.md` is the closing plan.
+> **Status (2026-10-21):** The prototype is built and verified. The hypothesis remains unproven — it requires human evaluation (T2.2). This document is the design argument and architectural record for the **OpenCode integration only**; `docs/spacegraph/prototype.md` is the release write-up; `SPACEGRAPH.TODO.3.md` is the closing plan. The broader SpaceGraphJS platform vision lives in `spacegraphjs/README.vision.md`.
 
 ---
 
@@ -26,7 +26,24 @@ The hypothesis is stronger than "a graph looks better":
 
 This gives the project a clear success criterion: measured task performance on investigative questions, not visual appeal.
 
-### 1.3 What the graph exposes that the transcript hides
+### 1.3 Usability, ergonomics & fun — why this matters beyond debugging
+
+The investigative use case (answering the five questions) is the measurable entry point. But the deeper opportunity is **changing how developers experience agentic development**:
+
+| Dimension | Transcript UX | Graph UX |
+|-----------|---------------|----------|
+| **Cognitive load** | Scroll, search, mentally reconstruct context | Relationships visible at a glance; spatial memory replaces recall |
+| **Onboarding** | Intimidating terminal log for new users | Approachable visual map; see *how* the agent thinks, not just *what* it did |
+| **Orientation** | Lost in long sessions; "where am I?" | Stable spatial layout; minimap + breadcrumbs + zoom = always oriented |
+| **Exploration** | Linear, passive reading | Active navigation; follow edges, zoom into detail, compare layouts |
+| **Delight** | Functional but utilitarian | "Map of my work" feeling; animations, spatial transitions, layout variety |
+| **Collaboration** | Share logs, scroll together | Share decision links (`#graph:node`), export artifacts, annotate together |
+
+**The hybrid is the ergonomic bridge:** the transcript stays familiar; the graph appears where it answers a question. Users don't choose a mode — they choose a *question*, and the graph answers it.
+
+This is not just a better session viewer. It's a step toward making agentic development **accessible to non-experts**, **auditable by teams**, and **enjoyable for everyone**.
+
+### 1.4 What the graph exposes that the transcript hides
 
 | Relationship type | Transcript | Graph |
 |-------------------|------------|-------|
@@ -36,7 +53,7 @@ This gives the project a clear success criterion: measured task performance on i
 | **Delegation** | Nested in conversation | `delegates` edge turn → subagent |
 | **Retry/backtrack** | Buried in sequence | `retry` edge + `interrupted` status |
 
-### 1.4 Semantic zoom, not just a large canvas
+### 1.5 Semantic zoom, not just a large canvas
 
 A zoomable canvas is the mechanism; reducing cognitive overhead is the objective. Three semantic levels:
 
@@ -48,7 +65,7 @@ A zoomable canvas is the mechanism; reducing cognitive overhead is the objective
 
 Nodes **collapse/expand** across levels — a cluster of tool calls becomes "Explore repository" at overview, individual calls at execution, full content at detail. This is progressive disclosure, not hiding behind accordions.
 
-### 1.5 Dual representation, not replacement
+### 1.6 Dual representation, not replacement
 
 The transcript remains ideal for following a conversation. The graph excels at exploring structure, parallel activity, and provenance. The strongest product is a **hybrid**: the log stays primary; relevant turns expand into inline graphs or open a scoped overlay without losing scroll position.
 
@@ -237,7 +254,7 @@ All proven against the canonical fixture in `selectors.test.ts` (exit gate 2).
 
 ---
 
-## 6. SpaceGraphJS Library (External Dependency)
+## 6. SpaceGraphJS Dependency (External)
 
 ### 6.1 Package set (published, `CONTRACT_VERSION = 3`)
 
@@ -250,23 +267,21 @@ All proven against the canonical fixture in `selectors.test.ts` (exit gate 2).
 | `@spacegraphjs/cytoscape-renderer` | 0.3.0 | 2D Canvas, clipped DOM card overlay, declared 3D no-op |
 | `@spacegraphjs/svg-renderer` | 0.1.0 | Static SVG export, `InlineGraph`, serialization |
 
-### 6.2 Generic capabilities extracted to the library
+### 6.2 Generic capabilities used by OpenCode integration
 
-| Capability | Module | Consumers |
-|------------|--------|-----------|
-| Semantic levels / zoom bands | `spacegraphjs/levels`, `spacegraphjs/zoom` | OpenCode `GraphView`, second host |
-| Layout strategies + placement engines | `spacegraphjs/layout` (LaneLayout + strategies) | OpenCode `layout.ts`, second host |
-| Summary representations | `spacegraphjs/representations` (ribbon, matrix) | OpenCode `representation.ts`, second host |
-| Navigation (search, minimap, trail) | `spacegraphjs/navigation` | `GraphController`, OpenCode, second host |
-| View controller | `spacegraphjs/control` (`GraphController`) | OpenCode `GraphView`, second host |
-| Accessibility (roving tabindex, ARIA) | `spacegraphjs/a11y` | OpenCode a11y mirror, second host |
-| Depth spectrum (flat/layered/depth-stack/orbit) | `spacegraphjs/depth` + contract `depths` | OpenCode depth chooser, second host |
-| Scoped overlay & code diff | `spacegraphjs/overlays` | OpenCode turn map, diff view, second host |
-| Static export (SVG/JSON/standalone HTML) | `@spacegraphjs/svg-renderer` | OpenCode export, second host |
+| Capability | Module | Purpose in OpenCode |
+|------------|--------|---------------------|
+| Semantic levels / zoom bands | `spacegraphjs/levels`, `spacegraphjs/zoom` | Toolbar level selector, camera bands |
+| Layout strategies + placement engines | `spacegraphjs/layout` (LaneLayout + strategies) | Lanes, timeline, hierarchy, tree, force |
+| Summary representations | `spacegraphjs/representations` (ribbon, matrix) | Ribbon/matrix view modes |
+| Navigation (search, minimap, trail) | `spacegraphjs/navigation` | GraphSearch, GraphMinimap, breadcrumbs |
+| View controller | `spacegraphjs/control` (`GraphController`) | Selection, focus, trail in GraphView |
+| Accessibility (roving tabindex, ARIA) | `spacegraphjs/a11y` | Keyboard/screen-reader support |
+| Depth spectrum | `spacegraphjs/depth` + contract `depths` | Flat/layered/depth-stack/orbit |
+| Scoped overlay & code diff | `spacegraphjs/overlays` | Turn-map overlay, diff view |
+| Static export (SVG/JSON/standalone HTML) | `@spacegraphjs/svg-renderer` | Export button, inline subgraph |
 
-### 6.3 Framework-agnostic core
-
-The library core **never imports the contract or a host**. Generic capabilities live in the library; OpenCode vocabulary stays in `session-ui`/`session-graph`. Framework bindings (`react-spacegraph`, `solid-spacegraph`) wrap `GraphBinding` over the contract, not core internals.
+> **Note:** SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages. The broader platform vision, roadmap, and exploratory R&D areas are documented in `spacegraphjs/README.vision.md`.
 
 ---
 
@@ -380,11 +395,11 @@ Per-file justification in `docs/spacegraph/upstream-review.md` §5.
 - `docs/spacegraph/decisions.md` — 20 ADRs (naming, representation, depth, file lens, flag, contract bumps, etc.)
 - `docs/spacegraph/security.md` — sanitization contract, CSP expectations, deliberate non-goals
 - `docs/spacegraph/demos.md` — three demo surfaces, which to open
-- `docs/spacegraph/prototype.md` — this write-up with all measurements
+- `docs/spacegraph/prototype.md` — release write-up with all measurements
 
 ---
 
-## 10. The Evidence Gap (Critical Path)
+## 10. The Evidence Gap (Critical Path for Product Claim)
 
 ### 10.1 Protocol defined, not executed
 
@@ -441,17 +456,17 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 
 ---
 
-## 12. Future Seams (Deferred by Design)
+## 12. Future Seams (Deferred by Design — OpenCode Level)
 
 | ID | Item | Unblock condition | Seam present |
 |----|------|-------------------|--------------|
 | D1 | Inline row host (H6.5) | Maintainer approval for generic timeline slot | Turn-map overlay, SVG `InlineGraph` |
 | D2 | Host-neutral activity adapter | Real second host needs it | `GraphController` + contract, demo fixture |
 | D3 | Incremental `RenderModelPatch` | Profiling shows full-model diffs too slow | `diffRenderModels`; contract `setModel` |
-| D4 | Cross-session graphs, recurring errors, attempt comparison | Validated single-session win | `data.sessionID`, stable IDs, SVG/JSON export |
+| D4 | Cross-session graphs, recurring errors, comparing attempts | Validated single-session win | `data.sessionID`, stable IDs, SVG/JSON export |
 | D5 | Real 3D geometry, depth of field, production 3D | Protocol prefers `layered`/`depth-stack` | Depth seam; host-owned Z |
-| D6 | Adopters of published library | First real consumer outside fork | Six packages, contract v3, second host |
-| D7 | Cross-host layout comparison | Second host with second vocabulary | Placement seam (T7.1), second host's layout picker |
+
+> **Platform-level future seams** (multi-agent, time-travel, codebase overlay, NLQ, collaboration, etc.) are documented in `spacegraphjs/README.vision.md`.
 
 ---
 
@@ -494,7 +509,7 @@ bun run graph:scale            # performance budget
 
 | Purpose | File |
 |---------|------|
-| Design argument | `SPACEGRAPH.md` (this file) |
+| Design argument (this file) | `SPACEGRAPH.md` |
 | Release write-up | `docs/spacegraph/prototype.md` |
 | Upstream contribution ladder | `docs/spacegraph/upstream-pr.md` |
 | Maintainer review packet | `docs/spacegraph/upstream-review.md` |
@@ -510,4 +525,4 @@ bun run graph:scale            # performance budget
 
 ## 15. License & Ownership
 
-This fork is experimental, community-built, and not an official OpenCode feature. The transcript remains the dependable baseline. The graph is opt-in, lazy-loaded, and reverts cleanly. SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages.
+This fork is experimental, community-built, and not an official OpenCode feature. The transcript remains the dependable baseline. The graph is opt-in, lazy-loaded, and reverts cleanly. SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages. OpenCode gets the first integration opportunity because it's the tool we use to develop; other agent tools (Hermes, competitors) will follow the same adapter pattern.
