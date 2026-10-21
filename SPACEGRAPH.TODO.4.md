@@ -143,6 +143,8 @@ believing the `card` mode at all. **Nothing in this plan is a prerequisite for t
 plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
 as one reviewed block rather than as a drip.
 
+**Status: G9 is reached** (T11, 2026-10-21 — see the log). G10–G13 are open.
+
 ### 0.6 What is *not* in this plan
 
 - **The `auto` detail mode** (the graph picks a surface by viewport). Deferred until G9 and G10 have
@@ -164,23 +166,41 @@ The `card` mode does nothing (F3), and "on the node" is one of the two answers t
 whole feature exists to answer. A reader who picks `card` and sees no change will not pick it
 again, and the mode's only value is as a comparison point — which requires it to be *visible*.
 
-### T11.1 Say exactly what "nothing" is, and prove it
+### T11.1 Say exactly what "nothing" is, and prove it — **done**
 
-Write down the three independent reasons (F3), each with a measurement, before changing anything:
+The three independent reasons, each measured in this tree. The fixture is 43 nodes.
 
-- **Empty content.** The detail line is empty for `session` and `phase` (no time, no path, no
-  agent) and redundant for `file` (the path *is* the label). Count the kinds in the fixture and
-  state the percentage of selected nodes whose card would change.
-- **No change of box.** The card's world box is fixed at 220×72; the tier changes the composition
-  inside it. The reader sees the same rectangle before and after.
-- **Illegibility.** At the fit's floor (F2) the added line is 5.5px. The summary that is already
-  there is 6px.
+| Reason | Measurement |
+|---|---|
+| **Empty content** | the detail line was `time · path · agent`: `time` exists on every kind except `session`, `phase` and `file`, `path` only on `file`, `agent` only on `subagent`. **9 of 43 nodes (21%) would have shown an empty line** — the session and its eight phases. |
+| **Redundant content** | on the 5 `file` nodes the line *was* the label. **14 of 43 (33%)** of the fixture's cards would have said nothing the label did not. |
+| **No change of box** | the card's world box is `CARD_SIZE = [220, 72]`; the tier changes the composition inside it, so the reader sees the same rectangle before and after. |
+| **Illegibility** | at the fit's floor (a card 110 screen pixels wide) the added line is `11 · 110/220 = 5.5px`, and the summary already there is 6px. |
+
+The kinds, against "what does this kind have that the label does not":
+
+| kind | in the fixture | has | the card says now |
+|---|---|---|---|
+| `session` | 1 | the lineage | the session it was forked from, or its parent |
+| `turn` | 2 | the time | when the turn started |
+| `phase` | 8 | the time — usually none | nothing; a phase has no time of its own |
+| `message` | 3 | the role | who spoke (`user`, `assistant`, `shell`, `steered`) |
+| `reasoning` | 0 | the text, which is the summary | nothing |
+| `tool` | 14 | the input's first line | the path it touched, the command it ran, the pattern it searched |
+| `file` | 5 | the path (the label) and the readers/writers | the readers and the writers, from the graph's edges |
+| `subagent` | 1 | the agent | the agent's name |
+| `result` | 4 | the output, the exit code, the timeout | the first line of the output, `exit N`, `timed out` |
+| `error` | 1 | the error type | `tool_error` |
+| `retry` | 1 | the attempt, which is the label | nothing |
+| `compaction` | 0 | whether the window was replayed | `replayed` |
+| `notice` | 1 | the source | `subagent` |
+| `diff` | 2 | the files | the first changed file |
 
 Done when: the three reasons are written down with the numbers, and the fixture's kinds are listed
 against "what does this kind have to say that the label does not".
 Verify: a table in this file; no code.
 
-### T11.2 Decide what "the detail on the node" can physically be
+### T11.2 Decide what "the detail on the node" can physically be — **done**
 
 Three options, with their consequences. The choice is the plan's first real decision.
 
@@ -190,16 +210,24 @@ Three options, with their consequences. The choice is the plan's first real deci
 | **B. The card's box grows** | the selected card becomes a bigger card, overlapping its neighbours | the layout must know (F1): `nodeSize()` changes → the cell cursor moves → **the row reflows** → positions move | breaks "stable ids produce stable positions" unless the growth is excluded from the layout's cursor |
 | **C. The detail leaves the card** | the card says *identity and a summary*; the detail lives in a window (T12) | the `card` mode becomes "emphasise the card", and the detail mode loses a member | the `card` mode stops being a detail surface — it becomes a focus surface |
 
-**Recommendation: C, with A as the amplifier.** The evidence (F1, F2, F3) says the card's box cannot
-carry a detail at the distances a reader actually reads at. C is also the honest reading of the
-author's own feedback: the popover is good *because* it is not on the node. A then makes C work:
-in `card` mode, selecting a node frames it, so the card is legible and the near tier earns its
-keep.
+**The decision: C, with A as the amplifier.** The card keeps *identity, a summary and the one fact
+its kind has*; the full record lives in a window (T12). A makes C work: in `card` mode, selecting a
+node frames it, so the card is legible and the near tier earns its keep.
+
+**What A means in the code.** The camera frames the selected node with the *fit*, whose legibility
+floor is the card's reading width (`minScale: 198 / 220` screen pixels per world unit), so the
+frame lands on a card the reader can read. It is renderer-agnostic — the contract's `fit` already
+carries `minScale` and `padding` — and it never zooms the reader *out*: the fit's floor only
+raises the scale. A pan, a zoom or a fit never re-frames the card; only the selection does.
+
+The consequence the plan named — "the camera moves on every click" — is real, and it is confined
+to the `card` mode. The other modes (the default `panel`, the `popover`, `off`) leave the map
+where it is.
 
 Done when: the decision is recorded in §7.1 and the plan's task list names the resulting modes.
 Verify: this file.
 
-### T11.3 The card's composition becomes a function of the kind, not of the tier alone
+### T11.3 The card's composition becomes a function of the kind, not of the tier alone — **done**
 
 Today the three tiers are `far` (glyph + label), `mid` (+ summary), `near` (+ one generic detail
 line). The plan's change: **the tier decides how much room there is, and the kind decides what
@@ -221,12 +249,18 @@ fills it.** The vocabulary is already there:
 The rule to encode: **a card shows the one thing its kind has that the label does not** — and shows
 nothing when it has nothing. A `phase` card that has no time shows a label, not an empty line.
 
+**What was built.** `kindDetail(node)` in `packages/session-graph/src/ui/cardTemplate.ts` is the one
+function that answers the question, per kind, and it returns `undefined` when the kind has nothing
+— so the card adds no line at all rather than an empty one. The `file` case is the exception the
+kind cannot answer: the readers and the writers live in the graph's edges, so the host supplies them
+through the card template's `related` option, and the view counts them once per model.
+
 Done when: `createCardTemplate` takes the kind's content from the node's own fields, and a node
 with nothing extra shows exactly the same card as before.
 Verify: `cd packages/session-graph && bun test src/ui/cardTemplate.test.ts` — a table case per kind,
 each asserting the *absence* of an empty line.
 
-### T11.4 Re-tune the tier thresholds against the legibility floor
+### T11.4 Re-tune the tier thresholds against the legibility floor — **done**
 
 The thresholds (80 / 170 screen pixels) were guesses; the floor (F2) says otherwise. The arithmetic
 is exact and worth writing down once:
@@ -257,17 +291,52 @@ Two consequences worth stating plainly:
 The reading size (8px or 9px) is the author's call, not the plan's: it is a judgement about the
 reader, and the author is the reader.
 
+**The reading size taken: 9px.** The thresholds are *derived*, not written down: `detail.ts` holds
+the reading size (`DETAIL_READING_PX = 9`), the card's world width (220) and the world size of its
+three lines (13 / 12 / 11), and the boundaries are computed from them. One number moves them all,
+so the author's call stays one edit:
+
+| boundary | derived from | at 9px | at 8px |
+|---|---|---|---|
+| `far` → `mid` | the summary (12) reaches the reading size | **165** | 147 |
+| `mid` → `near` | the kind's line (11) reaches the reading size | **180** | 160 |
+| `farExit` | 5% past `far` | **173** | 154 |
+| `nearExit` | 5% before `near` | **171** | 152 |
+
+The hysteresis is 5% of the boundary, which is 8px at 9px — wide enough that a card on the edge
+does not flip, narrow enough that the band is still a band.
+
+**The consequence the plan named is now the shipped behaviour:** at the fit a card is 110 screen
+pixels wide, well under 165, so **the default view shows labels only** and the summaries appear
+when the reader zooms in far enough to read them.
+
+**One defect the change found.** The tier is hysteretic, so it needs a second pass to settle: a
+card that grows from `far` to `near` in one step is `mid` on the first pass and `near` on the
+second. The view's tier effect read only the card's width, so a card whose width *stopped* changing
+stayed one tier behind the reader. The effect now reads the tier as well as the width, and the
+signal settles in the same frame.
+
 Done when: the thresholds are derived from a stated reading size, and the numbers are in this file.
 Verify: `cd packages/session-ui && bun test src/graph/detail.test.ts` — the thresholds in the test
 are the ones in the code.
 
-### T11.5 The selected card is *selected*
+### T11.5 The selected card is *selected* — **done**
 
 Whether or not the detail stays on the card, a selected card must look selected. Today the
 selection is expressed only by the neighbourhood dimming (`focus` in the render model,
 `GraphView.tsx:340`) and by the DOM card's `setSelectedStyle` (which the host never calls). The
 card's border is `theme.border` for a neutral or successful card and the status colour otherwise
 (`cardTemplate.ts:135`) — so a selected card and an unselected one look identical.
+
+**What was built.** The card template takes the selected node's id and gives that card the
+contract's `theme.selection` as its border, plus a ring that does not change the card's box (a
+border *width* change would move the content inside a fixed 220×72 box). The state is a theme
+token, so it follows the theme: the template is rebuilt with the theme, and the selection survives
+the change. The card also carries `data-selected="true"`, so a test — and a screen reader's mirror
+— can see it.
+
+The library's `setSelectedStyle` (a `selected` class on the DOM node) stays unused: the host owns
+the card's markup, so the host owns the card's selection state.
 
 Done when: the selected card carries a visible, theme-token-derived selection state (the contract
 already has `theme.selection` and `theme.focus`), and the state survives the theme change.
@@ -636,6 +705,9 @@ Verify: the component test, with a screenshot per preset.
 | 4 | **The toolbar shows the subject and the camera inline; everything else is one click away** | nineteen controls do not fit, and the overflow menu below 640px is a fallback, not a plan (F6) |
 | 5 | **Size rules re-lay-out the map; style rules do not; age rules never do** | a continuous input must not move the map under the reader |
 | 6 | **A missing icon is a development-time error, never a plausible glyph** | five buttons rendered as the same plus sign for as long as nobody looked (F6) |
+| 7 | **The card's line is its kind's own fact, and a kind with nothing to add adds no line** | 33% of the fixture's cards would have said nothing the label did not, and an empty line is worse than no line (T11.1, T11.3) |
+| 8 | **The reading size is 9px, and every tier boundary is derived from it** | a boundary is the width at which the next line reads; one number moves them all, and the author can change it (T11.4) |
+| 9 | **In the `card` mode the camera frames the selected node, and only the selection moves it** | the tier is measured in screen pixels, so a card that stays small cannot say anything; the fit's legibility floor is the card's reading width (T11.2) |
 
 ### 7.2 Risks
 
@@ -704,3 +776,45 @@ No code changed by this pass. What was measured:
 
 Unverified: the plan's own claims about the *feel* of a window (a drag that feels right, a size that
 reads well) cannot be measured from here; they need the author's hands on the build.
+
+**2026-10-21 — T11: the card speaks (G9).**
+The `card` mode did nothing, and the plan said why before changing anything: 9 of the fixture's 43
+nodes would have shown an *empty* line (the session and its eight phases), 5 more would have shown
+the label back (the files), the card's box never changes, and at the fit's floor the added line is
+5.5 screen pixels. The kinds, what they have, and what they now say are in T11.1's table.
+
+What changed:
+
+- **the card's line is its kind's own fact.** `kindDetail(node)` answers, per kind, "what do you
+  have that your label does not" — the tool's input, the result's output and exit code, the
+  message's role, the diff's first file, the notice's source — and returns nothing when the kind
+  has nothing. A phase with no time shows a label, not an empty line;
+- **the file's readers and writers come from the graph's edges**, because only the graph knows
+  them: the host counts them once per model and hands them to the card template;
+- **the tier thresholds are derived, not guessed.** The reading size is 9px — the author's call,
+  one number — and the boundaries follow from it: `far` at 165, `near` at 180, with a 5% hysteresis
+  (173 / 171). The old `far` threshold of 80 was a smudge called a summary; the default view now
+  shows labels only, and the summaries appear when the reader zooms in far enough to read them;
+- **the selected card says so**: the contract's `theme.selection` as its border and a ring that
+  does not move the card's box, plus `data-selected="true"` for the tests and the a11y mirror;
+- **in the `card` mode the camera frames the selected node** (T11.2's option A), with the fit's
+  legibility floor set to the card's reading width, so the card the reader just chose is one they
+  can read. Only the selection moves the camera: a pan, a zoom or a fit never re-frames the card.
+
+Two defects the work found, both older than the pass:
+
+- **the tier needed a second pass to settle.** The hysteresis means a card that jumps from `far`
+  to `near` in one step is `mid` first and `near` second; the view's tier effect read only the
+  card's width, so a card whose width stopped changing stayed a tier behind the reader. The
+  effect now reads the tier as well, and the signal settles in the same frame;
+- **the camera was framed before the renderer was handed over.** The first viewport report can
+  arrive before the renderer itself, so the framing waited for a signal that never came and the
+  card mode framed nothing. The view now waits for the renderer, not for the camera's first word.
+
+Measured: `session-ui` graph **116** (+4), `session-graph` unit **100** (+3), the session-graph
+component suite **54** (the card-mode case now asserts the near tier, the kind's line and the
+selection), the root `bun run check` **40/40**.
+
+Unverified: the *feel* of the card mode's framing — a camera that moves on every click is the
+cost the plan named, and only the author's hands can say whether the frame lands where they want
+it. The reading size (9px) is the same question: one number, one edit.

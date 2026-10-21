@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import type { GraphNode } from "@opencode/session-ui/graph"
-import { createBandTemplate, createCardTemplate } from "./cardTemplate"
+import { createBandTemplate, createCardTemplate, kindDetail } from "./cardTemplate"
 
 const theme: RenderTheme = {
   background: "#101014",
@@ -69,7 +69,7 @@ test("card tiers", () => {
     status: "success",
     summary: "src/auth/token.ts",
     time: Date.UTC(2026, 0, 2, 11, 33, 30),
-    data: { path: "src/auth/token.ts" },
+    data: { name: "read", input: { path: "src/auth/token.ts" } },
   })
 
   // A far card drops the summary it cannot show.
@@ -82,12 +82,176 @@ test("card tiers", () => {
   expect(mid).toContain('data-tier="mid"')
   expect(mid).toContain("src/auth/token.ts")
 
-  // A near card adds when and where.
+  // A near card adds what the tool touched.
   const near = createCardTemplate(theme, { tier: "near" })(tool, "execution")
   expect(near).toContain('data-tier="near"')
-  expect(near).toContain("11:33")
+  expect(near).toContain("src/auth/token.ts")
+})
 
-  // The expanded node carries its detail whatever the reader's distance.
-  const expanded = createCardTemplate(theme, { tier: "far", expanded: tool.id })(tool, "execution")
-  expect(expanded).toContain('data-tier="near"')
+// T11.3 — the tier decides how much room the card has; the kind decides what fills it. A kind with
+// nothing to add adds no line: an empty line is worse than no line.
+test("a near card says what its kind has that its label does not", () => {
+  const cases: { kind: GraphNode["kind"]; node: GraphNode; says?: string }[] = [
+    {
+      kind: "session",
+      node: node({ id: "session", kind: "session", label: "Session", status: "neutral" }),
+    },
+    {
+      kind: "turn",
+      node: node({
+        id: "turn:1",
+        kind: "turn",
+        label: "Fix the tests",
+        status: "neutral",
+        time: Date.UTC(2026, 0, 2, 11, 33, 30),
+      }),
+      says: "11:33",
+    },
+    {
+      kind: "phase",
+      node: node({ id: "phase:1", kind: "phase", label: "Explore", status: "neutral" }),
+    },
+    {
+      kind: "message",
+      node: node({ id: "msg:1", kind: "message", label: "Fix the tests", status: "neutral", data: { role: "user" } }),
+      says: "user",
+    },
+    {
+      kind: "reasoning",
+      node: node({ id: "r:1", kind: "reasoning", label: "Let me look", status: "neutral" }),
+    },
+    {
+      kind: "tool",
+      node: node({
+        id: "tool:1",
+        kind: "tool",
+        label: "read",
+        status: "success",
+        data: { name: "read", input: { path: "src/auth/token.ts" } },
+      }),
+      says: "src/auth/token.ts",
+    },
+    {
+      kind: "file",
+      node: node({
+        id: "file:1",
+        kind: "file",
+        label: "src/auth/token.ts",
+        status: "neutral",
+        data: { path: "src/auth/token.ts" },
+      }),
+    },
+    {
+      kind: "subagent",
+      node: node({
+        id: "sub:1",
+        kind: "subagent",
+        label: "Authentication design",
+        status: "success",
+        data: { agent: "explore", childSessionID: "ses_child" },
+      }),
+      says: "explore",
+    },
+    {
+      kind: "result",
+      node: node({
+        id: "result:1",
+        kind: "result",
+        label: "failed",
+        status: "failed",
+        data: { exit: 1, timeout: false, output: "FAIL auth refresh token" },
+      }),
+      says: "FAIL auth refresh token · exit 1",
+    },
+    {
+      kind: "error",
+      node: node({
+        id: "error:1",
+        kind: "error",
+        label: "Expected refresh token",
+        status: "failed",
+        data: { type: "tool_error" },
+      }),
+      says: "tool_error",
+    },
+    {
+      kind: "retry",
+      node: node({ id: "retry:1", kind: "retry", label: "Retry #2", status: "neutral", data: { attempt: 2 } }),
+    },
+    {
+      kind: "compaction",
+      node: node({
+        id: "c:1",
+        kind: "compaction",
+        label: "Compacted context",
+        status: "neutral",
+        data: { reason: "auto", replayed: true },
+      }),
+      says: "replayed",
+    },
+    {
+      kind: "notice",
+      node: node({
+        id: "n:1",
+        kind: "notice",
+        label: "Authentication design",
+        status: "neutral",
+        data: { type: "synthetic", source: "subagent" },
+      }),
+      says: "subagent",
+    },
+    {
+      kind: "diff",
+      node: node({
+        id: "diff:1",
+        kind: "diff",
+        label: "2 files changed",
+        status: "neutral",
+        data: { files: ["src/auth/guards.ts", "src/auth/session.ts"] },
+      }),
+      says: "src/auth/guards.ts",
+    },
+  ]
+
+  for (const entry of cases) {
+    const detail = kindDetail(entry.node)
+    if (entry.says === undefined) {
+      expect(detail, entry.kind).toBeUndefined()
+      // A kind with nothing to add shows no line at all: the card is the label, and nothing empty.
+      const near = createCardTemplate(theme, { tier: "near" })(entry.node, "execution")
+      expect(near, entry.kind).not.toContain("font-size:11px")
+      continue
+    }
+    expect(detail, entry.kind).toContain(entry.says)
+    const near = createCardTemplate(theme, { tier: "near" })(entry.node, "execution")
+    expect(near, entry.kind).toContain(entry.says)
+  }
+})
+
+// T11.5 — a selected card says so, in the theme's own selection colour.
+test("the selected card carries the selection state", () => {
+  const tool = node({ id: "tool:1", kind: "tool", label: "read", status: "success" })
+  const other = node({ id: "tool:2", kind: "tool", label: "read", status: "success" })
+
+  const selected = createCardTemplate(theme, { selected: tool.id })(tool, "execution")
+  expect(selected).toContain('data-selected="true"')
+  expect(selected).toContain(theme.selection)
+
+  const unselected = createCardTemplate(theme, { selected: tool.id })(other, "execution")
+  expect(unselected).not.toContain('data-selected="true"')
+  expect(unselected).not.toContain(theme.selection)
+})
+
+// The host knows facts the node does not: a file's readers are in the graph's edges.
+test("a host fact fills the line a kind cannot fill", () => {
+  const file = node({
+    id: "file:1",
+    kind: "file",
+    label: "src/auth/token.ts",
+    status: "neutral",
+    data: { path: "src/auth/token.ts" },
+  })
+
+  const near = createCardTemplate(theme, { tier: "near", related: () => "2 reads · 1 write" })(file, "execution")
+  expect(near).toContain("2 reads · 1 write")
 })

@@ -102,24 +102,93 @@ const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])
 export type CardTemplateOptions = {
   /** How much a card says at the reader's current distance from it. */
   tier?: DetailTier
-  /** The node whose card carries its own detail, whatever the reader's distance. */
-  expanded?: string
+  /** The selected node: its card says so. */
+  selected?: string
+  /** A fact only the graph knows — a file's readers, say — for the kinds that have none of their own. */
+  related?: (node: GraphNode) => string | undefined
 }
 
 const text = (value: unknown) => (typeof value === "string" && value.length > 0 ? value : undefined)
+const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
 
 /**
- * The one line a near card adds under its summary: when the thing happened, and which file or agent
- * it touched. It is the same information the inspector lists, trimmed to what fits beside a label.
+ * The tool's input as one line: the path it touched, the command it ran, the pattern it searched.
+ * The tool's name is the label, so the input is the thing the card adds.
  */
-function detailLine(node: GraphNode): string {
+function inputLine(node: GraphNode): string | undefined {
+  const input = node.data?.input
+  if (typeof input === "string") return firstLine(input) || undefined
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return undefined
+  const record = input as Record<string, unknown>
+  for (const key of ["path", "filePath", "command", "pattern", "query", "url", "description"]) {
+    const value = record[key]
+    if (typeof value === "string" && value.length > 0) return firstLine(value) || undefined
+  }
+  return undefined
+}
+
+/** Who spoke: the role is not in the label, which is the text. */
+function messageDetail(node: GraphNode): string | undefined {
+  const role = text(node.data?.role)
+  if (!role) return undefined
+  return node.data?.steered === true ? `${role} · steered` : role
+}
+
+/** What the tool produced: the first line of its output, and how it ended. */
+function resultDetail(node: GraphNode): string | undefined {
+  const output = text(node.data?.output)
+  const exit = node.data?.exit
   const parts = [
-    node.time === undefined ? undefined : new Date(node.time).toLocaleTimeString(),
-    text(node.data?.path),
-    text(node.data?.agent),
+    output ? firstLine(output) || undefined : undefined,
+    typeof exit === "number" && exit !== 0 ? `exit ${exit}` : undefined,
+    node.data?.timeout === true ? "timed out" : undefined,
   ].filter((part): part is string => !!part)
 
-  return parts.join(" · ")
+  return parts.length > 0 ? parts.join(" · ") : undefined
+}
+
+/** The first file a diff touched: the label says how many, not which. */
+function diffDetail(node: GraphNode): string | undefined {
+  const files = node.data?.files
+  if (!Array.isArray(files)) return undefined
+  return files.find((file): file is string => typeof file === "string")
+}
+
+/**
+ * T11.3 — the one thing a kind has that its label does not. A card that has nothing to add adds
+ * no line: an empty line is worse than no line, and a line that repeats the label says nothing
+ * either. The tier decides how much room the card has; the kind decides what fills it.
+ */
+export function kindDetail(node: GraphNode): string | undefined {
+  switch (node.kind) {
+    case "session":
+      return text(node.data?.forkedFrom) ?? text(node.data?.parentSessionID)
+    case "turn":
+    case "phase":
+      return node.time === undefined ? undefined : new Date(node.time).toLocaleTimeString()
+    case "message":
+      return messageDetail(node)
+    case "reasoning":
+      return undefined
+    case "tool":
+      return inputLine(node)
+    case "file":
+      return undefined
+    case "subagent":
+      return text(node.data?.agent)
+    case "result":
+      return resultDetail(node)
+    case "error":
+      return text(node.data?.type)
+    case "retry":
+      return undefined
+    case "compaction":
+      return node.data?.replayed === true ? "replayed" : text(node.data?.reason)
+    case "notice":
+      return text(node.data?.source) ?? text(node.data?.type)
+    case "diff":
+      return diffDetail(node)
+  }
 }
 
 export function createCardTemplate(theme: RenderTheme, options: CardTemplateOptions = {}): CardTemplate {
@@ -132,20 +201,25 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const badge = count ? `<span style="color:${theme.textMuted};font-weight:500"> ${count}</span>` : ""
     const labelFont = mono ? `ui-monospace,SFMono-Regular,Menlo,monospace` : `inherit`
     const status = statusColor(theme, node)
-    const border = node.status === "neutral" || node.status === "success" ? theme.border : status
-    const tier = options.expanded === node.id ? "near" : (options.tier ?? "mid")
+    // T11.5 — a selected card says so. The selection is a theme token, so it follows the theme.
+    const selected = options.selected === node.id
+    const border = selected ? theme.selection : node.status === "neutral" || node.status === "success" ? theme.border : status
+    const ring = selected ? `box-shadow:0 0 0 2px ${theme.selection}40;` : ""
+    const tier = options.tier ?? "mid"
     // The card's box never changes — the layout owns the geometry — so a tier changes what the card
     // says inside it, never where it sits.
     const summary =
       tier !== "far" && node.summary
         ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.summary)}</span>`
         : ""
-    const detail = tier === "near" ? detailLine(node) : ""
+    // T11.3 — the line a near card adds is its kind's own fact, and a kind with nothing to say
+    // adds no line at all.
+    const detail = tier === "near" ? (options.related?.(node) ?? kindDetail(node)) : undefined
     const detailRow = detail
       ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(detail)}</span>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};border-radius:8px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};${ring}border-radius:8px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[node.kind]}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>

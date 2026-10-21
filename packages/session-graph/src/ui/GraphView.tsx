@@ -7,6 +7,7 @@ import {
   CARD_SIZE,
   changedFiles,
   COMPACT_SIZE,
+  DETAIL_TIER_WIDTH,
   detailTier,
   laneAnchors,
   layoutGraph,
@@ -170,6 +171,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
   onCleanup(() => controller.dispose())
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
+  const [rendererReady, setRendererReady] = createSignal(false)
   const [rendererID, setRendererID] = createSignal<RendererID>()
   const [fallback, setFallback] = createSignal(false)
   const [error, setError] = createSignal<string>()
@@ -272,13 +274,37 @@ export const GraphView = (props: GraphViewProps) => {
   const [tier, setTier] = createSignal<DetailTier>("mid")
   createEffect(() => {
     const width = cardScreenWidth()
-    setTier((current) => detailTier(width, current))
+    // The tier is read as well as written: the hysteresis needs a second pass to settle, and a card
+    // that stops changing size would otherwise stay one tier behind the reader.
+    const current = tier()
+    setTier(detailTier(width, current))
   })
-  // In the card mode the selected node's own card carries the detail; in the other modes the card
-  // keeps to the reader's distance and the detail lives somewhere else.
-  const expandedNode = createMemo(() => (detailMode() === "card" ? selection()[0] : undefined))
+  // T11.3 — a file's card says who read it and who wrote it: a fact only the graph's edges know.
+  const fileRelations = createMemo(() => {
+    const relations = new Map<string, { reads: number; writes: number }>()
+    for (const edge of props.model.edges) {
+      if (edge.kind !== "reads" && edge.kind !== "writes") continue
+      const current = relations.get(edge.target) ?? { reads: 0, writes: 0 }
+      if (edge.kind === "reads") current.reads++
+      else current.writes++
+      relations.set(edge.target, current)
+    }
+    return relations
+  })
+  const relatedDetail = (node: GraphNode) => {
+    if (node.kind !== "file") return undefined
+    const relation = fileRelations().get(node.id)
+    if (!relation) return undefined
+    const parts = [
+      relation.reads > 0 ? `${relation.reads} ${relation.reads === 1 ? "read" : "reads"}` : undefined,
+      relation.writes > 0 ? `${relation.writes} ${relation.writes === 1 ? "write" : "writes"}` : undefined,
+    ].filter((part): part is string => !!part)
+    return parts.length > 0 ? parts.join(" · ") : undefined
+  }
   const renderCard = createMemo(
-    () => props.renderCard ?? createCardTemplate(theme(), { tier: tier(), expanded: expandedNode() }),
+    () =>
+      props.renderCard ??
+      createCardTemplate(theme(), { tier: tier(), selected: selection()[0], related: relatedDetail }),
   )
   const renderBand = createMemo(() => createBandTemplate(theme()))
   // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
@@ -872,7 +898,7 @@ export const GraphView = (props: GraphViewProps) => {
   // T1.8: the fitted frame is the 100% reference for the camera zoom readout. The renderer clamps
   // orthographic zoom to ~1/3..2.5x fit, so the control cannot empty the canvas.
   const [fitBaseline, setFitBaseline] = createSignal(1)
-  let fitPending = false
+  const [fitPending, setFitPending] = createSignal(false)
   let fitSettle: ReturnType<typeof setTimeout> | undefined
   // A fit emits viewports as the camera animates; keep reading the baseline until the reports stop
   // so the settled frame becomes the 100% reference. When settling, capture the final viewport zoom.
@@ -880,7 +906,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (fitSettle) clearTimeout(fitSettle)
     fitSettle = setTimeout(() => {
       fitSettle = undefined
-      fitPending = false
+      setFitPending(false)
       // Capture the settled viewport zoom as the fit baseline (100% reference)
       const current = untrack(viewport)
       if (current) setFitBaseline(current.zoom)
@@ -888,15 +914,15 @@ export const GraphView = (props: GraphViewProps) => {
   }
   onCleanup(() => fitSettle && clearTimeout(fitSettle))
   const requestFit = (fit: () => void) => {
-    fitPending = true
+    setFitPending(true)
     settleFit()
     fit()
   }
   // A zoom is the reader's own act: it ends the fit window, so the 100% reference stops following
   // the camera and the readout keeps telling the truth.
   const endFitWindow = () => {
-    if (!fitPending) return
-    fitPending = false
+    if (!fitPending()) return
+    setFitPending(false)
     if (fitSettle) clearTimeout(fitSettle)
     fitSettle = undefined
   }
@@ -904,6 +930,45 @@ export const GraphView = (props: GraphViewProps) => {
     Metrics.count("fit")
     requestFit(() => renderer?.fit(untrack(contentIDs), fitOptions()))
   }
+  // T11.2 (A) — in the card mode the selected card is the detail, so the camera brings it close
+  // enough to read: a card's tier is measured in screen pixels, so a card that stays small cannot
+  // say anything. The camera only ever moves closer, and only for the selection — a pan, a zoom or
+  // a fit never re-frames the card behind the reader's back.
+  // The card width the camera aims for is the near tier's threshold with a margin, so the card
+  // lands inside the tier rather than on its edge.
+  const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.near * 1.1
+  const frameReadable = (id: string) => {
+    const instance = renderer
+    if (!instance) return
+    if (cardScreenWidth() >= READABLE_CARD_WIDTH) {
+      focusNode(id)
+      return
+    }
+    // The fit's legibility floor is the card's reading width, so the frame lands on a card the
+    // reader can read; the padding keeps the neighbourhood in view.
+    requestFit(() =>
+      instance.fit([id], {
+        ...fitOptions(),
+        minScale: READABLE_CARD_WIDTH / CARD_SIZE[0],
+        padding: CARD_SIZE[0] * 2,
+      }),
+    )
+  }
+  const [framedSelection, setFramedSelection] = createSignal<string>()
+  createEffect(() => {
+    if (detailMode() !== "card") return
+    const id = selection()[0]
+    if (!id) return
+    if (fitPending()) return
+    // The camera is the renderer, so the framing waits for it: the first viewport report can
+    // arrive before the renderer itself is handed over.
+    if (!rendererReady()) return
+    const current = viewport()
+    if (!current) return
+    if (framedSelection() === id) return
+    setFramedSelection(id)
+    frameReadable(id)
+  })
   const applyModel = (instance: GraphRenderer) => {
     // T3.5: a level change rebuilds the model, so the frame waits for the one that carries the node.
     if (raiseLevelForFrame()) return
@@ -1072,6 +1137,7 @@ export const GraphView = (props: GraphViewProps) => {
             onModelApplied={applyModel}
             onRenderer={(instance) => {
               renderer = instance
+              setRendererReady(!!instance)
               props.onRenderer?.(instance)
             }}
             onReady={(info) => {
@@ -1082,7 +1148,7 @@ export const GraphView = (props: GraphViewProps) => {
             }}
             onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
             onViewportChange={(next) => {
-              if (fitPending) {
+              if (fitPending()) {
                 setFitBaseline(next.zoom || 1)
                 settleFit()
               }

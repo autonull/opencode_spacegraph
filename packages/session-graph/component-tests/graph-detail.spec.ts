@@ -46,7 +46,15 @@ story("the card mode puts the detail on the node itself", async ({ mount, page }
   })
 
   // The selected node's own card carries the detail; nothing else opens.
-  await expect(root.locator(`[data-node-id="${TOOL_ID}"] [data-tier="near"]`)).toBeVisible()
+  const card = root.locator(`[data-node-id="${TOOL_ID}"] [data-tier="near"]`)
+  await expect(card).toBeVisible()
+
+  // The card says what its kind has that its label does not: the path the tool read.
+  await expect(card).toContainText("src/auth/session.ts")
+
+  // A selected card says so.
+  await expect(root.locator(`[data-node-id="${TOOL_ID}"] [data-selected="true"]`)).toBeVisible()
+
   await expect(root.locator('[data-slot="graph-popover"]')).toHaveCount(0)
   await expect(root.locator('[data-slot="graph-inspector-gutter"]')).toHaveCount(0)
 })
