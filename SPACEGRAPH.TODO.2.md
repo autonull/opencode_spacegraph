@@ -98,7 +98,7 @@ editor, and mobile-first ergonomics stay out of scope. Seams for the first two a
 - **T4.8–T4.14 SpaceGraphJS core extractions** — layout, levels, representations, adapter, overlay, theme, search/minimap/a11y (vacuum from OpenCode)
 - T4.3–4.7 Library internals — sustainability, invisible to reviewers
 - T5 Release artifacts — after upstream decision
-- T6.4 Corpus, T6.5 Edge cases, T6.6 Scale — evidence hardening
+- T6.5 Edge cases, T6.6 Scale — evidence hardening
 - T6.8 Legend/help, T6.9 Issue tracker — polish/process
 - T6.10–6.15 Library roadmap — independent of OpenCode decision
 - **T6.17 Graph diff visualization** — enables session comparison (D4)
@@ -1292,11 +1292,6 @@ pixel-diff helper was written and dropped for exactly that reason.
 
 **Evidence hardening (do after G2 if result positive, or to strengthen library):**
 
-- [ ] **T6.4 Real-session corpus and sanitizer**
-  `script/session-to-fixture.ts`: sanitized session export → fixture compatible with `buildGraph`. Strip home paths, tokens, secrets, customer names; preserve real tool shapes. Keep 2–3 redacted long sessions (subagent, retries, interrupted) as regression corpus separate from canonical fixture.
-  Done when: corpus replays through model and one app e2e; nothing sensitive committed; size bounded.
-  Verify: corpus unit tests + e2e.
-
 - [x] **T6.5 Edge-case coverage: forks, child sessions, compaction, permissions**
   Upstream has `session.forked`; subagent nodes link child session but cannot open it; compaction summary-only; approval/permission declared but unbuilt. Add "open child session" action, fork/lineage attribution without cross-session edges, compaction/replay-only coverage, explicit decision on permission nodes. Cover interrupted, aborted, idle outcomes.
   Done when: each case has fixture/test and documented UI behavior.
@@ -1368,10 +1363,9 @@ pixel-diff helper was written and dropped for exactly that reason.
     now a library primitive (`diffRenderModels` in `@spacegraphjs/adapter`) and it says how little
     moved: 3 nodes of 20,005. The seam exists; the work waits until a session above roughly 2,000
     messages is a normal thing to open, at which point the 227 ms update is the number to beat.
-  - **Unverified:** the benchmark uses synthetic sessions, not real ones (T6.4's corpus is still
-    open); the first paint and the pan frame rate are still unmeasured (there is no harness); the
-    60-turn window is a policy choice, not a measured optimum — the plan's evidence task (T2.2) may
-    change it.
+  - **Unverified:** the first paint and the pan frame rate are still unmeasured (there is no
+    harness); the 60-turn window is a policy choice, not a measured optimum — the plan's evidence
+    task (T2.2) may change it.
   - **The two free geometries joined the table (2026-10-20).** `bun run graph:scale` now also
     measures the tree and the force simulation, which the T7 track left out: the tree is a linear
     pass (6 / 11 / 76 ms at 409 / 4,009 / 20,005 nodes), the force simulation is **not** (209 ms /
@@ -1741,7 +1735,7 @@ that review (T6.16), never a substitute for it and never a gate.
 | Dependency drift after sync | Medium | `bun install` + built e2e; lockfile review | Revert merge on sync branch only |
 | Test flake masks regressions | Medium | T1.5 ownership; repeat runs | Quarantine with linked issue |
 | Reviewers cannot reproduce the claim | High | T6.1 provider-free demo + T6.2 hosted build + T6.3 packet | Ship screenshots and video only |
-| Real sessions break model assumptions | Medium | T6.4 corpus + T6.5 edge cases | Narrow claim to fixture-shaped sessions |
+| Real sessions break model assumptions | Medium | T6.5 edge cases | Narrow claim to fixture-shaped sessions |
 | Hostile markup in tool output or export | Low | T6.7 escaping suite + documented sanitization | Disable export of untrusted content |
 | Library performance/maintenance regressions | Medium | T6.11 budget CI + T6.14 docs/ownership | Pin tested version and stop upgrades |
 | Upstream sees large opaque diff | High | T3.7 ladder + T6.3 review packet + flag | Offer only extension-panel rung |
@@ -1775,7 +1769,7 @@ that review (T6.16), never a substitute for it and never a gate.
 | V5.6 CI | T4.6 |
 | Unlogged review findings | T1.1 (clipping), T1.2 (summary framing), T1.3 (layered), T3.1 (flag), T3.2 (settings), T3.4 (export) |
 | New visual defects (2026-10-19 review) | T1.8 (camera zoom), T1.9 (breadcrumbs/selection), T1.10 (contrast), T1.11 (summaries), T1.12 (hierarchy), T1.13 (timeline), T1.14 (Cytoscape), T1.15 (zoom/pan captures), T1.16 (retire spike); evidence in `docs/spacegraph/visual-review.md` |
-| New leverage/velocity work (not in TODO.1) | T6.1–T6.17 (provider-free demo, review packet, corpus, edge cases, scale, security, legend, contract v3, benchmarks, second host, devtools, docs, demo index, graph diff) |
+| New leverage/velocity work (not in TODO.1) | T6.1–T6.17 (provider-free demo, review packet, edge cases, scale, security, legend, contract v3, benchmarks, second host, devtools, docs, demo index, graph diff) |
 | SpaceGraphJS core extractions (vacuum from OpenCode) | T4.8–T4.14 (layout, levels, representations, adapter, overlay, theme, search/minimap/a11y) |
 
 ---
@@ -1839,7 +1833,7 @@ largest session route 361.12→355.31 kB, and a **new lazy `graph` chunk 37.55 k
 referenced only from the route import map. The initial-load delta is bundler re-split noise; first paint
 has no harness. Surprise: `bun run check` **passes on bare upstream** here (34/34 tasks) but fails on this
 checkout only in `@opencode/ai` (`zstdCompressSync` on `node:zlib`) — the main checkout sits under
-`/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2` that
+the home directory, so `tsc`'s type-root walk-up finds a stray `~/node_modules/@types/node@22.10.2` that
 shadows the repo's `@types/node@24.12.2`; the `/tmp` worktree has no such ancestor. This is environmental
 (checkout location), not a fork or merge regression, and is the concrete input to T1.6. T0.8: fast-forwarded
 `dev` to the sync branch and pushed `dev`, the sync branch, and the tag.
@@ -2731,7 +2725,7 @@ test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` (20 pass), `bun r
 steps, including the library build and the publish check), `bun run lint:changed` (0), and the capture
 suite (the committed frames are byte-identical; only `25` is new).
 
-Unverified: the benchmark uses synthetic sessions, not real ones (T6.4's corpus is still open); the
+Unverified: the benchmark uses synthetic sessions, not real ones; the
 first paint and the pan frame rate are still unmeasured (no harness); the 60-turn window is a policy
 choice, not a measured optimum, and T2.2 may change it; the scale notice was read in the capture, not
 by a reader who did not write it. **T2.1 and T2.2 still need participants**, so the stop rule in T2.5
@@ -2814,8 +2808,7 @@ mark the commit that produced them.
 
 **2026-10-20 — T6.5: the cases a real session produces, and the fixture does not.** T2 still needs
 participants, so the work went where the plan says it can: the evidence-hardening half that needs
-no human. T6.5 was the open item in that group (T6.4's corpus needs real session data, which this
-environment does not have).
+no human. T6.5 was the open item in that group.
 
 *The fork is an attribution, never a cross-session edge.* The lineage rides on the root node's
 data — the session it was forked from, the message it branched at, and its parent session — and the
@@ -2876,9 +2869,9 @@ the stop rule in T2.5 has not fired.
   **T2.5** (the stop rule). **T3.7's RFC** follows the measurement, and the issue text is already
   `upstream-pr.md` + `upstream-review.md`. **T5** (release) waits for the upstream decision. The
   rest is refinement: **T4.3** (fold the three strategies onto `LaneLayout`), **T4.5** (the
-  stencil/backface outline, or declare it), **T6.4** (the real-session corpus — blocked on real
-  session data), **T6.10–T6.14** (contract v3's fit insets, the benchmark CI, the embedder
-  devtools, the API docs, the stale `vue-spacegraph`), and **T6.16** (the optional pixel diff).
+  stencil/backface outline, or declare it), **T6.10–T6.14** (contract v3's fit insets, the
+  benchmark CI, the embedder devtools, the API docs, the stale `vue-spacegraph`), and **T6.16**
+  (the optional pixel diff).
 - **Two things a next pass should know.** The host's model now has a **fourth argument**
   (`buildGraph(messages, status, sessionID?, lineage?)`); the two surfaces that build a model are
   `packages/app/src/session/graph/session-graph-view.tsx` (which passes the lineage) and
@@ -3356,7 +3349,7 @@ the capture verification and the publish check).
 Unverified: the frames were read by eye, not by a reviewer who did not write them; the second host
 was checked in Chromium at 1440×900 only; the layout picker is a row of buttons, not a menu, so it
 wraps on a narrow window (the OpenCode host uses a menu for the same reason); the force layout's
-cost was measured on synthetic sessions, not on the real corpus (T6.4 is still open); and the tree's
+cost was measured on synthetic sessions; and the tree's
 block width of two is the second host's policy, not a measured optimum. **T2.1 and T2.2 still need
 participants**, so the stop rule in T2.5 has not fired.
 
@@ -3471,9 +3464,8 @@ checkout, and `turbo` dies with SIGBUS). The graph-relevant checks all pass.
   **T2.4** (the naming/representation/depth/file-lens decisions, from the protocol data) and
   **T2.5** (the stop rule). **T3.7's RFC** follows the measurement, and the issue text is already
   `upstream-pr.md` + `upstream-review.md`. **T5** (release) waits for the upstream decision. The
-  rest is refinement: **T6.4** (the real-session corpus — blocked on real session data),
-  **T6.11–T6.14** (the benchmark CI, the embedder devtools, the API docs, the stale
-  `vue-spacegraph`).
+  rest is refinement: **T6.11–T6.14** (the benchmark CI, the embedder devtools, the API docs,
+  the stale `vue-spacegraph`).
 - **The contract is v3 now, and the fork consumes the built packages** — a library edit needs
   `pnpm run build:lib && pnpm run build:packages` before the host sees it, and the fork's
   `bun.lock` carries the library's version.

@@ -97,7 +97,7 @@ The non-OpenCode reference host runs from the library repo: `pnpm run dev:demo` 
 
 The accepted gate for this fork is **`bun run graph:verify`** + per-package typechecks. The repo-level `bun run check`
 fails on this checkout in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`) because the checkout
-lives under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2`
+lives under a home directory, so `tsc`'s type-root walk-up finds a stray `~/node_modules/@types/node@22.10.2`
 that shadows the repo's `@types/node@24.12.2`. This is an environmental issue (checkout location), not a fork
 or merge regression — `bun run check` passes on bare upstream in a clean worktree (T0.7). A reviewer should
 run `graph:verify` and the per-package typechecks listed above; any other failures are environmental.
@@ -303,7 +303,7 @@ session load. First paint has no harness and stays unmeasured.
 
 `bun run check` **passes on bare upstream** here (34/34 turbo tasks) and **fails on this checkout**
 only in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`). Cause: the main checkout lives
-under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2`
+under the home directory, so `tsc`'s type-root walk-up finds a stray `~/node_modules/@types/node@22.10.2`
 and shadows the repo's `@types/node@24.12.2`; the `/tmp` upstream worktree has no such ancestor and
 resolves the repo copy. This is environmental (checkout location), not a fork or merge regression; see
 T1.6.
@@ -505,11 +505,12 @@ Carry these forward explicitly; none is silently lowered.
     declared limit instead of accepting clicks that do nothing. Three consecutive captures are
     identical apart from the noise floor (max channel delta 1–2 on five frames, and 10–12 pixels on
     `23-graph-turn-2.png` — one card's rounded corner at a sub-pixel offset).
-21. **The layouts on offer are three variations of one grid** (`lanes`, `timeline`, `hierarchy`): the
-    library owns one placement primitive — columns × rows — and the three views are policies over it.
-    A force-directed or a tidy tree is a different geometry, not another policy, so the library needs a
-    placement seam before those views exist (T7 in `SPACEGRAPH.TODO.2.md`). The reader therefore cannot
-    yet compare layouts, and the evidence task (T2.2) has one layout to test rather than several.
+21. **The layouts on offer are five, and they are not the same kind of thing** (T7): the three grid
+    views (`lanes`, `timeline`, `hierarchy`) are policies over one placement primitive — columns ×
+    rows — while `tree` and `force` are different geometries behind the same placement seam. The
+    reader can compare them side by side (the layout gallery), but which one is *best* is a
+    measurement nobody has made yet: the evidence task (T2.2) has five layouts to test, and the
+    tree's block width is a policy (`treeColumns`), not a measured optimum.
 
 ## Edge cases (T6.5)
 

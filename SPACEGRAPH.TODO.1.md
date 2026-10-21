@@ -54,7 +54,7 @@ exist yet.
 
 ### Environment (this session)
 
-- `bun` 1.4.3 installed to `/home/me/.local` via `npm i -g bun --prefix ~/.local` (postinstall run manually);
+- `bun` 1.4.3 installed to `~/.local` via `npm i -g bun --prefix ~/.local` (postinstall run manually);
   it is on `PATH`. `bun install` at the repo root succeeds (2155 packages; `bun.lock` gains the new workspace).
 - Playwright browser mismatch worked around: the repo pins `@playwright/test` 1.59.1 (wants chromium
   headless-shell revision 1217) while the machine cache had 1193/1194/1234. The 1217 path is now a symlink to

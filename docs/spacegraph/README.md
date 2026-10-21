@@ -81,7 +81,7 @@ The canonical verification gate is `bun run graph:verify`, which runs:
 - session-graph component contract tests (Storybook-backed Playwright)
 - Capture verification
 
-**Environmental note:** `bun run check` fails on this checkout in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`) because the checkout lives under `/home/me`, so `tsc`'s type-root walk-up finds a stray `/home/me/node_modules/@types/node@22.10.2` that shadows the repo's `@types/node@24.12.2`. This is an environmental issue (checkout location), not a fork or merge regression — `bun run check` passes on bare upstream in a clean worktree. The accepted gate for this fork is `graph:verify` + per-package typechecks.
+**Environmental note:** `bun run check` fails on this checkout in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`) because the checkout lives under a home directory, so `tsc`'s type-root walk-up finds a stray `~/node_modules/@types/node@22.10.2` that shadows the repo's `@types/node@24.12.2`. This is an environmental issue (checkout location), not a fork or merge regression — `bun run check` passes on bare upstream in a clean worktree. The accepted gate for this fork is `graph:verify` + per-package typechecks.
 
 To regenerate and inspect screenshots:
 ```bash
