@@ -7,13 +7,15 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
 import "./graph-toolbar.css"
 import {
+  DETAIL_MODES,
   LAYOUT_STRATEGIES,
   REPRESENTATIONS,
+  type DetailMode,
   type LayoutStrategy,
   type Representation,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
-import { DEPTH_KEY, LEVEL_KEY, REPRESENTATION_KEY, STRATEGY_KEY } from "./vocabulary"
+import { DEPTH_KEY, DETAIL_MODE_KEY, LEVEL_KEY, REPRESENTATION_KEY, STRATEGY_KEY } from "./vocabulary"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
 
@@ -46,6 +48,12 @@ export type GraphToolbarProps = {
   /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
   files?: boolean
   onToggleFiles?: () => void
+  /** Where a selected node's detail is shown; absent when the host does not offer the choice. */
+  detailMode?: DetailMode
+  onDetailModeChange?: (mode: DetailMode) => void
+  /** The transient peek at the node under the pointer; absent when the host does not offer it. */
+  peek?: boolean
+  onTogglePeek?: () => void
   /** Opens the hybrid turn map for the currently selected turn; absent when no turn is selected. */
   onTurnMap?: () => void
   /** LE.8/LE.9: opens the selected ribbon/matrix segment in the node-link graph; absent outside graph mode. */
@@ -137,6 +145,51 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         </details>
       </Show>
 
+      <Show when={props.onDetailModeChange && graphMode()}>
+        <details class="relative" data-slot="graph-toolbar-detail">
+          <summary
+            class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
+            aria-label={i18n.t("ui.sessionGraph.toolbar.detailModeValue", {
+              mode: i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"]),
+            })}
+            title={i18n.t("ui.sessionGraph.toolbar.detailModeValue", {
+              mode: i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"]),
+            })}
+          >
+            <Icon name="sidebar-right" size="small" />
+          </summary>
+          <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md min-w-[160px]">
+            {DETAIL_MODES.map((mode) => (
+              <button
+                type="button"
+                data-slot="graph-detail-mode-option"
+                data-mode={mode}
+                aria-pressed={props.detailMode === mode}
+                class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
+                onClick={(event) => {
+                  const menu = event.currentTarget.closest("details")
+                  if (menu) menu.open = false
+                  props.onDetailModeChange?.(mode)
+                }}
+              >
+                <span>{i18n.t(DETAIL_MODE_KEY[mode])}</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      </Show>
+
+      <Show when={props.onTogglePeek}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          state={props.peek ? "pressed" : "rest"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.peek")}
+          title={i18n.t("ui.sessionGraph.toolbar.peek")}
+          onClick={() => props.onTogglePeek?.()}
+          icon={<Icon name="outline-eye" size="small" />}
+        />
+      </Show>
       <IconButton
         size="small"
         variant="ghost"
@@ -347,6 +400,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         {secondary()}
       </Show>
 
+      {/* The renderer label and the back control sit at the end of the row: the host's own chrome
+          floats over the panel's top-right, and the end inset keeps them clear of it. */}
       <div class="ml-auto flex items-center gap-2">
         {props.renderer ? (
           <span class="text-12-regular text-text-weak" title={i18n.t("ui.sessionGraph.toolbar.renderer", { renderer: props.renderer })}>

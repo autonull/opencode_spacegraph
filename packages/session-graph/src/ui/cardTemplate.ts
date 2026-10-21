@@ -1,5 +1,5 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
+import type { DetailTier, GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
 import { isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 
@@ -99,7 +99,30 @@ function statusColor(theme: RenderTheme, node: GraphNode) {
 
 const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])
 
-export function createCardTemplate(theme: RenderTheme): CardTemplate {
+export type CardTemplateOptions = {
+  /** How much a card says at the reader's current distance from it. */
+  tier?: DetailTier
+  /** The node whose card carries its own detail, whatever the reader's distance. */
+  expanded?: string
+}
+
+const text = (value: unknown) => (typeof value === "string" && value.length > 0 ? value : undefined)
+
+/**
+ * The one line a near card adds under its summary: when the thing happened, and which file or agent
+ * it touched. It is the same information the inspector lists, trimmed to what fits beside a label.
+ */
+function detailLine(node: GraphNode): string {
+  const parts = [
+    node.time === undefined ? undefined : new Date(node.time).toLocaleTimeString(),
+    text(node.data?.path),
+    text(node.data?.agent),
+  ].filter((part): part is string => !!part)
+
+  return parts.join(" · ")
+}
+
+export function createCardTemplate(theme: RenderTheme, options: CardTemplateOptions = {}): CardTemplate {
   return (node: GraphNode, level: ZoomLevel) => {
     const { solid, soft } = accent(node)
     const mono = MONO_KINDS.has(node.kind)
@@ -110,15 +133,24 @@ export function createCardTemplate(theme: RenderTheme): CardTemplate {
     const labelFont = mono ? `ui-monospace,SFMono-Regular,Menlo,monospace` : `inherit`
     const status = statusColor(theme, node)
     const border = node.status === "neutral" || node.status === "success" ? theme.border : status
-    const summary = node.summary
-      ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.summary)}</span>`
+    const tier = options.expanded === node.id ? "near" : (options.tier ?? "mid")
+    // The card's box never changes — the layout owns the geometry — so a tier changes what the card
+    // says inside it, never where it sits.
+    const summary =
+      tier !== "far" && node.summary
+        ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.summary)}</span>`
+        : ""
+    const detail = tier === "near" ? detailLine(node) : ""
+    const detailRow = detail
+      ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(detail)}</span>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};border-radius:8px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};border-radius:8px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[node.kind]}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>
 ${summary}
+${detailRow}
 </span>
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`

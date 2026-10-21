@@ -1,5 +1,14 @@
 import type { DepthMode } from "@spacegraphjs/renderer"
-import type { GraphEdge, GraphNode, Lane, LayoutStrategy, NodeKind, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type {
+  DetailMode,
+  GraphEdge,
+  GraphNode,
+  Lane,
+  LayoutStrategy,
+  NodeKind,
+  Representation,
+  ZoomLevel,
+} from "@opencode/session-ui/graph"
 
 /**
  * The session graph's vocabulary as i18n keys. The inspector, the toolbar, the legend, and the
@@ -41,6 +50,14 @@ export const DEPTH_KEY = {
   "depth-stack": "ui.sessionGraph.depth.depthStack",
   orbit: "ui.sessionGraph.depth.orbit",
 } as const satisfies Record<DepthMode, string>
+
+/** Where a selected node's detail is shown. The toolbar names the chosen surface. */
+export const DETAIL_MODE_KEY = {
+  off: "ui.sessionGraph.detailMode.off",
+  card: "ui.sessionGraph.detailMode.card",
+  popover: "ui.sessionGraph.detailMode.popover",
+  panel: "ui.sessionGraph.detailMode.panel",
+} as const satisfies Record<DetailMode, string>
 
 /** LE.10 lane gutter copy, in layout order. */
 export const LANE_KEY = {

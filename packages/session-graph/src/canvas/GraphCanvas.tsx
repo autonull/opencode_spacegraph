@@ -30,6 +30,8 @@ export type GraphCanvasProps = {
   onError?: (error: unknown) => void
   onViewportChange?: (viewport: RendererViewport) => void
   onBackgroundClick?: () => void
+  /** The node under the pointer, and none when the pointer leaves one. */
+  onHover?: (id: string | undefined) => void
   /**
    * Fires once the adapter has applied the current model, so a host can sequence a fit *after* the
    * new nodes and positions exist (LE.1) instead of framing a stale layout.
@@ -86,6 +88,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
             host.dataset.graphBand = band
           }),
           result.renderer.on("viewportChange", (viewport) => props.onViewportChange?.(viewport)),
+          result.renderer.on("hoverChange", ({ id }) => props.onHover?.(id)),
         ]
         result.renderer.setModel(props.model)
         props.onModelApplied?.(result.renderer)

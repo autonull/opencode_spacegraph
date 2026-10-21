@@ -13,8 +13,10 @@ is built entirely from existing session data with no protocol, server, or storag
 - The graph model is pure and synchronous. No DOM, no WebGL, no effects during model construction.
 - Stable IDs produce stable positions and stable selection across streaming updates. Streaming text
   appends nodes; it never rebuilds the graph or re-lays-out existing nodes.
-- Detail content is always readable in a conventional DOM panel with selectable text, never only on
-  the canvas.
+- Detail content is always readable as selectable DOM text, never painted into the canvas. Where it
+  appears is the reader's choice — the side panel, the popover beside the node, or the node's own
+  card. A card carries a summary for a reader who has zoomed in; the panel and the popover carry the
+  full record. A surface that takes layout width must not reframe the map when it opens.
 - The transcript keeps working if this package fails to load.
 
 ## Boundaries

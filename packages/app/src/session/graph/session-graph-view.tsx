@@ -145,6 +145,8 @@ export function SessionGraphView(props: {
           representation={graph.representation()}
           minimap={graph.minimap()}
           files={graph.files()}
+          detailMode={graph.detailMode()}
+          peek={graph.peek()}
           diffSource={diffSource()}
           renderSummary={(node) =>
             node.kind === "message" || node.kind === "reasoning" ? (
@@ -158,6 +160,8 @@ export function SessionGraphView(props: {
           onRepresentationChange={(representation) => graph.setRepresentation(representation)}
           onMinimapChange={(minimap) => graph.setMinimap(minimap)}
           onFilesChange={(files) => graph.setFiles(files)}
+          onDetailModeChange={(mode) => graph.setDetailMode(mode)}
+          onPeekChange={(peek) => graph.setPeek(peek)}
           onTurnMap={(turnID) => graph.setTurnMap(turnID)}
           onOpenTranscript={(id) => {
             const ref = openInTranscript(model(), id)

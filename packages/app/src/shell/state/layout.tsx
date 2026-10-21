@@ -99,6 +99,10 @@ const sessionGraphSchema = Persistence.struct({
   representation: Schema.optional(Schema.Literals(["graph", "ribbon", "matrix"])),
   // LE.14: the depth spectrum (flat 2D | layered | depth-stack | orbit), per session. Absent means flat.
   depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
+  // Where a selected node's detail is shown, per session. Absent means the side panel.
+  detailMode: Schema.optional(Schema.Literals(["off", "card", "popover", "panel"])),
+  // The transient peek at the node under the pointer, per session. Absent means off.
+  peek: Schema.optional(Schema.Boolean),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
   turnMap: Schema.optional(Schema.String),
 })
@@ -577,6 +581,8 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           files: createMemo(() => state()?.files ?? false),
           representation: createMemo(() => state()?.representation ?? "graph"),
           depth: createMemo(() => state()?.depth ?? "flat"),
+          detailMode: createMemo(() => state()?.detailMode ?? "panel"),
+          peek: createMemo(() => state()?.peek ?? false),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
           },
@@ -588,6 +594,12 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setDepth(depth: NonNullable<SessionGraphState["depth"]>) {
             write({ depth })
+          },
+          setDetailMode(detailMode: NonNullable<SessionGraphState["detailMode"]>) {
+            write({ detailMode })
+          },
+          setPeek(peek: boolean) {
+            write({ peek })
           },
           setMinimap(minimap: boolean) {
             write({ minimap })

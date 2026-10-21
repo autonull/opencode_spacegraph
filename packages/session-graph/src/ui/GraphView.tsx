@@ -1,12 +1,13 @@
 import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme, RenderModel } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
-import type { GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type { DetailMode, DetailTier, GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 import {
   ancestors,
   breadcrumbs,
   CARD_SIZE,
   changedFiles,
   COMPACT_SIZE,
+  detailTier,
   laneAnchors,
   layoutGraph,
   LEVEL_RANK,
@@ -40,6 +41,8 @@ import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
 import { GraphLegend } from "./GraphLegend"
 import { GraphMinimap, MINIMAP_GAP, MINIMAP_SIZE } from "./GraphMinimap"
+import { GraphPeek } from "./GraphPeek"
+import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { createGraphTheme } from "./theme"
@@ -73,6 +76,13 @@ export type GraphViewProps = {
   representation?: Representation
   /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
   minimap?: boolean
+  /**
+   * Where a selected node's detail is shown: nowhere, on the node itself, in a popover beside it, or
+   * in the side panel. The host persists the choice; the view mirrors it.
+   */
+  detailMode?: DetailMode
+  /** The transient peek at the node under the pointer; the host persists the choice. */
+  peek?: boolean
   /** LE.12: the file-first lens (changed-files rail + bundled provenance edges); the host persists it. */
   files?: boolean
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
@@ -98,6 +108,8 @@ export type GraphViewProps = {
   onRepresentationChange?: (representation: Representation) => void
   onMinimapChange?: (minimap: boolean) => void
   onFilesChange?: (files: boolean) => void
+  onDetailModeChange?: (mode: DetailMode) => void
+  onPeekChange?: (peek: boolean) => void
   onOpenTranscript?: (id: string) => void
   /**
    * T6.5: opens another session — a delegation's child, a fork's origin, a child session's parent.
@@ -131,6 +143,14 @@ export const GraphView = (props: GraphViewProps) => {
   const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
   const [files, setFiles] = createSignal<boolean>(props.files ?? false)
+  // Where a selected node's detail is shown. The panel is the default: the popover and the card are
+  // alternatives a reader can pick, and the map still works with the detail off.
+  const [detailMode, setDetailMode] = createSignal<DetailMode>(props.detailMode ?? "panel")
+  // The transient look at the node under the pointer; it never changes the selection.
+  const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
+  const [hovered, setHovered] = createSignal<string>()
+  // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
+  const [popoverDismissed, setPopoverDismissed] = createSignal(false)
   const [searchOpen, setSearchOpen] = createSignal(false)
   // T6.8: the legend names the encoding, so a first-time reader can decode the map without a briefing.
   const [legendOpen, setLegendOpen] = createSignal(false)
@@ -157,8 +177,12 @@ export const GraphView = (props: GraphViewProps) => {
   const [narrow, setNarrow] = createSignal(false)
   const [compact, setCompact] = createSignal(false)
   const [inspectorWidth, setInspectorWidth] = createSignal(288)
+  // The canvas region's own size: the card tier and the popover's placement are measured against
+  // the space the map actually has, not against the space the session panel has.
+  const [canvasSize, setCanvasSize] = createSignal({ width: 0, height: 0 })
   let renderer: GraphRenderer | undefined
   let rootEl!: HTMLDivElement
+  let canvasRegionEl!: HTMLDivElement
 
   // The turn a node belongs to: a turn node owns itself, anything else inherits from its ancestry.
   const turnOf = (id: string | undefined) => {
@@ -200,6 +224,19 @@ export const GraphView = (props: GraphViewProps) => {
     onCleanup(() => observer.disconnect())
   })
 
+  // The canvas region's size, for the same reason: the card tier is measured in screen pixels, and
+  // the popover is placed inside the region it floats over.
+  onMount(() => {
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setCanvasSize((current) =>
+        current.width === width && current.height === height ? current : { width, height },
+      )
+    })
+    observer.observe(canvasRegionEl)
+    onCleanup(() => observer.disconnect())
+  })
+
   let resizeMove: ((event: PointerEvent) => void) | undefined
   let resizeEnd: (() => void) | undefined
   const stopResize = () => {
@@ -223,7 +260,26 @@ export const GraphView = (props: GraphViewProps) => {
   onCleanup(stopResize)
 
   const theme = () => props.theme ?? resolvedTheme()
-  const renderCard = createMemo(() => props.renderCard ?? createCardTemplate(theme()))
+  // The width of an activity card on the screen, in pixels: the card's world width times how many
+  // pixels one world unit covers in the current frame. This is the legibility the reader actually
+  // has, so it is what decides how much a card says.
+  const cardScreenWidth = createMemo(() => {
+    const extent = viewport()?.extent
+    const size = canvasSize()
+    if (!extent?.width || !size.width) return CARD_SIZE[0]
+    return (CARD_SIZE[0] * size.width) / extent.width
+  })
+  const [tier, setTier] = createSignal<DetailTier>("mid")
+  createEffect(() => {
+    const width = cardScreenWidth()
+    setTier((current) => detailTier(width, current))
+  })
+  // In the card mode the selected node's own card carries the detail; in the other modes the card
+  // keeps to the reader's distance and the detail lives somewhere else.
+  const expandedNode = createMemo(() => (detailMode() === "card" ? selection()[0] : undefined))
+  const renderCard = createMemo(
+    () => props.renderCard ?? createCardTemplate(theme(), { tier: tier(), expanded: expandedNode() }),
+  )
   const renderBand = createMemo(() => createBandTemplate(theme()))
   // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
@@ -483,7 +539,86 @@ export const GraphView = (props: GraphViewProps) => {
         }
       : undefined,
   })
-  const inspectorOpen = createMemo(() => !!selectedNode())
+  // The panel takes layout width and reframes the camera when it opens; the popover and the card do
+  // neither, so the map does not move under the reader when a node is selected.
+  const inspectorOpen = createMemo(() => detailMode() === "panel" && !!selectedNode())
+  // The screen anchor of a node, read from the renderer: it owns the camera, so it owns the
+  // projection too. The anchor follows the node as the reader pans, and it does not move by less
+  // than a pixel, so a pan does not re-render what the anchor carries.
+  const createAnchor = (node: () => GraphNode | undefined) => {
+    const [anchor, setAnchor] = createSignal<{ x: number; y: number }>()
+    createEffect(() => {
+      const current = node()
+      viewport()
+      const position = current ? renderer?.getNodeScreenPosition?.(current.id) : undefined
+      setAnchor((previous) =>
+        previous && position && Math.abs(previous.x - position.x) < 1 && Math.abs(previous.y - position.y) < 1
+          ? previous
+          : position,
+      )
+    })
+    return anchor
+  }
+  // The node the popover describes, and where it hangs.
+  const popoverNode = createMemo(() => (detailMode() === "popover" ? selectedNode() : undefined))
+  const popoverAnchor = createAnchor(() => popoverNode())
+  // Beside the node, flipped to the other side when it would leave the canvas.
+  const popoverPlacement = createMemo(() => {
+    const anchor = popoverAnchor()
+    const size = canvasSize()
+    if (!anchor) return { left: 0, top: 0 }
+    const fitsRight = anchor.x + POPOVER_GAP + POPOVER_WIDTH <= size.width
+    const left = fitsRight ? anchor.x + POPOVER_GAP : Math.max(POPOVER_GAP, anchor.x - POPOVER_GAP - POPOVER_WIDTH)
+    const top = Math.min(
+      Math.max(POPOVER_GAP, anchor.y - 24),
+      Math.max(POPOVER_GAP, size.height - POPOVER_MAX_HEIGHT - POPOVER_GAP),
+    )
+
+    return { left, top }
+  })
+  const popoverVisible = createMemo(() => {
+    const node = popoverNode()
+    if (!node || popoverDismissed()) return undefined
+    return node
+  })
+  // The peeked node: under the pointer, never the selected one — the selection already has a
+  // surface of its own.
+  const peekNode = createMemo(() => {
+    if (!peek()) return undefined
+    const id = hovered()
+    if (!id || id === selection()[0]) return undefined
+    return nodeByID(props.model, id)
+  })
+  const [peekAnchor, setPeekAnchor] = createSignal<{ x: number; y: number }>()
+  createEffect(() => {
+    const node = peekNode()
+    viewport()
+    if (!node) {
+      setPeekAnchor(undefined)
+      return
+    }
+    const position = renderer?.getNodeScreenPosition?.(node.id)
+    setPeekAnchor((current) =>
+      current && position && Math.abs(current.x - position.x) < 1 && Math.abs(current.y - position.y) < 1
+        ? current
+        : position,
+    )
+  })
+  // Above the node's own box, so the peek never covers what it is about.
+  const peekPlacement = createMemo(() => {
+    const anchor = peekAnchor()
+    if (!anchor) return undefined
+    const half = (CARD_SIZE[1] / CARD_SIZE[0]) * cardScreenWidth() / 2
+
+    return { left: anchor.x, top: anchor.y - half - 34 }
+  })
+  const peekFrame = createMemo(() => {
+    const node = peekNode()
+    const placement = peekPlacement()
+    if (!node || !placement) return undefined
+
+    return { node, left: placement.left, top: placement.top }
+  })
 
   // Breadcrumbs are the `part-of` ancestry, seeded into the controller's trail so one library
   // primitive backs both selection and the path (U3.11/P8.1).
@@ -497,9 +632,16 @@ export const GraphView = (props: GraphViewProps) => {
     const id = typeof target === "string" ? target : target?.[0]
     controller.select(target ?? null)
     seedTrail(id)
+    // A new selection opens a fresh detail surface; a dismissed popover does not outlive it.
+    setPopoverDismissed(false)
     props.onSelect?.(id)
     // T2.3: a permalink frames a node without a participant acting, so it is not an interaction.
     if (counted && id) Metrics.count("select")
+  }
+  const changeDetailMode = (next: DetailMode) => {
+    setDetailMode(next)
+    setPopoverDismissed(false)
+    props.onDetailModeChange?.(next)
   }
   const changeProjection = (next: Projection) => {
     setProjection(next)
@@ -541,6 +683,21 @@ export const GraphView = (props: GraphViewProps) => {
       props.onFilesChange?.(!open)
       return !open
     })
+  }
+  const togglePeek = () => {
+    setPeek((open) => {
+      props.onPeekChange?.(!open)
+      return !open
+    })
+  }
+  // Escape closes the popover and keeps the selection; a second Escape clears it. A panel is not
+  // dismissed by Escape — it is the map's own surface, and clearing the selection closes it.
+  const dismissDetail = () => {
+    if (popoverVisible()) {
+      setPopoverDismissed(true)
+      return
+    }
+    select(undefined)
   }
   // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
   const changedFilesList = createMemo(() => changedFiles(props.model))
@@ -626,6 +783,13 @@ export const GraphView = (props: GraphViewProps) => {
 
     if (target?.closest("[data-slot='graph-a11y'], input, textarea, [contenteditable]")) return
 
+    if (event.key === "Escape") {
+      event.preventDefault()
+      dismissDetail()
+
+      return
+    }
+
     if (event.key === "/") {
       event.preventDefault()
       openSearch()
@@ -663,6 +827,12 @@ export const GraphView = (props: GraphViewProps) => {
   })
   createEffect(() => {
     if (props.files !== undefined) setFiles(props.files)
+  })
+  createEffect(() => {
+    if (props.detailMode !== undefined) setDetailMode(props.detailMode)
+  })
+  createEffect(() => {
+    if (props.peek !== undefined) setPeek(props.peek)
   })
   // Keep the controller's model in step with the host model; it reconciles selection + trail by id, so
   // streaming appends never clear either.
@@ -810,6 +980,10 @@ export const GraphView = (props: GraphViewProps) => {
         onToggleMinimap={toggleMinimap}
         files={files()}
         onToggleFiles={toggleFiles}
+        detailMode={detailMode()}
+        onDetailModeChange={changeDetailMode}
+        peek={peek()}
+        onTogglePeek={togglePeek}
         onTurnMap={
           props.onTurnMap
             ? () => {
@@ -873,6 +1047,7 @@ export const GraphView = (props: GraphViewProps) => {
           <GraphFileRail files={changedFilesList()} selection={selection()} onSelect={(id) => select(id)} />
         </Show>
         <div
+          ref={canvasRegionEl}
           class="relative min-w-0 flex-1"
           data-slot="graph-canvas-region"
           role="group"
@@ -892,6 +1067,7 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={(ids) => select(ids)}
             onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => select(undefined)}
+            onHover={(id) => setHovered(id)}
           cardFacing={cardFacing()}
             onModelApplied={applyModel}
             onRenderer={(instance) => {
@@ -921,6 +1097,40 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={select}
             onEscape={() => select(undefined)}
           />
+          <Show when={peekFrame()}>
+            {(frame) => (
+              <div
+                data-slot="graph-peek-anchor"
+                class="absolute z-20 -translate-x-1/2"
+                style={{ left: `${frame().left}px`, top: `${frame().top}px` }}
+              >
+                <GraphPeek node={frame().node} />
+              </div>
+            )}
+          </Show>
+          <Show when={detailMode() === "popover"}>
+            <div
+              data-slot="graph-popover-anchor"
+              class="absolute z-20"
+              style={{
+                left: `${popoverPlacement().left}px`,
+                top: `${popoverPlacement().top}px`,
+                display: popoverVisible() ? "block" : "none",
+              }}
+            >
+              <GraphPopover
+                model={props.model}
+                node={popoverNode()}
+                diffSource={props.diffSource}
+                renderSummary={props.renderSummary}
+                link={props.link}
+                onSelect={select}
+                onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+                onOpenSession={props.onOpenSession}
+                onClose={() => setPopoverDismissed(true)}
+              />
+            </div>
+          </Show>
           <Show when={minimap() && !error() && props.model.nodes.length > 0}>
             <div class="absolute bottom-2 end-2 z-10">
               <GraphMinimap
@@ -986,42 +1196,44 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
         </div>
-        <Show when={selectedNode() && !narrow()}>
+        <Show when={detailMode() === "panel"}>
+          <Show when={inspectorOpen() && !narrow()}>
+            <div
+              data-slot="graph-inspector-resize"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={i18n.t("ui.sessionGraph.inspector.resize")}
+              class="w-1 shrink-0 cursor-col-resize touch-none hover:bg-border-weaker-base"
+              onPointerDown={startResize}
+            />
+          </Show>
           <div
-            data-slot="graph-inspector-resize"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={i18n.t("ui.sessionGraph.inspector.resize")}
-            class="w-1 shrink-0 cursor-col-resize touch-none hover:bg-border-weaker-base"
-            onPointerDown={startResize}
-          />
+            classList={{
+              "shrink-0": true,
+              "w-0 overflow-hidden": !inspectorOpen(),
+              // LE.4: at narrow widths the inspector is a real bottom sheet (a flex sibling below the
+              // canvas), not an overlay, so the canvas is sized to the area above it and fit never
+              // frames content under it.
+              "h-1/2 w-full border-t border-border-weaker-base": !!(inspectorOpen() && narrow()),
+              "border-s border-border-weaker-base": !!(inspectorOpen() && !narrow()),
+            }}
+            style={inspectorOpen() && !narrow() ? { width: `${inspectorWidth()}px`, "max-width": "60%" } : undefined}
+            data-slot="graph-inspector-gutter"
+            data-collapsed={!inspectorOpen()}
+            data-layout={narrow() ? "sheet" : "side"}
+          >
+            <GraphInspector
+              model={props.model}
+              node={selectedNode()}
+              diffSource={props.diffSource}
+              renderSummary={props.renderSummary}
+              link={props.link}
+              onSelect={select}
+              onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+              onOpenSession={props.onOpenSession}
+            />
+          </div>
         </Show>
-        <div
-          classList={{
-            "shrink-0": true,
-            "w-0 overflow-hidden": !selectedNode(),
-            // LE.4: at narrow widths the inspector is a real bottom sheet (a flex sibling below the
-            // canvas), not an overlay, so the canvas is sized to the area above it and fit never
-            // frames content under it.
-            "h-1/2 w-full border-t border-border-weaker-base": !!(selectedNode() && narrow()),
-            "border-s border-border-weaker-base": !!(selectedNode() && !narrow()),
-          }}
-          style={selectedNode() && !narrow() ? { width: `${inspectorWidth()}px`, "max-width": "60%" } : undefined}
-          data-slot="graph-inspector-gutter"
-          data-collapsed={!selectedNode()}
-          data-layout={narrow() ? "sheet" : "side"}
-        >
-          <GraphInspector
-            model={props.model}
-            node={selectedNode()}
-            diffSource={props.diffSource}
-            renderSummary={props.renderSummary}
-            link={props.link}
-            onSelect={select}
-            onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-            onOpenSession={props.onOpenSession}
-          />
-        </div>
       </div>
     </div>
   )

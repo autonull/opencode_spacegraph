@@ -4,7 +4,8 @@
 `SPACEGRAPH.TODO.1.md` (frozen as the Phase 0–10 specification and historical record). `SPACEGRAPH.md`
 remains the design argument; `docs/spacegraph/prototype.md` remains the release write-up. **This file is
 the closing plan**: it finishes the engineering, brings the fork back onto upstream `dev`, and makes
-the fork usable by someone who did not build it.
+the fork usable by someone who did not build it. **`SPACEGRAPH.TODO.4.md` is the successor**: the
+work the author's own use of the product asked for, and the exemption to the freeze rule in §7.3.
 
 **Conventions:** carried tasks keep their IDs (`T2.x`, `T3.7`, `T4.2`, `T5.x`, `T6.x`); new work gets
 `T8.x` (wrap up), `T9.x` (sync), `T10.x` (share). Never renumber or reuse an ID; superseded work gets
@@ -330,6 +331,54 @@ The fork's docs quote numbers and commits from earlier passes. Measured today ag
   Done when: the rule is in this plan and in the fork's contribution note.
   Verify: the next passes touch documentation, not the graph.
 
+### T8.8 The detail surface is the reader's choice
+
+**Why this task exists.** The author used the graph and found that clicking a node *interrupts* it:
+the side panel takes 288 px of the canvas and the camera reframes the whole map to make room (the
+fit trigger in `GraphView.tsx` lists `inspectorOpen()`). The detail is the one thing a reader opens
+most, and it is the one thing that moves everything else. The fix is not to move the panel; it is to
+stop the detail from having only one home.
+
+This landed **before** the G5 freeze, deliberately: it is a finding from the author's own use of the
+product, not a speculative feature, and it is the last shape change the graph gets.
+
+- [x] **T8.8a The detail mode is a reader's choice, not the graph's**
+  Four modes, persisted per session beside the other graph preferences: `off` (no detail surface),
+  `card` (the selected node's own card carries a summary), `popover` (a floating panel anchored to
+  the node, in screen space), `panel` (the side panel the graph always had). The toolbar offers the
+  choice; the app persists it; the default is `panel`, so nothing changes for a reader who never
+  touches it.
+  Done when: the four modes are in the toolbar, in the persisted state, and in the graph's own
+  vocabulary (`session-ui/graph`'s `DetailMode`).
+  Verify: `cd packages/session-graph && bun test src` and the `graph-detail` component spec.
+
+- [x] **T8.8b The map does not move when the detail opens**
+  Only the `panel` mode takes layout width, and only it triggers a refit. The popover floats over
+  the canvas and is dismissed with Escape without losing the selection; a second Escape clears it.
+  Done when: selecting a node in the `popover` or `card` mode leaves the camera where it was.
+  Verify: the `graph-detail` component spec.
+
+- [x] **T8.8c A card says what the reader can read at that distance**
+  A card's box never changes — the layout owns the geometry and the positions stay stable — so the
+  **tier** (`far` | `mid` | `near`) changes the composition inside the box: a far card drops the
+  summary it cannot show, a near card adds when and where. The tier is measured in screen pixels
+  (the card's world width times the pixels per world unit), not in camera distance, and the
+  thresholds are separate in and out so a card never flips on a boundary.
+  Done when: the tier is in `session-ui/graph` and the card template reads it.
+  Verify: `cd packages/session-ui && bun test src/graph/detail.test.ts`.
+
+- [x] **T8.8d The generic capabilities go to the library, not the host**
+  Two of them: a renderer can say **where a node is on the screen** (`GraphRenderer`'s optional
+  `getNodeScreenPosition`, implemented by the SpaceGraph renderer through the core's projection and
+  by the Cytoscape renderer through its own rendered position), and the SpaceGraph renderer now
+  reports **hover** (`hoverChange`, which the Cytoscape renderer already reported). Three defects in
+  the library were fixed on the way: a host-driven card resize **re-flows** its content instead of
+  scaling it (a tier change would have blown the card up), a card hidden by `labelLod` now takes its
+  **edges** with it, and the **accessibility mirror** paints the same nodes in place instead of
+  replacing its list, so a model rebuild no longer moves the reader's keyboard focus to the body.
+  Done when: the contract carries the optional method and both renderers implement it.
+  Verify: `cd spacegraphjs && pnpm exec vitest run` and the two renderers' own suites.
+
 **Gate G5 — closed.** Every workflow on both repositories is green; the library's roadmap items are
 done or deliberately dropped; the image set is final; the docs are true; the code is frozen.
 
@@ -379,12 +428,20 @@ upstream PR is cut later (T10.2), never force-pushed.
   side.
   Verify: `git log --oneline -1`; `git diff --check`; a read of the seven overlapping files.
 
-- [ ] **T9.4 Regenerate the lockfile**
+- [x] **T9.4 Regenerate the lockfile**
   `bun install` at the root. The lockfile must keep the `spacegraphjs` workspace entries **and** the
   `2.1.1` version bumps.
   Done when: `bun install` is clean and `bun.lock` names the workspace entries and the bumped
   versions.
   Verify: `bun install && git diff --stat bun.lock`.
+  **Done early (2026-10-21), because the install could not complete at all**: the lock still
+  recorded the library's old `vite ^8.2.2` while the library asks for `^8.3.5`, and the three-day
+  `minimumReleaseAge` blocked the new version — so `bun install --frozen-lockfile` failed, and the
+  tree it left behind was the reason the app's unit suite and one typecheck failed. The lock was
+  regenerated with the age policy relaxed once, and a frozen install now passes with the policy
+  back on. The lock had also drifted from the fork's *own* manifests (`three` 0.185.1 was installed
+  where `packages/session-graph` declares 0.186.1), so the regeneration moved the tree onto the
+  version the manifests ask for. T9.4 still re-runs after the sync.
 
 - [ ] **T9.5 Re-check the graph's protocol assumptions**
   Upstream added a **new error type** (`provider.free-limit`) and a new timeline row kind. The
@@ -724,6 +781,8 @@ is `--mode=verify`. When a change really does alter the rendering, refresh the a
 | 7 | The graph's code is frozen at G5 | the remaining work is evidence, delivery and upstream syncs |
 | 8 | The RFC is filed after the measurement, by whoever holds an account | an unmeasured claim is the wrong thing to put in front of a maintainer |
 | 9 | The library's own suites leave the fork's gate when the fork consumes the published packages | the library's CI owns the library; the fork's gate owns the host |
+| 10 | **The detail surface is the reader's choice, and the map does not move when it opens** | Clicking a node took 288 px of the canvas and reframed the camera — the one thing a reader opens most was the one thing that moved everything else (T8.8) |
+| 11 | **The author's use of the product is the exemption to the freeze rule** | The freeze rule (§7.3 rule 4) says no graph features after G5. The author used the graph, found that the detail surface had one home and that the map was not yet a workspace, and asked for the work. It lands as one reviewed block in `SPACEGRAPH.TODO.4.md` (T11–T15, gates G9–G13), not as a drip |
 
 ### 7.2 Risks
 
@@ -836,3 +895,55 @@ is two syncs out of date and is not re-measured yet; the clean-clone gate run st
 component suite (49/50), so the capture verification and the publish check after it have not been run
 on that tree, and the motion test's 437.9 ms was measured once, on a loaded machine, not a
 distribution.
+
+**2026-10-21 — T8.8: the detail surface became the reader's choice.**
+The author used the graph and found that clicking a node interrupts it: the side panel takes 288 px
+and the camera reframes the whole map to make room. The detail is the thing a reader opens most, so
+it should not be the thing that moves everything else.
+
+What changed:
+
+- the **detail mode** is a reader's choice — `off` | `card` | `popover` | `panel` — persisted per
+  session beside the other graph preferences, offered in the toolbar, defaulting to `panel` so
+  nothing changes for a reader who never touches it. The popover floats over the canvas and follows
+  its node; the card mode puts a summary on the node itself; only the panel takes layout width and
+  only the panel reframes the camera;
+- the **card tier** (`far` | `mid` | `near`) is measured in screen pixels, not camera distance: the
+  card's box never changes, so the tier changes the composition inside it. The thresholds are
+  separate in and out, so a card never flips on a boundary;
+- the **peek** answers "what is this?" under the pointer without changing the selection;
+- the **library** grew the two generic capabilities the host needed: a renderer can say where a node
+  is on the screen (`GraphRenderer.getNodeScreenPosition`, optional), and the SpaceGraph renderer now
+  reports hover, which the Cytoscape renderer already reported. Two defects were fixed on the way:
+  a host-driven card resize re-flows its content instead of scaling it, and a card hidden by
+  `labelLod` takes its edges with it.
+
+Two more defects surfaced while the change was being verified, both of them older than this pass:
+
+- the **accessibility mirror replaced its whole list** whenever the model changed under the reader,
+  so a model rebuild moved the keyboard focus to the body. The layer now paints the same nodes in
+  place, and only rebuilds (and restores the focus) when the list's shape really changed.
+- the **toolbar's back control** could be pushed onto a second row by one more control, and the
+  host's floating header hint then covered it. The detail control is a compact menu for that reason.
+
+Measured: `session-ui` graph **112** (+6), `session-graph` unit **97** (+1), the library's vitest
+**529** (+2), the library's `tsc --noEmit` **0 errors** in the packages it owns; the new `graph-detail`
+component spec **4 passed**; the session-graph component suite **54 passed**; the app's graph e2e
+**27 passed**.
+
+**The two failures this pass found were not the remote branch's, and the remote branch does not fix
+them.** The upstream `dev` head is green on both `test` and `check` with the same manifests, the
+same tsconfigs and the same lockfile resolutions, and none of its 24 commits touches the lockfile's
+dependency resolutions, the app's test setup, or these packages. All three causes were local:
+
+- the **install could not complete** — see T9.4 above;
+- the **app's unit suite** failed on 36 files because Bun's automatic JSX runtime imports `jsxDEV`
+  from `solid-js/jsx-dev-runtime`, which maps to solid-js's production build, where `jsxDEV` does
+  not exist (only the `solid-js/h` runtime has it). The repository pins `bun@1.4.2` in
+  `packageManager` and CI uses that; the machine that ran this pass had **1.4.3**, and Bun 1.4.2
+  runs the same suite **775 passed, 0 failed**. The vite build is unaffected — `vite-plugin-solid`
+  does its own transform;
+- the **`plugin-browser` typecheck** resolved `node:zlib` by walking *out* of the repository, into a
+  stray `/home/me/node_modules/@types/node@22.10.2` (a home-directory install), because neither
+  that package nor the repository root declared `@types/node`. The root declares it now, so the
+  resolution is deterministic: the whole repository typechecks **40/40**.

@@ -3,6 +3,7 @@ import {
   buildFixtureGraph,
   buildFixtureMessages,
   buildGraph,
+  type DetailMode,
   type GraphEdge,
   type GraphModel,
   type GraphNode,
@@ -160,6 +161,10 @@ type HarnessProps = {
   representation?: Representation
   /** LE.12: open the changed-files rail on mount. */
   files?: boolean
+  /** Where a selected node's detail is shown. */
+  detailMode?: DetailMode
+  /** The transient peek at the node under the pointer. */
+  peek?: boolean
   renderer?: RendererID
   overrides?: Partial<Record<RendererID, RendererFactory>>
   theme?: RenderTheme
@@ -211,6 +216,8 @@ const ViewHarness = (props: HarnessProps) => {
         depth={props.depth}
         representation={props.representation}
         files={props.files}
+        detailMode={props.detailMode}
+        peek={props.peek}
         preferredRenderer={renderer()}
         rendererOverrides={props.overrides}
         theme={props.theme}
@@ -312,6 +319,26 @@ export const Cytoscape = {
 
 export const Empty = {
   render: () => <ViewHarness model={EMPTY_MODEL} />,
+}
+
+/** The detail floats beside the node it belongs to, and the canvas keeps its width. */
+export const DetailPopover = {
+  render: () => <ViewHarness detailMode="popover" selection={INITIAL_SELECTION} />,
+}
+
+/** The selected node's own card carries the detail; nothing else opens. */
+export const DetailCard = {
+  render: () => <ViewHarness detailMode="card" selection={INITIAL_SELECTION} />,
+}
+
+/** No detail surface at all: the map is the map. */
+export const DetailOff = {
+  render: () => <ViewHarness detailMode="off" selection={INITIAL_SELECTION} />,
+}
+
+/** The peek answers "what is this?" without changing the selection. */
+export const Peek = {
+  render: () => <ViewHarness peek={true} selection={INITIAL_SELECTION} />,
 }
 
 /** T6.6: a long session, so the drawn window and its notice are visible. */

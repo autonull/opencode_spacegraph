@@ -313,7 +313,7 @@ The graph is read with the mouse, so the mouse map is a contract of the library,
 | Wheel | Zoom about the point under the pointer |
 | Middle click on a node | Frame that node (auto-zoom, half a second) |
 | Middle button + drag | Orbit (3D only; an orthographic view has no orbit) |
-| Left click on a node | Select it; the inspector shows it |
+| Left click on a node | Select it; the detail appears where the reader asked for it — on the node, beside it, or in the panel |
 | Left drag on a node | Move it |
 | Shift + drag on the background | Box-select |
 

@@ -103,3 +103,12 @@ export {
 } from "./representation"
 
 export { scaleWindow, scopeToTurns, TURN_WINDOW, type ScaleWindow } from "./scale"
+
+export {
+  DETAIL_MODES,
+  DETAIL_TIERS,
+  DETAIL_TIER_WIDTH,
+  detailTier,
+  type DetailMode,
+  type DetailTier,
+} from "./detail"

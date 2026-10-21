@@ -58,3 +58,36 @@ test("bands render a labelled clipped header with the member count", () => {
   expect(html).toContain(">5<")
   expect(html).toContain("pointer-events:none")
 })
+
+// The tier is how much a card says at the reader's distance. The card's box never changes, so the
+// tier changes the composition inside it.
+test("card tiers", () => {
+  const tool = node({
+    id: "tool:1",
+    kind: "tool",
+    label: "read",
+    status: "success",
+    summary: "src/auth/token.ts",
+    time: Date.UTC(2026, 0, 2, 11, 33, 30),
+    data: { path: "src/auth/token.ts" },
+  })
+
+  // A far card drops the summary it cannot show.
+  const far = createCardTemplate(theme, { tier: "far" })(tool, "execution")
+  expect(far).toContain('data-tier="far"')
+  expect(far).not.toContain("src/auth/token.ts")
+
+  // A mid card carries the summary.
+  const mid = createCardTemplate(theme, { tier: "mid" })(tool, "execution")
+  expect(mid).toContain('data-tier="mid"')
+  expect(mid).toContain("src/auth/token.ts")
+
+  // A near card adds when and where.
+  const near = createCardTemplate(theme, { tier: "near" })(tool, "execution")
+  expect(near).toContain('data-tier="near"')
+  expect(near).toContain("11:33")
+
+  // The expanded node carries its detail whatever the reader's distance.
+  const expanded = createCardTemplate(theme, { tier: "far", expanded: tool.id })(tool, "execution")
+  expect(expanded).toContain('data-tier="near"')
+})
