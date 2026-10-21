@@ -1,8 +1,10 @@
 # SPACEGRAPH.TODO.2 — ship, validate, upstream
 
 **Status:** successor to `SPACEGRAPH.TODO.1.md`, which is frozen as the Phase 0–10 specification and
-historical record. This file is the living plan from 2026-10-19 onward. `SPACEGRAPH.md` remains the
-design argument; `docs/spacegraph/prototype.md` remains the release write-up.
+historical record. This file was the living plan from 2026-10-19 onward and is now **frozen as the
+build record**: `SPACEGRAPH.TODO.3.md` (2026-10-21) is the closing plan — wrap up, sync, share — and
+carries the open tasks forward with their IDs. `SPACEGRAPH.md` remains the design argument;
+`docs/spacegraph/prototype.md` remains the release write-up.
 
 **Conventions:** tasks use stable IDs (`T0.x` sync, `T1.x` usability, `T2.x` evidence, `T3.x`
 upstreamability, `T4.x` library, `T5.x` release). Every task has a `Done when` and a `Verify`
