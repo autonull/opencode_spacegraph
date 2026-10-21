@@ -500,3 +500,80 @@ test("names the session a fork came from and opens it", async ({ page }) => {
 
   expect(errors).toEqual([])
 })
+
+test("pans the view with the right mouse button", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const card = page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`)
+  const before = await card.boundingBox()
+  const host = (await page.locator(canvasHost).boundingBox())!
+
+  // The right button belongs to the camera: the view follows the cursor.
+  await page.mouse.move(host.x + host.width - 40, host.y + host.height - 40)
+  await page.mouse.down({ button: "right" })
+  await page.mouse.move(host.x + host.width - 140, host.y + host.height - 140, { steps: 10 })
+  await page.mouse.up({ button: "right" })
+
+  await expect
+    .poll(async () => Math.round(Math.abs(((await card.boundingBox())?.x ?? 0) - (before?.x ?? 0))))
+    .toBeGreaterThan(20)
+
+  expect(errors).toEqual([])
+})
+
+test("zooms the view with the mouse wheel", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const zoom = page.locator('[data-slot="graph-zoom-level"]')
+  const before = await zoom.innerText()
+  const host = (await page.locator(canvasHost).boundingBox())!
+
+  await page.mouse.move(host.x + host.width / 2, host.y + host.height / 2)
+  await page.mouse.wheel(0, -300)
+
+  await expect.poll(() => zoom.innerText()).not.toBe(before)
+
+  expect(errors).toEqual([])
+})
+
+test("selects a node when its card is clicked", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const card = page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`)
+  await card.click()
+
+  await expect(page.locator(inspector).getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("keeps the card styling when the layout changes", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const card = page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`)
+
+  const styling = () =>
+    card.locator("[data-kind]").evaluate((element) => {
+      const style = getComputedStyle(element)
+
+      return {
+        background: style.backgroundColor,
+        border: style.borderTopColor,
+        glyph: element.querySelector("svg") !== null,
+      }
+    })
+
+  const before = await styling()
+
+  await page.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await page.locator('[data-slot="graph-layout-option"][data-strategy="timeline"]').click()
+
+  // The card is still the card: the model rebuilt it, and its styling came with it.
+  await expect.poll(styling).toEqual(before)
+
+  expect(errors).toEqual([])
+})
