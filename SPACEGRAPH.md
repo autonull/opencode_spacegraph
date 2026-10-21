@@ -301,6 +301,26 @@ All proven against the canonical fixture in `selectors.test.ts` (exit gate 2).
 | Capture matrix (31 frames, 5 layouts × 4 depths × contexts) | ✅ Committed | `graph:capture --mode=verify` asserts set |
 | Library published + clean consumer proof | ✅ Done | `test:publish` packs → external `node_modules` → mounts both adapters |
 | Second host (framework-free, plain TS) | ✅ Running | `spacegraphjs/demo/second-host/` |
+| Direct mouse interaction (pan, zoom, pick, frame, drag) | ✅ Complete | Library unit + Playwright e2e; app e2e in `e2e/graph/` |
+
+### 7.1a The mouse map
+
+The graph is read with the mouse, so the mouse map is a contract of the library, not of the host:
+
+| Gesture | Does |
+|---------|------|
+| Right button + drag | Pan the view (the view follows the cursor) |
+| Wheel | Zoom about the point under the pointer |
+| Middle click on a node | Frame that node (auto-zoom, half a second) |
+| Middle button + drag | Orbit (3D only; an orthographic view has no orbit) |
+| Left click on a node | Select it; the inspector shows it |
+| Left drag on a node | Move it |
+| Shift + drag on the background | Box-select |
+
+The library owns the map; a host that draws cards over the canvas inherits it. Two rules keep a card
+readable: a control inside a card takes the mouse (the card does not drag out from under the
+reader, and its background still drags it), and a card draws its hover as an outline, so hovering
+never moves the controls under the reader's finger.
 
 ### 7.2 Test commands (run from package directories, not root)
 
@@ -340,7 +360,7 @@ bun run graph:capture --mode=verify   # assert committed set
 
 ## 8. Known Limitations (Honest, Not Lowered)
 
-1. **Orthographic wheel zoom** scales frustum about target, not pointer
+1. **Orthographic wheel zoom** keeps the point under the pointer in place
 2. **Mesh selection outline** is axis-aligned `BoxHelper`, not silhouette; DOM cards use element outline
 3. **Edge labels** avoid labels and DOM cards, not all geometry
 4. **Global `SpaceGraph.instances`** remains as off-by-default dev handle
@@ -361,6 +381,7 @@ bun run graph:capture --mode=verify   # assert committed set
 19. **Long sessions** drawn as recent 60 turns + banner; layout measures whole session
 20. **Camera-driven captures** used to vary (T6.20 fixed: fit measures live surface, zoom stops at renderer limit)
 21. **Five layouts are not comparable kinds** — three grid policies, two different geometries; best is unmeasured
+22. **Middle-drag orbit** does nothing in an orthographic view; there is no orbit to have
 
 ---
 

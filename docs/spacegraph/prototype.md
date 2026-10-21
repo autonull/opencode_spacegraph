@@ -446,7 +446,8 @@ data assumptions appear in the library.
 
 Carry these forward explicitly; none is silently lowered.
 
-1. **Orthographic wheel zoom scales the frustum about the target**, not the pointer (L1.12).
+1. **The wheel zooms about the point under the pointer.** In an orthographic view that is exact; in a
+   tilted perspective view the point is held on the target's plane, which is close but not exact.
 2. **The mesh focus/selection outline is an axis-aligned `BoxHelper`**, not a silhouette (L1.11/RF.6);
    DOM cards are outlined on the element with the resolved theme colours instead.
 3. **Edge labels avoid labels and DOM cards, but not all geometry**; `declutterLabels` measures label
