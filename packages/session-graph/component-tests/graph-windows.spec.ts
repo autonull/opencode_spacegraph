@@ -7,7 +7,7 @@ story("a window opens over the map, moves, resizes, and leaves the map where it 
   mount,
   page,
 }) => {
-  const root = await mount("session-graph-view--detail-window")
+  const root = await mount("session-graph-view--detail-popover")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
@@ -57,7 +57,7 @@ story("a window opens over the map, moves, resizes, and leaves the map where it 
 })
 
 story("a window closes on Escape, and the map keeps its selection", async ({ mount, page }) => {
-  const root = await mount("session-graph-view--detail-window")
+  const root = await mount("session-graph-view--detail-popover")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })

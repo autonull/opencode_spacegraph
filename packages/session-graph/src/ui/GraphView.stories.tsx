@@ -3,6 +3,7 @@ import {
   buildFixtureGraph,
   buildFixtureMessages,
   buildGraph,
+  type DetailFraming,
   type DetailMode,
   type EqualizerRuleSet,
   type GraphEdge,
@@ -147,6 +148,8 @@ type HarnessProps = {
   files?: boolean
   /** Where a selected node's detail is shown. */
   detailMode?: DetailMode
+  /** T17.4: the camera frames the selected node (the "card" framing behavior). */
+  detailFraming?: DetailFraming
   /** The transient peek at the node under the pointer. */
   peek?: boolean
   renderer?: RendererID
@@ -209,6 +212,7 @@ const ViewHarness = (props: HarnessProps) => {
         layout={props.layout}
         files={props.files}
         detailMode={props.detailMode}
+        detailFraming={props.detailFraming}
         peek={props.peek}
         windows={windows()}
         onWindowsChange={setWindows}
@@ -328,7 +332,7 @@ export const DetailPopover = {
 
 /** The selected node's own card carries the detail; nothing else opens. */
 export const DetailCard = {
-  render: () => <ViewHarness detailMode="card" selection={INITIAL_SELECTION} />,
+  render: () => <ViewHarness detailMode="window" selection={INITIAL_SELECTION} />,
 }
 
 /**
@@ -336,7 +340,14 @@ export const DetailCard = {
  * still there when the reader comes back to it.
  */
 export const DetailWindow = {
-  render: () => <ViewHarness detailMode="popover" selection={INITIAL_SELECTION} />,
+  render: () => <ViewHarness detailMode="window" selection={INITIAL_SELECTION} />,
+}
+
+/**
+ * T17.4: the camera frames the selected node (the "card" framing behavior).
+ */
+export const DetailFramingCard = {
+  render: () => <ViewHarness detailMode="off" detailFraming="card" selection={INITIAL_SELECTION} />,
 }
 
 /** T12.4: a window pinned to its node rides it across a pan. */

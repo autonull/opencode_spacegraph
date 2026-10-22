@@ -371,6 +371,8 @@ const source = {
   "ui.sessionGraph.capability.depthUnavailable": "{{depth}} depth is unavailable in the {{renderer}} renderer",
   "ui.sessionGraph.toolbar.billboard": "Billboard cards",
   "ui.sessionGraph.toolbar.billboardOff": "Billboard cards off",
+  "ui.sessionGraph.toolbar.frameNode": "Frame selected node",
+  "ui.sessionGraph.toolbar.frameNodeOff": "Frame selected node off",
   "ui.sessionGraph.search.placeholder": "Search nodes, tools, and files…",
   "ui.sessionGraph.search.results.one": "{{count}} result",
   "ui.sessionGraph.search.results.other": "{{count}} results",

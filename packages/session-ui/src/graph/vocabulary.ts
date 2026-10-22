@@ -114,9 +114,12 @@ export function isSummaryOrLogLayout(layout: Layout): layout is SummaryLayout | 
 }
 
 /** Where a selected node's detail is shown. The modes are alternatives, not stages. */
-export const DETAIL_MODES = ["off", "card", "popover", "panel"] as const
+export const DETAIL_MODES = ["off", "panel", "popover", "window"] as const
 
 export type DetailMode = (typeof DETAIL_MODES)[number]
+
+/** Whether the camera frames the selected node (the "card" framing behavior). */
+export type DetailFraming = "off" | "card"
 
 /**
  * How the map meets the transcript. The transcript is the dependable baseline, the graph is the

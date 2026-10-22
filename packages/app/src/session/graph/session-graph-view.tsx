@@ -189,6 +189,7 @@ export function SessionGraphView(props: {
           layout={graph.layout()}
           files={graph.files()}
           detailMode={graph.detailMode()}
+          detailFraming={graph.detailFraming()}
           peek={graph.peek()}
           activeTurn={activeTurn()}
           refitKey={props.refitKey}
@@ -214,6 +215,7 @@ export function SessionGraphView(props: {
           onLayoutChange={(layout) => graph.setLayout(layout)}
           onFilesChange={(files) => graph.setFiles(files)}
           onDetailModeChange={(mode) => graph.setDetailMode(mode)}
+          onDetailFramingChange={(framing) => graph.setDetailFraming(framing)}
           onPeekChange={(peek) => graph.setPeek(peek)}
           // T12: the reader's windows over the map. The graph proposes the first placement; the app
           // keeps them per session, so a window survives a session switch.

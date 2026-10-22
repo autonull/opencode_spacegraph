@@ -228,10 +228,9 @@ as one reviewed block rather than as a drip.
 log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). **T14.3
 (the minimap as a window) is done** (2026-10-22).
 
-**T17.1, T17.2, T17.3 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
-means the same thing in every layout ✓, **the log's own shape as a layout ✓**, and the detail the reader earns by moving closer ✓. **T17.4
-and T18 are planned, not started.** They are the rest of the consolidation the author's own
-use asked for — one way to show content, and the ergonomics of the map-and-log pair.
+**T17.1, T17.2, T17.3, T17.4 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
+means the same thing in every layout ✓, **the log's own shape as a layout ✓**, the detail the reader earns by moving closer ✓, and **one concept for the surfaces ✓**. **T18 is planned, not started.** It is the rest of the consolidation the author's own
+use asked for — the ergonomics of the map-and-log pair.
 
 ### 0.6 What is *not* in this plan
 
@@ -1220,7 +1219,7 @@ at every level.
 Verify: `cd packages/session-ui && bun test src/graph` — the layout's positions; the app e2e — the
 layout menu offers it and the map reads top to bottom.
 
-### T17.4 One concept for the surfaces — **planned**
+### T17.4 One concept for the surfaces — **done**
 
 The map shows content in five different ways today: the gutter (the inspector), beside the node
 (the popover), on the node (the card), in an overlay (the search, the legend, the gallery, the
@@ -1243,10 +1242,25 @@ minimap) and in a window. Five ways is a vocabulary the reader has to learn.
   windows need frames of their own ✓ — and a layout that is only ever seen in a test is a layout
   nobody has looked at.
 
+What changed:
+
+- **the detail mode vocabulary** is now `off | panel | popover | window` — the `card` mode was
+  removed and replaced by a separate `detailFraming` camera behaviour (`off | card`).
+- **the `card` framing** is now a camera behaviour (like zoom and fit), controlled by a toggle in
+  the **Draw** menu. When enabled, selecting a node frames it at the `closest` tier so the card
+  carries the payload itself.
+- **the `window` detail mode** opens the selected node's detail in a durable, movable, resizable
+  window over the map. The window is opened automatically when a node is selected with `detailMode="window"`.
+- **the toolbar** gained a "Frame selected node" toggle in the **Draw** menu, with an icon and
+  accessible name that does not change with state.
+- **the stories** were updated: `DetailCard` now uses `detailMode="window"`, and a new
+  `DetailFramingCard` story demonstrates the framing behaviour with `detailMode="off" detailFraming="card"`.
+- **the component tests** were updated to cover both the window detail mode and the card framing.
+
 Done when: every piece of content the map shows lives in a gutter, beside a node, or in a window,
 and one menu opens them.
 Verify: `cd packages/session-graph && bun test src` — the detail modes; the component suite — the
-minimap opens as a window.
+minimap opens as a window; the window detail mode and the card framing both work.
 
 **T17.5 The detail the reader earns by moving closer — **done**
 
@@ -1913,3 +1927,29 @@ Unverified: the *feel* of the consolidated row — seven names in one menu, the 
 grain — needs the author's hands. The ribbon at the execution level is a new picture (the work
 stands for itself, so the phase grouping is gone from the row), and the author should say whether
 the row is readable without it.
+
+**2026-10-22 — T17.4: one concept for the surfaces.**
+
+The detail mode vocabulary was consolidated from five surfaces to three homes plus a framing behaviour:
+
+- **the detail mode vocabulary** is now `off | panel | popover | window` — the `card` mode was
+  removed and replaced by a separate `detailFraming` camera behaviour (`off | card`).
+- **the `card` framing** is now a camera behaviour (like zoom and fit), controlled by a toggle in
+  the **Draw** menu. When enabled, selecting a node frames it at the `closest` tier so the card
+  carries the payload itself.
+- **the `window` detail mode** opens the selected node's detail in a durable, movable, resizable
+  window over the map. The window is opened automatically when a node is selected with `detailMode="window"`.
+- **the toolbar** gained a "Frame selected node" toggle in the **Draw** menu, with an icon and
+  accessible name that does not change with state.
+- **the stories** were updated: `DetailCard` now uses `detailMode="window"`, and a new
+  `DetailFramingCard` story demonstrates the framing behaviour with `detailMode="off" detailFraming="card"`.
+- **the component tests** were updated to cover both the window detail mode and the card framing.
+
+Measured: `session-ui` graph **136**, `session-graph` unit **104**, the session-graph component
+suite **60** (+2: the window detail mode and the card framing), the app graph e2e **32**, the root
+`bun run check` **40/40**.
+
+Unverified: the *feel* of the framing toggle — whether the camera movement on selection reads as
+"the map answers my pick" or as "the map jumped" — needs the author's hands. The window detail
+mode's automatic opening on selection is a new pattern, and the author should confirm it feels
+right.

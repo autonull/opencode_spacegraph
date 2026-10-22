@@ -9,6 +9,7 @@ import type {
 } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
 import type {
+  DetailFraming,
   DetailMode,
   DetailTier,
   EqualizerRule,
@@ -181,6 +182,10 @@ export type GraphViewProps = {
   onLayoutChange?: (layout: Layout) => void
   onFilesChange?: (files: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
+  /** T17.4: the camera frames the selected node (the "card" framing behavior). */
+  detailFraming?: DetailFraming
+  /** T17.4: callback when the framing behavior changes. */
+  onDetailFramingChange?: (framing: DetailFraming) => void
   onPeekChange?: (peek: boolean) => void
   onOpenTranscript?: (id: string) => void
   /**
@@ -236,6 +241,7 @@ export const GraphView = (props: GraphViewProps) => {
   // Where a selected node's detail is shown. The panel is the default: the popover and the card are
   // alternatives a reader can pick, and the map still works with the detail off.
   const [detailMode, setDetailMode] = createSignal<DetailMode>(props.detailMode ?? "panel")
+  const [detailFraming, setDetailFraming] = createSignal<DetailFraming>(props.detailFraming ?? "off")
   // The transient look at the node under the pointer; it never changes the selection.
   const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
   const [hovered, setHovered] = createSignal<string>()
@@ -282,6 +288,13 @@ export const GraphView = (props: GraphViewProps) => {
     onSelect: (id) => props.onSelect?.(id),
     onChange: () => setPopoverDismissed(false),
     count: () => Metrics.count("select"),
+  })
+  // T17.4: when detailMode is "window", open a window for the selected node's detail.
+  createEffect(() => {
+    if (detailMode() !== "window") return
+    const id = selection.selection()[0]
+    if (!id) return
+    openWindow("node", id)
   })
   const selectedTurn = () => turnOf(selection.selection()[0])
   // T6.6: a long session is drawn as its recent tail. The window is declared — the view says how
@@ -725,6 +738,10 @@ export const GraphView = (props: GraphViewProps) => {
     setPopoverDismissed(false)
     props.onDetailModeChange?.(next)
   }
+  const changeDetailFraming = (next: DetailFraming) => {
+    setDetailFraming(next)
+    props.onDetailFramingChange?.(next)
+  }
   const changeProjection = (next: Projection) => {
     setProjection(next)
     // Projection is the coarse depth selection; keep the depth treatment in step with it.
@@ -909,7 +926,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
   const [framedSelection, setFramedSelection] = createSignal<string>()
   createEffect(() => {
-    if (detailMode() !== "card") return
+    if (detailFraming() !== "card") return
     const id = selection.selection()[0]
     if (!id) return
     if (camera.pending()) return
@@ -972,6 +989,8 @@ export const GraphView = (props: GraphViewProps) => {
         onToggleGallery={() => setGalleryOpen((open) => !open)}
         billboard={cardFacing() === "camera"}
         onToggleBillboard={toggleBillboard}
+        detailFraming={detailFraming()}
+        onDetailFramingChange={changeDetailFraming}
         layout={layout()}
         onLayoutChange={changeLayout}
         files={files()}

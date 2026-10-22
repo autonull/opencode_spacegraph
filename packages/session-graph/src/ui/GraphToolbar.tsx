@@ -10,6 +10,7 @@ import {
   GRAPH_ARRANGEMENTS,
   LAYOUTS,
   ZOOM_LEVELS,
+  type DetailFraming,
   type DetailMode,
   type GraphArrangement,
   type GraphSide,
@@ -63,6 +64,10 @@ export type GraphToolbarProps = {
   /** Where a selected node's detail is shown; absent when the host does not offer the choice. */
   detailMode?: DetailMode
   onDetailModeChange?: (mode: DetailMode) => void
+  /** T17.4: the camera frames the selected node (the "card" framing behavior). */
+  detailFraming?: DetailFraming
+  /** T17.4: callback when the framing behavior changes. */
+  onDetailFramingChange?: (framing: DetailFraming) => void
   /** The transient peek at the node under the pointer; absent when the host does not offer it. */
   peek?: boolean
   onTogglePeek?: () => void
@@ -209,6 +214,18 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           pressed: props.billboard,
           slot: "graph-billboard-option",
           ariaLabel: i18n.t("ui.sessionGraph.toolbar.billboard"),
+          keepOpen: true,
+        })}
+      </Show>
+      <Show when={props.onDetailFramingChange}>
+        {option({
+          label: i18n.t(
+            props.detailFraming === "card" ? "ui.sessionGraph.toolbar.frameNode" : "ui.sessionGraph.toolbar.frameNodeOff",
+          ),
+          onClick: () => props.onDetailFramingChange?.(props.detailFraming === "card" ? "off" : "card"),
+          pressed: props.detailFraming === "card",
+          slot: "graph-frame-node-option",
+          ariaLabel: i18n.t("ui.sessionGraph.toolbar.frameNode"),
           keepOpen: true,
         })}
       </Show>

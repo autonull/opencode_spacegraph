@@ -48,6 +48,7 @@ export {
   isSummaryLayout,
   isLogLayout,
   isSummaryOrLogLayout,
+  type DetailFraming,
   type DetailMode,
   type GraphArrangement,
   type GraphMode,

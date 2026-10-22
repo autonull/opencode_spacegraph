@@ -117,6 +117,8 @@ const sessionGraphSchema = Persistence.migrateField(
     depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
     // Where a selected node's detail is shown, per session. Absent means the side panel.
     detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
+    // T17.4: whether the camera frames the selected node, per session. Absent means off.
+    detailFraming: Schema.optional(Schema.Literals(["off", "card"] as const)),
     // The transient peek at the node under the pointer, per session. Absent means off.
     peek: Schema.optional(Schema.Boolean),
     // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
@@ -649,6 +651,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           files: createMemo(() => state()?.files ?? false),
           depth: createMemo(() => state()?.depth ?? "flat"),
           detailMode: createMemo(() => state()?.detailMode ?? "panel"),
+          detailFraming: createMemo(() => state()?.detailFraming ?? "off"),
           peek: createMemo(() => state()?.peek ?? false),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
@@ -676,6 +679,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setDetailMode(detailMode: NonNullable<SessionGraphState["detailMode"]>) {
             write({ detailMode })
+          },
+          setDetailFraming(detailFraming: NonNullable<SessionGraphState["detailFraming"]>) {
+            write({ detailFraming })
           },
           setPeek(peek: boolean) {
             write({ peek })

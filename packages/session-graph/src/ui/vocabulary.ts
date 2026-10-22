@@ -59,9 +59,9 @@ export const DEPTH_KEY = {
 /** Where a selected node's detail is shown. The toolbar names the chosen surface. */
 export const DETAIL_MODE_KEY = {
   off: "ui.sessionGraph.detailMode.off",
-  card: "ui.sessionGraph.detailMode.card",
-  popover: "ui.sessionGraph.detailMode.popover",
   panel: "ui.sessionGraph.detailMode.panel",
+  popover: "ui.sessionGraph.detailMode.popover",
+  window: "ui.sessionGraph.detailMode.window",
 } as const satisfies Record<DetailMode, string>
 
 /** How the map and the log meet in the hybrid. The host owns the geometry; the toolbar names it. */
