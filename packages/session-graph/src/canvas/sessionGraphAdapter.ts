@@ -1,11 +1,13 @@
 import { ModelAdapter, type AdapterConfig, type AdapterPosition } from "@spacegraphjs/adapter"
 import type { NodeStatus, RenderEdge, RenderNode } from "@spacegraphjs/renderer"
 import {
+  STRUCTURAL_KINDS,
   clusterCount,
   domBudget,
   edgesAtLevel,
   isClusterExpanded,
   neighbors,
+  nodeIndex,
   nodeSize,
   nodesAtLevel,
   type ClusterBounds,
@@ -49,13 +51,6 @@ const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {
   interrupted: "warning",
   neutral: "neutral",
 }
-
-/**
- * LE.2 — structural kinds (`session`/`turn`/`phase`/`error`/`retry`) are chrome, not
- * activity: they render as compact DOM panels so they read with the theme's surface/border/text
- * instead of a near-invisible vector box. They never consume the activity card budget.
- */
-const STRUCTURAL_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry"])
 
 /** LE.13: provenance edges that a file-first lens rebases onto the owning turn node. */
 const BUNDLED_KINDS = new Set<EdgeKind>(["writes", "reads", "searches", "references", "produces"])
@@ -214,7 +209,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
    * kept verbatim. The rebased id is stable (`bundle:${source}:${target}:${kind}`) for renderer diffing.
    */
   bundleEdges(model: GraphModel, edges: readonly GraphEdge[]): GraphEdge[] {
-    const byID = new Map(model.nodes.map((node) => [node.id, node]))
+    const byID = nodeIndex(model)
     // `GraphNode.turnID` is already the owning turn node id (`turn:<opener>`), not the opener message id.
     const turnOf = (id: string) => byID.get(id)?.turnID ?? id
     const seen = new Set<string>()

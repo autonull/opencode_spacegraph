@@ -11,6 +11,7 @@ import {
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
+import { DARK_THEME } from "../fixtures"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphView } from "./GraphView"
@@ -18,25 +19,6 @@ import type { GraphWindowState } from "./GraphWindows"
 
 const graph = buildFixtureGraph()
 
-/** Dark theme matching the app's dark mode tokens for consistent captures. */
-const DARK_THEME: RenderTheme = {
-  background: "#101014",
-  surface: "#1b1b22",
-  surfaceMuted: "#2a2a33",
-  text: "#f5f5f7",
-  textMuted: "#a0a0aa",
-  border: "#3a3a44",
-  accent: "#3b82f6",
-  success: "#22c55e",
-  warning: "#f59e0b",
-  error: "#ef4444",
-  edge: "#6b7280",
-  edgeMuted: "#4b5563",
-  selection: "#60a5fa",
-  focus: "#93c5fd",
-  fontFamily: "system-ui, sans-serif",
-  fontSize: 13,
-}
 
 /** A turn's changed-file diffs, loaded on demand when the diff node is inspected (RF.8). */
 const FIXTURE_DIFFS = [

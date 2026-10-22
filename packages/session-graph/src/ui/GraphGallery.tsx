@@ -2,13 +2,13 @@ import type { RenderTheme } from "@spacegraphjs/renderer"
 import { renderToSVG } from "@spacegraphjs/svg-renderer"
 import type { GraphModel, LayoutStrategy } from "@opencode/session-ui/graph"
 import { LAYOUT_STRATEGIES, layoutGraph } from "@opencode/session-ui/graph"
-import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, onMount } from "solid-js"
 import { buildRenderModel } from "../canvas/buildRenderModel"
 import { createCardTemplate } from "./cardTemplate"
 import { STRATEGY_KEY } from "./vocabulary"
+import { GraphIconButton } from "./GraphIconButton"
 
 export type GraphGalleryProps = {
   model: GraphModel
@@ -67,13 +67,10 @@ export const GraphGallery = (props: GraphGalleryProps) => {
       <div class="flex items-center gap-2 px-2 py-1.5">
         <Icon name="dot-grid" size="small" class="shrink-0 text-text-weak" />
         <span class="flex-1 text-14-regular text-text-strong">{i18n.t("ui.sessionGraph.gallery.label")}</span>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.gallery.close")}
-          title={i18n.t("ui.sessionGraph.gallery.close")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.gallery.close")}
+          icon="close-small"
           onClick={props.onClose}
-          icon={<Icon name="close-small" size="small" />}
         />
       </div>
 

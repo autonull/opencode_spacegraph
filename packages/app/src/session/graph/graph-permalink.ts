@@ -1,4 +1,5 @@
-import type { Representation } from "@opencode/session-ui/graph"
+import type { Representation } from "@opencode/session-ui/graph/vocabulary"
+import { REPRESENTATIONS } from "@opencode/session-ui/graph/vocabulary"
 
 /**
  * T3.5 — a link to one node of the session map.
@@ -14,8 +15,6 @@ export type GraphPermalink = {
 }
 
 const PREFIX = "graph:"
-
-const REPRESENTATIONS: readonly Representation[] = ["graph", "ribbon", "matrix"]
 
 /** Reads a graph permalink out of a location hash; undefined for any other hash. */
 export const graphPermalinkFromHash = (hash: string): GraphPermalink | undefined => {

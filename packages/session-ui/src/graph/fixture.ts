@@ -6,7 +6,8 @@ import type {
   SessionMessageInfo,
   SessionMessageToolStateCompleted,
 } from "@opencode/client/promise"
-import { buildGraph, type GraphModel } from "./model"
+import { buildGraph } from "./build"
+import type { GraphModel } from "./model"
 
 /**
  * Canonical representative session (SPACEGRAPH.TODO.1 §7). Deterministic: fixed base timestamp,

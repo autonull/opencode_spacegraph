@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { JsonValue, SessionMessageAssistantTool, SessionMessageInfo } from "@opencode/client/promise"
+import { buildGraph } from "./build"
 import {
-  buildGraph,
   fileNodeID,
   messageNodeID,
   subagentNodeID,

@@ -1,23 +1,4 @@
-import type { RenderModel, RenderTheme } from "@spacegraphjs/renderer"
-
-export const ADAPTER_THEME: RenderTheme = {
-  background: "#101014",
-  surface: "#1b1b22",
-  surfaceMuted: "#2a2a33",
-  text: "#f5f5f7",
-  textMuted: "#a0a0aa",
-  border: "#3a3a44",
-  accent: "#3b82f6",
-  success: "#22c55e",
-  warning: "#f59e0b",
-  error: "#ef4444",
-  edge: "#6b7280",
-  edgeMuted: "#4b5563",
-  selection: "#60a5fa",
-  focus: "#93c5fd",
-  fontFamily: "system-ui, sans-serif",
-  fontSize: 13,
-}
+import type { RenderModel } from "@spacegraphjs/renderer"
 
 const card = (label: string, detail: string) => `
   <div style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;font-family:system-ui,sans-serif">

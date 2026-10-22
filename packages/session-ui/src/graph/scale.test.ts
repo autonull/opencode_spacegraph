@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { SessionMessageInfo } from "@opencode/client/promise"
-import { buildGraph, type GraphModel } from "./model"
+import { buildGraph } from "./build"
+import type { GraphModel } from "./model"
 import { layoutGraph } from "./layout"
 import { scaleWindow, scopeToTurns, TURN_WINDOW } from "./scale"
 

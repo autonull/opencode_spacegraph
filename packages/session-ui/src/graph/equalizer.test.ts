@@ -3,8 +3,7 @@ import { buildFixtureGraph } from "./fixture"
 import {
   EQUALIZER_PRESETS,
   equalizerFade,
-  equalizerHue,
-  equalizerMuted,
+  equalizerMatch,
   equalizerScale,
   ruleMatches,
   type EqualizerRule,
@@ -38,8 +37,8 @@ describe("the equalizer's rules", () => {
 
   test("a node with no matching rule keeps its own size and accent", () => {
     expect(equalizerScale([{ id: "a", kind: "error", scale: 2 }], tool)).toBe(1)
-    expect(equalizerHue([{ id: "a", kind: "error", hue: 10 }], tool)).toBeUndefined()
-    expect(equalizerMuted([{ id: "a", kind: "error", muted: true }], tool)).toBe(false)
+    expect(equalizerMatch([{ id: "a", kind: "error", hue: 10 }], tool)).toBeUndefined()
+    expect(equalizerMatch([{ id: "a", kind: "error", muted: true }], tool)).toBeUndefined()
   })
 
   test("an age rule fades a card but never moves it", () => {

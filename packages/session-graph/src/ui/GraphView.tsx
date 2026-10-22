@@ -6,20 +6,18 @@ import {
   breadcrumbs,
   CARD_SIZE,
   changedFiles,
-  COMPACT_SIZE,
   DETAIL_TIER_WIDTH,
   detailTier,
   equalizerScale,
-  nodeSize as cardBox,
   laneAnchors,
   layoutGraph,
+  matrixLayout,
   LEVEL_RANK,
   isVisibleAt,
-  matrixColumn,
-  matrixLayout,
   Metrics,
   minLevelOf,
   nodeByID,
+  nodeIndex,
   nodeSize,
   representationLevel,
   ribbonLayout,
@@ -52,7 +50,8 @@ import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { createGraphTheme } from "./theme"
-import { renderToSVG, serializeRenderModel, type SvgOptions } from "@spacegraphjs/svg-renderer"
+import { buildAxisLabels } from "./axisLabels"
+import { exportGraph, type ExportFormat } from "./export"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -310,7 +309,7 @@ export const GraphView = (props: GraphViewProps) => {
     }
     return relations
   })
-  const relatedDetail = (node: GraphNode, model: GraphModel) => {
+  const relatedDetail = (node: GraphNode) => {
     if (node.kind !== "file") return undefined
     const relation = fileRelations().get(node.id)
     if (!relation) return undefined
@@ -322,14 +321,13 @@ export const GraphView = (props: GraphViewProps) => {
   }
   const renderCard = createMemo(() => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
-    const model = props.model
     const now = Date.now()
     return (
       props.renderCard ??
       createCardTemplate(theme(), {
         tier: tier(),
         selected: selection()[0],
-        related: (node) => relatedDetail(node, model),
+        related: relatedDetail,
         rules: props.rules,
         now,
       })
@@ -340,11 +338,10 @@ export const GraphView = (props: GraphViewProps) => {
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
   // a streamed session never moves a node the reader is looking at.
   const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
-  const sessionKey = () =>
-    props.model.nodes.find((node) => node.id === props.model.root)?.data?.sessionID ?? "session"
+  const sessionKey = () => nodeIndex(props.model).get(props.model.root)?.data?.sessionID ?? "session"
   // T15: a size rule scales the card's box, and the layout's cell cursor reads it.
   const sizedCard = (node: GraphNode): readonly [number, number] => {
-    const [width, height] = cardBox(node)
+    const [width, height] = nodeSize(node)
     const scale = equalizerScale(props.rules ?? [], node)
     return scale === 1 ? [width, height] : [width * scale, height * scale]
   }
@@ -390,67 +387,11 @@ export const GraphView = (props: GraphViewProps) => {
       depth: i18n.t(DEPTH_KEY[depth()]),
     }),
   )
-  const axisLabels = createMemo(() => {
-    const rep = representation()
-    if (rep !== "ribbon" && rep !== "matrix") return undefined
-
-    const rows = turnRows(scoped())
-    const labels: { id: string; label: string; x: number; y: number; role: "row" | "column" }[] = []
-
-    // Row labels (turns/session)
-    rows.forEach((nodes, rowIndex) => {
-      const turnNode = nodes.find((n) => n.kind === "turn" || n.kind === "session")
-      const label = turnNode
-        ? turnNode.kind === "session"
-          ? i18n.t("ui.sessionGraph.axis.session")
-          : i18n.t("ui.sessionGraph.axis.turn", { num: props.model.turns.indexOf(turnNode.id) + 1 })
-        : ""
-      if (label) {
-        // Position at left of row
-        const y = rowIndex * (COMPACT_SIZE[1] + 20)
-        labels.push({ id: `row:${rowIndex}`, label, x: -100, y, role: "row" })
-      }
-    })
-
-    // Column labels (phase categories)
-    const categories = ["explore", "edit", "verify", "delegate", "result"]
-    if (rep === "ribbon") {
-      // Ribbon: phases laid out horizontally per row
-      let cursor = 0
-      const gap = 24
-      for (const cat of categories) {
-        const catLabel = i18n.t(`ui.sessionGraph.phase.${cat}`)
-        labels.push({ id: `col:${cat}`, label: catLabel, x: cursor, y: -30, role: "column" })
-        cursor += COMPACT_SIZE[0] + gap
-      }
-    } else {
-      // Matrix: columns have fixed positions
-      const columnWidth = new Map<number, number>()
-      const gap = 24
-      rows.forEach((nodes, row) => {
-        for (const node of nodes) {
-          const col = matrixColumn(node)
-          const width = nodeSize(node)[0]
-          columnWidth.set(col, Math.max(columnWidth.get(col) ?? COMPACT_SIZE[0], width))
-        }
-      })
-      let x = 0
-      columnWidth.forEach((width, col) => {
-        let catLabel: string
-        if (col === 0) {
-          catLabel = i18n.t("ui.sessionGraph.axis.turn")
-        } else if (col <= categories.length) {
-          catLabel = i18n.t(`ui.sessionGraph.phase.${categories[col - 1]}`)
-        } else {
-          catLabel = i18n.t("ui.sessionGraph.axis.signals")
-        }
-        labels.push({ id: `col:${col}`, label: catLabel, x: x + width / 2, y: -30, role: "column" })
-        x += width + gap
-      })
-    }
-
-    return labels
-  })
+  // T1.11: the summary representations name their axes; the node-link graph names itself.
+  const turnNumbers = createMemo(() => new Map(props.model.turns.map((id, index) => [id, index + 1])))
+  const axisLabels = createMemo(() =>
+    buildAxisLabels(turnRows(scoped()), representation(), turnNumbers(), i18n.t),
+  )
 
   const renderModel = createMemo(() =>
     buildRenderModel(scoped(), {
@@ -477,93 +418,12 @@ export const GraphView = (props: GraphViewProps) => {
   )
 
   // T3.4: Export the current render model as SVG, JSON, or standalone HTML.
-  const handleExport = (format: "svg" | "json" | "html", model: RenderModel) => {
-    const theme = props.theme ?? resolvedTheme()
-    const timestamp = new Date().toISOString()
-    const sessionTitle = props.sessionTitle ?? "OpenCode Session"
-    const testedCommit = props.testedCommit ?? "unknown"
-
-    if (format === "svg") {
-      const svgOptions: SvgOptions = {
-        theme,
-        padding: 24,
-      }
-      const svg = renderToSVG(model, svgOptions)
-      downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `session-map-${timestamp}.svg`)
-      return
-    }
-
-    if (format === "json") {
-      const json = serializeRenderModel(model)
-      downloadBlob(new Blob([json], { type: "application/json" }), `session-map-${timestamp}.json`)
-      return
-    }
-
-    if (format === "html") {
-      const svgOptions: SvgOptions = {
-        theme,
-        padding: 24,
-      }
-      const svg = renderToSVG(model, svgOptions)
-      const json = serializeRenderModel(model)
-
-      // Build a standalone HTML file with inlined CSS/SVG
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(sessionTitle)} - Session Map</title>
-  <style>
-    body { margin: 0; font-family: ${escapeHtml(theme.fontFamily)}; background: ${escapeHtml(theme.background)}; color: ${escapeHtml(theme.text)}; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
-    h1 { font-size: 24px; margin-bottom: 8px; }
-    .meta { font-size: 13px; color: ${escapeHtml(theme.textMuted)}; margin-bottom: 24px; }
-    .meta code { background: ${escapeHtml(theme.surfaceMuted)}; padding: 2px 6px; border-radius: 4px; }
-    .graph-container { border: 1px solid ${escapeHtml(theme.border)}; border-radius: 8px; overflow: hidden; background: ${escapeHtml(theme.background)}; }
-    .graph-container svg { display: block; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>${escapeHtml(sessionTitle)}</h1>
-    <div class="meta">
-      Exported: ${new Date(timestamp).toLocaleString()} | Commit: <code>${escapeHtml(testedCommit)}</code>
-    </div>
-    <div class="graph-container">
-      ${svg}
-    </div>
-    <details style="margin-top: 24px;">
-      <summary style="cursor: pointer; color: ${escapeHtml(theme.textMuted)};">Raw JSON data</summary>
-      <pre style="background: ${escapeHtml(theme.surface)}; padding: 16px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 300px;">${escapeHtml(json)}</pre>
-    </details>
-  </div>
-</body>
-</html>`
-      downloadBlob(new Blob([html], { type: "text/html" }), `session-map-${timestamp}.html`)
-      return
-    }
-  }
-
-  function downloadBlob(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-        function escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, "&" + "amp;")
-      .replace(/</g, "&" + "lt;")
-      .replace(/>/g, "&" + "gt;")
-      .replace(/"/g, "&" + "quot;")
-      .replace(/'/g, "&#039;")
-  }
+  const handleExport = (format: ExportFormat, model: RenderModel) =>
+    exportGraph(format, model, {
+      theme: theme(),
+      sessionTitle: props.sessionTitle,
+      testedCommit: props.testedCommit,
+    })
 
   const selectedNode = () => {
     const id = selection()[0]
@@ -655,21 +515,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (!id || id === selection()[0]) return undefined
     return nodeByID(props.model, id)
   })
-  const [peekAnchor, setPeekAnchor] = createSignal<{ x: number; y: number }>()
-  createEffect(() => {
-    const node = peekNode()
-    viewport()
-    if (!node) {
-      setPeekAnchor(undefined)
-      return
-    }
-    const position = renderer?.getNodeScreenPosition?.(node.id)
-    setPeekAnchor((current) =>
-      current && position && Math.abs(current.x - position.x) < 1 && Math.abs(current.y - position.y) < 1
-        ? current
-        : position,
-    )
-  })
+  const peekAnchor = createAnchor(() => peekNode())
   // Above the node's own box, so the peek never covers what it is about.
   const peekPlacement = createMemo(() => {
     const anchor = peekAnchor()
@@ -936,33 +782,23 @@ export const GraphView = (props: GraphViewProps) => {
     if (level) setLevel(level)
   }
 
-  createEffect(() => {
-    if (props.level !== undefined) setLevel(props.level)
-  })
-  createEffect(() => {
-    if (props.projection !== undefined) setProjection(props.projection)
-  })
-  createEffect(() => {
-    if (props.depth !== undefined) setDepth(props.depth)
-  })
-  createEffect(() => {
-    if (props.strategy !== undefined) setStrategy(props.strategy)
-  })
-  createEffect(() => {
-    if (props.representation !== undefined) setRepresentation(props.representation)
-  })
-  createEffect(() => {
-    if (props.minimap !== undefined) setMinimap(props.minimap)
-  })
-  createEffect(() => {
-    if (props.files !== undefined) setFiles(props.files)
-  })
-  createEffect(() => {
-    if (props.detailMode !== undefined) setDetailMode(props.detailMode)
-  })
-  createEffect(() => {
-    if (props.peek !== undefined) setPeek(props.peek)
-  })
+  // The host owns the controlled values; the view keeps its own copy so an uncontrolled view still
+  // works. A prop the host leaves undefined never overwrites what the reader chose.
+  const mirror = <T,>(read: () => T | undefined, write: (value: T) => void) =>
+    createEffect(() => {
+      const value = read()
+      if (value !== undefined) write(value)
+    })
+
+  mirror(() => props.level, setLevel)
+  mirror(() => props.projection, setProjection)
+  mirror(() => props.depth, setDepth)
+  mirror(() => props.strategy, setStrategy)
+  mirror(() => props.representation, setRepresentation)
+  mirror(() => props.minimap, setMinimap)
+  mirror(() => props.files, setFiles)
+  mirror(() => props.detailMode, setDetailMode)
+  mirror(() => props.peek, setPeek)
   // Keep the controller's model in step with the host model; it reconciles selection + trail by id, so
   // streaming appends never clear either.
   createEffect(() => controller.setModel(props.model))
@@ -1236,7 +1072,7 @@ export const GraphView = (props: GraphViewProps) => {
             onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => select(undefined)}
             onHover={(id) => setHovered(id)}
-          cardFacing={cardFacing()}
+            cardFacing={cardFacing()}
             onModelApplied={applyModel}
             onRenderer={(instance) => {
               renderer = instance

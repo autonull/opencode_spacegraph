@@ -1,11 +1,10 @@
 import type { GraphEdge, GraphModel, GraphNode } from "@opencode/session-ui/graph"
 import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
-import { IconButton } from "@opencode/ui/icon-button"
-import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
+import { GraphIconButton } from "./GraphIconButton"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
   pending: "text-text-weak",
@@ -90,46 +89,34 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
         </h2>
       </div>
       <Show when={props.onOpenWindow}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.window.open")}
-          title={i18n.t("ui.sessionGraph.window.open")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.window.open")}
+          icon="sidebar-right"
           onClick={() => props.onOpenWindow?.(props.node)}
-          icon={<Icon name="sidebar-right" size="small" />}
         />
       </Show>
       <Show when={props.link}>
         {(link) => (
-          <IconButton
-            size="small"
-            variant="ghost"
-            aria-label={i18n.t(copiedLink() ? "ui.message.copied" : "ui.sessionGraph.inspector.copyLink")}
-            title={i18n.t(copiedLink() ? "ui.message.copied" : "ui.sessionGraph.inspector.copyLink")}
+          <GraphIconButton
+            label={i18n.t(copiedLink() ? "ui.message.copied" : "ui.sessionGraph.inspector.copyLink")}
+            icon={copiedLink() ? "check" : "outline-copy"}
             onClick={() => copyLink(link())}
-            icon={<Icon name={copiedLink() ? "check" : "outline-copy"} size="small" />}
           />
         )}
       </Show>
       <Show when={props.onOpenTranscript && openInTranscript(props.model, props.node.id)}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.inspector.openTranscript")}
-          title={i18n.t("ui.sessionGraph.inspector.openTranscript")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.inspector.openTranscript")}
+          icon="outline-square-arrow"
           onClick={() => props.onOpenTranscript?.(props.node.id)}
-          icon={<Icon name="outline-square-arrow" size="small" />}
         />
       </Show>
       <Show when={props.onOpenSession && sessionLink()}>
         {(link) => (
-          <IconButton
-            size="small"
-            variant="ghost"
-            aria-label={link().label}
-            title={link().label}
+          <GraphIconButton
+            label={link().label}
+            icon="outline-arrow-to-corner-top-right"
             onClick={() => props.onOpenSession?.(link().id)}
-            icon={<Icon name="outline-arrow-to-corner-top-right" size="small" />}
           />
         )}
       </Show>
@@ -265,13 +252,10 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
           <div class="mt-3" data-slot="graph-inspector-output">
             <div class="flex items-center justify-between">
               <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.output")}</div>
-              <IconButton
-                size="small"
-                variant="ghost"
-                aria-label={i18n.t(copied() ? "ui.message.copied" : "ui.message.copy")}
-                title={i18n.t(copied() ? "ui.message.copied" : "ui.message.copy")}
+              <GraphIconButton
+                label={i18n.t(copied() ? "ui.message.copied" : "ui.message.copy")}
+                icon={copied() ? "check" : "outline-copy"}
                 onClick={copyOutput}
-                icon={<Icon name={copied() ? "check" : "outline-copy"} size="small" />}
               />
             </div>
             <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono text-text-base whitespace-pre-wrap break-words">

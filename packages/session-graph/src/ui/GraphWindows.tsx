@@ -1,7 +1,6 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { Icon } from "@opencode/ui/icon"
-import { IconButton } from "@opencode/ui/icon-button"
 import { For, onCleanup, onMount, type JSX } from "solid-js"
+import { GraphIconButton } from "./GraphIconButton"
 
 /**
  * T12 — a window is a panel that floats over the map, holds content, and can be moved, resized,
@@ -98,13 +97,10 @@ const GraphWindowItem = (props: {
         onPointerDown={props.onMove}
       >
         <span class="truncate text-12-medium text-text-strong">{props.title}</span>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.window.close")}
-          title={i18n.t("ui.sessionGraph.window.close")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.window.close")}
+          icon="outline-xmark"
           onClick={props.onClose}
-          icon={<Icon name="outline-xmark" size="small" />}
         />
       </div>
       <div data-slot="graph-window-body" class="min-h-0 flex-1 overflow-auto">

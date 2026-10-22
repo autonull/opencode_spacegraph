@@ -3,6 +3,7 @@ import type { GraphModel, GraphNode, Position } from "@opencode/session-ui/graph
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Navigation } from "spacegraphjs/navigation"
 import { createMemo, For, Show, createSignal } from "solid-js"
+import { statusAccent } from "./cardTemplate"
 
 const BOX_W = 176
 const BOX_H = 132
@@ -53,21 +54,9 @@ export const GraphMinimap = (props: GraphMinimapProps) => {
     }),
   )
 
-  const colorFor = (node: GraphNode) => {
-    switch (node.status) {
-      case "failed":
-        return props.theme.error
-      case "interrupted":
-        return props.theme.warning
-      case "success":
-        return props.theme.success
-      case "running":
-      case "pending":
-        return props.theme.accent
-      default:
-        return props.theme.textMuted
-    }
-  }
+  // A neutral node has no outcome to show, so it keeps a muted mark: the dot is all the minimap
+  // draws, and a border-coloured one would disappear into the surface.
+  const colorFor = (node: GraphNode) => statusAccent(props.theme, node.status, props.theme.textMuted)
 
   const panTo = (clientX: number, clientY: number, target: SVGSVGElement) => {
     if (placed().length === 0) return

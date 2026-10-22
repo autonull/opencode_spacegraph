@@ -2,6 +2,8 @@ import { Strategies, type LayoutConfig, type Position } from "spacegraphjs/layou
 import type { GraphEdge, GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
+import { nodeIndex, parentIndex } from "./lookup"
+import { STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
 
 export type { Position }
 
@@ -15,9 +17,9 @@ export type { Position }
  *
  * The strategies live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
-export type LayoutStrategy = "lanes" | "timeline" | "hierarchy" | "tree" | "force"
+export type { LayoutStrategy } from "./vocabulary"
 
-export const LAYOUT_STRATEGIES: LayoutStrategy[] = ["lanes", "timeline", "hierarchy", "tree", "force"]
+export { LAYOUT_STRATEGIES } from "./vocabulary"
 
 export type LayoutOptions = {
   strategy?: LayoutStrategy
@@ -64,11 +66,9 @@ export const CARD_SIZE: readonly [number, number] = [220, 72]
 /** Compact footprint for structural chips (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
 
-const COMPACT_KINDS = new Set<NodeKind>(["session", "turn", "phase", "error", "retry"])
-
 /** The box a node occupies in layout space, chosen from the shape the renderer will draw. */
 export function nodeSize(node: GraphNode): readonly [number, number] {
-  return COMPACT_KINDS.has(node.kind) ? COMPACT_SIZE : CARD_SIZE
+  return STRUCTURAL_KINDS.has(node.kind) ? COMPACT_SIZE : CARD_SIZE
 }
 
 export const LANES = [
@@ -126,7 +126,7 @@ const LAYOUT: LayoutConfig<GraphNode, GraphEdge, Lane> = {
   // towards the structure around it. Both are the session's vocabulary, not the library's. A file
   // belongs to the turn that wrote it, so it hangs there too.
   parentOfFn: (model, node) =>
-    parents(model).get(node.id) ?? (node.kind === "file" ? fileOwners(model).get(node.id) : undefined),
+    parentIndex(model).get(node.id) ?? (node.kind === "file" ? fileOwners(model).get(node.id) : undefined),
   forceLinksFn: (model, node) => neighbours(model, node.id),
   geometry: {
     standardSize: CARD_SIZE,
@@ -207,7 +207,7 @@ function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphE
 
   if (cached) return cached
 
-  const turnByNode = new Map(model.nodes.map((node) => [node.id, node.turnID]))
+  const nodes = nodeIndex(model)
   const owners = new Map<string, string>()
 
   const claim = (node: string, turn: string | undefined) => {
@@ -218,42 +218,15 @@ function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphE
   // A write names the turn that produced the file, so it outranks the file's other incident edges.
   for (const edge of model.edges) {
     if (edge.kind !== "writes") continue
-    claim(edge.target, turnByNode.get(edge.source))
+    claim(edge.target, nodes.get(edge.source)?.turnID)
   }
 
   for (const edge of model.edges) {
-    claim(edge.target, turnByNode.get(edge.source))
-    claim(edge.source, turnByNode.get(edge.target))
+    claim(edge.target, nodes.get(edge.source)?.turnID)
+    claim(edge.source, nodes.get(edge.target)?.turnID)
   }
 
   FILE_OWNERS.set(model, owners)
-
-  return owners
-}
-
-/**
- * The parent of each node: the `part-of` edge that names it. The tree layout hangs a node under
- * that parent, so the relation is the session's own — a turn owns its work, the session owns its
- * turns.
- */
-const PARENTS = new WeakMap<object, ReadonlyMap<string, string>>()
-
-function parents(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }) {
-  const cached = PARENTS.get(model)
-
-  if (cached) return cached
-
-  const owners = new Map<string, string>()
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "part-of") continue
-
-    if (owners.has(edge.source)) continue
-
-    owners.set(edge.source, edge.target)
-  }
-
-  PARENTS.set(model, owners)
 
   return owners
 }

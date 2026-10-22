@@ -1,5 +1,4 @@
 export {
-  buildGraph,
   diffNodeID,
   errorNodeID,
   fileNodeID,
@@ -28,6 +27,19 @@ export {
   type ZoomLevel,
 } from "./model"
 
+export { buildGraph } from "./build"
+
+export {
+  NODE_KINDS,
+  NODE_STATUSES,
+  PHASE_CATEGORIES,
+  PHASE_LABELS,
+  STRUCTURAL_KINDS,
+  ZOOM_LEVELS,
+} from "./vocabulary"
+
+export { nodeIndex, lookupNode } from "./lookup"
+
 export {
   buildFixtureGraph,
   buildFixtureMessages,
@@ -41,7 +53,6 @@ export {
   ancestors,
   breadcrumbs,
   changedFiles,
-  currentActivity,
   forwardChain,
   incoming,
   neighbors,
@@ -70,7 +81,6 @@ export {
   LEVEL_RANK,
   minLevelOf,
   nodesAtLevel,
-  visibleNodeIDs,
   type LabelMode,
 } from "./levels"
 
@@ -93,7 +103,6 @@ export {
 export {
   matrixColumn,
   matrixLayout,
-  PHASE_CATEGORIES,
   REPRESENTATIONS,
   representationLevel,
   ribbonLayout,
@@ -116,8 +125,7 @@ export {
 export {
   EQUALIZER_PRESETS,
   equalizerFade,
-  equalizerHue,
-  equalizerMuted,
+  equalizerMatch,
   equalizerScale,
   ruleMatches,
   type EqualizerRule,

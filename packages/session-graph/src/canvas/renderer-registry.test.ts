@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { CONTRACT_VERSION, type GraphRenderer } from "@spacegraphjs/renderer"
-import { ADAPTER_THEME } from "../contract/fixtures"
+import { DARK_THEME } from "../fixtures"
 import { createRenderer, mountRenderer, rendererOrder } from "./renderer-registry"
 
 function stub(): GraphRenderer {
@@ -32,7 +32,7 @@ function stub(): GraphRenderer {
 }
 
 const container = {} as HTMLElement
-const options = { theme: ADAPTER_THEME, projection: "2d" as const }
+const options = { theme: DARK_THEME, projection: "2d" as const }
 
 test("spacegraph is preferred and cytoscape is its fallback", () => {
   expect(rendererOrder()).toEqual(["spacegraph", "cytoscape"])

@@ -1,34 +1,12 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { EqualizerRuleSet, GraphNode, LayoutStrategy, NodeKind } from "@opencode/session-ui/graph"
-import { LANES } from "@opencode/session-ui/graph"
-import { IconButton } from "@opencode/ui/icon-button"
+import type { EqualizerRuleSet, LayoutStrategy } from "@opencode/session-ui/graph"
+import { LANES, NODE_KINDS, NODE_STATUSES, PHASE_CATEGORIES } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { type JSX, onMount } from "solid-js"
 import { categoryAccent, kindAccent, statusAccent } from "./cardTemplate"
 import { CONFIDENCE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
-
-/** The phase categories a card can be grouped by, in the order the matrix lays them out. */
-const CATEGORIES = ["explore", "edit", "verify", "delegate", "result"] as const
-
-const KINDS: NodeKind[] = [
-  "session",
-  "turn",
-  "phase",
-  "message",
-  "reasoning",
-  "tool",
-  "file",
-  "subagent",
-  "result",
-  "error",
-  "retry",
-  "compaction",
-  "notice",
-  "diff",
-]
-
-const STATUSES: GraphNode["status"][] = ["pending", "running", "success", "failed", "interrupted", "neutral"]
+import { GraphIconButton } from "./GraphIconButton"
 
 /** How an edge of each confidence is drawn; the adapter decides the same. */
 const CONFIDENCE_STYLE = {
@@ -95,7 +73,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
 
       {section(
         i18n.t("ui.sessionGraph.legend.kinds"),
-        KINDS.map((kind) => (
+        NODE_KINDS.map((kind) => (
           <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
             {swatch(kindAccent(kind, props.rules).solid)}
             <span class="truncate">{i18n.t(KIND_KEY[kind])}</span>
@@ -105,9 +83,9 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
 
       {section(
         i18n.t("ui.sessionGraph.legend.phases"),
-        CATEGORIES.map((category) => (
+        PHASE_CATEGORIES.map((category) => (
           <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
-            {swatch(categoryAccent(category).solid)}
+            {swatch(categoryAccent(category, props.rules).solid)}
             <span class="truncate">{i18n.t(`ui.sessionGraph.phase.${category}`)}</span>
           </span>
         )),
@@ -125,7 +103,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
 
       {section(
         i18n.t("ui.sessionGraph.legend.status"),
-        STATUSES.map((status) => (
+        NODE_STATUSES.map((status) => (
           <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
             {swatch(statusAccent(props.theme, status))}
             <span class="truncate">{i18n.t(`ui.sessionGraph.status.${status}`)}</span>
@@ -166,14 +144,7 @@ export const GraphLegend = (props: GraphLegendProps) => {
       <div class="flex items-center gap-2 px-2 py-1.5">
         <Icon name="outline-sliders" size="small" class="shrink-0 text-text-weak" />
         <span class="flex-1 text-14-regular text-text-strong">{i18n.t("ui.sessionGraph.legend.label")}</span>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.legend.close")}
-          title={i18n.t("ui.sessionGraph.legend.close")}
-          onClick={props.onClose}
-          icon={<Icon name="close-small" size="small" />}
-        />
+        <GraphIconButton label={i18n.t("ui.sessionGraph.legend.close")} icon="close-small" onClick={props.onClose} />
       </div>
 
       <GraphLegendBody theme={props.theme} strategy={props.strategy} rules={props.rules} />

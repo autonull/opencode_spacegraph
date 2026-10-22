@@ -1,9 +1,9 @@
 import type { GraphModel, GraphNode } from "@opencode/session-ui/graph"
 import { search } from "@opencode/session-ui/graph"
-import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
+import { GraphIconButton } from "./GraphIconButton"
 
 export type GraphSearchProps = {
   model: GraphModel
@@ -95,13 +95,10 @@ export const GraphSearch = (props: GraphSearchProps) => {
           aria-activedescendant={results().length > 0 ? `graph-search-option-${active()}` : undefined}
           onInput={(event) => setQuery(event.currentTarget.value)}
         />
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.search.close")}
-          title={i18n.t("ui.sessionGraph.search.close")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.search.close")}
+          icon="close-small"
           onClick={props.onClose}
-          icon={<Icon name="close-small" size="small" />}
         />
       </div>
 

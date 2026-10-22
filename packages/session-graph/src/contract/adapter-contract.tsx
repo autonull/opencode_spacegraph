@@ -1,6 +1,7 @@
 import { SpaceGraphRenderer } from "@spacegraphjs/spacegraph-renderer"
 import { onCleanup, onMount } from "solid-js"
-import { ADAPTER_MODEL, ADAPTER_THEME } from "./fixtures"
+import { DARK_THEME } from "../fixtures"
+import { ADAPTER_MODEL } from "./fixtures"
 
 export const AdapterContract = () => {
   let host!: HTMLDivElement
@@ -10,7 +11,7 @@ export const AdapterContract = () => {
   onMount(() => {
     renderer = new SpaceGraphRenderer()
     renderer
-      .mount(host, { theme: ADAPTER_THEME, projection: "2d" })
+      .mount(host, { theme: DARK_THEME, projection: "2d" })
       .then(() => {
         if (disposed) {
           renderer?.dispose()

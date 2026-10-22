@@ -2,9 +2,10 @@
  * Where a selected node's detail is shown. The modes are alternatives, not stages: a reader picks
  * one, and the graph stops being the only thing that changes when a node is selected.
  */
-export const DETAIL_MODES = ["off", "card", "popover", "panel"] as const
 
-export type DetailMode = (typeof DETAIL_MODES)[number]
+export type { DetailMode } from "./vocabulary"
+
+export { DETAIL_MODES } from "./vocabulary"
 
 /**
  * How much a card says, given how close the reader is to it. A card's own box never changes — the

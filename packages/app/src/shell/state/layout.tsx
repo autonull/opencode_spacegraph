@@ -4,6 +4,7 @@ import { batch, createEffect, createMemo, onCleanup, onMount, untrack, type Acce
 import { useLocation } from "@solidjs/router"
 import { createSimpleContext } from "@opencode/ui/context"
 import { makeEventListener } from "@solid-primitives/event-listener"
+import { DETAIL_MODES, LAYOUT_STRATEGIES, REPRESENTATIONS } from "@opencode/session-ui/graph/vocabulary"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { Project } from "@/runtime/server/types"
@@ -91,16 +92,16 @@ const sessionGraphSchema = Persistence.struct({
   renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
   selected: Schema.optional(Schema.String),
   // RF.2/RF.7: the chosen layout strategy and minimap visibility, per session.
-  layout: Schema.optional(Schema.Literals(["lanes", "timeline", "hierarchy", "tree", "force"])),
+  layout: Schema.optional(Schema.Literals(LAYOUT_STRATEGIES)),
   minimap: Schema.optional(Schema.Boolean),
   // LE.12: the file-first lens (changed-files rail + bundled provenance), per session. Absent means off.
   files: Schema.optional(Schema.Boolean),
   // LE.7: the contested representation axis (node-link graph | turn ribbon | turn matrix), per session.
-  representation: Schema.optional(Schema.Literals(["graph", "ribbon", "matrix"])),
+  representation: Schema.optional(Schema.Literals(REPRESENTATIONS)),
   // LE.14: the depth spectrum (flat 2D | layered | depth-stack | orbit), per session. Absent means flat.
   depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
   // Where a selected node's detail is shown, per session. Absent means the side panel.
-  detailMode: Schema.optional(Schema.Literals(["off", "card", "popover", "panel"])),
+  detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
   // The transient peek at the node under the pointer, per session. Absent means off.
   peek: Schema.optional(Schema.Boolean),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.

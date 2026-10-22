@@ -1,6 +1,6 @@
 import { buildFixtureGraph, layoutGraph } from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
-import { ADAPTER_THEME } from "../contract/fixtures"
+import { DARK_THEME } from "../fixtures"
 import { buildRenderModel } from "./buildRenderModel"
 import { GraphCanvas, type GraphCanvasReady } from "./GraphCanvas"
 import type { RendererID } from "./renderer-registry"
@@ -28,7 +28,7 @@ const CanvasHarness = () => {
     <div style={{ width: "960px", height: "600px", border: "1px solid var(--v2-border, #333)", overflow: "hidden" }}>
       <GraphCanvas
         model={model}
-        theme={ADAPTER_THEME}
+        theme={DARK_THEME}
         projection="2d"
         selection={selection()}
         preferredRenderer={renderer()}

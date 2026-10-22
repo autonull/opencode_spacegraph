@@ -1,5 +1,3 @@
-export const PACKAGE = "@opencode/session-graph"
-
 export {
   buildRenderModel,
   escapeHtml,

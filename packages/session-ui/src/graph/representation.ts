@@ -2,8 +2,9 @@ import { Representations, type RepresentationConfig } from "spacegraphjs/represe
 import type { GraphLayout } from "./layout"
 import { COMPACT_SIZE, nodeSize } from "./layout"
 import { isVisibleAt } from "./levels"
-import type { GraphModel, GraphNode, PhaseCategory } from "./model"
+import type { GraphModel, GraphNode } from "./model"
 import { phaseCategoryOf } from "./model"
+import { PHASE_CATEGORIES, type Representation } from "./vocabulary"
 
 /**
  * Phase 10 representation seam (LE.7). `graph` is the node-link view (the layout strategies apply);
@@ -13,9 +14,9 @@ import { phaseCategoryOf } from "./model"
  *
  * The summaries live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
-export type Representation = "graph" | "ribbon" | "matrix"
+export type { Representation } from "./vocabulary"
 
-export const REPRESENTATIONS: Representation[] = ["graph", "ribbon", "matrix"]
+export { REPRESENTATIONS } from "./vocabulary"
 
 /** Overview-first representations: they show the semantic overview regardless of the level control. */
 export function representationLevel(representation: Representation) {
@@ -23,8 +24,6 @@ export function representationLevel(representation: Representation) {
 }
 
 /** Matrix column order; a trailing `signals` column carries failures, retries, and delegations. */
-const PHASE_CATEGORIES: PhaseCategory[] = ["explore", "edit", "verify", "delegate", "result"]
-
 const SIGNALS_COLUMN = PHASE_CATEGORIES.length + 1
 
 export type RepresentationLayoutOptions = {
@@ -104,4 +103,4 @@ function matrixColumn(node: GraphNode) {
   return 1 + (index >= 0 ? index : SIGNALS_COLUMN - 1)
 }
 
-export { matrixColumn, PHASE_CATEGORIES }
+export { matrixColumn }

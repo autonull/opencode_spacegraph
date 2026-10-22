@@ -1,6 +1,5 @@
 import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
-import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -15,6 +14,7 @@ import {
   type Representation,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
+import { GraphIconButton } from "./GraphIconButton"
 import { DEPTH_KEY, DETAIL_MODE_KEY, LEVEL_KEY, REPRESENTATION_KEY, STRATEGY_KEY } from "./vocabulary"
 
 const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
@@ -247,55 +247,40 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           keepOpen: true,
         })}
       </Show>
-      <IconButton
-        size="small"
-        variant="ghost"
-        state={props.minimap ? "pressed" : "rest"}
-        aria-label={i18n.t("ui.sessionGraph.toolbar.minimap")}
-        title={i18n.t("ui.sessionGraph.toolbar.minimap")}
+      <GraphIconButton
+        label={i18n.t("ui.sessionGraph.toolbar.minimap")}
+        icon="layout-bottom"
+        pressed={props.minimap}
         onClick={() => props.onToggleMinimap?.()}
-        icon={<Icon name="layout-bottom" size="small" />}
       />
       <Show when={props.onToggleLegend}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          state={props.legend ? "pressed" : "rest"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.legend")}
-          title={i18n.t("ui.sessionGraph.toolbar.legend")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.legend")}
+          icon="outline-sliders"
+          pressed={props.legend}
           onClick={() => props.onToggleLegend?.()}
-          icon={<Icon name="outline-sliders" size="small" />}
         />
       </Show>
       <Show when={props.onToggleGallery}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          state={props.gallery ? "pressed" : "rest"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.gallery")}
-          title={i18n.t("ui.sessionGraph.toolbar.gallery")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.gallery")}
+          icon="dot-grid"
+          pressed={props.gallery}
           onClick={() => props.onToggleGallery?.()}
-          icon={<Icon name="dot-grid" size="small" />}
         />
       </Show>
       <Show when={props.onTurnMap}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.toolbar.turnMap")}
-          title={i18n.t("ui.sessionGraph.toolbar.turnMap")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.turnMap")}
+          icon="outline-worktree"
           onClick={() => props.onTurnMap?.()}
-          icon={<Icon name="outline-worktree" size="small" />}
         />
       </Show>
       <Show when={props.onExpandGraph}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
-          title={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
+          icon="arrow-up-right"
           onClick={() => props.onExpandGraph?.()}
-          icon={<Icon name="arrow-up-right" size="small" />}
         />
       </Show>
     </>
@@ -304,14 +289,11 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   /** The commands: the search, and the export. */
   const commandControls = () => (
     <>
-      <IconButton
-        size="small"
-        variant="ghost"
-        state={props.searching ? "pressed" : "rest"}
-        aria-label={i18n.t("ui.sessionGraph.toolbar.search")}
-        title={i18n.t("ui.sessionGraph.toolbar.search")}
+      <GraphIconButton
+        label={i18n.t("ui.sessionGraph.toolbar.search")}
+        icon="magnifying-glass"
+        pressed={props.searching}
         onClick={props.onSearch}
-        icon={<Icon name="magnifying-glass" size="small" />}
       />
       <Show when={props.onExport && props.renderModel}>
         <details class="relative" data-slot="graph-toolbar-export">
@@ -379,14 +361,11 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       </SegmentedControl>
 
       <div class="flex items-center gap-1">
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
-          title={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
+          icon="expand"
           disabled={!graphMode() || props.zoomOutDisabled}
           onClick={() => props.onZoomOut?.()}
-          icon={<Icon name="expand" size="small" />}
         />
         <span
           data-slot="graph-zoom-level"
@@ -395,25 +374,15 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         >
           {props.zoomPercent ?? 100}%
         </span>
-        <IconButton
-          size="small"
-          variant="ghost"
-          aria-label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
-          title={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
+          icon="plus"
           disabled={!graphMode() || props.zoomInDisabled}
           onClick={() => props.onZoomIn?.()}
-          icon={<Icon name="plus" size="small" />}
         />
       </div>
 
-      <IconButton
-        size="small"
-        variant="ghost"
-        aria-label={i18n.t("ui.sessionGraph.toolbar.fit")}
-        title={i18n.t("ui.sessionGraph.toolbar.fit")}
-        onClick={props.onFit}
-        icon={<Icon name="expand" size="small" />}
-      />
+      <GraphIconButton label={i18n.t("ui.sessionGraph.toolbar.fit")} icon="expand" onClick={props.onFit} />
 
       <Show
         when={!props.compact}
@@ -467,14 +436,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           </span>
         ) : null}
         {props.onBack ? (
-          <IconButton
-            size="small"
-            variant="ghost"
-            aria-label={i18n.t("ui.sessionGraph.toolbar.back")}
-            title={i18n.t("ui.sessionGraph.toolbar.back")}
-            onClick={props.onBack}
-            icon={<Icon name="outline-arrow-left" size="small" />}
-          />
+          <GraphIconButton label={i18n.t("ui.sessionGraph.toolbar.back")} icon="outline-arrow-left" onClick={props.onBack} />
         ) : null}
       </div>
     </div>

@@ -3,6 +3,7 @@ import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
 import type { EdgeKind, GraphModel, GraphEdge, GraphNode, NodeKind } from "./model"
+import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
 
 export type Subgraph = {
   nodes: GraphNode[]
@@ -15,7 +16,7 @@ export type TranscriptRef = {
 }
 
 export function nodeByID(model: GraphModel, id: string) {
-  return model.nodes.find((node) => node.id === id)
+  return lookupNode(model, id)
 }
 
 export function incoming(model: GraphModel, id: string) {
@@ -42,18 +43,22 @@ export function neighbors(model: GraphModel, id: string): Subgraph {
 export function ancestors(model: GraphModel, id: string): GraphNode[] {
   const result: GraphNode[] = []
   const seen = new Set([id])
+  const parents = parentIndex(model)
   let current = id
 
   for (;;) {
-    const edge = model.edges.find((candidate) => candidate.kind === "part-of" && candidate.source === current)
+    const parent = parents.get(current)
 
-    if (!edge || seen.has(edge.target)) break
-    seen.add(edge.target)
-    const node = nodeByID(model, edge.target)
+    if (!parent || seen.has(parent)) break
+
+    seen.add(parent)
+
+    const node = lookupNode(model, parent)
 
     if (!node) break
+
     result.push(node)
-    current = edge.target
+    current = parent
   }
 
   return result
@@ -66,20 +71,13 @@ export function ancestors(model: GraphModel, id: string): GraphNode[] {
  * both. Returned in model order so the caller can fit the exact node set the bands draw.
  */
 export function subtree(model: GraphModel, id: string): GraphNode[] {
-  const node = nodeByID(model, id)
+  const node = lookupNode(model, id)
 
   if (!node) return []
 
-  const children = new Map<string, string[]>()
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "part-of") continue
-    children.set(edge.target, [...(children.get(edge.target) ?? []), edge.source])
-  }
-
+  const children = childIndex(model)
   const members = new Set([id, ...(node.derived ? (node.clusterOf ?? []) : [])])
   const queue = [...members]
-  const kindByID = new Map(model.nodes.map((node) => [node.id, node.kind]))
 
   while (queue.length > 0) {
     for (const child of children.get(queue.shift()!) ?? []) {
@@ -90,11 +88,12 @@ export function subtree(model: GraphModel, id: string): GraphNode[] {
   }
 
   const hierarchy = new Set(members)
+  const nodes = nodeIndex(model)
 
   for (const edge of model.edges) {
     if (edge.kind === "part-of") continue
-    const source = kindByID.get(edge.source)
-    const target = kindByID.get(edge.target)
+    const source = nodes.get(edge.source)?.kind
+    const target = nodes.get(edge.target)?.kind
 
     if (hierarchy.has(edge.source) && target === "file") members.add(edge.target)
 
@@ -146,12 +145,14 @@ function provenanceOwner(model: GraphModel, node: GraphNode): GraphNode | undefi
  * hierarchy it belongs to, and its ordered `sequence` neighbors. Causality is never inferred here.
  */
 export function why(model: GraphModel, id: string) {
+  const sequence = sequenceIndex(model)
+
   return {
     incoming: incoming(model, id),
     outgoing: outgoing(model, id),
     ancestors: ancestors(model, id),
-    sequenceBefore: model.edges.find((edge) => edge.kind === "sequence" && edge.target === id)?.source,
-    sequenceAfter: model.edges.find((edge) => edge.kind === "sequence" && edge.source === id)?.target,
+    sequenceBefore: sequence.previous.get(id),
+    sequenceAfter: sequence.next.get(id),
   }
 }
 
@@ -199,18 +200,22 @@ export function shortestPath(model: GraphModel, from: string, to: string): strin
 export function forwardChain(model: GraphModel, id: string): GraphNode[] {
   const result: GraphNode[] = []
   const seen = new Set([id])
+  const sequence = sequenceIndex(model)
   let current = id
 
   for (;;) {
-    const edge = model.edges.find((candidate) => candidate.kind === "sequence" && candidate.source === current)
+    const next = sequence.next.get(current)
 
-    if (!edge || seen.has(edge.target)) break
-    seen.add(edge.target)
-    const node = nodeByID(model, edge.target)
+    if (!next || seen.has(next)) break
+
+    seen.add(next)
+
+    const node = lookupNode(model, next)
 
     if (!node) break
+
     result.push(node)
-    current = edge.target
+    current = next
   }
 
   return result
@@ -251,19 +256,19 @@ export type ChangedFile = {
  * focusing its writers. Files that were only read never appear.
  */
 export function changedFiles(model: GraphModel): ChangedFile[] {
-  const kindByID = new Map(model.nodes.map((node) => [node.id, node.kind]))
+  const nodes = nodeIndex(model)
   const byID = new Map<string, ChangedFile>()
   const order: string[] = []
 
   for (const edge of model.edges) {
-    if (kindByID.get(edge.target) !== "file") continue
+    if (nodes.get(edge.target)?.kind !== "file") continue
 
     if (edge.kind !== "writes" && edge.kind !== "produces") continue
 
     let entry = byID.get(edge.target)
 
     if (!entry) {
-      const node = nodeByID(model, edge.target)
+      const node = nodes.get(edge.target)
       entry = { id: edge.target, path: dataString(node?.data?.path) ?? node?.label ?? edge.target, writers: [], readers: [] }
       byID.set(edge.target, entry)
       order.push(edge.target)
@@ -273,7 +278,7 @@ export function changedFiles(model: GraphModel): ChangedFile[] {
   }
 
   for (const edge of model.edges) {
-    if (kindByID.get(edge.target) !== "file" || !READ_KINDS.has(edge.kind)) continue
+    if (nodes.get(edge.target)?.kind !== "file" || !READ_KINDS.has(edge.kind)) continue
     byID.get(edge.target)?.readers.push(edge.source)
   }
 
@@ -287,18 +292,6 @@ export function openInTranscript(model: GraphModel, id: string): TranscriptRef |
   if (!node?.messageID) return undefined
 
   return { messageID: node.messageID, partID: node.partID }
-}
-
-/** The active turn node with its immediate children, when the session still owns work. */
-export function currentActivity(model: GraphModel): Subgraph | undefined {
-  if (!model.activeTurn) return undefined
-  const turn = nodeByID(model, model.activeTurn)
-
-  if (!turn) return undefined
-  const edges = incoming(model, turn.id).filter((edge) => edge.kind === "part-of")
-  const children = new Set(edges.map((edge) => edge.source))
-
-  return { nodes: [turn, ...model.nodes.filter((node) => children.has(node.id))], edges }
 }
 
 /** Signal order for a turn's children: phases and failures summarize a turn better than raw tools. */

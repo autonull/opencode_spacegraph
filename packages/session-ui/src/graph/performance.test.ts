@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { JsonValue, SessionMessageAssistantTool, SessionMessageInfo } from "@opencode/client/promise"
-import { buildGraph } from "./model"
+import { buildGraph } from "./build"
 import { layoutGraph } from "./layout"
 
 // §9 performance budgets are fixture (< 16ms) and 200 messages (< 50ms). This guard uses a much

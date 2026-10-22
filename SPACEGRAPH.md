@@ -142,7 +142,7 @@ Session messages + status + turn diffs
 
 | Package | Responsibility | Key exports |
 |---------|---------------|-------------|
-| `session-ui/src/graph` | Pure model: nodes, edges, levels, layout, selectors, fixture | `buildGraph`, `nodesAtLevel`, `layoutGraph`, `why`, `search`, `openInTranscript` |
+| `session-ui/src/graph` | Pure model: vocabulary, builder, levels, layout, selectors, fixture | `buildGraph`, `nodesAtLevel`, `layoutGraph`, `why`, `search`, `openInTranscript` |
 | `spacegraphjs/packages/renderer` | **Contract only** — `RenderModel`, `GraphRenderer`, `RenderTheme`, capabilities, version | `CONTRACT_VERSION`, `supports()`, `FitOptions` |
 | `spacegraphjs/packages/adapter` | Domain → `RenderModel` pipeline (imports contract only) | `SessionGraphAdapter`, `buildRenderModel`, `diffRenderModels` |
 | `spacegraphjs/packages/spacegraph-renderer` | 2D ortho + 3D perspective, WebGL + CSS3D, HTML cards | `SpaceGraphRenderer` implements `GraphRenderer` |
@@ -154,6 +154,16 @@ Session messages + status + turn diffs
 ---
 
 ## 4. The Graph Model (session-ui/src/graph)
+
+### 4.0 The modules
+
+| Module | What it owns |
+|--------|--------------|
+| `vocabulary.ts` | The session's words — kinds, statuses, phase categories, layouts, representations, detail modes. It has no dependencies, so a host can read the vocabulary without pulling in the model. |
+| `model.ts` | The model's types and the stable ids (`turn:…`, `msg:…`, `tool:…`) that make positions and selection survive streaming. |
+| `build.ts` | The builder: a session's messages in, the model out. Every activity enters the model the same way, so a node is never half-attached. |
+| `lookup.ts` | The model's indexes — nodes by id, `part-of` parents and children, the sequence chain — built once per model, so a lookup costs a map read instead of a scan. |
+| `levels.ts`, `layout.ts`, `representation.ts`, `selectors.ts` | The policy: what a level shows, where a node sits, what a question answers. |
 
 ### 4.1 Node kinds (stable IDs, `minLevel` for semantic zoom)
 
@@ -541,6 +551,7 @@ bun run graph:scale            # performance budget
 | Demo surfaces guide | `docs/spacegraph/demos.md` |
 | Visual review evidence | `docs/spacegraph/visual-review.md` |
 | Canonical fixture | `packages/session-ui/src/graph/fixture.ts` |
+| Model builder | `packages/session-ui/src/graph/build.ts` |
 | Model tests (5 questions) | `packages/session-ui/src/graph/selectors.test.ts` |
 | Capture matrix | `docs/spacegraph/screenshots/01–31` |
 

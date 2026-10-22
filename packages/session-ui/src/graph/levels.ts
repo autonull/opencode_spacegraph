@@ -1,5 +1,6 @@
 import { Levels, type LabelMode, type LevelConfig } from "spacegraphjs/levels"
 import type { EdgeKind, GraphEdge, GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
+import { nodeIndex } from "./lookup"
 
 /**
  * Semantic zoom policy (§5.4). The model carries each node's own `minLevel`; this table supplies the
@@ -40,7 +41,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
   domBudget: { overview: 12, execution: 40, detail: 24 },
   isClusterExpanded: (level) => level !== "overview",
   edgeFilterFn: (model, level, focus, candidates, visible) => {
-    const kindByID = new Map(model.nodes.map((node) => [node.id, node.kind]))
+    const nodes = nodeIndex(model)
 
     const allowed = candidates.filter(
       (edge) =>
@@ -51,7 +52,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
         !(
           level === "overview" &&
           edge.kind === "part-of" &&
-          (kindByID.get(edge.source) === "session" || kindByID.get(edge.target) === "session")
+          (nodes.get(edge.source)?.kind === "session" || nodes.get(edge.target)?.kind === "session")
         ),
     )
 
@@ -83,10 +84,6 @@ export function isVisibleAt(node: GraphNode, level: ZoomLevel) {
 
 export function nodesAtLevel(model: GraphModel, level: ZoomLevel) {
   return Levels.nodesAtLevel(model, level, LEVELS)
-}
-
-export function visibleNodeIDs(model: GraphModel, level: ZoomLevel) {
-  return Levels.visibleNodeIDs(model, level, LEVELS)
 }
 
 export function edgesAtLevel(model: GraphModel, level: ZoomLevel, focus?: string) {

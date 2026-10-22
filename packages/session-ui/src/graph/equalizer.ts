@@ -38,8 +38,11 @@ export function ruleMatches(rule: EqualizerRule, node: GraphNode): boolean {
   return true
 }
 
-/** The last matching rule wins, so the reader's order is their order. */
-function lastMatch(rules: EqualizerRuleSet, node: GraphNode): EqualizerRule | undefined {
+/**
+ * The rule that speaks to a node — the last matching one, so the reader's order is their order.
+ * A caller that needs several effects at once resolves the rule once and reads them off it.
+ */
+export function equalizerMatch(rules: EqualizerRuleSet, node: GraphNode): EqualizerRule | undefined {
   for (let index = rules.length - 1; index >= 0; index--) {
     const rule = rules[index]!
     if (ruleMatches(rule, node)) return rule
@@ -49,18 +52,8 @@ function lastMatch(rules: EqualizerRuleSet, node: GraphNode): EqualizerRule | un
 
 /** The scale a rule set gives a card's box. The layout reads it, so it costs a re-layout. */
 export function equalizerScale(rules: EqualizerRuleSet, node: GraphNode): number {
-  const scale = lastMatch(rules, node)?.scale
+  const scale = equalizerMatch(rules, node)?.scale
   return scale === undefined ? 1 : scale
-}
-
-/** The accent's hue a rule set gives a card, when it gives one. */
-export function equalizerHue(rules: EqualizerRuleSet, node: GraphNode): number | undefined {
-  return lastMatch(rules, node)?.hue
-}
-
-/** Whether a rule set dims a card. */
-export function equalizerMuted(rules: EqualizerRuleSet, node: GraphNode): boolean {
-  return lastMatch(rules, node)?.muted === true
 }
 
 /**
@@ -68,7 +61,7 @@ export function equalizerMuted(rules: EqualizerRuleSet, node: GraphNode): boolea
  * the card's own opacity, and it costs the model a rebuild, not the layout a re-run.
  */
 export function equalizerFade(rules: EqualizerRuleSet, node: GraphNode, now: number): number {
-  const fadeAfter = lastMatch(rules, node)?.fadeAfter
+  const fadeAfter = equalizerMatch(rules, node)?.fadeAfter
   if (fadeAfter === undefined || node.time === undefined) return 1
   const age = (now - node.time) / 1000
   if (age <= fadeAfter) return 1

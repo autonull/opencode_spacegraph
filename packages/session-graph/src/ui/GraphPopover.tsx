@@ -1,9 +1,8 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { IconButton } from "@opencode/ui/icon-button"
-import { Icon } from "@opencode/ui/icon"
 import type { GraphNode } from "@opencode/session-ui/graph"
 import { Show } from "solid-js"
 import { GraphDetailBody, GraphDetailHeader, type GraphDetailProps } from "./GraphDetail"
+import { GraphIconButton } from "./GraphIconButton"
 
 export const POPOVER_WIDTH = 340
 export const POPOVER_MAX_HEIGHT = 420
@@ -35,14 +34,11 @@ export const GraphPopover = (props: GraphPopoverProps) => {
         >
           <Show when={props.onClose}>
             <div class="absolute end-1 top-1 z-10">
-              <IconButton
-                size="small"
-                variant="ghost"
-                aria-label={i18n.t("ui.sessionGraph.popover.close")}
-                title={i18n.t("ui.sessionGraph.popover.close")}
-                onClick={() => props.onClose?.()}
-                icon={<Icon name="outline-xmark" size="small" />}
-              />
+              <GraphIconButton
+          label={i18n.t("ui.sessionGraph.popover.close")}
+          icon="outline-xmark"
+          onClick={() => props.onClose?.()}
+        />
             </div>
           </Show>
           <GraphDetailHeader

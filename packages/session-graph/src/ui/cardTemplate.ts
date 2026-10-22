@@ -1,6 +1,6 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { DetailTier, EqualizerRuleSet, GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
-import { equalizerFade, equalizerHue, equalizerMuted, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
+import type { DetailTier, EqualizerRule, EqualizerRuleSet, GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
+import { equalizerFade, equalizerMatch, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 
 /**
@@ -55,7 +55,6 @@ const KIND_HUE: Partial<Record<NodeKind, number>> = {
 function hue(node: GraphNode): number {
   const category = phaseCategoryOf(node)
   if (category && CATEGORY_HUE[category] !== undefined) return CATEGORY_HUE[category]
-  if (node.kind === "phase") return CATEGORY_HUE[String(node.data?.category)] ?? 210
   return KIND_HUE[node.kind] ?? 210
 }
 
@@ -65,9 +64,13 @@ function hue(node: GraphNode): number {
  * A style rule sets the hue; a muted card keeps its hue and loses its voice.
  */
 export function accentOf(node: GraphNode, rules?: EqualizerRuleSet) {
-  const set = rules ?? []
-  const h = equalizerHue(set, node) ?? hue(node)
-  const muted = equalizerMuted(set, node)
+  return accentFor(node, equalizerMatch(rules ?? [], node))
+}
+
+/** The accent a node carries under the rule that matched it. */
+function accentFor(node: GraphNode, rule: EqualizerRule | undefined) {
+  const h = rule?.hue ?? hue(node)
+  const muted = rule?.muted === true
   const lightness = muted ? 42 : 55
   const alpha = muted ? 0.1 : 0.16
   return { solid: `hsl(${h} 70% ${lightness}%)`, soft: `hsl(${h} 70% ${lightness}% / ${alpha})` }
@@ -79,13 +82,18 @@ export function kindAccent(kind: NodeKind, rules?: EqualizerRuleSet) {
 }
 
 /** The tint a phase category's chip carries. */
-export function categoryAccent(category: string) {
-  const h = CATEGORY_HUE[category] ?? 210
-  return { solid: `hsl(${h} 70% 55%)`, soft: `hsl(${h} 70% 55% / 0.16)` }
+export function categoryAccent(category: string, rules?: EqualizerRuleSet) {
+  const node = { id: category, kind: "phase", label: category, status: "neutral", data: { category } } as GraphNode
+
+  return accentOf(node, rules)
 }
 
-/** The colour a status dot carries, so the legend and the cards cannot drift apart. */
-export function statusAccent(theme: RenderTheme, status: GraphNode["status"]) {
+/**
+ * The colour a status dot carries, so the legend and the cards cannot drift apart. A neutral node
+ * has no outcome to show, so the caller names the colour that says "nothing happened here" — the
+ * cards use the border, the minimap a muted mark.
+ */
+export function statusAccent(theme: RenderTheme, status: GraphNode["status"], neutral = theme.border) {
   switch (status) {
     case "success":
       return theme.success
@@ -97,7 +105,7 @@ export function statusAccent(theme: RenderTheme, status: GraphNode["status"]) {
     case "pending":
       return theme.accent
     default:
-      return theme.border
+      return neutral
   }
 }
 

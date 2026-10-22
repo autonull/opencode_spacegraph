@@ -1,26 +1,7 @@
 import { expect, test } from "bun:test"
-import type { RenderTheme } from "@spacegraphjs/renderer"
 import type { GraphNode } from "@opencode/session-ui/graph"
+import { DARK_THEME as theme } from "../fixtures"
 import { createBandTemplate, createCardTemplate, kindDetail } from "./cardTemplate"
-
-const theme: RenderTheme = {
-  background: "#101014",
-  surface: "#1b1b22",
-  surfaceMuted: "#2a2a33",
-  text: "#f5f5f7",
-  textMuted: "#a0a0aa",
-  border: "#3a3a44",
-  accent: "#3b82f6",
-  success: "#22c55e",
-  warning: "#f59e0b",
-  error: "#ef4444",
-  edge: "#6b7280",
-  edgeMuted: "#4b5563",
-  selection: "#60a5fa",
-  focus: "#93c5fd",
-  fontFamily: "system-ui, sans-serif",
-  fontSize: 13,
-}
 
 const node = (partial: Partial<GraphNode> & Pick<GraphNode, "id" | "kind" | "label" | "status">): GraphNode =>
   partial as GraphNode

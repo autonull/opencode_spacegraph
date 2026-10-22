@@ -1,7 +1,5 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import { nodeByID, type GraphModel } from "@opencode/session-ui/graph"
-import { IconButton } from "@opencode/ui/icon-button"
-import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { ScopedOverlay } from "spacegraphjs/overlays"
@@ -11,6 +9,7 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphInspector } from "./GraphInspector"
 import { buildTurnRenderModel } from "./turnMap"
 import { createGraphTheme } from "./theme"
+import { GraphIconButton } from "./GraphIconButton"
 
 export type TurnMapOverlayProps = {
   model: GraphModel
@@ -84,14 +83,11 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
             {i18n.t("ui.sessionGraph.turnMap.title")}
           </span>
           <span class="min-w-0 flex-1 truncate text-12-regular text-text-weak">{turn()?.label ?? ""}</span>
-          <IconButton
-            size="small"
-            variant="ghost"
-            aria-label={i18n.t("ui.sessionGraph.turnMap.close")}
-            title={i18n.t("ui.sessionGraph.turnMap.close")}
-            onClick={() => props.onClose()}
-            icon={<Icon name="close" size="small" />}
-          />
+          <GraphIconButton
+          label={i18n.t("ui.sessionGraph.turnMap.close")}
+          icon="close"
+          onClick={() => props.onClose()}
+        />
         </div>
         <div class="relative flex min-h-0 flex-1">
           <div class="relative min-w-0 flex-1" data-slot="graph-turn-map-canvas">
