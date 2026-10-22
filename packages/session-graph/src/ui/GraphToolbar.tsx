@@ -507,6 +507,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           <GraphIconButton
             label={i18n.t("ui.sessionGraph.toolbar.split")}
             icon="split"
+            slot="graph-toolbar-split"
             onClick={props.onSplitView}
           />
         ) : null}

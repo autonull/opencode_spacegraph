@@ -297,7 +297,7 @@ test("shows the map and the log together, and the reader chooses how they meet",
 
   // The map offers the way into the hybrid: a reader who wants the log does not have to leave the
   // map to get it.
-  await page.locator(toolbar).getByRole("button", { name: "Show the log beside the map" }).click()
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
 
   const hybrid = page.locator('[data-slot="session-graph-panel"]')
   await expect(hybrid).toBeVisible()
@@ -314,11 +314,11 @@ test("shows the map and the log together, and the reader chooses how they meet",
 
   // The arrangement is the reader's choice, and it lives in the map's own Draw menu.
   await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Beside the log" }).click()
+  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-strategy="side"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "side")
 
   await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Over the log" }).click()
+  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-strategy="floating"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "floating")
   await expect(page.locator('[data-slot="session-graph-panel-pane-bar"]')).toBeVisible()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
@@ -333,7 +333,7 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   await openSession(page, { ...graphFixture(), pageMessages: () => ({ items }) })
   await page.getByRole("button", { name: "Toggle graph view" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await page.locator(toolbar).getByRole("button", { name: "Show the log beside the map" }).click()
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
   await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
 
   const scroller = page.locator('[data-slot="session-graph-panel-log"] .scroll-view__viewport')
@@ -362,7 +362,7 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
 test("scales the log's text from the split, without leaving the map", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
-  await page.locator(toolbar).getByRole("button", { name: "Show the log beside the map" }).click()
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
   await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
 
   // The slider is at hand: a split panel's log is narrow, so the reader wants its text bigger.

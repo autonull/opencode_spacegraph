@@ -15,6 +15,8 @@ export type GraphIconButtonProps = {
   /** A toggle's state; absent for a plain button. */
   pressed?: boolean
   disabled?: boolean
+  /** The button's test contract, so a test can find it without its copy. */
+  slot?: string
 }
 
 export const GraphIconButton = (props: GraphIconButtonProps) => (
@@ -27,5 +29,6 @@ export const GraphIconButton = (props: GraphIconButtonProps) => (
     disabled={props.disabled}
     onClick={props.onClick}
     icon={<Icon name={props.icon} size="small" />}
+    data-slot={props.slot}
   />
 )
