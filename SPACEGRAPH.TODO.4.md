@@ -228,10 +228,10 @@ as one reviewed block rather than as a drip.
 log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). T14.3
 (the minimap as a window) is still open, and is now the last step of T17.4 rather than a leftover.
 
-**T17.1 and T17.2 are reached** (2026-10-22): one layout list and one control ✓, and the level
-means the same thing in every layout ✓. **T17.3, T17.4, T17.5 and T18 are planned, not started.**
-They are the rest of the consolidation the author's own use asked for — the log's own shape as a
-layout, one way to show content, the detail the reader earns by moving closer, and the ergonomics
+**T17.1, T17.2 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
+means the same thing in every layout ✓, and the detail the reader earns by moving closer ✓. **T17.3,
+T17.4 and T18 are planned, not started.** They are the rest of the consolidation the author's own
+use asked for — the log's own shape as a layout, one way to show content, and the ergonomics
 of the map-and-log pair.
 
 ### 0.6 What is *not* in this plan
