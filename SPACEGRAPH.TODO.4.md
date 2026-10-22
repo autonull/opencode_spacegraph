@@ -1024,6 +1024,11 @@ What changed, in the library (`spacegraphjs`):
 The mouse map is written down in the two places that carry it (the library's README and the fork's
 `SPACEGRAPH.md`), in the same words, with the way out.
 
+**The library's two commits are pushed** (`autonull/spacegraphjs7`, `main`): the renderer's
+`getNodeScreenPosition` ✓ (which the host already called ✗ — the fork's CI checks the library out
+from GitHub, so without the push the fork's graph gate ran against a library that could not place a
+node ✗) and the background pan ✓.
+
 Measured: the library's vitest **534** (+5), the library's mouse e2e **11** (+2), the library's
 package suites (adapter 21, cytoscape 23, renderer 12, spacegraph-renderer 17, svg-renderer 9),
 the app's graph e2e **27**, the session-graph component suite **54**.
