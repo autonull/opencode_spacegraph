@@ -23,7 +23,12 @@ describe("detailTier", () => {
 
   test("a close card carries its payload", () => {
     expect(detailTier(DETAIL_TIER_WIDTH.near)).toBe("near")
-    expect(detailTier(400)).toBe("near")
+    expect(detailTier(DETAIL_TIER_WIDTH.near + 1)).toBe("near")
+  })
+
+  test("the closest card carries the payload itself", () => {
+    expect(detailTier(DETAIL_TIER_WIDTH.closest)).toBe("closest")
+    expect(detailTier(DETAIL_TIER_WIDTH.closest + 40)).toBe("closest")
   })
 
   test("a far card keeps its tier until the card is comfortably readable", () => {
@@ -34,6 +39,11 @@ describe("detailTier", () => {
   test("a near card keeps its tier until the card stops being readable", () => {
     expect(detailTier(DETAIL_TIER_WIDTH.nearExit, "near")).toBe("near")
     expect(detailTier(DETAIL_TIER_WIDTH.nearExit - 1, "near")).toBe("mid")
+  })
+
+  test("the closest card keeps its tier until the payload stops being readable", () => {
+    expect(detailTier(DETAIL_TIER_WIDTH.closestExit, "closest")).toBe("closest")
+    expect(detailTier(DETAIL_TIER_WIDTH.closestExit - 1, "closest")).toBe("near")
   })
 
   test("the tier never flips on a single pixel at a boundary", () => {
@@ -57,11 +67,17 @@ describe("the tier thresholds", () => {
     expect(DETAIL_TIER_WIDTH.near).toBe(Math.round(widthFor(CARD_LINE_WORLD.detail)))
   })
 
+  test("the payload appears at the width where a line a step smaller reads", () => {
+    expect(DETAIL_TIER_WIDTH.closest).toBe(Math.round(widthFor(CARD_LINE_WORLD.content)))
+  })
+
   test("the boundaries are the ones the plan states", () => {
     expect(DETAIL_TIER_WIDTH.far).toBe(165)
     expect(DETAIL_TIER_WIDTH.farExit).toBe(173)
     expect(DETAIL_TIER_WIDTH.near).toBe(180)
     expect(DETAIL_TIER_WIDTH.nearExit).toBe(171)
+    expect(DETAIL_TIER_WIDTH.closest).toBe(198)
+    expect(DETAIL_TIER_WIDTH.closestExit).toBe(188)
   })
 
   test("the fit's floor is below the summary's threshold, so the default view shows labels", () => {

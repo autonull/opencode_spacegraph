@@ -45,8 +45,9 @@ story("the card mode puts the detail on the node itself", async ({ mount, page }
     timeout: 30_000,
   })
 
-  // The selected node's own card carries the detail; nothing else opens.
-  const card = root.locator(`[data-node-id="${TOOL_ID}"] [data-tier="near"]`)
+  // The selected node's own card carries the detail; nothing else opens. The card mode frames the
+  // card close enough for the closest band, so the card says the payload itself.
+  const card = root.locator(`[data-node-id="${TOOL_ID}"] [data-tier="closest"]`)
   await expect(card).toBeVisible()
 
   // The card says what its kind has that its label does not: the path the tool read.

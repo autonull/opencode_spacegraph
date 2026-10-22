@@ -211,6 +211,25 @@ function diffDetail(node: GraphNode): string | undefined {
   return files.find((file): file is string => typeof file === "string")
 }
 
+/** Every file a diff touched, one per line: the closest card names them all. */
+function diffFiles(node: GraphNode): string | undefined {
+  const files = node.data?.files
+  if (!Array.isArray(files)) return undefined
+  const names = files.filter((file): file is string => typeof file === "string")
+  return names.length > 0 ? names.join("\n") : undefined
+}
+
+/**
+ * T17.5 — the kind's *content*: the payload, in the card's own lines. The closest card carries the
+ * content in place of the summary and the fact: the box is fixed, so two lines of a smaller
+ * payload line say more than one line of a summary and one line of a fact.
+ */
+export function kindContent(node: GraphNode, fact?: string, copy?: CardCopy): string | undefined {
+  if (node.kind === "diff") return diffFiles(node)
+  if (node.summary && fact) return `${fact}\n${node.summary}`
+  return node.summary ?? fact
+}
+
 /**
  * T11.3 — the one thing a kind has that its label does not. A card that has nothing to add adds
  * no line: an empty line is worse than no line, and a line that repeats the label says nothing
@@ -274,16 +293,25 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const tier = options.tier ?? "mid"
     // The card's box never changes — the layout owns the geometry — so a tier changes what the card
     // says inside it, never where it sits.
+    // T11.3 — the line a near card adds is its kind's own fact, and a kind with nothing to say
+    // adds no line at all. The fact reads at the near band, so a mid card does not carry it.
+    const fact =
+      tier === "far" || tier === "mid" ? undefined : (options.related?.(node) ?? kindDetail(node, options.copy))
+    // T17.5 — the closest card carries the payload itself, in the lines the box can hold.
+    const content = tier === "closest" ? kindContent(node, fact, options.copy) : undefined
     const summary =
-      tier !== "far" && node.summary
+      tier !== "far" && !content && node.summary
         ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.summary)}</span>`
         : ""
-    // T11.3 — the line a near card adds is its kind's own fact, and a kind with nothing to say
-    // adds no line at all.
-    const detail = tier === "near" ? (options.related?.(node) ?? kindDetail(node, options.copy)) : undefined
-    const detailRow = detail
-      ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(detail)}</span>`
+    const contentRow = content
+      ? `<span style="color:${theme.textMuted};font-size:10px;white-space:pre-line;overflow:hidden">${escapeHtml(
+          content.split("\n").slice(0, 2).join("\n"),
+        )}</span>`
       : ""
+    const detailRow =
+      fact && !content
+        ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(fact)}</span>`
+        : ""
     // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
     const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
 
@@ -292,6 +320,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>
 ${summary}
+${contentRow}
 ${detailRow}
 </span>
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>

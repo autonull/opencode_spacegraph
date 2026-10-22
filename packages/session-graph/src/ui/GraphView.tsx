@@ -24,6 +24,7 @@ import type {
 } from "@opencode/session-ui/graph"
 import {
   ancestors,
+  byProximity,
   CARD_SIZE,
   changedFiles,
   DETAIL_TIER_WIDTH,
@@ -44,6 +45,7 @@ import {
   ribbonLayout,
   scaleWindow,
   scopeToTurns,
+  sessionOrder,
   subtree,
   summaryUnits,
   turnRows,
@@ -98,10 +100,18 @@ import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "
 const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
 
 /**
- * T11.2 (A) — the width the camera aims for when it frames the selected card: the near tier's
- * threshold with a margin, so the card lands inside the tier rather than on its edge.
+ * T11.2 (A) — the width the camera aims for when it frames the selected card: the closest tier's
+ * threshold with a margin, so the card lands inside the tier rather than on its edge. The card mode
+ * is the detail on the node, so the node's card is the one that says the most.
  */
-const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.near * 1.1
+const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
+
+/**
+ * T17.5 — how long the camera must be still before the card budget follows it. A budget that
+ * changed on every frame would rebuild the map on every frame and make the cards churn under the
+ * reader's hand.
+ */
+const REST_SETTLE_MS = 120
 
 export type GraphViewProps = {
   model: GraphModel
@@ -459,8 +469,33 @@ export const GraphView = (props: GraphViewProps) => {
     return { ...current, nodes: current.nodes.filter((node) => units.has(node.id)) }
   })
 
+  // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
+  // budget follows the camera, and a budget that changed on every frame would rebuild the map on
+  // every frame and make the cards churn under the reader's hand.
+  const [resting, setResting] = createSignal<[number, number, number]>()
+  let restTimer: ReturnType<typeof setTimeout> | undefined
+  const rest = (next: RendererViewport) => {
+    if (restTimer) clearTimeout(restTimer)
+    restTimer = setTimeout(() => {
+      restTimer = undefined
+      setResting(next.center)
+    }, REST_SETTLE_MS)
+  }
+  onCleanup(() => {
+    if (restTimer) clearTimeout(restTimer)
+  })
+
+  // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
+  // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
+  const budget = createMemo(() => {
+    const current = drawn()
+    const centre = resting()
+    if (!centre) return current
+    return byProximity(current, geometry().positions, centre)
+  })
+
   const renderModel = createMemo(() =>
-    buildRenderModel(drawn(), {
+    buildRenderModel(budget(), {
       level: level(),
       positions: geometry().positions,
       bands: !isSummaryLayout(layout()) && layout() !== "hierarchy",
@@ -482,6 +517,19 @@ export const GraphView = (props: GraphViewProps) => {
       renderBand: renderBand(),
     }),
   )
+
+  // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
+  // same whoever opens it. Both read the render model in the session's own order.
+  const ordered = createMemo(() => {
+    const model = renderModel()
+    const order = sessionOrder(drawn())
+    return {
+      ...model,
+      nodes: [...model.nodes].sort(
+        (a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+      ),
+    }
+  })
 
   // T3.4: Export the current render model as SVG, JSON, or standalone HTML.
   const handleExport = (format: ExportFormat, model: RenderModel) =>
@@ -954,7 +1002,7 @@ export const GraphView = (props: GraphViewProps) => {
             : undefined
         }
         onExport={handleExport}
-        renderModel={renderModel()}
+        renderModel={ordered()}
         onBack={props.onBack}
         onSplitView={props.onSplitView}
         searching={searchOpen()}
@@ -1045,11 +1093,12 @@ export const GraphView = (props: GraphViewProps) => {
             onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
             onViewportChange={(next) => {
               camera.report(next)
+              rest(next)
               setViewport(next)
             }}
           />
           <GraphA11y
-            model={renderModel()}
+            model={ordered()}
             selection={selection.selection()}
             instructionsId={a11yInstructionsId}
             announcement={viewAnnouncement()}

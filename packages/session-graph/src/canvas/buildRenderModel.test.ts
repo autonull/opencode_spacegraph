@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import {
   buildFixtureGraph,
   buildGraph,
+  byProximity,
   layoutGraph,
   nodeSize,
   nodesAtLevel,
@@ -294,4 +295,29 @@ test("the render model carries the session identity of the root (T3.6)", () => {
 
   expect(root?.id).toBe("session")
   expect(root?.data?.sessionID).toBe("ses_abc")
+})
+
+// T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
+// the model's nodes, so the order decides which nodes get a card and which fall back to a dot.
+test("the cards go to the nodes nearest the camera", () => {
+  const centre: [number, number, number] = [0, 0, 0]
+  const near = byProximity(model, positions, centre)
+  const built = buildRenderModel(near, { level: "execution", positions, cardBudget: 4 })
+
+  const cards = built.nodes.filter((node) => node.html !== undefined && !STRUCTURAL.has(node.kind))
+  const dots = built.nodes.filter((node) => node.shape === "dot")
+
+  expect(cards.length).toBe(4)
+  expect(dots.length).toBeGreaterThan(0)
+
+  // The four cards are the four nodes nearest the centre, in that order.
+  const distance = (id: string) => {
+    const point = positions.get(id)!
+    return Math.hypot(point.x - centre[0], point.y - centre[1])
+  }
+
+  const cardDistances = cards.map((node) => distance(node.id))
+  const dotDistances = dots.map((node) => distance(node.id))
+
+  expect(Math.max(...cardDistances)).toBeLessThanOrEqual(Math.min(...dotDistances))
 })

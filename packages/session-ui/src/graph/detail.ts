@@ -10,21 +10,22 @@ export type { DetailMode } from "./vocabulary"
 /**
  * How much a card says, given how close the reader is to it. A card's own box never changes — the
  * layout owns the geometry and the positions stay stable — so the tier changes the composition
- * inside the box: a far card is a labelled chip, a near card carries its payload.
+ * inside the box: a far card is a labelled chip, a near card carries its payload, and the closest
+ * card carries the payload itself.
  */
-export const DETAIL_TIERS = ["far", "mid", "near"] as const
+export const DETAIL_TIERS = ["far", "mid", "near", "closest"] as const
 
 export type DetailTier = (typeof DETAIL_TIERS)[number]
 
 /**
  * The card's world width — the layout's own card box, so the two cannot drift — and the world size
- * of the three lines it can carry. A card is 220 world units wide, so at a screen width of `W` one
+ * of the lines it can carry. A card is 220 world units wide, so at a screen width of `W` one
  * world unit covers `W / 220` screen pixels and a line of `n` world units reads at `n · W / 220`
  * screen pixels.
  */
 export const CARD_WORLD_WIDTH = CARD_SIZE[0]
 
-export const CARD_LINE_WORLD = { label: 13, summary: 12, detail: 11 } as const
+export const CARD_LINE_WORLD = { label: 13, summary: 12, detail: 11, content: 10 } as const
 
 /**
  * The reading size: the screen size at which a line of a card is readable. It is a judgement about
@@ -41,15 +42,18 @@ const HYSTERESIS = 0.05
 /**
  * The card widths, in screen pixels, at which a card changes tier. A boundary is the width at
  * which the next line reaches the reading size, so the tiers follow the reader's eye instead of a
- * guess about distance: the summary appears when it can be read, and the kind's own line appears
- * when it can be read too. The entry and exit thresholds differ, so a reader sitting on a boundary
- * does not see the card flip back and forth.
+ * guess about distance: the summary appears when it can be read, the kind's own line appears when it
+ * can be read too, and the payload itself appears when the card is wide enough for a line a step
+ * smaller. The entry and exit thresholds differ, so a reader sitting on a boundary does not see the
+ * card flip back and forth.
  */
 export const DETAIL_TIER_WIDTH = {
   far: Math.round(widthFor(CARD_LINE_WORLD.summary)),
   farExit: Math.round(widthFor(CARD_LINE_WORLD.summary) * (1 + HYSTERESIS)),
   near: Math.round(widthFor(CARD_LINE_WORLD.detail)),
   nearExit: Math.round(widthFor(CARD_LINE_WORLD.detail) * (1 - HYSTERESIS)),
+  closest: Math.round(widthFor(CARD_LINE_WORLD.content)),
+  closestExit: Math.round(widthFor(CARD_LINE_WORLD.content) * (1 - HYSTERESIS)),
 } as const
 
 /**
@@ -59,9 +63,14 @@ export const DETAIL_TIER_WIDTH = {
 export function detailTier(width: number, current: DetailTier = "mid"): DetailTier {
   if (current === "far") return width >= DETAIL_TIER_WIDTH.farExit ? "mid" : "far"
 
-  if (current === "near") return width < DETAIL_TIER_WIDTH.nearExit ? "mid" : "near"
+  if (current === "closest") return width < DETAIL_TIER_WIDTH.closestExit ? "near" : "closest"
+
+  if (current === "near")
+    return width < DETAIL_TIER_WIDTH.nearExit ? "mid" : width >= DETAIL_TIER_WIDTH.closest ? "closest" : "near"
 
   if (width < DETAIL_TIER_WIDTH.far) return "far"
+
+  if (width >= DETAIL_TIER_WIDTH.closest) return "closest"
 
   if (width >= DETAIL_TIER_WIDTH.near) return "near"
 

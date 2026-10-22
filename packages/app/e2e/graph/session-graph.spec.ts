@@ -662,6 +662,36 @@ test("pans the view with the right mouse button", async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test("the card budget follows the camera (T17.5)", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // The detail level's budget is 24 cards, and the fixture's session has more activity than that.
+  await page.locator(toolbar).getByRole("button", { name: "Detail", exact: true }).click()
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind]`).count()).toBeGreaterThan(0)
+
+  const cards = () =>
+    page
+      .locator(`${canvasHost} [data-kind]`)
+      .evaluateAll((nodes) => nodes.map((node) => node.textContent ?? "").sort())
+
+  const before = await cards()
+
+  // The budget is spent, so there are fewer cards than the session has nodes.
+  expect(before.length).toBeLessThan(43)
+
+  // The camera moves: the budget follows it, and the cards move with it.
+  const host = (await page.locator(canvasHost).boundingBox())!
+  await page.mouse.move(host.x + host.width - 40, host.y + host.height - 40)
+  await page.mouse.down({ button: "right" })
+  await page.mouse.move(host.x + host.width - 460, host.y + host.height - 260, { steps: 10 })
+  await page.mouse.up({ button: "right" })
+
+  await expect.poll(cards).not.toEqual(before)
+
+  expect(errors).toEqual([])
+})
+
 test("zooms the view with the mouse wheel", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

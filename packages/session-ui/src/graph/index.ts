@@ -89,6 +89,8 @@ export {
 
 export { Metrics, type GraphAction, type GraphActionCounts, type GraphMetrics } from "./metrics"
 
+export { byProximity, sessionOrder } from "./budget"
+
 export {
   clusterCount,
   domBudget,

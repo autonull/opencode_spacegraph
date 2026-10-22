@@ -76,6 +76,55 @@ test("card tiers", () => {
   const near = createCardTemplate(theme, { tier: "near", copy })(tool, "execution")
   expect(near).toContain('data-tier="near"')
   expect(near).toContain("src/auth/token.ts")
+
+  // T17.5: the closest card carries the payload itself, in the lines the box can hold.
+  const closest = createCardTemplate(theme, { tier: "closest", copy })(tool, "execution")
+  expect(closest).toContain('data-tier="closest"')
+  expect(closest).toContain("src/auth/token.ts")
+})
+
+// T17.5 — the closest card says more than the near one, because the box is fixed: the content
+// takes the summary's and the fact's rows, and a line a step smaller fits more of the payload.
+test("the closest card carries the payload in the box's own lines", () => {
+  const tool = node({
+    id: "tool:1",
+    kind: "tool",
+    label: "read",
+    status: "success",
+    summary: "export function session() {}",
+    data: { name: "read", input: { path: "src/auth/token.ts" } },
+  })
+
+  const near = createCardTemplate(theme, { tier: "near", copy })(tool, "execution")
+  const closest = createCardTemplate(theme, { tier: "closest", copy })(tool, "execution")
+
+  // The near card has one line for the summary and one for the fact.
+  expect(near).toContain("font-size:12px")
+  expect(near).toContain("font-size:11px")
+
+  // The closest card has one content block, a step smaller, carrying both.
+  expect(closest).toContain("font-size:10px")
+  expect(closest).not.toContain("font-size:12px")
+  expect(closest).toContain("src/auth/token.ts")
+  expect(closest).toContain("export function session() {}")
+})
+
+// T17.5 — a diff's label says how many files changed; its content names them.
+test("the closest card names the files a diff touched", () => {
+  const diff = node({
+    id: "diff:1",
+    kind: "diff",
+    label: "2 files changed",
+    status: "neutral",
+    data: { files: ["src/auth/session.ts", "src/auth/guards.ts"] },
+  })
+
+  const near = createCardTemplate(theme, { tier: "near", copy })(diff, "execution")
+  const closest = createCardTemplate(theme, { tier: "closest", copy })(diff, "execution")
+
+  expect(near).toContain("src/auth/session.ts")
+  expect(closest).toContain("src/auth/session.ts")
+  expect(closest).toContain("src/auth/guards.ts")
 })
 
 // T11.3 — the tier decides how much room the card has; the kind decides what fills it. A kind with

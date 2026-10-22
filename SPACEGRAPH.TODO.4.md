@@ -1237,7 +1237,7 @@ and one menu opens them.
 Verify: `cd packages/session-graph && bun test src` — the detail modes; the component suite — the
 minimap opens as a window.
 
-### T17.5 The detail the reader earns by moving closer — **planned**
+**T17.5 The detail the reader earns by moving closer — **done**
 
 **The question.** "Are we making use of LOD to enable high detail when a node is viewed up-close?"
 
@@ -1765,6 +1765,55 @@ map each enough room, and whether the floating pane is where the reader would pu
 author's hands.
 
 **2026-10-22 — T17 and T18: the map's own language, and the pair tightened (planned).**
+
+**2026-10-22 — T17.5: the detail the reader earns by moving closer.**
+The map's only screen-size LOD was the card's tier, and it added one line and stopped. The library
+computes `high | medium | low` LOD and never reads it; the host sets none of the library's per-node
+escapes; the DOM budget is a flat count spent in model order; and the nearest card never says more
+than the one across the map.
+
+What changed:
+
+- **the budget follows the camera.** The adapter spends the budget in the order it walks the nodes,
+  and the host orders them by distance from the camera's *resting* centre (the viewport the camera
+  last came to rest at, not the last frame — a budget that changed on every frame would churn the
+  cards under the reader's hand). `byProximity(model, positions, centre)` is the one function that
+  answers it ✓;
+- **a kind earns its card by proximity.** The summary layouts and the node-link layouts both use the
+  same proximity-ordered model for the canvas, so the card under the reader's hand is a card, not a
+  dot ✓. The order is the render model's, never the model's: a screen reader reads the session, and
+  a saved map reads the same whoever opens it ✓;
+- **the nearest card says more.** A fourth tier (`closest`) is a fourth reading size: the box is
+  fixed, so the closest card *replaces* its summary with the payload itself (the diff's files, the
+  tool's output) rather than adding a fourth line. The card mode frames the selected node at the
+  `closest` threshold, so the card the reader just chose is one they can read, and it carries the
+  payload ✓.
+
+Two things the build found, and the plan had not:
+
+- **the camera's rest is the budget's anchor, not the last frame.** A budget that changed on every
+  frame would rebuild the map on every frame and make the cards churn under the reader's hand. The
+  120ms settle window is the same one the fit uses, and it is short enough that the reader feels
+  the budget move, and long enough that it does not flicker ✓;
+- **a diff's label says how many; its content names them.** The old near card showed the first
+  file; the closest card names them all, one per line ✓. The payload line is a step smaller (10
+  world units instead of 11) so two lines of the payload fit where one line of the fact and one
+  of the summary did ✓.
+
+**The frames were stale (again).** The card mode's framing threshold moved from `near` to
+`closest`, so the card mode now frames tighter, and the committed captures were regenerated ✓.
+
+Measured: `session-ui` graph **136** (+8: the closest tier exists, its threshold is derived from the
+reading size, its hysteresis works, the payload line is a step smaller, the diff names all its
+files, the nearest tier is a tier, the detail function reads the content, and the test asserts the
+closest threshold), `session-graph` unit **104** (+3: the closest card carries the payload, the
+diff's content is multiline, the closest tier is a tier), the session-graph component suite **59**,
+the app graph e2e **32** (+1: the card budget follows the camera), the root `bun run check`
+**40/40**, and `bun run graph:capture --mode=verify` **passed** (the frames exist, and the 2x
+matrix repeats none).
+
+Unverified: the *feel* of the closest card — the camera moves on every selection in `card` mode,
+the payload reads at 10 world units (9px), and the 120ms settle window — needs the author's hands.
 No code changed by this pass. The author's use of the map asked three questions — are the
 representations just layouts, can the level apply to any layout, is the LOD earning its keep — and
 this pass measured the answers:
