@@ -37,6 +37,8 @@ export type GraphDetailProps = {
   onOpenTranscript?: (id: string) => void
   /** T6.5: opens another session — the child of a delegation, the session a fork came from, or the parent of a child session. */
   onOpenSession?: (sessionID: string) => void
+  /** T12: opens this node's detail in a durable window over the map. */
+  onOpenWindow?: (node: GraphNode) => void
 }
 
 /**
@@ -87,6 +89,16 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
           {props.node.label}
         </h2>
       </div>
+      <Show when={props.onOpenWindow}>
+        <IconButton
+          size="small"
+          variant="ghost"
+          aria-label={i18n.t("ui.sessionGraph.window.open")}
+          title={i18n.t("ui.sessionGraph.window.open")}
+          onClick={() => props.onOpenWindow?.(props.node)}
+          icon={<Icon name="sidebar-right" size="small" />}
+        />
+      </Show>
       <Show when={props.link}>
         {(link) => (
           <IconButton

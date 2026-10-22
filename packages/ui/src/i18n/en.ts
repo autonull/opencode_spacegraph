@@ -284,6 +284,10 @@ const source = {
   "ui.question.custom.answerPlaceholder": "Type your own answer…",
 
   "ui.sessionGraph.canvas.label": "Session graph",
+  "ui.sessionGraph.window.open": "Open in a window",
+  "ui.sessionGraph.window.close": "Close the window",
+  "ui.sessionGraph.window.detail": "Detail",
+  "ui.sessionGraph.window.missing": "This node is no longer on the map.",
   "ui.sessionGraph.canvas.instructions": "Use arrow keys to pan and Enter to select.",
   "ui.sessionGraph.canvas.empty": "Nothing to graph yet",
   "ui.sessionGraph.canvas.emptyHint": "Send a message and its activity will appear here.",

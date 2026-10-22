@@ -54,6 +54,7 @@ export const GraphPopover = (props: GraphPopoverProps) => {
             onSelect={props.onSelect}
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
+            onOpenWindow={props.onOpenWindow}
           />
           <GraphDetailBody
             model={props.model}

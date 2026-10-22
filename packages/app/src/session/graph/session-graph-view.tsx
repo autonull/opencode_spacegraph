@@ -162,6 +162,15 @@ export function SessionGraphView(props: {
           onFilesChange={(files) => graph.setFiles(files)}
           onDetailModeChange={(mode) => graph.setDetailMode(mode)}
           onPeekChange={(peek) => graph.setPeek(peek)}
+          // T12: the reader's windows over the map. The graph proposes the first placement; the app
+          // keeps them per session, so a window survives a session switch.
+          windows={graph.windows()}
+          onWindowsChange={(windows) => graph.setWindows(windows)}
+          onOpenWindow={(window) => {
+            const current = graph.windows()
+            if (current.some((open) => open.id === window.id)) return
+            graph.setWindows([...current, window])
+          }}
           onTurnMap={(turnID) => graph.setTurnMap(turnID)}
           onOpenTranscript={(id) => {
             const ref = openInTranscript(model(), id)

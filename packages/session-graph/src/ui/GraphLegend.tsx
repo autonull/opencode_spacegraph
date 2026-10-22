@@ -44,17 +44,19 @@ export type GraphLegendProps = {
   onClose: () => void
 }
 
-/**
- * T6.8 — the legend. It names every encoding the canvas draws: the lanes, the card colours, the
- * phase groups, the line styles, and the status dots. The colours come from the same helpers the
- * card template uses, so the legend cannot drift from the picture, and the copy comes from the same
- * i18n keys the inspector uses, so a kind is called the same thing everywhere.
- */
-export const GraphLegend = (props: GraphLegendProps) => {
-  const i18n = useI18n()
-  let panel!: HTMLDivElement
+export type GraphLegendBodyProps = {
+  theme: RenderTheme
+  /** T7: the layout on screen; the legend says what that layout encodes. */
+  strategy?: LayoutStrategy
+}
 
-  onMount(() => panel.focus())
+/**
+ * T12 — the legend's content, without the overlay around it, so a window can hold it. The legend
+ * names every encoding the canvas draws; the colours come from the same helpers the card template
+ * uses, so the legend cannot drift from the picture.
+ */
+export const GraphLegendBody = (props: GraphLegendBodyProps) => {
+  const i18n = useI18n()
 
   const swatch = (color: string) => (
     <span class="h-3 w-3 shrink-0 rounded-sm" style={{ background: color }} aria-hidden="true" />
@@ -74,6 +76,73 @@ export const GraphLegend = (props: GraphLegendProps) => {
       <div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">{children}</div>
     </div>
   )
+
+  return (
+    <div class="min-h-0 flex-1 overflow-y-auto border-t border-border-weaker-base px-3 py-2">
+      <p class="text-12-regular text-text-base">{i18n.t(LAYOUT_HINT_KEY[props.strategy ?? "lanes"])}</p>
+      <p class="mt-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.help")}</p>
+
+      {section(
+        i18n.t("ui.sessionGraph.legend.lanes"),
+        LANES.map((lane) => (
+          <span class="truncate text-12-regular text-text-base">{i18n.t(LANE_KEY[lane])}</span>
+        )),
+      )}
+
+      {section(
+        i18n.t("ui.sessionGraph.legend.kinds"),
+        KINDS.map((kind) => (
+          <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+            {swatch(kindAccent(kind).solid)}
+            <span class="truncate">{i18n.t(KIND_KEY[kind])}</span>
+          </span>
+        )),
+      )}
+
+      {section(
+        i18n.t("ui.sessionGraph.legend.phases"),
+        CATEGORIES.map((category) => (
+          <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+            {swatch(categoryAccent(category).solid)}
+            <span class="truncate">{i18n.t(`ui.sessionGraph.phase.${category}`)}</span>
+          </span>
+        )),
+      )}
+
+      {section(
+        i18n.t("ui.sessionGraph.legend.lines"),
+        (Object.keys(CONFIDENCE_STYLE) as (keyof typeof CONFIDENCE_STYLE)[]).map((confidence) => (
+          <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+            {line(CONFIDENCE_STYLE[confidence])}
+            <span class="truncate">{i18n.t(CONFIDENCE_KEY[confidence])}</span>
+          </span>
+        )),
+      )}
+
+      {section(
+        i18n.t("ui.sessionGraph.legend.status"),
+        STATUSES.map((status) => (
+          <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+            {swatch(statusAccent(props.theme, status))}
+            <span class="truncate">{i18n.t(`ui.sessionGraph.status.${status}`)}</span>
+          </span>
+        )),
+      )}
+    </div>
+  )
+}
+
+/**
+ * T6.8 — the legend. It names every encoding the canvas draws: the lanes, the card colours, the
+ * phase groups, the line styles, and the status dots. The colours come from the same helpers the
+ * card template uses, so the legend cannot drift from the picture, and the copy comes from the same
+ * i18n keys the inspector uses, so a kind is called the same thing everywhere.
+ */
+export const GraphLegend = (props: GraphLegendProps) => {
+  const i18n = useI18n()
+  let panel!: HTMLDivElement
+
+  onMount(() => panel.focus())
 
   return (
     <div
@@ -103,57 +172,7 @@ export const GraphLegend = (props: GraphLegendProps) => {
         />
       </div>
 
-      <div class="min-h-0 flex-1 overflow-y-auto border-t border-border-weaker-base px-3 py-2">
-        <p class="text-12-regular text-text-base">{i18n.t(LAYOUT_HINT_KEY[props.strategy ?? "lanes"])}</p>
-        <p class="mt-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.help")}</p>
-
-        {section(
-          i18n.t("ui.sessionGraph.legend.lanes"),
-          LANES.map((lane) => (
-            <span class="truncate text-12-regular text-text-base">{i18n.t(LANE_KEY[lane])}</span>
-          )),
-        )}
-
-        {section(
-          i18n.t("ui.sessionGraph.legend.kinds"),
-          KINDS.map((kind) => (
-            <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
-              {swatch(kindAccent(kind).solid)}
-              <span class="truncate">{i18n.t(KIND_KEY[kind])}</span>
-            </span>
-          )),
-        )}
-
-        {section(
-          i18n.t("ui.sessionGraph.legend.phases"),
-          CATEGORIES.map((category) => (
-            <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
-              {swatch(categoryAccent(category).solid)}
-              <span class="truncate">{i18n.t(`ui.sessionGraph.phase.${category}`)}</span>
-            </span>
-          )),
-        )}
-
-        {section(
-          i18n.t("ui.sessionGraph.legend.lines"),
-          (Object.keys(CONFIDENCE_STYLE) as (keyof typeof CONFIDENCE_STYLE)[]).map((confidence) => (
-            <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
-              {line(CONFIDENCE_STYLE[confidence])}
-              <span class="truncate">{i18n.t(CONFIDENCE_KEY[confidence])}</span>
-            </span>
-          )),
-        )}
-
-        {section(
-          i18n.t("ui.sessionGraph.legend.status"),
-          STATUSES.map((status) => (
-            <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
-              {swatch(statusAccent(props.theme, status))}
-              <span class="truncate">{i18n.t(`ui.sessionGraph.status.${status}`)}</span>
-            </span>
-          )),
-        )}
-      </div>
+      <GraphLegendBody theme={props.theme} strategy={props.strategy} />
     </div>
   )
 }

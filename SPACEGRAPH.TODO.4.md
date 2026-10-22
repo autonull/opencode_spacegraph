@@ -143,7 +143,8 @@ believing the `card` mode at all. **Nothing in this plan is a prerequisite for t
 plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
 as one reviewed block rather than as a drip.
 
-**Status: G9 and G11 are reached** (T11 and T13, 2026-10-21 — see the log). G10, G12 and G13 are open.
+**Status: G9, G10 and G11 are reached** (T11, T12 and T13, 2026-10-21 — see the log). G12 and G13
+are open.
 
 ### 0.6 What is *not* in this plan
 
@@ -352,7 +353,7 @@ resized, focused and closed by the reader. It is *durable*: it stays where the r
 they close it. It is a **host surface**, not a node (F4), and it is **screen-space**: it does not
 move when the camera moves, because a window you are reading should stay still.
 
-### T12.1 The window model
+### T12.1 The window model — **done**
 
 | Property | Value | Why |
 |---|---|---|
@@ -364,7 +365,16 @@ move when the camera moves, because a window you are reading should stay still.
 | Persistence | per session, in the app's layout store beside the other graph preferences | the same place the detail mode and the peek live (`packages/app/src/shell/state/layout.tsx:88-106`) |
 | Keyboard | the topmost window takes focus; `Escape` closes it; focus returns to the map | the a11y contract; the turn map and the search already do this (`ScopedOverlay`, `spacegraphjs/src/overlays/ScopedOverlay.ts`) |
 
-### T12.2 The window manager
+**What was built.** `GraphWindows` (`packages/session-graph/src/ui/GraphWindows.tsx`) is the manager:
+one component that owns the gestures and holds no content. The state is `{ id, kind, nodeID?, left,
+top, width, height, z, pinned? }` ✓ — the plan's list, verbatim. The *host* owns that list (the app
+persists it), the view proposes a window's first placement (it knows how much room the canvas has),
+and the manager reports what the reader did.
+
+The layer sits at `z-30` inside the canvas region: above the canvas (1) and the CSS2D layer (2),
+below the search and legend overlays.
+
+### T12.2 The window manager — **done**
 
 One component owns the windows: create, focus, close, move, resize, z-order, and the keyboard
 contract. It holds no content of its own.
@@ -384,12 +394,26 @@ contract. It holds no content of its own.
   save every host from re-implementing pointer capture. The host may equally own it. **Do not** add
   a node type, and **do not** build on `PanelNode`'s dead `onPanelDrag*` API (F4).
 
+**What was built.** The manager is the host's, in plain DOM: a title bar that moves the window, a
+corner that resizes it, a close button, and a pointer cycle with `setPointerCapture` ✓. The window
+is clamped to the canvas region ✓ (the region is the box). Clicking a window raises it ✓ (the front
+window answers `Escape` ✓).
+
+**One thing the plan did not say, and the implementation had to answer.** `Escape` on a window must
+close the window and *not* clear the reader's selection — but the library's own `Escape` handler
+(which clears the selection) listens on the document body, and a bubble-phase handler on the window
+arrives *after* it. The window therefore listens in the **capture phase**, and stops the key there:
+the window answers `Escape` before the map does ✓.
+
+**The library's contribution stayed optional.** The manager is plain DOM in the host; no helper was
+added to the library, and no node type was added (stop rule 2 ✓).
+
 Done when: a window can be opened, moved, resized, focused and closed, and the map does not move
 when it happens.
 Verify: `packages/session-graph/component-tests/` — a case that opens a window, drags it, resizes
 it, and asserts the camera's viewport is unchanged.
 
-### T12.3 The window kinds
+### T12.3 The window kinds — **done**
 
 The author's list — "plenty of room for detail and related widgets (contextual actions, logs,
 etc.)" — plus the other reasons a window is wanted. Each kind is a *content contract*, not a
@@ -409,11 +433,23 @@ feature of the window:
 The point of the list: **the window is a generic surface, and each kind is a plug.** The manager
 must not know them; the host registers content.
 
+**What was built.** Two kinds, and the manager knows neither:
+
+- **node detail** — the existing `GraphDetailBody` ✓, opened from the detail surfaces by a new
+  button ("open in a window") in the shared detail header ✓, so both the popover and the side panel
+  offer it;
+- **the legend** — the legend's content, extracted from its overlay shell into `GraphLegendBody` ✓,
+  so a window can hold it. (The toolbar's own legend button still opens the overlay; T14.2 moves it
+  into a window.)
+
+The kinds are a registry in the view (`windowContent`), and the *host* decides which windows exist
+✓ — the manager only ever receives a `kind` it does not interpret ✓.
+
 Done when: the window manager takes content as a parameter, and at least two kinds (node detail and
 one more) are implemented on top of it.
 Verify: the component test; the kinds are listed in this file.
 
-### T12.4 Anchoring: free, pinned, or world-anchored
+### T12.4 Anchoring: free, pinned, or world-anchored — **done**
 
 Three behaviours, one window:
 
@@ -429,19 +465,30 @@ Three behaviours, one window:
   is culled by LOD, and its text is scaled by the camera. It is **deferred** (§0.6) and recorded here
   so it is a choice, not an accident.
 
+**What was built.** Free is the default ✓. A window can be pinned (`pinned: true`) and then rides
+its node: the view reads the node's screen position on every viewport change ✓ (the same anchor the
+popover uses), and the window's placement follows it ✓. The world-anchored window stays deferred
+(D8) ✓.
+
 Done when: a window can be pinned to a node and follows it across a pan, and the plan says which
 behaviour the default is.
 Verify: the component test pins a window, pans the camera, and asserts the window followed.
 
-### T12.5 The window survives a session
+### T12.5 The window survives a session — **done**
 
 The windows are the reader's arrangement of the map. They belong in the same per-session store as
 the detail mode (`packages/app/src/shell/state/layout.tsx:88-106`): a list of
-`{ id, kind, nodeID?, left, top, width, height, z, pinned }`. The store is a `Persistence.struct`
+`{ id, kind, nodeID?, left, top, width, height, z, pinned? }`. The store is a `Persistence.struct`
 with optional fields, so a new field needs no migration.
 
 The content itself is **not** persisted (a log is not worth storing; the detail is re-derived from
 the model). A window that cannot be rehydrated is dropped, not restored empty.
+
+**What was built.** The per-session graph state gained a `windows` field: an array of the plan's
+struct ✓, optional ✓ (no migration), beside the detail mode and the peek ✓. The app writes it
+whenever the reader moves, resizes, raises or closes a window ✓. The content is re-derived: the
+window's `kind` and `nodeID` are stored, and the view rebuilds the body from the model ✓ — so a
+window whose node is gone shows "this node is no longer on the map" instead of an empty frame ✓.
 
 Done when: a window's placement survives a session switch and a reload.
 Verify: the app e2e — open a window, switch sessions, come back, and assert its placement.
@@ -882,3 +929,45 @@ Two things the pass found, both about the environment rather than the code:
 
 Unverified: the *feel* of the pan — whether the left drag over the background reads as "the map
 follows my hand" or as "the map jumped" — needs the author's hands.
+
+**2026-10-21 — T12: windows over the map (G10).**
+The author's second observation: the popover is good, but it should be *durable* — opened by a
+button, movable and resizable, and still there when the reader comes back to it.
+
+What changed:
+
+- **the window manager** (`GraphWindows`): one component that owns the gestures and holds no
+  content. A title bar moves the window, a corner resizes it, a click raises it, `Escape` closes
+  it, and the window is clamped to the canvas region. In screen space the pointer's delta *is* the
+  window's delta, so nothing converts pixels to world units;
+- **the window state is the plan's list, verbatim**: `{ id, kind, nodeID?, left, top, width, height,
+  z, pinned? }`. The *host* owns it — the app persists it per session, beside the detail mode and
+  the peek — and the view proposes a window's first placement, because the view knows how much room
+  the canvas has;
+- **two kinds, and the manager knows neither**: the node's detail (the existing `GraphDetailBody`,
+  opened from a new button in the shared detail header) and the legend (its content, extracted from
+  its overlay shell into `GraphLegendBody`, so a window can hold it);
+- **a window can be pinned to a node** and then rides it: the view reads the node's screen position
+  on every viewport change, the same anchor the popover uses. Free-floating is the default; the
+  world-anchored window stays deferred (D8);
+- **the content is not persisted**: the kind and the node are, and the body is re-derived from the
+  model — so a window whose node is gone says so instead of showing an empty frame.
+
+Two things the implementation had to answer that the plan did not say:
+
+- **`Escape` on a window must not clear the reader's selection**, but the library's own `Escape`
+  handler (which clears it) listens on the document body, and a bubble-phase handler on the window
+  arrives after it. The window listens in the **capture phase** and stops the key there: the window
+  answers `Escape` before the map does;
+- **the window layer must not eat the map's pointer**: it sits above the canvas as a sibling, so
+  the canvas never sees a window's pointer, and a background drag pans the map (T13) while a
+  window's drag moves the window.
+
+Measured: the session-graph component suite **56** (+3: the window opens, moves, resizes and leaves
+the map where it was; `Escape` closes it and keeps the selection; a pinned window rides its node
+across a pan), `session-graph` unit **100**, `session-ui` graph **116**, the root `bun run check`
+**40/40**.
+
+Unverified: the *feel* of a window — whether its title bar drags the way the author expects, and
+whether the first placement is where they would put it — needs their hands. The app's persistence
+of a window's placement across a session switch is written but not yet proven by an app e2e.

@@ -14,6 +14,7 @@ import { createSignal } from "solid-js"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphView } from "./GraphView"
+import type { GraphWindowState } from "./GraphWindows"
 
 const graph = buildFixtureGraph()
 
@@ -172,6 +173,8 @@ type HarnessProps = {
   height?: string
   /** LE.5: fill the story viewport so the capture matches the app's canvas size. */
   fullscreen?: boolean
+  /** T12: the windows already open over the map. */
+  windows?: GraphWindowState[]
 }
 
 // A selected tool node on load so the story and its component test see a populated inspector
@@ -181,6 +184,8 @@ const INITIAL_SELECTION = "tool:prt_tool_read_1"
 const ViewHarness = (props: HarnessProps) => {
   const [renderer, setRenderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
+  // T12: the windows over the map. The harness owns them, as the app does.
+  const [windows, setWindows] = createSignal<GraphWindowState[]>(props.windows ?? [])
   // T6.5: the session the reader asked to open, recorded in the DOM so a component test can see it.
   const [openedSession, setOpenedSession] = createSignal<string | undefined>()
   // On-demand turn diffs: nothing is available until a diff node is inspected and calls `load`.
@@ -218,6 +223,12 @@ const ViewHarness = (props: HarnessProps) => {
         files={props.files}
         detailMode={props.detailMode}
         peek={props.peek}
+        windows={windows()}
+        onWindowsChange={setWindows}
+        onOpenWindow={(window) => {
+          if (windows().some((open) => open.id === window.id)) return
+          setWindows([...windows(), window])
+        }}
         preferredRenderer={renderer()}
         rendererOverrides={props.overrides}
         theme={props.theme}
@@ -329,6 +340,37 @@ export const DetailPopover = {
 /** The selected node's own card carries the detail; nothing else opens. */
 export const DetailCard = {
   render: () => <ViewHarness detailMode="card" selection={INITIAL_SELECTION} />,
+}
+
+/**
+ * T12: the popover's detail can become a durable window over the map — movable, resizable, and
+ * still there when the reader comes back to it.
+ */
+export const DetailWindow = {
+  render: () => <ViewHarness detailMode="popover" selection={INITIAL_SELECTION} />,
+}
+
+/** T12.4: a window pinned to its node rides it across a pan. */
+export const PinnedWindow = {
+  render: () => (
+    <ViewHarness
+      detailMode="popover"
+      selection={INITIAL_SELECTION}
+      windows={[
+        {
+          id: `node:${INITIAL_SELECTION}`,
+          kind: "node",
+          nodeID: INITIAL_SELECTION,
+          left: 40,
+          top: 40,
+          width: 320,
+          height: 240,
+          z: 1,
+          pinned: true,
+        },
+      ]}
+    />
+  ),
 }
 
 /** No detail surface at all: the map is the map. */

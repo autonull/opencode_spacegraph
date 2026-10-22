@@ -105,6 +105,24 @@ const sessionGraphSchema = Persistence.struct({
   peek: Schema.optional(Schema.Boolean),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
   turnMap: Schema.optional(Schema.String),
+  // T12.5: the reader's windows over the map, per session. The content is not stored — it is
+  // re-derived from the model — so a window that cannot be rehydrated is dropped, not restored
+  // empty.
+  windows: Persistence.optional(
+    Persistence.array(
+      Persistence.struct({
+        id: Schema.String,
+        kind: Schema.String,
+        nodeID: Schema.optional(Schema.String),
+        left: Schema.Finite,
+        top: Schema.Finite,
+        width: Schema.Finite,
+        height: Schema.Finite,
+        z: Schema.Finite,
+        pinned: Schema.optional(Schema.Boolean),
+      }),
+    ),
+  ),
 })
 
 export type SessionGraphState = typeof sessionGraphSchema.Type
@@ -576,6 +594,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           renderer: createMemo(() => state()?.renderer),
           selected: createMemo(() => state()?.selected),
           turnMap: createMemo(() => state()?.turnMap),
+          windows: createMemo(() => state()?.windows ?? []),
           layout: createMemo(() => state()?.layout ?? "lanes"),
           minimap: createMemo(() => state()?.minimap ?? false),
           files: createMemo(() => state()?.files ?? false),
@@ -618,6 +637,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setTurnMap(turnMap: string | undefined) {
             write({ turnMap })
+          },
+          setWindows(windows: NonNullable<SessionGraphState["windows"]>) {
+            write({ windows })
           },
         }
       },

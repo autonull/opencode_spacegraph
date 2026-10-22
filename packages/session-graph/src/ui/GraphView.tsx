@@ -35,6 +35,8 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs, type GraphBreadcrumb } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
+import { GraphDetailBody } from "./GraphDetail"
+import { GraphLegendBody } from "./GraphLegend"
 import { LANE_KEY, LEVEL_KEY, REPRESENTATION_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
@@ -46,6 +48,7 @@ import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
+import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { createGraphTheme } from "./theme"
 import { renderToSVG, serializeRenderModel, type SvgOptions } from "@spacegraphjs/svg-renderer"
 
@@ -119,6 +122,14 @@ export type GraphViewProps = {
   onOpenSession?: (sessionID: string) => void
   /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
   onTurnMap?: (turnID: string) => void
+  /**
+   * T12: the reader's windows over the map. The host owns them — it persists them per session — and
+   * the view only reports what the reader did to them.
+   */
+  windows?: readonly GraphWindowState[]
+  onWindowsChange?: (windows: GraphWindowState[]) => void
+  /** T12: the host opens a window. The view proposes its first placement; the host owns its lifetime. */
+  onOpenWindow?: (window: GraphWindowState) => void
   onBack?: () => void
   /** T3.4: session title for export metadata. */
   sessionTitle?: string
@@ -645,6 +656,68 @@ export const GraphView = (props: GraphViewProps) => {
 
     return { node, left: placement.left, top: placement.top }
   })
+
+  // T12.4 — a pinned window follows its node: the anchor is read on every viewport change, so the
+  // window rides the node as the reader pans. A free window does not move at all.
+  const windowAnchors = createMemo(() => {
+    if (!viewport()) return undefined
+    const anchors = new Map<string, { x: number; y: number }>()
+    for (const window of props.windows ?? []) {
+      if (!window.nodeID || !window.pinned) continue
+      const position = renderer?.getNodeScreenPosition?.(window.nodeID)
+      if (position) anchors.set(window.nodeID, position)
+    }
+    return anchors
+  })
+
+  // T12 — the windows over the map. The kinds are the host's; the view knows two of them, and the
+  // manager knows none: it moves, resizes and stacks them.
+  const windowTitle = (window: GraphWindowState) => {
+    if (window.kind === "legend") return i18n.t("ui.sessionGraph.legend.label")
+    const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
+    return node?.label ?? i18n.t("ui.sessionGraph.window.detail")
+  }
+
+  // T12 — the view proposes a window's first placement: the canvas is what a window lives in, so
+  // the view knows how much room there is. The host persists what the reader does with it.
+  const proposeWindow = (kind: string, nodeID?: string): GraphWindowState => {
+    const size = canvasSize()
+    const windows = props.windows ?? []
+    const width = Math.min(360, Math.max(240, size.width - 48))
+    const height = Math.min(320, Math.max(160, size.height - 48))
+    const offset = 24 + windows.length * 24
+    return {
+      id: `${kind}:${nodeID ?? windows.length}`,
+      kind,
+      nodeID,
+      left: Math.max(0, Math.min(offset, Math.max(0, size.width - width))),
+      top: Math.max(0, Math.min(offset, Math.max(0, size.height - height))),
+      width,
+      height,
+      z: windows.reduce((highest, window) => Math.max(highest, window.z), 0) + 1,
+    }
+  }
+
+  const windowContent = (window: GraphWindowState) => {
+    if (window.kind === "legend") return <GraphLegendBody theme={theme()} strategy={strategy()} />
+    const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
+    if (!node)
+      return (
+        <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
+      )
+    return (
+      <GraphDetailBody
+        model={props.model}
+        node={node}
+        diffSource={props.diffSource}
+        renderSummary={props.renderSummary}
+        link={props.link}
+        onSelect={select}
+        onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+        onOpenSession={props.onOpenSession}
+      />
+    )
+  }
 
   // Breadcrumbs are the `part-of` ancestry, seeded into the controller's trail so one library
   // primitive backs both selection and the path (U3.11/P8.1).
@@ -1193,10 +1266,20 @@ export const GraphView = (props: GraphViewProps) => {
                 onSelect={select}
                 onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
                 onOpenSession={props.onOpenSession}
+                onOpenWindow={(node) => props.onOpenWindow?.(proposeWindow("node", node.id))}
                 onClose={() => setPopoverDismissed(true)}
               />
             </div>
           </Show>
+          <GraphWindows
+            windows={props.windows ?? []}
+            onChange={props.onWindowsChange}
+            onClose={(id) => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.id !== id))}
+            title={windowTitle}
+            render={windowContent}
+            anchorOf={(nodeID) => windowAnchors()?.get(nodeID)}
+            bounds={() => canvasSize()}
+          />
           <Show when={minimap() && !error() && props.model.nodes.length > 0}>
             <div class="absolute bottom-2 end-2 z-10">
               <GraphMinimap
