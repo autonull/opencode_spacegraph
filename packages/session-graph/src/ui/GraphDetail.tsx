@@ -5,6 +5,7 @@ import { For, Show, createSignal, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
+import { count, flag, strings, text } from "./node-data"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
   pending: "text-text-weak",
@@ -14,12 +15,6 @@ const STATUS_TONE: Record<GraphNode["status"], string> = {
   interrupted: "text-text-on-warning-base",
   neutral: "text-text-weak",
 }
-
-const text = (value: unknown) => (typeof value === "string" && value.length > 0 ? value : undefined)
-const count = (value: unknown) => (typeof value === "number" ? value : undefined)
-const flag = (value: unknown) => value === true
-const strings = (value: unknown) =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
 
 type Connection = { edge: GraphEdge; other: GraphNode; direction: "in" | "out" }
 
@@ -294,3 +289,15 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
     </div>
   )
 }
+
+/**
+ * The whole detail of a node: the header and the body together. Every surface that shows a node —
+ * the side panel, the popover, a window over the map — reads this one, so a node reads the same
+ * wherever the reader meets it and the surfaces cannot drift apart.
+ */
+export const GraphDetailSurface = (props: GraphDetailProps) => (
+  <>
+    <GraphDetailHeader {...props} />
+    <GraphDetailBody {...props} />
+  </>
+)

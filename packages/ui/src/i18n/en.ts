@@ -288,6 +288,7 @@ const source = {
   "ui.sessionGraph.window.close": "Close the window",
   "ui.sessionGraph.window.detail": "Detail",
   "ui.sessionGraph.window.missing": "This node is no longer on the map.",
+  "ui.sessionGraph.window.unknown": "This window is no longer available.",
   "ui.sessionGraph.canvas.instructions": "Use arrow keys to pan and Enter to select.",
   "ui.sessionGraph.canvas.empty": "Nothing to graph yet",
   "ui.sessionGraph.canvas.emptyHint": "Send a message and its activity will appear here.",
@@ -469,6 +470,14 @@ const source = {
   "ui.sessionGraph.kind.compaction": "Compaction",
   "ui.sessionGraph.kind.notice": "Notice",
   "ui.sessionGraph.kind.diff": "Diff",
+  "ui.sessionGraph.card.steered": "{{role}} · steered",
+  "ui.sessionGraph.card.exit": "exit {{code}}",
+  "ui.sessionGraph.card.timedOut": "timed out",
+  "ui.sessionGraph.card.replayed": "replayed",
+  "ui.sessionGraph.card.reads.one": "{{count}} read",
+  "ui.sessionGraph.card.reads.other": "{{count}} reads",
+  "ui.sessionGraph.card.writes.one": "{{count}} write",
+  "ui.sessionGraph.card.writes.other": "{{count}} writes",
 } satisfies Record<string, string>
 
 export type Key = keyof typeof source

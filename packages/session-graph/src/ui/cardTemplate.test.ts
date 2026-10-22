@@ -1,13 +1,22 @@
 import { expect, test } from "bun:test"
 import type { GraphNode } from "@opencode/session-ui/graph"
 import { DARK_THEME as theme } from "../fixtures"
-import { createBandTemplate, createCardTemplate, kindDetail } from "./cardTemplate"
+import { createBandTemplate, createCardTemplate, kindDetail, type CardCopy } from "./cardTemplate"
+
+const copy: CardCopy = {
+  steered: (role) => `${role} · steered`,
+  exit: (code) => `exit ${code}`,
+  timedOut: () => "timed out",
+  replayed: () => "replayed",
+  reads: (count) => `${count} reads`,
+  writes: (count) => `${count} writes`,
+}
 
 const node = (partial: Partial<GraphNode> & Pick<GraphNode, "id" | "kind" | "label" | "status">): GraphNode =>
   partial as GraphNode
 
 test("cards carry a kind glyph, status dot, and monospaced tool/file labels", () => {
-  const render = createCardTemplate(theme)
+  const render = createCardTemplate(theme, { copy })
   const tool = render(node({ id: "tool:1", kind: "tool", label: "read", status: "success", data: { name: "read" } }), "execution")
 
   expect(tool).toContain("<svg")
@@ -19,7 +28,7 @@ test("cards carry a kind glyph, status dot, and monospaced tool/file labels", ()
 })
 
 test("cards escape host content and never emit raw markup", () => {
-  const html = createCardTemplate(theme)(
+  const html = createCardTemplate(theme, { copy })(
     node({ id: "tool:x", kind: "tool", label: '<script>alert("x")</script>', status: "failed" }),
     "execution",
   )
@@ -54,17 +63,17 @@ test("card tiers", () => {
   })
 
   // A far card drops the summary it cannot show.
-  const far = createCardTemplate(theme, { tier: "far" })(tool, "execution")
+  const far = createCardTemplate(theme, { tier: "far", copy })(tool, "execution")
   expect(far).toContain('data-tier="far"')
   expect(far).not.toContain("src/auth/token.ts")
 
   // A mid card carries the summary.
-  const mid = createCardTemplate(theme, { tier: "mid" })(tool, "execution")
+  const mid = createCardTemplate(theme, { tier: "mid", copy })(tool, "execution")
   expect(mid).toContain('data-tier="mid"')
   expect(mid).toContain("src/auth/token.ts")
 
   // A near card adds what the tool touched.
-  const near = createCardTemplate(theme, { tier: "near" })(tool, "execution")
+  const near = createCardTemplate(theme, { tier: "near", copy })(tool, "execution")
   expect(near).toContain('data-tier="near"')
   expect(near).toContain("src/auth/token.ts")
 })
@@ -195,16 +204,16 @@ test("a near card says what its kind has that its label does not", () => {
   ]
 
   for (const entry of cases) {
-    const detail = kindDetail(entry.node)
+    const detail = kindDetail(entry.node, copy)
     if (entry.says === undefined) {
       expect(detail, entry.kind).toBeUndefined()
       // A kind with nothing to add shows no line at all: the card is the label, and nothing empty.
-      const near = createCardTemplate(theme, { tier: "near" })(entry.node, "execution")
+      const near = createCardTemplate(theme, { tier: "near", copy })(entry.node, "execution")
       expect(near, entry.kind).not.toContain("font-size:11px")
       continue
     }
     expect(detail, entry.kind).toContain(entry.says)
-    const near = createCardTemplate(theme, { tier: "near" })(entry.node, "execution")
+    const near = createCardTemplate(theme, { tier: "near", copy })(entry.node, "execution")
     expect(near, entry.kind).toContain(entry.says)
   }
 })
@@ -214,11 +223,11 @@ test("the selected card carries the selection state", () => {
   const tool = node({ id: "tool:1", kind: "tool", label: "read", status: "success" })
   const other = node({ id: "tool:2", kind: "tool", label: "read", status: "success" })
 
-  const selected = createCardTemplate(theme, { selected: tool.id })(tool, "execution")
+  const selected = createCardTemplate(theme, { selected: tool.id, copy })(tool, "execution")
   expect(selected).toContain('data-selected="true"')
   expect(selected).toContain(theme.selection)
 
-  const unselected = createCardTemplate(theme, { selected: tool.id })(other, "execution")
+  const unselected = createCardTemplate(theme, { selected: tool.id, copy })(other, "execution")
   expect(unselected).not.toContain('data-selected="true"')
   expect(unselected).not.toContain(theme.selection)
 })
@@ -233,6 +242,6 @@ test("a host fact fills the line a kind cannot fill", () => {
     data: { path: "src/auth/token.ts" },
   })
 
-  const near = createCardTemplate(theme, { tier: "near", related: () => "2 reads · 1 write" })(file, "execution")
+  const near = createCardTemplate(theme, { tier: "near", copy, related: () => "2 reads · 1 write" })(file, "execution")
   expect(near).toContain("2 reads · 1 write")
 })

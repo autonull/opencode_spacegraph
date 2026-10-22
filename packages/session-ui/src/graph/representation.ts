@@ -1,10 +1,10 @@
 import { Representations, type RepresentationConfig } from "spacegraphjs/representations"
 import type { GraphLayout } from "./layout"
-import { COMPACT_SIZE, nodeSize } from "./layout"
+import { nodeSize } from "./layout"
 import { isVisibleAt } from "./levels"
 import type { GraphModel, GraphNode } from "./model"
 import { phaseCategoryOf } from "./model"
-import { PHASE_CATEGORIES, type Representation } from "./vocabulary"
+import { COMPACT_SIZE, PHASE_CATEGORIES, type Representation } from "./vocabulary"
 
 /**
  * Phase 10 representation seam (LE.7). `graph` is the node-link view (the layout strategies apply);
@@ -15,8 +15,6 @@ import { PHASE_CATEGORIES, type Representation } from "./vocabulary"
  * The summaries live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
 export type { Representation } from "./vocabulary"
-
-export { REPRESENTATIONS } from "./vocabulary"
 
 /** Overview-first representations: they show the semantic overview regardless of the level control. */
 export function representationLevel(representation: Representation) {

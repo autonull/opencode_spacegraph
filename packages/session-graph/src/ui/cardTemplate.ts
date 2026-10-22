@@ -1,7 +1,16 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { DetailTier, EqualizerRule, EqualizerRuleSet, GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
+import type {
+  DetailTier,
+  EqualizerRule,
+  EqualizerRuleSet,
+  GraphNode,
+  NodeKind,
+  PhaseCategory,
+  ZoomLevel,
+} from "@opencode/session-ui/graph"
 import { equalizerFade, equalizerMatch, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
+import { text } from "./node-data"
 
 /**
  * RF.3 — the rich activity card. It is a host template (the render model stays neutral): a leading
@@ -27,7 +36,8 @@ const GLYPH: Record<NodeKind, string> = {
   diff: "M4 2v12M12 2v12M4 5h4M4 10h4M9 13.5 12 13.5M10.5 12v3M9 2.5l3 0M10.5 1v3",
 }
 
-const CATEGORY_HUE: Record<string, number> = {
+/** The accent a phase category carries. Every category has one, so the legend cannot drift. */
+const CATEGORY_HUE: Record<PhaseCategory, number> = {
   explore: 210,
   edit: 145,
   verify: 38,
@@ -35,7 +45,8 @@ const CATEGORY_HUE: Record<string, number> = {
   result: 196,
 }
 
-const KIND_HUE: Partial<Record<NodeKind, number>> = {
+/** The accent a kind carries when it does not belong to a phase. Every kind has one. */
+const KIND_HUE: Record<NodeKind, number> = {
   session: 265,
   turn: 220,
   message: 220,
@@ -54,8 +65,8 @@ const KIND_HUE: Partial<Record<NodeKind, number>> = {
 
 function hue(node: GraphNode): number {
   const category = phaseCategoryOf(node)
-  if (category && CATEGORY_HUE[category] !== undefined) return CATEGORY_HUE[category]
-  return KIND_HUE[node.kind] ?? 210
+  if (category) return CATEGORY_HUE[category]
+  return KIND_HUE[node.kind]
 }
 
 /**
@@ -76,16 +87,23 @@ function accentFor(node: GraphNode, rule: EqualizerRule | undefined) {
   return { solid: `hsl(${h} 70% ${lightness}%)`, soft: `hsl(${h} 70% ${lightness}% / ${alpha})` }
 }
 
+/** A stand-in node, so the legend can ask for a kind's or a category's accent without a model. */
+const accentNode = (kind: NodeKind, data?: GraphNode["data"]): GraphNode => ({
+  id: kind,
+  kind,
+  label: kind,
+  status: "neutral",
+  data,
+})
+
 /** The tint a kind's chip carries, so the legend and the cards cannot drift apart. */
 export function kindAccent(kind: NodeKind, rules?: EqualizerRuleSet) {
-  return accentOf({ id: kind, kind, label: kind, status: "neutral" } as GraphNode, rules)
+  return accentOf(accentNode(kind), rules)
 }
 
 /** The tint a phase category's chip carries. */
-export function categoryAccent(category: string, rules?: EqualizerRuleSet) {
-  const node = { id: category, kind: "phase", label: category, status: "neutral", data: { category } } as GraphNode
-
-  return accentOf(node, rules)
+export function categoryAccent(category: PhaseCategory, rules?: EqualizerRuleSet) {
+  return accentOf(accentNode("phase", { category }), rules)
 }
 
 /**
@@ -109,11 +127,27 @@ export function statusAccent(theme: RenderTheme, status: GraphNode["status"], ne
   }
 }
 
-function statusColor(theme: RenderTheme, node: GraphNode) {
-  return statusAccent(theme, node.status)
-}
-
 const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])
+
+/**
+ * The card's own words. A card is canvas markup, so the host owns its language: the template never
+ * hardcodes English. The host supplies the copy, and a card that has none says less rather than
+ * saying it in one language only.
+ */
+export type CardCopy = {
+  /** A prompt that was steered into a turn that was already running. */
+  steered: (role: string) => string
+  /** A command that ended with a non-zero code. */
+  exit: (code: number) => string
+  /** A command that ran out of time. */
+  timedOut: () => string
+  /** A compaction that replayed a provider's window. */
+  replayed: () => string
+  /** How many activities read a file. */
+  reads: (count: number) => string
+  /** How many activities wrote a file. */
+  writes: (count: number) => string
+}
 
 export type CardTemplateOptions = {
   /** How much a card says at the reader's current distance from it. */
@@ -126,9 +160,10 @@ export type CardTemplateOptions = {
   rules?: EqualizerRuleSet
   /** T15: the clock the age rules read. */
   now?: number
+  /** The card's words. The host supplies them; the template never hardcodes English. */
+  copy: CardCopy
 }
 
-const text = (value: unknown) => (typeof value === "string" && value.length > 0 ? value : undefined)
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
 
 /**
@@ -148,20 +183,20 @@ function inputLine(node: GraphNode): string | undefined {
 }
 
 /** Who spoke: the role is not in the label, which is the text. */
-function messageDetail(node: GraphNode): string | undefined {
+function messageDetail(node: GraphNode, copy: CardCopy | undefined): string | undefined {
   const role = text(node.data?.role)
   if (!role) return undefined
-  return node.data?.steered === true ? `${role} · steered` : role
+  return node.data?.steered === true ? (copy?.steered(role) ?? role) : role
 }
 
 /** What the tool produced: the first line of its output, and how it ended. */
-function resultDetail(node: GraphNode): string | undefined {
+function resultDetail(node: GraphNode, copy: CardCopy | undefined): string | undefined {
   const output = text(node.data?.output)
   const exit = node.data?.exit
   const parts = [
     output ? firstLine(output) || undefined : undefined,
-    typeof exit === "number" && exit !== 0 ? `exit ${exit}` : undefined,
-    node.data?.timeout === true ? "timed out" : undefined,
+    typeof exit === "number" && exit !== 0 ? copy?.exit(exit) : undefined,
+    node.data?.timeout === true ? copy?.timedOut() : undefined,
   ].filter((part): part is string => !!part)
 
   return parts.length > 0 ? parts.join(" · ") : undefined
@@ -179,7 +214,7 @@ function diffDetail(node: GraphNode): string | undefined {
  * no line: an empty line is worse than no line, and a line that repeats the label says nothing
  * either. The tier decides how much room the card has; the kind decides what fills it.
  */
-export function kindDetail(node: GraphNode): string | undefined {
+export function kindDetail(node: GraphNode, copy?: CardCopy): string | undefined {
   switch (node.kind) {
     case "session":
       return text(node.data?.forkedFrom) ?? text(node.data?.parentSessionID)
@@ -187,7 +222,7 @@ export function kindDetail(node: GraphNode): string | undefined {
     case "phase":
       return node.time === undefined ? undefined : new Date(node.time).toLocaleTimeString()
     case "message":
-      return messageDetail(node)
+      return messageDetail(node, copy)
     case "reasoning":
       return undefined
     case "tool":
@@ -197,13 +232,14 @@ export function kindDetail(node: GraphNode): string | undefined {
     case "subagent":
       return text(node.data?.agent)
     case "result":
-      return resultDetail(node)
+      return resultDetail(node, copy)
     case "error":
       return text(node.data?.type)
     case "retry":
       return undefined
     case "compaction":
-      return node.data?.replayed === true ? "replayed" : text(node.data?.reason)
+      if (node.data?.replayed === true) return copy?.replayed()
+      return text(node.data?.reason)
     case "notice":
       return text(node.data?.source) ?? text(node.data?.type)
     case "diff":
@@ -211,7 +247,7 @@ export function kindDetail(node: GraphNode): string | undefined {
   }
 }
 
-export function createCardTemplate(theme: RenderTheme, options: CardTemplateOptions = {}): CardTemplate {
+export function createCardTemplate(theme: RenderTheme, options: CardTemplateOptions): CardTemplate {
   return (node: GraphNode, level: ZoomLevel) => {
     const { solid, soft } = accentOf(node, options.rules)
     const mono = MONO_KINDS.has(node.kind)
@@ -220,10 +256,14 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const count = node.derived && node.clusterOf && !isClusterExpanded(level) ? node.clusterOf.length : 0
     const badge = count ? `<span style="color:${theme.textMuted};font-weight:500"> ${count}</span>` : ""
     const labelFont = mono ? `ui-monospace,SFMono-Regular,Menlo,monospace` : `inherit`
-    const status = statusColor(theme, node)
+    const status = statusAccent(theme, node.status)
     // T11.5 — a selected card says so. The selection is a theme token, so it follows the theme.
     const selected = options.selected === node.id
-    const border = selected ? theme.selection : node.status === "neutral" || node.status === "success" ? theme.border : status
+    const border = selected
+      ? theme.selection
+      : node.status === "neutral" || node.status === "success"
+        ? theme.border
+        : status
     const ring = selected ? `box-shadow:0 0 0 2px ${theme.selection}40;` : ""
     const tier = options.tier ?? "mid"
     // The card's box never changes — the layout owns the geometry — so a tier changes what the card
@@ -234,7 +274,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
         : ""
     // T11.3 — the line a near card adds is its kind's own fact, and a kind with nothing to say
     // adds no line at all.
-    const detail = tier === "near" ? (options.related?.(node) ?? kindDetail(node)) : undefined
+    const detail = tier === "near" ? (options.related?.(node) ?? kindDetail(node, options.copy)) : undefined
     const detailRow = detail
       ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(detail)}</span>`
       : ""

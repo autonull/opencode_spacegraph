@@ -25,8 +25,8 @@ export type GraphWindowState = {
   pinned?: boolean
 }
 
-export const GRAPH_WINDOW_MIN_WIDTH = 240
-export const GRAPH_WINDOW_MIN_HEIGHT = 160
+const GRAPH_WINDOW_MIN_WIDTH = 240
+const GRAPH_WINDOW_MIN_HEIGHT = 160
 
 export type GraphWindowsProps = {
   windows: readonly GraphWindowState[]

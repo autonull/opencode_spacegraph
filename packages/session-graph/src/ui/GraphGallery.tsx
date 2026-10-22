@@ -6,6 +6,7 @@ import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, onMount } from "solid-js"
 import { buildRenderModel } from "../canvas/buildRenderModel"
+import { createCardCopy } from "./card-copy"
 import { createCardTemplate } from "./cardTemplate"
 import { STRATEGY_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
@@ -34,7 +35,7 @@ export const GraphGallery = (props: GraphGalleryProps) => {
   onMount(() => panel.focus())
 
   const thumbnails = () => {
-    const renderCard = createCardTemplate(props.theme)
+    const renderCard = createCardTemplate(props.theme, { copy: createCardCopy(i18n) })
 
     return LAYOUT_STRATEGIES.map((strategy) => {
       const layout = layoutGraph(props.model, { strategy, level: "overview" })

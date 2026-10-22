@@ -1,7 +1,7 @@
 import type { GraphNode } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
-import { GraphDetailBody, GraphDetailHeader, type GraphDetailProps } from "./GraphDetail"
+import { GraphDetailSurface, type GraphDetailProps } from "./GraphDetail"
 
 export type GraphInspectorProps = Omit<GraphDetailProps, "node"> & {
   node?: GraphNode
@@ -32,25 +32,20 @@ export const GraphInspector = (props: GraphInspectorProps) => {
           </div>
         }
       >
-        {(node) => {
-          const detail: GraphDetailProps = {
-            model: props.model,
-            node,
-            diffSource: props.diffSource,
-            renderSummary: props.renderSummary,
-            link: props.link,
-            onSelect: props.onSelect,
-            onOpenTranscript: props.onOpenTranscript,
-            onOpenSession: props.onOpenSession,
-          }
-
-          return (
-            <div class="flex min-h-0 flex-1 flex-col">
-              <GraphDetailHeader {...detail} />
-              <GraphDetailBody {...detail} />
-            </div>
-          )
-        }}
+        {(node) => (
+          <div class="flex min-h-0 flex-1 flex-col">
+            <GraphDetailSurface
+              model={props.model}
+              node={node}
+              diffSource={props.diffSource}
+              renderSummary={props.renderSummary}
+              link={props.link}
+              onSelect={props.onSelect}
+              onOpenTranscript={props.onOpenTranscript}
+              onOpenSession={props.onOpenSession}
+            />
+          </div>
+        )}
       </Show>
     </aside>
   )

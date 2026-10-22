@@ -1,11 +1,11 @@
+import { CARD_SIZE } from "./vocabulary"
+
 /**
  * Where a selected node's detail is shown. The modes are alternatives, not stages: a reader picks
  * one, and the graph stops being the only thing that changes when a node is selected.
  */
 
 export type { DetailMode } from "./vocabulary"
-
-export { DETAIL_MODES } from "./vocabulary"
 
 /**
  * How much a card says, given how close the reader is to it. A card's own box never changes — the
@@ -17,11 +17,13 @@ export const DETAIL_TIERS = ["far", "mid", "near"] as const
 export type DetailTier = (typeof DETAIL_TIERS)[number]
 
 /**
- * The card's world width, and the world size of the three lines it can carry. A card is 220 world
- * units wide, so at a screen width of `W` one world unit covers `W / 220` screen pixels and a line
- * of `n` world units reads at `n · W / 220` screen pixels.
+ * The card's world width — the layout's own card box, so the two cannot drift — and the world size
+ * of the three lines it can carry. A card is 220 world units wide, so at a screen width of `W` one
+ * world unit covers `W / 220` screen pixels and a line of `n` world units reads at `n · W / 220`
+ * screen pixels.
  */
-export const CARD_WORLD_WIDTH = 220
+export const CARD_WORLD_WIDTH = CARD_SIZE[0]
+
 export const CARD_LINE_WORLD = { label: 13, summary: 12, detail: 11 } as const
 
 /**

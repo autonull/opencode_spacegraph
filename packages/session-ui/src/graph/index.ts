@@ -30,12 +30,20 @@ export {
 export { buildGraph } from "./build"
 
 export {
+  CARD_SIZE,
+  COMPACT_SIZE,
+  DETAIL_MODES,
+  LAYOUT_STRATEGIES,
   NODE_KINDS,
   NODE_STATUSES,
   PHASE_CATEGORIES,
   PHASE_LABELS,
+  REPRESENTATIONS,
   STRUCTURAL_KINDS,
   ZOOM_LEVELS,
+  type DetailMode,
+  type LayoutStrategy,
+  type Representation,
 } from "./vocabulary"
 
 export { nodeIndex, lookupNode } from "./lookup"
@@ -53,6 +61,7 @@ export {
   ancestors,
   breadcrumbs,
   changedFiles,
+  fileRelations,
   forwardChain,
   incoming,
   neighbors,
@@ -85,40 +94,32 @@ export {
 } from "./levels"
 
 export {
-  CARD_SIZE,
-  COMPACT_SIZE,
   LANES,
   laneAnchors,
-  LAYOUT_STRATEGIES,
   layoutGraph,
   nodeSize,
   type ClusterBounds,
   type GraphLayout,
   type Lane,
   type LayoutOptions,
-  type LayoutStrategy,
   type Position,
 } from "./layout"
 
 export {
   matrixColumn,
   matrixLayout,
-  REPRESENTATIONS,
   representationLevel,
   ribbonLayout,
   turnRows,
-  type Representation,
   type RepresentationLayoutOptions,
 } from "./representation"
 
 export { scaleWindow, scopeToTurns, TURN_WINDOW, type ScaleWindow } from "./scale"
 
 export {
-  DETAIL_MODES,
   DETAIL_TIERS,
   DETAIL_TIER_WIDTH,
   detailTier,
-  type DetailMode,
   type DetailTier,
 } from "./detail"
 

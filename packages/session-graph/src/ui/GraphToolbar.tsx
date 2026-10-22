@@ -9,6 +9,7 @@ import {
   DETAIL_MODES,
   LAYOUT_STRATEGIES,
   REPRESENTATIONS,
+  ZOOM_LEVELS,
   type DetailMode,
   type LayoutStrategy,
   type Representation,
@@ -16,8 +17,6 @@ import {
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import { DEPTH_KEY, DETAIL_MODE_KEY, LEVEL_KEY, REPRESENTATION_KEY, STRATEGY_KEY } from "./vocabulary"
-
-const LEVELS: ZoomLevel[] = ["overview", "execution", "detail"]
 
 export type GraphToolbarProps = {
   level: ZoomLevel
@@ -84,7 +83,8 @@ export type GraphToolbarProps = {
 
 /**
  * T14.2 — a dropdown in the toolbar. The *icon* is the affordance and the label names the current
- * value, so a reader sees what the axis is set to without opening it.
+ * value, so a reader sees what the axis is set to without opening it. A menu with no value to name
+ * is the icon alone, and opens without a chevron.
  */
 const ToolbarMenu = (props: {
   slot: string
@@ -103,9 +103,9 @@ const ToolbarMenu = (props: {
     >
       <Icon name={props.icon} size="small" />
       {props.value ? <span data-slot={props.valueSlot ?? `${props.slot}-value`}>{props.value}</span> : null}
-      <Icon name="outline-chevron-down" size="small" />
+      {props.value ? <Icon name="outline-chevron-down" size="small" /> : null}
     </summary>
-    <div class="absolute end-0 z-30 mt-1 flex min-w-[180px] flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
+    <div class="absolute end-0 z-30 mt-1 flex min-w-[180px] flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
       {props.children}
     </div>
   </details>
@@ -296,35 +296,26 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         onClick={props.onSearch}
       />
       <Show when={props.onExport && props.renderModel}>
-        <details class="relative" data-slot="graph-toolbar-export">
-          <summary
-            class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
-            aria-label={i18n.t("ui.sessionGraph.toolbar.export")}
-            title={i18n.t("ui.sessionGraph.toolbar.export")}
-          >
-            <Icon name="outline-share" size="small" />
-          </summary>
-          <div class="absolute end-0 z-30 mt-1 flex min-w-[160px] flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
-            {option({
-              label: i18n.t("ui.sessionGraph.toolbar.exportSvg"),
-              onClick: () => props.onExport?.("svg", props.renderModel!),
-              slot: "graph-export-option",
-              strategy: "svg",
-            })}
-            {option({
-              label: i18n.t("ui.sessionGraph.toolbar.exportJson"),
-              onClick: () => props.onExport?.("json", props.renderModel!),
-              slot: "graph-export-option",
-              strategy: "json",
-            })}
-            {option({
-              label: i18n.t("ui.sessionGraph.toolbar.exportHtml"),
-              onClick: () => props.onExport?.("html", props.renderModel!),
-              slot: "graph-export-option",
-              strategy: "html",
-            })}
-          </div>
-        </details>
+        <ToolbarMenu slot="graph-toolbar-export" label={i18n.t("ui.sessionGraph.toolbar.export")} icon="outline-share">
+          {option({
+            label: i18n.t("ui.sessionGraph.toolbar.exportSvg"),
+            onClick: () => props.onExport?.("svg", props.renderModel!),
+            slot: "graph-export-option",
+            strategy: "svg",
+          })}
+          {option({
+            label: i18n.t("ui.sessionGraph.toolbar.exportJson"),
+            onClick: () => props.onExport?.("json", props.renderModel!),
+            slot: "graph-export-option",
+            strategy: "json",
+          })}
+          {option({
+            label: i18n.t("ui.sessionGraph.toolbar.exportHtml"),
+            onClick: () => props.onExport?.("html", props.renderModel!),
+            slot: "graph-export-option",
+            strategy: "html",
+          })}
+        </ToolbarMenu>
       </Show>
     </>
   )
@@ -343,7 +334,9 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           onChange={(value) => value && props.onRepresentation?.(value as Representation)}
         >
           {REPRESENTATIONS.map((representation) => (
-            <SegmentedControlItem value={representation}>{i18n.t(REPRESENTATION_KEY[representation])}</SegmentedControlItem>
+            <SegmentedControlItem value={representation}>
+              {i18n.t(REPRESENTATION_KEY[representation])}
+            </SegmentedControlItem>
           ))}
         </SegmentedControl>
       </Show>
@@ -353,7 +346,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
         onChange={(value) => value && props.onLevel(value as ZoomLevel)}
       >
-        {LEVELS.map((level) => (
+        {ZOOM_LEVELS.map((level) => (
           <SegmentedControlItem value={level} disabled={!graphMode()}>
             {i18n.t(LEVEL_KEY[level])}
           </SegmentedControlItem>
@@ -387,20 +380,11 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       <Show
         when={!props.compact}
         fallback={
-          <details class="relative" data-slot="graph-toolbar-overflow">
-            <summary
-              class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
-              aria-label={i18n.t("ui.sessionGraph.toolbar.more")}
-              title={i18n.t("ui.sessionGraph.toolbar.more")}
-            >
-              <Icon name="outline-dots" size="small" />
-            </summary>
-            <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
-              {drawControls()}
-              {showControls()}
-              {commandControls()}
-            </div>
-          </details>
+          <ToolbarMenu slot="graph-toolbar-overflow" label={i18n.t("ui.sessionGraph.toolbar.more")} icon="outline-dots">
+            {drawControls()}
+            {showControls()}
+            {commandControls()}
+          </ToolbarMenu>
         }
       >
         <ToolbarMenu
@@ -436,7 +420,11 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           </span>
         ) : null}
         {props.onBack ? (
-          <GraphIconButton label={i18n.t("ui.sessionGraph.toolbar.back")} icon="outline-arrow-left" onClick={props.onBack} />
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.back")}
+            icon="outline-arrow-left"
+            onClick={props.onBack}
+          />
         ) : null}
       </div>
     </div>

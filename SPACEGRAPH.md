@@ -151,6 +151,21 @@ Session messages + status + turn diffs
 | `session-graph` | Host UI: `GraphView`, `GraphCanvas`, toolbar, inspector, breadcrumbs, search, minimap | React/Solid bindings via `spacegraphjs/control` (`GraphController`) |
 | `packages/app/src/session/graph` | Integration: lazy wrapper, mode branch, toggle, turn-map overlay, permalinks | `SessionGraphView`, `TurnMapOverlay`, `graph.toggle` command |
 
+### 3.2 The host's modules (`session-graph/src`)
+
+| Module | What it owns |
+|--------|--------------|
+| `ui/GraphView.tsx` | The surface: the toolbar, the canvas region, the inspector, and the wiring between them. It owns the semantic level, the representation, and the strategy; the camera, the selection and the windows have their own modules. |
+| `ui/graph-camera.ts` | The camera: the frame, the zoom, and the 100% reference the readout shows. The renderer owns the geometry; the host owns what the frame should hold. |
+| `ui/graph-selection.ts` | The selection and the path to it. The library's `GraphController` owns the state; the view mirrors it into signals. |
+| `ui/graph-anchors.ts` | The screen anchor of a node — where the popover, the peek and a pinned window hang. |
+| `ui/graph-windows.tsx` | The windows over the map: the kinds the host offers and the first placement a window gets. The manager moves and stacks them; it holds no content. |
+| `ui/cardTemplate.ts` | The card's markup: the kind glyph, the accent, the tier, and the one fact a kind has that its label does not. |
+| `ui/card-copy.ts` | The card's words. The card is canvas markup, so the host owns its language; the template never hardcodes English. |
+| `ui/node-data.ts` | The readers over a node's untyped `data`, so the card and the inspector cannot disagree about what a field holds. |
+| `ui/GraphDetail.tsx` | The detail of a node: the header and the body, shared by every surface that shows one. |
+| `canvas/` | The renderer seam: the contract, the registry, the adapter, and the canvas. It never imports a concrete backend. |
+
 ---
 
 ## 4. The Graph Model (session-ui/src/graph)
@@ -159,7 +174,7 @@ Session messages + status + turn diffs
 
 | Module | What it owns |
 |--------|--------------|
-| `vocabulary.ts` | The session's words — kinds, statuses, phase categories, layouts, representations, detail modes. It has no dependencies, so a host can read the vocabulary without pulling in the model. |
+| `vocabulary.ts` | The session's words — kinds, statuses, phase categories, layouts, representations, detail modes, and the box a node occupies. It has no dependencies, so a host can read the vocabulary without pulling in the model. |
 | `model.ts` | The model's types and the stable ids (`turn:…`, `msg:…`, `tool:…`) that make positions and selection survive streaming. |
 | `build.ts` | The builder: a session's messages in, the model out. Every activity enters the model the same way, so a node is never half-attached. |
 | `lookup.ts` | The model's indexes — nodes by id, `part-of` parents and children, the sequence chain — built once per model, so a lookup costs a map read instead of a scan. |
@@ -301,9 +316,9 @@ All proven against the canonical fixture in `selectors.test.ts` (exit gate 2).
 
 | Area | Status | Verification |
 |------|--------|--------------|
-| Pure graph model (nodes, edges, levels, layout, selectors) | ✅ Complete | 106 unit tests, fixture-driven |
+| Pure graph model (nodes, edges, levels, layout, selectors) | ✅ Complete | 123 unit tests, fixture-driven |
 | Renderer contract + 3 leaves (SpaceGraph, Cytoscape, SVG) | ✅ Complete | 491 vitest tests, shared conformance suite |
-| Host UI (GraphView, toolbar, inspector, breadcrumbs, search, minimap, a11y) | ✅ Complete | 50 component tests, 10 app e2e |
+| Host UI (GraphView, toolbar, inspector, breadcrumbs, search, minimap, a11y) | ✅ Complete | 100 unit + 57 component tests, 26 app e2e |
 | Hybrid: turn-map overlay, inline SVG, side panel, permalinks | ✅ Complete | Component + app e2e |
 | Export (SVG/JSON/standalone HTML) | ✅ Complete | Contract demo, component test |
 | Security/escaping suite | ✅ Complete | 13 unit + browser tests, sanitization contract |

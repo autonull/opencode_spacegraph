@@ -1,7 +1,7 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import type { GraphNode } from "@opencode/session-ui/graph"
 import { Show } from "solid-js"
-import { GraphDetailBody, GraphDetailHeader, type GraphDetailProps } from "./GraphDetail"
+import { GraphDetailSurface, type GraphDetailProps } from "./GraphDetail"
 import { GraphIconButton } from "./GraphIconButton"
 
 export const POPOVER_WIDTH = 340
@@ -35,13 +35,13 @@ export const GraphPopover = (props: GraphPopoverProps) => {
           <Show when={props.onClose}>
             <div class="absolute end-1 top-1 z-10">
               <GraphIconButton
-          label={i18n.t("ui.sessionGraph.popover.close")}
-          icon="outline-xmark"
-          onClick={() => props.onClose?.()}
-        />
+                label={i18n.t("ui.sessionGraph.popover.close")}
+                icon="outline-xmark"
+                onClick={() => props.onClose?.()}
+              />
             </div>
           </Show>
-          <GraphDetailHeader
+          <GraphDetailSurface
             model={props.model}
             node={node}
             diffSource={props.diffSource}
@@ -51,16 +51,6 @@ export const GraphPopover = (props: GraphPopoverProps) => {
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
             onOpenWindow={props.onOpenWindow}
-          />
-          <GraphDetailBody
-            model={props.model}
-            node={node}
-            diffSource={props.diffSource}
-            renderSummary={props.renderSummary}
-            link={props.link}
-            onSelect={props.onSelect}
-            onOpenTranscript={props.onOpenTranscript}
-            onOpenSession={props.onOpenSession}
           />
         </div>
       )}

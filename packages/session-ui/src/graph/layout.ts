@@ -3,7 +3,7 @@ import type { GraphEdge, GraphModel, GraphNode, NodeKind, ZoomLevel } from "./mo
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
 import { nodeIndex, parentIndex } from "./lookup"
-import { STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
+import { CARD_SIZE, COMPACT_SIZE, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
 
 export type { Position }
 
@@ -18,8 +18,6 @@ export type { Position }
  * The strategies live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
 export type { LayoutStrategy } from "./vocabulary"
-
-export { LAYOUT_STRATEGIES } from "./vocabulary"
 
 export type LayoutOptions = {
   strategy?: LayoutStrategy
@@ -59,12 +57,6 @@ export type LayoutOptions = {
    */
   nodeSizeFn?: (node: GraphNode) => readonly [number, number]
 }
-
-/** Rendered card footprint; keep in sync with the SpaceGraph adapter's HTML card defaults. */
-export const CARD_SIZE: readonly [number, number] = [220, 72]
-
-/** Compact footprint for structural chips (session, turn, phase, error, retry). */
-export const COMPACT_SIZE: readonly [number, number] = [132, 44]
 
 /** The box a node occupies in layout space, chosen from the shape the renderer will draw. */
 export function nodeSize(node: GraphNode): readonly [number, number] {

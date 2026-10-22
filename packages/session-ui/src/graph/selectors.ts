@@ -294,6 +294,28 @@ export function openInTranscript(model: GraphModel, id: string): TranscriptRef |
   return { messageID: node.messageID, partID: node.partID }
 }
 
+/**
+ * How many activities read and wrote each file. Only the graph's edges know this: a file node
+ * carries its path, not the traffic on it. The card of a file says it, so the reader sees who
+ * touched the file without leaving the map.
+ */
+export function fileRelations(model: GraphModel): Map<string, { reads: number; writes: number }> {
+  const relations = new Map<string, { reads: number; writes: number }>()
+
+  for (const edge of model.edges) {
+    if (edge.kind !== "reads" && edge.kind !== "writes") continue
+
+    const current = relations.get(edge.target) ?? { reads: 0, writes: 0 }
+
+    if (edge.kind === "reads") current.reads++
+    else current.writes++
+
+    relations.set(edge.target, current)
+  }
+
+  return relations
+}
+
 /** Signal order for a turn's children: phases and failures summarize a turn better than raw tools. */
 const TURN_CHILD_PRIORITY: Partial<Record<NodeKind, number>> = {
   phase: 0,

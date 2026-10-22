@@ -1,14 +1,33 @@
-import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme, RenderModel } from "@spacegraphjs/renderer"
+import type {
+  DepthMode,
+  GraphRenderer,
+  Projection,
+  RendererCapabilities,
+  RendererViewport,
+  RenderTheme,
+  RenderModel,
+} from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
-import type { DetailMode, DetailTier, EqualizerRuleSet, GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type {
+  DetailMode,
+  DetailTier,
+  EqualizerRuleSet,
+  GraphLayout,
+  GraphModel,
+  GraphNode,
+  LayoutStrategy,
+  Position,
+  Representation,
+  ZoomLevel,
+} from "@opencode/session-ui/graph"
 import {
   ancestors,
-  breadcrumbs,
   CARD_SIZE,
   changedFiles,
   DETAIL_TIER_WIDTH,
   detailTier,
   equalizerScale,
+  fileRelations,
   laneAnchors,
   layoutGraph,
   matrixLayout,
@@ -26,23 +45,32 @@ import {
   subtree,
   turnRows,
 } from "@opencode/session-ui/graph"
-import { GraphController } from "spacegraphjs/control"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, Show, untrack, type JSX } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createUniqueId,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+  type JSX,
+} from "solid-js"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphA11y } from "./GraphA11y"
-import { GraphBreadcrumbs, type GraphBreadcrumb } from "./GraphBreadcrumbs"
+import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
-import { GraphDetailBody } from "./GraphDetail"
-import { GraphLegendBody } from "./GraphLegend"
+import { createCardCopy } from "./card-copy"
+import { GraphDetailSurface } from "./GraphDetail"
+import { GraphLegend, GraphLegendBody } from "./GraphLegend"
 import { LANE_KEY, LEVEL_KEY, REPRESENTATION_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
-import { GraphLegend } from "./GraphLegend"
 import { GraphMinimap, MINIMAP_GAP, MINIMAP_SIZE } from "./GraphMinimap"
 import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
@@ -52,6 +80,10 @@ import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { createGraphTheme } from "./theme"
 import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
+import { createGraphCamera } from "./graph-camera"
+import { createNodeAnchor } from "./graph-anchors"
+import { createGraphSelection } from "./graph-selection"
+import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "./graph-windows"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -60,6 +92,12 @@ import { exportGraph, type ExportFormat } from "./export"
  * label at 6.5px, the size the lane views are read at.
  */
 const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
+
+/**
+ * T11.2 (A) — the width the camera aims for when it frames the selected card: the near tier's
+ * threshold with a margin, so the card lands inside the tier rather than on its edge.
+ */
+const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.near * 1.1
 
 export type GraphViewProps = {
   model: GraphModel
@@ -155,8 +193,8 @@ export const GraphView = (props: GraphViewProps) => {
   const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
   const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
   const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
-  const [cardFacing, setCardFacing] = createSignal<'plane' | 'camera'>('plane')
-  const toggleBillboard = () => setCardFacing((current) => (current === 'camera' ? 'plane' : 'camera'))
+  const [cardFacing, setCardFacing] = createSignal<"plane" | "camera">("plane")
+  const toggleBillboard = () => setCardFacing((current) => (current === "camera" ? "plane" : "camera"))
   const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
   const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
@@ -175,18 +213,6 @@ export const GraphView = (props: GraphViewProps) => {
   // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
   // committing to one.
   const [galleryOpen, setGalleryOpen] = createSignal(false)
-  // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
-  // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
-  const [selection, setSelection] = createSignal<readonly string[]>(props.selection ? [props.selection] : [])
-  const [crumbs, setCrumbs] = createSignal<readonly GraphBreadcrumb[]>([])
-  const controller = new GraphController({ selection: selection() })
-  const sameIDs = (a: readonly string[], b: readonly string[]) =>
-    a.length === b.length && a.every((id, index) => id === b[index])
-  controller.onChange((snapshot) => {
-    setSelection((current) => (sameIDs(current, snapshot.selection) ? current : [...snapshot.selection]))
-    setCrumbs(snapshot.trail.map((entry) => ({ id: entry.id, label: entry.label ?? entry.id })))
-  })
-  onCleanup(() => controller.dispose())
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererReady, setRendererReady] = createSignal(false)
   const [rendererID, setRendererID] = createSignal<RendererID>()
@@ -213,11 +239,24 @@ export const GraphView = (props: GraphViewProps) => {
 
     return ancestors(props.model, id).find((ancestor) => ancestor.kind === "turn")?.id
   }
-  const selectedTurn = () => turnOf(selection()[0])
+
+  // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
+  // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
+  const selection = createGraphSelection({
+    model: () => props.model,
+    controlled: () => props.selection,
+    onSelect: (id) => props.onSelect?.(id),
+    onChange: () => setPopoverDismissed(false),
+    count: () => Metrics.count("select"),
+  })
+  const selectedTurn = () => turnOf(selection.selection()[0])
   // T6.6: a long session is drawn as its recent tail. The window is declared — the view says how
   // much of the session it shows — and it keeps the turn the reader is looking at.
   const scale = createMemo(() =>
-    scaleWindow(props.model, [selectedTurn(), turnOf(props.frame)].filter((id): id is string => !!id)),
+    scaleWindow(
+      props.model,
+      [selectedTurn(), turnOf(props.frame)].filter((id): id is string => !!id),
+    ),
   )
   const scoped = createMemo(() => scopeToTurns(props.model, scale().turns))
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
@@ -249,9 +288,7 @@ export const GraphView = (props: GraphViewProps) => {
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
-      setCanvasSize((current) =>
-        current.width === width && current.height === height ? current : { width, height },
-      )
+      setCanvasSize((current) => (current.width === width && current.height === height ? current : { width, height }))
     })
     observer.observe(canvasRegionEl)
     onCleanup(() => observer.disconnect())
@@ -298,24 +335,15 @@ export const GraphView = (props: GraphViewProps) => {
     setTier(detailTier(width, current))
   })
   // T11.3 — a file's card says who read it and who wrote it: a fact only the graph's edges know.
-  const fileRelations = createMemo(() => {
-    const relations = new Map<string, { reads: number; writes: number }>()
-    for (const edge of props.model.edges) {
-      if (edge.kind !== "reads" && edge.kind !== "writes") continue
-      const current = relations.get(edge.target) ?? { reads: 0, writes: 0 }
-      if (edge.kind === "reads") current.reads++
-      else current.writes++
-      relations.set(edge.target, current)
-    }
-    return relations
-  })
+  const copy = createCardCopy(i18n)
+  const relations = createMemo(() => fileRelations(props.model))
   const relatedDetail = (node: GraphNode) => {
     if (node.kind !== "file") return undefined
-    const relation = fileRelations().get(node.id)
+    const relation = relations().get(node.id)
     if (!relation) return undefined
     const parts = [
-      relation.reads > 0 ? `${relation.reads} ${relation.reads === 1 ? "read" : "reads"}` : undefined,
-      relation.writes > 0 ? `${relation.writes} ${relation.writes === 1 ? "write" : "writes"}` : undefined,
+      relation.reads > 0 ? copy.reads(relation.reads) : undefined,
+      relation.writes > 0 ? copy.writes(relation.writes) : undefined,
     ].filter((part): part is string => !!part)
     return parts.length > 0 ? parts.join(" · ") : undefined
   }
@@ -326,10 +354,11 @@ export const GraphView = (props: GraphViewProps) => {
       props.renderCard ??
       createCardTemplate(theme(), {
         tier: tier(),
-        selected: selection()[0],
+        selected: selection.selection()[0],
         related: relatedDetail,
         rules: props.rules,
         now,
+        copy,
       })
     )
   })
@@ -389,9 +418,7 @@ export const GraphView = (props: GraphViewProps) => {
   )
   // T1.11: the summary representations name their axes; the node-link graph names itself.
   const turnNumbers = createMemo(() => new Map(props.model.turns.map((id, index) => [id, index + 1])))
-  const axisLabels = createMemo(() =>
-    buildAxisLabels(turnRows(scoped()), representation(), turnNumbers(), i18n.t),
-  )
+  const axisLabels = createMemo(() => buildAxisLabels(turnRows(scoped()), representation(), turnNumbers(), i18n.t))
 
   const renderModel = createMemo(() =>
     buildRenderModel(scoped(), {
@@ -400,7 +427,7 @@ export const GraphView = (props: GraphViewProps) => {
       bands: representation() === "graph" && strategy() !== "hierarchy",
       edges: representation() === "graph",
       bundle: representation() === "graph" && files(),
-      focus: representation() === "graph" && level() === "execution" ? selection()[0] : undefined,
+      focus: representation() === "graph" && level() === "execution" ? selection.selection()[0] : undefined,
       laneLabels:
         representation() === "graph" && strategy() === "lanes"
           ? laneAnchors().map((lane) => ({
@@ -426,7 +453,7 @@ export const GraphView = (props: GraphViewProps) => {
     })
 
   const selectedNode = () => {
-    const id = selection()[0]
+    const id = selection.selection()[0]
     return id ? nodeByID(props.model, id) : undefined
   }
   // T1.9: the inspector can describe a node the current level does not draw. Say so and offer the
@@ -449,7 +476,9 @@ export const GraphView = (props: GraphViewProps) => {
   // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
   // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
   const contentIDs = () => {
-    const ids = renderModel().nodes.filter((node) => node.kind !== "band").map((node) => node.id)
+    const ids = renderModel()
+      .nodes.filter((node) => node.kind !== "band")
+      .map((node) => node.id)
 
     return scale().hidden > 0 ? ids.filter((id) => id !== props.model.root) : ids
   }
@@ -468,26 +497,22 @@ export const GraphView = (props: GraphViewProps) => {
   // The panel takes layout width and reframes the camera when it opens; the popover and the card do
   // neither, so the map does not move under the reader when a node is selected.
   const inspectorOpen = createMemo(() => detailMode() === "panel" && !!selectedNode())
-  // The screen anchor of a node, read from the renderer: it owns the camera, so it owns the
-  // projection too. The anchor follows the node as the reader pans, and it does not move by less
-  // than a pixel, so a pan does not re-render what the anchor carries.
-  const createAnchor = (node: () => GraphNode | undefined) => {
-    const [anchor, setAnchor] = createSignal<{ x: number; y: number }>()
-    createEffect(() => {
-      const current = node()
-      viewport()
-      const position = current ? renderer?.getNodeScreenPosition?.(current.id) : undefined
-      setAnchor((previous) =>
-        previous && position && Math.abs(previous.x - position.x) < 1 && Math.abs(previous.y - position.y) < 1
-          ? previous
-          : position,
-      )
-    })
-    return anchor
-  }
+
+  const camera = createGraphCamera({
+    renderer: () => renderer,
+    viewport,
+    capabilities,
+    content: contentIDs,
+    fit: fitOptions,
+    positionOf: (id) => layout().positions.get(id),
+    cardWidth: cardScreenWidth,
+    cardWorldWidth: CARD_SIZE[0],
+    readableWidth: READABLE_CARD_WIDTH,
+  })
+
   // The node the popover describes, and where it hangs.
   const popoverNode = createMemo(() => (detailMode() === "popover" ? selectedNode() : undefined))
-  const popoverAnchor = createAnchor(() => popoverNode())
+  const popoverAnchor = createNodeAnchor({ node: popoverNode, renderer: () => renderer, viewport })
   // Beside the node, flipped to the other side when it would leave the canvas.
   const popoverPlacement = createMemo(() => {
     const anchor = popoverAnchor()
@@ -512,15 +537,15 @@ export const GraphView = (props: GraphViewProps) => {
   const peekNode = createMemo(() => {
     if (!peek()) return undefined
     const id = hovered()
-    if (!id || id === selection()[0]) return undefined
+    if (!id || id === selection.selection()[0]) return undefined
     return nodeByID(props.model, id)
   })
-  const peekAnchor = createAnchor(() => peekNode())
+  const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport })
   // Above the node's own box, so the peek never covers what it is about.
   const peekPlacement = createMemo(() => {
     const anchor = peekAnchor()
     if (!anchor) return undefined
-    const half = (CARD_SIZE[1] / CARD_SIZE[0]) * cardScreenWidth() / 2
+    const half = ((CARD_SIZE[1] / CARD_SIZE[0]) * cardScreenWidth()) / 2
 
     return { left: anchor.x, top: anchor.y - half - 34 }
   })
@@ -536,83 +561,58 @@ export const GraphView = (props: GraphViewProps) => {
   // window rides the node as the reader pans. A free window does not move at all.
   const windowAnchors = createMemo(() => {
     if (!viewport()) return undefined
-    const anchors = new Map<string, { x: number; y: number }>()
-    for (const window of props.windows ?? []) {
-      if (!window.nodeID || !window.pinned) continue
-      const position = renderer?.getNodeScreenPosition?.(window.nodeID)
-      if (position) anchors.set(window.nodeID, position)
-    }
-    return anchors
+    return pinnedAnchors(props.windows ?? [], (nodeID) => renderer?.getNodeScreenPosition?.(nodeID))
   })
 
-  // T12 — the windows over the map. The kinds are the host's; the view knows two of them, and the
-  // manager knows none: it moves, resizes and stacks them.
-  const windowTitle = (window: GraphWindowState) => {
-    if (window.kind === "legend") return i18n.t("ui.sessionGraph.legend.label")
-    const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
-    return node?.label ?? i18n.t("ui.sessionGraph.window.detail")
+  // T12 — the windows over the map. The kinds are the host's; the manager knows none of them: it
+  // moves, resizes and stacks them.
+  const windowKinds = createMemo<GraphWindowKind[]>(() => [
+    {
+      name: "node",
+      title: (window) => {
+        const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
+        return node?.label ?? i18n.t("ui.sessionGraph.window.detail")
+      },
+      render: (window) => {
+        const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
+        if (!node)
+          return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
+        return (
+          <GraphDetailSurface
+            model={props.model}
+            node={node}
+            diffSource={props.diffSource}
+            renderSummary={props.renderSummary}
+            link={props.link}
+            onSelect={selection.select}
+            onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+            onOpenSession={props.onOpenSession}
+          />
+        )
+      },
+    },
+    {
+      name: "legend",
+      title: () => i18n.t("ui.sessionGraph.legend.label"),
+      render: () => <GraphLegendBody theme={theme()} strategy={strategy()} rules={props.rules} />,
+    },
+  ])
+
+  const windowContent = (window: GraphWindowState) => {
+    const kind = windowKind(windowKinds(), window)
+    if (!kind)
+      return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.unknown")}</div>
+    return kind.render(window)
   }
 
   // T12 — the view proposes a window's first placement: the canvas is what a window lives in, so
   // the view knows how much room there is. The host persists what the reader does with it.
-  const proposeWindow = (kind: string, nodeID?: string): GraphWindowState => {
-    const size = canvasSize()
-    const windows = props.windows ?? []
-    const width = Math.min(360, Math.max(240, size.width - 48))
-    const height = Math.min(320, Math.max(160, size.height - 48))
-    const offset = 24 + windows.length * 24
-    return {
-      id: `${kind}:${nodeID ?? windows.length}`,
-      kind,
-      nodeID,
-      left: Math.max(0, Math.min(offset, Math.max(0, size.width - width))),
-      top: Math.max(0, Math.min(offset, Math.max(0, size.height - height))),
-      width,
-      height,
-      z: windows.reduce((highest, window) => Math.max(highest, window.z), 0) + 1,
-    }
+  const openWindow = (kind: string, nodeID?: string) => {
+    const window = proposeWindow(kind, nodeID, { canvas: canvasSize(), windows: props.windows ?? [] })
+    props.onOpenWindow?.(window)
+    return window
   }
 
-  const windowContent = (window: GraphWindowState) => {
-    if (window.kind === "legend")
-      return <GraphLegendBody theme={theme()} strategy={strategy()} rules={props.rules} />
-    const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
-    if (!node)
-      return (
-        <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
-      )
-    return (
-      <GraphDetailBody
-        model={props.model}
-        node={node}
-        diffSource={props.diffSource}
-        renderSummary={props.renderSummary}
-        link={props.link}
-        onSelect={select}
-        onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-        onOpenSession={props.onOpenSession}
-      />
-    )
-  }
-
-  // Breadcrumbs are the `part-of` ancestry, seeded into the controller's trail so one library
-  // primitive backs both selection and the path (U3.11/P8.1).
-  const seedTrail = (id: string | undefined) => {
-    controller.trail.reset()
-
-    if (id)
-      for (const node of breadcrumbs(props.model, id)) controller.trail.push({ id: node.id, label: node.label, kind: node.kind })
-  }
-  const select = (target: string | readonly string[] | undefined, counted = true) => {
-    const id = typeof target === "string" ? target : target?.[0]
-    controller.select(target ?? null)
-    seedTrail(id)
-    // A new selection opens a fresh detail surface; a dismissed popover does not outlive it.
-    setPopoverDismissed(false)
-    props.onSelect?.(id)
-    // T2.3: a permalink frames a node without a participant acting, so it is not an interaction.
-    if (counted && id) Metrics.count("select")
-  }
   const changeDetailMode = (next: DetailMode) => {
     setDetailMode(next)
     setPopoverDismissed(false)
@@ -672,33 +672,23 @@ export const GraphView = (props: GraphViewProps) => {
       setPopoverDismissed(true)
       return
     }
-    select(undefined)
+    selection.select(undefined)
   }
   // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
   const changedFilesList = createMemo(() => changedFiles(props.model))
-  // T6.18: the reader may have asked for less motion, so the camera jumps instead of gliding. The
-  // host knows the node's world position from the layout, and the contract's setViewport is instant.
-  const focusNode = (id: string) => {
-    const instance = renderer
-    if (!instance) return
-    const position = layout().positions.get(id)
-    const current = viewport()
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches || !position || !current) {
-      instance.focus(id)
-      return
-    }
-    instance.setViewport({ zoom: current.zoom, center: [position.x, position.y, position.z] })
-  }
   const jumpTo = (node: GraphNode) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
-    select(node.id)
-    focusNode(node.id)
+    selection.select(node.id)
+    camera.focus(node.id)
   }
   // U3.11: clicking a breadcrumb selects it and frames its subtree, so the canvas follows the trail.
   const fitSubtree = (id: string) => {
-    select(id)
-    renderer?.fit(subtree(props.model, id).map((node) => node.id), fitOptions())
+    selection.select(id)
+    renderer?.fit(
+      subtree(props.model, id).map((node) => node.id),
+      fitOptions(),
+    )
   }
 
   // T3.5: a permalink frames its node. The semantic level rises first when the node is hidden at the
@@ -719,8 +709,8 @@ export const GraphView = (props: GraphViewProps) => {
     if (!id || !instance || framed() === id) return
     const node = nodeByID(props.model, id)
     if (!node) return
-    select(id, false)
-    focusNode(id)
+    selection.select(id, false)
+    camera.focus(id)
     setFramed(id)
   }
   // A permalink that changes while the graph is open frames its node too, not only on load.
@@ -773,8 +763,10 @@ export const GraphView = (props: GraphViewProps) => {
     }
 
     if (event.key === "f") {
-      Metrics.count("fit")
-      renderer?.fit()
+      event.preventDefault()
+      camera.fitContent()
+
+      return
     }
 
     const level = { "1": "overview", "2": "execution", "3": "detail" }[event.key] as ZoomLevel | undefined
@@ -799,17 +791,6 @@ export const GraphView = (props: GraphViewProps) => {
   mirror(() => props.files, setFiles)
   mirror(() => props.detailMode, setDetailMode)
   mirror(() => props.peek, setPeek)
-  // Keep the controller's model in step with the host model; it reconciles selection + trail by id, so
-  // streaming appends never clear either.
-  createEffect(() => controller.setModel(props.model))
-  // Controlled selection: mirror the host value into the controller (and seed the path on mount).
-  createEffect(() => {
-    const next = props.selection
-
-    if (next === undefined) return
-    if (controller.selection[0] !== next) controller.select(next)
-    seedTrail(next)
-  })
   // A capability gap is never silent: when the active renderer cannot do 3D, fall back to 2D rather
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
@@ -834,71 +815,12 @@ export const GraphView = (props: GraphViewProps) => {
     minimap()
     setNeedsFit(true)
   })
-  // T1.8: the fitted frame is the 100% reference for the camera zoom readout. The renderer clamps
-  // orthographic zoom to ~1/3..2.5x fit, so the control cannot empty the canvas.
-  const [fitBaseline, setFitBaseline] = createSignal(1)
-  const [fitPending, setFitPending] = createSignal(false)
-  let fitSettle: ReturnType<typeof setTimeout> | undefined
-  // A fit emits viewports as the camera animates; keep reading the baseline until the reports stop
-  // so the settled frame becomes the 100% reference. When settling, capture the final viewport zoom.
-  const settleFit = () => {
-    if (fitSettle) clearTimeout(fitSettle)
-    fitSettle = setTimeout(() => {
-      fitSettle = undefined
-      setFitPending(false)
-      // Capture the settled viewport zoom as the fit baseline (100% reference)
-      const current = untrack(viewport)
-      if (current) setFitBaseline(current.zoom)
-    }, 120)
-  }
-  onCleanup(() => fitSettle && clearTimeout(fitSettle))
-  const requestFit = (fit: () => void) => {
-    setFitPending(true)
-    settleFit()
-    fit()
-  }
-  // A zoom is the reader's own act: it ends the fit window, so the 100% reference stops following
-  // the camera and the readout keeps telling the truth.
-  const endFitWindow = () => {
-    if (!fitPending()) return
-    setFitPending(false)
-    if (fitSettle) clearTimeout(fitSettle)
-    fitSettle = undefined
-  }
-  const fitContent = () => {
-    Metrics.count("fit")
-    requestFit(() => renderer?.fit(untrack(contentIDs), fitOptions()))
-  }
-  // T11.2 (A) — in the card mode the selected card is the detail, so the camera brings it close
-  // enough to read: a card's tier is measured in screen pixels, so a card that stays small cannot
-  // say anything. The camera only ever moves closer, and only for the selection — a pan, a zoom or
-  // a fit never re-frames the card behind the reader's back.
-  // The card width the camera aims for is the near tier's threshold with a margin, so the card
-  // lands inside the tier rather than on its edge.
-  const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.near * 1.1
-  const frameReadable = (id: string) => {
-    const instance = renderer
-    if (!instance) return
-    if (cardScreenWidth() >= READABLE_CARD_WIDTH) {
-      focusNode(id)
-      return
-    }
-    // The fit's legibility floor is the card's reading width, so the frame lands on a card the
-    // reader can read; the padding keeps the neighbourhood in view.
-    requestFit(() =>
-      instance.fit([id], {
-        ...fitOptions(),
-        minScale: READABLE_CARD_WIDTH / CARD_SIZE[0],
-        padding: CARD_SIZE[0] * 2,
-      }),
-    )
-  }
   const [framedSelection, setFramedSelection] = createSignal<string>()
   createEffect(() => {
     if (detailMode() !== "card") return
-    const id = selection()[0]
+    const id = selection.selection()[0]
     if (!id) return
-    if (fitPending()) return
+    if (camera.pending()) return
     // The camera is the renderer, so the framing waits for it: the first viewport report can
     // arrive before the renderer itself is handed over.
     if (!rendererReady()) return
@@ -906,46 +828,16 @@ export const GraphView = (props: GraphViewProps) => {
     if (!current) return
     if (framedSelection() === id) return
     setFramedSelection(id)
-    frameReadable(id)
+    camera.frameReadable(id)
   })
   const applyModel = (instance: GraphRenderer) => {
     // T3.5: a level change rebuilds the model, so the frame waits for the one that carries the node.
     if (raiseLevelForFrame()) return
     if (needsFit()) {
       setNeedsFit(false)
-      requestFit(() => instance.fit(untrack(contentIDs), fitOptions()))
+      camera.request(() => instance.fit(untrack(contentIDs), fitOptions()))
     }
     focusFrame(instance)
-  }
-  const zoomPercent = () => {
-    const current = viewport()
-    if (!current) return 100
-    return Math.max(33, Math.round((current.zoom / fitBaseline()) * 100))
-  }
-  // T1.8: zoom range is ~1/3..2.5x fit (ORTHO_ZOOM_SPAN in CameraControls). Use fitBaseline to compute bounds.
-  // T6.20: the renderer's own range bounds it too — the SpaceGraph's zoom is normalized over the
-  // fitted band and stops at 1, so a control that offered more would ask for a zoom the renderer
-  // cannot deliver, and the reader would click a button that does nothing.
-  const zoomLimits = () => {
-    const range = capabilities()?.zoomRange
-    return {
-      min: Math.max(fitBaseline() / 3, range?.min ?? 0),
-      max: Math.min(fitBaseline() * 2.5, range?.max ?? Number.POSITIVE_INFINITY),
-    }
-  }
-  const zoomBy = (direction: 1 | -1) => {
-    const current = viewport()
-    if (!current || !renderer) return
-    Metrics.count("zoom")
-    endFitWindow()
-    // The step is a tenth of the fit, so one click is the same step at any fit and the readout lands
-    // on whole tens (T6.19: the capture frames are named after the percentage they show).
-    const step = fitBaseline() * 0.1
-    const limits = zoomLimits()
-    renderer.setViewport({
-      zoom: Math.min(limits.max, Math.max(limits.min, current.zoom + direction * step)),
-      center: current.center,
-    })
   }
 
   return (
@@ -963,12 +855,12 @@ export const GraphView = (props: GraphViewProps) => {
         depthModes={DEPTH_MODES}
         capabilities={capabilities()}
         renderer={rendererID()}
-        onFit={fitContent}
-        zoomPercent={zoomPercent()}
-        onZoomOut={() => zoomBy(-1)}
-        onZoomIn={() => zoomBy(1)}
-        zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= zoomLimits().min}
-        zoomInDisabled={(viewport()?.zoom ?? 0) >= zoomLimits().max}
+        onFit={camera.fitContent}
+        zoomPercent={camera.zoomPercent()}
+        onZoomOut={() => camera.zoomBy(-1)}
+        onZoomIn={() => camera.zoomBy(1)}
+        zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= camera.zoomLimits().min}
+        zoomInDisabled={(viewport()?.zoom ?? 0) >= camera.zoomLimits().max}
         onSearch={toggleSearch}
         legend={legendOpen()}
         onToggleLegend={() => setLegendOpen((open) => !open)}
@@ -999,7 +891,9 @@ export const GraphView = (props: GraphViewProps) => {
             : undefined
         }
         onExpandGraph={
-          representation() !== "graph" && selection().length > 0 ? () => expandToGraph(selection()[0]!) : undefined
+          representation() !== "graph" && selection.selection().length > 0
+            ? () => expandToGraph(selection.selection()[0]!)
+            : undefined
         }
         onExport={handleExport}
         renderModel={renderModel()}
@@ -1008,7 +902,7 @@ export const GraphView = (props: GraphViewProps) => {
         compact={compact()}
         endInset={props.endInset}
       />
-      <GraphBreadcrumbs crumbs={crumbs()} onSelect={fitSubtree} />
+      <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
       <Show when={scaleNotice()}>
         {(notice) => (
           <div
@@ -1048,7 +942,11 @@ export const GraphView = (props: GraphViewProps) => {
       </Show>
       <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
         <Show when={files() && representation() === "graph" && !narrow()}>
-          <GraphFileRail files={changedFilesList()} selection={selection()} onSelect={(id) => select(id)} />
+          <GraphFileRail
+            files={changedFilesList()}
+            selection={selection.selection()}
+            onSelect={(id) => selection.select(id)}
+          />
         </Show>
         <div
           ref={canvasRegionEl}
@@ -1065,12 +963,12 @@ export const GraphView = (props: GraphViewProps) => {
             theme={theme()}
             projection={projection()}
             depth={depth()}
-            selection={selection()}
+            selection={selection.selection()}
             preferredRenderer={props.preferredRenderer}
             overrides={props.rendererOverrides}
-            onSelect={(ids) => select(ids)}
+            onSelect={(ids) => selection.select(ids)}
             onNodeDoubleClick={expandToGraph}
-            onBackgroundClick={() => select(undefined)}
+            onBackgroundClick={() => selection.select(undefined)}
             onHover={(id) => setHovered(id)}
             cardFacing={cardFacing()}
             onModelApplied={applyModel}
@@ -1087,20 +985,17 @@ export const GraphView = (props: GraphViewProps) => {
             }}
             onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
             onViewportChange={(next) => {
-              if (fitPending()) {
-                setFitBaseline(next.zoom || 1)
-                settleFit()
-              }
+              camera.report(next)
               setViewport(next)
             }}
           />
           <GraphA11y
             model={renderModel()}
-            selection={selection()}
+            selection={selection.selection()}
             instructionsId={a11yInstructionsId}
             announcement={viewAnnouncement()}
-            onSelect={select}
-            onEscape={() => select(undefined)}
+            onSelect={selection.select}
+            onEscape={() => selection.select(undefined)}
           />
           <Show when={peekFrame()}>
             {(frame) => (
@@ -1129,10 +1024,10 @@ export const GraphView = (props: GraphViewProps) => {
                 diffSource={props.diffSource}
                 renderSummary={props.renderSummary}
                 link={props.link}
-                onSelect={select}
+                onSelect={selection.select}
                 onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
                 onOpenSession={props.onOpenSession}
-                onOpenWindow={(node) => props.onOpenWindow?.(proposeWindow("node", node.id))}
+                onOpenWindow={(node) => openWindow("node", node.id)}
                 onClose={() => setPopoverDismissed(true)}
               />
             </div>
@@ -1141,7 +1036,9 @@ export const GraphView = (props: GraphViewProps) => {
             windows={props.windows ?? []}
             onChange={props.onWindowsChange}
             onClose={(id) => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.id !== id))}
-            title={windowTitle}
+            title={(window) =>
+              windowKind(windowKinds(), window)?.title(window) ?? i18n.t("ui.sessionGraph.window.detail")
+            }
             render={windowContent}
             anchorOf={(nodeID) => windowAnchors()?.get(nodeID)}
             bounds={() => canvasSize()}
@@ -1248,7 +1145,7 @@ export const GraphView = (props: GraphViewProps) => {
               diffSource={props.diffSource}
               renderSummary={props.renderSummary}
               link={props.link}
-              onSelect={select}
+              onSelect={selection.select}
               onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
               onOpenSession={props.onOpenSession}
             />

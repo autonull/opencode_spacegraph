@@ -1,6 +1,7 @@
 /**
  * The session graph's vocabulary: the semantic levels a reader zooms through, the kinds a node can
- * have, the statuses it can carry, and the phase categories its activity clusters into.
+ * have, the statuses it can carry, the phase categories its activity clusters into, and the box a
+ * node occupies on the map.
  *
  * One table, so the model, the layout, the adapter and the host cannot drift apart: a kind is
  * called the same thing wherever it appears, and a new kind is added in one place.
@@ -92,3 +93,9 @@ export type Representation = (typeof REPRESENTATIONS)[number]
 export const DETAIL_MODES = ["off", "card", "popover", "panel"] as const
 
 export type DetailMode = (typeof DETAIL_MODES)[number]
+
+/** The box an activity card occupies in layout space. Keep in sync with the adapter's card defaults. */
+export const CARD_SIZE: readonly [number, number] = [220, 72]
+
+/** The box a structural chip occupies (session, turn, phase, error, retry). */
+export const COMPACT_SIZE: readonly [number, number] = [132, 44]

@@ -40,21 +40,28 @@ import {
 } from "./model"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
 
+/**
+ * The message types the model reads as work. Everything else the session says is a *notice*: a
+ * synthetic message, a skill, a system line, or the model changing under the reader's feet.
+ *
+ * The list is the single source: the notice type is derived from it, and the runtime check reads
+ * it, so a new message type is classified in one edit.
+ */
+const ACTIVITY_MESSAGE_TYPES = [
+  "user",
+  "assistant",
+  "shell",
+  "idle",
+  "compaction",
+  "agent-switched",
+  "model-switched",
+  "location-switched",
+] as const
+
+type ActivityMessageType = (typeof ACTIVITY_MESSAGE_TYPES)[number]
+
 /** The synthetic messages the model records as notices. */
-type GraphNotice = Exclude<
-  SessionMessageInfo,
-  {
-    type:
-      | "user"
-      | "assistant"
-      | "shell"
-      | "idle"
-      | "compaction"
-      | "agent-switched"
-      | "model-switched"
-      | "location-switched"
-  }
->
+type GraphNotice = Exclude<SessionMessageInfo, { type: ActivityMessageType }>
 
 const decodeJsonObject = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Json)))
 
@@ -437,7 +444,6 @@ class GraphBuilder {
     )
 
     const resultID = resultNodeID(message.id)
-    const resultStatus = shellStatus(message)
 
     this.attach(
       {
@@ -445,7 +451,7 @@ class GraphBuilder {
         kind: "result",
         label: message.status === "exited" ? `exit ${message.exit ?? 0}` : message.status,
         summary: message.output?.output ? truncate(message.output.output, 200) : undefined,
-        status: resultStatus,
+        status,
         turnID,
         messageID: message.id,
         time: message.time.completed ?? message.time.created,
@@ -461,7 +467,7 @@ class GraphBuilder {
       { produces: nodeID, phase: "verify" },
     )
 
-    if (resultStatus === "failed") this.noteError(turnID, resultID)
+    if (status === "failed") this.noteError(turnID, resultID)
   }
 
   private appendAssistant(message: SessionMessageAssistant, turnID: string) {
@@ -956,16 +962,7 @@ function isInterrupted(error: SessionMessageAssistant["error"]) {
 }
 
 function isNotice(message: SessionMessageInfo): message is GraphNotice {
-  return (
-    message.type !== "user" &&
-    message.type !== "assistant" &&
-    message.type !== "shell" &&
-    message.type !== "idle" &&
-    message.type !== "compaction" &&
-    message.type !== "agent-switched" &&
-    message.type !== "model-switched" &&
-    message.type !== "location-switched"
-  )
+  return !ACTIVITY_MESSAGE_TYPES.some((type) => type === message.type)
 }
 
 /**
