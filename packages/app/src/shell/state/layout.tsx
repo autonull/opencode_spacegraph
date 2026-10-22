@@ -156,6 +156,8 @@ const sessionGraphSchema = Persistence.migrateField(
         }),
       ),
     ),
+    // T18.1: whether the map frames the active turn from the log. Absent means off.
+    followLog: Schema.optional(Schema.Boolean),
   }),
   // T17.1: the past stored a representation beside the strategy. A stored ribbon or matrix becomes
   // the layout; anything else keeps the stored strategy, because "graph" was the default family.
@@ -653,6 +655,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           detailMode: createMemo(() => state()?.detailMode ?? "panel"),
           detailFraming: createMemo(() => state()?.detailFraming ?? "off"),
           peek: createMemo(() => state()?.peek ?? false),
+          followLog: createMemo(() => state()?.followLog ?? false),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
           },
@@ -685,6 +688,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setPeek(peek: boolean) {
             write({ peek })
+          },
+          setFollowLog(followLog: boolean) {
+            write({ followLog })
           },
           setMinimap(minimap: boolean) {
             write({ minimap })

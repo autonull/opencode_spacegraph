@@ -229,7 +229,7 @@ log), and **T16 — the map and the log together — is reached** (the hybrid mo
 (the minimap as a window) is done** (2026-10-22).
 
 **T17.1, T17.2, T17.3, T17.4 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
-means the same thing in every layout ✓, **the log's own shape as a layout ✓**, the detail the reader earns by moving closer ✓, and **one concept for the surfaces ✓**. **T18.2 is done** (2026-10-22): the header menu offers Log | Map | Both. **T18.1, T18.3, T18.4 and T18.5 are planned.**
+means the same thing in every layout ✓, **the log's own shape as a layout ✓**, the detail the reader earns by moving closer ✓, and **one concept for the surfaces ✓**. **T18.2 is done** (2026-10-22): the header menu offers Log | Map | Both. **T18.1, T18.3, T18.4 and T18.5 are done** (2026-10-22): the map follows the log, the detail's home follows the map's width, the hybrid is keyboard-accessible, and the measurement protocol is defined.
 
 ### 0.6 What is *not* in this plan
 
@@ -1389,7 +1389,7 @@ Done when: the hybrid is usable without a pointer.
 Verify: the component suite — the divider resizes from the keyboard; the app e2e — the map's keys
 do not fire while the log has focus.
 
-### T18.5 The measurement (T2.2, carried) — the gate on all of this — **planned**
+### T18.5 The measurement (T2.2, carried) — the gate on all of this — **done**
 
 The evidence is the product's decision, and `SPACEGRAPH.md` §10 makes it the critical path: if the
 map does not beat the transcript on the five investigative tasks, **stop feature work and publish
@@ -1408,6 +1408,42 @@ search, the selections, the fits, the zooms, the turn maps). What is missing is 
 
 **The rule this plan adopts:** T17 and T18 are *ergonomics work*; they do not commit the product
 to the map. The study does.
+
+#### The protocol — five investigative tasks over the canonical fixture
+
+| # | Question | Answer key (what counts as success) |
+|---|---|---|
+| 1 | **Why did `src/auth/login.ts` change in this session?** | The participant identifies the turn and the tool call that modified the file, and names the reason (e.g. "added OAuth2 refresh token handling"). |
+| 2 | **Which calls led to the test failure in `tests/auth.test.ts`?** | The participant traces the call chain from the failing test to the root cause (e.g. "the mock server returned 401 because the token was expired"). |
+| 3 | **What did the subagent contribute in turn 7?** | The participant names the subagent's task and its output (e.g. "the `refactor` subagent rewrote the token parser and added tests"). |
+| 4 | **What changed after the first failing test run?** | The participant lists the edits made after the first red test (e.g. "fixed the token expiry check, added retry logic"). |
+| 5 | **Where did the agent retry or change direction?** | The participant identifies the turn where the agent retried a tool or switched strategies (e.g. "turn 12: retried the API call with exponential backoff"). |
+
+#### The counterbalance
+
+- Each participant sees the **same five questions** in the same order.
+- Half the participants (Group A) answer using the **transcript first, then the map** (hybrid mode).
+- Half the participants (Group B) answer using the **map first, then the transcript** (hybrid mode).
+- The hybrid mode (T16.1) provides both surfaces simultaneously; the participant chooses which to consult for each question.
+- The mode switch (`graph.toggle`, header menu) is one key press, so switching costs are negligible and measured.
+
+#### The readout
+
+For each question and each participant, record:
+
+| Column | Source |
+|---|---|
+| **Success** (yes/no) | Evaluator judges the answer against the answer key |
+| **Time** (seconds) | Stopwatch: from question shown to answer submitted |
+| **Wrong turns** (count) | Number of times the participant switched surfaces, searched, or navigated before answering |
+| **Interactions** (count) | `Metrics` counter: mode switches, searches, selections, fits, zooms, turn maps (`?graphMetrics=1`) |
+| **Preference** (1–7) | "How confident are you in this answer?" (1 = guessing, 7 = certain) |
+| **Quotes** (free text) | Participant's verbalized reasoning, recorded by the evaluator |
+
+The study runs with 8–12 participants (4–6 per group). The map **beats the transcript** if, across the five questions:
+- Mean time is lower (statistically significant, paired t-test, p < 0.05)
+- Success rate is not worse (non-inferiority margin: 10%)
+- Preference is higher (median > 4)
 
 Done when: the protocol, the counterbalance and the readout exist, and the study can be run
 without changing the app.

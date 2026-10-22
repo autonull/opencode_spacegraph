@@ -114,7 +114,7 @@ export function isSummaryOrLogLayout(layout: Layout): layout is SummaryLayout | 
 }
 
 /** Where a selected node's detail is shown. The modes are alternatives, not stages. */
-export const DETAIL_MODES = ["off", "panel", "popover", "window"] as const
+export const DETAIL_MODES = ["off", "panel", "popover", "window", "auto"] as const
 
 export type DetailMode = (typeof DETAIL_MODES)[number]
 

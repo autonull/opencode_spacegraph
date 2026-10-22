@@ -99,6 +99,9 @@ export type GraphToolbarProps = {
   onToggleBillboard?: () => void
   /** T12/T14.3: opens a window over the map. The view proposes the first placement. */
   onOpenWindow?: (kind: string, nodeID?: string) => void
+  /** T18.1: the map follows the active turn in the log. */
+  followLog?: boolean
+  onFollowLogChange?: (follow: boolean) => void
   /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
@@ -301,6 +304,16 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           pressed: props.peek,
           slot: "graph-peek-option",
           keepOpen: true,
+        })}
+      </Show>
+      <Show when={props.onFollowLogChange}>
+        {option({
+          label: props.followLog ? i18n.t("ui.sessionGraph.toolbar.followLog") : i18n.t("ui.sessionGraph.toolbar.followLogOff"),
+          onClick: () => props.onFollowLogChange?.(!props.followLog),
+          pressed: props.followLog,
+          slot: "graph-follow-log-option",
+          keepOpen: true,
+          ariaLabel: i18n.t("ui.sessionGraph.toolbar.followLog"),
         })}
       </Show>
       <Show when={props.onOpenWindow}>

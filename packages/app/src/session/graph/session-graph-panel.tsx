@@ -68,6 +68,9 @@ export type SessionGraphPanelProps = {
 export function SessionGraphPanel(props: SessionGraphPanelProps) {
   const language = useLanguage()
   let root!: HTMLDivElement
+  let logPane: HTMLDivElement | undefined
+  let mapPane: HTMLDivElement | undefined
+  let dividerEl: HTMLDivElement | undefined
   const [size, setSize] = createSignal({ width: 0, height: 0 })
 
   onMount(() => {
@@ -78,6 +81,33 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
     observer.observe(root)
     onCleanup(() => observer.disconnect())
   })
+
+  // T18.4: focus management — F6 cycles focus between the log pane, the divider, and the map pane.
+  const focusOrder = createMemo(() => {
+    if (!hybrid()) return []
+    const order: ("log" | "divider" | "map")[] = []
+    if (props.mode !== "graph") order.push("log")
+    if (hybrid() && !floating()) order.push("divider")
+    if (props.mode !== "transcript") order.push("map")
+    return order
+  })
+
+  const handleRootKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "F6") return
+    event.preventDefault()
+    const order = focusOrder()
+    if (order.length === 0) return
+    const active = document.activeElement
+    let currentIndex = -1
+    if (active === logPane) currentIndex = order.indexOf("log")
+    else if (active === dividerEl) currentIndex = order.indexOf("divider")
+    else if (active === mapPane || mapPane?.contains(active as Node)) currentIndex = order.indexOf("map")
+    const nextIndex = (currentIndex + 1) % order.length
+    const next = order[nextIndex]
+    if (next === "log") logPane?.focus()
+    else if (next === "divider") dividerEl?.focus()
+    else if (next === "map") mapPane?.focus()
+  }
 
   const hybrid = () => props.mode === "hybrid"
   const floating = () => hybrid() && props.arrangement === "floating"
@@ -158,6 +188,40 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
     })
   }
 
+  // T18.4: keyboard support for the divider — arrow keys resize, Home/End go to min/max.
+  const handleDividerKeyDown = (event: KeyboardEvent) => {
+    const total = axis()
+    if (total <= 0) return
+    const currentPixels = firstPanePixels()
+    const step = total * 0.02 // 2% per key press
+    const min = handleMin()
+    const max = handleMax()
+
+    let nextPixels: number | undefined
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextPixels = Math.min(max, currentPixels + step)
+        break
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextPixels = Math.max(min, currentPixels - step)
+        break
+      case "Home":
+        nextPixels = min
+        break
+      case "End":
+        nextPixels = max
+        break
+    }
+    if (nextPixels !== undefined) {
+      event.preventDefault()
+      const share = mapFirst() ? nextPixels / total : 1 - nextPixels / total
+      props.onSplit(clamp(share, 0.05, 0.95))
+      dividerEl?.focus()
+    }
+  }
+
   return (
     <div
       ref={root}
@@ -170,12 +234,15 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
         "flex-row": beside(),
         "flex-col": !beside(),
       }}
+      onKeyDown={handleRootKeyDown}
     >
       <Show when={props.mode !== "graph"}>
         <div
+          ref={logPane}
           data-slot="session-graph-panel-log"
           class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
           style={{ order: mapFirst() ? 2 : 0, "--text-scale": props.logTextScale }}
+          tabIndex={0}
         >
           <Show when={hybrid()}>
             {/* The log's text size, at hand: in a split panel the log is narrow, and the reader
@@ -207,12 +274,18 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
       </Show>
       <Show when={hybrid() && !floating()}>
         <div
+          ref={dividerEl}
           data-slot="session-graph-panel-divider"
           class="relative z-10 shrink-0 bg-border-weaker-base"
           classList={{
             "h-px w-full": !beside(),
             "h-full w-px": beside(),
           }}
+          role="separator"
+          aria-orientation={beside() ? "horizontal" : "vertical"}
+          aria-label={language.t("session.graph.hybrid.divider")}
+          tabIndex={0}
+          onKeyDown={handleDividerKeyDown}
         >
           <ResizeHandle
             direction={beside() ? "horizontal" : "vertical"}
@@ -226,6 +299,7 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
       </Show>
       <Show when={props.mode !== "transcript"}>
         <div
+          ref={mapPane}
           data-slot="session-graph-panel-map"
           class="min-h-0 min-w-0 overflow-hidden"
           classList={{
@@ -251,6 +325,7 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
                   order: mapFirst() ? 0 : 2,
                 }
           }
+          tabIndex={0}
         >
           <Show when={floating()}>
             <div

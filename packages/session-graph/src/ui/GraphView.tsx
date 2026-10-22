@@ -155,6 +155,8 @@ export type GraphViewProps = {
    * the reader sees where they are in the session without leaving the log.
    */
   activeTurn?: string
+  /** T18.1: whether the map should frame the active turn from the log. */
+  followLog?: boolean
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
   diffSource?: GraphDiffSource
   /** Optional host renderer for a node's summary (for example MarkDown); falls back to plain text. */
@@ -244,6 +246,8 @@ export const GraphView = (props: GraphViewProps) => {
   const [detailFraming, setDetailFraming] = createSignal<DetailFraming>(props.detailFraming ?? "off")
   // The transient look at the node under the pointer; it never changes the selection.
   const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
+  // T18.1: whether the map follows the active turn from the log.
+  const [followLog, setFollowLog] = createSignal<boolean>(props.followLog ?? false)
   const [hovered, setHovered] = createSignal<string>()
   // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
   const [popoverDismissed, setPopoverDismissed] = createSignal(false)
@@ -265,6 +269,10 @@ export const GraphView = (props: GraphViewProps) => {
   // The canvas region's own size: the card tier and the popover's placement are measured against
   // the space the map actually has, not against the space the session panel has.
   const [canvasSize, setCanvasSize] = createSignal({ width: 0, height: 0 })
+  // T18.3: the auto detail mode threshold — when the map is narrower than this, the detail
+  // lives in a window instead of the panel. The toolbar's compact threshold is 1030px for the
+  // whole panel; the map itself is narrower, so the threshold is proportionally smaller.
+  const AUTO_DETAIL_THRESHOLD = 640
   let renderer: GraphRenderer | undefined
   let rootEl!: HTMLDivElement
   let canvasRegionEl!: HTMLDivElement
@@ -289,9 +297,9 @@ export const GraphView = (props: GraphViewProps) => {
     onChange: () => setPopoverDismissed(false),
     count: () => Metrics.count("select"),
   })
-  // T17.4: when detailMode is "window", open a window for the selected node's detail.
+  // T17.4: when detailMode is "window" (or "auto" resolving to window), open a window for the selected node's detail.
   createEffect(() => {
-    if (detailMode() !== "window") return
+    if (effectiveDetailMode() !== "window") return
     const id = selection.selection()[0]
     if (!id) return
     openWindow("node", id)
@@ -299,10 +307,13 @@ export const GraphView = (props: GraphViewProps) => {
   const selectedTurn = () => turnOf(selection.selection()[0])
   // T6.6: a long session is drawn as its recent tail. The window is declared — the view says how
   // much of the session it shows — and it keeps the turn the reader is looking at.
+  // T18.1: when followLog is enabled, also keep the active turn from the log in the drawn window.
   const scale = createMemo(() =>
     scaleWindow(
       props.model,
-      [selectedTurn(), turnOf(props.frame)].filter((id): id is string => !!id),
+      [selectedTurn(), turnOf(props.frame), followLog() ? props.activeTurn : undefined].filter(
+        (id): id is string => !!id,
+      ),
     ),
   )
   const scoped = createMemo(() => scopeToTurns(props.model, scale().turns))
@@ -312,6 +323,22 @@ export const GraphView = (props: GraphViewProps) => {
     if (scale().hidden === 0) return undefined
 
     return [...scale().turns][0]
+  })
+
+  // T18.1: when followLog is enabled and the active turn changes, frame it.
+  // The camera only moves when the reader asked for it (followLog is on), and only when the
+  // active turn actually changes — not on every render.
+  const [lastFramedTurn, setLastFramedTurn] = createSignal<string>()
+  createEffect(() => {
+    if (!followLog()) return
+    const turn = props.activeTurn
+    if (!turn) return
+    if (lastFramedTurn() === turn) return
+    if (!rendererReady()) return
+    const current = viewport()
+    if (!current) return
+    setLastFramedTurn(turn)
+    camera.frameReadable(turn)
   })
 
   // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
@@ -374,6 +401,14 @@ export const GraphView = (props: GraphViewProps) => {
     const size = canvasSize()
     if (!extent?.width || !size.width) return CARD_SIZE[0]
     return (CARD_SIZE[0] * size.width) / extent.width
+  })
+  // T18.3: the effective detail mode when "auto" is selected — the detail lives in the panel
+  // when the map is wide enough, and in a window when it is narrow. The threshold follows the
+  // toolbar's compact measurement (the map's own width, not the panel's).
+  const effectiveDetailMode = createMemo<DetailMode>(() => {
+    const mode = detailMode()
+    if (mode !== "auto") return mode
+    return canvasSize().width >= AUTO_DETAIL_THRESHOLD ? "panel" : "window"
   })
   const [tier, setTier] = createSignal<DetailTier>("mid")
   createEffect(() => {
@@ -589,7 +624,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
   // The panel takes layout width and reframes the camera when it opens; the popover and the card do
   // neither, so the map does not move under the reader when a node is selected.
-  const inspectorOpen = createMemo(() => detailMode() === "panel" && !!selectedNode())
+  const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode())
 
   const camera = createGraphCamera({
     renderer: () => renderer,
@@ -604,7 +639,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // The node the popover describes, and where it hangs.
-  const popoverNode = createMemo(() => (detailMode() === "popover" ? selectedNode() : undefined))
+  const popoverNode = createMemo(() => (effectiveDetailMode() === "popover" ? selectedNode() : undefined))
   const popoverAnchor = createNodeAnchor({ node: popoverNode, renderer: () => renderer, viewport })
   // Beside the node, flipped to the other side when it would leave the canvas.
   const popoverPlacement = createMemo(() => {
@@ -903,6 +938,7 @@ export const GraphView = (props: GraphViewProps) => {
   mirror(() => props.files, setFiles)
   mirror(() => props.detailMode, setDetailMode)
   mirror(() => props.peek, setPeek)
+  mirror(() => props.followLog, setFollowLog)
   // A capability gap is never silent: when the active renderer cannot do 3D, fall back to 2D rather
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
@@ -1005,6 +1041,8 @@ export const GraphView = (props: GraphViewProps) => {
         onDetailModeChange={changeDetailMode}
         peek={peek()}
         onTogglePeek={togglePeek}
+        followLog={followLog()}
+        onFollowLogChange={setFollowLog}
         onTurnMap={
           props.onTurnMap
             ? () => {
@@ -1135,7 +1173,7 @@ export const GraphView = (props: GraphViewProps) => {
               </div>
             )}
           </Show>
-          <Show when={detailMode() === "popover"}>
+          <Show when={effectiveDetailMode() === "popover"}>
             <div
               data-slot="graph-popover-anchor"
               class="absolute z-20"
@@ -1225,7 +1263,7 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
         </div>
-        <Show when={detailMode() === "panel"}>
+        <Show when={effectiveDetailMode() === "panel"}>
           <Show when={inspectorOpen() && !narrow()}>
             <div
               data-slot="graph-inspector-resize"

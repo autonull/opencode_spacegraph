@@ -62,6 +62,7 @@ export const DETAIL_MODE_KEY = {
   panel: "ui.sessionGraph.detailMode.panel",
   popover: "ui.sessionGraph.detailMode.popover",
   window: "ui.sessionGraph.detailMode.window",
+  auto: "ui.sessionGraph.detailMode.auto",
 } as const satisfies Record<DetailMode, string>
 
 /** How the map and the log meet in the hybrid. The host owns the geometry; the toolbar names it. */

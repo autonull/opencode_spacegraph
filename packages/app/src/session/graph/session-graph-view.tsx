@@ -192,6 +192,7 @@ export function SessionGraphView(props: {
           detailFraming={graph.detailFraming()}
           peek={graph.peek()}
           activeTurn={activeTurn()}
+          followLog={graph.followLog()}
           refitKey={props.refitKey}
           arrangement={props.arrangement}
           onArrangementChange={props.onArrangementChange}
