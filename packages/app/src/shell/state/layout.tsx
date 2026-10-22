@@ -105,6 +105,21 @@ const sessionGraphSchema = Persistence.struct({
   peek: Schema.optional(Schema.Boolean),
   // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
   turnMap: Schema.optional(Schema.String),
+  // T15: the equalizer's rules, per session. A rule is a predicate over a node plus an effect on
+  // the card; the preset ids live beside them.
+  rules: Persistence.optional(
+    Persistence.array(
+      Persistence.struct({
+        id: Schema.String,
+        kind: Schema.optional(Schema.String),
+        status: Schema.optional(Schema.String),
+        scale: Schema.optional(Schema.Finite),
+        hue: Schema.optional(Schema.Finite),
+        muted: Schema.optional(Schema.Boolean),
+        fadeAfter: Schema.optional(Schema.Finite),
+      }),
+    ),
+  ),
   // T12.5: the reader's windows over the map, per session. The content is not stored — it is
   // re-derived from the model — so a window that cannot be rehydrated is dropped, not restored
   // empty.
@@ -595,6 +610,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           selected: createMemo(() => state()?.selected),
           turnMap: createMemo(() => state()?.turnMap),
           windows: createMemo(() => state()?.windows ?? []),
+          rules: createMemo(() => state()?.rules ?? []),
           layout: createMemo(() => state()?.layout ?? "lanes"),
           minimap: createMemo(() => state()?.minimap ?? false),
           files: createMemo(() => state()?.files ?? false),
@@ -640,6 +656,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setWindows(windows: NonNullable<SessionGraphState["windows"]>) {
             write({ windows })
+          },
+          setRules(rules: NonNullable<SessionGraphState["rules"]>) {
+            write({ rules })
           },
         }
       },

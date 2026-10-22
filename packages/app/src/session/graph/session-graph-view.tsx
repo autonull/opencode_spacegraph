@@ -1,5 +1,12 @@
 import { Button } from "@opencode/ui/button"
-import { buildGraph, nodeByID, openInTranscript, turnNodeID, type SessionLineage } from "@opencode/session-ui/graph"
+import {
+  buildGraph,
+  nodeByID,
+  openInTranscript,
+  turnNodeID,
+  type EqualizerRule,
+  type SessionLineage,
+} from "@opencode/session-ui/graph"
 import { useData } from "@opencode/session-ui/context"
 import { useMarkdown } from "@opencode/session-ui/context/markdown"
 import { Markdown } from "@opencode/session-ui/markdown"
@@ -83,6 +90,16 @@ export function SessionGraphView(props: {
     graph.setRepresentation(target.representation)
   })
 
+  // T15: the equalizer's rules, as the graph's own vocabulary. The store keeps the kind and the
+  // status as plain strings, so they are read back into the rule type at the boundary.
+  const rules = createMemo<EqualizerRule[]>(() =>
+    graph.rules().map((rule) => ({
+      ...rule,
+      kind: rule.kind as EqualizerRule["kind"],
+      status: rule.status as EqualizerRule["status"],
+    })),
+  )
+
   // The shareable link to the selected node, so a decision can be shared instead of re-scrolled to.
   const link = createMemo(() => {
     const id = graph.selected()
@@ -165,6 +182,7 @@ export function SessionGraphView(props: {
           // T12: the reader's windows over the map. The graph proposes the first placement; the app
           // keeps them per session, so a window survives a session switch.
           windows={graph.windows()}
+          rules={rules()}
           onWindowsChange={(windows) => graph.setWindows(windows)}
           onOpenWindow={(window) => {
             const current = graph.windows()

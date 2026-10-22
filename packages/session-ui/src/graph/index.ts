@@ -112,3 +112,14 @@ export {
   type DetailMode,
   type DetailTier,
 } from "./detail"
+
+export {
+  EQUALIZER_PRESETS,
+  equalizerFade,
+  equalizerHue,
+  equalizerMuted,
+  equalizerScale,
+  ruleMatches,
+  type EqualizerRule,
+  type EqualizerRuleSet,
+} from "./equalizer"

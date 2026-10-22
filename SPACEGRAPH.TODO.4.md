@@ -144,7 +144,8 @@ plan is the exemption**: it is the work the author's own use of the product aske
 as one reviewed block rather than as a drip.
 
 **Status: G9, G10, G11 and most of G12 are reached** (T11, T12, T13 and T14, 2026-10-21 — see the
-log). T14.3 (the minimap as a window) and all of G13 (the equalizer) are open.
+log), and G13 has its engine but not its panel. T14.3 (the minimap as a window), T15.4 (the
+equalizer's panel) and T15.5's presets are open.
 
 ### 0.6 What is *not* in this plan
 
@@ -739,7 +740,7 @@ Verify: the narrow-viewport component test.
 age, etc." A set of rules over the graph's own vocabulary, applied to the cards, with a panel to
 edit them.
 
-### T15.1 The rule model
+### T15.1 The rule model — **done**
 
 A rule is a **predicate over a node** plus an **effect on the card**. The vocabulary already exists
 (F7, and `packages/session-ui/src/graph/model.ts:69-84`): `kind`, `status`, `time`, `turnID`,
@@ -755,7 +756,25 @@ A rule is a **predicate over a node** plus an **effect on the card**. The vocabu
 A rule set is a list; the panel edits the list; the list is persisted per session with the other
 graph preferences.
 
-### T15.2 The size effect has a layout cost, and it must be paid deliberately
+**What was built.** `packages/session-ui/src/graph/equalizer.ts` holds the model, the evaluation and
+the presets:
+
+```ts
+export type EqualizerRule = {
+  id: string
+  kind?: NodeKind
+  status?: NodeStatus
+  scale?: number      // the size effect: the layout reads it
+  hue?: number        // the style effect: the accent reads it
+  muted?: boolean     // the style effect: the card loses its voice
+  fadeAfter?: number  // the age effect: the card fades, and nothing moves
+}
+```
+
+The **last matching rule wins** ✓, so the reader's order is their order ✓. The rules are persisted
+per session beside the windows ✓ (`sessionView[session].graph.rules` ✓).
+
+### T15.2 The size effect has a layout cost, and it must be paid deliberately — **done**
 
 A size change reaches the layout through `nodeSize()`: the lanes, timeline, tree and force layouts
 read the per-node width to advance their cell cursor
@@ -772,11 +791,20 @@ the layout every minute).
 The rule: **size effects re-lay-out; style effects rebuild the model; age effects may do neither**,
 because age is a continuous input and a continuous input must not move the map under the reader.
 
+**What was built.** The layout takes a `nodeSizeFn` ✓ (`layoutGraph(…, { nodeSizeFn })` ✓) — the
+library's strategies already read `config.nodeSizeFn` ✓, so no library change was needed ✓. The
+view passes a size-aware function ✓, and **the rules are part of the layout key** ✓
+(`session:strategy:level:rules` ✓), so a rule change re-lays-out like a level change ✓ and the
+positions stay stable while the rules do not change ✓.
+
+The **age effect is excluded from the layout** ✓: a fade is the card's own opacity ✓, computed in
+the card template against the node's time ✓ — it costs a model rebuild ✓ and never a re-layout ✓.
+
 Done when: the rule model says which effect costs what, and the age effect is excluded from the
 layout.
 Verify: `packages/session-ui` — a test that a style-only rule leaves the positions unchanged.
 
-### T15.3 The style effect needs a colour scheme that can carry it
+### T15.3 The style effect needs a colour scheme that can carry it — **done**
 
 The accents are hard-coded HSL triples (F7). An age rule needs a second dimension (hue *and*
 lightness, or a separate "muted" accent), and a "by type" rule needs the kind and the category to
@@ -789,24 +817,42 @@ Whether the new roles become theme tokens or stay in the HSL scheme is a decisio
 contrast test (`packages/session-graph/src/ui/contrast.test.ts`) must cover any new colour in both
 schemes.
 
+**What was built.** `accentOf(node, rules)` is the one function ✓: the rules set the hue ✓, a muted
+rule keeps the hue and loses the voice (a darker accent and a fainter tint ✓). The cards read it ✓,
+the bands read it ✓, and the legend reads it ✓ (`kindAccent(kind, rules)` ✓ — so the key and the
+picture cannot disagree ✓).
+
+The muted accent is the same hue at a lower lightness ✓ — the same two colours the scheme already
+has ✓ — so the contrast audit still covers it ✓ (`contrast.test.ts` ✓ passes ✓).
+
 Done when: one function maps a node to its accent, the legend and the cards read it, and the
 contrast audit covers the new colours.
 Verify: `cd packages/session-graph && bun test src/ui/contrast.test.ts`.
 
-### T15.4 The panel is a window
+### T15.4 The panel is a window — **open**
 
 The equalizer's UI is a window (T12), not another toolbar control: it needs room, it is edited
 rarely, and it should stay where the reader put it. Its contents: one row per rule, a preview
 swatch per rule, and a reset.
 
+**Not done in this pass.** The window manager (T12) is in place and the `legend` kind shows how a
+kind's content is registered ✓, so the remaining work is a `equalizer` kind: a list of the rules, a
+swatch per rule (the accent ✓ — `accentOf` ✓), a reset to the presets, and the writes back to the
+per-session store ✓. The rules are persisted ✓ and the engine reads them ✓, so the panel is the
+last piece, not the first.
+
 Done when: the equalizer opens as a window and edits the persisted rule list.
 Verify: the component test — change a rule, assert the cards change.
 
-### T15.5 The presets
+### T15.5 The presets — **partly done**
 
 A reader should not have to write rules to get value. The presets are the product: "errors are
 larger", "files older than the last turn are dimmer", "subagents are as large as their turn". The
 panel ships with a few, each a named rule set, and the reader can start from one.
+
+**What was built.** The three presets exist as named rule sets ✓ (`EQUALIZER_PRESETS` ✓): "errors
+larger" ✓, "subagents as large" ✓ and "old files dimmer" ✓. The panel that offers them is not
+done (T15.4) ✗ — the presets are the data the panel will list ✓.
 
 Done when: the panel ships with at least three presets, each of which visibly changes the map.
 Verify: the component test, with a screenshot per preset.
@@ -1074,3 +1120,34 @@ Measured: the session-graph component suite **59** (+3: the row stays on one lin
 - **the narrow row still wraps below about 750px**, and the app's session panel is often narrower
   than that. The fix is measured: the level control (213px) becomes a menu like the layout chooser,
   which brings the narrow row to about 530px. It is a small change and it is not done here.
+
+**2026-10-21 — T15: the equalizer (G13, in part).**
+The author's fifth observation: "maybe there can be an 'equalizer' panel that adjusts sizes/styles of
+nodes according to their type, age, etc...".
+
+What was built — the **engine**, the **cost model** and the **accents**:
+
+- **the rule model** (`packages/session-ui/src/graph/equalizer.ts`): a rule is a predicate over a node
+  (the kind, the status) plus an effect on the card (the size, the hue, the muted flag, the age at
+  which the card fades). The last matching rule wins, so the reader's order is their order;
+- **the cost model is enforced, not just described**: a size rule reaches the layout through the
+  card's box (the layout's `nodeSizeFn` ✓ — no library change was needed, the strategies already
+  read it ✓) and the rules are part of the layout key ✓, so a rule change re-lays-out the map
+  exactly like a level change ✓ and the positions stay stable while the rules do not change ✓. A
+  style rule rebuilds the model and moves nothing ✓. **The age effect never re-lays-out**: a fade is
+  the card's own opacity ✓;
+- **one function maps a node to its accent** ✓ (`accentOf`): the cards read it ✓, the bands read it
+  ✓, and the legend reads it ✓ — so a rule can never make the picture and the key disagree. A muted
+  rule keeps the hue and loses the voice ✓;
+- **the rules are persisted per session** ✓, beside the windows ✓, and the engine reads them ✓;
+- **three presets** ✓ exist as named rule sets ✓ ("errors larger", "subagents as large", "old files
+  dimmer").
+
+Measured: `session-ui` graph **123** (+7: the rules speak to a kind and a status; the last match
+wins; a style rule leaves the positions where they were; a size rule moves them; the age fades but
+never reaches zero), `session-graph` unit **100**, the root `bun run check` **40/40**.
+
+**What is not done.** The **panel** (T15.4): the rule list, the preview swatches, the reset, and the
+presets offered as a choice ✗. The manager is there and the `legend` kind shows how a kind's content
+is registered ✓, so the panel is the last piece, not the first — but until it exists, the equalizer
+is an engine with no way in ✗. That is the honest state of T15 today.

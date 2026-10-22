@@ -50,6 +50,12 @@ export type LayoutOptions = {
    * have not seen — a streamed session never moves a node the reader is looking at.
    */
   previous?: ReadonlyMap<string, Position>
+  /**
+   * T15: the card's box. The layout's cell cursor reads it, so a size rule reaches the geometry —
+   * and it costs a re-layout, which is why a size rule is a deliberate act and not a background
+   * process.
+   */
+  nodeSizeFn?: (node: GraphNode) => readonly [number, number]
 }
 
 /** Rendered card footprint; keep in sync with the SpaceGraph adapter's HTML card defaults. */
@@ -139,7 +145,8 @@ export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: numbe
 }
 
 export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): GraphLayout {
-  return Strategies.layoutGraph(model, LAYOUT, {
+  const config = options.nodeSizeFn ? { ...LAYOUT, nodeSizeFn: options.nodeSizeFn } : LAYOUT
+  return Strategies.layoutGraph(model, config, {
     strategy: options.strategy,
     gap: options.gap,
     laneGap: options.laneGap,

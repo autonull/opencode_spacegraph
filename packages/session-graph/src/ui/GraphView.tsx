@@ -1,6 +1,6 @@
 import type { DepthMode, GraphRenderer, Projection, RendererCapabilities, RendererViewport, RenderTheme, RenderModel } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
-import type { DetailMode, DetailTier, GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
+import type { DetailMode, DetailTier, EqualizerRuleSet, GraphLayout, GraphModel, GraphNode, LayoutStrategy, Position, Representation, ZoomLevel } from "@opencode/session-ui/graph"
 import {
   ancestors,
   breadcrumbs,
@@ -9,6 +9,8 @@ import {
   COMPACT_SIZE,
   DETAIL_TIER_WIDTH,
   detailTier,
+  equalizerScale,
+  nodeSize as cardBox,
   laneAnchors,
   layoutGraph,
   LEVEL_RANK,
@@ -130,6 +132,11 @@ export type GraphViewProps = {
   onWindowsChange?: (windows: GraphWindowState[]) => void
   /** T12: the host opens a window. The view proposes its first placement; the host owns its lifetime. */
   onOpenWindow?: (window: GraphWindowState) => void
+  /**
+   * T15: the equalizer's rules. A size rule re-lays-out the map (the rules are part of the layout
+   * key, so the map moves like it does when the level changes); a style rule rebuilds the cards.
+   */
+  rules?: EqualizerRuleSet
   onBack?: () => void
   /** T3.4: session title for export metadata. */
   sessionTitle?: string
@@ -303,7 +310,7 @@ export const GraphView = (props: GraphViewProps) => {
     }
     return relations
   })
-  const relatedDetail = (node: GraphNode) => {
+  const relatedDetail = (node: GraphNode, model: GraphModel) => {
     if (node.kind !== "file") return undefined
     const relation = fileRelations().get(node.id)
     if (!relation) return undefined
@@ -313,11 +320,21 @@ export const GraphView = (props: GraphViewProps) => {
     ].filter((part): part is string => !!part)
     return parts.length > 0 ? parts.join(" · ") : undefined
   }
-  const renderCard = createMemo(
-    () =>
+  const renderCard = createMemo(() => {
+    // The age rules fade a card against the clock, so the cards are rebuilt with the model.
+    const model = props.model
+    const now = Date.now()
+    return (
       props.renderCard ??
-      createCardTemplate(theme(), { tier: tier(), selected: selection()[0], related: relatedDetail }),
-  )
+      createCardTemplate(theme(), {
+        tier: tier(),
+        selected: selection()[0],
+        related: (node) => relatedDetail(node, model),
+        rules: props.rules,
+        now,
+      })
+    )
+  })
   const renderBand = createMemo(() => createBandTemplate(theme()))
   // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
@@ -325,6 +342,14 @@ export const GraphView = (props: GraphViewProps) => {
   const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
   const sessionKey = () =>
     props.model.nodes.find((node) => node.id === props.model.root)?.data?.sessionID ?? "session"
+  // T15: a size rule scales the card's box, and the layout's cell cursor reads it.
+  const sizedCard = (node: GraphNode): readonly [number, number] => {
+    const [width, height] = cardBox(node)
+    const scale = equalizerScale(props.rules ?? [], node)
+    return scale === 1 ? [width, height] : [width * scale, height * scale]
+  }
+  const rulesKey = createMemo(() => JSON.stringify(props.rules ?? []))
+
   const layout = createMemo((): GraphLayout => {
     if (props.positions)
       return {
@@ -337,11 +362,14 @@ export const GraphView = (props: GraphViewProps) => {
     if (representation() === "ribbon") return ribbonLayout(scoped())
     if (representation() === "matrix") return matrixLayout(scoped())
 
-    const key = `${sessionKey()}:${strategy()}:${level()}`
+    // T15: the rules are part of the layout key, because a size rule re-lays-out the map — the
+    // same way a level or a strategy change does.
+    const key = `${sessionKey()}:${strategy()}:${level()}:${rulesKey()}`
     const next = layoutGraph(props.model, {
       strategy: strategy(),
       level: level(),
       previous: layoutHistory.get(key),
+      nodeSizeFn: sizedCard,
     })
 
     layoutHistory.set(key, next.positions)
@@ -700,7 +728,8 @@ export const GraphView = (props: GraphViewProps) => {
   }
 
   const windowContent = (window: GraphWindowState) => {
-    if (window.kind === "legend") return <GraphLegendBody theme={theme()} strategy={strategy()} />
+    if (window.kind === "legend")
+      return <GraphLegendBody theme={theme()} strategy={strategy()} rules={props.rules} />
     const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
     if (!node)
       return (
@@ -1334,7 +1363,12 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
           <Show when={legendOpen()}>
-            <GraphLegend theme={theme()} strategy={strategy()} onClose={() => setLegendOpen(false)} />
+            <GraphLegend
+              theme={theme()}
+              strategy={strategy()}
+              rules={props.rules}
+              onClose={() => setLegendOpen(false)}
+            />
           </Show>
           <Show when={galleryOpen()}>
             <GraphGallery

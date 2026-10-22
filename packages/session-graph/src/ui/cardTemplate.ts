@@ -1,6 +1,6 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { DetailTier, GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
-import { isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
+import type { DetailTier, EqualizerRuleSet, GraphNode, NodeKind, ZoomLevel } from "@opencode/session-ui/graph"
+import { equalizerFade, equalizerHue, equalizerMuted, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 
 /**
@@ -59,15 +59,23 @@ function hue(node: GraphNode): number {
   return KIND_HUE[node.kind] ?? 210
 }
 
-function accent(node: GraphNode) {
-  const h = hue(node)
-  return { solid: `hsl(${h} 70% 55%)`, soft: `hsl(${h} 70% 55% / 0.16)` }
+/**
+ * T15.3 — the one function that maps a node to its accent. The cards, the legend and the
+ * equalizer's own preview all read it, so a rule can never make the picture and the key disagree.
+ * A style rule sets the hue; a muted card keeps its hue and loses its voice.
+ */
+export function accentOf(node: GraphNode, rules?: EqualizerRuleSet) {
+  const set = rules ?? []
+  const h = equalizerHue(set, node) ?? hue(node)
+  const muted = equalizerMuted(set, node)
+  const lightness = muted ? 42 : 55
+  const alpha = muted ? 0.1 : 0.16
+  return { solid: `hsl(${h} 70% ${lightness}%)`, soft: `hsl(${h} 70% ${lightness}% / ${alpha})` }
 }
 
 /** The tint a kind's chip carries, so the legend and the cards cannot drift apart. */
-export function kindAccent(kind: NodeKind) {
-  const h = KIND_HUE[kind] ?? 210
-  return { solid: `hsl(${h} 70% 55%)`, soft: `hsl(${h} 70% 55% / 0.16)` }
+export function kindAccent(kind: NodeKind, rules?: EqualizerRuleSet) {
+  return accentOf({ id: kind, kind, label: kind, status: "neutral" } as GraphNode, rules)
 }
 
 /** The tint a phase category's chip carries. */
@@ -106,6 +114,10 @@ export type CardTemplateOptions = {
   selected?: string
   /** A fact only the graph knows — a file's readers, say — for the kinds that have none of their own. */
   related?: (node: GraphNode) => string | undefined
+  /** T15: the equalizer's rules. A style rule changes a card's accent; an age rule fades it. */
+  rules?: EqualizerRuleSet
+  /** T15: the clock the age rules read. */
+  now?: number
 }
 
 const text = (value: unknown) => (typeof value === "string" && value.length > 0 ? value : undefined)
@@ -193,7 +205,7 @@ export function kindDetail(node: GraphNode): string | undefined {
 
 export function createCardTemplate(theme: RenderTheme, options: CardTemplateOptions = {}): CardTemplate {
   return (node: GraphNode, level: ZoomLevel) => {
-    const { solid, soft } = accent(node)
+    const { solid, soft } = accentOf(node, options.rules)
     const mono = MONO_KINDS.has(node.kind)
     // A derived cluster shows its member count while collapsed (overview chip); once expanded the
     // header is a plain labelled panel, so the count is dropped (RF.5/LE.2, §5.4).
@@ -218,8 +230,10 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const detailRow = detail
       ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(detail)}</span>`
       : ""
+    // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
+    const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};${ring}border-radius:8px;color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};${ring}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[node.kind]}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>
@@ -239,9 +253,9 @@ ${detailRow}
  * own strip — clear of the cards — instead of on top of the first one. The header's line height is
  * fixed because its height is geometry, not typography.
  */
-export function createBandTemplate(theme: RenderTheme): BandTemplate {
+export function createBandTemplate(theme: RenderTheme, rules?: EqualizerRuleSet): BandTemplate {
   return (node: GraphNode, count: number, bounds) => {
-    const { solid, soft } = accent(node)
+    const { solid, soft } = accentOf(node, rules)
     const label = escapeHtml(node.label.replace(/\s+/g, " ").trim().slice(0, 48))
     const width = Math.round(bounds.max.x - bounds.min.x)
     const height = Math.round(bounds.max.y - bounds.min.y)

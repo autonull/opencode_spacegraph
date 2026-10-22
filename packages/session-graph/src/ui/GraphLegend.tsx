@@ -1,5 +1,5 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { GraphNode, LayoutStrategy, NodeKind } from "@opencode/session-ui/graph"
+import type { EqualizerRuleSet, GraphNode, LayoutStrategy, NodeKind } from "@opencode/session-ui/graph"
 import { LANES } from "@opencode/session-ui/graph"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
@@ -41,6 +41,8 @@ export type GraphLegendProps = {
   theme: RenderTheme
   /** T7: the layout on screen; the legend says what that layout encodes. */
   strategy?: LayoutStrategy
+  /** T15: the equalizer's rules, so the legend reads the same accents the cards do. */
+  rules?: EqualizerRuleSet
   onClose: () => void
 }
 
@@ -48,6 +50,8 @@ export type GraphLegendBodyProps = {
   theme: RenderTheme
   /** T7: the layout on screen; the legend says what that layout encodes. */
   strategy?: LayoutStrategy
+  /** T15: the equalizer's rules, so the legend reads the same accents the cards do. */
+  rules?: EqualizerRuleSet
 }
 
 /**
@@ -93,7 +97,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
         i18n.t("ui.sessionGraph.legend.kinds"),
         KINDS.map((kind) => (
           <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
-            {swatch(kindAccent(kind).solid)}
+            {swatch(kindAccent(kind, props.rules).solid)}
             <span class="truncate">{i18n.t(KIND_KEY[kind])}</span>
           </span>
         )),
@@ -172,7 +176,7 @@ export const GraphLegend = (props: GraphLegendProps) => {
         />
       </div>
 
-      <GraphLegendBody theme={props.theme} strategy={props.strategy} />
+      <GraphLegendBody theme={props.theme} strategy={props.strategy} rules={props.rules} />
     </div>
   )
 }
