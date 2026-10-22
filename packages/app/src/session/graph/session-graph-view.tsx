@@ -187,7 +187,6 @@ export function SessionGraphView(props: {
           preferredRenderer={graph.renderer()}
           selection={graph.selected()}
           layout={graph.layout()}
-          minimap={graph.minimap()}
           files={graph.files()}
           detailMode={graph.detailMode()}
           peek={graph.peek()}
@@ -213,7 +212,6 @@ export function SessionGraphView(props: {
           onProjectionChange={(projection) => graph.setProjection(projection)}
           onDepthChange={(depth) => graph.setDepth(depth)}
           onLayoutChange={(layout) => graph.setLayout(layout)}
-          onMinimapChange={(minimap) => graph.setMinimap(minimap)}
           onFilesChange={(files) => graph.setFiles(files)}
           onDetailModeChange={(mode) => graph.setDetailMode(mode)}
           onPeekChange={(peek) => graph.setPeek(peek)}

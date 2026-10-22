@@ -46,9 +46,6 @@ export type GraphToolbarProps = {
   /** T17.1: the layout on screen; the host persists the choice. */
   layout?: Layout
   onLayoutChange?: (layout: Layout) => void
-  /** RF.7: minimap toggle, default off. */
-  minimap?: boolean
-  onToggleMinimap?: () => void
   /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
   files?: boolean
   onToggleFiles?: () => void
@@ -95,6 +92,8 @@ export type GraphToolbarProps = {
   /** T1.19: the billboard switch — the cards face the reader, or lie in the content plane. */
   billboard?: boolean
   onToggleBillboard?: () => void
+  /** T12/T14.3: opens a window over the map. The view proposes the first placement. */
+  onOpenWindow?: (kind: string, nodeID?: string) => void
   /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
@@ -287,12 +286,13 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           keepOpen: true,
         })}
       </Show>
-      <GraphIconButton
-        label={i18n.t("ui.sessionGraph.toolbar.minimap")}
-        icon="layout-bottom"
-        pressed={props.minimap}
-        onClick={() => props.onToggleMinimap?.()}
-      />
+      <Show when={props.onOpenWindow}>
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.minimap")}
+          icon="layout-bottom"
+          onClick={() => props.onOpenWindow?.("minimap")}
+        />
+      </Show>
       <Show when={props.onToggleLegend}>
         <GraphIconButton
           label={i18n.t("ui.sessionGraph.toolbar.legend")}

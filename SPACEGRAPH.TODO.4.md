@@ -225,8 +225,8 @@ plan is the exemption**: it is the work the author's own use of the product aske
 as one reviewed block rather than as a drip.
 
 **Status: G9, G10, G11, G12 and G13 are reached** (T11, T12, T13, T14 and T15, 2026-10-21 — see the
-log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). T14.3
-(the minimap as a window) is still open, and is now the last step of T17.4 rather than a leftover.
+log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). **T14.3
+(the minimap as a window) is done** (2026-10-22).
 
 **T17.1, T17.2 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
 means the same thing in every layout ✓, and the detail the reader earns by moving closer ✓. **T17.3,
@@ -757,20 +757,23 @@ Two details the change had to answer:
   says "Billboard cards off" when it is off, but its accessible name stays "Billboard cards" and the
   state is in `aria-pressed` ✓ — a name that changes is a name a reader cannot find again.
 
-### T14.3 The minimap is a window too — **open**
+### T14.3 The minimap is a window too — **done**
 
 The minimap is the one control that is *already* an overlay over the canvas
 (`packages/session-graph/src/ui/GraphMinimap.tsx`, drawn inside the canvas region at
 `GraphView.tsx`), and it is the one control that makes the toolbar's end of the row busy. Under T12
 it becomes a window: movable, resizable, and closable, like the rest.
 
-**Not done in this pass.** The window manager (T12) is in place and the minimap's *toggle* moved to
-the "Show" menu ✓, so the remaining work is small: a `minimap` window kind (the content is the
-existing `GraphMinimap`) and the toggle becomes "open the minimap in a window". It is left open
-rather than half-done, because a half-migrated minimap would be neither an overlay nor a window.
+**What was built.**
+- A `minimap` window kind was added to `windowKinds` in `GraphView.tsx`, using the existing `GraphMinimap` component
+- The toolbar's minimap button now opens the minimap as a window via `onOpenWindow` instead of toggling an overlay
+- The minimap overlay rendering was removed from `GraphView.tsx` (the `<Show when={minimap() && ...}>` block)
+- The `minimap` prop and `onMinimapChange` callback were removed from `GraphViewProps`
+- The fit options no longer reserve space for the minimap (insets are now undefined)
+- The component test was updated to verify the minimap opens as a window
 
 Done when: the minimap is a window and the toolbar's inline row is four controls.
-Verify: the component test.
+Verify: the component test (`graph-fit-insets.spec.ts`).
 
 ### T14.4 The icons that do not exist — **done**
 

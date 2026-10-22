@@ -77,7 +77,7 @@ import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
-import { GraphMinimap, MINIMAP_GAP, MINIMAP_SIZE } from "./GraphMinimap"
+import { GraphMinimap } from "./GraphMinimap"
 import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
@@ -129,8 +129,6 @@ export type GraphViewProps = {
   positions?: ReadonlyMap<string, Position>
   /** T17.1: the controlled layout — the one axis that says how the map is drawn. The host persists it. */
   layout?: Layout
-  /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
-  minimap?: boolean
   /**
    * Where a selected node's detail is shown: nowhere, on the node itself, in a popover beside it, or
    * in the side panel. The host persists the choice; the view mirrors it.
@@ -179,7 +177,6 @@ export type GraphViewProps = {
   onProjectionChange?: (projection: Projection) => void
   onDepthChange?: (depth: DepthMode) => void
   onLayoutChange?: (layout: Layout) => void
-  onMinimapChange?: (minimap: boolean) => void
   onFilesChange?: (files: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
   onPeekChange?: (peek: boolean) => void
@@ -233,7 +230,6 @@ export const GraphView = (props: GraphViewProps) => {
   const [cardFacing, setCardFacing] = createSignal<"plane" | "camera">("plane")
   const toggleBillboard = () => setCardFacing((current) => (current === "camera" ? "plane" : "camera"))
   const [layout, setLayout] = createSignal<Layout>(props.layout ?? "lanes")
-  const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
   const [files, setFiles] = createSignal<boolean>(props.files ?? false)
   // Where a selected node's detail is shown. The panel is the default: the popover and the card are
   // alternatives a reader can pick, and the map still works with the detail off.
@@ -571,15 +567,9 @@ export const GraphView = (props: GraphViewProps) => {
   }
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
-  // T6.10: the minimap is drawn *over* the canvas, so the frame keeps the content clear of it.
   const fitOptions = () => ({
     minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1],
-    insets: minimap()
-      ? {
-          right: MINIMAP_SIZE.width + MINIMAP_GAP,
-          bottom: MINIMAP_SIZE.height + MINIMAP_GAP,
-        }
-      : undefined,
+    insets: undefined,
   })
   // The panel takes layout width and reframes the camera when it opens; the popover and the card do
   // neither, so the map does not move under the reader when a node is selected.
@@ -693,6 +683,23 @@ export const GraphView = (props: GraphViewProps) => {
         />
       ),
     },
+    {
+      name: "minimap",
+      title: () => i18n.t("ui.sessionGraph.minimap.label"),
+      render: () => (
+        <GraphMinimap
+          model={props.model}
+          positions={geometry().positions}
+          theme={theme()}
+          viewport={viewport()}
+          onPan={(center: [number, number]) => {
+            const current = viewport()
+            if (!current) return
+            renderer?.setViewport({ zoom: current.zoom, center: [center[0], center[1], 0] })
+          }}
+        />
+      ),
+    },
   ])
 
   const windowContent = (window: GraphWindowState) => {
@@ -739,12 +746,6 @@ export const GraphView = (props: GraphViewProps) => {
     Metrics.count("expand")
     if (isSummaryLayout(layout())) changeLayout("lanes")
     jumpTo(node)
-  }
-  const toggleMinimap = () => {
-    setMinimap((open) => {
-      props.onMinimapChange?.(!open)
-      return !open
-    })
   }
   const toggleFiles = () => {
     setFiles((open) => {
@@ -879,7 +880,6 @@ export const GraphView = (props: GraphViewProps) => {
   mirror(() => props.projection, setProjection)
   mirror(() => props.depth, setDepth)
   mirror(() => props.layout, setLayout)
-  mirror(() => props.minimap, setMinimap)
   mirror(() => props.files, setFiles)
   mirror(() => props.detailMode, setDetailMode)
   mirror(() => props.peek, setPeek)
@@ -895,7 +895,6 @@ export const GraphView = (props: GraphViewProps) => {
   // projection/layout change, and when the inspector toggles. The fit is deferred to
   // the canvas's `onModelApplied` (below), so the matching nodes and positions exist before we measure;
   // the ids are read untracked, so streaming updates never refit.
-  // T6.10: the minimap toggles too — it is drawn over the canvas, so the frame moves with it.
   createEffect(() => {
     level()
     projection()
@@ -903,7 +902,6 @@ export const GraphView = (props: GraphViewProps) => {
     layout()
     inspectorOpen()
     files()
-    minimap()
     setNeedsFit(true)
   })
   const [framedSelection, setFramedSelection] = createSignal<string>()
@@ -973,8 +971,6 @@ export const GraphView = (props: GraphViewProps) => {
         onToggleBillboard={toggleBillboard}
         layout={layout()}
         onLayoutChange={changeLayout}
-        minimap={minimap()}
-        onToggleMinimap={toggleMinimap}
         files={files()}
         onToggleFiles={toggleFiles}
         arrangement={props.arrangement}
@@ -982,6 +978,7 @@ export const GraphView = (props: GraphViewProps) => {
         arrangementSide={props.arrangementSide}
         onArrangementSideChange={props.onArrangementSideChange}
         onOpenEqualizer={props.onRulesChange ? () => openWindow("equalizer") : undefined}
+        onOpenWindow={openWindow}
         detailMode={detailMode()}
         onDetailModeChange={changeDetailMode}
         peek={peek()}
@@ -1151,21 +1148,6 @@ export const GraphView = (props: GraphViewProps) => {
             anchorOf={(nodeID) => windowAnchors()?.get(nodeID)}
             bounds={() => canvasSize()}
           />
-          <Show when={minimap() && !error() && props.model.nodes.length > 0}>
-            <div class="absolute bottom-2 end-2 z-10">
-              <GraphMinimap
-                model={props.model}
-                positions={geometry().positions}
-                theme={theme()}
-                viewport={viewport()}
-                onPan={(center) => {
-                  const current = viewport()
-                  if (!current) return
-                  renderer?.setViewport({ zoom: current.zoom, center: [center[0], center[1], 0] })
-                }}
-              />
-            </div>
-          </Show>
           <Show when={error()}>
             <div
               data-slot="graph-error"
