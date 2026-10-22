@@ -1044,8 +1044,11 @@ The facts that shape this section are **F8–F13 in §0.3** ✓ — measured in 
   layout row ✓, so the row does not grow.
 - The persisted state migrates: the store's `layout` (the strategy) and `representation` (the
   family) become one `layout` field. A stored `representation` of `ribbon`/`matrix` wins;
-  otherwise the stored strategy is kept. The store already has a migration chain
-  (`packages/app/src/shell/state/layout.tsx`).
+  otherwise the stored strategy is kept. The graph state needs its **own** migration —
+  `Persistence.migrate` with a legacy read shape
+  (`packages/app/src/runtime/persistence/schema.ts`) — because the document-level chain
+  (`layoutPersistence`) moves the document, not a field inside it ✓. Without it, a reader's saved
+  ribbon would silently become the default layout.
 - `representationLevel()` goes away, and with it the toolbar's `graphMode()`: **no control is ever
   disabled because of the layout** ✓.
 - **the hybrid's own axis keeps its name.** The map's arrangement of nodes and the panel's
