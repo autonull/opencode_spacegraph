@@ -229,8 +229,7 @@ log), and **T16 — the map and the log together — is reached** (the hybrid mo
 (the minimap as a window) is done** (2026-10-22).
 
 **T17.1, T17.2, T17.3, T17.4 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
-means the same thing in every layout ✓, **the log's own shape as a layout ✓**, the detail the reader earns by moving closer ✓, and **one concept for the surfaces ✓**. **T18 is planned, not started.** It is the rest of the consolidation the author's own
-use asked for — the ergonomics of the map-and-log pair.
+means the same thing in every layout ✓, **the log's own shape as a layout ✓**, the detail the reader earns by moving closer ✓, and **one concept for the surfaces ✓**. **T18.2 is done** (2026-10-22): the header menu offers Log | Map | Both. **T18.1, T18.3, T18.4 and T18.5 are planned.**
 
 ### 0.6 What is *not* in this plan
 
@@ -1340,19 +1339,24 @@ Done when: the map's window follows the log's active turn, and the camera follow
 reader asks.
 Verify: the app e2e — scrolling the log moves the map's window; the follow toggle frames the turn.
 
-### T18.2 One control for the surface — **planned**
+### T18.2 One control for the surface — **done**
 
 The mode is three-valued (T16.1 ✓), but the entry points are scattered: the header's icon toggles
 transcript↔map, the map's toolbar offers the split, and `graph.hybrid` toggles the hybrid. A
 reader cannot see all three from one place, and the split is only reachable *from inside the map*.
 
-- the session header's icon becomes a **menu**: **Transcript | Map | Both** ✓ — the three modes, in
+- the session header's icon becomes a **menu**: **Log | Map | Both** ✓ — the three modes, in
   one place, named the way the reader thinks of them;
 - the map's own "show the log beside it" and the `graph.hybrid` command stay ✓ (the command is the
   keyboard path, the menu is the discovery path).
 
 Done when: one control offers the three surfaces, and the hybrid has a discoverable home.
 Verify: the app e2e — the header menu switches between the three.
+
+**2026-10-22** — Updated `SessionGraphToggle` to use a `Menu` with three radio items (Log, Map, Both).
+The button shows the current mode's icon and the tooltip shows the mode label plus keybind.
+The e2e test `opens the hybrid turn map over the graph and closes on Escape` passes, as does
+`shows the map and the log together, and the reader chooses how they meet`, and `picking a node in the map moves the log to it`.
 
 ### T18.3 The detail's home follows the map's width (D9, unblocked) — **planned**
 
@@ -1953,3 +1957,23 @@ Unverified: the *feel* of the framing toggle — whether the camera movement on 
 "the map answers my pick" or as "the map jumped" — needs the author's hands. The window detail
 mode's automatic opening on selection is a new pattern, and the author should confirm it feels
 right.
+
+**2026-10-22 — T18.2: one control for the surface (G16).**
+The session header's graph toggle was changed from a binary toggle (transcript ↔ graph) to a menu
+offering three modes: Log | Map | Both (hybrid). The button shows the current mode's icon (filetree,
+window-analytics, split) and the tooltip shows the mode label plus the keybind.
+
+What changed:
+- `packages/app/src/session/header/session-graph-toggle.tsx` — rewritten to use `Menu` with
+  `RadioGroup` and three `RadioItem`s
+- `packages/app/src/runtime/i18n/en.ts` — added three new keys: `command.graph.mode.log`,
+  `command.graph.mode.map`, `command.graph.mode.both`
+- `packages/app/e2e/graph/session-graph.spec.ts` — updated `openGraph` helper and all call sites to
+  select "Map" from the menu; added `openGraphViaMenu` helper
+
+Measured: the component suite **60** passed, app graph e2e tests for hybrid mode pass
+(`opens the hybrid turn map`, `shows the map and the log together`, `picking a node in the map moves the log to it`),
+root `bun run check` **40/40** (pre-existing session-graph warning unchanged).
+
+Unverified: the *feel* of the menu — whether the reader discovers all three modes and the icons are
+clear — needs the author's hands.

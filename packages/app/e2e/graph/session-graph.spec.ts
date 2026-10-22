@@ -59,10 +59,15 @@ type GraphInput = Parameters<typeof openSession>[1]
 
 async function openGraph(page: Page, input: GraphInput) {
   await openSession(page, input)
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   // Wait for the lazy-loaded graph module to resolve (Suspense fallback to disappear)
   await expect(page.locator('[data-slot="session-graph-loading"]')).toBeHidden({ timeout: 30_000 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+}
+
+async function openGraphViaMenu(page: Page) {
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await page.getByRole("menuitemradio", { name: "Map" }).click()
 }
 
 test("switches to the graph, renders the fixture, and persists the mode", async ({ page }) => {
@@ -216,7 +221,7 @@ test("appends a node from a live event without losing the selection", async ({ p
     sessionMessages: buildFixtureMessages(),
   })
 
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
   await page.getByRole("button", { name: "Search the graph" }).click()
@@ -363,7 +368,7 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   // A long transcript, so the log has somewhere to move.
   const items = [...historyMessages(20), ...buildFixtureMessages()]
   await openSession(page, { ...graphFixture(), pageMessages: () => ({ items }) })
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
   await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
@@ -442,7 +447,7 @@ test("selects the turn for a message hash when the graph opens", async ({ page }
   await page.evaluate(() => {
     window.location.hash = "#message-msg_user_2"
   })
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
   await expect(page.locator(inspector).getByRole("heading", { name: "Also cover the refresh path" })).toBeVisible()
@@ -505,7 +510,7 @@ test("counts interactions for the usability protocol when the counter is on", as
   await expect(readout).toContainText("0 interactions")
 
   // A surface switch is an interaction.
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await expect(readout).toContainText("1 interaction")
 
@@ -561,9 +566,9 @@ test("restores the transcript position after leaving the graph", async ({ page }
 
   expect(before).toBeGreaterThan(0)
 
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveCount(0)
 
   await expect.poll(() => scroller.evaluate((element) => Math.round(element.scrollTop))).toBe(before)
@@ -587,7 +592,7 @@ test("returns to the transcript when no renderer can mount", async ({ page }) =>
   await page.route(/spacegraph-renderer\/dist\/index/, (route) => route.abort())
   await page.route(/cytoscape-renderer\/dist\/index/, (route) => route.abort())
   await openSession(page, graphFixture())
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
 
   const error = page.locator('[data-slot="graph-error"]')
   await expect(error).toBeVisible({ timeout: 30_000 })
@@ -602,7 +607,7 @@ test("falls back to the transcript when the graph module fails to load", async (
   await page.route(/session-graph\/src\/index\.ts/, (route) => route.abort())
   await openSession(page, graphFixture())
 
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await openGraphViaMenu(page)
   await expect(page.getByText("Couldn't open the graph view")).toBeVisible()
 
   await page.getByRole("button", { name: "Back to transcript" }).click()
