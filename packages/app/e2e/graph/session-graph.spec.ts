@@ -29,6 +29,20 @@ const canvasHost = '[data-slot="graph-canvas-host"]'
 
 const toolbar = '[data-slot="graph-toolbar"]'
 
+/** T14: the toolbar's menus are popovers on a wide row and one overflow menu on a narrow one. */
+async function openMenu(page: Page, which: "draw" | "show") {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-${which}"]`)
+  if ((await menu.count()) > 0) {
+    const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+    if (!open) await menu.locator("summary").click()
+    return
+  }
+  const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
+  const open = await overflow.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await overflow.getByLabel("More controls").click()
+}
+
+
 const inspector = '[data-slot="graph-inspector"]'
 
 function graphFixture() {
@@ -75,6 +89,7 @@ test("turns the billboard off and on from the toolbar", async ({ page }) => {
   // perspective. The billboard switch turns them to face the reader.
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
 
+  await openMenu(page, "draw")
   const billboard = page.locator(toolbar).getByRole("button", { name: "Billboard cards" })
   await expect(billboard).toHaveAttribute("aria-pressed", "false")
   await billboard.click()
@@ -262,6 +277,7 @@ test("opens the hybrid turn map over the graph and closes on Escape", async ({ p
   })
   await expect(page.locator(inspector).getByText("Turn", { exact: true })).toBeVisible()
 
+  await openMenu(page, "show")
   await page.locator(toolbar).getByRole("button", { name: "Open turn map" }).click()
   const overlay = page.getByRole("dialog", { name: "Turn map" })
   await expect(overlay).toBeVisible()
@@ -569,7 +585,7 @@ test("keeps the card styling when the layout changes", async ({ page }) => {
 
   const before = await styling()
 
-  await page.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await openMenu(page, "draw")
   await page.locator('[data-slot="graph-layout-option"][data-strategy="timeline"]').click()
 
   // The card is still the card: the model rebuilt it, and its styling came with it.

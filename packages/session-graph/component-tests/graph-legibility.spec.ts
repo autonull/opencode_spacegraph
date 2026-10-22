@@ -18,7 +18,7 @@ const cardHeight = async (page: import("@playwright/test").Page) =>
 
 /** Picks a layout from the toolbar's layout menu. */
 const pickLayout = async (root: import("@playwright/test").Locator, layout: string) => {
-  await root.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
   await root.locator(`[data-slot="graph-layout-option"][data-strategy="${layout}"]`).click()
 }
 
@@ -41,6 +41,7 @@ story("a view too large for the frame keeps a legible scale", async ({ mount, pa
 
   // The file lens squeezes the canvas between the changed-files rail and the inspector.
   await pickLayout(root, "lanes")
+  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
   await root.locator('button[aria-label="Toggle changed files"]').click()
   await expect.poll(() => cardHeight(page)).toBeGreaterThanOrEqual(MIN_CARD_HEIGHT_PX)
 })

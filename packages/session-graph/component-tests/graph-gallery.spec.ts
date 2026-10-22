@@ -12,6 +12,7 @@ story("shows every layout of the same model side by side", async ({ mount, page 
   const root = await mount("session-graph-view")
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
+  await root.locator('[data-slot="graph-toolbar-show"] summary').click()
   await toolbar.getByRole("button", { name: "Compare the layouts" }).click()
   const gallery = root.locator('[data-slot="graph-gallery"]')
   await expect(gallery).toBeVisible()
@@ -27,7 +28,7 @@ story("shows every layout of the same model side by side", async ({ mount, page 
   // Picking one opens it in the full surface.
   await gallery.locator('[data-strategy="tree"]').click()
   await expect(gallery).toHaveCount(0)
-  await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Layout: Tree")
+  await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Tree")
 
   expect(errors).toEqual([])
 })

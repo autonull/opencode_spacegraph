@@ -66,9 +66,23 @@ function canvasSample(page: Page) {
   })
 }
 
-/** Picks a layout from the toolbar's layout menu. */
+
+/** T14: the toolbar's menus are popovers on a wide row and one overflow menu on a narrow one. */
+async function openMenu(page: Page, which: "draw" | "show") {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-${which}"]`)
+  if ((await menu.count()) > 0) {
+    const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+    if (!open) await menu.locator("summary").click()
+    return
+  }
+  const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
+  const open = await overflow.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await overflow.getByLabel("More controls").click()
+}
+
+/** Picks a layout from the toolbar's Draw menu. */
 async function pickLayout(page: Page, layout: string) {
-  await page.locator(`${toolbar} [data-slot="graph-toolbar-layout"] summary`).click()
+  await openMenu(page, "draw")
   await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-strategy="${layout}"]`).click()
 }
 
@@ -239,6 +253,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // 06 — the 3D (orbit) depth on the same model.
   await page.getByRole("button", { name: "Toggle graph view" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
   await waitForStillCanvas(page)
@@ -248,6 +263,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
 
   // 18 — the `layered` depth treatment (LE.14): a shallow camera and a subtle depth fade, still
   // billboarded and flat-card; the depth spectrum's minimum legible 2.5D bar.
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Layer", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
   await waitForStillCanvas(page)
@@ -258,6 +274,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // 19 — the `depth-stack` treatment (LE.14/LE.16): the last depth value, completing the spectrum at
   // the benchmark lanes layout. The matrix captures one frame per option value (LE.16). The pose
   // animates, so settle before fitting (the fit measures the projected bounds of the settled camera).
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Stack", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
   await waitForStillCanvas(page)
@@ -269,6 +286,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   // perspective shears them. That shear is the camera working, not a broken renderer (T1.19), and
   // this frame is the proof. The billboard is off by default; the toggle is exercised to show it
   // is the switch that turns the cards back to face the reader.
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
@@ -279,6 +297,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await capture(page, "31-graph-perspective.png")
 
   // 11 — the Timeline layout strategy (RF.2) on the same model.
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
   await setLevel(page, "Execution")
   await pickLayout(page, "timeline")
@@ -307,6 +326,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await capture(page, "29-graph-force.png")
 
   // 30 — the layout gallery (T7.5): the same model in every layout, side by side.
+  await openMenu(page, "show")
   await page.locator(toolbar).getByRole("button", { name: "Compare the layouts", exact: true }).click()
   await expect(page.locator('[data-slot="graph-gallery"]')).toBeVisible()
   await capture(page, "30-graph-gallery.png")
@@ -361,11 +381,13 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await capture(page, "24-graph-failure-chain.png")
 
   // 17 — the file-first lens (LE.12): the changed-files rail with provenance bundled to turn spines.
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
   await expect(page.locator('[data-slot="graph-file-rail"]')).toBeVisible()
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "17-graph-files.png")
+  await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
 
   // 13 — a narrow 390×900 viewport (RF.11): the toolbar wraps and the canvas stays framed.

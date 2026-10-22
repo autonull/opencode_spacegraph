@@ -223,13 +223,14 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
-  // RF.7: below 640px the toolbar collapses its secondary controls into an overflow menu.
-  // Only thresholds are tracked, so a resize does not re-render (and re-observe) on every pixel.
+  // RF.7: below the width the toolbar's own row needs, the secondary controls collapse into an
+  // overflow menu. T14.1 measured that row: the inline controls and the end block take 913px, so a
+  // narrower panel would wrap and push the back control under the host's floating header.
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
       const width = entry.contentRect.width
       const nextNarrow = width > 0 && width < 768
-      const nextCompact = width > 0 && width < 640
+      const nextCompact = width > 0 && width < 1000
       setNarrow((current) => (current === nextNarrow ? current : nextNarrow))
       setCompact((current) => (current === nextCompact ? current : nextCompact))
     })

@@ -4,7 +4,7 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { Show } from "solid-js"
+import { Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
@@ -83,8 +83,41 @@ export type GraphToolbarProps = {
 }
 
 /**
+ * T14.2 — a dropdown in the toolbar. The *icon* is the affordance and the label names the current
+ * value, so a reader sees what the axis is set to without opening it.
+ */
+const ToolbarMenu = (props: {
+  slot: string
+  label: string
+  icon: string
+  value?: string
+  /** The slot the current value carries, so a test can read what the axis is set to. */
+  valueSlot?: string
+  children: JSX.Element
+}) => (
+  <details class="relative" data-slot={props.slot}>
+    <summary
+      class="flex h-6 cursor-pointer list-none items-center gap-1 rounded-sm px-1 text-12-regular text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
+      aria-label={props.label}
+      title={props.label}
+    >
+      <Icon name={props.icon} size="small" />
+      {props.value ? <span data-slot={props.valueSlot ?? `${props.slot}-value`}>{props.value}</span> : null}
+      <Icon name="outline-chevron-down" size="small" />
+    </summary>
+    <div class="absolute end-0 z-30 mt-1 flex min-w-[180px] flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
+      {props.children}
+    </div>
+  </details>
+)
+
+/**
  * Graph toolbar (U3.9). It owns no graph state; it renders the semantic level, projection, and the
  * commands the host supplies. Capability gaps are disabled with an explanation, never hidden.
+ *
+ * T14.2 — the row is organised by axis, not by kind. Four things are inline (what is shown, where
+ * the camera is) and everything else is one click away: "Draw" holds how the map is drawn, "Show"
+ * holds what it says, and the commands sit at the end.
  */
 export const GraphToolbar = (props: GraphToolbarProps) => {
   const i18n = useI18n()
@@ -96,99 +129,123 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       ? undefined
       : i18n.t("ui.sessionGraph.capability.depthUnavailable", { depth: i18n.t(DEPTH_KEY[depth]), renderer: props.renderer ?? "" })
 
-  // The controls after the level stepper: inline on wide rows, behind an overflow menu when compact.
-  const secondary = () => (
+  const option = (input: {
+    label: string
+    onClick: () => void
+    pressed?: boolean
+    disabled?: boolean
+    title?: string
+    slot?: string
+    strategy?: string
+    /** A stable accessible name, for a control whose visible label names the state it is in. */
+    ariaLabel?: string
+    /** A toggle leaves the menu open, so the reader can see the state they just changed. */
+    keepOpen?: boolean
+  }) => (
+    <button
+      type="button"
+      data-slot={input.slot}
+      data-strategy={input.strategy}
+      class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover disabled:opacity-50"
+      aria-pressed={input.pressed}
+      aria-label={input.ariaLabel ?? input.label}
+      disabled={input.disabled}
+      title={input.title}
+      onClick={(event) => {
+        if (!input.keepOpen) {
+          const menu = event.currentTarget.closest("details")
+          if (menu) menu.open = false
+        }
+        input.onClick()
+      }}
+    >
+      {input.label}
+    </button>
+  )
+
+  /** How the map is drawn: the layout, the depth, the billboard, and the file lens. */
+  const drawControls = () => (
     <>
-      <Show when={props.onDepth}>
-        <SegmentedControl
-          value={props.depth ?? "flat"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.depth")}
-          onChange={(value) => value && props.onDepth?.(value as DepthMode)}
-        >
-          {(props.depthModes ?? DEPTH_MODES).map((mode) => (
-            <SegmentedControlItem value={mode} disabled={!depthAvailable(mode)} title={depthReason(mode)}>
-              {i18n.t(DEPTH_KEY[mode])}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
-      </Show>
-
       <Show when={props.onStrategy && graphMode()}>
-        <details class="relative" data-slot="graph-toolbar-layout">
-          <summary
-            class="flex h-6 cursor-pointer list-none items-center gap-1 rounded-sm px-1 text-12-regular text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
-            title={i18n.t("ui.sessionGraph.toolbar.layout")}
-          >
-            <span data-slot="graph-layout-name">
-              {i18n.t("ui.sessionGraph.toolbar.layoutValue", { layout: i18n.t(STRATEGY_KEY[props.strategy ?? "lanes"]) })}
-            </span>
-            <Icon name="outline-chevron-down" size="small" />
-          </summary>
-          <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md min-w-[160px]">
-            {LAYOUT_STRATEGIES.map((strategy) => (
-              <button
-                type="button"
-                data-slot="graph-layout-option"
-                data-strategy={strategy}
-                aria-pressed={props.strategy === strategy}
-                class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
-                onClick={(event) => {
-                  const menu = event.currentTarget.closest("details")
-                  if (menu) menu.open = false
-                  props.onStrategy?.(strategy)
-                }}
-              >
-                {i18n.t(STRATEGY_KEY[strategy])}
-              </button>
-            ))}
-          </div>
-        </details>
+        <div data-slot="graph-toolbar-layout">
+          <div class="px-2 py-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.toolbar.layout")}</div>
+          {LAYOUT_STRATEGIES.map((strategy) =>
+            option({
+              label: i18n.t(STRATEGY_KEY[strategy]),
+              onClick: () => props.onStrategy?.(strategy),
+              pressed: props.strategy === strategy,
+              slot: "graph-layout-option",
+              strategy,
+            }),
+          )}
+        </div>
       </Show>
+      <Show when={props.onDepth}>
+        <div data-slot="graph-toolbar-depth">
+          <div class="px-2 py-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.toolbar.depth")}</div>
+          {(props.depthModes ?? DEPTH_MODES).map((mode) =>
+            option({
+              label: i18n.t(DEPTH_KEY[mode]),
+              onClick: () => props.onDepth?.(mode),
+              pressed: props.depth === mode,
+              disabled: !depthAvailable(mode),
+              title: depthReason(mode),
+              slot: "graph-depth-option",
+            }),
+          )}
+        </div>
+      </Show>
+      <Show when={props.capabilities?.cardFacing && props.onToggleBillboard}>
+        {option({
+          label: i18n.t(
+            props.billboard ? "ui.sessionGraph.toolbar.billboard" : "ui.sessionGraph.toolbar.billboardOff",
+          ),
+          onClick: () => props.onToggleBillboard?.(),
+          pressed: props.billboard,
+          slot: "graph-billboard-option",
+          ariaLabel: i18n.t("ui.sessionGraph.toolbar.billboard"),
+          keepOpen: true,
+        })}
+      </Show>
+      <Show when={props.onToggleFiles}>
+        {option({
+          label: i18n.t("ui.sessionGraph.toolbar.files"),
+          onClick: () => props.onToggleFiles?.(),
+          pressed: props.files,
+          slot: "graph-files-option",
+          keepOpen: true,
+        })}
+      </Show>
+    </>
+  )
 
+  /** What the map says: where the detail goes, the peek, the minimap, and the reader's overlays. */
+  const showControls = () => (
+    <>
       <Show when={props.onDetailModeChange && graphMode()}>
-        <details class="relative" data-slot="graph-toolbar-detail">
-          <summary
-            class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
-            aria-label={i18n.t("ui.sessionGraph.toolbar.detailModeValue", {
-              mode: i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"]),
-            })}
-            title={i18n.t("ui.sessionGraph.toolbar.detailModeValue", {
-              mode: i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"]),
-            })}
-          >
-            <Icon name="sidebar-right" size="small" />
-          </summary>
-          <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md min-w-[160px]">
-            {DETAIL_MODES.map((mode) => (
-              <button
-                type="button"
-                data-slot="graph-detail-mode-option"
-                data-mode={mode}
-                aria-pressed={props.detailMode === mode}
-                class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
-                onClick={(event) => {
-                  const menu = event.currentTarget.closest("details")
-                  if (menu) menu.open = false
-                  props.onDetailModeChange?.(mode)
-                }}
-              >
-                <span>{i18n.t(DETAIL_MODE_KEY[mode])}</span>
-              </button>
-            ))}
+        <div data-slot="graph-toolbar-detail">
+          <div class="px-2 py-1 text-12-regular text-text-weak">
+            {i18n.t("ui.sessionGraph.toolbar.detailMode")}
           </div>
-        </details>
+          {DETAIL_MODES.map((mode) =>
+            option({
+              label: i18n.t(DETAIL_MODE_KEY[mode]),
+              onClick: () => props.onDetailModeChange?.(mode),
+              pressed: props.detailMode === mode,
+              slot: "graph-detail-mode-option",
+              strategy: mode,
+            }),
+          )}
+        </div>
       </Show>
-
       <Show when={props.onTogglePeek}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          state={props.peek ? "pressed" : "rest"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.peek")}
-          title={i18n.t("ui.sessionGraph.toolbar.peek")}
-          onClick={() => props.onTogglePeek?.()}
-          icon={<Icon name="outline-eye" size="small" />}
-        />
+        {option({
+          label: i18n.t("ui.sessionGraph.toolbar.peek"),
+          onClick: () => props.onTogglePeek?.(),
+          pressed: props.peek,
+          slot: "graph-peek-option",
+          keepOpen: true,
+        })}
       </Show>
       <IconButton
         size="small"
@@ -198,34 +255,6 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         title={i18n.t("ui.sessionGraph.toolbar.minimap")}
         onClick={() => props.onToggleMinimap?.()}
         icon={<Icon name="layout-bottom" size="small" />}
-      />
-      <Show when={props.onToggleFiles}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          state={props.files ? "pressed" : "rest"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.files")}
-          title={i18n.t("ui.sessionGraph.toolbar.files")}
-          onClick={() => props.onToggleFiles?.()}
-          icon={<Icon name="folder" size="small" />}
-        />
-      </Show>
-      <IconButton
-        size="small"
-        variant="ghost"
-        aria-label={i18n.t("ui.sessionGraph.toolbar.fit")}
-        title={i18n.t("ui.sessionGraph.toolbar.fit")}
-        onClick={props.onFit}
-        icon={<Icon name="expand" size="small" />}
-      />
-      <IconButton
-        size="small"
-        variant="ghost"
-        state={props.searching ? "pressed" : "rest"}
-        aria-label={i18n.t("ui.sessionGraph.toolbar.search")}
-        title={i18n.t("ui.sessionGraph.toolbar.search")}
-        onClick={props.onSearch}
-        icon={<Icon name="magnifying-glass" size="small" />}
       />
       <Show when={props.onToggleLegend}>
         <IconButton
@@ -249,18 +278,6 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           icon={<Icon name="dot-grid" size="small" />}
         />
       </Show>
-      <Show when={props.capabilities?.cardFacing && props.onToggleBillboard}>
-        <IconButton
-          size="small"
-          variant="ghost"
-          state={props.billboard ? "pressed" : "rest"}
-          aria-pressed={props.billboard ? "true" : "false"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.billboard")}
-          title={i18n.t(props.billboard ? "ui.sessionGraph.toolbar.billboard" : "ui.sessionGraph.toolbar.billboardOff")}
-          onClick={() => props.onToggleBillboard?.()}
-          icon={<Icon name="cube" size="small" />}
-        />
-      </Show>
       <Show when={props.onTurnMap}>
         <IconButton
           size="small"
@@ -268,7 +285,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           aria-label={i18n.t("ui.sessionGraph.toolbar.turnMap")}
           title={i18n.t("ui.sessionGraph.toolbar.turnMap")}
           onClick={() => props.onTurnMap?.()}
-          icon={<Icon name="branch" size="small" />}
+          icon={<Icon name="outline-worktree" size="small" />}
         />
       </Show>
       <Show when={props.onExpandGraph}>
@@ -281,6 +298,21 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           icon={<Icon name="arrow-up-right" size="small" />}
         />
       </Show>
+    </>
+  )
+
+  /** The commands: the search, and the export. */
+  const commandControls = () => (
+    <>
+      <IconButton
+        size="small"
+        variant="ghost"
+        state={props.searching ? "pressed" : "rest"}
+        aria-label={i18n.t("ui.sessionGraph.toolbar.search")}
+        title={i18n.t("ui.sessionGraph.toolbar.search")}
+        onClick={props.onSearch}
+        icon={<Icon name="magnifying-glass" size="small" />}
+      />
       <Show when={props.onExport && props.renderModel}>
         <details class="relative" data-slot="graph-toolbar-export">
           <summary
@@ -288,33 +320,27 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
             aria-label={i18n.t("ui.sessionGraph.toolbar.export")}
             title={i18n.t("ui.sessionGraph.toolbar.export")}
           >
-            <Icon name="download" size="small" />
+            <Icon name="outline-share" size="small" />
           </summary>
-          <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md min-w-[160px]">
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
-              onClick={() => props.onExport?.("svg", props.renderModel!)}
-            >
-              <Icon name="image" size="small" />
-              <span>{i18n.t("ui.sessionGraph.toolbar.exportSvg")}</span>
-            </button>
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
-              onClick={() => props.onExport?.("json", props.renderModel!)}
-            >
-              <Icon name="code" size="small" />
-              <span>{i18n.t("ui.sessionGraph.toolbar.exportJson")}</span>
-            </button>
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
-              onClick={() => props.onExport?.("html", props.renderModel!)}
-            >
-              <Icon name="globe" size="small" />
-              <span>{i18n.t("ui.sessionGraph.toolbar.exportHtml")}</span>
-            </button>
+          <div class="absolute end-0 z-30 mt-1 flex min-w-[160px] flex-col items-start gap-1 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
+            {option({
+              label: i18n.t("ui.sessionGraph.toolbar.exportSvg"),
+              onClick: () => props.onExport?.("svg", props.renderModel!),
+              slot: "graph-export-option",
+              strategy: "svg",
+            })}
+            {option({
+              label: i18n.t("ui.sessionGraph.toolbar.exportJson"),
+              onClick: () => props.onExport?.("json", props.renderModel!),
+              slot: "graph-export-option",
+              strategy: "json",
+            })}
+            {option({
+              label: i18n.t("ui.sessionGraph.toolbar.exportHtml"),
+              onClick: () => props.onExport?.("html", props.renderModel!),
+              slot: "graph-export-option",
+              strategy: "html",
+            })}
           </div>
         </details>
       </Show>
@@ -380,6 +406,15 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         />
       </div>
 
+      <IconButton
+        size="small"
+        variant="ghost"
+        aria-label={i18n.t("ui.sessionGraph.toolbar.fit")}
+        title={i18n.t("ui.sessionGraph.toolbar.fit")}
+        onClick={props.onFit}
+        icon={<Icon name="expand" size="small" />}
+      />
+
       <Show
         when={!props.compact}
         fallback={
@@ -392,19 +427,42 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
               <Icon name="outline-dots" size="small" />
             </summary>
             <div class="absolute end-0 z-30 mt-1 flex flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
-              {secondary()}
+              {drawControls()}
+              {showControls()}
+              {commandControls()}
             </div>
           </details>
         }
       >
-        {secondary()}
+        <ToolbarMenu
+          slot="graph-toolbar-draw"
+          label={i18n.t("ui.sessionGraph.toolbar.draw")}
+          icon="workspace-isolated"
+          value={i18n.t(STRATEGY_KEY[props.strategy ?? "lanes"])}
+          valueSlot="graph-layout-name"
+        >
+          {drawControls()}
+        </ToolbarMenu>
+        <ToolbarMenu
+          slot="graph-toolbar-show"
+          label={i18n.t("ui.sessionGraph.toolbar.show")}
+          icon="outline-sliders"
+          value={i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"])}
+        >
+          {showControls()}
+        </ToolbarMenu>
       </Show>
 
       {/* The renderer label and the back control sit at the end of the row: the host's own chrome
           floats over the panel's top-right, and the end inset keeps them clear of it. */}
       <div class="ml-auto flex items-center gap-2">
+        {commandControls()}
         {props.renderer ? (
-          <span class="text-12-regular text-text-weak" title={i18n.t("ui.sessionGraph.toolbar.renderer", { renderer: props.renderer })}>
+          <span
+            class="text-12-regular text-text-weak"
+            classList={{ hidden: props.compact }}
+            title={i18n.t("ui.sessionGraph.toolbar.renderer", { renderer: props.renderer })}
+          >
             {i18n.t("ui.sessionGraph.toolbar.renderer", { renderer: props.renderer })}
           </span>
         ) : null}

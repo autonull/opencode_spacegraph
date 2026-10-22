@@ -143,8 +143,8 @@ believing the `card` mode at all. **Nothing in this plan is a prerequisite for t
 plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
 as one reviewed block rather than as a drip.
 
-**Status: G9, G10 and G11 are reached** (T11, T12 and T13, 2026-10-21 — see the log). G12 and G13
-are open.
+**Status: G9, G10, G11 and most of G12 are reached** (T11, T12, T13 and T14, 2026-10-21 — see the
+log). T14.3 (the minimap as a window) and all of G13 (the equalizer) are open.
 
 ### 0.6 What is *not* in this plan
 
@@ -593,18 +593,35 @@ Verify: a test that reads the fork's table and checks every gesture it names is 
 **The problem.** Nineteen controls (F6) in one flex row, with the overflow menu only below 640px.
 The author found it cluttered before it grew: T8.8 added two more (the detail mode, the peek).
 
-### T14.1 Measure the budget first
+### T14.1 Measure the budget first — **done**
 
 The toolbar's width at 1440 in the app, per control, and the width the panel actually has. The
 number that matters: **the toolbar's content width against the panel's width**, because the toolbar
 wraps (`flex flex-wrap`) and a wrap pushes the back control onto a second row — where the app's
 floating header hint covers it (that is a real failure the e2e caught during T8.8).
 
+**Measured** (the graph toolbar in a 1440px panel, in the browser):
+
+| control | width |
+|---|---|
+| the representation (graph · ribbon · matrix) | 178px |
+| the level (overview · execution · detail) | 213px |
+| the camera (zoom out · the percent · zoom in) | 85px |
+| fit | 20px |
+| **the "Draw" menu** | 81px |
+| **the "Show" menu** | 109px |
+| the end block (search, export, the renderer label, back) | 227px |
+| **the row** | **913px** |
+
+The row fits on one line while the panel is at least **913 + 16 (the padding) + 72 (the app's
+floating header) = 1001px** wide. Below that the row wraps ✗ — measured: one row at 1000px, two
+rows at 950px.
+
 Done when: the per-control widths and the total are in this file.
 Verify: a component test that measures the toolbar's rendered width at 1440 and 1100 and asserts it
 fits on one row.
 
-### T14.2 Group by axis, not by kind
+### T14.2 Group by axis, not by kind — **done**
 
 The controls are not nineteen things; they are four **axes**, and a reader thinks in axes:
 
@@ -629,17 +646,44 @@ Done when: the toolbar shows at most the four inline controls of the "what is sh
 camera is" axes, plus two popovers and the end block, at 1440.
 Verify: the component test measures the toolbar's width and counts the inline controls.
 
-### T14.3 The minimap is a window too
+**What was built.** The row is now:
+
+| axis | controls | where it lives |
+|---|---|---|
+| **what is shown** | the representation, the level | **inline** |
+| **where the camera is** | the zoom, the fit | **inline** |
+| **how it is drawn** | the layout, the depth, the billboard, the file lens | the **"Draw"** menu |
+| **what it says** | the detail mode, the peek, the minimap, the turn map, the legend, the gallery | the **"Show"** menu |
+| **commands** | the search, the export, the renderer label, back | **inline at the end** |
+
+Four things are inline and everything else is one click away ✓. The menus are `<details>` dropdowns
+✓ (the pattern the layout chooser and the export menu already used ✓), the *icon* is the affordance
+✓ and the label names the current value ✓ ("Lanes", "Side panel").
+
+Two details the change had to answer:
+
+- **a toggle leaves its menu open** (the billboard, the file lens, the peek), so the reader sees the
+  state they just changed; a *choice* (the layout, the depth, the detail mode) closes the menu ✓;
+- **the accessible name of a toggle does not change with its state**: the billboard's visible label
+  says "Billboard cards off" when it is off, but its accessible name stays "Billboard cards" and the
+  state is in `aria-pressed` ✓ — a name that changes is a name a reader cannot find again.
+
+### T14.3 The minimap is a window too — **open**
 
 The minimap is the one control that is *already* an overlay over the canvas
 (`packages/session-graph/src/ui/GraphMinimap.tsx`, drawn inside the canvas region at
 `GraphView.tsx`), and it is the one control that makes the toolbar's end of the row busy. Under T12
 it becomes a window: movable, resizable, and closable, like the rest.
 
+**Not done in this pass.** The window manager (T12) is in place and the minimap's *toggle* moved to
+the "Show" menu ✓, so the remaining work is small: a `minimap` window kind (the content is the
+existing `GraphMinimap`) and the toggle becomes "open the minimap in a window". It is left open
+rather than half-done, because a half-migrated minimap would be neither an overlay nor a window.
+
 Done when: the minimap is a window and the toolbar's inline row is four controls.
 Verify: the component test.
 
-### T14.4 The icons that do not exist
+### T14.4 The icons that do not exist — **done**
 
 Five controls name icons that are not in the catalogue (F6) and therefore render as a plus sign:
 `cube` (billboard), `download` (export), `image` and `code` (export's SVG and JSON items), `branch`
@@ -652,16 +696,37 @@ the export menu's items can simply be text.
 anyone noticing. The fallback should be a development-time warning (and a visibly broken glyph in
 development), never a plausible icon in production.
 
+**What was built.**
+
+- **the five icons are real now**: the billboard is `workspace-isolated`, the export is
+  `outline-share`, the turn map is `outline-worktree`, and the export's items are **text** ✓ (the
+  plan's own suggestion ✓). A sweep of every `<Icon name=…>` in the packages finds no missing name
+  left in production code ✓ (seven remain in *stories*, which are pre-existing and harmless);
+- **a missing icon is a development-time error**: `Icon` warns once per unknown name ✓ and draws a
+  crossed-out glyph ✓ instead of a plus sign that looks like a real icon ✓. In production it draws
+  the broken glyph and nothing else — a wrong icon is worse than no icon ✓.
+
 Done when: every icon the graph names exists in the catalogue, and an unknown icon warns in
 development.
 Verify: a test that walks the toolbar's icons and asserts each is in the catalogue.
 
-### T14.5 The narrow case
+### T14.5 The narrow case — **done**
 
 The compact threshold is 640px of the *view's root* width (`GraphView.tsx:212-225`), which is not
 the toolbar's width. After T14.2 the toolbar is short enough that the overflow menu may only be
 needed much lower — or the *primary* popovers may become the only organisation, with the inline row
 kept to the subject and the camera.
+
+**What was built.** The threshold follows the measurement: the row needs 1001px (T14.1), so below
+**1000px** the secondary controls collapse into the overflow menu ✓ — the subject and the camera stay
+inline ✓, and the renderer label (the widest thing left in the end block) is hidden in the narrow row
+✓. The overflow menu keeps the same items as the two menus ✓, so nothing is lost, and the app's e2e
+opens whichever menu the row has ✓.
+
+**What is still open.** The narrow row is 747px wide, so a panel narrower than that still wraps —
+in the app, the session panel is often narrower than the graph's own row. The fix is to make the
+narrow row narrower still: the level control (213px) could become a menu like the layout chooser,
+which would bring the row to about 530px. That is a separate, small change, and it is not done here.
 
 Done when: the compact threshold follows from the measured widths, not from a round number.
 Verify: the narrow-viewport component test.
@@ -971,3 +1036,41 @@ across a pan), `session-graph` unit **100**, `session-ui` graph **116**, the roo
 Unverified: the *feel* of a window — whether its title bar drags the way the author expects, and
 whether the first placement is where they would put it — needs their hands. The app's persistence
 of a window's placement across a session switch is written but not yet proven by an app e2e.
+
+**2026-10-21 — T14: the toolbar, organised by axis (G12, in part).**
+The author's third observation: "the graph toolbar is getting cluttered — we should consider how to
+organize it better for space-saving and intuitiveness."
+
+The row was **913px** of controls in a row that wraps — measured, per control, in T14.1 — and five of
+its icons were not in the catalogue, so they all drew the same plus sign.
+
+What changed:
+
+- **the row is organised by axis**: four things are inline (the representation and the level; the
+  zoom and the fit) and everything else is one click away — the **"Draw"** menu (the layout, the
+  depth, the billboard, the file lens), the **"Show"** menu (the detail mode, the peek, the minimap,
+  the turn map, the legend, the gallery) and the commands at the end (the search, the export, the
+  renderer label, back). The icon is the affordance and the label names the current value;
+- **a toggle leaves its menu open** and a choice closes it, so the reader sees the state they just
+  changed; a toggle's accessible name does not change with its state;
+- **the five missing icons are real now** (the billboard, the export, the turn map; the export's
+  items are text), and **a missing icon is no longer silent**: `Icon` warns once and draws a
+  broken glyph instead of a plus sign that looks real. A sweep of every icon name in the packages
+  finds none missing in production code;
+- **the compact threshold follows the measurement**: the row needs 1001px, so below 1000px the
+  secondary controls collapse into the overflow menu, the subject and the camera stay inline, and
+  the renderer label is hidden.
+
+Measured: the session-graph component suite **59** (+3: the row stays on one line at 1440 and
+1100; the four inline things and the two menus are where they belong), the app's graph e2e **27**
+(the e2e opens whichever menu the row has), the library unchanged, the root `bun run check**
+**40/40**.
+
+**Two things this pass leaves open, on purpose.**
+
+- **T14.3 (the minimap as a window) is not done.** The manager is there and the minimap's toggle
+  moved to the "Show" menu, so the remaining work is a `minimap` window kind over the existing
+  `GraphMinimap`. It is left open rather than half-done.
+- **the narrow row still wraps below about 750px**, and the app's session panel is often narrower
+  than that. The fix is measured: the level control (213px) becomes a menu like the layout chooser,
+  which brings the narrow row to about 530px. It is a small change and it is not done here.

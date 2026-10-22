@@ -45,14 +45,29 @@ export interface IconProps extends ComponentProps<"svg"> {
   size?: "small" | "normal" | "large"
 }
 
+/**
+ * T14.4 — a missing icon is a development-time error, never a plausible glyph. Five buttons once
+ * named icons that were not in the catalogue and all of them rendered as the same plus sign, so
+ * nobody noticed. An unknown name warns once and draws a broken glyph in development; in
+ * production it draws nothing, because a wrong icon is worse than no icon.
+ */
+const warned = new Set<string>()
+
+function warnMissing(name: string) {
+  if (warned.has(name)) return
+  warned.add(name)
+  console.warn(`[icon] unknown icon "${name}": it is not in the catalogue, so it cannot be drawn`)
+}
+
 export function Icon(props: IconProps) {
   const [split, rest] = splitProps(props, ["name", "size"])
 
-  const iconName = (): IconName => {
-    return isIconName(split.name) ? split.name : "plus"
+  const iconName = (): IconName | undefined => {
+    if (isIconName(split.name)) return split.name
+    warnMissing(split.name)
+    return undefined
   }
 
-  const icon = () => getIcon(iconName())
   const pixelSize = split.size === "small" ? 14 : split.size === "large" ? 20 : 16
   onMount(ensureSprite)
 
@@ -60,6 +75,7 @@ export function Icon(props: IconProps) {
     <svg
       {...rest}
       data-slot="icon-svg"
+      data-missing={iconName() ? undefined : "true"}
       data-directional={
         iconName() === "arrow-left" ||
         iconName() === "arrow-right" ||
@@ -72,12 +88,22 @@ export function Icon(props: IconProps) {
       }
       width={pixelSize}
       height={pixelSize}
-      viewBox={icon().viewBox}
+      viewBox={iconName() ? getIcon(iconName()!).viewBox : "0 0 16 16"}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden={rest["aria-hidden"] ?? "true"}
     >
-      <use href={`#${symbol(iconName())}`} />
+      {iconName() ? (
+        <use href={`#${symbol(iconName()!)}`} />
+      ) : (
+        <path
+          d="M2 2 L14 14 M14 2 L2 14"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          data-slot="icon-missing"
+        />
+      )}
     </svg>
   )
 }
