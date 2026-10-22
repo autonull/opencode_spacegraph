@@ -136,6 +136,7 @@ layout width must not reframe the map.
 | **G11 — the hand** | the background pans under the left button, and the mouse map is written down | T13 |
 | **G12 — the toolbar** | the controls fit, are grouped by axis, and every one of them is legible | T14 |
 | **G13 — the equalizer** | the reader can tune a card's size and style by rules over the graph's own vocabulary | T15 |
+| **G14 — the map and the log** | the two surfaces hold the panel together, and the log keeps its place | T16 |
 
 They are independent: T13 and T14 can land before T12 exists, and T11 is a precondition for
 believing the `card` mode at all. **Nothing in this plan is a prerequisite for the TODO.3 gates
@@ -143,9 +144,9 @@ believing the `card` mode at all. **Nothing in this plan is a prerequisite for t
 plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
 as one reviewed block rather than as a drip.
 
-**Status: G9, G10, G11 and most of G12 are reached** (T11, T12, T13 and T14, 2026-10-21 — see the
-log), and G13 has its engine but not its panel. T14.3 (the minimap as a window), T15.4 (the
-equalizer's panel) and T15.5's presets are open.
+**Status: G9, G10, G11, G12 and G13 are reached** (T11, T12, T13, T14 and T15, 2026-10-21 — see the
+log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). T14.3
+(the minimap as a window) is still open.
 
 ### 0.6 What is *not* in this plan
 
@@ -724,13 +725,19 @@ inline ✓, and the renderer label (the widest thing left in the end block) is h
 ✓. The overflow menu keeps the same items as the two menus ✓, so nothing is lost, and the app's e2e
 opens whichever menu the row has ✓.
 
-**What is still open.** The narrow row is 747px wide, so a panel narrower than that still wraps —
+**What was still open.** The narrow row is 747px wide, so a panel narrower than that still wraps —
 in the app, the session panel is often narrower than the graph's own row. The fix is to make the
 narrow row narrower still: the level control (213px) could become a menu like the layout chooser,
 which would bring the row to about 530px. That is a separate, small change, and it is not done here.
 
 Done when: the compact threshold follows from the measured widths, not from a round number.
 Verify: the narrow-viewport component test.
+
+**What the hybrid forced (T16.3).** A half-width map is a narrow map, so the narrow row had to get
+narrower: the **level control is a menu in the compact row** ✓ (the same `<details>` pattern as the
+layout chooser ✓), which brings the row to about 530px ✓. The threshold moved with the row: the
+split control added 28px to the end block, so the row needs 941px of controls, and the row is
+compact below **1030px** ✓.
 
 ---
 
@@ -829,37 +836,95 @@ Done when: one function maps a node to its accent, the legend and the cards read
 contrast audit covers the new colours.
 Verify: `cd packages/session-graph && bun test src/ui/contrast.test.ts`.
 
-### T15.4 The panel is a window — **open**
+### T15.4 The panel is a window — **done**
 
 The equalizer's UI is a window (T12), not another toolbar control: it needs room, it is edited
 rarely, and it should stay where the reader put it. Its contents: one row per rule, a preview
 swatch per rule, and a reset.
 
-**Not done in this pass.** The window manager (T12) is in place and the `legend` kind shows how a
-kind's content is registered ✓, so the remaining work is a `equalizer` kind: a list of the rules, a
-swatch per rule (the accent ✓ — `accentOf` ✓), a reset to the presets, and the writes back to the
-per-session store ✓. The rules are persisted ✓ and the engine reads them ✓, so the panel is the
-last piece, not the first.
+**What was built.** The panel is a window kind (`equalizer`) beside the legend's, so the manager
+knows neither: it holds the presets, the rules they make, a size slider per rule, a way to drop a
+rule, and a reset. The rules are the host's — the app persists them per session and the panel
+reports what the reader did ✓. The toolbar offers it in the **Draw** menu, next to the arrangement
+(it is the same kind of choice: how the map is drawn) ✓.
+
+**What the panel does not do.** It does not write rules from scratch. The presets are the product
+(T15.5), and a free-form rule editor is a larger surface than the plan asked for; the panel edits
+what the presets make (the size, and which rules are in force).
 
 Done when: the equalizer opens as a window and edits the persisted rule list.
 Verify: the component test — change a rule, assert the cards change.
 
-### T15.5 The presets — **partly done**
+### T15.5 The presets — **done**
 
 A reader should not have to write rules to get value. The presets are the product: "errors are
 larger", "files older than the last turn are dimmer", "subagents are as large as their turn". The
 panel ships with a few, each a named rule set, and the reader can start from one.
 
 **What was built.** The three presets exist as named rule sets ✓ (`EQUALIZER_PRESETS` ✓): "errors
-larger" ✓, "subagents as large" ✓ and "old files dimmer" ✓. The panel that offers them is not
-done (T15.4) ✗ — the presets are the data the panel will list ✓.
+larger" ✓, "subagents as large" ✓ and "old files dimmer" ✓. The panel lists them ✓ and applies
+one on a click ✓ — the rules it makes are then listed with a preview swatch, a size, and a way to
+drop them ✓.
 
 Done when: the panel ships with at least three presets, each of which visibly changes the map.
 Verify: the component test, with a screenshot per preset.
 
 ---
 
-## 6. Deferred and future seams
+## 6. T16 — The map and the log together (the hybrid mode)
+
+**The request.** The author's observations were about the map's own furniture, but the product's
+own design argument (SPACEGRAPH.md §1.3, §1.6) had said something the build never delivered: *the
+transcript stays familiar; the graph appears where it answers a question*. The hybrid existed only
+as a scoped overlay over one turn. The rest of the session — the whole map, the whole log — could
+not be looked at together.
+
+### T16.1 The mode, and the arrangements — **done**
+
+The hybrid is a **mode** of its own: `transcript | graph | hybrid`. Three arrangements say how the
+two surfaces meet — `stacked` (the map above the log), `side` (the map beside it), `floating` (the
+map over the log, movable and resizable) — and the reader picks one. They are one geometry with
+three readings, not three features.
+
+**What was built.**
+
+- the **vocabulary** (`session-ui/src/graph/vocabulary.ts`): `GRAPH_MODES`, `GRAPH_ARRANGEMENTS` and
+  `GRAPH_SIDES` — the session's words, next to the level, the strategy and the detail mode;
+- the **panel** (`packages/app/src/session/graph/session-graph-panel.tsx`): the log's pane is the
+  log's *home*, and the map is arranged around it with CSS `order` rather than by moving nodes, so
+  entering or leaving the hybrid never detaches the transcript;
+- the **arrangement control** in the map's **Draw** menu, and the map's side, so the reader can put
+  the map first or last;
+- the **way in**: the map's toolbar offers "show the log beside the map", and `graph.hybrid`
+  (`mod+shift+h`) toggles the mode.
+
+### T16.2 The bridge — **done**
+
+The hybrid is worth nothing if the two surfaces do not talk.
+
+- **the map moves the log**: picking a node reveals its message in the log, without leaving either;
+- **the log moves the map**: the turn the log is reading is marked on the map's card, so the
+  reader sees where they are in the session.
+
+### T16.3 The ergonomics the split forced — **done**
+
+A half-width map is a narrow map, and the toolbar's row does not fit in half a panel.
+
+- the **level control becomes a menu** in the compact row (T14.5's open item): the narrow row is
+  about 530px instead of 747px;
+- the **compact threshold follows the measurement**: the row needs 941px of controls (the split
+  control added 28px to the end block), so the row is compact below 1030px, not 1000px;
+- the **log's place is kept**: the panel's composition never moves the transcript's DOM, so the
+  reader's scroll survives every move between the modes.
+
+Done when: the map and the log hold the panel together, the log keeps its place, and the reader can
+choose how they meet.
+Verify: the app e2e — the hybrid shows both surfaces, the arrangement changes it, and picking a node
+moves the log.
+
+---
+
+## 7. Deferred and future seams
 
 | ID | Item | Unblock condition | Seam already present |
 |---|---|---|---|
@@ -872,9 +937,9 @@ Verify: the component test, with a screenshot per preset.
 
 ---
 
-## 7. Decisions, risks, stop rules
+## 8. Decisions, risks, stop rules
 
-### 7.1 Decisions this plan makes
+### 8.1 Decisions this plan makes
 
 | # | Decision | Reason |
 |---|---|---|
@@ -887,8 +952,11 @@ Verify: the component test, with a screenshot per preset.
 | 7 | **The card's line is its kind's own fact, and a kind with nothing to add adds no line** | 33% of the fixture's cards would have said nothing the label did not, and an empty line is worse than no line (T11.1, T11.3) |
 | 8 | **The reading size is 9px, and every tier boundary is derived from it** | a boundary is the width at which the next line reads; one number moves them all, and the author can change it (T11.4) |
 | 9 | **In the `card` mode the camera frames the selected node, and only the selection moves it** | the tier is measured in screen pixels, so a card that stays small cannot say anything; the fit's legibility floor is the card's reading width (T11.2) |
+| 10 | **The hybrid is a mode, and the arrangement is the reader's choice** | one axis (which surfaces) and one axis (how they meet) is two questions a reader can hold; a single fixed split would be one layout the author has to live with (T16.1) |
+| 11 | **The log's pane is the log's home; the map is arranged around it** | moving the transcript's DOM resets its scroll, and the reader's place in the log is the whole point of the hybrid (T16.3) |
+| 12 | **The equalizer's panel edits the presets' rules; it does not write rules from scratch** | a free-form rule editor is a larger surface than the map needs, and the presets are the product (T15.4, T15.5) |
 
-### 7.2 Risks
+### 8.2 Risks
 
 | Risk | Likelihood | Mitigation | Fallback |
 |---|---|---|---|
@@ -898,8 +966,10 @@ Verify: the component test, with a screenshot per preset.
 | The toolbar loses a control nobody can find | High | the axe runs over the toolbar; every control keeps an accessible name | the control stays in the overflow menu |
 | The equalizer makes the map unreadable (everything large, or nothing distinct) | Medium | the presets are the product; the contrast audit covers the colours | the presets ship alone, and the rules are not free-form |
 | A size rule re-lays-out on every streaming append | Medium | the rules are part of the layout key, so they re-lay-out like a level does | size rules are pinned to the session, not to the model |
+| The hybrid's log is too narrow to read in the stacked arrangement | Medium | the divider is draggable, the arrangement can become `side` or `floating`, and the split is remembered per session | the reader drags the divider or switches the arrangement |
+| The hybrid's map is too narrow to read | Medium | the level control becomes a menu in the compact row, so the controls fit a half-width map | the reader uses the map alone (`graph.toggle`) |
 
-### 7.3 Stop rules
+### 8.3 Stop rules
 
 1. Do not start T12 before T11.1 and T11.2 are decided: the window's *content* is the card's
    content, and the card's content is not yet settled.
@@ -912,7 +982,7 @@ Verify: the component test, with a screenshot per preset.
 
 ---
 
-## 8. Verification matrix
+## 9. Verification matrix
 
 | Check | Command | Owns |
 |---|---|---|
@@ -926,7 +996,7 @@ Verify: the component test, with a screenshot per preset.
 
 ---
 
-## 9. Log
+## 10. Log
 
 Append-only. One entry per pass: date, task IDs, commands run, results, surprises, unverified items.
 
@@ -1156,3 +1226,52 @@ never reaches zero), `session-graph` unit **100**, the root `bun run check` **40
 presets offered as a choice ✗. The manager is there and the `legend` kind shows how a kind's content
 is registered ✓, so the panel is the last piece, not the first — but until it exists, the equalizer
 is an engine with no way in ✗. That is the honest state of T15 today.
+
+
+**2026-10-22 — T16: the map and the log together (G14), and the equalizer's panel (G13).**
+
+The plan's own opening says the transcript stays familiar and the graph appears where it answers a
+question — and the build only ever offered that for a single turn. The whole session and the whole
+log could not be looked at together, so the product's strongest form was still a promise.
+
+What changed:
+
+- **the hybrid is a mode**: `transcript | graph | hybrid`, in the session's own vocabulary
+  (`GRAPH_MODES`, `GRAPH_ARRANGEMENTS`, `GRAPH_SIDES` beside the level, the strategy and the detail
+  mode). The reader picks how the two surfaces meet — `stacked`, `side`, or `floating` (the map
+  over the log, movable and resizable) — from the map's own **Draw** menu;
+- **the panel owns the composition** (`packages/app/src/session/graph/session-graph-panel.tsx`): the
+  log's pane is the log's *home*, and the map is arranged around it with CSS `order` rather than by
+  moving nodes. The first attempt re-parented the transcript, and the reader's scroll was lost —
+  measured in the browser, fixed by never moving the log's DOM;
+- **the bridge**: picking a node in the map reveals its message in the log, and the log's active
+  turn is marked on the map's card (`data-active`), so the reader sees where they are;
+- **the ergonomics the split forced**: a half-width map is a narrow map, so the level control
+  becomes a menu in the compact row (T14.5's open item, and the narrow row is about 530px instead of
+  747px), and the compact threshold follows the measurement (941px of controls, so compact below
+  1030px, not 1000px);
+- **the equalizer has a way in** (T15.4, T15.5): the panel is a window kind beside the legend's,
+  it lists the three presets, applies one on a click, and shows the rules it made with a preview, a
+  size and a way to drop them. The toolbar offers it in the **Draw** menu;
+- **the turn map is scoped to the session panel** and gated on the feature flag: it used to cover the
+  side region as well.
+
+Measured: `session-ui` graph **123**, `session-graph` unit **101** (+1: the active turn's card
+carries the active state), the session-graph component suite **58** (+1: the equalizer's panel
+applies a preset and lists the rule), the app graph e2e **28** (+2: the hybrid shows both surfaces
+and the reader chooses the arrangement; picking a node in the map moves the log to it), the root
+`bun run check` **40/40**.
+
+**Two things this pass found, both about the browser rather than the plan.**
+
+- **moving a scrollable element in the DOM resets its scroll.** The hybrid's first version put the
+  transcript in a new pane, and the log came back at the top. The fix is structural: the log's pane
+  is the log's home, and the map is arranged around it with `order`, so the transcript's DOM is
+  never moved;
+- **a flex item sized by its content leaves the percentage heights inside it unresolved.** The map
+  pane's height was a flex result, so the map view inside it shrank to its content instead of
+  filling the panel. The pane's height is a percentage now, and the map fills the panel.
+
+Unverified: the *feel* of the three arrangements — whether the stacked split gives the log and the
+map each enough room, and whether the floating pane is where the reader would put it — needs the
+author's hands.

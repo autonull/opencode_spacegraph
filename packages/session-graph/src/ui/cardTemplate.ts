@@ -154,6 +154,8 @@ export type CardTemplateOptions = {
   tier?: DetailTier
   /** The selected node: its card says so. */
   selected?: string
+  /** The turn the reader is reading in the log, when the two are side by side: its card says so. */
+  active?: string
   /** A fact only the graph knows — a file's readers, say — for the kinds that have none of their own. */
   related?: (node: GraphNode) => string | undefined
   /** T15: the equalizer's rules. A style rule changes a card's accent; an age rule fades it. */
@@ -265,6 +267,10 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
         ? theme.border
         : status
     const ring = selected ? `box-shadow:0 0 0 2px ${theme.selection}40;` : ""
+    // The turn the reader is reading in the log says so with a stripe, not a ring: the selection owns
+    // the ring, and two rings on one card would be one too many.
+    const active = options.active === node.id
+    const mark = active ? `box-shadow:inset 3px 0 0 ${theme.accent};` : ""
     const tier = options.tier ?? "mid"
     // The card's box never changes — the layout owns the geometry — so a tier changes what the card
     // says inside it, never where it sits.
@@ -281,7 +287,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
     const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};${ring}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[node.kind]}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>

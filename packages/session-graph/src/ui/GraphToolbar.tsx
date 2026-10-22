@@ -7,16 +7,27 @@ import { Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
+  GRAPH_ARRANGEMENTS,
   LAYOUT_STRATEGIES,
   REPRESENTATIONS,
   ZOOM_LEVELS,
   type DetailMode,
+  type GraphArrangement,
+  type GraphSide,
   type LayoutStrategy,
   type Representation,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
-import { DEPTH_KEY, DETAIL_MODE_KEY, LEVEL_KEY, REPRESENTATION_KEY, STRATEGY_KEY } from "./vocabulary"
+import {
+  ARRANGEMENT_KEY,
+  DEPTH_KEY,
+  DETAIL_MODE_KEY,
+  LEVEL_KEY,
+  REPRESENTATION_KEY,
+  SIDE_KEY,
+  STRATEGY_KEY,
+} from "./vocabulary"
 
 export type GraphToolbarProps = {
   level: ZoomLevel
@@ -47,6 +58,17 @@ export type GraphToolbarProps = {
   /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
   files?: boolean
   onToggleFiles?: () => void
+  /**
+   * How the map and the log meet in the hybrid. The host owns the geometry; the toolbar only names
+   * the choice, so the reader can move the map without leaving the map.
+   */
+  arrangement?: GraphArrangement
+  onArrangementChange?: (arrangement: GraphArrangement) => void
+  /** Which side of the split the map takes. The floating arrangement has no side. */
+  arrangementSide?: GraphSide
+  onArrangementSideChange?: (side: GraphSide) => void
+  /** Opens the equalizer's panel; absent when the host does not keep the rules. */
+  onOpenEqualizer?: () => void
   /** Where a selected node's detail is shown; absent when the host does not offer the choice. */
   detailMode?: DetailMode
   onDetailModeChange?: (mode: DetailMode) => void
@@ -62,6 +84,11 @@ export type GraphToolbarProps = {
   /** Current render model for export; required when onExport is provided. */
   renderModel?: RenderModel
   onBack?: () => void
+  /**
+   * Puts the log beside the map, so the reader can have both without leaving either. The host owns
+   * the arrangement; the toolbar only offers the way into it.
+   */
+  onSplitView?: () => void
   searching?: boolean
   /** RF.7: narrow widths collapse the secondary controls into an overflow menu. */
   compact?: boolean
@@ -216,6 +243,40 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           keepOpen: true,
         })}
       </Show>
+      <Show when={props.onOpenEqualizer}>
+        {option({
+          label: i18n.t("ui.sessionGraph.toolbar.equalizer"),
+          onClick: () => props.onOpenEqualizer?.(),
+          slot: "graph-equalizer-option",
+        })}
+      </Show>
+      <Show when={props.onArrangementChange}>
+        <div data-slot="graph-toolbar-arrangement">
+          <div class="px-2 py-1 text-12-regular text-text-weak">
+            {i18n.t("ui.sessionGraph.toolbar.arrangement")}
+          </div>
+          {GRAPH_ARRANGEMENTS.map((arrangement) =>
+            option({
+              label: i18n.t(ARRANGEMENT_KEY[arrangement]),
+              onClick: () => props.onArrangementChange?.(arrangement),
+              pressed: props.arrangement === arrangement,
+              slot: "graph-arrangement-option",
+              strategy: arrangement,
+            }),
+          )}
+          <Show when={props.onArrangementSideChange && props.arrangement !== "floating"}>
+            {option({
+              label: i18n.t(SIDE_KEY[props.arrangementSide ?? "start"]),
+              onClick: () =>
+                props.onArrangementSideChange?.(props.arrangementSide === "start" ? "end" : "start"),
+              pressed: props.arrangementSide === "start",
+              slot: "graph-arrangement-side-option",
+              ariaLabel: i18n.t("ui.sessionGraph.toolbar.arrangementSide"),
+              keepOpen: true,
+            })}
+          </Show>
+        </div>
+      </Show>
     </>
   )
 
@@ -341,17 +402,40 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         </SegmentedControl>
       </Show>
 
-      <SegmentedControl
-        value={props.level}
-        aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
-        onChange={(value) => value && props.onLevel(value as ZoomLevel)}
+      <Show
+        when={!props.compact}
+        fallback={
+          <ToolbarMenu
+            slot="graph-toolbar-level"
+            label={i18n.t("ui.sessionGraph.toolbar.level")}
+            icon="levels"
+            value={i18n.t(LEVEL_KEY[props.level])}
+          >
+            {ZOOM_LEVELS.map((level) =>
+              option({
+                label: i18n.t(LEVEL_KEY[level]),
+                onClick: () => props.onLevel(level),
+                pressed: props.level === level,
+                disabled: !graphMode(),
+                slot: "graph-level-option",
+                strategy: level,
+              }),
+            )}
+          </ToolbarMenu>
+        }
       >
-        {ZOOM_LEVELS.map((level) => (
-          <SegmentedControlItem value={level} disabled={!graphMode()}>
-            {i18n.t(LEVEL_KEY[level])}
-          </SegmentedControlItem>
-        ))}
-      </SegmentedControl>
+        <SegmentedControl
+          value={props.level}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
+          onChange={(value) => value && props.onLevel(value as ZoomLevel)}
+        >
+          {ZOOM_LEVELS.map((level) => (
+            <SegmentedControlItem value={level} disabled={!graphMode()}>
+              {i18n.t(LEVEL_KEY[level])}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      </Show>
 
       <div class="flex items-center gap-1">
         <GraphIconButton
@@ -418,6 +502,13 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           >
             {i18n.t("ui.sessionGraph.toolbar.renderer", { renderer: props.renderer })}
           </span>
+        ) : null}
+        {props.onSplitView ? (
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.split")}
+            icon="split"
+            onClick={props.onSplitView}
+          />
         ) : null}
         {props.onBack ? (
           <GraphIconButton

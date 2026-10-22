@@ -67,7 +67,7 @@ Nodes **collapse/expand** across levels — a cluster of tool calls becomes "Exp
 
 ### 1.6 Dual representation, not replacement
 
-The transcript remains ideal for following a conversation. The graph excels at exploring structure, parallel activity, and provenance. The strongest product is a **hybrid**: the log stays primary; relevant turns expand into inline graphs or open a scoped overlay without losing scroll position.
+The transcript remains ideal for following a conversation. The graph excels at exploring structure, parallel activity, and provenance. The strongest product is a **hybrid**: the log stays primary; relevant turns expand into inline graphs or open a scoped overlay without losing scroll position. The hybrid is a mode of its own now (§5.1): the map and the log hold the panel together, and the log keeps its place while the map answers the question.
 
 ---
 
@@ -149,7 +149,7 @@ Session messages + status + turn diffs
 | `spacegraphjs/packages/cytoscape-renderer` | 2D Canvas fallback, clipped DOM overlay for cards | `CytoscapeRenderer` implements `GraphRenderer` |
 | `spacegraphjs/packages/svg-renderer` | Static export: `renderToSVG`, `InlineGraph`, `serializeRenderModel` | Pure Node/ browser, no interaction |
 | `session-graph` | Host UI: `GraphView`, `GraphCanvas`, toolbar, inspector, breadcrumbs, search, minimap | React/Solid bindings via `spacegraphjs/control` (`GraphController`) |
-| `packages/app/src/session/graph` | Integration: lazy wrapper, mode branch, toggle, turn-map overlay, permalinks | `SessionGraphView`, `TurnMapOverlay`, `graph.toggle` command |
+| `packages/app/src/session/graph` | Integration: the panel (the log's home and the map around it), the mode branch, the turn-map overlay, permalinks | `SessionGraphPanel`, `SessionGraphView`, `TurnMapOverlay`, `graph.toggle` command |
 
 ### 3.2 The host's modules (`session-graph/src`)
 
@@ -249,28 +249,44 @@ All proven against the canonical fixture in `selectors.test.ts` (exit gate 2).
 
 ## 5. The Hybrid Experience (Phase 6)
 
-### 5.1 Turn-map overlay (`mod+alt+t`)
+### 5.1 The split view — the map and the log together
 
-- Mounts lazily in the session panel's container (`screen.panel.ref`)
+The hybrid is the strongest form of the product, and it is now a **mode** of its own:
+`transcript | graph | hybrid`. In the hybrid the log and the map hold the panel together, and the
+log is never detached: the reader's place in the transcript survives every move between the modes.
+
+| Piece | What it does |
+|-------|--------------|
+| **the panel** (`packages/app/src/session/graph/session-graph-panel.tsx`) | owns the composition: the log's pane is the log's *home*, and the map is arranged around it with CSS order rather than by moving nodes — so entering the hybrid never detaches the transcript |
+| **the arrangements** | `stacked` (the map above the log), `side` (the map beside it), `floating` (the map over it, movable and resizable). The reader picks one; the map offers the choice in its **Draw** menu |
+| **the bridge** | picking a node in the map reveals its message in the log without leaving either; the log's active turn is marked on the map, so the reader sees where they are in the session |
+| **the way in** | the map's toolbar offers "show the log beside the map", and `graph.hybrid` (`mod+shift+h`) toggles the mode |
+
+The arrangement is the map's business only in name: the panel owns the geometry, and the map's
+toolbar names the choice. Nothing about the composition is hard-coded into the map view.
+
+### 5.2 Turn-map overlay (`mod+alt+t`)
+
+- Mounts lazily in the session panel's container (`screen.panel.ref`), scoped to the panel's own width
 - Transcript stays mounted underneath — scroll position preserved
 - Shows execution-level subgraph of selected turn (capped at 7 nodes)
 - Shared `GraphCanvas` + `GraphInspector` + "Open full graph"
 - Focus-trapped dialog (`role="dialog"`, `aria-modal`); Escape closes, focus returns
 
-### 5.2 Inline subgraph (SVG)
+### 5.3 Inline subgraph (SVG)
 
 - Thin wrapper over `@spacegraphjs/svg-renderer`'s `InlineGraph`
 - Non-interactive, five-node turn subset
 - Not injected into timeline rows — avoids timeline coupling
 
-### 5.3 Side panel (`gui-extensions/session-map`)
+### 5.4 Side panel (`gui-extensions/session-map`)
 
 - Compact SVG overview: turns + phase clusters from `layoutGraph` + `nodesAtLevel("overview")`
 - Highlights transcript's active turn → last pick → model's `activeTurn`
 - Reveals message when node picked (uses `SessionScreen.transcript` SDK surface)
 - Opened from side strip `+` menu
 
-### 5.4 Permalinks (`#graph:<nodeID>`)
+### 5.5 Permalinks (`#graph:<nodeID>`)
 
 - Cold load switches to graph mode, frames node (raises level if needed)
 - Representation prefix: `#graph:ribbon:<nodeID>` (unambiguous — no node ID starts with representation name)
@@ -319,7 +335,7 @@ All proven against the canonical fixture in `selectors.test.ts` (exit gate 2).
 | Pure graph model (nodes, edges, levels, layout, selectors) | ✅ Complete | 123 unit tests, fixture-driven |
 | Renderer contract + 3 leaves (SpaceGraph, Cytoscape, SVG) | ✅ Complete | 491 vitest tests, shared conformance suite |
 | Host UI (GraphView, toolbar, inspector, breadcrumbs, search, minimap, a11y) | ✅ Complete | 100 unit + 57 component tests, 26 app e2e |
-| Hybrid: turn-map overlay, inline SVG, side panel, permalinks | ✅ Complete | Component + app e2e |
+| Hybrid: turn-map overlay, the split view, inline SVG, side panel, permalinks | ✅ Complete | Component + app e2e |
 | Export (SVG/JSON/standalone HTML) | ✅ Complete | Contract demo, component test |
 | Security/escaping suite | ✅ Complete | 13 unit + browser tests, sanitization contract |
 | Performance budget (linear pipeline, 60-turn window) | ✅ Measured | `graph:scale` benchmark, guard tests |
@@ -393,7 +409,7 @@ bun run graph:capture --mode=verify   # assert committed set
 4. **Global `SpaceGraph.instances`** remains as off-by-default dev handle
 5. **`./activity` types stopgap** (`types/activity.d.ts`) — replace with generated declarations
 6. **Toolbar `endInset`** clears floating header toggles; desktop-media-query-gated
-7. **Mobile graph mode** desktop-gated for v1; mobile reaches graph only via `graph.toggle` command
+7. **Mobile graph mode** desktop-gated for v1; mobile reaches graph only via `graph.toggle` command. The hybrid needs room for two surfaces, so a narrow screen falls back to the map alone
 8. **Minimap vertically mirrored under Cytoscape** (model +y downward); correct under SpaceGraph
 9. **Two adapter-failure e2e cases** dev-only (built chunks hashed); component suite covers seam
 10. **First paint / pan frame rate** unmeasured — no graph perf harness

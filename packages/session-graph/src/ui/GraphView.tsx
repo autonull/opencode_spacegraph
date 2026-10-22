@@ -11,10 +11,13 @@ import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
 import type {
   DetailMode,
   DetailTier,
+  EqualizerRule,
   EqualizerRuleSet,
+  GraphArrangement,
   GraphLayout,
   GraphModel,
   GraphNode,
+  GraphSide,
   LayoutStrategy,
   Position,
   Representation,
@@ -66,6 +69,7 @@ import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
 import { GraphDetailSurface } from "./GraphDetail"
 import { GraphLegend, GraphLegendBody } from "./GraphLegend"
+import { GraphEqualizerBody } from "./GraphEqualizer"
 import { LANE_KEY, LEVEL_KEY, REPRESENTATION_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
@@ -128,6 +132,20 @@ export type GraphViewProps = {
   peek?: boolean
   /** LE.12: the file-first lens (changed-files rail + bundled provenance edges); the host persists it. */
   files?: boolean
+  /**
+   * How the map and the log meet in the hybrid. The host owns the geometry; the view only offers
+   * the choice in the toolbar, so the reader can move the map without leaving it.
+   */
+  arrangement?: GraphArrangement
+  onArrangementChange?: (arrangement: GraphArrangement) => void
+  /** Which side of the split the map takes. */
+  arrangementSide?: GraphSide
+  onArrangementSideChange?: (side: GraphSide) => void
+  /**
+   * The turn the reader is reading in the log, when the two are side by side. The map marks it, so
+   * the reader sees where they are in the session without leaving the log.
+   */
+  activeTurn?: string
   /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
   diffSource?: GraphDiffSource
   /** Optional host renderer for a node's summary (for example MarkDown); falls back to plain text. */
@@ -174,7 +192,14 @@ export type GraphViewProps = {
    * key, so the map moves like it does when the level changes); a style rule rebuilds the cards.
    */
   rules?: EqualizerRuleSet
+  /** T15.4: the equalizer's panel edits the rules; the host persists them per session. */
+  onRulesChange?: (rules: EqualizerRule[]) => void
   onBack?: () => void
+  /**
+   * Puts the log beside the map. The host owns the arrangement; the view only offers the way into
+   * it, so a reader who wants both does not have to leave the map to get them.
+   */
+  onSplitView?: () => void
   /** T3.4: session title for export metadata. */
   sessionTitle?: string
   /** T3.4: tested commit SHA for export metadata. */
@@ -269,13 +294,15 @@ export const GraphView = (props: GraphViewProps) => {
 
   // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
   // RF.7: below the width the toolbar's own row needs, the secondary controls collapse into an
-  // overflow menu. T14.1 measured that row: the inline controls and the end block take 913px, so a
-  // narrower panel would wrap and push the back control under the host's floating header.
+  // overflow menu. T14.1 measured that row: the inline controls and the end block take 913px, and
+  // the split control added 28px to the end block, so the row needs 941px. With the panel's padding
+  // (16px) and the app's floating header (72px) the row needs 1029px, and a narrower panel would
+  // wrap and push the back control under the header.
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
       const width = entry.contentRect.width
       const nextNarrow = width > 0 && width < 768
-      const nextCompact = width > 0 && width < 1000
+      const nextCompact = width > 0 && width < 1030
       setNarrow((current) => (current === nextNarrow ? current : nextNarrow))
       setCompact((current) => (current === nextCompact ? current : nextCompact))
     })
@@ -355,6 +382,7 @@ export const GraphView = (props: GraphViewProps) => {
       createCardTemplate(theme(), {
         tier: tier(),
         selected: selection.selection()[0],
+        active: props.activeTurn,
         related: relatedDetail,
         rules: props.rules,
         now,
@@ -595,6 +623,16 @@ export const GraphView = (props: GraphViewProps) => {
       name: "legend",
       title: () => i18n.t("ui.sessionGraph.legend.label"),
       render: () => <GraphLegendBody theme={theme()} strategy={strategy()} rules={props.rules} />,
+    },
+    {
+      name: "equalizer",
+      title: () => i18n.t("ui.sessionGraph.equalizer.title"),
+      render: () => (
+        <GraphEqualizerBody
+          rules={props.rules ?? []}
+          onChange={(rules) => props.onRulesChange?.(rules)}
+        />
+      ),
     },
   ])
 
@@ -876,6 +914,11 @@ export const GraphView = (props: GraphViewProps) => {
         onToggleMinimap={toggleMinimap}
         files={files()}
         onToggleFiles={toggleFiles}
+        arrangement={props.arrangement}
+        onArrangementChange={props.onArrangementChange}
+        arrangementSide={props.arrangementSide}
+        onArrangementSideChange={props.onArrangementSideChange}
+        onOpenEqualizer={props.onRulesChange ? () => openWindow("equalizer") : undefined}
         detailMode={detailMode()}
         onDetailModeChange={changeDetailMode}
         peek={peek()}
@@ -898,6 +941,7 @@ export const GraphView = (props: GraphViewProps) => {
         onExport={handleExport}
         renderModel={renderModel()}
         onBack={props.onBack}
+        onSplitView={props.onSplitView}
         searching={searchOpen()}
         compact={compact()}
         endInset={props.endInset}

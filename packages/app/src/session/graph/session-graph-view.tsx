@@ -5,6 +5,8 @@ import {
   openInTranscript,
   turnNodeID,
   type EqualizerRule,
+  type GraphArrangement,
+  type GraphSide,
   type SessionLineage,
 } from "@opencode/session-ui/graph"
 import { useData } from "@opencode/session-ui/context"
@@ -32,6 +34,20 @@ export function SessionGraphView(props: {
   session: SessionModel
   onBack: () => void
   onOpenTranscript: (messageID: string, partID?: string) => void
+  /**
+   * Reveals a node's message in the log without leaving the map. The hybrid's bridge: the reader
+   * picks a node and the log moves to it. Absent when the map has the panel to itself.
+   */
+  onReveal?: (messageID: string, partID?: string) => void
+  /** The message the log is reading, so the map can mark the turn it belongs to. */
+  activeMessageID?: string
+  /** The hybrid's geometry. The view only offers the choice; the host owns the arrangement. */
+  arrangement?: GraphArrangement
+  onArrangementChange?: (arrangement: GraphArrangement) => void
+  arrangementSide?: GraphSide
+  onArrangementSideChange?: (side: GraphSide) => void
+  /** Puts the log beside the map; absent when the map already shares the panel with the log. */
+  onSplitView?: () => void
 }) {
   const language = useLanguage()
   const session = props.session
@@ -134,6 +150,16 @@ export function SessionGraphView(props: {
     ),
   )
 
+  // The turn the log is reading. The map marks it, so a reader in the hybrid sees where they are in
+  // the session without leaving the log.
+  const activeTurn = createMemo(() => {
+    const messageID = props.activeMessageID
+    if (!messageID) return undefined
+    const owner = model().turnByMessageID.get(messageID)
+    if (!owner) return undefined
+    return turnNodeID(owner)
+  })
+
   return (
     <ErrorBoundary
       fallback={
@@ -164,13 +190,24 @@ export function SessionGraphView(props: {
           files={graph.files()}
           detailMode={graph.detailMode()}
           peek={graph.peek()}
+          activeTurn={activeTurn()}
+          arrangement={props.arrangement}
+          onArrangementChange={props.onArrangementChange}
+          arrangementSide={props.arrangementSide}
+          onArrangementSideChange={props.onArrangementSideChange}
           diffSource={diffSource()}
           renderSummary={(node) =>
             node.kind === "message" || node.kind === "reasoning" ? (
               <Markdown text={node.summary ?? ""} class="text-12-regular text-text-base" />
             ) : undefined
           }
-          onSelect={(id) => graph.setSelected(id)}
+          onSelect={(id) => {
+            graph.setSelected(id)
+            if (!id || !props.onReveal) return
+            const ref = openInTranscript(model(), id)
+            if (!ref?.messageID) return
+            props.onReveal(ref.messageID, ref.partID)
+          }}
           onProjectionChange={(projection) => graph.setProjection(projection)}
           onDepthChange={(depth) => graph.setDepth(depth)}
           onStrategyChange={(layout) => graph.setLayout(layout)}
@@ -183,6 +220,7 @@ export function SessionGraphView(props: {
           // keeps them per session, so a window survives a session switch.
           windows={graph.windows()}
           rules={rules()}
+          onRulesChange={(next) => graph.setRules(next)}
           onWindowsChange={(windows) => graph.setWindows(windows)}
           onOpenWindow={(window) => {
             const current = graph.windows()
@@ -194,12 +232,19 @@ export function SessionGraphView(props: {
             const ref = openInTranscript(model(), id)
 
             if (!ref?.messageID) return
+            // In the hybrid the log is right there: revealing it is the point, so the map stays.
+            if (props.onReveal) {
+              props.onReveal(ref.messageID, ref.partID)
+
+              return
+            }
             props.onBack()
             props.onOpenTranscript(ref.messageID, ref.partID)
           }}
           // T6.5: open the child session of a delegation, or the session a fork came from.
           onOpenSession={markdown?.openSession ? openSession : undefined}
           onBack={() => props.onBack()}
+          onSplitView={props.onSplitView}
           endInset={isDesktop() ? "72px" : undefined}
           frame={permalink()?.nodeID}
           link={link()}

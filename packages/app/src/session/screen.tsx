@@ -24,6 +24,7 @@ import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings, type SettingsContext } from "@/settings/model"
 import { Metrics } from "@opencode/session-ui/graph"
+import type { GraphMode } from "@opencode/session-ui/graph"
 import type { SessionModel } from "@/session/model"
 import { SESSION_PANEL_WIDTH_MIN } from "@/session/session-panel-width"
 import { SessionPanelFrame } from "@/session/session-frame"
@@ -45,6 +46,7 @@ import { SessionIdentityHeader } from "./session-identity-header"
 import { SessionReviewToggle } from "./header/session-header-actions"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
 import { SessionGraphView } from "./graph/session-graph-view"
+import { SessionGraphPanel } from "./graph/session-graph-panel"
 import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
 import { GraphMetricsReadout } from "./graph/graph-metrics-readout"
@@ -104,6 +106,14 @@ function SessionScreenContent(props: {
 
   const graph = session.layout.graph()
   const graphEnabled = () => settings.experimental.sessionGraph()
+  // The panel holds the log, the map, or both. The hybrid needs room for two surfaces, so a narrow
+  // screen falls back to the map alone.
+  const panelMode = createMemo<GraphMode>(() => {
+    if (!graphEnabled()) return "transcript"
+    const mode = graph.mode()
+    if (mode === "hybrid" && !isDesktop()) return "graph"
+    return mode
+  })
   const location = useLocation()
 
   // T3.5: a graph permalink opens the graph, so a shared link lands on the node it names. The mode is
@@ -117,17 +127,28 @@ function SessionScreenContent(props: {
 
         if (!graphPermalinkFromHash(hash)) return
 
-        if (untrack(graph.mode) === "graph") return
+        if (untrack(graph.mode) !== "transcript") return
 
         graph.setMode("graph")
       },
     ),
   )
 
+  // The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
+  // asked a question of the map and the log answers it in place.
+  const revealInLog = (messageID: string, partID?: string) => {
+    timeline.actions.revealMessage(messageID, partID)
+  }
+
   const openGraphTranscript = (messageID: string, partID?: string) => {
     // T2.3: the graph counts its own "return" action, so this switch is not counted twice.
     graph.setMode("transcript")
-    timeline.actions.revealMessage(messageID, partID)
+    revealInLog(messageID, partID)
+  }
+
+  const leaveGraph = () => {
+    Metrics.count("mode-switch")
+    graph.setMode("transcript")
   }
 
   // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
@@ -344,11 +365,11 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={selectMobile}
-          graphActive={graphEnabled() && graph.mode() === "graph"}
+          graphActive={graphEnabled() && graph.mode() !== "transcript"}
           onGraphToggle={graphEnabled() ? () => {
             if (mobileView() !== "session") selectMobile("session")
             Metrics.count("mode-switch")
-            graph.setMode(graph.mode() === "graph" ? "transcript" : "graph")
+            graph.setMode(graph.mode() === "transcript" ? "graph" : "transcript")
           } : undefined}
         />
       )}
@@ -412,12 +433,38 @@ function SessionScreenContent(props: {
               </SessionIdentityHeader>
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
-              <Switch>
-                <Match when={graphEnabled() && graph.mode() === "graph"}>
-                  <SessionGraphView session={session} onBack={() => { Metrics.count("mode-switch"); graph.setMode("transcript") }} onOpenTranscript={openGraphTranscript} />
-                </Match>
-                <Match when={true}>{timelineView()}</Match>
-              </Switch>
+              <SessionGraphPanel
+                mode={panelMode()}
+                graph={() => (
+                  <SessionGraphView
+                    session={session}
+                    onBack={leaveGraph}
+                    onOpenTranscript={openGraphTranscript}
+                    onReveal={panelMode() === "hybrid" ? revealInLog : undefined}
+                    onSplitView={
+                      panelMode() === "graph"
+                        ? () => {
+                            Metrics.count("mode-switch")
+                            graph.setMode("hybrid")
+                          }
+                        : undefined
+                    }
+                    activeMessageID={panelMode() === "hybrid" ? timeline.currentMessageId() : undefined}
+                    arrangement={graph.arrangement()}
+                    onArrangementChange={graph.setArrangement}
+                    arrangementSide={graph.arrangementSide()}
+                    onArrangementSideChange={graph.setArrangementSide}
+                  />
+                )}
+                transcript={timelineView()}
+                arrangement={graph.arrangement()}
+                side={graph.arrangementSide()}
+                split={graph.split()}
+                onSplit={graph.setSplit}
+                pane={graph.pane()}
+                onPane={graph.setPane}
+                onClose={leaveGraph}
+              />
             </Show>
           </Match>
         </Switch>
@@ -618,19 +665,25 @@ function SessionScreenContent(props: {
             </div>
           </Show>
 
-          <Show when={graph.turnMap()}>
+          {/* The turn map is the session's own overlay (H6.2): it covers the session panel, not the
+              side region, and it only exists while the graph feature is on. The wrapper carries the
+              panel's own width so the overlay is scoped to the panel it belongs to, and it sits
+              above the floating header toggles. */}
+          <Show when={graphEnabled() && graph.turnMap()}>
             {(turnID) => (
-              <SessionTurnMapOverlay
-                session={session}
-                turnID={turnID()}
-                onClose={() => graph.setTurnMap(undefined)}
-                onOpenFullGraph={(id) => {
-                  Metrics.count("expand")
-                  graph.setTurnMap(undefined)
-                  graph.setMode("graph")
-                  graph.setSelected(id)
-                }}
-              />
+              <div class="absolute inset-y-0 start-0 z-40" style={{ width: screen.panel.width() }}>
+                <SessionTurnMapOverlay
+                  session={session}
+                  turnID={turnID()}
+                  onClose={() => graph.setTurnMap(undefined)}
+                  onOpenFullGraph={(id) => {
+                    Metrics.count("expand")
+                    graph.setTurnMap(undefined)
+                    graph.setMode("graph")
+                    graph.setSelected(id)
+                  }}
+                />
+              </div>
             )}
           </Show>
         </div>

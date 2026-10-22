@@ -4,7 +4,7 @@ import { batch, createEffect, createMemo, onCleanup, onMount, untrack, type Acce
 import { useLocation } from "@solidjs/router"
 import { createSimpleContext } from "@opencode/ui/context"
 import { makeEventListener } from "@solid-primitives/event-listener"
-import { DETAIL_MODES, LAYOUT_STRATEGIES, REPRESENTATIONS } from "@opencode/session-ui/graph/vocabulary"
+import { DETAIL_MODES, GRAPH_ARRANGEMENTS, GRAPH_MODES, GRAPH_SIDES, LAYOUT_STRATEGIES, REPRESENTATIONS } from "@opencode/session-ui/graph/vocabulary"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { Project } from "@/runtime/server/types"
@@ -87,7 +87,21 @@ const sessionTabsSchema = Persistence.struct({
 })
 
 const sessionGraphSchema = Persistence.struct({
-  mode: Schema.Literals(["transcript", "graph"]),
+  mode: Schema.Literals(GRAPH_MODES),
+  // The hybrid's geometry: how the map and the log meet, which side the map takes, and how much of
+  // the panel the map holds. Absent means the default arrangement.
+  arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
+  arrangementSide: Schema.optional(Schema.Literals(GRAPH_SIDES)),
+  split: Schema.optional(Schema.Finite),
+  // The floating map pane's box, as fractions of the panel, so it survives a resize of the window.
+  pane: Persistence.optional(
+    Persistence.struct({
+      x: Schema.Finite,
+      y: Schema.Finite,
+      width: Schema.Finite,
+      height: Schema.Finite,
+    }),
+  ),
   projection: Schema.optional(Schema.Literals(["2d", "3d"])),
   renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
   selected: Schema.optional(Schema.String),
@@ -606,6 +620,10 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
         return {
           mode: createMemo(() => state()?.mode ?? "transcript"),
+          arrangement: createMemo(() => state()?.arrangement ?? "stacked"),
+          arrangementSide: createMemo(() => state()?.arrangementSide ?? "start"),
+          split: createMemo(() => state()?.split ?? 0.5),
+          pane: createMemo(() => state()?.pane),
           projection: createMemo(() => state()?.projection ?? "2d"),
           renderer: createMemo(() => state()?.renderer),
           selected: createMemo(() => state()?.selected),
@@ -621,6 +639,18 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           peek: createMemo(() => state()?.peek ?? false),
           setMode(mode: SessionGraphState["mode"]) {
             write({ mode })
+          },
+          setArrangement(arrangement: NonNullable<SessionGraphState["arrangement"]>) {
+            write({ arrangement })
+          },
+          setArrangementSide(arrangementSide: NonNullable<SessionGraphState["arrangementSide"]>) {
+            write({ arrangementSide })
+          },
+          setSplit(split: number) {
+            write({ split })
+          },
+          setPane(pane: NonNullable<SessionGraphState["pane"]>) {
+            write({ pane })
           },
           setLayout(layout: NonNullable<SessionGraphState["layout"]>) {
             write({ layout })

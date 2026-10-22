@@ -1,8 +1,10 @@
 import type { DepthMode } from "@spacegraphjs/renderer"
 import type {
   DetailMode,
+  GraphArrangement,
   GraphEdge,
   GraphNode,
+  GraphSide,
   Lane,
   LayoutStrategy,
   NodeKind,
@@ -58,6 +60,19 @@ export const DETAIL_MODE_KEY = {
   popover: "ui.sessionGraph.detailMode.popover",
   panel: "ui.sessionGraph.detailMode.panel",
 } as const satisfies Record<DetailMode, string>
+
+/** How the map and the log meet in the hybrid. The host owns the geometry; the toolbar names it. */
+export const ARRANGEMENT_KEY = {
+  stacked: "ui.sessionGraph.arrangement.stacked",
+  side: "ui.sessionGraph.arrangement.side",
+  floating: "ui.sessionGraph.arrangement.floating",
+} as const satisfies Record<GraphArrangement, string>
+
+/** Which side of the split the map takes. */
+export const SIDE_KEY = {
+  start: "ui.sessionGraph.arrangement.side.start",
+  end: "ui.sessionGraph.arrangement.side.end",
+} as const satisfies Record<GraphSide, string>
 
 /** LE.10 lane gutter copy, in layout order. */
 export const LANE_KEY = {

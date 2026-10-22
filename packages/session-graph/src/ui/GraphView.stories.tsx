@@ -4,6 +4,7 @@ import {
   buildFixtureMessages,
   buildGraph,
   type DetailMode,
+  type EqualizerRuleSet,
   type GraphEdge,
   type GraphModel,
   type GraphNode,
@@ -157,6 +158,8 @@ type HarnessProps = {
   fullscreen?: boolean
   /** T12: the windows already open over the map. */
   windows?: GraphWindowState[]
+  /** T15.4: the equalizer's rules, edited in the panel. */
+  rules?: EqualizerRuleSet
 }
 
 // A selected tool node on load so the story and its component test see a populated inspector
@@ -168,6 +171,8 @@ const ViewHarness = (props: HarnessProps) => {
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
   // T12: the windows over the map. The harness owns them, as the app does.
   const [windows, setWindows] = createSignal<GraphWindowState[]>(props.windows ?? [])
+  // T15.4: the equalizer's rules. The harness owns them, as the app does.
+  const [rules, setRules] = createSignal<EqualizerRuleSet>(props.rules ?? [])
   // T6.5: the session the reader asked to open, recorded in the DOM so a component test can see it.
   const [openedSession, setOpenedSession] = createSignal<string | undefined>()
   // On-demand turn diffs: nothing is available until a diff node is inspected and calls `load`.
@@ -207,6 +212,8 @@ const ViewHarness = (props: HarnessProps) => {
         peek={props.peek}
         windows={windows()}
         onWindowsChange={setWindows}
+        rules={rules()}
+        onRulesChange={setRules}
         onOpenWindow={(window) => {
           if (windows().some((open) => open.id === window.id)) return
           setWindows([...windows(), window])
@@ -353,6 +360,14 @@ export const PinnedWindow = {
       ]}
     />
   ),
+}
+
+/**
+ * T15.4: the equalizer's panel. The presets are the way in — a reader should not have to write
+ * rules to get value — and the rules they make are listed with a preview and a way to drop them.
+ */
+export const Equalizer = {
+  render: () => <ViewHarness />,
 }
 
 /** No detail surface at all: the map is the map. */

@@ -154,6 +154,10 @@ const icons = {
     viewBox: "0 0 16 16",
     body: `<path d="M1 14H15L15 2H1V14Z" stroke="currentColor"/><rect x="3" y="4" width="4" height="8" fill="currentColor" fill-opacity="0.5"/><rect x="9" y="4" width="4" height="8" fill="currentColor" fill-opacity="0.5"/>`,
   },
+  levels: {
+    viewBox: "0 0 16 16",
+    body: `<path d="M2 3.5h12M4.5 8h7M6.5 12.5h3" stroke="currentColor" stroke-linecap="round"/>`,
+  },
   unified: {
     viewBox: "0 0 16 16",
     body: `<path d="M3.00001 4.00045L12.9998 4L13 6.99955L3 7L3.00001 4.00045Z" fill="currentColor" fill-opacity="0.5"/><path d="M3.0001 9H13L12.9999 12H3L3.0001 9Z" fill="currentColor" fill-opacity="0.5"/><path d="M1 14H15L15 2H1V14Z" stroke="currentColor"/>`,

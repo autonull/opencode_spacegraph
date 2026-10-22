@@ -21,7 +21,7 @@ export function SessionGraphToggle() {
 
   if (!enabled) return null
 
-  const active = () => graph().mode() === "graph"
+  const active = () => graph().mode() !== "transcript"
 
   return (
     <Tooltip

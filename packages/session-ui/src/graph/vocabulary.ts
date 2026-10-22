@@ -94,6 +94,30 @@ export const DETAIL_MODES = ["off", "card", "popover", "panel"] as const
 
 export type DetailMode = (typeof DETAIL_MODES)[number]
 
+/**
+ * How the map meets the transcript. The transcript is the dependable baseline, the graph is the
+ * alternative view of the same session, and the hybrid is the two together: the log stays where the
+ * reader left it and the map answers the question beside it.
+ */
+export const GRAPH_MODES = ["transcript", "graph", "hybrid"] as const
+
+export type GraphMode = (typeof GRAPH_MODES)[number]
+
+/**
+ * How the map and the log meet in the hybrid. The three arrangements are the same two surfaces
+ * under different geometry: beside each other, one above the other, or the map floating over the
+ * log. Every arrangement keeps the transcript mounted and scrollable — the choice is the reader's,
+ * and none of them is the only one.
+ */
+export const GRAPH_ARRANGEMENTS = ["stacked", "side", "floating"] as const
+
+export type GraphArrangement = (typeof GRAPH_ARRANGEMENTS)[number]
+
+/** Which side of the split the map takes. The floating arrangement has no side. */
+export const GRAPH_SIDES = ["start", "end"] as const
+
+export type GraphSide = (typeof GRAPH_SIDES)[number]
+
 /** The box an activity card occupies in layout space. Keep in sync with the adapter's card defaults. */
 export const CARD_SIZE: readonly [number, number] = [220, 72]
 

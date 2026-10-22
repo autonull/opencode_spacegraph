@@ -291,6 +291,74 @@ test("opens the hybrid turn map over the graph and closes on Escape", async ({ p
   expect(errors).toEqual([])
 })
 
+test("shows the map and the log together, and the reader chooses how they meet", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // The map offers the way into the hybrid: a reader who wants the log does not have to leave the
+  // map to get it.
+  await page.locator(toolbar).getByRole("button", { name: "Show the log beside the map" }).click()
+
+  const hybrid = page.locator('[data-slot="session-graph-panel"]')
+  await expect(hybrid).toBeVisible()
+  await expect(hybrid).toHaveAttribute("data-arrangement", "stacked")
+  await expect(page.locator('[data-slot="session-graph-panel-map"]')).toBeVisible()
+  await expect(page.locator('[data-slot="session-graph-panel-log"]')).toBeVisible()
+  // The log is still the log, and the map is still the map.
+  await expect(
+    page.locator(
+      '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
+    ),
+  ).toBeVisible()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+
+  // The arrangement is the reader's choice, and it lives in the map's own Draw menu.
+  await openMenu(page, "draw")
+  await page.locator(toolbar).getByRole("button", { name: "Beside the log" }).click()
+  await expect(hybrid).toHaveAttribute("data-arrangement", "side")
+
+  await openMenu(page, "draw")
+  await page.locator(toolbar).getByRole("button", { name: "Over the log" }).click()
+  await expect(hybrid).toHaveAttribute("data-arrangement", "floating")
+  await expect(page.locator('[data-slot="session-graph-panel-pane-bar"]')).toBeVisible()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+
+  expect(errors).toEqual([])
+})
+
+test("picking a node in the map moves the log to it", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  // A long transcript, so the log has somewhere to move.
+  const items = [...historyMessages(20), ...buildFixtureMessages()]
+  await openSession(page, { ...graphFixture(), pageMessages: () => ({ items }) })
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await page.locator(toolbar).getByRole("button", { name: "Show the log beside the map" }).click()
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+
+  const scroller = page.locator('[data-slot="session-graph-panel-log"] .scroll-view__viewport')
+  const before = await scroller.evaluate((element) => element.scrollTop)
+  expect(before).toBeGreaterThan(0)
+
+  // The oldest turn's answer, picked in the map.
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  const search = page.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("combobox").fill("Fix the authentication test failures")
+  await search.locator('[data-node-id="msg:msg_user_1"]').click()
+
+  // The log followed the map.
+  await expect
+    .poll(() => scroller.evaluate((element) => element.scrollTop))
+    .toBeLessThan(before)
+  await expect(
+    page.locator(
+      '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
+    ),
+  ).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
 test("reveals the turn for a message hash and returns to it in the transcript", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

@@ -232,6 +232,20 @@ test("the selected card carries the selection state", () => {
   expect(unselected).not.toContain(theme.selection)
 })
 
+// The hybrid marks the turn the reader is reading in the log, so the map says where they are
+// without the reader having to pick it.
+test("the active turn's card carries the active state", () => {
+  const turn = node({ id: "turn:1", kind: "turn", label: "Fix the tests", status: "neutral" })
+  const other = node({ id: "turn:2", kind: "turn", label: "Ship it", status: "neutral" })
+
+  const active = createCardTemplate(theme, { active: turn.id, copy })(turn, "execution")
+  expect(active).toContain('data-active="true"')
+  expect(active).toContain(theme.accent)
+
+  const inactive = createCardTemplate(theme, { active: turn.id, copy })(other, "execution")
+  expect(inactive).not.toContain('data-active="true"')
+})
+
 // The host knows facts the node does not: a file's readers are in the graph's edges.
 test("a host fact fills the line a kind cannot fill", () => {
   const file = node({
