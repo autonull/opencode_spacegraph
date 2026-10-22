@@ -228,11 +228,10 @@ as one reviewed block rather than as a drip.
 log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). **T14.3
 (the minimap as a window) is done** (2026-10-22).
 
-**T17.1, T17.2 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
-means the same thing in every layout ✓, and the detail the reader earns by moving closer ✓. **T17.3,
-T17.4 and T18 are planned, not started.** They are the rest of the consolidation the author's own
-use asked for — the log's own shape as a layout, one way to show content, and the ergonomics
-of the map-and-log pair.
+**T17.1, T17.2, T17.3 and T17.5 are reached** (2026-10-22): one layout list and one control ✓, the level
+means the same thing in every layout ✓, **the log's own shape as a layout ✓**, and the detail the reader earns by moving closer ✓. **T17.4
+and T18 are planned, not started.** They are the rest of the consolidation the author's own
+use asked for — one way to show content, and the ergonomics of the map-and-log pair.
 
 ### 0.6 What is *not* in this plan
 
@@ -1181,7 +1180,7 @@ disabled.
 Verify: `cd packages/session-ui && bun test src/graph` — the ribbon and the matrix at each level;
 the app e2e — the level control is enabled in the ribbon.
 
-### T17.3 The log's own shape, as a layout — **planned**
+### T17.3 The log's own shape, as a layout — **done**
 
 **The question.** "Consider if there's a way to loosely emulate the log using the graph, possibly
 as an alternate layout mode."
@@ -1194,7 +1193,7 @@ reader read the session the way they read it, with the map's information mixed i
 - **it is a layout, not a mode**: it is one more member of T17.1's list, and the level is its
   grain ✓ (at `overview` a turn is one card, at `execution` its tools, at `detail` its reasoning);
 - **it is host-level geometry**, like the ribbon and the matrix
-  (`packages/session-ui/src/graph/representation.ts` → a `logLayout(model)`), because it is the
+  (`packages/session-ui/src/graph/summary.ts` → a `logLayout(model)`), because it is the
   session's grammar, not a generic geometry;
 - **it differs from the `timeline` layout**: the timeline keeps the lanes and wraps them per
   turn (the horizontal geometry); the log layout **drops the lanes** — a turn's nodes in one
@@ -1206,6 +1205,15 @@ log layout, the map's pane can be a **second reading of the same session in the 
 so the two panes are comparable line by line. It is also the layout that makes the map
 answer the investigative questions *in reading order* ("what changed after the failing test" is a
 question about order).
+
+**What was built.**
+- Added `log` to `LAYOUTS` in `session-ui/src/graph/vocabulary.ts` (now 8 layouts: 5 strategies + ribbon + matrix + log)
+- Added `isLogLayout` and `isSummaryOrLogLayout` helpers in vocabulary
+- Added `logLayout` and `logRows` in `session-ui/src/graph/summary.ts`, using the new `Representations.logLayout` from spacegraphjs
+- Added `logLayout` to the GraphView geometry memo in `session-graph/src/ui/GraphView.tsx`
+- Updated render model options to use `isSummaryOrLogLayout` for bands, edges, bundle, focus, laneLabels
+- Added log layout i18n keys to `LAYOUT_KEY` and `LAYOUT_HINT_KEY` in `session-graph/src/ui/vocabulary.ts`
+- Added `logLayout` and `logRows` to spacegraphjs `Representations` API in `spacegraphjs/src/representations/index.ts`
 
 Done when: the log layout draws a turn's nodes in the session's order with the structure as depth,
 at every level.
