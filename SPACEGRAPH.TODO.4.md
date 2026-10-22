@@ -5,26 +5,27 @@
 frozen). `SPACEGRAPH.md` remains the design argument; `docs/spacegraph/prototype.md` remains the
 release write-up. **This file is the plan for what the map becomes once it is a *workspace* rather
 than a viewer**: surfaces the reader can open, move and size; a map that pans under the hand; a
-toolbar that fits; and a card that can be tuned.
+toolbar that fits; a card that can be tuned; a log that shares the panel with the map; and — from
+T17 on — **a map that speaks one language**: one layout, one level, one way to show content.
 
 **Conventions:** carried tasks keep their IDs (`T8.x`, `T9.x`, `T10.x`, `T2.x`); new work gets
-`T11`–`T15` and the gates `G9`–`G13`. Never renumber or reuse an ID; superseded work gets a new ID.
+`T11`–`T18` and the gates `G9`–`G18`. Never renumber or reuse an ID; superseded work gets a new ID.
 Every task has a `Done when` and a `Verify` command. Check tasks off here. Cite TODO.1 and TODO.3 for
 the evidence; do not copy it.
 
 ---
 
-## 0. Where we are (2026-10-21)
+## 0. Where we are (2026-10-22)
 
 ### 0.1 The two repositories
 
 | Item | State |
 |---|---|
-| OpenCode fork | `dev`, on `origin/dev`, 0/0 with origin, **24 behind** upstream `dev` (fetched 2026-10-21) |
+| OpenCode fork | `dev`, **13 ahead** of `origin/dev` (the T16–T18 block), **24 behind** upstream `dev` (fetched 2026-10-21) |
 | Upstream | `anomalyco/opencode` `dev` — 24 commits, 150 files since the merge base; its `test` and `check` workflows are **green** on its own head |
 | SpaceGraphJS | `main`, a sibling checkout at `spacegraphjs/`, version 8.5.0; the fork's `bun.lock` names it as a workspace |
 | Contract | `CONTRACT_VERSION = 3`; `SUPPORTED_CONTRACT_VERSIONS = [2, 3]` |
-| Green today | `session-ui` graph **112** · `session-graph` unit **97** · library vitest **529** + four package suites · `session-graph` component suite **54** · app graph e2e **27** · root `bun run check` **40/40** typecheck |
+| Green today | `session-ui` graph **123** · `session-graph` unit **101** · library vitest **534** + four package suites · `session-graph` component suite **58** · app graph e2e **29** · root `bun run check` **40/40** typecheck |
 
 ### 0.2 What the author found
 
@@ -46,9 +47,30 @@ Five observations, five workstreams. The first is a **defect report**, not a fea
 `card` mode shipped in T8.8 and does not do what its name says. T11 fixes that before anything else
 is built on top of it.
 
-### 0.3 The seven facts that shape this plan
+**The author's next round (2026-10-22), after the hybrid landed.** The map had a mode, an
+arrangement and a text slider — and the map's own language was still two axes for one job:
 
-Every number here was measured in this tree, not assumed.
+> - "Consider how to enable all possibilities without making it confusing; we need to explore
+>   varieties and not get stuck in a particular UI pattern."
+> - "I found the 'Ribbon', 'Matrix', etc. thing confusing — aren't these just Layouts? The detail
+>   level should be something applicable to any Layout."
+> - "Consider how to simplify the Graph UI by consolidating and reorganizing it."
+> - "Are we making use of LOD to enable high detail when a node is viewed up-close?"
+> - "It might help to add a font-size slider for log text size which could be especially helpful in
+>   hybrid modes" — and, on where it lives: "an easy-to-reach slider, not hidden away in a settings
+>   panel. So it can be quickly adjusted back and forth."
+> - and, on the tests: "avoid creating tests which are too brittle that they may interfere with our
+>   active development and experimentation."
+
+The text slider is built (T16.3 ✓) and the tests were moved onto their contracts rather than their
+copy ✓. The other four are **T17 and T18**: one layout axis, the level as a grain, the log's own
+shape as a layout, one concept for the surfaces, the detail the reader earns by moving closer, and
+the ergonomics of the map-and-log pair.
+
+### 0.3 The facts that shape this plan
+
+Every number here was measured in this tree, not assumed. F1–F7 shaped the plan's first five
+workstreams (2026-10-21); F8–F13 shaped the consolidation (2026-10-22).
 
 **F1 — A card's box belongs to the layout, and the layout reads it per node.**
 `CARD_SIZE = [220, 72]`, `COMPACT_SIZE = [132, 44]`, and one function `nodeSize(node)`
@@ -119,6 +141,60 @@ as the same plus sign. The overflow menu only appears below **640px** of the vie
 the font, but no per-kind hue. Any new styling dimension (age, size, importance) has to either
 extend the HSL scheme or introduce theme roles.
 
+**F8 — the layout is two axes for one job.**
+`REPRESENTATIONS = ["graph","ribbon","matrix"]`
+(`packages/session-ui/src/graph/vocabulary.ts:88`) and
+`LAYOUT_STRATEGIES = ["lanes","timeline","hierarchy","tree","force"]` (`:80`) both answer *how are
+the nodes arranged*. They live in two different controls — the representation is an **inline
+segmented control**, the strategy a row in the **Draw menu** — so the reader meets "Graph" beside
+"Lanes" and has to work out that both are layouts. The ribbon and the matrix are not a
+different *kind* of thing: they are host-level layouts built on the library's own summary geometry
+(`packages/session-ui/src/graph/representation.ts:53,63` → `spacegraphjs/representations`), the
+same seam the five strategies use. The author's instinct is right: **they are layouts.**
+
+**F9 — the level is disabled for two of the three representations.**
+`representationLevel()` (`packages/session-ui/src/graph/representation.ts:20`) answers `"overview"`
+for the summaries, so the toolbar greys the level out for them
+(`packages/session-graph/src/ui/GraphToolbar.tsx`: the level items carry `disabled={!graphMode()}`).
+The reader meets **a control that does nothing** — the clearest possible sign that the two
+controls are not what they look like.
+
+**F10 — the level is a grain, and every layout can honour it.**
+The model already carries the grain: `minLevel` per kind
+(`packages/session-ui/src/graph/model.ts:69-84`, `levels.ts:10-73`) — the session and the turns are
+`overview`, the phases, the tools, the files and the messages are `execution`, the reasoning, the
+diffs and the compactions are `detail`. A layout that draws a *summary* of the model can honour
+the level by drawing a **finer grain**, not a different thing: at `overview` a turn's row is its
+phase clusters, at `execution` the row is the turn's tools, at `detail` the row carries the
+reasoning and the diffs too. The level then means the same thing everywhere: **how fine is the
+grain**.
+
+**F11 — the library has a per-node LOD, and it is a cull, not a detail.**
+`Node.computeLOD()` (`spacegraphjs/src/nodes/Node.ts:182`) returns `high | medium | low | hidden`
+from the node's **screen pixel size** (culled below `minPixelSize`), its **distance** to the camera
+(100 / 500 world units), and two host escapes: `data.lod` (an override) and `data.minZoom` /
+`data.maxZoom` (a zoom band, `spacegraphjs/src/types.ts:61-62`). The core consumes it in exactly
+one place — `RenderContext.shouldRender()` (`spacegraphjs/src/core/RenderContext.ts:81-90`):
+`hidden` culls the node, and **the `high | medium | low` distinction is returned and never read**.
+So the LOD is *whether to draw*, never *how much to draw*.
+
+**F12 — the host uses none of the library's LOD escapes, and the DOM budget is a flat count.**
+No `lod`, `minZoom` or `maxZoom` is set anywhere in
+`packages/session-graph/src/canvas/sessionGraphAdapter.ts` or `packages/session-ui/src/graph/*`, so
+a session's map runs on the library's generic distance bands. And the DOM card budget is a flat
+per-level count (`levels.ts`: 12 / 40 / 24) spent **in model order** — the adapter walks
+`visibleNodes` and stops at the budget (`ModelAdapter.build`: `cards < budget`) — so the card the
+reader is looking at may be a dot because an earlier node in the model took the budget. **The
+reader's proximity is not the budget's criterion.**
+
+**F13 — the map has exactly one "more detail up close", and it stops one line early.**
+The card's tier (`far | mid | near`, `packages/session-ui/src/graph/detail.ts`) is derived from the
+card's **screen width** (T11.4) — a genuine screen-size LOD ✓. But it adds **one** line at the near
+tier (the kind's own fact, T11.3), and the node's *record* (a tool's output, a diff's patch) is
+only ever in the detail surface. **The map never shows more of a node because the reader moved
+closer.** And the seam for "a far node draws itself simpler" — the library's `high | medium | low`
+— is empty (F11).
+
 ### 0.4 Invariants carried forward
 
 Cite TODO.3 §0.6; do not relitigate. The transcript stays the dependable baseline; the graph is
@@ -137,21 +213,32 @@ layout width must not reframe the map.
 | **G12 — the toolbar** | the controls fit, are grouped by axis, and every one of them is legible | T14 |
 | **G13 — the equalizer** | the reader can tune a card's size and style by rules over the graph's own vocabulary | T15 |
 | **G14 — the map and the log** | the two surfaces hold the panel together, and the log keeps its place | T16 |
+| **G15 — one axis** | one layout list, one control, and a level every layout honours | T17.1, T17.2 |
+| **G16 — the log's shape** | the map can be read in the session's order, like the log | T17.3 |
+| **G17 — one surface concept, and the detail up close** | every surface is a gutter, a neighbour or a window; the card nearest the reader is a card | T17.4, T17.5 |
+| **G18 — the pair, tightened** | the map follows the log, one control offers the surfaces, the detail's home follows the map, and the hybrid works from the keyboard | T18 |
 
 They are independent: T13 and T14 can land before T12 exists, and T11 is a precondition for
 believing the `card` mode at all. **Nothing in this plan is a prerequisite for the TODO.3 gates
-(G5–G8)** — but the TODO.3 freeze rule (§7.3 rule 4) says no graph features after G5, so **this
+(G5–G8)** — but the TODO.3 freeze rule (§10.3 rule 4) says no graph features after G5, so **this
 plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
 as one reviewed block rather than as a drip.
 
 **Status: G9, G10, G11, G12 and G13 are reached** (T11, T12, T13, T14 and T15, 2026-10-21 — see the
 log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). T14.3
-(the minimap as a window) is still open.
+(the minimap as a window) is still open, and is now the last step of T17.4 rather than a leftover.
+
+**T17 and T18 are planned, not started** (2026-10-22). They are the consolidation the author's own
+use asked for — one layout axis, a level that applies to every layout, one way to show
+content, the detail the reader earns by moving closer, and the ergonomics of the map-and-log pair.
+They are written here before any of them is built, because the consolidation moves a vocabulary and
+a vocabulary is cheaper to move on paper.
 
 ### 0.6 What is *not* in this plan
 
-- **The `auto` detail mode** (the graph picks a surface by viewport). Deferred until G9 and G10 have
-  produced evidence about which surface wins.
+- **The `auto` detail mode** — *moved into T18.3*: G9 and G10 have now produced the evidence the
+  deferral asked for (the card speaks, the window works), and the answer turned out to be a rule
+  rather than a guess: the detail's home follows the map's width.
 - **A new node type for windows.** A node is world-space: it scales, rotates and moves with the
   camera, it is in the spec, it is in the layout, it is culled by LOD. A window that behaves like a
   window must not be a node (F4).
@@ -227,7 +314,7 @@ The consequence the plan named — "the camera moves on every click" — is real
 to the `card` mode. The other modes (the default `panel`, the `popover`, `off`) leave the map
 where it is.
 
-Done when: the decision is recorded in §7.1 and the plan's task list names the resulting modes.
+Done when: the decision is recorded in §10.1 and the plan's task list names the resulting modes.
 Verify: this file.
 
 ### T11.3 The card's composition becomes a function of the kind, not of the tier alone — **done**
@@ -478,7 +565,7 @@ Verify: the component test pins a window, pans the camera, and asserts the windo
 
 ### T12.5 The window survives a session — **done**
 
-The windows are the reader's arrangement of the map. They belong in the same per-session store as
+The windows are how the reader has arranged the map. They belong in the same per-session store as
 the detail mode (`packages/app/src/shell/state/layout.tsx:88-106`): a list of
 `{ id, kind, nodeID?, left, top, width, height, z, pinned? }`. The store is a `Persistence.struct`
 with optional fields, so a new field needs no migration.
@@ -820,7 +907,7 @@ be reachable from one place. The card template already resolves the hue in one f
 drift. The equalizer extends that resolution: **one function maps a node to its accent**, and the
 legend, the cards and the equalizer's preview all read it.
 
-Whether the new roles become theme tokens or stay in the HSL scheme is a decision (§7.1). The
+Whether the new roles become theme tokens or stay in the HSL scheme is a decision (§10.1). The
 contrast test (`packages/session-graph/src/ui/contrast.test.ts`) must cover any new colour in both
 schemes.
 
@@ -935,7 +1022,253 @@ moves the log.
 
 ---
 
-## 7. Deferred and future seams
+## 7. T17 — The map's own language: one axis, one level, one surface
+
+**The author's words.** "I found the 'Ribbon', 'Matrix', etc. thing confusing — aren't these just
+Layouts? The detail level should be something applicable to any Layout." And, on the whole surface:
+"consider how to simplify the Graph UI by consolidating and reorganizing it." And, on the map's
+depth: "are we making use of LOD to enable high detail when a node is viewed up-close?"
+
+Three questions, one cause: **the map's vocabulary grew a second axis for a job the first axis
+already did, and the level that should describe every layout is wired to only one of them.**
+
+The facts that shape this section are **F8–F13 in §0.3** ✓ — measured in this tree, not assumed.
+
+### T17.1 One layout axis — the decision — **planned**
+
+- The representations become layouts:
+  `LAYOUTS = ["lanes","timeline","hierarchy","tree","force","ribbon","matrix"]` — one list, one
+  control, one name for the job. (T17.3 adds the eighth: the log's own shape.)
+- The control is a **menu** (seven names do not fit a segmented control), inline, with the icon and
+  the current value's name ✓ — the pattern the Draw menu already uses ✓. The Draw menu loses its
+  layout row ✓, so the row does not grow.
+- The persisted state migrates: the store's `layout` (the strategy) and `representation` (the
+  family) become one `layout` field. A stored `representation` of `ribbon`/`matrix` wins;
+  otherwise the stored strategy is kept. The store already has a migration chain
+  (`packages/app/src/shell/state/layout.tsx`).
+- `representationLevel()` goes away, and with it the toolbar's `graphMode()`: **no control is ever
+  disabled because of the layout** ✓.
+- **the hybrid's own axis keeps its name.** The map's arrangement of nodes and the panel's
+  arrangement of surfaces are different jobs in different domains, and the plan has one word for
+  each: the **layout** is the map's, the **arrangement** is the panel's (T16.1 ✓).
+
+Done when: one layout list, one control, and the level control is enabled for every
+layout.
+Verify: `cd packages/session-ui && bun test src/graph` — the layout and level vocabulary; the
+app e2e — a stored `ribbon` still opens as the ribbon after the migration.
+
+### T17.2 The level means the same thing in every layout — **planned**
+
+The level is a **grain**, not a family. Every layout draws the level's units; a summary
+layout packs them into its own grammar.
+
+| layout | `overview` | `execution` | `detail` |
+|---|---|---|---|
+| `lanes`, `timeline`, `hierarchy`, `tree`, `force` | the session, the turns, the phase clusters | the phases' members: the tools, the files, the messages | + the reasoning, the diffs, the compactions |
+| `ribbon` | a row per turn, one segment per phase | a row per turn, one segment per tool | + the reasoning and the diffs in the row |
+| `matrix` | a row per turn, a column per phase | a row per turn, a cell per phase holding its tools | + the rest in the cell |
+
+The general rule, which is what makes the table a rule and not a list: **a layout draws the
+level's units; a summary layout packs them into its own grammar.** The node-link layouts already
+honour it (the level is a filter over `minLevel` ✓); the summaries gain it by drawing a finer
+grain instead of a different thing.
+
+Done when: the level is a filter every layout honours, and the level control is never
+disabled.
+Verify: `cd packages/session-ui && bun test src/graph` — the ribbon and the matrix at each level;
+the app e2e — the level control is enabled in the ribbon.
+
+### T17.3 The log's own shape, as a layout — **planned**
+
+**The question.** "Consider if there's a way to loosely emulate the log using the graph, possibly
+as an alternate layout mode."
+
+**The answer: yes, and it belongs on the layout axis.** The log is the transcript's shape; the
+lanes are the *structure*'s shape. A layout that borrows the log's shape — a vertical reading
+order, one block per turn, the activity nested under it, the sequence drawn as a spine — lets the
+reader read the session the way they read it, with the map's information mixed in.
+
+- **it is a layout, not a mode**: it is one more member of T17.1's list, and the level is its
+  grain ✓ (at `overview` a turn is one card, at `execution` its tools, at `detail` its reasoning);
+- **it is host-level geometry**, like the ribbon and the matrix
+  (`packages/session-ui/src/graph/representation.ts` → a `logLayout(model)`), because it is the
+  session's grammar, not a generic geometry;
+- **it differs from the `timeline` layout**: the timeline keeps the lanes and wraps them per
+  turn (the horizontal geometry); the log layout **drops the lanes** — a turn's nodes in one
+  column in the order they happened, the phases as depth, the sequence as a spine.
+
+**Why it earns its place.** The hybrid puts the log and the map side by side, and today they show
+*different things* — a reader has to hold two readings of the same session in their head. With the
+log layout, the map's pane can be a **second reading of the same session in the log's own order**,
+so the two panes are comparable line by line. It is also the layout that makes the map
+answer the investigative questions *in reading order* ("what changed after the failing test" is a
+question about order).
+
+Done when: the log layout draws a turn's nodes in the session's order with the structure as depth,
+at every level.
+Verify: `cd packages/session-ui && bun test src/graph` — the layout's positions; the app e2e — the
+layout menu offers it and the map reads top to bottom.
+
+### T17.4 One concept for the surfaces — **planned**
+
+The map shows content in five different ways today: the gutter (the inspector), beside the node
+(the popover), on the node (the card), in an overlay (the search, the legend, the gallery, the
+minimap) and in a window. Five ways is a vocabulary the reader has to learn.
+
+- **the overlays become windows.** The legend, the gallery and the minimap are windows (T14.3 is
+  the last step of this, and it stops being an arbitrary leftover ✓), so "open a window" is one
+  idea, and the "Show" menu becomes the **windows** menu: the detail, the legend, the gallery, the
+  minimap, the turn map.
+- **the detail's homes reduce to three**: the gutter, beside the node, in a window. The fourth,
+  "on the node", is not a *home* but a **framing** — T11.2's decision C already said it: the card
+  says identity and a summary, the record lives in a window. So the card behaviour becomes "the map
+  frames what you picked" (a camera behaviour, next to the zoom and the fit) rather than a fourth
+  place to read.
+- the vocabulary becomes `off | panel | popover | window`, with the framing as a separate
+  behaviour ✓.
+
+Done when: every piece of content the map shows lives in a gutter, beside a node, or in a window,
+and one menu opens them.
+Verify: `cd packages/session-graph && bun test src` — the detail modes; the component suite — the
+minimap opens as a window.
+
+### T17.5 The detail the reader earns by moving closer — **planned**
+
+**The question.** "Are we making use of LOD to enable high detail when a node is viewed up-close?"
+
+**The answer today: no.** F11–F13 say why: the library's LOD is a cull, the host uses none of its
+escapes, the DOM budget is spent in model order, and the card's own screen-size tier adds one line
+and stops. The mechanism for the answer is already in the library — it is empty.
+
+Three pieces, in the order they pay:
+
+1. **the budget follows the camera.** The host knows the camera's centre (the viewport reports it
+   ✓) and the model's positions ✓, and the adapter walks the model's nodes **in order** and stops at
+   the budget (`ModelAdapter.build`: `cards < budget` over `visibleNodes`, F12). So the host can
+   hand the adapter a model whose nodes are **ordered by their distance from the camera's centre**,
+   and the flat budget is then spent on **what the reader is looking at** ✓. The layout is keyed by
+   turn and ordinal, so the order does not move a node ✓ (F1) — it only decides which nodes get a
+   card. No library change: the adapter already walks whatever order it is given. **One exception:
+   the a11y list keeps the session's order** — a screen reader reads the session, not the
+   camera ✓ — so the reorder is the render model's, not the model's ✓.
+2. **a kind earns its card by proximity.** The host sets the library's per-node escapes
+   (`data.minZoom`, `data.lod`): a kind that is only worth a card when the reader is close says so,
+   and the far map is a map of dots rather than a map of tiny cards ✓.
+3. **the card's LOD gains a band.** The tier is derived from the reading size (T11.4 ✓), so a fourth
+   band is a fourth reading size — and because the card's box is fixed (F1), the nearest card
+   **replaces** its summary with the kind's *content* (the output's first lines, the diff's files)
+   rather than adding a fourth line to a box that cannot hold one.
+
+**The library seam, and where it belongs.** The `high | medium | low` distinction the core computes
+and never reads (F11) is the seam for "a node draws itself simpler when it is far" — a *generic*
+capability, so it belongs in SpaceGraphJS, not in the host (the session-graph package's rule:
+"Generic graph capabilities belong in SpaceGraphJS; if a capability is generic, add it to the
+library first"). Until it is there, the host's answer is the two pieces it can do itself: the
+proximity budget and the zoom bands.
+
+Done when: the card nearest the reader is a card, the map's budget follows the camera, and the
+nearest card says more than the one across the map.
+Verify: `cd packages/session-graph && bun test src` — the render model's node order near the
+camera; the app e2e — zooming into a cluster gives those nodes their cards.
+
+---
+
+## 8. T18 — The map and the log, tightened
+
+**The state.** The hybrid (T16) put the two surfaces in one panel, and the bridge (T16.2) makes
+them talk. What is left is the ergonomics of the pair: who follows whom, where the detail goes
+when the map is narrow, how a keyboard reader moves between the panes — and the measurement that
+decides whether the pair is worth keeping.
+
+### T18.1 The map follows the log — **planned**
+
+The map *marks* the turn the log is reading (T16.2 ✓) and leaves the reader to hunt for it. The
+pieces are already there: `scaleWindow(model, keep)` keeps a turn in the drawn window ✓, the app
+computes the active turn ✓, and the camera can frame a node ✓.
+
+- the log's active turn **joins the map's drawn window** ✓ (one more turn in the list the scale
+  window already takes);
+- the camera **frames it** when it changes — as a **toggle**, because a camera that moves while the
+  reader scrolls is a camera the reader did not ask for. The marker (T16.2) says where the reader
+  is; the follow says where the map looks; they are two different promises, and the reader picks
+  the second.
+
+Done when: the map's window follows the log's active turn, and the camera follows only when the
+reader asks.
+Verify: the app e2e — scrolling the log moves the map's window; the follow toggle frames the turn.
+
+### T18.2 One control for the surface — **planned**
+
+The mode is three-valued (T16.1 ✓), but the entry points are scattered: the header's icon toggles
+transcript↔map, the map's toolbar offers the split, and `graph.hybrid` toggles the hybrid. A
+reader cannot see all three from one place, and the split is only reachable *from inside the map*.
+
+- the session header's icon becomes a **menu**: **Transcript | Map | Both** ✓ — the three modes, in
+  one place, named the way the reader thinks of them;
+- the map's own "show the log beside it" and the `graph.hybrid` command stay ✓ (the command is the
+  keyboard path, the menu is the discovery path).
+
+Done when: one control offers the three surfaces, and the hybrid has a discoverable home.
+Verify: the app e2e — the header menu switches between the three.
+
+### T18.3 The detail's home follows the map's width (D9, unblocked) — **planned**
+
+§0.6 deferred the `auto` detail mode "until G9 and G10 have produced evidence about which surface
+wins". The evidence now exists: **the card speaks** (G9 ✓) and **the window works** (G10 ✓). The
+answer is a rule, not a guess:
+
+- the detail lives in the **gutter** when the map is wide, and in a **window** when it is narrow. A
+  288px gutter out of a 631px map — the hybrid's `side` arrangement — is a third of the map, and a
+  third of the map is not a map.
+- the threshold is the map's own width (the host owns it ✓), the same measurement the toolbar's
+  compact threshold already uses (T14.5 ✓).
+
+Done when: the detail's home follows the map's width, and the reader never loses a third of the
+map to a panel.
+Verify: the component suite — a narrow map opens the detail in a window.
+
+### T18.4 The hybrid's keyboard — **planned**
+
+The hybrid is two surfaces and a divider, and none of it has been through the keyboard.
+
+- the **divider is a keyboard-resizable separator** (the ARIA separator pattern: the arrows resize,
+  `Home` and `End` take it to the ends) — the pointer is not the only way to size a pane;
+- the two panes have a **defined focus order** and a way to jump between them (the map is a canvas
+  with its own key map: `f` fits, `1`/`2`/`3` set the level, `/` searches ✓ — those keys belong to
+  the map's region, and the log's keys belong to the log);
+- the log's **text-size slider** is reachable and named ✓ (a range input with an accessible name ✓).
+
+Done when: the hybrid is usable without a pointer.
+Verify: the component suite — the divider resizes from the keyboard; the app e2e — the map's keys
+do not fire while the log has focus.
+
+### T18.5 The measurement (T2.2, carried) — the gate on all of this — **planned**
+
+The evidence is the product's decision, and `SPACEGRAPH.md` §10 makes it the critical path: if the
+map does not beat the transcript on the five investigative tasks, **stop feature work and publish
+the finding**. T17 and T18 are ergonomics; they are worth doing while the study is arranged, and
+the study's result decides whether the map becomes a mode of the product or a curiosity.
+
+What exists: the app counts the actions (`Metrics`, `?graphMetrics=1` ✓ — the mode switches, the
+search, the selections, the fits, the zooms, the turn maps). What is missing is the *task* side:
+
+- the **protocol**: the five questions over the canonical fixture, each with its answer key, so two
+  people (or the same person twice) are scored the same way;
+- the **counterbalance**: the transcript and the map are one toggle away (T16.1 ✓), so the order of
+  the two surfaces can be swapped per participant without any new machinery;
+- the **readout**: success, time, wrong turns, interactions, preference (1–7) and the quotes — the
+  `Metrics` counter is the interactions column, and the rest is a form and a stopwatch.
+
+**The rule this plan adopts:** T17 and T18 are *ergonomics work*; they do not commit the product
+to the map. The study does.
+
+Done when: the protocol, the counterbalance and the readout exist, and the study can be run
+without changing the app.
+Verify: the app e2e — the counter and the mode switch are enough to score a session; the protocol
+is in this file.
+
+---
+## 9. Deferred and future seams
 
 | ID | Item | Unblock condition | Seam already present |
 |---|---|---|---|
@@ -945,12 +1278,14 @@ moves the log.
 | D11 | a window per session in a split view | cross-session graphs (TODO.3 D4) | the per-session store |
 | D12 | an equalizer for the *layout* (not the cards): lane pitch, column width | the layout strategies gain a policy surface | `LayoutConfig` (`standardSize`, `nodeSizeFn`) |
 | D13 | the mouse map grows a third gesture (a modifier for a third dimension) | a 3D map that earns it | the depth spectrum |
+| D14 | the library's `high \| medium \| low` LOD consumed, so a node draws itself simpler when it is far | the library reads the level it already computes (F11) | `Node.computeLOD`, `RenderContext.shouldRender` |
+| D15 | the log's *text* in the map: the log layout carrying the messages' own words, not the map's cards | the host decides that a layout may render prose (T17.3) | the card template's `summary` |
 
 ---
 
-## 8. Decisions, risks, stop rules
+## 10. Decisions, risks, stop rules
 
-### 8.1 Decisions this plan makes
+### 10.1 Decisions this plan makes
 
 | # | Decision | Reason |
 |---|---|---|
@@ -966,8 +1301,15 @@ moves the log.
 | 10 | **The hybrid is a mode, and the arrangement is the reader's choice** | one axis (which surfaces) and one axis (how they meet) is two questions a reader can hold; a single fixed split would be one layout the author has to live with (T16.1) |
 | 11 | **The log's pane is the log's home; the map is arranged around it** | moving the transcript's DOM resets its scroll, and the reader's place in the log is the whole point of the hybrid (T16.3) |
 | 12 | **The equalizer's panel edits the presets' rules; it does not write rules from scratch** | a free-form rule editor is a larger surface than the map needs, and the presets are the product (T15.4, T15.5) |
+| 13 | **The layout is one axis** — the representations are layouts, and no control is disabled because of them | the author's own words ("aren't these just Layouts?") and the facts agree: the ribbon and the matrix are host-level layouts like the strategies, and the level was greyed out for two of the three (F8, F9) |
+| 14 | **The level is a grain, not a family** — every layout draws the level's units, and a summary layout packs them into its own grammar | a level that is disabled for two layouts is a control that lies, and the model already carries the grain in `minLevel` (F9, F10) |
+| 15 | **The log's shape is a layout, not a mode** | the map's pane can be a second reading of the same session in the log's order, which is what makes the hybrid's two panes comparable (T17.3) |
+| 16 | **Every surface is a gutter, a neighbour or a window** | five ways to show content is a vocabulary to learn; the windows already exist (T12) and the overlays can join them (T17.4) |
+| 17 | **The detail the reader earns by moving closer** — the budget follows the camera, a kind earns its card by proximity, and the nearest card says more | the library's LOD is a cull and its escapes are unused, the budget is spent in model order, and the map's only screen-size LOD adds one line (F11–F13) |
+| 18 | **The map follows the log only when the reader asks** | a camera that moves while the reader scrolls is a camera the reader did not ask for (T18.1) |
+| 19 | **The study decides the product; T17 and T18 do not** | the stop rule in `SPACEGRAPH.md` §10 is this plan's own promise, and T17/T18 are ergonomics (T18.5) |
 
-### 8.2 Risks
+### 10.2 Risks
 
 | Risk | Likelihood | Mitigation | Fallback |
 |---|---|---|---|
@@ -979,8 +1321,12 @@ moves the log.
 | A size rule re-lays-out on every streaming append | Medium | the rules are part of the layout key, so they re-lay-out like a level does | size rules are pinned to the session, not to the model |
 | The hybrid's log is too narrow to read in the stacked arrangement | Medium | the divider is draggable, the arrangement can become `side` or `floating`, and the split is remembered per session | the reader drags the divider or switches the arrangement |
 | The hybrid's map is too narrow to read | Medium | the level control becomes a menu in the compact row, so the controls fit a half-width map | the reader uses the map alone (`graph.toggle`) |
+| The consolidation breaks a reader's muscle memory | Medium | the layouts keep their names and the level keeps its meaning; what changes is the *control*, not the words | the old controls stay as an alias for a release |
+| The summary layouts at a finer grain become unreadable | Medium | the grain is the level the reader already chose, and a summary row *packs* the units rather than stretching them | the summaries stay at the overview grain and say so |
+| A budget that follows the camera moves nodes under the reader | Medium | the order changes which nodes get a *card*, never the positions — the layout is untouched (F1) | the budget returns to the flat count |
+| The log layout duplicates the log | Low | it is the same data in the map's grammar: the structure is what the log cannot show (T17.3) | the layout is not offered |
 
-### 8.3 Stop rules
+### 10.3 Stop rules
 
 1. Do not start T12 before T11.1 and T11.2 are decided: the window's *content* is the card's
    content, and the card's content is not yet settled.
@@ -993,7 +1339,7 @@ moves the log.
 
 ---
 
-## 9. Verification matrix
+## 11. Verification matrix
 
 | Check | Command | Owns |
 |---|---|---|
@@ -1007,7 +1353,7 @@ moves the log.
 
 ---
 
-## 10. Log
+## 12. Log
 
 Append-only. One entry per pass: date, task IDs, commands run, results, surprises, unverified items.
 
@@ -1296,3 +1642,35 @@ mode had been missing.
 Unverified: the *feel* of the three arrangements — whether the stacked split gives the log and the
 map each enough room, and whether the floating pane is where the reader would put it — needs the
 author's hands.
+
+**2026-10-22 — T17 and T18: the map's own language, and the pair tightened (planned).**
+No code changed by this pass. The author's use of the map asked three questions — are the
+representations just layouts, can the level apply to any layout, is the LOD earning its keep — and
+this pass measured the answers:
+
+- **the layout is two axes for one job** (F8): the representation is an inline control, the
+  strategy a row in a menu, and the ribbon and the matrix are host-level layouts like the
+  strategies — the author's instinct is right;
+- **the level is disabled for two of the three representations** (F9): a control that does nothing;
+- **the level is a grain every layout can honour** (F10): the model already carries it in
+  `minLevel`;
+- **the library's LOD is a cull, not a detail** (F11): `high | medium | low` is computed and
+  never read, and the host sets none of the library's per-node escapes (`lod`, `minZoom`,
+  `maxZoom`);
+- **the DOM budget is a flat count spent in model order** (F12): the card the reader is looking at
+  may be a dot because an earlier node took the budget;
+- **the map's only screen-size LOD is the card's tier, and it adds one line** (F13): the map never
+  shows more of a node because the reader moved closer.
+
+What was written: **T17** (one layout axis; the level as a grain; the log's own shape as a
+layout; one concept for the surfaces; the detail the reader earns by moving closer) and **T18**
+(the map follows the log; one control for the surfaces; the detail's home follows the map's width —
+which un-defers D9; the hybrid's keyboard; and the measurement that decides the product).
+
+What was *not* done, on purpose: none of it. T17 moves a vocabulary (the layouts, the level,
+the detail modes) and T18 moves the ergonomics; both are cheaper to write down than to unpick, and
+the study (T2.2, carried) decides whether the map is a mode of the product at all.
+
+Unverified: every number in F8–F13 is measured in this tree, but the *feel* of the consolidated
+row — seven layout names in one menu, the summaries at a finer grain, the log-shaped layout —
+needs the author's hands.
