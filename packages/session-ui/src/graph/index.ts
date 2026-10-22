@@ -46,6 +46,8 @@ export {
   SUMMARY_LAYOUTS,
   ZOOM_LEVELS,
   isSummaryLayout,
+  isLogLayout,
+  isSummaryOrLogLayout,
   type DetailMode,
   type GraphArrangement,
   type GraphMode,
@@ -117,6 +119,8 @@ export {
 } from "./layout"
 
 export {
+  logLayout,
+  logRows,
   matrixColumn,
   matrixLayout,
   ribbonLayout,

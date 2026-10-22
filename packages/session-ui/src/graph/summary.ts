@@ -3,9 +3,9 @@ import type { GraphLayout } from "./layout"
 import { nodeSize } from "./layout"
 import { isClusterExpanded, isVisibleAt } from "./levels"
 import { nodeIndex } from "./lookup"
-import type { GraphModel, GraphNode, PhaseCategory } from "./model"
+import type { GraphModel, GraphNode, PhaseCategory, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
-import { COMPACT_SIZE, PHASE_CATEGORIES, type ZoomLevel } from "./vocabulary"
+import { COMPACT_SIZE, PHASE_CATEGORIES } from "./vocabulary"
 
 /**
  * T17.1/T17.2 — the session's summary layouts: the turn ribbon and the turn matrix.
@@ -163,4 +163,27 @@ function clusterCategories(model: GraphModel): ReadonlyMap<string, PhaseCategory
   CLUSTER_CATEGORIES.set(model.nodes, categories)
 
   return categories
+}
+
+/**
+ * T17.3 — the log layout: a vertical reading order, one block per turn, the activity nested under it,
+ * the sequence drawn as a spine. This is the transcript's shape as a map layout.
+ *
+ * At overview: a turn is one card (the turn header).
+ * At execution: the turn's tools, files, messages in the order they happened.
+ * At detail: + reasoning, diffs, compactions.
+ *
+ * The log layout drops the lanes — a turn's nodes in one column in the order they happened,
+ * the phases as depth, the sequence as a spine.
+ */
+export function logLayout(model: GraphModel, options: SummaryLayoutOptions = {}): GraphLayout {
+  return Representations.logLayout(summary(model), config(model, options.level), options)
+}
+
+/**
+ * T17.3 — the nodes the log layout draws at a level: the session row, then one row per turn with
+ * the turn's nodes in session order (the order they happened).
+ */
+export function logRows(model: GraphModel, level: ZoomLevel = "overview"): GraphNode[][] {
+  return Representations.logRows(summary(model), config(model, level))
 }

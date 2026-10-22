@@ -34,6 +34,7 @@ export const LAYOUT_KEY = {
   force: "ui.sessionGraph.layout.force",
   ribbon: "ui.sessionGraph.layout.ribbon",
   matrix: "ui.sessionGraph.layout.matrix",
+  log: "ui.sessionGraph.layout.log",
 } as const satisfies Record<Layout, string>
 
 /** What each layout encodes, in one sentence. The legend says it for the layout on screen. */
@@ -45,6 +46,7 @@ export const LAYOUT_HINT_KEY = {
   force: "ui.sessionGraph.layoutHint.force",
   ribbon: "ui.sessionGraph.layoutHint.ribbon",
   matrix: "ui.sessionGraph.layoutHint.matrix",
+  log: "ui.sessionGraph.layoutHint.log",
 } as const satisfies Record<Layout, string>
 
 export const DEPTH_KEY = {

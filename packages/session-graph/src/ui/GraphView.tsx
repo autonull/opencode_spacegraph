@@ -32,8 +32,10 @@ import {
   equalizerScale,
   fileRelations,
   isSummaryLayout,
+  isSummaryOrLogLayout,
   laneAnchors,
   layoutGraph,
+  logLayout,
   matrixLayout,
   LEVEL_RANK,
   isVisibleAt,
@@ -426,6 +428,7 @@ export const GraphView = (props: GraphViewProps) => {
 
     if (current === "ribbon") return ribbonLayout(scoped(), { level: level() })
     if (current === "matrix") return matrixLayout(scoped(), { level: level() })
+    if (current === "log") return logLayout(scoped(), { level: level() })
 
     // T15: the rules are part of the layout key, because a size rule re-lays-out the map — the
     // same way a level or a layout change does.
@@ -460,7 +463,7 @@ export const GraphView = (props: GraphViewProps) => {
   // overview. The render model draws the same set, so the two cannot disagree.
   const drawn = createMemo(() => {
     const current = scoped()
-    if (!isSummaryLayout(layout())) return current
+    if (!isSummaryOrLogLayout(layout())) return current
     const units = summaryUnits(current, level())
     return { ...current, nodes: current.nodes.filter((node) => units.has(node.id)) }
   })
@@ -494,12 +497,12 @@ export const GraphView = (props: GraphViewProps) => {
     buildRenderModel(budget(), {
       level: level(),
       positions: geometry().positions,
-      bands: !isSummaryLayout(layout()) && layout() !== "hierarchy",
-      edges: !isSummaryLayout(layout()),
-      bundle: !isSummaryLayout(layout()) && files(),
-      focus: !isSummaryLayout(layout()) && level() === "execution" ? selection.selection()[0] : undefined,
+      bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
+      edges: !isSummaryOrLogLayout(layout()),
+      bundle: !isSummaryOrLogLayout(layout()) && files(),
+      focus: !isSummaryOrLogLayout(layout()) && level() === "execution" ? selection.selection()[0] : undefined,
       laneLabels:
-        !isSummaryLayout(layout()) && layout() === "lanes"
+        !isSummaryOrLogLayout(layout()) && layout() === "lanes"
           ? laneAnchors().map((lane) => ({
               id: lane.name,
               label: i18n.t(LANE_KEY[lane.name]),
