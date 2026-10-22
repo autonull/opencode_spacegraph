@@ -26,11 +26,11 @@ story("assembles the graph view and answers node questions without the canvas", 
   // RF.7: a wide row keeps the secondary controls inline, with no overflow menu.
   await expect(root.locator('[data-slot="graph-toolbar-overflow"]')).toHaveCount(0)
 
-  // LE.2: phase clusters are legible DOM panels at every level. Execution shows the expanded header
-  // (label only); the collapsed overview chip carries the member count instead.
+  // LE.2: phase clusters are legible DOM panels at every level. Phase cards now show member count
+  // at all levels (not just overview), with a group glyph and expand indicator at execution/detail.
   const phases = host.locator('.html-node-container:has([data-kind="phase"])')
   await expect(phases.filter({ hasText: "Explore" }).first()).toBeVisible()
-  await expect(phases.filter({ hasText: "Explore" }).first()).not.toContainText(/Explore\s+\d/)
+  await expect(phases.filter({ hasText: "Explore" }).first()).toContainText(/Explore\s+\d/)
 
   // The selected tool node renders as readable DOM detail, with its place in the session above it.
   await expect(inspector).toContainText("Tool call")

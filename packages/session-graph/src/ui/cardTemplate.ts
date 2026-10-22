@@ -36,6 +36,9 @@ const GLYPH: Record<NodeKind, string> = {
   diff: "M4 2v12M12 2v12M4 5h4M4 10h4M9 13.5 12 13.5M10.5 12v3M9 2.5l3 0M10.5 1v3",
 }
 
+/** A small stack glyph for phase/group nodes to indicate they contain members. */
+const GLYPH_GROUP = "M3 13.5V4.5M6 12.5V3.5M9 11.5V2.5M12 10.5V1.5"
+
 /** The accent a phase category carries. Every category has one, so the legend cannot drift. */
 const CATEGORY_HUE: Record<PhaseCategory, number> = {
   explore: 210,
@@ -274,8 +277,13 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const mono = MONO_KINDS.has(node.kind)
     // A derived cluster shows its member count while collapsed (overview chip); once expanded the
     // header is a plain labelled panel, so the count is dropped (RF.5/LE.2, §5.4).
-    const count = node.derived && node.clusterOf && !isClusterExpanded(level) ? node.clusterOf.length : 0
-    const badge = count ? `<span style="color:${theme.textMuted};font-weight:500"> ${count}</span>` : ""
+    const derivedCount = node.derived && node.clusterOf && !isClusterExpanded(level) ? node.clusterOf.length : 0
+    // Phase/group nodes: show member count as a badge even when expanded (at execution/detail),
+    // and include cluster members in data for potential hover preview.
+    const isPhase = node.kind === "phase"
+    const memberCount = isPhase && node.clusterOf ? node.clusterOf.length : 0
+    const phaseBadge = memberCount > 0 ? `<span style="color:${theme.textMuted};font-weight:500;font-size:11px"> ${memberCount}</span>` : ""
+    const derivedBadge = derivedCount ? `<span style="color:${theme.textMuted};font-weight:500"> ${derivedCount}</span>` : ""
     const labelFont = mono ? `ui-monospace,SFMono-Regular,Menlo,monospace` : `inherit`
     const status = statusAccent(theme, node.status)
     // T11.5 — a selected card says so. The selection is a theme token, so it follows the theme.
@@ -315,14 +323,25 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
     const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;background:${theme.surface};border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
-<span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[node.kind]}"/></svg></span>
+    // Phase/group node enhancements: distinct background, group glyph, member preview data
+    const isGroupNode = isPhase
+    const groupBg = isGroupNode ? `background:linear-gradient(180deg,${soft}00,${theme.surface});` : `background:${theme.surface};`
+    const groupGlyph = isGroupNode ? GLYPH_GROUP : GLYPH[node.kind]
+    const groupDataAttr = memberCount > 0 ? ` data-group-members="${escapeHtml(memberCount.toString())}"` : ""
+    // At execution level and below, show a subtle expand indicator for phase nodes
+    const expandIndicator = isGroupNode && level !== "overview"
+      ? `<span style="flex:none;width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:${theme.textMuted};opacity:0.5" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6l3 3 3-3"/></svg></span>`
+      : ""
+
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+<span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
-<span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${badge}</span>
+<span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>
 ${summary}
 ${contentRow}
 ${detailRow}
 </span>
+${expandIndicator}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`
   }
