@@ -1126,6 +1126,11 @@ minimap) and in a window. Five ways is a vocabulary the reader has to learn.
   place to read.
 - the vocabulary becomes `off | panel | popover | window`, with the framing as a separate
   behaviour ✓.
+- **the capture matrix grows with the surfaces.** The committed frames (31 today) are the
+  project's only "look at it" ritual, and the 2026-10-19 visual review (T1.1–T1.18) is what
+  found the last round of legibility defects. The consolidated row, the log layout and the
+  windows need frames of their own ✓ — and a layout that is only ever seen in a test is a layout
+  nobody has looked at.
 
 Done when: every piece of content the map shows lives in a gutter, beside a node, or in a window,
 and one menu opens them.
@@ -1350,6 +1355,7 @@ is in this file.
 | The component suite | `cd packages/session-graph && bun run test:components` | the toolbar, the windows, the card |
 | The app's e2e | `cd packages/app && bunx playwright test e2e/graph` | the graph in the app, end to end |
 | The whole fork | `bun run check` from the repository root | lint and types |
+| The visual record | `bun run graph:capture --mode=verify` from the repository root | the committed frames — the ritual that finds what the tests cannot |
 
 ---
 
