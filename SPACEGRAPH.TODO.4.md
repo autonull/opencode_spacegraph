@@ -143,7 +143,7 @@ believing the `card` mode at all. **Nothing in this plan is a prerequisite for t
 plan is the exemption**: it is the work the author's own use of the product asked for, and it lands
 as one reviewed block rather than as a drip.
 
-**Status: G9 is reached** (T11, 2026-10-21 — see the log). G10–G13 are open.
+**Status: G9 and G11 are reached** (T11 and T13, 2026-10-21 — see the log). G10, G12 and G13 are open.
 
 ### 0.6 What is *not* in this plan
 
@@ -457,7 +457,7 @@ should pan like it does with the right button — but only when dragging on the 
 belongs to the nodes; a left press on empty background takes no branch at all, so a press emits
 `background:click` and a drag emits nothing.
 
-### T13.1 The change, and where it belongs
+### T13.1 The change, and where it belongs — **done**
 
 **It belongs in the library's `InteractionPlugin`, not in the camera fingering.** The camera
 fingering (`spacegraphjs/src/input/fingerings/CameraFingerings.ts:20-23`) has no raycaster and does
@@ -481,39 +481,60 @@ and friends — and **none of them is read anywhere** (`spacegraphjs/src/types.t
 `applyDefaultInputConfig` function ignores its config argument). T13.1 therefore includes
 **wiring the input config that already exists**, or replacing it with one honest set of options.
 
+**What was built.** The branch is in the interaction plugin, exactly as the plan drew it. The option
+is `input.interaction.enableBackgroundPan`, **on by default**: over the void the left button has
+nothing else to do, and a host that wants the old map turns it off.
+
+**The input config is honest now.** Every option it declares is read: `enableHover`,
+`enableBoxSelect`, `enableDrag` and `clickThreshold` are wired in the interaction plugin, and the
+new `enableBackgroundPan` joins them. The two sections that were *promises* — a camera section
+that duplicated `options.cameraControls` (which is read) and a history section that duplicated the
+history plugin's own option (which is read) — are gone, and the camera gained the two setters the
+option needs (`setPanEnabled`, `setZoomEnabled`).
+
 Done when: a left drag on the background pans the map, a left drag on a card still moves the card, a
 left click on the background still clears the selection, and a host can turn the new behaviour off.
 Verify: `cd spacegraphjs && pnpm exec vitest run` — the mouse contract test
 (`test/mouse-contract.test.ts`) and the interaction e2e
 (`test/e2e/mouse-interaction.spec.ts:133-165`, the case that a left drag on a card moves the card).
 
-### T13.2 The conflicts, written down
+### T13.2 The conflicts, written down — **done**
 
-| Gesture | Today | After T13.1 |
-|---|---|---|
-| left drag on a **card** | moves the card | unchanged (the raycast found a node) |
-| left drag on a **card's control** | nothing (the card's `isDraggable` veto) | unchanged |
-| left drag on the **background** | nothing | **pans** |
-| left **click** on the background | `background:click` → clears the selection | unchanged (the ≤5px path) |
-| shift + left drag | box-select | unchanged (the shift branch is checked first) |
-| right drag | pans | unchanged |
-| middle drag | orbits | unchanged |
-| left drag on a **window's title bar** | n/a | the window moves (T12), and the map does not |
+| Gesture | Today | After T13.1 | Test |
+|---|---|---|---|
+| left drag on a **card** | moves the card | unchanged (the raycast found a node) | the mouse contract ("does not pan when the drag started on a node") and the e2e ("a control inside a card takes the mouse, and the card still moves by its background") |
+| left drag on a **card's control** | nothing (the card's `isDraggable` veto) | unchanged | the e2e, unchanged |
+| left drag on the **background** | nothing | **pans** | the mouse contract ("pans the view when the left button drags over the background") and the e2e ("the left button pans the view over the background") |
+| left **click** on the background | `background:click` → clears the selection | unchanged (the ≤5px path) | the mouse contract ("keeps the click") and the e2e ("a click on the background still reports a background click") |
+| shift + left drag | box-select | unchanged (the shift branch is checked first) | the mouse contract ("does not pan when the shift key asks for a box selection") |
+| right drag | pans | unchanged | the mouse contract and the e2e, unchanged |
+| middle drag | orbits | unchanged | the mouse contract, unchanged |
+| left drag on a **window's title bar** | n/a | the window moves (T12), and the map does not | T12's test |
 
 The last row is why the background pan must be **gated on the pointer being over the canvas** and
 not over a host surface: a window sits over the canvas, so its pointer events must not reach the
 canvas. The library's DOM cards already relay their events to the canvas
 (`spacegraphjs/src/nodes/DOMNode.ts:230-333`); a host window must *not* — it must stop them.
 
+**One thing the table does not say, and the e2e found.** The library emits `background:click` and
+leaves the *selection* to the host: the demo does not clear the selection on a background click,
+and the fork's host does. So the contract the e2e pins is the event, not the selection.
+
 Done when: the table above is in the library's mouse map and every row has a test.
 Verify: the mouse contract test grows a case per row.
 
-### T13.3 The mouse map, written down and kept true
+### T13.3 The mouse map, written down and kept true — **done**
 
 The author's own guide ("the mouse map") is the reference; the library's README table
 (`README.md:383-393`) and the fork's `SPACEGRAPH.md:310-318` must agree with it. Every entry names
 the button, the target, the effect, and what it *replaces* — because the left button now has two
 meanings depending on what is under the pointer, and a reader must be able to learn that.
+
+**What was written.** The library's README and the fork's `SPACEGRAPH.md` both gained the row, in
+the same words: *left button + drag on the background → pan the view — over the background the left
+button has nothing else to do*. Both also say how to turn it off
+(`input.interaction.enableBackgroundPan`), because a map that a host cannot narrow is a map that
+every host has to fight.
 
 Done when: the three documents agree, and the fork's guide is the canonical one.
 Verify: a test that reads the fork's table and checks every gesture it names is reachable.
@@ -818,3 +839,46 @@ selection), the root `bun run check` **40/40**.
 Unverified: the *feel* of the card mode's framing — a camera that moves on every click is the
 cost the plan named, and only the author's hands can say whether the frame lands where they want
 it. The reading size (9px) is the same question: one number, one edit.
+
+**2026-10-21 — T13: the background pans under the left button (G11).**
+The author's request, in one line: "dragging on the background with left button, since it otherwise
+has no action, should pan like it does with the right button — but only when dragging on the
+background."
+
+What changed, in the library (`spacegraphjs`):
+
+- **the gesture lives in the interaction plugin**, not in the camera fingering — the fingering has
+  no raycaster and does not claim the gesture, so a blind left-button pan there would pan *and*
+  drag the node under the pointer. The plugin already knows whether a node was picked;
+- **the branch is the plan's**: a left press that finds no node and no edge remembers the point;
+  the move pans by the pointer's delta and skips the hover; the release clears the state. A click
+  (≤5px) still emits `background:click`, so a click keeps clearing the selection and a drag does
+  not;
+- **it is an option, not a hard-coded change**: `input.interaction.enableBackgroundPan`, on by
+  default. Over the void the left button has nothing else to do, and a host that wants the old map
+  turns it off;
+- **the input config is honest now.** Every option it declares is read: `enableHover`,
+  `enableBoxSelect`, `enableDrag` and `clickThreshold` are wired in the interaction plugin, and
+  the camera gained the two setters the option needs. The two sections that were *promises* — a
+  camera section duplicating `options.cameraControls`, and a history section duplicating the
+  history plugin's own option — are gone.
+
+The mouse map is written down in the two places that carry it (the library's README and the fork's
+`SPACEGRAPH.md`), in the same words, with the way out.
+
+Measured: the library's vitest **534** (+5), the library's mouse e2e **11** (+2), the library's
+package suites (adapter 21, cytoscape 23, renderer 12, spacegraph-renderer 17, svg-renderer 9),
+the app's graph e2e **27**, the session-graph component suite **54**.
+
+Two things the pass found, both about the environment rather than the code:
+
+- **the app's e2e failed until the vite dependency cache was cleared.** The library's dist was
+  rebuilt (its chunk names change with every build), so the app's pre-bundled dependency was
+  stale and the graph module 504'd. After the cache was cleared and the server re-optimized, the
+  suite is green — but the *first* run after a library rebuild reloads the page mid-test, and the
+  Cytoscape fallback case fails on the stale hash. The second run passes;
+- **the react and solid binding suites cannot run under `bun test`** (no DOM): they fail with
+  `document is not defined`, before and after this pass.
+
+Unverified: the *feel* of the pan — whether the left drag over the background reads as "the map
+follows my hand" or as "the map jumped" — needs the author's hands.

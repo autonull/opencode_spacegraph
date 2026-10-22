@@ -310,6 +310,7 @@ The graph is read with the mouse, so the mouse map is a contract of the library,
 | Gesture | Does |
 |---------|------|
 | Right button + drag | Pan the view (the view follows the cursor) |
+| Left button + drag on the background | Pan the view — over the background the left button has nothing else to do |
 | Wheel | Zoom about the point under the pointer |
 | Middle click on a node | Frame that node (auto-zoom, half a second) |
 | Middle button + drag | Orbit (3D only; an orthographic view has no orbit) |
@@ -320,7 +321,8 @@ The graph is read with the mouse, so the mouse map is a contract of the library,
 The library owns the map; a host that draws cards over the canvas inherits it. Two rules keep a card
 readable: a control inside a card takes the mouse (the card does not drag out from under the
 reader, and its background still drags it), and a card draws its hover as an outline, so hovering
-never moves the controls under the reader's finger.
+never moves the controls under the reader's finger. A host that wants the left button to mean only
+"the nodes" turns the background pan off (`input.interaction.enableBackgroundPan`).
 
 ### 7.2 Test commands (run from package directories, not root)
 
