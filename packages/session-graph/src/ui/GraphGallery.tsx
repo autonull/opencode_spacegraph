@@ -1,6 +1,6 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import { renderToSVG } from "@spacegraphjs/svg-renderer"
-import type { GraphModel, LayoutStrategy } from "@opencode/session-ui/graph"
+import type { GraphModel, Layout } from "@opencode/session-ui/graph"
 import { LAYOUT_STRATEGIES, layoutGraph } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -8,16 +8,16 @@ import { For, onMount } from "solid-js"
 import { buildRenderModel } from "../canvas/buildRenderModel"
 import { createCardCopy } from "./card-copy"
 import { createCardTemplate } from "./cardTemplate"
-import { STRATEGY_KEY } from "./vocabulary"
+import { LAYOUT_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 
 export type GraphGalleryProps = {
   model: GraphModel
   theme: RenderTheme
   /** The layout the reader is looking at; it is marked in the gallery. */
-  current?: LayoutStrategy
+  current?: Layout
   /** Opens a layout in the full surface. */
-  onOpen: (strategy: LayoutStrategy) => void
+  onOpen: (layout: Layout) => void
   onClose: () => void
 }
 
@@ -93,7 +93,7 @@ export const GraphGallery = (props: GraphGalleryProps) => {
               <span class="block h-24 w-full overflow-hidden rounded-sm bg-surface-base">
                 <span class="block h-full w-full [&>svg]:h-full [&>svg]:w-full" innerHTML={thumbnail.svg} />
               </span>
-              <span class="text-12-regular text-text-base">{i18n.t(STRATEGY_KEY[thumbnail.strategy])}</span>
+              <span class="text-12-regular text-text-base">{i18n.t(LAYOUT_KEY[thumbnail.strategy])}</span>
             </button>
           )}
         </For>

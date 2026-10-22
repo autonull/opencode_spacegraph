@@ -45,8 +45,9 @@ story("the toolbar keeps four things inline and the rest behind two menus", asyn
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
-  // What is shown: the representation and the level.
-  await expect(toolbar.getByRole("group", { name: "Representation" })).toBeVisible()
+  // What is shown: the layout and the level. T17.1: one layout list, one control — the layout is a
+  // menu of seven names, and the level beside it.
+  await expect(toolbar.locator('[data-slot="graph-toolbar-layout"]')).toBeVisible()
   await expect(toolbar.getByRole("group", { name: "Zoom level" })).toBeVisible()
   // Where the camera is: the zoom and the fit.
   await expect(toolbar.getByRole("button", { name: "Zoom in" })).toBeVisible()
@@ -56,4 +57,24 @@ story("the toolbar keeps four things inline and the rest behind two menus", asyn
   await expect(toolbar.locator('[data-slot="graph-toolbar-show"]')).toBeVisible()
   // The commands sit at the end of the row.
   await expect(toolbar.getByRole("button", { name: "Search the graph" })).toBeVisible()
+})
+
+story("the level is never disabled, whatever the layout (T17.1)", async ({ mount, page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+
+  const root = await mount("session-graph-view")
+  await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
+    timeout: 30_000,
+  })
+
+  const toolbar = root.locator('[data-slot="graph-toolbar"]')
+
+  // The ribbon is a summary layout, and the level used to be greyed out for it.
+  await toolbar.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await toolbar.locator('[data-slot="graph-layout-option"][data-value="ribbon"]').click()
+  await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Ribbon")
+
+  for (const level of ["Overview", "Execution", "Detail"]) {
+    await expect(toolbar.getByRole("button", { name: level, exact: true })).toBeEnabled()
+  }
 })

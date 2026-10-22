@@ -98,14 +98,14 @@ export function SessionGraphView(props: {
     }
   })
 
-  // T3.5: a graph permalink names the node to frame and, optionally, the representation to show.
+  // T3.5: a graph permalink names the node to frame and, optionally, the layout to show.
   const permalink = createMemo(() => graphPermalinkFromHash(location.hash))
 
   createEffect(() => {
     const target = permalink()
 
-    if (!target?.representation) return
-    graph.setRepresentation(target.representation)
+    if (!target?.layout) return
+    graph.setLayout(target.layout)
   })
 
   // T15: the equalizer's rules, as the graph's own vocabulary. The store keeps the kind and the
@@ -126,7 +126,7 @@ export function SessionGraphView(props: {
 
     return `${window.location.origin}${window.location.pathname}${window.location.search}${graphPermalinkHash({
       nodeID: id,
-      representation: graph.representation(),
+      layout: graph.layout(),
     })}`
   })
 
@@ -186,8 +186,7 @@ export function SessionGraphView(props: {
           depth={graph.depth()}
           preferredRenderer={graph.renderer()}
           selection={graph.selected()}
-          strategy={graph.layout()}
-          representation={graph.representation()}
+          layout={graph.layout()}
           minimap={graph.minimap()}
           files={graph.files()}
           detailMode={graph.detailMode()}
@@ -213,8 +212,7 @@ export function SessionGraphView(props: {
           }}
           onProjectionChange={(projection) => graph.setProjection(projection)}
           onDepthChange={(depth) => graph.setDepth(depth)}
-          onStrategyChange={(layout) => graph.setLayout(layout)}
-          onRepresentationChange={(representation) => graph.setRepresentation(representation)}
+          onLayoutChange={(layout) => graph.setLayout(layout)}
           onMinimapChange={(minimap) => graph.setMinimap(minimap)}
           onFilesChange={(files) => graph.setFiles(files)}
           onDetailModeChange={(mode) => graph.setDetailMode(mode)}

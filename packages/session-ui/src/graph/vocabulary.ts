@@ -82,12 +82,26 @@ export const LAYOUT_STRATEGIES = ["lanes", "timeline", "hierarchy", "tree", "for
 export type LayoutStrategy = (typeof LAYOUT_STRATEGIES)[number]
 
 /**
- * What the map is: the node-link graph, or one of the two summary representations. The summaries
- * are overview-first, so the semantic level control drives the graph only.
+ * The layouts that pack the level's units into the session's own grammar: the turn ribbon and the
+ * turn matrix. They are layouts like the others, not a different kind of thing.
  */
-export const REPRESENTATIONS = ["graph", "ribbon", "matrix"] as const
+export const SUMMARY_LAYOUTS = ["ribbon", "matrix"] as const
 
-export type Representation = (typeof REPRESENTATIONS)[number]
+export type SummaryLayout = (typeof SUMMARY_LAYOUTS)[number]
+
+/**
+ * T17.1 — one layout axis. The node-link strategies and the session's summary layouts answer the
+ * same question — how are the nodes arranged — so they are one list, chosen the same way, and the
+ * level means the same thing in each.
+ */
+export const LAYOUTS = [...LAYOUT_STRATEGIES, ...SUMMARY_LAYOUTS] as const
+
+export type Layout = (typeof LAYOUTS)[number]
+
+/** Whether a layout is a summary: the session's own grammar, not the library's node-link geometry. */
+export function isSummaryLayout(layout: Layout): layout is SummaryLayout {
+  return (SUMMARY_LAYOUTS as readonly Layout[]).includes(layout)
+}
 
 /** Where a selected node's detail is shown. The modes are alternatives, not stages. */
 export const DETAIL_MODES = ["off", "card", "popover", "panel"] as const

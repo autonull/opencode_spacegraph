@@ -1,4 +1,4 @@
-import type { GraphNode, Representation } from "@opencode/session-ui/graph"
+import type { GraphModel, GraphNode, Layout } from "@opencode/session-ui/graph"
 import { COMPACT_SIZE, PHASE_CATEGORIES, matrixColumn, nodeSize } from "@opencode/session-ui/graph"
 
 export type AxisLabel = { id: string; label: string; x: number; y: number; role: "row" | "column" }
@@ -15,20 +15,21 @@ const COLUMN_Y = -30
 export type Translate = (key: string, params?: Record<string, string | number | boolean>) => string
 
 /**
- * T1.11 — the row and column captions of the summary representations. The ribbon and the matrix
+ * T1.11 — the row and column captions of the summary layouts. The ribbon and the matrix
  * have no labels of their own, so the host names their axes: a row is a turn, a column is a phase
  * category. The node-link graph carries none of this — its lanes and bands already name it.
  *
- * `rows` are the rows the representation drew; `turnNumbers` are the session's turn numbers, so a
+ * `rows` are the rows the layout drew; `turnNumbers` are the session's turn numbers, so a
  * windowed map still says which turn it shows.
  */
 export function buildAxisLabels(
+  model: GraphModel,
   rows: GraphNode[][],
-  representation: Representation,
+  layout: Layout,
   turnNumbers: ReadonlyMap<string, number>,
   t: Translate,
 ): AxisLabel[] | undefined {
-  if (representation !== "ribbon" && representation !== "matrix") return undefined
+  if (layout !== "ribbon" && layout !== "matrix") return undefined
 
   const labels: AxisLabel[] = []
 
@@ -45,7 +46,7 @@ export function buildAxisLabels(
     labels.push({ id: `row:${rowIndex}`, label, x: ROW_X, y: rowIndex * (COMPACT_SIZE[1] + 20), role: "row" })
   })
 
-  if (representation === "ribbon") {
+  if (layout === "ribbon") {
     let cursor = 0
 
     for (const category of PHASE_CATEGORIES) {
@@ -60,7 +61,7 @@ export function buildAxisLabels(
 
   for (const nodes of rows) {
     for (const node of nodes) {
-      const column = matrixColumn(node)
+      const column = matrixColumn(model, node)
       columnWidth.set(column, Math.max(columnWidth.get(column) ?? COMPACT_SIZE[0], nodeSize(node)[0]))
     }
   }

@@ -1,6 +1,6 @@
 import { buildFixtureGraph } from "../src/graph/fixture"
 import { layoutGraph, type GraphLayout } from "../src/graph/layout"
-import { matrixLayout, ribbonLayout } from "../src/graph/representation"
+import { matrixLayout, ribbonLayout } from "../src/graph/summary"
 
 /** The positions, the cluster bounds, and the overall bounds as plain rows. */
 function dump(layout: GraphLayout) {

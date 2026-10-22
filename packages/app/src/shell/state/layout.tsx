@@ -4,7 +4,7 @@ import { batch, createEffect, createMemo, onCleanup, onMount, untrack, type Acce
 import { useLocation } from "@solidjs/router"
 import { createSimpleContext } from "@opencode/ui/context"
 import { makeEventListener } from "@solid-primitives/event-listener"
-import { DETAIL_MODES, GRAPH_ARRANGEMENTS, GRAPH_MODES, GRAPH_SIDES, LAYOUT_STRATEGIES, REPRESENTATIONS } from "@opencode/session-ui/graph/vocabulary"
+import { DETAIL_MODES, GRAPH_ARRANGEMENTS, GRAPH_MODES, GRAPH_SIDES, LAYOUTS } from "@opencode/session-ui/graph/vocabulary"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { Project } from "@/runtime/server/types"
@@ -86,76 +86,87 @@ const sessionTabsSchema = Persistence.struct({
   active: Persistence.optional(Schema.String),
 })
 
-const sessionGraphSchema = Persistence.struct({
-  mode: Schema.Literals(GRAPH_MODES),
-  // The hybrid's geometry: how the map and the log meet, which side the map takes, and how much of
-  // the panel the map holds. Absent means the default arrangement.
-  arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
-  arrangementSide: Schema.optional(Schema.Literals(GRAPH_SIDES)),
-  split: Schema.optional(Schema.Finite),
-  // How large the log's text is beside the map. Absent means the theme's own size.
-  logTextScale: Schema.optional(Schema.Finite),
-  // The floating map pane's box, as fractions of the panel, so it survives a resize of the window.
-  pane: Persistence.optional(
-    Persistence.struct({
-      x: Schema.Finite,
-      y: Schema.Finite,
-      width: Schema.Finite,
-      height: Schema.Finite,
-    }),
-  ),
-  projection: Schema.optional(Schema.Literals(["2d", "3d"])),
-  renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
-  selected: Schema.optional(Schema.String),
-  // RF.2/RF.7: the chosen layout strategy and minimap visibility, per session.
-  layout: Schema.optional(Schema.Literals(LAYOUT_STRATEGIES)),
-  minimap: Schema.optional(Schema.Boolean),
-  // LE.12: the file-first lens (changed-files rail + bundled provenance), per session. Absent means off.
-  files: Schema.optional(Schema.Boolean),
-  // LE.7: the contested representation axis (node-link graph | turn ribbon | turn matrix), per session.
-  representation: Schema.optional(Schema.Literals(REPRESENTATIONS)),
-  // LE.14: the depth spectrum (flat 2D | layered | depth-stack | orbit), per session. Absent means flat.
-  depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
-  // Where a selected node's detail is shown, per session. Absent means the side panel.
-  detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
-  // The transient peek at the node under the pointer, per session. Absent means off.
-  peek: Schema.optional(Schema.Boolean),
-  // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
-  turnMap: Schema.optional(Schema.String),
-  // T15: the equalizer's rules, per session. A rule is a predicate over a node plus an effect on
-  // the card; the preset ids live beside them.
-  rules: Persistence.optional(
-    Persistence.array(
+const sessionGraphSchema = Persistence.migrateField(
+  Persistence.struct({
+    mode: Schema.Literals(GRAPH_MODES),
+    // The hybrid's geometry: how the map and the log meet, which side the map takes, and how much of
+    // the panel the map holds. Absent means the default arrangement.
+    arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
+    arrangementSide: Schema.optional(Schema.Literals(GRAPH_SIDES)),
+    split: Schema.optional(Schema.Finite),
+    // How large the log's text is beside the map. Absent means the theme's own size.
+    logTextScale: Schema.optional(Schema.Finite),
+    // The floating map pane's box, as fractions of the panel, so it survives a resize of the window.
+    pane: Persistence.optional(
       Persistence.struct({
-        id: Schema.String,
-        kind: Schema.optional(Schema.String),
-        status: Schema.optional(Schema.String),
-        scale: Schema.optional(Schema.Finite),
-        hue: Schema.optional(Schema.Finite),
-        muted: Schema.optional(Schema.Boolean),
-        fadeAfter: Schema.optional(Schema.Finite),
-      }),
-    ),
-  ),
-  // T12.5: the reader's windows over the map, per session. The content is not stored — it is
-  // re-derived from the model — so a window that cannot be rehydrated is dropped, not restored
-  // empty.
-  windows: Persistence.optional(
-    Persistence.array(
-      Persistence.struct({
-        id: Schema.String,
-        kind: Schema.String,
-        nodeID: Schema.optional(Schema.String),
-        left: Schema.Finite,
-        top: Schema.Finite,
+        x: Schema.Finite,
+        y: Schema.Finite,
         width: Schema.Finite,
         height: Schema.Finite,
-        z: Schema.Finite,
-        pinned: Schema.optional(Schema.Boolean),
       }),
     ),
-  ),
-})
+    projection: Schema.optional(Schema.Literals(["2d", "3d"])),
+    renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
+    selected: Schema.optional(Schema.String),
+    // T17.1: the layout axis — the node-link strategies and the session's summary layouts, one list.
+    layout: Schema.optional(Schema.Literals(LAYOUTS)),
+    minimap: Schema.optional(Schema.Boolean),
+    // LE.12: the file-first lens (changed-files rail + bundled provenance), per session. Absent means off.
+    files: Schema.optional(Schema.Boolean),
+    // LE.14: the depth spectrum (flat 2D | layered | depth-stack | orbit), per session. Absent means flat.
+    depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
+    // Where a selected node's detail is shown, per session. Absent means the side panel.
+    detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
+    // The transient peek at the node under the pointer, per session. Absent means off.
+    peek: Schema.optional(Schema.Boolean),
+    // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
+    turnMap: Schema.optional(Schema.String),
+    // T15: the equalizer's rules, per session. A rule is a predicate over a node plus an effect on
+    // the card; the preset ids live beside them.
+    rules: Persistence.optional(
+      Persistence.array(
+        Persistence.struct({
+          id: Schema.String,
+          kind: Schema.optional(Schema.String),
+          status: Schema.optional(Schema.String),
+          scale: Schema.optional(Schema.Finite),
+          hue: Schema.optional(Schema.Finite),
+          muted: Schema.optional(Schema.Boolean),
+          fadeAfter: Schema.optional(Schema.Finite),
+        }),
+      ),
+    ),
+    // T12.5: the reader's windows over the map, per session. The content is not stored — it is
+    // re-derived from the model — so a window that cannot be rehydrated is dropped, not restored
+    // empty.
+    windows: Persistence.optional(
+      Persistence.array(
+        Persistence.struct({
+          id: Schema.String,
+          kind: Schema.String,
+          nodeID: Schema.optional(Schema.String),
+          left: Schema.Finite,
+          top: Schema.Finite,
+          width: Schema.Finite,
+          height: Schema.Finite,
+          z: Schema.Finite,
+          pinned: Schema.optional(Schema.Boolean),
+        }),
+      ),
+    ),
+  }),
+  // T17.1: the past stored a representation beside the strategy. A stored ribbon or matrix becomes
+  // the layout; anything else keeps the stored strategy, because "graph" was the default family.
+  Persistence.legacy({
+    mode: Schema.Literals(GRAPH_MODES),
+    layout: Schema.optional(Schema.Literals(LAYOUTS)),
+    representation: Schema.optional(Schema.String),
+  }),
+  (value) => ({
+    ...value,
+    layout: value.layout ?? (value.representation === "ribbon" || value.representation === "matrix" ? value.representation : undefined),
+  }),
+)
 
 export type SessionGraphState = typeof sessionGraphSchema.Type
 
@@ -636,7 +647,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           layout: createMemo(() => state()?.layout ?? "lanes"),
           minimap: createMemo(() => state()?.minimap ?? false),
           files: createMemo(() => state()?.files ?? false),
-          representation: createMemo(() => state()?.representation ?? "graph"),
           depth: createMemo(() => state()?.depth ?? "flat"),
           detailMode: createMemo(() => state()?.detailMode ?? "panel"),
           peek: createMemo(() => state()?.peek ?? false),
@@ -660,9 +670,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setLayout(layout: NonNullable<SessionGraphState["layout"]>) {
             write({ layout })
-          },
-          setRepresentation(representation: NonNullable<SessionGraphState["representation"]>) {
-            write({ representation })
           },
           setDepth(depth: NonNullable<SessionGraphState["depth"]>) {
             write({ depth })

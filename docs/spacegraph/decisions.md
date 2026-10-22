@@ -503,12 +503,44 @@ simply frames the whole surface. `capabilities.fitInsets` declares whether a ren
 
 ---
 
+## ADR-027: One layout axis — the representations are layouts
+
+**Date:** 2026-10-22
+**Status:** Accepted
+**Supersedes:** ADR-008 (the representation seam)
+
+**Context:** The map's vocabulary grew a second axis for a job the first axis already did. The
+*representation* was an inline segmented control (graph · ribbon · matrix) and the *layout strategy*
+a row in the Draw menu, so the reader met "Graph" beside "Lanes" and had to work out that both were
+layouts. The level control was greyed out for two of the three representations, because the
+summaries were overview-first and could not honour it — a control that does nothing is the clearest
+sign that the two controls are not what they look like.
+
+**Decision:** The representations become layouts: `LAYOUTS = ["lanes", "timeline", "hierarchy",
+"tree", "force", "ribbon", "matrix"]` — one list, one control, one name for the job. The level is a
+**grain**, not a family: every layout draws the level's units, and a summary layout packs them into
+its own grammar (a derived cluster yields to its members once those members are visible). No
+control is ever disabled because of the layout.
+
+**Consequences:**
+- `summary.ts` exports `ribbonLayout`, `matrixLayout`, `turnRows` and `summaryUnits`; the level is
+  a parameter, not a second vocabulary.
+- The toolbar's layout is a menu of seven names; the Draw menu lost its layout row.
+- The graph's persisted state has one `layout` field. The old `representation` field is read by the
+  field's own migration: a stored ribbon or matrix becomes the layout, and the old "graph" name is
+  the lanes layout.
+- The old permalink prefix still works: `#graph:ribbon:<nodeID>` names a layout that is still called
+  a ribbon.
+- The capture frames were stale (the toolbar had been reorganised without them) and are regenerated.
+
+---
+
 ## Open decisions (to close in T2.4)
 
 | ID | Decision | Options | Evidence needed |
 |---|---|---|---|
 | #10 | Naming | Graph / Map / Session map | Protocol data + captures |
-| #14 | Default representation | graph / ribbon / matrix | Task success by representation |
+| #14 | Default layout | lanes / ribbon / matrix | Task success by layout |
 | #15 | Default depth | flat / layered / depth-stack / orbit | Task success by depth |
 | #16 | File lens | On by default / opt-in | Task success with/without |
 | #8 | 3D default | Superseded by #15 | — |

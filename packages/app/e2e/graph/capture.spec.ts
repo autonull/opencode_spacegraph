@@ -54,6 +54,12 @@ function graphFixture() {
 
 async function capture(page: Page, name: string) {
   if (!captureDir) return
+  // A menu the reader opened stays open; the frame is the map's record, not a stray dropdown.
+  await page.evaluate(() => {
+    document.querySelectorAll<HTMLDetailsElement>("details[data-slot^='graph-toolbar-']").forEach((menu) => {
+      menu.open = false
+    })
+  })
   mkdirSync(captureDir, { recursive: true })
   await page.screenshot({ path: resolve(captureDir, name) })
 }
@@ -80,10 +86,12 @@ async function openMenu(page: Page, which: "draw" | "show") {
   if (!open) await overflow.getByLabel("More controls").click()
 }
 
-/** Picks a layout from the toolbar's Draw menu. */
+/** Picks a layout from the toolbar's layout menu. */
 async function pickLayout(page: Page, layout: string) {
-  await openMenu(page, "draw")
-  await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-strategy="${layout}"]`).click()
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layout"]`)
+  const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await menu.locator("summary").click()
+  await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-value="${layout}"]`).click()
 }
 
 // The graph paints on demand into a preserved drawing buffer, so the capture waits on the buffer itself
@@ -333,24 +341,26 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
   await page.keyboard.press("Escape")
   await expect(page.locator('[data-slot="graph-gallery"]')).toHaveCount(0)
 
-  // 15 — the turn ribbon representation (LE.8): one horizontal bar of phase segments per turn. The
-  // representation swaps the whole layout, so let the adapter settle before framing the new bounds.
-  await page.locator(toolbar).getByRole("button", { name: "Ribbon", exact: true }).click()
+  // 15 — the turn ribbon layout (LE.8): one horizontal bar of phase segments per turn. The summary
+  // layouts draw the level's grain, so the overview is the frame that shows the phase segments. The
+  // layout swaps the whole geometry, so let the adapter settle before framing the new bounds.
+  await setLevel(page, "Overview")
+  await pickLayout(page, "ribbon")
   await waitForStillCanvas(page)
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "15-graph-ribbon.png")
 
-  // 16 — the turn matrix representation (LE.9): turns as rows, phase categories as columns.
-  await page.locator(toolbar).getByRole("button", { name: "Matrix", exact: true }).click()
+  // 16 — the turn matrix layout (LE.9): turns as rows, phase categories as columns.
+  await pickLayout(page, "matrix")
   await waitForStillCanvas(page)
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "16-graph-matrix.png")
 
   // Back to the node-link graph, lanes layout, for the file lens and the narrow/light frames.
-  await page.locator(toolbar).getByRole("button", { name: "Graph", exact: true }).click()
   await pickLayout(page, "lanes")
+  await setLevel(page, "Execution")
 
   // 20 — camera zoom at 150% of the fit. The toolbar steps a tenth of the fit, so the readout is 150%.
   await fit(page)

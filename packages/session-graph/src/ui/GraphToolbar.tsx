@@ -8,14 +8,12 @@ import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
   GRAPH_ARRANGEMENTS,
-  LAYOUT_STRATEGIES,
-  REPRESENTATIONS,
+  LAYOUTS,
   ZOOM_LEVELS,
   type DetailMode,
   type GraphArrangement,
   type GraphSide,
-  type LayoutStrategy,
-  type Representation,
+  type Layout,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
@@ -23,10 +21,9 @@ import {
   ARRANGEMENT_KEY,
   DEPTH_KEY,
   DETAIL_MODE_KEY,
+  LAYOUT_KEY,
   LEVEL_KEY,
-  REPRESENTATION_KEY,
   SIDE_KEY,
-  STRATEGY_KEY,
 } from "./vocabulary"
 
 export type GraphToolbarProps = {
@@ -46,12 +43,9 @@ export type GraphToolbarProps = {
   zoomOutDisabled?: boolean
   zoomInDisabled?: boolean
   onSearch: () => void
-  /** RF.2: the visible layout chooser; absent when the host does not offer strategies. */
-  strategy?: LayoutStrategy
-  onStrategy?: (strategy: LayoutStrategy) => void
-  /** LE.7: the representation chooser; absent when the host does not offer representations. */
-  representation?: Representation
-  onRepresentation?: (representation: Representation) => void
+  /** T17.1: the layout on screen; the host persists the choice. */
+  layout?: Layout
+  onLayoutChange?: (layout: Layout) => void
   /** RF.7: minimap toggle, default off. */
   minimap?: boolean
   onToggleMinimap?: () => void
@@ -148,8 +142,6 @@ const ToolbarMenu = (props: {
  */
 export const GraphToolbar = (props: GraphToolbarProps) => {
   const i18n = useI18n()
-  // The level and layout controls drive the node-link graph only; the ribbon/matrix are overview-first.
-  const graphMode = () => props.representation === undefined || props.representation === "graph"
   const depthAvailable = (depth: DepthMode) => !props.capabilities || supportsDepth(props.capabilities, depth)
   const depthReason = (depth: DepthMode) =>
     depthAvailable(depth)
@@ -163,7 +155,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     disabled?: boolean
     title?: string
     slot?: string
-    strategy?: string
+    /** The value this option chooses, so a test can read what the axis is set to. */
+    value?: string
     /** A stable accessible name, for a control whose visible label names the state it is in. */
     ariaLabel?: string
     /** A toggle leaves the menu open, so the reader can see the state they just changed. */
@@ -172,7 +165,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     <button
       type="button"
       data-slot={input.slot}
-      data-strategy={input.strategy}
+      data-value={input.value}
       class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover disabled:opacity-50"
       aria-pressed={input.pressed}
       aria-label={input.ariaLabel ?? input.label}
@@ -190,23 +183,9 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     </button>
   )
 
-  /** How the map is drawn: the layout, the depth, the billboard, and the file lens. */
+  /** How the map is drawn: the depth, the billboard, and the file lens. */
   const drawControls = () => (
     <>
-      <Show when={props.onStrategy && graphMode()}>
-        <div data-slot="graph-toolbar-layout">
-          <div class="px-2 py-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.toolbar.layout")}</div>
-          {LAYOUT_STRATEGIES.map((strategy) =>
-            option({
-              label: i18n.t(STRATEGY_KEY[strategy]),
-              onClick: () => props.onStrategy?.(strategy),
-              pressed: props.strategy === strategy,
-              slot: "graph-layout-option",
-              strategy,
-            }),
-          )}
-        </div>
-      </Show>
       <Show when={props.onDepth}>
         <div data-slot="graph-toolbar-depth">
           <div class="px-2 py-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.toolbar.depth")}</div>
@@ -261,7 +240,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
               onClick: () => props.onArrangementChange?.(arrangement),
               pressed: props.arrangement === arrangement,
               slot: "graph-arrangement-option",
-              strategy: arrangement,
+              value: arrangement,
             }),
           )}
           <Show when={props.onArrangementSideChange && props.arrangement !== "floating"}>
@@ -283,7 +262,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   /** What the map says: where the detail goes, the peek, the minimap, and the reader's overlays. */
   const showControls = () => (
     <>
-      <Show when={props.onDetailModeChange && graphMode()}>
+      <Show when={props.onDetailModeChange}>
         <div data-slot="graph-toolbar-detail">
           <div class="px-2 py-1 text-12-regular text-text-weak">
             {i18n.t("ui.sessionGraph.toolbar.detailMode")}
@@ -294,7 +273,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
               onClick: () => props.onDetailModeChange?.(mode),
               pressed: props.detailMode === mode,
               slot: "graph-detail-mode-option",
-              strategy: mode,
+              value: mode,
             }),
           )}
         </div>
@@ -362,19 +341,19 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
             label: i18n.t("ui.sessionGraph.toolbar.exportSvg"),
             onClick: () => props.onExport?.("svg", props.renderModel!),
             slot: "graph-export-option",
-            strategy: "svg",
+            value: "svg",
           })}
           {option({
             label: i18n.t("ui.sessionGraph.toolbar.exportJson"),
             onClick: () => props.onExport?.("json", props.renderModel!),
             slot: "graph-export-option",
-            strategy: "json",
+            value: "json",
           })}
           {option({
             label: i18n.t("ui.sessionGraph.toolbar.exportHtml"),
             onClick: () => props.onExport?.("html", props.renderModel!),
             slot: "graph-export-option",
-            strategy: "html",
+            value: "html",
           })}
         </ToolbarMenu>
       </Show>
@@ -388,18 +367,24 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
       style={props.endInset ? { "padding-inline-end": props.endInset } : undefined}
     >
-      <Show when={props.onRepresentation}>
-        <SegmentedControl
-          value={props.representation ?? "graph"}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.representation")}
-          onChange={(value) => value && props.onRepresentation?.(value as Representation)}
+      <Show when={props.onLayoutChange}>
+        <ToolbarMenu
+          slot="graph-toolbar-layout"
+          label={i18n.t("ui.sessionGraph.toolbar.layout")}
+          icon="workspace-isolated"
+          value={i18n.t(LAYOUT_KEY[props.layout ?? "lanes"])}
+          valueSlot="graph-layout-name"
         >
-          {REPRESENTATIONS.map((representation) => (
-            <SegmentedControlItem value={representation}>
-              {i18n.t(REPRESENTATION_KEY[representation])}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
+          {LAYOUTS.map((layout) =>
+            option({
+              label: i18n.t(LAYOUT_KEY[layout]),
+              onClick: () => props.onLayoutChange?.(layout),
+              pressed: props.layout === layout,
+              slot: "graph-layout-option",
+              value: layout,
+            }),
+          )}
+        </ToolbarMenu>
       </Show>
 
       <Show
@@ -416,9 +401,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
                 label: i18n.t(LEVEL_KEY[level]),
                 onClick: () => props.onLevel(level),
                 pressed: props.level === level,
-                disabled: !graphMode(),
                 slot: "graph-level-option",
-                strategy: level,
+                value: level,
               }),
             )}
           </ToolbarMenu>
@@ -430,7 +414,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           onChange={(value) => value && props.onLevel(value as ZoomLevel)}
         >
           {ZOOM_LEVELS.map((level) => (
-            <SegmentedControlItem value={level} disabled={!graphMode()}>
+            <SegmentedControlItem value={level}>
               {i18n.t(LEVEL_KEY[level])}
             </SegmentedControlItem>
           ))}
@@ -441,7 +425,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         <GraphIconButton
           label={i18n.t("ui.sessionGraph.toolbar.zoomOut")}
           icon="expand"
-          disabled={!graphMode() || props.zoomOutDisabled}
+          disabled={props.zoomOutDisabled}
           onClick={() => props.onZoomOut?.()}
         />
         <span
@@ -454,7 +438,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         <GraphIconButton
           label={i18n.t("ui.sessionGraph.toolbar.zoomIn")}
           icon="plus"
-          disabled={!graphMode() || props.zoomInDisabled}
+          disabled={props.zoomInDisabled}
           onClick={() => props.onZoomIn?.()}
         />
       </div>
@@ -474,16 +458,14 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         <ToolbarMenu
           slot="graph-toolbar-draw"
           label={i18n.t("ui.sessionGraph.toolbar.draw")}
-          icon="workspace-isolated"
-          value={i18n.t(STRATEGY_KEY[props.strategy ?? "lanes"])}
-          valueSlot="graph-layout-name"
+          icon="outline-sliders"
         >
           {drawControls()}
         </ToolbarMenu>
         <ToolbarMenu
           slot="graph-toolbar-show"
           label={i18n.t("ui.sessionGraph.toolbar.show")}
-          icon="outline-sliders"
+          icon="eye"
           value={i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"])}
         >
           {showControls()}

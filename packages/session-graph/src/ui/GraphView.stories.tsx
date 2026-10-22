@@ -8,7 +8,7 @@ import {
   type GraphEdge,
   type GraphModel,
   type GraphNode,
-  type Representation,
+  type Layout,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { createSignal } from "solid-js"
@@ -142,7 +142,7 @@ type HarnessProps = {
   level?: ZoomLevel
   projection?: Projection
   depth?: DepthMode
-  representation?: Representation
+  layout?: Layout
   /** LE.12: open the changed-files rail on mount. */
   files?: boolean
   /** Where a selected node's detail is shown. */
@@ -206,7 +206,7 @@ const ViewHarness = (props: HarnessProps) => {
         level={props.level}
         projection={props.projection}
         depth={props.depth}
-        representation={props.representation}
+        layout={props.layout}
         files={props.files}
         detailMode={props.detailMode}
         peek={props.peek}
@@ -299,12 +299,12 @@ export const DepthStack = {
 
 /** LE.8: the turn ribbon — one horizontal bar of phase segments per turn. */
 export const Ribbon = {
-  render: () => <ViewHarness representation="ribbon" />,
+  render: () => <ViewHarness layout="ribbon" level="overview" />,
 }
 
 /** LE.9: the turn matrix — turns as rows, phase categories as columns. */
 export const Matrix = {
-  render: () => <ViewHarness representation="matrix" />,
+  render: () => <ViewHarness layout="matrix" level="overview" />,
 }
 
 /** LE.12: the file-first lens — the changed-files rail with bundled provenance edges. */

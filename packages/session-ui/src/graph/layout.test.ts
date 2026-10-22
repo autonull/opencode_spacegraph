@@ -5,7 +5,7 @@ import { buildGraph } from "./build"
 import { fileNodeID, toolNodeID, turnNodeID } from "./model"
 import { LANES, layoutGraph, nodeSize, type GraphLayout } from "./layout"
 import { CARD_SIZE } from "./vocabulary"
-import { matrixLayout, ribbonLayout } from "./representation"
+import { matrixLayout, ribbonLayout } from "./summary"
 import { isVisibleAt } from "./levels"
 
 const user = (id: string, text = id) => ({ id, type: "user", text, time: { created: 1 } }) as const

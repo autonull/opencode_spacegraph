@@ -1,20 +1,26 @@
-import type { Representation } from "@opencode/session-ui/graph/vocabulary"
-import { REPRESENTATIONS } from "@opencode/session-ui/graph/vocabulary"
+import type { Layout } from "@opencode/session-ui/graph/vocabulary"
+import { LAYOUTS } from "@opencode/session-ui/graph/vocabulary"
 
 /**
  * T3.5 — a link to one node of the session map.
  *
- * The hash form is `#graph:<nodeID>`, optionally naming the representation the reader should see
- * (`#graph:ribbon:<nodeID>`). The representation comes first because a node id may itself contain
- * colons (`turn:msg_1`), so a trailing segment would be ambiguous; no node id starts with a
- * representation name, so the split is unambiguous in both directions.
+ * The hash form is `#graph:<nodeID>`, optionally naming the layout the reader should see
+ * (`#graph:ribbon:<nodeID>`). The layout comes first because a node id may itself contain colons
+ * (`turn:msg_1`), so a trailing segment would be ambiguous; no node id starts with a layout name,
+ * so the split is unambiguous in both directions.
  */
 export type GraphPermalink = {
   nodeID: string
-  representation?: Representation
+  layout?: Layout
 }
 
 const PREFIX = "graph:"
+
+/**
+ * T17.1 — the old links named a representation, and "graph" was its default. The node-link map is
+ * the lanes layout now, so the old name still opens the same map.
+ */
+const LEGACY_LAYOUTS: Record<string, Layout> = { graph: "lanes" }
 
 /** Reads a graph permalink out of a location hash; undefined for any other hash. */
 export const graphPermalinkFromHash = (hash: string): GraphPermalink | undefined => {
@@ -30,25 +36,21 @@ export const graphPermalinkFromHash = (hash: string): GraphPermalink | undefined
 
   if (separator > 0) {
     const head = rest.slice(0, separator)
+    const layout = LAYOUTS.includes(head as Layout) ? (head as Layout) : LEGACY_LAYOUTS[head]
 
-    // SAFETY: `REPRESENTATIONS` holds the only strings a representation can be, so a match is one.
-    if (REPRESENTATIONS.includes(head as Representation)) {
+    if (layout) {
       const nodeID = rest.slice(separator + 1)
 
-      if (nodeID) {
-        // SAFETY: the same check that admitted the head admitted it as a representation.
-        return { nodeID, representation: head as Representation }
-      }
+      if (nodeID) return { nodeID, layout }
     }
   }
 
   return { nodeID: rest }
 }
 
-/** The canonical hash for a permalink. The default representation is left out to keep the link short. */
+/** The canonical hash for a permalink. The default layout is left out to keep the link short. */
 export const graphPermalinkHash = (permalink: GraphPermalink) => {
-  const representation =
-    permalink.representation && permalink.representation !== "graph" ? `${permalink.representation}:` : ""
+  const layout = permalink.layout && permalink.layout !== "lanes" ? `${permalink.layout}:` : ""
 
-  return `#${PREFIX}${representation}${permalink.nodeID}`
+  return `#${PREFIX}${layout}${permalink.nodeID}`
 }

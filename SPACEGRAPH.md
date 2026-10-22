@@ -155,7 +155,7 @@ Session messages + status + turn diffs
 
 | Module | What it owns |
 |--------|--------------|
-| `ui/GraphView.tsx` | The surface: the toolbar, the canvas region, the inspector, and the wiring between them. It owns the semantic level, the representation, and the strategy; the camera, the selection and the windows have their own modules. |
+| `ui/GraphView.tsx` | The surface: the toolbar, the canvas region, the inspector, and the wiring between them. It owns the semantic level and the layout; the camera, the selection and the windows have their own modules. |
 | `ui/graph-camera.ts` | The camera: the frame, the zoom, and the 100% reference the readout shows. The renderer owns the geometry; the host owns what the frame should hold. |
 | `ui/graph-selection.ts` | The selection and the path to it. The library's `GraphController` owns the state; the view mirrors it into signals. |
 | `ui/graph-anchors.ts` | The screen anchor of a node — where the popover, the peek and a pinned window hang. |
@@ -174,11 +174,11 @@ Session messages + status + turn diffs
 
 | Module | What it owns |
 |--------|--------------|
-| `vocabulary.ts` | The session's words — kinds, statuses, phase categories, layouts, representations, detail modes, and the box a node occupies. It has no dependencies, so a host can read the vocabulary without pulling in the model. |
+| `vocabulary.ts` | The session's words — kinds, statuses, phase categories, layouts, detail modes, and the box a node occupies. It has no dependencies, so a host can read the vocabulary without pulling in the model. |
 | `model.ts` | The model's types and the stable ids (`turn:…`, `msg:…`, `tool:…`) that make positions and selection survive streaming. |
 | `build.ts` | The builder: a session's messages in, the model out. Every activity enters the model the same way, so a node is never half-attached. |
 | `lookup.ts` | The model's indexes — nodes by id, `part-of` parents and children, the sequence chain — built once per model, so a lookup costs a map read instead of a scan. |
-| `levels.ts`, `layout.ts`, `representation.ts`, `selectors.ts` | The policy: what a level shows, where a node sits, what a question answers. |
+| `levels.ts`, `layout.ts`, `summary.ts`, `selectors.ts` | The policy: what a level shows, where a node sits, what a question answers. |
 
 ### 4.1 Node kinds (stable IDs, `minLevel` for semantic zoom)
 
@@ -290,7 +290,7 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 ### 5.5 Permalinks (`#graph:<nodeID>`)
 
 - Cold load switches to graph mode, frames node (raises level if needed)
-- Representation prefix: `#graph:ribbon:<nodeID>` (unambiguous — no node ID starts with representation name)
+- Layout prefix: `#graph:ribbon:<nodeID>` (unambiguous — no node ID starts with a layout name)
 - Unknown IDs fall back safely (graph opens, nothing selected, transcript reachable)
 - Inspector copy button puts absolute permalink on clipboard
 

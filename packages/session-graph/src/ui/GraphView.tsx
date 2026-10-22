@@ -18,9 +18,8 @@ import type {
   GraphModel,
   GraphNode,
   GraphSide,
-  LayoutStrategy,
+  Layout,
   Position,
-  Representation,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import {
@@ -31,6 +30,7 @@ import {
   detailTier,
   equalizerScale,
   fileRelations,
+  isSummaryLayout,
   laneAnchors,
   layoutGraph,
   matrixLayout,
@@ -41,11 +41,11 @@ import {
   nodeByID,
   nodeIndex,
   nodeSize,
-  representationLevel,
   ribbonLayout,
   scaleWindow,
   scopeToTurns,
   subtree,
+  summaryUnits,
   turnRows,
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -70,7 +70,7 @@ import { createCardCopy } from "./card-copy"
 import { GraphDetailSurface } from "./GraphDetail"
 import { GraphLegend, GraphLegendBody } from "./GraphLegend"
 import { GraphEqualizerBody } from "./GraphEqualizer"
-import { LANE_KEY, LEVEL_KEY, REPRESENTATION_KEY, DEPTH_KEY } from "./vocabulary"
+import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
@@ -117,10 +117,8 @@ export type GraphViewProps = {
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   positions?: ReadonlyMap<string, Position>
-  /** RF.2: controlled layout strategy; the host persists the choice. */
-  strategy?: LayoutStrategy
-  /** LE.7: controlled representation (node-link graph | turn ribbon | turn matrix); the host persists it. */
-  representation?: Representation
+  /** T17.1: the controlled layout — the one axis that says how the map is drawn. The host persists it. */
+  layout?: Layout
   /** RF.7: controlled minimap visibility; the host persists the choice (default off). */
   minimap?: boolean
   /**
@@ -170,8 +168,7 @@ export type GraphViewProps = {
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onDepthChange?: (depth: DepthMode) => void
-  onStrategyChange?: (strategy: LayoutStrategy) => void
-  onRepresentationChange?: (representation: Representation) => void
+  onLayoutChange?: (layout: Layout) => void
   onMinimapChange?: (minimap: boolean) => void
   onFilesChange?: (files: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
@@ -225,8 +222,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
   const [cardFacing, setCardFacing] = createSignal<"plane" | "camera">("plane")
   const toggleBillboard = () => setCardFacing((current) => (current === "camera" ? "plane" : "camera"))
-  const [strategy, setStrategy] = createSignal<LayoutStrategy>(props.strategy ?? "lanes")
-  const [representation, setRepresentation] = createSignal<Representation>(props.representation ?? "graph")
+  const [layout, setLayout] = createSignal<Layout>(props.layout ?? "lanes")
   const [minimap, setMinimap] = createSignal<boolean>(props.minimap ?? false)
   const [files, setFiles] = createSignal<boolean>(props.files ?? false)
   // Where a selected node's detail is shown. The panel is the default: the popover and the card are
@@ -409,23 +405,27 @@ export const GraphView = (props: GraphViewProps) => {
   }
   const rulesKey = createMemo(() => JSON.stringify(props.rules ?? []))
 
-  const layout = createMemo((): GraphLayout => {
+  // T17.1 — the layout axis. A summary layout packs the level's units into the session's grammar; the
+  // node-link strategies place the model in the library's geometry.
+  const geometry = createMemo((): GraphLayout => {
     if (props.positions)
       return {
         positions: props.positions,
         clusters: new Map(),
         bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
-        strategy: strategy(),
+        strategy: "lanes",
       }
 
-    if (representation() === "ribbon") return ribbonLayout(scoped())
-    if (representation() === "matrix") return matrixLayout(scoped())
+    const current = layout()
+
+    if (current === "ribbon") return ribbonLayout(scoped(), { level: level() })
+    if (current === "matrix") return matrixLayout(scoped(), { level: level() })
 
     // T15: the rules are part of the layout key, because a size rule re-lays-out the map — the
-    // same way a level or a strategy change does.
-    const key = `${sessionKey()}:${strategy()}:${level()}:${rulesKey()}`
+    // same way a level or a layout change does.
+    const key = `${sessionKey()}:${current}:${level()}:${rulesKey()}`
     const next = layoutGraph(props.model, {
-      strategy: strategy(),
+      strategy: current,
       level: level(),
       previous: layoutHistory.get(key),
       nodeSizeFn: sizedCard,
@@ -438,31 +438,37 @@ export const GraphView = (props: GraphViewProps) => {
   // LE.1: whether a structural change is waiting for the canvas to apply the matching model before we
   // frame it. Streaming model updates leave it false, so they never refit.
   const [needsFit, setNeedsFit] = createSignal(true)
-  // LE.7: the ribbon and matrix are overview-first summaries; the graph is the only representation the
-  // semantic level control drives.
-  const effectiveLevel = createMemo<ZoomLevel>(() => representationLevel(representation()) ?? level())
   // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
   const viewAnnouncement = createMemo(() =>
     i18n.t("ui.sessionGraph.a11y.view", {
-      level: i18n.t(LEVEL_KEY[effectiveLevel()]),
-      representation: i18n.t(REPRESENTATION_KEY[representation()]),
+      level: i18n.t(LEVEL_KEY[level()]),
+      layout: i18n.t(LAYOUT_KEY[layout()]),
       depth: i18n.t(DEPTH_KEY[depth()]),
     }),
   )
-  // T1.11: the summary representations name their axes; the node-link graph names itself.
+  // T1.11: the summary layouts name their axes; the node-link graph names itself.
   const turnNumbers = createMemo(() => new Map(props.model.turns.map((id, index) => [id, index + 1])))
-  const axisLabels = createMemo(() => buildAxisLabels(turnRows(scoped()), representation(), turnNumbers(), i18n.t))
+  const axisLabels = createMemo(() => buildAxisLabels(scoped(), turnRows(scoped(), level()), layout(), turnNumbers(), i18n.t))
+
+  // T17.2 — a summary draws the level's units, and a cluster yields to its members below the
+  // overview. The render model draws the same set, so the two cannot disagree.
+  const drawn = createMemo(() => {
+    const current = scoped()
+    if (!isSummaryLayout(layout())) return current
+    const units = summaryUnits(current, level())
+    return { ...current, nodes: current.nodes.filter((node) => units.has(node.id)) }
+  })
 
   const renderModel = createMemo(() =>
-    buildRenderModel(scoped(), {
-      level: effectiveLevel(),
-      positions: layout().positions,
-      bands: representation() === "graph" && strategy() !== "hierarchy",
-      edges: representation() === "graph",
-      bundle: representation() === "graph" && files(),
-      focus: representation() === "graph" && level() === "execution" ? selection.selection()[0] : undefined,
+    buildRenderModel(drawn(), {
+      level: level(),
+      positions: geometry().positions,
+      bands: !isSummaryLayout(layout()) && layout() !== "hierarchy",
+      edges: !isSummaryLayout(layout()),
+      bundle: !isSummaryLayout(layout()) && files(),
+      focus: !isSummaryLayout(layout()) && level() === "execution" ? selection.selection()[0] : undefined,
       laneLabels:
-        representation() === "graph" && strategy() === "lanes"
+        !isSummaryLayout(layout()) && layout() === "lanes"
           ? laneAnchors().map((lane) => ({
               id: lane.name,
               label: i18n.t(LANE_KEY[lane.name]),
@@ -493,7 +499,7 @@ export const GraphView = (props: GraphViewProps) => {
   // level change, rather than leaving the user with an invisible selection.
   const hiddenSelection = () => {
     const node = selectedNode()
-    return node && !isVisibleAt(node, effectiveLevel()) ? node : undefined
+    return node && !isVisibleAt(node, level()) ? node : undefined
   }
   // T6.6: the map says how much of the session it shows, so a capped view is never a silent one.
   const scaleNotice = createMemo(() => {
@@ -537,7 +543,7 @@ export const GraphView = (props: GraphViewProps) => {
     capabilities,
     content: contentIDs,
     fit: fitOptions,
-    positionOf: (id) => layout().positions.get(id),
+    positionOf: (id) => geometry().positions.get(id),
     cardWidth: cardScreenWidth,
     cardWorldWidth: CARD_SIZE[0],
     readableWidth: READABLE_CARD_WIDTH,
@@ -627,7 +633,7 @@ export const GraphView = (props: GraphViewProps) => {
     {
       name: "legend",
       title: () => i18n.t("ui.sessionGraph.legend.label"),
-      render: () => <GraphLegendBody theme={theme()} strategy={strategy()} rules={props.rules} />,
+      render: () => <GraphLegendBody theme={theme()} layout={layout()} rules={props.rules} />,
     },
     {
       name: "equalizer",
@@ -673,13 +679,9 @@ export const GraphView = (props: GraphViewProps) => {
     setProjection(next === "flat" ? "2d" : "3d")
     props.onDepthChange?.(next)
   }
-  const changeStrategy = (next: LayoutStrategy) => {
-    setStrategy(next)
-    props.onStrategyChange?.(next)
-  }
-  const changeRepresentation = (next: Representation) => {
-    setRepresentation(next)
-    props.onRepresentationChange?.(next)
+  const changeLayout = (next: Layout) => {
+    setLayout(next)
+    props.onLayoutChange?.(next)
   }
   // LE.8/LE.9: a segment/cell expands into the node-link graph with that node selected and framed.
   const expandToGraph = (id: string) => {
@@ -687,7 +689,7 @@ export const GraphView = (props: GraphViewProps) => {
 
     if (!node) return
     Metrics.count("expand")
-    if (representation() !== "graph") changeRepresentation("graph")
+    if (isSummaryLayout(layout())) changeLayout("lanes")
     jumpTo(node)
   }
   const toggleMinimap = () => {
@@ -828,8 +830,7 @@ export const GraphView = (props: GraphViewProps) => {
   mirror(() => props.level, setLevel)
   mirror(() => props.projection, setProjection)
   mirror(() => props.depth, setDepth)
-  mirror(() => props.strategy, setStrategy)
-  mirror(() => props.representation, setRepresentation)
+  mirror(() => props.layout, setLayout)
   mirror(() => props.minimap, setMinimap)
   mirror(() => props.files, setFiles)
   mirror(() => props.detailMode, setDetailMode)
@@ -843,7 +844,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (!supportsDepth(current, depth())) setDepth("flat")
   })
   // LE.1: frame the drawn content (never the non-interactive bands) on first load, a renderer/level/
-  // projection/strategy/representation change, and when the inspector toggles. The fit is deferred to
+  // projection/layout change, and when the inspector toggles. The fit is deferred to
   // the canvas's `onModelApplied` (below), so the matching nodes and positions exist before we measure;
   // the ids are read untracked, so streaming updates never refit.
   // T6.10: the minimap toggles too — it is drawn over the canvas, so the frame moves with it.
@@ -851,8 +852,7 @@ export const GraphView = (props: GraphViewProps) => {
     level()
     projection()
     depth()
-    strategy()
-    representation()
+    layout()
     inspectorOpen()
     files()
     minimap()
@@ -914,7 +914,7 @@ export const GraphView = (props: GraphViewProps) => {
         zoomPercent={camera.zoomPercent()}
         onZoomOut={() => camera.zoomBy(-1)}
         onZoomIn={() => camera.zoomBy(1)}
-        zoomOutDisabled={effectiveLevel() === "overview" || (viewport()?.zoom ?? 0) <= camera.zoomLimits().min}
+        zoomOutDisabled={level() === "overview" || (viewport()?.zoom ?? 0) <= camera.zoomLimits().min}
         zoomInDisabled={(viewport()?.zoom ?? 0) >= camera.zoomLimits().max}
         onSearch={toggleSearch}
         legend={legendOpen()}
@@ -923,10 +923,8 @@ export const GraphView = (props: GraphViewProps) => {
         onToggleGallery={() => setGalleryOpen((open) => !open)}
         billboard={cardFacing() === "camera"}
         onToggleBillboard={toggleBillboard}
-        strategy={strategy()}
-        onStrategy={changeStrategy}
-        representation={representation()}
-        onRepresentation={changeRepresentation}
+        layout={layout()}
+        onLayoutChange={changeLayout}
         minimap={minimap()}
         onToggleMinimap={toggleMinimap}
         files={files()}
@@ -951,7 +949,7 @@ export const GraphView = (props: GraphViewProps) => {
             : undefined
         }
         onExpandGraph={
-          representation() !== "graph" && selection.selection().length > 0
+          isSummaryLayout(layout()) && selection.selection().length > 0
             ? () => expandToGraph(selection.selection()[0]!)
             : undefined
         }
@@ -1002,7 +1000,7 @@ export const GraphView = (props: GraphViewProps) => {
         </div>
       </Show>
       <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
-        <Show when={files() && representation() === "graph" && !narrow()}>
+        <Show when={files() && !isSummaryLayout(layout()) && !narrow()}>
           <GraphFileRail
             files={changedFilesList()}
             selection={selection.selection()}
@@ -1108,7 +1106,7 @@ export const GraphView = (props: GraphViewProps) => {
             <div class="absolute bottom-2 end-2 z-10">
               <GraphMinimap
                 model={props.model}
-                positions={layout().positions}
+                positions={geometry().positions}
                 theme={theme()}
                 viewport={viewport()}
                 onPan={(center) => {
@@ -1159,7 +1157,7 @@ export const GraphView = (props: GraphViewProps) => {
           <Show when={legendOpen()}>
             <GraphLegend
               theme={theme()}
-              strategy={strategy()}
+              layout={layout()}
               rules={props.rules}
               onClose={() => setLegendOpen(false)}
             />
@@ -1168,8 +1166,8 @@ export const GraphView = (props: GraphViewProps) => {
             <GraphGallery
               model={props.model}
               theme={theme()}
-              current={strategy()}
-              onOpen={changeStrategy}
+              current={layout()}
+              onOpen={changeLayout}
               onClose={() => setGalleryOpen(false)}
             />
           </Show>

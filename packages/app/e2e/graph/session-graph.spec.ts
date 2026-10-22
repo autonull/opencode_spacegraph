@@ -123,23 +123,55 @@ test("offers the graph switch on a narrow mobile viewport", async ({ page }) => 
   expect(errors).toEqual([])
 })
 
-test("switches to the ribbon representation and persists it", async ({ page }) => {
+test("switches to the ribbon layout, honours the level, and persists it", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
 
-  const ribbon = page.locator(toolbar).getByRole("button", { name: "Ribbon", exact: true })
-  await ribbon.click()
-  await expect(ribbon).toHaveAttribute("aria-pressed", "true")
-  // The ribbon is a per-turn bar of phase segments: real model nodes, still DOM cards.
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-layout"] summary`).click()
+  await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-value="ribbon"]`).click()
+  await expect(page.locator(`${toolbar} [data-slot="graph-layout-name"]`)).toHaveText("Ribbon")
+  // The ribbon is a per-turn bar: real model nodes, still DOM cards.
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="turn"]`).count()).toBeGreaterThan(0)
+
+  // T17.2: the level is the grain in a summary layout too, so the overview shows the phase segments.
+  await page.locator(toolbar).getByRole("button", { name: "Overview", exact: true }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="phase"]`).count()).toBeGreaterThan(0)
 
   await page.reload()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await expect(page.locator(toolbar).getByRole("button", { name: "Ribbon", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.locator(`${toolbar} [data-slot="graph-layout-name"]`)).toHaveText("Ribbon")
+
+  expect(errors).toEqual([])
+})
+
+test("a saved ribbon from the old representation opens as the ribbon (T17.1)", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // The reader's choice is stored, so the document holds the graph state.
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-layout"] summary`).click()
+  await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-value="ribbon"]`).click()
+  await expect(page.locator(`${toolbar} [data-slot="graph-layout-name"]`)).toHaveText("Ribbon")
+
+  // Rewrite the stored state in the shape the old build wrote: a representation beside the strategy.
+  await page.evaluate(() => {
+    const key = "opencode.global.dat:layout"
+    const stored = JSON.parse(localStorage.getItem(key) ?? "{}") as {
+      sessionView?: Record<string, { graph?: Record<string, unknown> }>
+    }
+
+    for (const view of Object.values(stored.sessionView ?? {})) {
+      if (!view.graph) continue
+      view.graph.representation = "ribbon"
+      delete view.graph.layout
+    }
+
+    localStorage.setItem(key, JSON.stringify(stored))
+  })
+
+  await page.reload()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(`${toolbar} [data-slot="graph-layout-name"]`)).toHaveText("Ribbon")
 
   expect(errors).toEqual([])
 })
@@ -314,11 +346,11 @@ test("shows the map and the log together, and the reader chooses how they meet",
 
   // The arrangement is the reader's choice, and it lives in the map's own Draw menu.
   await openMenu(page, "draw")
-  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-strategy="side"]`).click()
+  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="side"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "side")
 
   await openMenu(page, "draw")
-  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-strategy="floating"]`).click()
+  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="floating"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "floating")
   await expect(page.locator('[data-slot="session-graph-panel-pane-bar"]')).toBeVisible()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
@@ -677,8 +709,8 @@ test("keeps the card styling when the layout changes", async ({ page }) => {
 
   const before = await styling()
 
-  await openMenu(page, "draw")
-  await page.locator('[data-slot="graph-layout-option"][data-strategy="timeline"]').click()
+  await page.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await page.locator('[data-slot="graph-layout-option"][data-value="timeline"]').click()
 
   // The card is still the card: the model rebuilt it, and its styling came with it.
   await expect.poll(styling).toEqual(before)

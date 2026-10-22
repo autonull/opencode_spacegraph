@@ -44,8 +44,8 @@ story("the frame keeps the content clear of the chrome drawn over the canvas", a
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
-  await root.locator('[data-slot="graph-layout-option"][data-strategy="tree"]').click()
+  await root.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await root.locator('[data-slot="graph-layout-option"][data-value="tree"]').click()
 
   await root.locator('[data-slot="graph-toolbar-show"] summary').click()
   await root.locator('button[aria-label="Toggle minimap"]').click()

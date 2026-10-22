@@ -1,5 +1,5 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { EqualizerRuleSet, LayoutStrategy } from "@opencode/session-ui/graph"
+import type { EqualizerRuleSet, Layout } from "@opencode/session-ui/graph"
 import { LANES, NODE_KINDS, NODE_STATUSES, PHASE_CATEGORIES } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -17,8 +17,8 @@ const CONFIDENCE_STYLE = {
 
 export type GraphLegendProps = {
   theme: RenderTheme
-  /** T7: the layout on screen; the legend says what that layout encodes. */
-  strategy?: LayoutStrategy
+  /** T17.1: the layout on screen; the legend says what that layout encodes. */
+  layout?: Layout
   /** T15: the equalizer's rules, so the legend reads the same accents the cards do. */
   rules?: EqualizerRuleSet
   onClose: () => void
@@ -26,8 +26,8 @@ export type GraphLegendProps = {
 
 export type GraphLegendBodyProps = {
   theme: RenderTheme
-  /** T7: the layout on screen; the legend says what that layout encodes. */
-  strategy?: LayoutStrategy
+  /** T17.1: the layout on screen; the legend says what that layout encodes. */
+  layout?: Layout
   /** T15: the equalizer's rules, so the legend reads the same accents the cards do. */
   rules?: EqualizerRuleSet
 }
@@ -61,7 +61,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
 
   return (
     <div class="min-h-0 flex-1 overflow-y-auto border-t border-border-weaker-base px-3 py-2">
-      <p class="text-12-regular text-text-base">{i18n.t(LAYOUT_HINT_KEY[props.strategy ?? "lanes"])}</p>
+      <p class="text-12-regular text-text-base">{i18n.t(LAYOUT_HINT_KEY[props.layout ?? "lanes"])}</p>
       <p class="mt-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.help")}</p>
 
       {section(
@@ -147,7 +147,7 @@ export const GraphLegend = (props: GraphLegendProps) => {
         <GraphIconButton label={i18n.t("ui.sessionGraph.legend.close")} icon="close-small" onClick={props.onClose} />
       </div>
 
-      <GraphLegendBody theme={props.theme} strategy={props.strategy} rules={props.rules} />
+      <GraphLegendBody theme={props.theme} layout={props.layout} rules={props.rules} />
     </div>
   )
 }

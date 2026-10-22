@@ -63,8 +63,9 @@ The authoritative list is in [prototype.md](./prototype.md) §"Known limitations
 - 2D is the legible default; 3D is an explicit experiment.
 - Mobile graph mode is desktop-gated for v1 (command-only on mobile).
 - Renderer choice (SpaceGraphJS vs Cytoscape) is a prototype setting, not a toolbar control.
-- The `graph`/`ribbon`/`matrix` representation, the layout strategy, and the depth treatment are switchable
-  options behind one seam; the R7.3 usability protocol decides the winner and is **not yet executed**.
+- The layout (lanes / timeline / hierarchy / tree / force / ribbon / matrix) and the depth treatment
+  are switchable options behind one seam; the R7.3 usability protocol decides the winner and is
+  **not yet executed**.
 - First graph paint and pan frame rate are unmeasured; the session-entry delta is unmeasured.
 
 ## Verification

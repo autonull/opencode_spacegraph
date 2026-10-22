@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { buildFixtureGraph } from "./fixture"
-import { matrixLayout, representationLevel, ribbonLayout } from "./representation"
+import { matrixColumn, matrixLayout, ribbonLayout, summaryUnits, turnRows } from "./summary"
 import { nodesAtLevel } from "./levels"
 import { nodeSize } from "./layout"
 import { turnNodeID } from "./model"
 
-describe("representation — ribbon and matrix layouts (LE.7–LE.9)", () => {
+describe("summary layouts — the ribbon and the matrix (LE.7–LE.9)", () => {
   test("both are deterministic and place every overview-visible node", () => {
     const model = buildFixtureGraph()
     const ribbon = ribbonLayout(model)
@@ -70,10 +70,62 @@ describe("representation — ribbon and matrix layouts (LE.7–LE.9)", () => {
       }
     }
   })
+})
 
-  test("only the graph representation keeps the level control", () => {
-    expect(representationLevel("graph")).toBeUndefined()
-    expect(representationLevel("ribbon")).toBe("overview")
-    expect(representationLevel("matrix")).toBe("overview")
+describe("the level is the grain, in the summaries too (T17.2)", () => {
+  test("a phase stands for its work at the overview", () => {
+    const model = buildFixtureGraph()
+    const phase = model.nodes.find((node) => node.kind === "phase" && node.clusterOf!.length > 0)!
+    const member = model.nodes.find((node) => node.id === phase.clusterOf![0])!
+    const positions = ribbonLayout(model, { level: "overview" }).positions
+
+    expect(positions.get(phase.id)).toBeDefined()
+    expect(positions.get(member.id)).toBeUndefined()
+  })
+
+  test("below the overview the work stands for itself", () => {
+    const model = buildFixtureGraph()
+    const phase = model.nodes.find((node) => node.kind === "phase" && node.clusterOf!.length > 0)!
+    const member = model.nodes.find((node) => node.id === phase.clusterOf![0])!
+    const positions = ribbonLayout(model, { level: "execution" }).positions
+
+    expect(positions.get(phase.id)).toBeUndefined()
+    expect(positions.get(member.id)).toBeDefined()
+  })
+
+  test("a row never counts the same work twice", () => {
+    const model = buildFixtureGraph()
+    const units = summaryUnits(model, "execution")
+
+    for (const phase of model.nodes.filter((node) => node.kind === "phase")) {
+      const members = phase.clusterOf ?? []
+      if (!members.some((id) => units.has(id))) continue
+      expect(units.has(phase.id)).toBe(false)
+    }
+  })
+
+  test("a member takes the column of the cluster that stands for it", () => {
+    const model = buildFixtureGraph()
+    const phase = model.nodes.find((node) => node.kind === "phase" && node.clusterOf!.length > 0)!
+    const member = model.nodes.find((node) => node.id === phase.clusterOf![0])!
+
+    expect(matrixColumn(model, member)).toBe(matrixColumn(model, phase))
+    expect(matrixColumn(model, member)).not.toBe(0)
+  })
+
+  test("the matrix holds a phase's work in the phase's cell", () => {
+    const model = buildFixtureGraph()
+    const phase = model.nodes.find((node) => node.kind === "phase" && node.clusterOf!.length > 0)!
+    const member = model.nodes.find((node) => node.id === phase.clusterOf![0])!
+    const positions = matrixLayout(model, { level: "execution" }).positions
+
+    expect(positions.get(member.id)!.y).toBe(positions.get(phase.turnID!)!.y)
+  })
+
+  test("the rows of a summary are the same at every level", () => {
+    const model = buildFixtureGraph()
+
+    expect(turnRows(model, "overview").length).toBe(turnRows(model, "execution").length)
+    expect(turnRows(model, "overview").length).toBe(model.turns.length + 1)
   })
 })

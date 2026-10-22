@@ -36,20 +36,23 @@ export {
   GRAPH_ARRANGEMENTS,
   GRAPH_MODES,
   GRAPH_SIDES,
+  LAYOUTS,
   LAYOUT_STRATEGIES,
   NODE_KINDS,
   NODE_STATUSES,
   PHASE_CATEGORIES,
   PHASE_LABELS,
-  REPRESENTATIONS,
   STRUCTURAL_KINDS,
+  SUMMARY_LAYOUTS,
   ZOOM_LEVELS,
+  isSummaryLayout,
   type DetailMode,
   type GraphArrangement,
   type GraphMode,
   type GraphSide,
+  type Layout,
   type LayoutStrategy,
-  type Representation,
+  type SummaryLayout,
 } from "./vocabulary"
 
 export { nodeIndex, lookupNode } from "./lookup"
@@ -114,11 +117,11 @@ export {
 export {
   matrixColumn,
   matrixLayout,
-  representationLevel,
   ribbonLayout,
+  summaryUnits,
   turnRows,
-  type RepresentationLayoutOptions,
-} from "./representation"
+  type SummaryLayoutOptions,
+} from "./summary"
 
 export { scaleWindow, scopeToTurns, TURN_WINDOW, type ScaleWindow } from "./scale"
 

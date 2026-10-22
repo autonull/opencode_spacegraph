@@ -175,9 +175,9 @@ story("the inspector becomes a bottom sheet without a drag handle when narrow", 
   expect(errors).toEqual([])
 })
 
-// LE.8/LE.9: the ribbon and matrix are switchable representations of the same model. The screenshot
-// batch is their acceptance contract, but the wiring (chooser, disabled level, expand into the graph)
-// is proven here deterministically.
+// LE.8/LE.9: the ribbon and matrix are switchable layouts of the same model. The screenshot batch
+// is their acceptance contract, but the wiring (the chooser, the level, the expand into the node-link
+// map) is proven here deterministically.
 story("the turn ribbon renders per-turn segments and expands into the graph", async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {
@@ -192,18 +192,18 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
   await expect.poll(() => host.locator('[data-kind="phase"]').count()).toBeGreaterThan(0)
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
-  await expect(toolbar.getByRole("button", { name: "Ribbon", exact: true })).toHaveAttribute("aria-pressed", "true")
-  // The semantic level only drives the node-link graph.
-  await expect(toolbar.getByRole("button", { name: "Overview", exact: true })).toBeDisabled()
+  await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Ribbon")
+  // T17.1: the level means the same thing in every layout, so it is never disabled.
+  await expect(toolbar.getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
 
-  // Selecting a segment offers the expand control, which opens the graph with the node selected.
+  // Selecting a segment offers the expand control, which opens the node-link map with the node selected.
   await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("session"))
   await root.locator('[data-slot="graph-toolbar-show"] summary').click()
   const expand = toolbar.getByRole("button", { name: "Open in graph", exact: true })
   await expect(expand).toBeVisible()
   await expand.click()
 
-  await expect(toolbar.getByRole("button", { name: "Graph", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Lanes")
   await expect(toolbar.getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Session")
 
@@ -252,9 +252,8 @@ story("the turn matrix places phases in category columns", async ({ mount, page 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   await expect.poll(() => host.locator('[data-kind="phase"]').count()).toBeGreaterThan(0)
-  await expect(root.locator('[data-slot="graph-toolbar"]').getByRole("button", { name: "Matrix", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
+  await expect(root.locator('[data-slot="graph-toolbar"]').locator('[data-slot="graph-layout-name"]')).toHaveText(
+    "Matrix",
   )
 
   expect(errors).toEqual([])

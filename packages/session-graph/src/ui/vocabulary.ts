@@ -6,9 +6,8 @@ import type {
   GraphNode,
   GraphSide,
   Lane,
-  LayoutStrategy,
+  Layout,
   NodeKind,
-  Representation,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 
@@ -23,13 +22,19 @@ export const LEVEL_KEY = {
   detail: "ui.sessionGraph.level.detail",
 } as const satisfies Record<ZoomLevel, string>
 
-export const STRATEGY_KEY = {
+/**
+ * T17.1 — the layout axis. One name for every way the map can be drawn, so the reader meets one
+ * list and one control instead of a family beside a strategy.
+ */
+export const LAYOUT_KEY = {
   lanes: "ui.sessionGraph.layout.lanes",
   timeline: "ui.sessionGraph.layout.timeline",
   hierarchy: "ui.sessionGraph.layout.hierarchy",
   tree: "ui.sessionGraph.layout.tree",
   force: "ui.sessionGraph.layout.force",
-} as const satisfies Record<LayoutStrategy, string>
+  ribbon: "ui.sessionGraph.layout.ribbon",
+  matrix: "ui.sessionGraph.layout.matrix",
+} as const satisfies Record<Layout, string>
 
 /** What each layout encodes, in one sentence. The legend says it for the layout on screen. */
 export const LAYOUT_HINT_KEY = {
@@ -38,13 +43,9 @@ export const LAYOUT_HINT_KEY = {
   hierarchy: "ui.sessionGraph.layoutHint.hierarchy",
   tree: "ui.sessionGraph.layoutHint.tree",
   force: "ui.sessionGraph.layoutHint.force",
-} as const satisfies Record<LayoutStrategy, string>
-
-export const REPRESENTATION_KEY = {
-  graph: "ui.sessionGraph.representation.graph",
-  ribbon: "ui.sessionGraph.representation.ribbon",
-  matrix: "ui.sessionGraph.representation.matrix",
-} as const satisfies Record<Representation, string>
+  ribbon: "ui.sessionGraph.layoutHint.ribbon",
+  matrix: "ui.sessionGraph.layoutHint.matrix",
+} as const satisfies Record<Layout, string>
 
 export const DEPTH_KEY = {
   flat: "ui.sessionGraph.depth.flat",

@@ -93,6 +93,28 @@ export function optional<S extends Schema.ConstraintCodec<unknown, unknown>>(sch
   return Schema.catchDecoding<typeof field>(() => Effect.succeed(Option.none()))(field)
 }
 
+/**
+ * A field's own migration. The document-level `migrate` reads a whole document, so a field inside
+ * one needs a read of its own: the legacy shape names what the past stored, and the fold turns it
+ * into the current shape. The current shape decides what is kept, so the legacy fields are dropped.
+ */
+export function migrateField<
+  S extends Schema.ConstraintCodec<object, unknown>,
+  L extends Schema.ConstraintCodec<unknown, unknown>,
+>(current: S, legacy: L, fold: (value: L["Type"]) => S["Encoded"]): S {
+  const migrated = Schema.decodeTo<S, L>(
+    current,
+    {
+      decode: SchemaGetter.transform(fold),
+      encode: SchemaGetter.transform((value: L["Type"]) => value),
+    },
+  )(legacy)
+
+  // The legacy shape is open, so its encoded type is wider than the current one; the current shape
+  // is what the field holds, and it is what the store writes.
+  return migrated as unknown as S
+}
+
 export function struct<const Fields extends Schema.Struct.Fields>(fields: Fields) {
   return Schema.Struct(fields).mapFields(Struct.map(Schema.mutableKey))
 }

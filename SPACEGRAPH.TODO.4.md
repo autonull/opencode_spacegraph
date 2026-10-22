@@ -228,11 +228,11 @@ as one reviewed block rather than as a drip.
 log), and **T16 — the map and the log together — is reached** (the hybrid mode, 2026-10-22). T14.3
 (the minimap as a window) is still open, and is now the last step of T17.4 rather than a leftover.
 
-**T17 and T18 are planned, not started** (2026-10-22). They are the consolidation the author's own
-use asked for — one layout axis, a level that applies to every layout, one way to show
-content, the detail the reader earns by moving closer, and the ergonomics of the map-and-log pair.
-They are written here before any of them is built, because the consolidation moves a vocabulary and
-a vocabulary is cheaper to move on paper.
+**T17.1 and T17.2 are reached** (2026-10-22): one layout list and one control ✓, and the level
+means the same thing in every layout ✓. **T17.3, T17.4, T17.5 and T18 are planned, not started.**
+They are the rest of the consolidation the author's own use asked for — the log's own shape as a
+layout, one way to show content, the detail the reader earns by moving closer, and the ergonomics
+of the map-and-log pair.
 
 ### 0.6 What is *not* in this plan
 
@@ -1040,7 +1040,7 @@ touches the hybrid, not the map's vocabulary.
 
 The facts that shape this section are **F8–F13 in §0.3** ✓ — measured in this tree, not assumed.
 
-### T17.1 One layout axis — the decision — **planned**
+### T17.1 One layout axis — the decision — **done**
 
 - The representations become layouts:
   `LAYOUTS = ["lanes","timeline","hierarchy","tree","force","ribbon","matrix"]` — one list, one
@@ -1087,7 +1087,35 @@ shape declares `representation: Schema.optional(Schema.String)`; the read folds 
 `ribbon`/`matrix` becomes the new `layout`, anything else keeps the stored strategy ✓. Without
 it, a reader's saved ribbon would silently become the default layout.
 
-### T17.2 The level means the same thing in every layout — **planned**
+**What was built.**
+
+- **one list, one control.** `LAYOUTS = ["lanes", "timeline", "hierarchy", "tree", "force",
+  "ribbon", "matrix"]` (`session-ui/src/graph/vocabulary.ts`) — the five library strategies and the
+  two summary layouts in one list ✓, with `SUMMARY_LAYOUTS` and `isSummaryLayout()` for the code
+  that needs to know which is which ✓. The toolbar's representation segmented control became a
+  **layout menu** with all seven ✓, and the Draw menu lost its layout row ✓, so the row did not
+  grow;
+- **`representationLevel()` and `graphMode()` are gone** ✓ — no control is disabled because of the
+  layout ✓, and the level's items carry no `disabled` ✓;
+- **the view has one prop.** `strategy` + `representation` became `layout` (+ `onLayoutChange`) ✓,
+  and the legend, the gallery, the permalink and the app's store speak the same word ✓;
+- **the migration is real, and it is the field's own.** `Persistence.migrateField` (the persistence
+  module) reads a field's legacy shape and folds it into the current one ✓ — the document-level
+  chain cannot do it, because the document's read decodes `sessionView` with the *current* struct,
+  which drops `representation` before the document transform ever sees it ✓. A stored `ribbon`
+  becomes the new `layout` ✓; a stored `graph` (the old default family) keeps the stored strategy
+  ✓; the app e2e proves it — a document rewritten in the old shape opens as the ribbon ✓;
+- **the old links still work.** `#graph:ribbon:<id>` names a layout that is still called a ribbon ✓,
+  and `#graph:graph:<id>` — the old default — opens the lanes layout ✓;
+- **the frames were stale and are now current.** The committed captures still showed the *pre-T14.2*
+  toolbar (the flat/layer/stack/orbit row), so the whole set was regenerated ✓; the capture now
+  closes the menus the reader left open, so a frame is the map and not a stray dropdown ✓.
+
+**One thing the change found, and the plan had not seen.** The representation's segmented control
+and the Draw menu's layout row were *two* controls for one job, and the Draw menu's own value label
+was the layout's name — so the layout was already named in two places. The new row says it once ✓.
+
+### T17.2 The level means the same thing in every layout — **done**
 
 The level is a **grain**, not a family. Every layout draws the level's units; a summary
 layout packs them into its own grammar.
@@ -1118,6 +1146,32 @@ is hard-wired, which is F9. The level-aware version has two rules:
 With those, the signatures are `ribbonLayout(model, { level })`, `matrixLayout(model, { level })`
 and `turnRows(model, level)` ✓ (the axis labels read the rows ✓) — the level parameter, not a
 second vocabulary.
+
+**What was built.**
+
+- **the units.** `summaryUnits(model, level)` is the one function that answers "what does a summary
+  draw at this level" ✓: the nodes the level makes visible, minus a derived cluster whose members
+  are now visible ✓. A phase stands for its work at the overview ✓ and the work stands for itself
+  below it ✓, so a row never counts the same work twice ✓;
+- **the column.** `matrixColumn(model, node)` is model-aware now ✓: a node takes the category of the
+  cluster that stands for it ✓, and the resolver is the map from a member to its cluster's category
+  ✓ (built once per model ✓, because the model's nodes are the cache key);
+- **the render model draws the same set.** The summary's units are the view's model for the canvas
+  ✓, so a node the layout did not place is never drawn at the origin ✓;
+- **the axis labels read the level's rows** ✓ — the column captions follow the members that are
+  actually in the cells ✓.
+
+**Two things the build found, and the plan had not.**
+
+- **the phase is not the only member of a cluster that the overview can see.** A delegation is a
+  `subagent` node at the overview level, and it *is* a member of the delegate phase — so a uniform
+  "a cluster yields as soon as a member is visible" rule would have deleted the delegate phase chip
+  at the overview and changed the committed frames. The rule is therefore the plan's own sentence:
+  the phase stands at the overview ✓, and yields below it ✓ (the library's `isClusterExpanded` is
+  the seam the plan named ✓);
+- **the subagent belongs to the delegate column, not to the signals column.** The old matrix put
+  every non-phase node in a trailing "signals" column; the plan's rule moves the delegation into
+  the phase's own column ✓, so the matrix frame changed ✓ and the golden moved with it ✓.
 
 Done when: the level is a filter every layout honours, and the level control is never
 disabled.
@@ -1372,6 +1426,8 @@ is in this file.
 | 17 | **The detail the reader earns by moving closer** — the budget follows the camera, a kind earns its card by proximity, and the nearest card says more | the library's LOD is a cull and its escapes are unused, the budget is spent in model order, and the map's only screen-size LOD adds one line (F11–F13) |
 | 18 | **The map follows the log only when the reader asks** | a camera that moves while the reader scrolls is a camera the reader did not ask for (T18.1) |
 | 19 | **The study decides the product; T17 and T18 do not** | the stop rule in `SPACEGRAPH.md` §10 is this plan's own promise, and T17/T18 are ergonomics (T18.5) |
+| 20 | **A field inside a document carries its own migration** | the document-level read decodes the document with the *current* shape, so a legacy field inside it is dropped before the document transform sees it (T17.1) |
+| 21 | **A cluster stands at the overview and yields below it** | the plan's own sentence, and the only one that keeps the overview frames: a delegation is a cluster member the overview can see, so a uniform rule would delete the delegate phase chip (T17.2) |
 
 ### 10.2 Risks
 
@@ -1739,3 +1795,61 @@ the study (T2.2, carried) decides whether the map is a mode of the product at al
 Unverified: every number in F8–F13 is measured in this tree, but the *feel* of the consolidated
 row — seven layout names in one menu, the summaries at a finer grain, the log-shaped layout —
 needs the author's hands.
+
+**2026-10-22 — T17.1 and T17.2: one layout axis, and the level as a grain.**
+The author's use of the map asked three questions — are the representations just layouts, can the
+level apply to any layout, is the LOD earning its keep. This pass answered the first two.
+
+What changed:
+
+- **the vocabulary is one list.** `LAYOUTS = ["lanes", "timeline", "hierarchy", "tree", "force",
+  "ribbon", "matrix"]` — the five library strategies and the two summary layouts, chosen the same
+  way ✓. `REPRESENTATIONS` and `Representation` are gone ✓, and `summary.ts` (the old
+  `representation.ts`) holds the summaries' own vocabulary ✓;
+- **the toolbar says it once.** The representation's segmented control became a **layout menu** of
+  seven names ✓, the Draw menu lost its layout row ✓, and the toolbar's `graphMode()` — the
+  predicate that greyed the level out for the summaries — is gone ✓. No control is disabled because
+  of the layout ✓;
+- **the level is a grain.** `summaryUnits(model, level)` is the one function that answers "what
+  does a summary draw at this level" ✓: the nodes the level makes visible, with a derived cluster
+  yielding to its members once those members are visible ✓. The matrix's column is model-aware ✓ —
+  a member takes the category of the cluster that stands for it ✓ — and the render model draws the
+  same set the layout placed ✓, so a node the layout did not place is never drawn at the origin ✓;
+- **the state migrated.** The graph's per-session state has one `layout` field ✓, and the field
+  carries its own migration: `Persistence.migrateField` reads the legacy shape and folds it into
+  the current one ✓. A stored `ribbon` becomes the new `layout` ✓; a stored `graph` (the old
+  default family) keeps the stored strategy ✓. The old permalinks still work ✓ — `#graph:ribbon:…`
+  names a layout that is still called a ribbon, and `#graph:graph:…` opens the lanes layout ✓.
+
+**Two things the build found, and the plan had not.**
+
+- **the document-level chain cannot migrate a field inside it.** The document's read decodes
+  `sessionView` with the *current* struct, which drops the legacy `representation` before the
+  document transform ever sees it — so the field needs its own read, and the persistence module
+  grew `migrateField` for it ✓. The plan had named `Persistence.migrate`, which is a document-level
+  mechanism; the field-level one is the same idea at the right size ✓;
+- **a delegation is a cluster member the overview can see.** The `subagent` node is at the overview
+  level *and* is a member of the delegate phase, so a uniform "a cluster yields as soon as a member
+  is visible" rule would have deleted the delegate phase chip at the overview and moved the
+  committed frames. The rule is the plan's own sentence instead: the phase stands at the overview ✓
+  and yields below it ✓.
+
+**The frames were stale.** The committed captures still showed the *pre-T14.2* toolbar — the
+flat/layer/stack/orbit row, the representation's segmented control — because the toolbar was
+reorganised without them. The whole set is regenerated ✓, and the capture now closes the menus
+the reader left open ✓, so a frame is the map and not a stray dropdown ✓. The matrix frame moved
+because the delegation now sits in the delegate column ✓ (the plan's rule ✓), and the golden moved
+with it ✓.
+
+Measured: `session-ui` graph **128** (+5: the phase stands at the overview, the work stands for
+itself below it, a row never counts the same work twice, a member takes its cluster's column, and
+the rows are the same at every level), `session-graph` unit **101**, the session-graph component
+suite **59** (+1: the level is never disabled, whatever the layout), the app graph e2e **31** (+2:
+the ribbon honours the level, and a document in the old shape still opens as the ribbon), the root
+`bun run check` **40/40**, and `bun run graph:capture --mode=verify` **passed** (the frames exist,
+and the 2x matrix repeats none).
+
+Unverified: the *feel* of the consolidated row — seven names in one menu, the summaries at a finer
+grain — needs the author's hands. The ribbon at the execution level is a new picture (the work
+stands for itself, so the phase grouping is gone from the row), and the author should say whether
+the row is readable without it.

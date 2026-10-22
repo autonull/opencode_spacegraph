@@ -18,8 +18,8 @@ const cardHeight = async (page: import("@playwright/test").Page) =>
 
 /** Picks a layout from the toolbar's layout menu. */
 const pickLayout = async (root: import("@playwright/test").Locator, layout: string) => {
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
-  await root.locator(`[data-slot="graph-layout-option"][data-strategy="${layout}"]`).click()
+  await root.locator('[data-slot="graph-toolbar-layout"] summary').click()
+  await root.locator(`[data-slot="graph-layout-option"][data-value="${layout}"]`).click()
 }
 
 story("a view too large for the frame keeps a legible scale", async ({ mount, page }) => {
