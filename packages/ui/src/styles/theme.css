@@ -5,10 +5,17 @@
     "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-family-mono--font-feature-settings: normal;
 
-  --font-size-small: 13px;
-  --font-size-base: 14px;
-  --font-size-large: 16px;
-  --font-size-x-large: 20px;
+  /* The type scales from here: a host that scales one surface's text (the log beside the map,
+     say) re-derives the sizes on that surface. The line heights are percentages, so they follow. */
+  --text-scale: 1;
+  --text-size-small: 13px;
+  --text-size-base: 14px;
+  --text-size-large: 16px;
+  --text-size-x-large: 20px;
+  --font-size-small: var(--text-size-small);
+  --font-size-base: var(--text-size-base);
+  --font-size-large: var(--text-size-large);
+  --font-size-x-large: var(--text-size-x-large);
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-bold: 670;

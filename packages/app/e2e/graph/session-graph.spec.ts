@@ -359,6 +359,30 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test("scales the log's text from the split, without leaving the map", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+  await page.locator(toolbar).getByRole("button", { name: "Show the log beside the map" }).click()
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+
+  // The slider is at hand: a split panel's log is narrow, so the reader wants its text bigger.
+  const slider = page.locator('[data-slot="session-graph-panel-log-scale"] input[type="range"]')
+  await expect(slider).toBeVisible()
+
+  const message = page
+    .locator('[data-slot="session-graph-panel-log"]')
+    .getByText("Fix the authentication test failures.")
+  const before = await message.evaluate((element) => getComputedStyle(element).fontSize)
+
+  await slider.fill("1.3")
+
+  await expect
+    .poll(() => message.evaluate((element) => getComputedStyle(element).fontSize))
+    .not.toBe(before)
+
+  expect(errors).toEqual([])
+})
+
 test("reveals the turn for a message hash and returns to it in the transcript", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

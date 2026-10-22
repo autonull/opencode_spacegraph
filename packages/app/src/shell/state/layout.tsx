@@ -93,6 +93,8 @@ const sessionGraphSchema = Persistence.struct({
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   arrangementSide: Schema.optional(Schema.Literals(GRAPH_SIDES)),
   split: Schema.optional(Schema.Finite),
+  // How large the log's text is beside the map. Absent means the theme's own size.
+  logTextScale: Schema.optional(Schema.Finite),
   // The floating map pane's box, as fractions of the panel, so it survives a resize of the window.
   pane: Persistence.optional(
     Persistence.struct({
@@ -623,6 +625,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           arrangement: createMemo(() => state()?.arrangement ?? "stacked"),
           arrangementSide: createMemo(() => state()?.arrangementSide ?? "start"),
           split: createMemo(() => state()?.split ?? 0.5),
+          logTextScale: createMemo(() => state()?.logTextScale ?? 1),
           pane: createMemo(() => state()?.pane),
           projection: createMemo(() => state()?.projection ?? "2d"),
           renderer: createMemo(() => state()?.renderer),
@@ -648,6 +651,9 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setSplit(split: number) {
             write({ split })
+          },
+          setLogTextScale(logTextScale: number) {
+            write({ logTextScale })
           },
           setPane(pane: NonNullable<SessionGraphState["pane"]>) {
             write({ pane })

@@ -260,6 +260,7 @@ log is never detached: the reader's place in the transcript survives every move 
 | **the panel** (`packages/app/src/session/graph/session-graph-panel.tsx`) | owns the composition: the log's pane is the log's *home*, and the map is arranged around it with CSS order rather than by moving nodes — so entering the hybrid never detaches the transcript |
 | **the arrangements** | `stacked` (the map above the log), `side` (the map beside it), `floating` (the map over it, movable and resizable). The reader picks one; the map offers the choice in its **Draw** menu |
 | **the bridge** | picking a node in the map reveals its message in the log without leaving either; the log's active turn is marked on the map, so the reader sees where they are in the session |
+| **the log's text size** | a slider at the top of the log's pane: in a split panel the log is narrow, and the reader wants it bigger or smaller without leaving the map |
 | **the way in** | the map's toolbar offers "show the log beside the map", and `graph.hybrid` (`mod+shift+h`) toggles the mode |
 
 The arrangement is the map's business only in name: the panel owns the geometry, and the map's

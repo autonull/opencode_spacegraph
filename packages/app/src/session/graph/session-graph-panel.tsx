@@ -3,6 +3,7 @@ import { ResizeHandle } from "@opencode/ui/resize-handle"
 import type { GraphArrangement, GraphMode, GraphSide } from "@opencode/session-ui/graph"
 import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js"
 import { useLanguage } from "@/runtime/i18n/language"
+import "./graph-panel.css"
 
 /**
  * The session panel's composition: the log, the map, and the geometry they meet under.
@@ -24,6 +25,10 @@ const MIN_LOG_PX = 280
 
 /** The floating pane's smallest box, as a fraction of the panel. */
 const MIN_PANE_FRACTION = 0.2
+
+/** The log's text size, as a scale on the theme's own sizes. */
+const MIN_TEXT_SCALE = 0.8
+const MAX_TEXT_SCALE = 1.4
 
 export type GraphPaneBox = {
   /** The pane's origin, as a fraction of the panel. */
@@ -54,6 +59,9 @@ export type SessionGraphPanelProps = {
   onSplit: (split: number) => void
   pane: GraphPaneBox | undefined
   onPane: (pane: GraphPaneBox) => void
+  /** How large the log's text is, as a scale on the theme's own sizes. */
+  logTextScale: number
+  onLogTextScale: (scale: number) => void
   onClose: () => void
 }
 
@@ -166,10 +174,35 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
       <Show when={props.mode !== "graph"}>
         <div
           data-slot="session-graph-panel-log"
-          class="min-h-0 min-w-0 flex-1 overflow-hidden"
-          style={{ order: mapFirst() ? 2 : 0 }}
+          class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          style={{ order: mapFirst() ? 2 : 0, "--text-scale": props.logTextScale }}
         >
-          {props.transcript}
+          <Show when={hybrid()}>
+            {/* The log's text size, at hand: in a split panel the log is narrow, and the reader
+                wants it bigger or smaller without leaving the map to find a setting. */}
+            <div
+              data-slot="session-graph-panel-log-scale"
+              class="flex h-7 shrink-0 items-center gap-2 border-b border-border-weaker-base px-2"
+            >
+              <span class="shrink-0 text-12-regular text-text-weak">
+                {language.t("session.graph.hybrid.textSize")}
+              </span>
+              <input
+                type="range"
+                min={MIN_TEXT_SCALE}
+                max={MAX_TEXT_SCALE}
+                step="0.05"
+                value={props.logTextScale}
+                aria-label={language.t("session.graph.hybrid.textSize.aria")}
+                class="h-1 w-32 shrink-0"
+                onInput={(event) => props.onLogTextScale(Number(event.currentTarget.value))}
+              />
+              <span class="w-9 shrink-0 text-right text-12-regular tabular-nums text-text-weak">
+                {Math.round(props.logTextScale * 100)}%
+              </span>
+            </div>
+          </Show>
+          <div class="min-h-0 flex-1">{props.transcript}</div>
         </div>
       </Show>
       <Show when={hybrid() && !floating()}>
@@ -211,9 +244,10 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
               : {
                   // The map pane's height is a percentage, not a flex result: a pane sized by its
                   // content leaves the percentage heights inside it unresolved, and the map view
-                  // would shrink to its content instead of filling the panel.
+                  // would shrink to its content instead of filling the panel. Beside the log the
+                  // pane fills the row; above it the pane holds the map's share of the height.
                   flex: hybrid() ? `0 0 ${mapShare() * 100}%` : "1 1 auto",
-                  height: hybrid() ? `${mapShare() * 100}%` : "100%",
+                  height: hybrid() && !beside() ? `${mapShare() * 100}%` : "100%",
                   order: mapFirst() ? 0 : 2,
                 }
           }

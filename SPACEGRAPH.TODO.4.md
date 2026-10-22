@@ -915,7 +915,18 @@ A half-width map is a narrow map, and the toolbar's row does not fit in half a p
 - the **compact threshold follows the measurement**: the row needs 941px of controls (the split
   control added 28px to the end block), so the row is compact below 1030px, not 1000px;
 - the **log's place is kept**: the panel's composition never moves the transcript's DOM, so the
-  reader's scroll survives every move between the modes.
+  reader's scroll survives every move between the modes;
+- the **log's text size is a slider at hand**: a split panel's log is narrow, so the reader wants the
+  text bigger or smaller, and a setting panel is the wrong place for that. The slider sits at the
+  top of the log's pane, always visible, and scales the theme's own sizes (`--text-scale`) so the
+  line heights follow.
+
+### T16.4 The map frames itself for the pane it has — **done**
+
+A pane that changes shape needs a new frame: the orthographic view holds the world height, so a
+shorter pane shrinks the cards below reading. The map re-frames when the *shape* changes — the
+host moved it into the hybrid, or the reader chose another arrangement — and not when the reader
+merely resizes: their zoom and their pan are theirs.
 
 Done when: the map and the log hold the panel together, the log keeps its place, and the reader can
 choose how they meet.
@@ -1254,7 +1265,11 @@ What changed:
   it lists the three presets, applies one on a click, and shows the rules it made with a preview, a
   size and a way to drop them. The toolbar offers it in the **Draw** menu;
 - **the turn map is scoped to the session panel** and gated on the feature flag: it used to cover the
-  side region as well.
+  side region as well;
+- **the log's text size is a slider at hand**, at the top of the log's pane: in a split panel the
+  log is narrow, and the reader wants its text bigger or smaller without leaving the map. It scales
+  the theme's own sizes (`--text-scale`), so the line heights follow and a theme that changes them
+  scales with it.
 
 Measured: `session-ui` graph **123**, `session-graph` unit **101** (+1: the active turn's card
 carries the active state), the session-graph component suite **58** (+1: the equalizer's panel
@@ -1271,6 +1286,12 @@ and the reader chooses the arrangement; picking a node in the map moves the log 
 - **a flex item sized by its content leaves the percentage heights inside it unresolved.** The map
   pane's height was a flex result, so the map view inside it shrank to its content instead of
   filling the panel. The pane's height is a percentage now, and the map fills the panel.
+
+**One defect the work found, older than the pass.** The narrow graph view gave **311px of its
+height to an invisible inspector**: the closed gutter is a sibling of the canvas in a narrow
+layout's column, and its content kept the space. The gutter takes no room when it is closed now,
+which the hybrid needed (a map pane beside the log is a narrow map) and the app's own narrow graph
+mode had been missing.
 
 Unverified: the *feel* of the three arrangements — whether the stacked split gives the log and the
 map each enough room, and whether the floating pane is where the reader would put it — needs the

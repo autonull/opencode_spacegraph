@@ -537,6 +537,8 @@ export const dict = {
   "session.graph.back": "Back to transcript",
   "session.graph.hybrid.pane.title": "Session graph",
   "session.graph.hybrid.pane.close": "Close the graph",
+  "session.graph.hybrid.textSize": "Text size",
+  "session.graph.hybrid.textSize.aria": "Log text size",
   "session.graph.turnMap.error": "Couldn't open the turn map",
   "session.graph.turnMap.error.description": "The graph failed to load. The transcript is unaffected.",
   "session.error.notFound": "This session cannot be found",

@@ -41,6 +41,8 @@ export function SessionGraphView(props: {
   onReveal?: (messageID: string, partID?: string) => void
   /** The message the log is reading, so the map can mark the turn it belongs to. */
   activeMessageID?: string
+  /** Changes when the pane's shape changes, so the map frames its content for the new shape. */
+  refitKey?: string
   /** The hybrid's geometry. The view only offers the choice; the host owns the arrangement. */
   arrangement?: GraphArrangement
   onArrangementChange?: (arrangement: GraphArrangement) => void
@@ -191,6 +193,7 @@ export function SessionGraphView(props: {
           detailMode={graph.detailMode()}
           peek={graph.peek()}
           activeTurn={activeTurn()}
+          refitKey={props.refitKey}
           arrangement={props.arrangement}
           onArrangementChange={props.onArrangementChange}
           arrangementSide={props.arrangementSide}

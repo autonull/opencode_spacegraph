@@ -450,6 +450,7 @@ function SessionScreenContent(props: {
                         : undefined
                     }
                     activeMessageID={panelMode() === "hybrid" ? timeline.currentMessageId() : undefined}
+                    refitKey={panelMode()}
                     arrangement={graph.arrangement()}
                     onArrangementChange={graph.setArrangement}
                     arrangementSide={graph.arrangementSide()}
@@ -463,6 +464,8 @@ function SessionScreenContent(props: {
                 onSplit={graph.setSplit}
                 pane={graph.pane()}
                 onPane={graph.setPane}
+                logTextScale={graph.logTextScale()}
+                onLogTextScale={graph.setLogTextScale}
                 onClose={leaveGraph}
               />
             </Show>

@@ -154,10 +154,15 @@ export type GraphViewProps = {
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
   /**
-   * T3.5: the node to select and frame. The view raises the semantic level when the node is hidden
+   * The node to select and frame. The view raises the semantic level when the node is hidden
    * at the current one, then moves the camera to it once the model that carries it is applied.
    */
   frame?: string
+  /**
+   * A value that changes when the pane's shape changes — the host moved the map into the hybrid,
+   * say. The view frames the content again, because the old frame was made for another shape.
+   */
+  refitKey?: string
   /** T3.5: the shareable link to the selected node; the inspector offers to copy it. */
   link?: string
   /** Exposes the live renderer so a host can drive the camera (T6.18/T6.19). */
@@ -878,6 +883,18 @@ export const GraphView = (props: GraphViewProps) => {
     focusFrame(instance)
   }
 
+  // A structural change — the host moved the map into the hybrid, or the reader chose another
+  // arrangement — frames the content again: the pane is another shape now, and the old frame no
+  // longer says what the reader is looking at. A plain resize does not: the reader's own zoom and
+  // pan are theirs.
+  createEffect(() => {
+    props.refitKey
+    props.arrangement
+    const instance = renderer
+    if (!instance) return
+    camera.request(() => instance.fit(untrack(contentIDs), untrack(fitOptions)))
+  })
+
   return (
     <div
       ref={rootEl}
@@ -1171,7 +1188,9 @@ export const GraphView = (props: GraphViewProps) => {
           <div
             classList={{
               "shrink-0": true,
-              "w-0 overflow-hidden": !inspectorOpen(),
+              // A closed gutter takes no room: in a narrow layout it is a sibling of the canvas in
+              // the same column, and its content would otherwise push the canvas out of the frame.
+              "h-0 w-0 overflow-hidden": !inspectorOpen(),
               // LE.4: at narrow widths the inspector is a real bottom sheet (a flex sibling below the
               // canvas), not an overlay, so the canvas is sized to the area above it and fit never
               // frames content under it.
