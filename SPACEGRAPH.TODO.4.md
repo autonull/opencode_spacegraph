@@ -1032,6 +1032,12 @@ depth: "are we making use of LOD to enable high detail when a node is viewed up-
 Three questions, one cause: **the map's vocabulary grew a second axis for a job the first axis
 already did, and the level that should describe every layout is wired to only one of them.**
 
+**The order, for a fresh session.** T17.1 first (one list, one control, one migration), because
+T17.2 and T17.4 both read the layout list. Then T17.2 (the level as a grain), then T17.5 (the
+LOD), then T17.3 (the log's shape, which is one more member of the list), and T17.4 last (the
+surfaces, which depend on the detail modes T17.1 renames). T18 can run in parallel with T17 — it
+touches the hybrid, not the map's vocabulary.
+
 The facts that shape this section are **F8–F13 in §0.3** ✓ — measured in this tree, not assumed.
 
 ### T17.1 One layout axis — the decision — **planned**
@@ -1039,26 +1045,47 @@ The facts that shape this section are **F8–F13 in §0.3** ✓ — measured in 
 - The representations become layouts:
   `LAYOUTS = ["lanes","timeline","hierarchy","tree","force","ribbon","matrix"]` — one list, one
   control, one name for the job. (T17.3 adds the eighth: the log's own shape.)
+- **one list, no grouping.** The node-link layouts and the summaries are not two families with a
+  rule between them: they are seven entries in one list, chosen the same way, with the level
+  meaning the same thing in each ✓. The old two-axis arrangement — a family on the left of the
+  toolbar and a strategy in a menu — is what made "Ribbon" feel like a different kind of thing
+  from "Lanes" (F8) ✓.
 - The control is a **menu** (seven names do not fit a segmented control), inline, with the icon and
   the current value's name ✓ — the pattern the Draw menu already uses ✓. The Draw menu loses its
   layout row ✓, so the row does not grow.
 - The persisted state migrates: the store's `layout` (the strategy) and `representation` (the
-  family) become one `layout` field. A stored `representation` of `ribbon`/`matrix` wins;
-  otherwise the stored strategy is kept. The graph state needs its **own** migration —
-  `Persistence.migrate` with a legacy read shape
-  (`packages/app/src/runtime/persistence/schema.ts`) — because the document-level chain
-  (`layoutPersistence`) moves the document, not a field inside it ✓. Without it, a reader's saved
-  ribbon would silently become the default layout.
+  family) become one `layout` field — **the migration, exactly**, below ✓.
 - `representationLevel()` goes away, and with it the toolbar's `graphMode()`: **no control is ever
   disabled because of the layout** ✓.
 - **the hybrid's own axis keeps its name.** The map's arrangement of nodes and the panel's
   arrangement of surfaces are different jobs in different domains, and the plan has one word for
   each: the **layout** is the map's, the **arrangement** is the panel's (T16.1 ✓).
 
+**The change, file by file.**
+
+| Where | What |
+|---|---|
+| `session-ui/src/graph/vocabulary.ts` | `REPRESENTATIONS`/`Representation` → `LAYOUTS`/`Layout` (the seven) ✓, plus `SUMMARY_LAYOUTS` and `isSummaryLayout()` — the view needs to know which layouts are summaries ✓ |
+| `session-ui/src/graph/representation.ts` | `representationLevel()` goes away ✓; the summary config becomes level-aware (T17.2 ✓) |
+| `session-graph/src/ui/GraphToolbar.tsx` | the representation's segmented control → a **layout menu** with all seven ✓; the Draw menu loses its layout row ✓; the level's items lose their `disabled` ✓ |
+| `session-graph/src/ui/GraphView.tsx` | `representation` + `strategy` → one `layout` prop ✓; the layout memo picks the summary or the strategy ✓; `effectiveLevel` is just `level()` ✓ |
+| `session-graph/src/ui/vocabulary.ts` | `REPRESENTATION_KEY` → `LAYOUT_KEY` (the seven names ✓) |
+| `app/src/shell/state/layout.tsx` | one `layout` field ✓; `representation` is read by the migration and dropped ✓ |
+| `app/src/session/graph/graph-permalink.ts` | the prefix becomes the **layout** name ✓ — and the old `#graph:ribbon:<id>` links keep working, because "ribbon" is still a layout's name ✓ |
+| `app/src/session/graph/session-graph-view.tsx` | the `representation` prop becomes `layout` ✓, and the permalink's layout is applied to it ✓ |
+| `packages/app/e2e/graph/session-graph.spec.ts` | the ribbon case picks its layout from the new control ✓ (the slot, not the copy ✓) |
+
 Done when: one layout list, one control, and the level control is enabled for every
 layout.
 Verify: `cd packages/session-ui && bun test src/graph` — the layout and level vocabulary; the
 app e2e — a stored `ribbon` still opens as the ribbon after the migration.
+
+**The migration, exactly.** The graph state needs its **own** migration — `Persistence.migrate`
+with a legacy read shape (`packages/app/src/runtime/persistence/schema.ts`) — because the
+document-level chain (`layoutPersistence`) moves the document, not a field inside it ✓. The legacy
+shape declares `representation: Schema.optional(Schema.String)`; the read folds it in: a stored
+`ribbon`/`matrix` becomes the new `layout`, anything else keeps the stored strategy ✓. Without
+it, a reader's saved ribbon would silently become the default layout.
 
 ### T17.2 The level means the same thing in every layout — **planned**
 
@@ -1075,6 +1102,22 @@ The general rule, which is what makes the table a rule and not a list: **a layou
 level's units; a summary layout packs them into its own grammar.** The node-link layouts already
 honour it (the level is a filter over `minLevel` ✓); the summaries gain it by drawing a finer
 grain instead of a different thing.
+
+**The summaries' recipe.** Today their `levelFilter` is `isVisibleAt(node, "overview")` — the level
+is hard-wired, which is F9. The level-aware version has two rules:
+
+- **the units.** A row is made of the level's units: the nodes visible at the level, **with a
+  derived cluster yielding to its members once those members are visible** ✓. The phase is a
+  *summary* of its tools (the library already has the notion: `isClusterExpanded(level)` ✓), so at
+  the `overview` the phase stands for its work, and at the `execution` the work stands for itself
+  ✓ — and a row never counts the same work twice at any grain ✓;
+- **the column.** The matrix's column is the phase's category ✓, so a tool inherits the category of
+  the cluster that stands for it ✓ (the resolver is a map from a member to its cluster's category ✓
+  — the model already carries `clusterOf` ✓).
+
+With those, the signatures are `ribbonLayout(model, { level })`, `matrixLayout(model, { level })`
+and `turnRows(model, level)` ✓ (the axis labels read the rows ✓) — the level parameter, not a
+second vocabulary.
 
 Done when: the level is a filter every layout honours, and the level control is never
 disabled.
@@ -1167,12 +1210,25 @@ Three pieces, in the order they pay:
    **replaces** its summary with the kind's *content* (the output's first lines, the diff's files)
    rather than adding a fourth line to a box that cannot hold one.
 
+**The zoom band, in the library's own scale.** `minZoom` is compared against the renderer's
+**normalized** zoom — the orthographic range follows the last fitted frame (T1.8 ✓), so `1` is the
+fitted frame and the number is a *fraction of the fitted view* ✓. A host-set band therefore means
+"this kind deserves a card once the reader is within 60% of the fitted frame" ✓ — a number that
+survives a new camera, a new fit and a new session ✓ (unlike the zoom *percent*, which is relative
+to the baseline ✓).
+
 **The library seam, and where it belongs.** The `high | medium | low` distinction the core computes
 and never reads (F11) is the seam for "a node draws itself simpler when it is far" — a *generic*
 capability, so it belongs in SpaceGraphJS, not in the host (the session-graph package's rule:
 "Generic graph capabilities belong in SpaceGraphJS; if a capability is generic, add it to the
 library first"). Until it is there, the host's answer is the two pieces it can do itself: the
 proximity budget and the zoom bands.
+
+**The two places the node order must not leak.** The proximity order changes which nodes get a
+*card* ✓, and two things must keep the session's order: **the a11y list** (a screen reader reads
+the session, not the camera ✓) and **the export** (a saved map should read the same whoever opens
+it ✓). Both read the model, not the render model ✓ — so the reorder is the render model's, and
+the model's order is untouched ✓.
 
 Done when: the card nearest the reader is a card, the map's budget follows the camera, and the
 nearest card says more than the one across the map.
