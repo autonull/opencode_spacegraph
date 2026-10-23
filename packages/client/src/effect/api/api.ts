@@ -2250,6 +2250,8 @@ export type ServerGraphWorkspaceOutput = {
       readonly vcs?: number | undefined
       readonly packages?: number | undefined
       readonly symbols?: number | undefined
+      readonly processes?: number | undefined
+      readonly issues?: number | undefined
     }
     readonly truncated: boolean
     readonly workspace: { readonly name: string; readonly path: string }

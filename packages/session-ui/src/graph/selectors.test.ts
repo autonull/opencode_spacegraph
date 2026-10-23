@@ -133,7 +133,7 @@ describe("selectors — changed files (LE.12 file-first rail)", () => {
   test("lists exactly the files the session wrote, with their writers", () => {
     const files = changedFiles(model)
 
-    expect(files.map((file) => file.path).sort()).toEqual([...CHANGED_FILES].sort())
+    expect(files.map((file) => file.path).sort()).toEqual(CHANGED_FILES.map((f) => f.path).sort())
 
     for (const file of files) expect(file.writers.length).toBeGreaterThan(0)
   })

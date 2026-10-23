@@ -199,7 +199,7 @@ describe("graph model — failure and retry", () => {
   test("the idle diff lists every changed file of the turn", () => {
     const diff = nodesOf(model, "diff")[0]
 
-    expect(diff?.data?.files).toEqual([...CHANGED_FILES])
+    expect(diff?.data?.files).toEqual(CHANGED_FILES.map((f) => f.path))
   })
 })
 

@@ -72,6 +72,7 @@ export { scopeModel } from "./scope"
 
 export {
   buildFixtureGraph,
+  buildFixtureGraphWithSnapshot,
   buildFixtureMessages,
   buildFixtureSnapshot,
   buildInterruptedFixtureMessages,

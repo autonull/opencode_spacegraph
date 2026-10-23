@@ -133,6 +133,8 @@ export const Snapshot = Schema.Struct({
     vcs: optional(Schema.Finite),
     packages: optional(Schema.Finite),
     symbols: optional(Schema.Finite),
+    processes: optional(Schema.Finite),
+    issues: optional(Schema.Finite),
   }),
   truncated: Schema.Boolean,
   workspace: Schema.Struct({ name: Schema.String, path: Schema.String }),

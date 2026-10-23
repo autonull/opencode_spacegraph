@@ -41,6 +41,13 @@ export type EdgeKind =
   | "compacts"
   | "evidence"
   | "inferred-cause"
+  | "touches"
+  | "points-at"
+  | "addresses"
+  | "listens-on"
+  | "calls"
+  | "covers"
+  | "executes"
 
 export type GraphNode = {
   id: string

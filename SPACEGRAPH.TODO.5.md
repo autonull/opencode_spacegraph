@@ -335,13 +335,13 @@ The snapshot and the server advertise what they can do (`vcs.checkout`, `issues.
 
 ### T32 — evidence (G32)
 
-#### T32.1 Golden snapshot fixture — **new**
+#### T32.1 Golden snapshot fixture — **done** (2026-10-23)
 
 One fixture repo + one canonical session, committed as JSON, exercised by every domain test. The session fixture already exists (`fixture.ts`); the snapshot fixture is new. Determinism: no timestamps in assertions, no absolute paths.
 
-**Done when:** one command rebuilds the fixture; tests fail on an unintended model change.
+**Landed:** Enhanced `buildFixtureSnapshot()` in `packages/session-ui/src/graph/fixture.ts` with all derived kinds (packages, commits, branches, symbols, processes, ports, issues). Extended `attachWorkspace()` in `build.ts` to create all derived kinds from snapshot. Added `buildFixtureGraphWithSnapshot()` for golden testing. New tests in `workspace.test.ts` verify all derived kinds appear with correct provenance. Golden fixtures: `model.golden.json` (session-only) and `model.golden.with-snapshot.json` (with snapshot).
 
-**Verify:** `cd packages/session-ui && bun test src/graph` (fixture rebuild command works).
+**Verify:** `cd packages/session-ui && UPDATE_GOLDEN=1 bun test src/graph/workspace.test.ts` then `bun test src/graph` — 175 tests pass.
 
 #### T32.2 The degradation matrix — **new**
 
@@ -735,3 +735,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — T30.3 done (provenance surface).** Every derived node now carries `provenance: { source, asOf?, confidence }` (directory nodes from the filesystem source). The card template shows a provenance badge on the far tier (e.g., "filesystem, 2m"). The inspector displays a "Source" field with "from <source>, <age>". The legend lists active sources with their ages and missing sources with their reasons. Next: T31 actions and T32 evidence before the capability tasks in wave 1.
 
 **2026-10-23 — T31.1, T31.2, T31.3 done (actions and attribution — G31).** Actions are data descriptors (`ActionKind`, `ActionSpec`) resolved by the host; the model never executes. Closed registry in `actionsFor()` covers all derived kinds (directory, file, package, commit, branch, symbol, test, test-run, process, port, issue) plus session kinds unchanged. Run actions are agent-mediated (compose prompt) or capability-gated (`vcs.checkout`, `vcs.diff`, `agent.prompt`, `proxy.open`, `fs.newFile`). `GraphDetailActions` renders filtered actions in inspector/detail surfaces. Confirmation dialogs for `vcs.checkout` and `process.stop`. Capability filtering via `filterActionsByCapabilities()` and `capabilitiesFromSnapshot()`. All 22 unit tests pass; repo typecheck clean.
+
+**2026-10-23 — T32.1 done (golden snapshot fixture — G32).** Comprehensive snapshot fixture in `fixture.ts` with all 8 derived kinds (packages, commits, branches, symbols, processes, ports, issues, directories). `attachWorkspace()` in `build.ts` now creates all derived nodes from snapshot with provenance. Golden fixture `model.golden.with-snapshot.json` pins the full model. All 175 session-ui graph tests pass. Protocol `asOf` extended with `processes` and `issues` timestamps.

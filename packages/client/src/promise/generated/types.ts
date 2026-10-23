@@ -2111,7 +2111,7 @@ export type WorkspaceSnapshot = {
   revision: string
   root: string
   scope: "session" | "directory" | "workspace"
-  asOf: { tree?: number; vcs?: number; packages?: number; symbols?: number }
+  asOf: { tree?: number; vcs?: number; packages?: number; symbols?: number; processes?: number; issues?: number }
   truncated: boolean
   workspace: { name: string; path: string }
   directories: Array<WorkspaceSnapshotDirectory>

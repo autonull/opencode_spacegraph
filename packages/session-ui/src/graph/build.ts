@@ -300,9 +300,179 @@ class GraphBuilder {
       const parent = parentPath(directory)
       if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
     }
+
+    // T22.1 — packages from snapshot
+    this.attachPackages(snapshot)
+
+    // T20.1 — commits from snapshot
+    this.attachCommits(snapshot)
+
+    // T20.2 — branches from snapshot
+    this.attachBranches(snapshot)
+
+    // T21.1/T21.2 — symbols from snapshot
+    this.attachSymbols(snapshot)
+
+    // T23.1/T23.2 — processes and ports from snapshot
+    this.attachProcesses(snapshot)
+
+    // T25.1 — issues from snapshot
+    this.attachIssues(snapshot)
   }
 
-  private provenanceForSource(snapshot: WorkspaceSnapshot, source: "tree" | "vcs" | "packages" | "symbols"): Provenance | undefined {
+  /** T22.1 — package nodes from snapshot packages array. */
+  private attachPackages(snapshot: WorkspaceSnapshot) {
+    for (const pkg of snapshot.packages) {
+      this.addNode({
+        id: `pkg:${normalizePath(pkg.path)}`,
+        kind: "package",
+        label: pkg.name ?? pkg.path,
+        status: "neutral",
+        minLevel: "overview",
+        domain: "directories",
+        provenance: this.provenanceForSource(snapshot, "packages"),
+        data: this.filterDefined({ path: pkg.path, name: pkg.name, version: pkg.version, scripts: pkg.scripts }),
+      })
+    }
+  }
+
+  /** T20.1 — commit nodes from snapshot commits array. */
+  private attachCommits(snapshot: WorkspaceSnapshot) {
+    for (const commit of snapshot.commits) {
+      const id = `commit:${commit.sha}`
+      this.addNode({
+        id,
+        kind: "commit",
+        label: commit.short,
+        status: "neutral",
+        minLevel: "execution",
+        domain: "history",
+        provenance: this.provenanceForSource(snapshot, "vcs"),
+        data: this.filterDefined({ sha: commit.sha, message: commit.message, author: commit.author, time: commit.time, files: commit.files }),
+      })
+      if (commit.files) {
+        for (const file of commit.files) {
+          const fileId = this.fileNodes.get(normalizePath(file))
+          if (fileId) this.addEdge({ kind: "touches", source: id, target: fileId, confidence: "explicit" })
+        }
+      }
+    }
+    if (snapshot.base?.sha) {
+      const baseId = `commit:${snapshot.base.sha}`
+      this.addNode({
+        id: baseId,
+        kind: "commit",
+        label: `base (${snapshot.base.sha.slice(0, 7)})`,
+        status: "neutral",
+        minLevel: "execution",
+        domain: "history",
+        provenance: this.provenanceForSource(snapshot, "vcs"),
+        data: { sha: snapshot.base.sha, isBase: true },
+      })
+    }
+  }
+
+  /** T20.2 — branch nodes from snapshot branches array. */
+  private attachBranches(snapshot: WorkspaceSnapshot) {
+    for (const branch of snapshot.branches) {
+      const id = `branch:${branch.name}`
+      this.addNode({
+        id,
+        kind: "branch",
+        label: branch.name,
+        status: branch.name === snapshot.head?.branch ? "running" : "neutral",
+        minLevel: "execution",
+        domain: "history",
+        provenance: this.provenanceForSource(snapshot, "vcs"),
+        data: this.filterDefined({ name: branch.name, sha: branch.sha, upstream: branch.upstream, remote: branch.remote }),
+      })
+      // points-at edge to commit
+      const commitId = `commit:${branch.sha}`
+      if (this.nodeIDs.has(commitId)) {
+        this.addEdge({ kind: "points-at", source: id, target: commitId, confidence: "explicit" })
+      }
+    }
+  }
+
+  /** T21.1/T21.2 — symbol nodes from snapshot symbols array. */
+  private attachSymbols(snapshot: WorkspaceSnapshot) {
+    for (const sym of snapshot.symbols) {
+      const id = `symbol:${normalizePath(sym.path)}#${sym.qualified}`
+      this.addNode({
+        id,
+        kind: "symbol",
+        label: sym.name,
+        status: "neutral",
+        minLevel: "execution",
+        domain: "code",
+        provenance: this.provenanceForSource(snapshot, "symbols"),
+        data: this.filterDefined({ path: sym.path, name: sym.name, qualified: sym.qualified, kind: sym.kind, range: sym.range, signature: sym.signature, origin: sym.origin }),
+      })
+      // part-of file
+      const fileId = this.fileNodes.get(normalizePath(sym.path))
+      if (fileId) this.partOf(id, fileId, "structural")
+    }
+  }
+
+  /** T23.1/T23.2 — process and port nodes from snapshot. */
+  private attachProcesses(snapshot: WorkspaceSnapshot) {
+    for (const proc of snapshot.processes) {
+      const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
+      this.addNode({
+        id: procId,
+        kind: "process",
+        label: proc.command,
+        status: "running",
+        minLevel: "detail",
+        domain: "runtime",
+        provenance: this.provenanceForSource(snapshot, "processes"),
+        data: this.filterDefined({ pid: proc.pid, command: proc.command, cwd: proc.cwd, ports: proc.ports, startedAt: proc.startedAt }),
+      })
+      // ports
+      for (const port of proc.ports) {
+        const portId = `port:${port}`
+        this.addNode({
+          id: portId,
+          kind: "port",
+          label: `Port ${port}`,
+          status: "neutral",
+          minLevel: "detail",
+          domain: "runtime",
+          provenance: this.provenanceForSource(snapshot, "processes"),
+          data: { port, processId: procId },
+        })
+        this.addEdge({ kind: "listens-on", source: procId, target: portId, confidence: "inferred" })
+      }
+    }
+  }
+
+  /** T25.1 — issue nodes from snapshot. */
+  private attachIssues(snapshot: WorkspaceSnapshot) {
+    for (const issue of snapshot.issues) {
+      const id = `issue:${issue.provider}:${issue.repo ?? "unknown"}#${issue.number}`
+      this.addNode({
+        id,
+        kind: "issue",
+        label: issue.title ?? `#${issue.number}`,
+        status: issue.state === "closed" ? "success" : "neutral",
+        minLevel: "overview",
+        domain: "work",
+        provenance: this.provenanceForSource(snapshot, "issues"),
+        data: this.filterDefined({ provider: issue.provider, repo: issue.repo, number: issue.number, title: issue.title, state: issue.state, url: issue.url }),
+      })
+    }
+  }
+
+  /** Filter out undefined values from an object for JsonValue compliance. */
+  private filterDefined(obj: Record<string, unknown>): Record<string, JsonValue> {
+    const result: Record<string, JsonValue> = {}
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) result[key] = value as JsonValue
+    }
+    return result
+  }
+
+  private provenanceForSource(snapshot: WorkspaceSnapshot, source: "tree" | "vcs" | "packages" | "symbols" | "processes" | "issues"): Provenance | undefined {
     const asOf = snapshot.asOf[source]
     if (asOf === undefined) return undefined
     return { source, asOf, confidence: "inferred" }

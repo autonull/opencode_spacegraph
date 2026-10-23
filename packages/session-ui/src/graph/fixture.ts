@@ -17,7 +17,12 @@ import type { GraphModel } from "./model"
  */
 export const FIXTURE_BASE_TIME = 1_730_000_000_000
 
-const CHANGED_FILES = ["src/auth/guards.ts", "src/auth/session.test.ts", "src/auth/session.ts", "src/auth/token.ts"]
+const CHANGED_FILES: Array<{ path: string; status: "added" | "modified" }> = [
+  { path: "src/auth/guards.ts", status: "modified" },
+  { path: "src/auth/session.test.ts", status: "added" },
+  { path: "src/auth/session.ts", status: "modified" },
+  { path: "src/auth/token.ts", status: "modified" },
+]
 
 function attachment(path: string): PromptFileAttachment {
   return {
@@ -252,34 +257,77 @@ export function buildFixtureMessages(): SessionMessageInfo[] {
 
 export const fixtureMessages: SessionMessageInfo[] = buildFixtureMessages()
 
+/** T32.1 — comprehensive snapshot fixture with all derived kinds. */
 export function buildFixtureSnapshot(): WorkspaceSnapshot {
   return {
     version: 1,
     revision: "fixture-r1",
     root: "/workspace/project",
     scope: "session",
-    asOf: { tree: FIXTURE_BASE_TIME, vcs: FIXTURE_BASE_TIME },
+    asOf: {
+      tree: FIXTURE_BASE_TIME,
+      vcs: FIXTURE_BASE_TIME,
+      packages: FIXTURE_BASE_TIME,
+      symbols: FIXTURE_BASE_TIME,
+      processes: FIXTURE_BASE_TIME,
+      issues: FIXTURE_BASE_TIME,
+    },
     truncated: false,
     workspace: { name: "project", path: "/workspace/project" },
-    directories: [{ path: "src" }, { path: "src/auth", parent: "src" }],
-    packages: [],
-    files: CHANGED_FILES.map((path) => ({
-      path,
-      status: path === "src/auth/session.test.ts" ? "added" : "modified",
-    })),
-    head: { branch: "dev" },
-    branches: [],
-    commits: [],
-    symbols: [],
-    processes: [],
-    issues: [],
+    directories: [
+      { path: "src", parent: "" },
+      { path: "src/auth", parent: "src" },
+      { path: "packages", parent: "" },
+      { path: "packages/ui", parent: "packages" },
+      { path: "packages/core", parent: "packages" },
+    ],
+    packages: [
+      { path: "packages/ui/package.json", name: "@project/ui", version: "1.0.0", private: true, scripts: ["build", "test"] },
+      { path: "packages/core/package.json", name: "@project/core", version: "2.0.0", private: true, scripts: ["build", "test", "lint"] },
+    ],
+    files: [
+      ...CHANGED_FILES,
+      { path: "packages/ui/package.json", config: true },
+      { path: "packages/ui/src/button.ts" },
+      { path: "packages/core/package.json", config: true },
+      { path: "packages/core/src/index.ts" },
+      { path: "README.md", doc: true },
+      { path: "docs/adr/001-auth.md", doc: true },
+    ],
+    head: { branch: "dev", sha: "abc123def456" },
+    base: { sha: "base789" },
+    branches: [
+      { name: "main", sha: "abc123def456", upstream: "origin/main", remote: true },
+      { name: "dev", sha: "abc123def456", upstream: "origin/dev", remote: true },
+      { name: "feature/auth-fix", sha: "abc123def456", remote: false },
+    ],
+    commits: [
+      { sha: "abc123def456", short: "abc123d", message: "Fix auth tests", author: "user", time: FIXTURE_BASE_TIME - 10000, files: ["src/auth/session.ts"] },
+      { sha: "base789", short: "base789", message: "Initial commit", author: "user", time: FIXTURE_BASE_TIME - 100000, files: ["src/auth/session.ts", "src/auth/guards.ts"] },
+    ],
+    symbols: [
+      { path: "src/auth/session.ts", name: "session", qualified: "session", kind: "function", range: { start: { line: 10, character: 0 }, end: { line: 20, character: 1 } }, signature: "function session(): Session", origin: "parser" },
+      { path: "src/auth/session.ts", name: "refreshToken", qualified: "session.refreshToken", kind: "function", range: { start: { line: 25, character: 0 }, end: { line: 30, character: 1 } }, signature: "function refreshToken(token: string): Promise<string>", origin: "hunk" },
+      { path: "packages/ui/src/button.ts", name: "Button", qualified: "Button", kind: "class", range: { start: { line: 5, character: 0 }, end: { line: 30, character: 1 } }, signature: "class Button", origin: "parser" },
+    ],
+    processes: [
+      { id: "proc_shell_1", pid: 1234, command: "bun run dev", cwd: "/workspace/project", ports: [3000], startedAt: FIXTURE_BASE_TIME - 5000 },
+    ],
+    issues: [
+      { provider: "github", repo: "project/repo", number: "42", title: "Auth test failures", state: "open", url: "https://github.com/project/repo/issues/42" },
+    ],
     missing: [],
-    capabilities: ["fs.tree", "vcs.status"],
+    capabilities: ["fs.tree", "vcs.status", "vcs.diff", "vcs.checkout", "vcs.blame", "vcs.branch.list", "agent", "proxy"],
   }
 }
 
 export function buildFixtureGraph(): GraphModel {
   return buildGraph({ messages: fixtureMessages, status: { type: "idle" } })
+}
+
+/** T32.1 — fixture graph with comprehensive snapshot (all derived kinds). */
+export function buildFixtureGraphWithSnapshot(): GraphModel {
+  return buildGraph({ messages: fixtureMessages, status: { type: "idle" }, snapshot: buildFixtureSnapshot() })
 }
 
 /** Variant with an interrupted idle for error-path tests. */
