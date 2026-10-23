@@ -35,6 +35,16 @@ const GLYPH: Record<NodeKind, string> = {
   compaction: "M2 4h12M4 8h8M6 12h4",
   notice: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 7.5v4M8 4.5v.5",
   diff: "M4 2v12M12 2v12M4 5h4M4 10h4M9 13.5 12 13.5M10.5 12v3M9 2.5l3 0M10.5 1v3",
+  // T19-T26 derived kinds
+  package: "M2 3h12v5H2zM6 3v5M10 3v5",
+  commit: "M6 3v10M6 6h8M14 10v3M14 3v3",
+  branch: "M4 1.5 8 6 4 10.5M8 6h8",
+  symbol: "M8 2a4 4 0 0 1 4 4v4M12 14v3M2 10v3M8 6v8",
+  test: "M8 2a6 6 0 0 1 6 6v3M2 8v3M8 14v3M14 8a6 6 0 0 1-6 6",
+  "test-run": "M3 8.5 6.5 12 13 4",
+  process: "M4 1.5h8v10H4zM8 1.5V5h4",
+  port: "M4 4v8M12 4v8M4 8h8M8 12v3M8 1v3",
+  issue: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 7.5v4M8 4.5v.5M8 12.5v.5",
 }
 
 /** A small stack glyph for phase/group nodes to indicate they contain members. */
@@ -66,6 +76,16 @@ const KIND_HUE: Record<NodeKind, number> = {
   compaction: 220,
   phase: 210,
   tool: 210,
+  // T19-T26 derived kinds
+  package: 45,
+  commit: 28,
+  branch: 28,
+  symbol: 190,
+  test: 38,
+  "test-run": 38,
+  process: 210,
+  port: 210,
+  issue: 0,
 }
 
 function hue(node: GraphNode): number {

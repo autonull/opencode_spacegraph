@@ -42,6 +42,16 @@ const NODE_SHAPE: Record<NodeKind, Shape> = {
   compaction: "panel",
   notice: "panel",
   diff: "card",
+  // T19-T26 derived kinds
+  package: "card",
+  commit: "card",
+  branch: "card",
+  symbol: "card",
+  test: "card",
+  "test-run": "card",
+  process: "card",
+  port: "card",
+  issue: "card",
 }
 
 const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {

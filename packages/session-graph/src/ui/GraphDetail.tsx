@@ -1,4 +1,10 @@
 import type { GraphEdge, GraphModel, GraphNode, Provenance } from "@opencode/session-ui/graph"
+import {
+  actionsFor,
+  capabilitiesFromSnapshot,
+  filterActionsByCapabilities,
+  type ActionSpec,
+} from "@opencode/session-ui/graph"
 import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, type JSX } from "solid-js"
@@ -76,6 +82,13 @@ export type GraphDetailProps = {
   onOpenSession?: (sessionID: string) => void
   /** T12: opens this node's detail in a durable window over the map. */
   onOpenWindow?: (node: GraphNode) => void
+  /** T31 — action handlers from the host. */
+  onActionNavigate?: (target: ActionSpec["target"]) => void
+  onActionReveal?: (target: ActionSpec["target"]) => void
+  onActionCopy?: (text: string) => void
+  onActionRun?: (operation: ActionSpec["operation"]) => void
+  /** Snapshot for capability filtering. */
+  snapshot?: { capabilities?: string[] }
 }
 
 /**
@@ -334,6 +347,91 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
             </For>
           </ul>
         </Show>
+      </div>
+
+      <GraphDetailActions
+        node={props.node}
+        model={props.model}
+        snapshot={props.snapshot}
+        onNavigate={props.onActionNavigate}
+        onReveal={props.onActionReveal}
+        onCopy={props.onActionCopy}
+        onRun={props.onActionRun}
+      />
+    </div>
+  )
+}
+
+/** T31 — actions for a node, filtered by capabilities. */
+function GraphDetailActions(props: {
+  node: GraphNode
+  model: GraphModel
+  snapshot?: { capabilities?: string[] }
+  onNavigate?: (target: ActionSpec["target"]) => void
+  onReveal?: (target: ActionSpec["target"]) => void
+  onCopy?: (text: string) => void
+  onRun?: (operation: ActionSpec["operation"]) => void
+}) {
+  const i18n = useI18n()
+
+  const capabilities = capabilitiesFromSnapshot(props.snapshot)
+  const allActions = actionsFor(props.node, props.model)
+  const actions = filterActionsByCapabilities(allActions, capabilities)
+
+  if (actions.length === 0) return null
+
+  const handleAction = (action: ActionSpec) => {
+    switch (action.kind) {
+      case "navigate":
+        props.onNavigate?.(action.target)
+        break
+      case "reveal":
+        props.onReveal?.(action.target)
+        break
+      case "copy":
+        if (action.target?.text) {
+          navigator.clipboard?.writeText(action.target.text)
+          props.onCopy?.(action.target.text)
+        }
+        break
+      case "run":
+        if (action.operation) {
+          if (action.operation.id === "vcs.checkout") {
+            if (confirm(i18n.t("ui.graph.actions.confirmCheckout", { branch: action.operation.params.branch as string }))) {
+              props.onRun?.(action.operation)
+            }
+          } else if (action.operation.id === "process.stop") {
+            if (confirm(i18n.t("ui.graph.actions.confirmStop", { process: action.operation.params.process as string }))) {
+              props.onRun?.(action.operation)
+            }
+          } else {
+            props.onRun?.(action.operation)
+          }
+        }
+        break
+    }
+  }
+
+  return (
+    <div class="mt-4" data-component="graph-detail-actions" data-slot="graph-detail-actions">
+      <div class="text-12-regular text-text-weak mb-2">{i18n.t("ui.graph.actions.label")}</div>
+      <div class="flex flex-col gap-1.5">
+        <For each={actions}>
+          {(action) => (
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              onClick={() => handleAction(action)}
+            >
+              <span class="text-12-regular text-text-base truncate">{i18n.t(action.labelKey)}</span>
+              {action.kind === "run" && action.operation && (
+                <span class="text-10-regular text-text-weaker ml-auto">
+                  {action.operation.id}
+                </span>
+              )}
+            </button>
+          )}
+        </For>
       </div>
     </div>
   )

@@ -151,6 +151,14 @@ export {
 } from "./detail"
 
 export {
+  actionsFor,
+  capabilitiesFromSnapshot,
+  filterActionsByCapabilities,
+  type ActionKind,
+  type ActionSpec,
+} from "./actions"
+
+export {
   EQUALIZER_PRESETS,
   equalizerFade,
   equalizerMatch,

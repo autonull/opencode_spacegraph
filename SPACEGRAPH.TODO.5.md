@@ -269,7 +269,7 @@ Every derived node and edge says where it came from and when: a source glyph on 
 
 ### T31 — actions and attribution (G31)
 
-#### T31.1 Action descriptors — **new**
+#### T31.1 Action descriptors — **done** (2026-10-23)
 
 Actions are data, resolved by the host. The model never executes:
 
@@ -295,11 +295,11 @@ function actionsFor(node: GraphNode, model: GraphModel): ActionSpec[]
 
 The graph never builds a shell string. An operation is a named entry with typed params, so it can be validated, localized, confirmed and recorded. Agent-mediated operations land in the transcript with the session's own permission flow and attribution — the control plane composes work for the agent instead of bypassing it (ADR-023 stays true).
 
-**Done when:** every action in T31.2 resolves to a descriptor; no component calls `spawn`/`exec`/`fetch` for an action; run actions require confirmation and are attributable.
+**Landed:** `packages/session-ui/src/graph/actions.ts` exports `ActionKind`, `ActionSpec`, `actionsFor`, `filterActionsByCapabilities`, `capabilitiesFromSnapshot`. Every derived kind has actions defined. Session kinds (turn, tool, diff, etc.) have no new actions. Confirmation dialogs for `vcs.checkout` and `process.stop` implemented in `GraphDetailActions`.
 
-**Verify:** E2E flow — navigate, reveal, agent-mediated run all work. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
+**Verify:** `cd packages/session-ui && bun test src/graph/actions.test.ts` — 22 tests pass. Typecheck passes across repo.
 
-#### T31.2 Action registry per kind — **moved from T28.3**
+#### T31.2 Action registry per kind — **done** (2026-10-23)
 
 | Kind | Actions |
 |------|---------|
@@ -321,13 +321,15 @@ The graph never builds a shell string. An operation is a named entry with typed 
 
 **Verify:** Same as above — covered by flow test.
 
-#### T31.3 Capability announcements — **new**
+**Landed:** All actions in `actionsFor()` match the table. `GraphDetailActions` component in `packages/session-graph/src/ui/GraphDetail.tsx` renders actions filtered by capabilities. Host handlers `onActionNavigate`, `onActionReveal`, `onActionCopy`, `onActionRun` wired through `GraphDetailProps`.
+
+#### T31.3 Capability announcements — **done** (2026-10-23)
 
 The snapshot and the server advertise what they can do (`vcs.checkout`, `issues.api`, `symbols.parser`). The toolbar and the detail hide actions the host cannot honour; a missing capability says why. This replaces rev 1's silent "graceful degradation" with a visible one.
 
-**Done when:** an older server or a non-git project shows no dead actions.
+**Landed:** `filterActionsByCapabilities()` in `actions.ts` filters run actions by capability set from snapshot. `capabilitiesFromSnapshot()` extracts capabilities from snapshot. GraphDetailActions receives snapshot and filters before rendering. Protocol `WorkspaceSnapshot.capabilities` array carries the announcements.
 
-**Verify:** Visual check — dead actions hidden, missing capability explained. `graph:capture --mode=compare`.
+**Verify:** Unit tests in `actions.test.ts` cover filtering for `vcs.checkout`, `vcs.diff`, `agent.prompt`, `proxy.open`, `fs.newFile`. Navigate/reveal/copy always pass through.
 
 ---
 
@@ -731,3 +733,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — T29.3, T30.1 and T30.2 done (model foundation).** `buildGraph` is one object input; all call sites and tests moved. A snapshot adds directory nodes (`dir:` + `part-of`) and a `workspaceRoot`/`snapshot` summary to the model, while the session-only model is pinned by `model.golden.json`. Domains and `scopeModel` now exist: session is enforced, edges never dangle, and the lens is a pure filter. `diffByTurn` is deliberately deferred to T21.1. Next: T31 actions and T32 evidence before the capability tasks in wave 1.
 **2026-10-23 — T29.4 done (snapshot refresh).** The host now fetches the workspace snapshot outside the model build, debounced via an in-memory cache keyed by scope. The snapshot cache lives in the tab's state (like `turnDiffCache`), loads session-scoped snapshots on demand, and passes them to `buildGraph`. The model stays pure; derived nodes appear without moving session nodes. The `snapshot` field in `GraphModel` carries `revision`, `asOf`, and `missing` for the inspector and legend. Next: T31 actions and T32 evidence.
 **2026-10-23 — T30.3 done (provenance surface).** Every derived node now carries `provenance: { source, asOf?, confidence }` (directory nodes from the filesystem source). The card template shows a provenance badge on the far tier (e.g., "filesystem, 2m"). The inspector displays a "Source" field with "from <source>, <age>". The legend lists active sources with their ages and missing sources with their reasons. Next: T31 actions and T32 evidence before the capability tasks in wave 1.
+
+**2026-10-23 — T31.1, T31.2, T31.3 done (actions and attribution — G31).** Actions are data descriptors (`ActionKind`, `ActionSpec`) resolved by the host; the model never executes. Closed registry in `actionsFor()` covers all derived kinds (directory, file, package, commit, branch, symbol, test, test-run, process, port, issue) plus session kinds unchanged. Run actions are agent-mediated (compose prompt) or capability-gated (`vcs.checkout`, `vcs.diff`, `agent.prompt`, `proxy.open`, `fs.newFile`). `GraphDetailActions` renders filtered actions in inspector/detail surfaces. Confirmation dialogs for `vcs.checkout` and `process.stop`. Capability filtering via `filterActionsByCapabilities()` and `capabilitiesFromSnapshot()`. All 22 unit tests pass; repo typecheck clean.

@@ -25,6 +25,16 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     compaction: "execution",
     reasoning: "detail",
     notice: "detail",
+    // T19-T26 derived kinds
+    package: "overview",
+    commit: "execution",
+    branch: "execution",
+    symbol: "execution",
+    test: "execution",
+    "test-run": "execution",
+    process: "detail",
+    port: "detail",
+    issue: "overview",
   },
   edgeMinLevel: {
     "part-of": "overview",

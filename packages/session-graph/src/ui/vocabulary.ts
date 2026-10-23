@@ -106,6 +106,16 @@ export const KIND_KEY = {
   compaction: "ui.sessionGraph.kind.compaction",
   notice: "ui.sessionGraph.kind.notice",
   diff: "ui.sessionGraph.kind.diff",
+  // T19-T26 derived kinds
+  package: "ui.sessionGraph.kind.package",
+  commit: "ui.sessionGraph.kind.commit",
+  branch: "ui.sessionGraph.kind.branch",
+  symbol: "ui.sessionGraph.kind.symbol",
+  test: "ui.sessionGraph.kind.test",
+  "test-run": "ui.sessionGraph.kind.testRun",
+  process: "ui.sessionGraph.kind.process",
+  port: "ui.sessionGraph.kind.port",
+  issue: "ui.sessionGraph.kind.issue",
 } as const satisfies Record<NodeKind, string>
 
 export const STATUS_KEY = {

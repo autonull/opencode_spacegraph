@@ -101,6 +101,16 @@ const DEPTH: Record<NodeKind, number> = {
   diff: 3,
   error: 3,
   retry: 3,
+  // T19-T26 derived kinds
+  package: 1,
+  commit: 3,
+  branch: 2,
+  symbol: 3,
+  test: 3,
+  "test-run": 2,
+  process: 3,
+  port: 4,
+  issue: 1,
 }
 
 /**
@@ -179,6 +189,14 @@ function laneOf(node: GraphNode): Lane {
   if (node.kind === "reasoning" || node.kind === "notice" || node.kind === "compaction") return "narrative"
 
   if (node.kind === "error" || node.kind === "retry") return "narrative"
+
+  // T19-T26 derived kinds
+  if (node.kind === "package") return "artifacts"
+  if (node.kind === "commit" || node.kind === "branch") return "artifacts"
+  if (node.kind === "symbol") return "artifacts"
+  if (node.kind === "test" || node.kind === "test-run") return "verify"
+  if (node.kind === "process" || node.kind === "port") return "verify"
+  if (node.kind === "issue") return "prompt"
 
   const category = phaseCategoryOf(node)
 

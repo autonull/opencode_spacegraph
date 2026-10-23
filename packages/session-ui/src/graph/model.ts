@@ -11,6 +11,12 @@ import {
 
 export type { NodeKind, NodeStatus, PhaseCategory, ZoomLevel }
 
+/** A source range in a file. */
+export type Range = {
+  start: { line: number; character: number }
+  end: { line: number; character: number }
+}
+
 export type Confidence = "explicit" | "structural" | "inferred"
 
 /** T30.1 — what a derived fact came from. The snapshot's own source vocabulary. */

@@ -31,6 +31,16 @@ export const NODE_KINDS = [
   "compaction",
   "notice",
   "diff",
+  // T19-T26 derived kinds (added by foundation tasks)
+  "package",
+  "commit",
+  "branch",
+  "symbol",
+  "test",
+  "test-run",
+  "process",
+  "port",
+  "issue",
 ] as const
 
 export type NodeKind = (typeof NODE_KINDS)[number]
@@ -61,6 +71,16 @@ export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = {
   compaction: "session",
   notice: "session",
   diff: "session",
+  // T19-T26 derived kinds
+  package: "directories",
+  commit: "history",
+  branch: "history",
+  symbol: "code",
+  test: "verification",
+  "test-run": "verification",
+  process: "runtime",
+  port: "runtime",
+  issue: "work",
 }
 
 /** The outcomes a node can carry. */
