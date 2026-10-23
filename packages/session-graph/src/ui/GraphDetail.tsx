@@ -1,4 +1,4 @@
-import type { GraphEdge, GraphModel, GraphNode } from "@opencode/session-ui/graph"
+import type { GraphEdge, GraphModel, GraphNode, Provenance } from "@opencode/session-ui/graph"
 import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, type JSX } from "solid-js"
@@ -14,6 +14,49 @@ const STATUS_TONE: Record<GraphNode["status"], string> = {
   failed: "text-text-on-critical-base",
   interrupted: "text-text-on-warning-base",
   neutral: "text-text-weak",
+}
+
+/** T30.3 — human-readable label for each snapshot source. */
+function sourceLabel(source: string): string {
+  switch (source) {
+    case "tree":
+      return "filesystem"
+    case "vcs":
+      return "git"
+    case "packages":
+      return "packages"
+    case "symbols":
+      return "symbols"
+    case "issues":
+      return "issues"
+    case "processes":
+      return "processes"
+    case "coverage":
+      return "coverage"
+    default:
+      return source
+  }
+}
+
+/** T30.3 — format a timestamp difference as a relative age string. */
+function formatAge(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) return `${days}d`
+  if (hours > 0) return `${hours}h`
+  if (minutes > 0) return `${minutes}m`
+  return `${seconds}s`
+}
+
+/** T30.3 — format provenance for display in the inspector. */
+function formatProvenance(provenance: Provenance | undefined, now: number): string | undefined {
+  if (!provenance) return undefined
+  const { source, asOf } = provenance
+  const age = asOf !== undefined ? formatAge(now - asOf) : undefined
+  return age ? `${sourceLabel(source)}, ${age}` : sourceLabel(source)
 }
 
 type Connection = { edge: GraphEdge; other: GraphNode; direction: "in" | "out" }
@@ -122,6 +165,7 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
 export const GraphDetailBody = (props: GraphDetailProps) => {
   const i18n = useI18n()
   const data = () => props.node.data
+  const now = Date.now()
   const [copied, setCopied] = createSignal(false)
 
   const copyOutput = async () => {
@@ -177,6 +221,9 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
     </Show>
   )
 
+  // T30.3 — provenance for derived nodes
+  const provenance = formatProvenance(props.node.provenance, now)
+
   return (
     <div class="min-h-0 flex-1 overflow-y-auto px-3 py-2">
       <Show when={props.node.summary}>
@@ -203,6 +250,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         {field(i18n.t("ui.sessionGraph.inspector.parentSession"), text(data()?.parentSessionID))}
         {field(i18n.t("ui.sessionGraph.inspector.attempt"), count(data()?.attempt))}
         {field(i18n.t("ui.sessionGraph.inspector.exit"), count(data()?.exit))}
+        {field(i18n.t("ui.sessionGraph.inspector.source"), provenance)}
       </dl>
 
       <Show when={flag(data()?.replayed)}>

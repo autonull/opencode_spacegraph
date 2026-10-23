@@ -134,6 +134,41 @@ export function statusAccent(theme: RenderTheme, status: GraphNode["status"], ne
 
 const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])
 
+/** T30.3 — human-readable label for each snapshot source. */
+export function sourceLabel(source: string): string {
+  switch (source) {
+    case "tree":
+      return "filesystem"
+    case "vcs":
+      return "git"
+    case "packages":
+      return "packages"
+    case "symbols":
+      return "symbols"
+    case "issues":
+      return "issues"
+    case "processes":
+      return "processes"
+    case "coverage":
+      return "coverage"
+    default:
+      return source
+  }
+}
+
+/** T30.3 — format a timestamp difference as a relative age string. */
+export function formatAge(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) return `${days}d`
+  if (hours > 0) return `${hours}h`
+  if (minutes > 0) return `${minutes}m`
+  return `${seconds}s`
+}
+
 /**
  * The card's own words. A card is canvas markup, so the host owns its language: the template never
  * hardcodes English. The host supplies the copy, and a card that has none says less rather than
@@ -325,6 +360,18 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
     const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
 
+    // T30.3 — provenance badge on far tier: shows the source and age of derived facts
+    const provenanceBadge = tier === "far" && node.provenance
+      ? (() => {
+          const { source, asOf } = node.provenance
+          const age = asOf !== undefined && options.now !== undefined
+            ? formatAge(options.now - asOf)
+            : undefined
+          const label = age ? `${sourceLabel(source)}, ${age}` : sourceLabel(source)
+          return `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;color:${theme.textMuted};padding:1px 4px;border-radius:3px;background:${theme.surfaceMuted}">${escapeHtml(label)}</span>`
+        })()
+      : ""
+
     // Phase/group node enhancements: distinct background, group glyph, member preview data
     const isGroupNode = isPhase
     const groupBg = isGroupNode ? `background:linear-gradient(180deg,${soft}00,${theme.surface});` : `background:${theme.surface};`
@@ -344,6 +391,7 @@ ${contentRow}
 ${detailRow}
 </span>
 ${expandIndicator}
+${provenanceBadge}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`
   }

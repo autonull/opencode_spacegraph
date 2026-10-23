@@ -38,6 +38,7 @@ import {
   type GraphNode,
   type NodeStatus,
   type PhaseCategory,
+  type Provenance,
   type SessionLineage,
 } from "./model"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
@@ -284,6 +285,8 @@ class GraphBuilder {
         label: directory.slice(directory.lastIndexOf("/") + 1),
         status: "neutral",
         minLevel: "overview",
+        domain: "directories",
+        provenance: this.provenanceForSource(snapshot, "tree"),
         data: { path: directory, fileCount: count.fileCount, touchedCount: count.touchedCount },
       })
     }
@@ -297,6 +300,12 @@ class GraphBuilder {
       const parent = parentPath(directory)
       if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
     }
+  }
+
+  private provenanceForSource(snapshot: WorkspaceSnapshot, source: "tree" | "vcs" | "packages" | "symbols"): Provenance | undefined {
+    const asOf = snapshot.asOf[source]
+    if (asOf === undefined) return undefined
+    return { source, asOf, confidence: "inferred" }
   }
 
   private addNode(node: GraphNode): GraphNode {

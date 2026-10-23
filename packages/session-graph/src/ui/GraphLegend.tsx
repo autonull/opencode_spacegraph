@@ -1,10 +1,10 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import type { EqualizerRuleSet, Layout } from "@opencode/session-ui/graph"
+import type { EqualizerRuleSet, Layout, GraphSnapshotMeta } from "@opencode/session-ui/graph"
 import { LANES, NODE_KINDS, NODE_STATUSES, PHASE_CATEGORIES } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { type JSX, onMount } from "solid-js"
-import { categoryAccent, kindAccent, statusAccent } from "./cardTemplate"
+import { categoryAccent, kindAccent, statusAccent, sourceLabel, formatAge } from "./cardTemplate"
 import { CONFIDENCE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 
@@ -21,6 +21,8 @@ export type GraphLegendProps = {
   layout?: Layout
   /** T15: the equalizer's rules, so the legend reads the same accents the cards do. */
   rules?: EqualizerRuleSet
+  /** T29.4/T30.3: snapshot metadata for provenance and missing sources. */
+  snapshot?: GraphSnapshotMeta
   onClose: () => void
 }
 
@@ -30,6 +32,8 @@ export type GraphLegendBodyProps = {
   layout?: Layout
   /** T15: the equalizer's rules, so the legend reads the same accents the cards do. */
   rules?: EqualizerRuleSet
+  /** T29.4/T30.3: snapshot metadata for provenance and missing sources. */
+  snapshot?: GraphSnapshotMeta
 }
 
 /**
@@ -39,6 +43,7 @@ export type GraphLegendBodyProps = {
  */
 export const GraphLegendBody = (props: GraphLegendBodyProps) => {
   const i18n = useI18n()
+  const now = Date.now()
 
   const swatch = (color: string) => (
     <span class="h-3 w-3 shrink-0 rounded-sm" style={{ background: color }} aria-hidden="true" />
@@ -58,6 +63,30 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
       <div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">{children}</div>
     </div>
   )
+
+  // T30.3 — provenance sources section
+  const provenanceSources = props.snapshot?.asOf
+    ? Object.entries(props.snapshot.asOf).map(([source, asOf]) => (
+        <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+          {swatch(props.theme.accent)}
+          <span class="truncate">
+            {i18n.t(sourceLabel(source))}
+            {asOf !== undefined && (
+              <span class="text-text-weak ml-1">{formatAge(now - asOf)}</span>
+            )}
+          </span>
+        </span>
+      ))
+    : []
+
+  // T30.3 — missing sources section
+  const missingSources = props.snapshot?.missing?.map((m) => (
+    <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+      <span class="h-3 w-3 shrink-0 rounded-sm" style={{ background: props.theme.warning }} aria-hidden="true" />
+      <span class="truncate">{i18n.t(sourceLabel(m.source))}</span>
+      <span class="text-text-weak ml-1 truncate">{m.reason}</span>
+    </span>
+  ))
 
   return (
     <div class="min-h-0 flex-1 overflow-y-auto border-t border-border-weaker-base px-3 py-2">
@@ -109,6 +138,16 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
             <span class="truncate">{i18n.t(`ui.sessionGraph.status.${status}`)}</span>
           </span>
         )),
+      )}
+
+      {provenanceSources.length > 0 && section(
+        i18n.t("ui.sessionGraph.legend.sources"),
+        provenanceSources,
+      )}
+
+      {missingSources && missingSources.length > 0 && section(
+        i18n.t("ui.sessionGraph.legend.missing"),
+        missingSources,
       )}
     </div>
   )
