@@ -2262,6 +2262,8 @@ export type ServerGraphWorkspaceOutput = {
       readonly version?: string | undefined
       readonly private?: boolean | undefined
       readonly scripts?: ReadonlyArray<string> | undefined
+      readonly dependencies?: { readonly [x: string]: string } | undefined
+      readonly devDependencies?: { readonly [x: string]: string } | undefined
     }>
     readonly files: ReadonlyArray<{
       readonly path: string

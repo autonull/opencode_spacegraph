@@ -1,4 +1,5 @@
 import type { GraphEdge, GraphModel, GraphNode, Provenance } from "@opencode/session-ui/graph"
+import type { JsonValue } from "@opencode/client/promise"
 import {
   actionsFor,
   capabilitiesFromSnapshot,
@@ -267,6 +268,25 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         {field(i18n.t("ui.sessionGraph.inspector.source"), provenance)}
       </dl>
 
+      {props.node.kind === "file" && (() => {
+        const data = props.node.data
+        if (data?.config) {
+          return (
+            <div class="mt-2 inline-flex items-center gap-1 rounded-sm bg-primary-weaker px-2 py-0.5 text-10-medium text-primary-base">
+              {i18n.t("ui.sessionGraph.inspector.configBadge")}
+            </div>
+          )
+        }
+        if (data?.doc) {
+          return (
+            <div class="mt-2 inline-flex items-center gap-1 rounded-sm bg-info-weaker px-2 py-0.5 text-10-medium text-info-base">
+              {i18n.t("ui.sessionGraph.inspector.docBadge")}
+            </div>
+          )
+        }
+        return null
+      })()}
+
       {props.node.kind === "directory" && (() => {
         const node = props.node
         const children = childIndex(props.model).get(node.id) ?? []
@@ -295,6 +315,51 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
           </div>
         ) : (
           <div class="mt-3 text-12-regular text-text-weaker">{i18n.t("ui.sessionGraph.inspector.noFiles")}</div>
+        )
+      })()}
+
+      {props.node.kind === "package" && (() => {
+        const node = props.node
+        const data = node.data as Record<string, JsonValue> | undefined
+        const version = data?.version as string | undefined
+        const deps = data?.dependencies as Record<string, string> | undefined
+        const devDeps = data?.devDependencies as Record<string, string> | undefined
+        const scripts = data?.scripts as string[] | undefined
+
+        const scriptsDisplay = scripts?.join(", ")
+        const depsDisplay = deps ? Object.entries(deps).map(([k, v]) => `${k}@${v}`).join(", ") : undefined
+        const devDepsDisplay = devDeps ? Object.entries(devDeps).map(([k, v]) => `${k}@${v}`).join(", ") : undefined
+
+        return (
+          <div class="mt-3">
+            <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.package")}</div>
+            <dl class="mt-1 flex flex-col gap-1">
+              <Show when={version}>
+                <div class="grid grid-cols-[7rem_1fr] gap-2">
+                  <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.version")}</dt>
+                  <dd class="text-12-regular text-text-base">{version}</dd>
+                </div>
+              </Show>
+              <Show when={scriptsDisplay}>
+                <div class="grid grid-cols-[7rem_1fr] gap-2">
+                  <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.scripts")}</dt>
+                  <dd class="text-12-regular text-text-base">{scriptsDisplay}</dd>
+                </div>
+              </Show>
+              <Show when={depsDisplay}>
+                <div class="grid grid-cols-[7rem_1fr] gap-2">
+                  <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.dependencies")}</dt>
+                  <dd class="text-12-regular text-text-base">{depsDisplay}</dd>
+                </div>
+              </Show>
+              <Show when={devDepsDisplay}>
+                <div class="grid grid-cols-[7rem_1fr] gap-2">
+                  <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.devDependencies")}</dt>
+                  <dd class="text-12-regular text-text-base">{devDepsDisplay}</dd>
+                </div>
+              </Show>
+            </dl>
+          </div>
         )
       })()}
 

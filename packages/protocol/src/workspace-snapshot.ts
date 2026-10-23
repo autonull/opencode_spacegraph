@@ -44,6 +44,8 @@ export const Package = Schema.Struct({
   version: optional(Schema.String),
   private: optional(Schema.Boolean),
   scripts: optional(Schema.Array(Schema.String)),
+  dependencies: optional(Schema.Record(Schema.String, Schema.String)),
+  devDependencies: optional(Schema.Record(Schema.String, Schema.String)),
 }).annotate({ identifier: "WorkspaceSnapshot.Package" })
 export interface Package extends Schema.Schema.Type<typeof Package> {}
 

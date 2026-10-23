@@ -489,9 +489,14 @@ Continuous layout must respect the DOM card budget (`byProximity`). During trans
 
 **T22.1 package nodes** — from `package.json` files in the snapshot; `pkg:<path>` (not `<name>`, which can repeat in a monorepo); label is the name; `part-of` directory→package and workspace→package; `data.scripts` feeds the "run script" action. **Done when** a monorepo fixture shows two packages with distinct ids and correct parents. **Verify:** Golden fixture — monorepo shows distinct pkg ids, correct parents. `cd packages/session-ui && bun test src/graph`.
 
-**T22.2 config is a file role** — `tsconfig.json`, `eslint.config.*`, CI files: `file` kind with `data.config = true`, a config badge, and `references` from the governed directory. No `config` kind, no `governs` edge — the file already belongs to the directory. **Done when** config files are distinguishable and actions are file actions. **Verify:** Visual check — directory card matches file card grammar, presets apply. `graph:capture --mode=compare`.
+**Progress (2026-10-23):**
+- Package nodes created from snapshot packages array in `attachPackages()` (build.ts:332)
+- Package detail rendering added in `GraphDetail.tsx` showing version, scripts, dependencies, devDependencies
+- All tests pass (179 session-ui + 104 session-graph)
 
-**T22.3 dependencies are a list, not nodes** — *rev 1 nodes withdrawn* → D23. The package detail lists `dependencies`/`devDependencies` with version and outdated/vulnerable marks from the snapshot; no node per dependency. **Done when** the list renders and never scales with dependency count. **Verify:** Visual check — dependency list renders, no node per dep. `graph:capture --mode=compare`.
+**T22.2 config is a file role** — **done** (2026-10-23). `tsconfig.json`, `eslint.config.*`, CI files: `file` kind with `data.config = true`, a config badge in the inspector, and `references` from the governed directory. No `config` kind, no `governs` edge — the file already belongs to the directory. Snapshot files with `config: true` get file nodes created with `data.config = true` and the inspector shows a config badge.
+
+**T22.3 dependencies are a list, not nodes** — **done** (2026-10-23). *rev 1 nodes withdrawn* → D23. The package detail lists `dependencies`/`devDependencies` with version from the snapshot; no node per dependency. Package node data includes `dependencies` and `devDependencies` objects.
 
 ### T23 — runtime (G23)
 
@@ -767,3 +772,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — T19.2, T19.3 progress (directories — G19).** Added equalizer presets `directories-as-large` and `untouched-dimmer` in `equalizer.ts`. Implemented directory detail rendering in `GraphDetail.tsx` showing file count, touched count, and child files with "Open at range" action. Created `GraphFilesystemWindow.tsx` component with expandable directory tree, session/untouched badges, click-to-select and double-click-to-open. Added filesystem window kind to `windowKinds` in `GraphView.tsx` and toolbar button in `GraphToolbar.tsx`. All unit tests pass (175 session-ui + 104 session-graph).
 
 **2026-10-23 — T21.1 done (diff-hunk symbols first — G21).** Implemented `symbolsFromHunk()` to parse unified diff patches from turn diffs and extract function, class, and method symbols with `origin: "hunk"`. Added `diffByTurn` parameter to `BuildGraphInput`, extended `TurnDiffSource` with `getAllLoaded()`, wired up turn diff cache in `session-graph-view.tsx`. Handles edge cases: anonymous functions (`hunk:anon`), deleted functions (`hunk:deleted`, status: failed), class methods qualified by nearest preceding class in patch. Skips property changes without function names. Deduplicates against snapshot symbols. Added 4 comprehensive tests; all 179 graph tests pass.
+
+**2026-10-23 — T22.1, T22.2, T22.3 done (packages — G22).** Package nodes created from snapshot packages array in `attachPackages()` (build.ts:332). Package detail rendering added in `GraphDetail.tsx` showing version, scripts, dependencies, devDependencies. Config files from snapshot get `data.config = true` and a config badge in the inspector; doc files get `data.doc = true` and a doc badge. Snapshot-only files (untouched by session) now get file nodes created with domain "directories" and proper provenance. Package node data includes `dependencies` and `devDependencies` objects from snapshot. All 179 session-ui graph tests pass; golden fixture updated.

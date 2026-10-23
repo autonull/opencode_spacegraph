@@ -304,6 +304,8 @@ export type WorkspaceSnapshotPackage = {
   version?: string
   private?: boolean
   scripts?: Array<string>
+  dependencies?: { [x: string]: string }
+  devDependencies?: { [x: string]: string }
 }
 
 export type WorkspaceSnapshotFile = {

@@ -299,6 +299,42 @@ class GraphBuilder {
       })
     }
 
+    // T22.2 — create file nodes for snapshot files (including untouched ones)
+    // Build a map of snapshot file metadata for config/doc flags
+    const snapshotFileMeta = new Map<string, { config?: boolean; doc?: boolean }>()
+    for (const file of snapshot.files) {
+      const normalized = normalizePath(file.path)
+      if (file.config || file.doc) {
+        snapshotFileMeta.set(normalized, { config: file.config, doc: file.doc })
+      }
+    }
+
+    // Create file nodes for all files (session + snapshot)
+    for (const file of files) {
+      const existingId = this.fileNodes.get(file)
+      if (existingId) {
+        // Session file already exists - update with snapshot metadata if any
+        const meta = snapshotFileMeta.get(file)
+        if (meta) {
+          const node = this.nodesByID.get(existingId)!
+          node.data = this.filterDefined({ ...node.data, config: meta.config, doc: meta.doc })
+        }
+        continue
+      }
+      // Snapshot-only file: create file node with provenance
+      const id = fileNodeID(file)
+      this.fileNodes.set(file, id)
+      this.addNode({
+        id,
+        kind: "file",
+        label: file,
+        status: "neutral",
+        domain: "directories", // untouched files belong to directories domain
+        provenance: this.provenanceForSource(snapshot, "tree"),
+        data: this.filterDefined({ path: file, config: snapshotFileMeta.get(file)?.config, doc: snapshotFileMeta.get(file)?.doc }),
+      })
+    }
+
     for (const [file, id] of this.fileNodes) {
       const parent = parentPath(file)
       if (parent) this.partOf(id, directoryNodeID(parent), "structural")
@@ -339,7 +375,14 @@ class GraphBuilder {
         minLevel: "overview",
         domain: "directories",
         provenance: this.provenanceForSource(snapshot, "packages"),
-        data: this.filterDefined({ path: pkg.path, name: pkg.name, version: pkg.version, scripts: pkg.scripts }),
+        data: this.filterDefined({
+          path: pkg.path,
+          name: pkg.name,
+          version: pkg.version,
+          scripts: pkg.scripts,
+          dependencies: pkg.dependencies,
+          devDependencies: pkg.devDependencies,
+        }),
       })
     }
   }

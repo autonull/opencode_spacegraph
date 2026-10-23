@@ -38,8 +38,27 @@ describe("T29.3 — the model takes the snapshot", () => {
     const derived = new Set(
       withSnapshot.nodes.filter((node) => derivedKinds.has(node.kind)).map((node) => node.id),
     )
-    const unchangedNodes = withSnapshot.nodes.filter((node) => !derived.has(node.id))
-    expect(unchangedNodes).toEqual(sessionOnly.nodes)
+    
+    // Non-derived nodes in withSnapshot: should be session nodes + snapshot-only file nodes
+    const nonDerived = withSnapshot.nodes.filter((node) => !derived.has(node.id))
+    const sessionNodes = sessionOnly.nodes
+    
+    // Session nodes should all be present (by ID)
+    const sessionNodeIds = new Set(sessionNodes.map((n) => n.id))
+    for (const node of nonDerived) {
+      if (sessionNodeIds.has(node.id)) {
+        // Session node - should match exactly
+        const sessionNode = sessionNodes.find((n) => n.id === node.id)!
+        expect(node).toEqual(sessionNode)
+      } else {
+        // Snapshot-only file node - should have domain "directories"
+        expect(node.kind).toBe("file")
+        expect(node.domain).toBe("directories")
+        expect(node.provenance?.source).toBe("tree")
+      }
+    }
+    // And all session nodes should be present
+    expect(nonDerived.length).toBe(sessionNodes.length + nonDerived.filter((n) => !sessionNodeIds.has(n.id)).length)
 
     const unchangedEdges = withSnapshot.edges.filter(
       (edge) => !derived.has(edge.source) && !derived.has(edge.target),

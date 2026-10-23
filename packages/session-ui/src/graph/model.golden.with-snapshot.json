@@ -858,6 +858,100 @@
       }
     },
     {
+      "id": "file:packages/ui/package.json",
+      "kind": "file",
+      "label": "packages/ui/package.json",
+      "status": "neutral",
+      "domain": "directories",
+      "provenance": {
+        "source": "tree",
+        "asOf": 1730000000000,
+        "confidence": "inferred"
+      },
+      "data": {
+        "path": "packages/ui/package.json",
+        "config": true
+      }
+    },
+    {
+      "id": "file:packages/ui/src/button.ts",
+      "kind": "file",
+      "label": "packages/ui/src/button.ts",
+      "status": "neutral",
+      "domain": "directories",
+      "provenance": {
+        "source": "tree",
+        "asOf": 1730000000000,
+        "confidence": "inferred"
+      },
+      "data": {
+        "path": "packages/ui/src/button.ts"
+      }
+    },
+    {
+      "id": "file:packages/core/package.json",
+      "kind": "file",
+      "label": "packages/core/package.json",
+      "status": "neutral",
+      "domain": "directories",
+      "provenance": {
+        "source": "tree",
+        "asOf": 1730000000000,
+        "confidence": "inferred"
+      },
+      "data": {
+        "path": "packages/core/package.json",
+        "config": true
+      }
+    },
+    {
+      "id": "file:packages/core/src/index.ts",
+      "kind": "file",
+      "label": "packages/core/src/index.ts",
+      "status": "neutral",
+      "domain": "directories",
+      "provenance": {
+        "source": "tree",
+        "asOf": 1730000000000,
+        "confidence": "inferred"
+      },
+      "data": {
+        "path": "packages/core/src/index.ts"
+      }
+    },
+    {
+      "id": "file:README.md",
+      "kind": "file",
+      "label": "README.md",
+      "status": "neutral",
+      "domain": "directories",
+      "provenance": {
+        "source": "tree",
+        "asOf": 1730000000000,
+        "confidence": "inferred"
+      },
+      "data": {
+        "path": "README.md",
+        "doc": true
+      }
+    },
+    {
+      "id": "file:docs/adr/001-auth.md",
+      "kind": "file",
+      "label": "docs/adr/001-auth.md",
+      "status": "neutral",
+      "domain": "directories",
+      "provenance": {
+        "source": "tree",
+        "asOf": 1730000000000,
+        "confidence": "inferred"
+      },
+      "data": {
+        "path": "docs/adr/001-auth.md",
+        "doc": true
+      }
+    },
+    {
       "id": "pkg:packages/ui/package.json",
       "kind": "package",
       "label": "@project/ui",
@@ -1796,6 +1890,41 @@
       "confidence": "structural"
     },
     {
+      "id": "part-of:file:packages/ui/package.json->dir:packages/ui",
+      "kind": "part-of",
+      "source": "file:packages/ui/package.json",
+      "target": "dir:packages/ui",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:file:packages/ui/src/button.ts->dir:packages/ui/src",
+      "kind": "part-of",
+      "source": "file:packages/ui/src/button.ts",
+      "target": "dir:packages/ui/src",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:file:packages/core/package.json->dir:packages/core",
+      "kind": "part-of",
+      "source": "file:packages/core/package.json",
+      "target": "dir:packages/core",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:file:packages/core/src/index.ts->dir:packages/core/src",
+      "kind": "part-of",
+      "source": "file:packages/core/src/index.ts",
+      "target": "dir:packages/core/src",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:file:docs/adr/001-auth.md->dir:docs/adr",
+      "kind": "part-of",
+      "source": "file:docs/adr/001-auth.md",
+      "target": "dir:docs/adr",
+      "confidence": "structural"
+    },
+    {
       "id": "part-of:dir:docs/adr->dir:docs",
       "kind": "part-of",
       "source": "dir:docs/adr",
@@ -1891,6 +2020,13 @@
       "kind": "part-of",
       "source": "symbol:src/auth/session.ts#session.refreshToken",
       "target": "file:src/auth/session.ts",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:symbol:packages/ui/src/button.ts#Button->file:packages/ui/src/button.ts",
+      "kind": "part-of",
+      "source": "symbol:packages/ui/src/button.ts#Button",
+      "target": "file:packages/ui/src/button.ts",
       "confidence": "structural"
     },
     {
