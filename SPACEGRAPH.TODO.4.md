@@ -1322,7 +1322,7 @@ them talk. What is left is the ergonomics of the pair: who follows whom, where t
 when the map is narrow, how a keyboard reader moves between the panes — and the measurement that
 decides whether the pair is worth keeping.
 
-### T18.1 The map follows the log — **planned**
+### T18.1 The map follows the log — **done**
 
 The map *marks* the turn the log is reading (T16.2 ✓) and leaves the reader to hunt for it. The
 pieces are already there: `scaleWindow(model, keep)` keeps a turn in the drawn window ✓, the app
@@ -1334,6 +1334,8 @@ computes the active turn ✓, and the camera can frame a node ✓.
   reader scrolls is a camera the reader did not ask for. The marker (T16.2) says where the reader
   is; the follow says where the map looks; they are two different promises, and the reader picks
   the second.
+
+**What was built.** The `followLog` state is persisted per session (`packages/app/src/shell/state/layout.tsx:160`). The toolbar offers a "Follow the log" toggle in the **Show** menu (`GraphToolbar.tsx:309-318`). When enabled, the active turn from the log joins the map's drawn window and the camera frames it (`GraphView.tsx:310-342`). The framing only happens when `followLog` is on and the active turn actually changes.
 
 Done when: the map's window follows the log's active turn, and the camera follows only when the
 reader asks.
@@ -1358,7 +1360,7 @@ The button shows the current mode's icon and the tooltip shows the mode label pl
 The e2e test `opens the hybrid turn map over the graph and closes on Escape` passes, as does
 `shows the map and the log together, and the reader chooses how they meet`, and `picking a node in the map moves the log to it`.
 
-### T18.3 The detail's home follows the map's width (D9, unblocked) — **planned**
+### T18.3 The detail's home follows the map's width (D9, unblocked) — **done**
 
 §0.6 deferred the `auto` detail mode "until G9 and G10 have produced evidence about which surface
 wins". The evidence now exists: **the card speaks** (G9 ✓) and **the window works** (G10 ✓). The
@@ -1370,11 +1372,13 @@ answer is a rule, not a guess:
 - the threshold is the map's own width (the host owns it ✓), the same measurement the toolbar's
   compact threshold already uses (T14.5 ✓).
 
+**What was built.** The `auto` detail mode resolves in `GraphView.tsx:408-412` — when the map's canvas width is ≥ 640px it uses the panel, below that it opens a window. The threshold (`AUTO_DETAIL_THRESHOLD = 640`) follows the toolbar's compact measurement logic. The mode is available in the toolbar's detail mode dropdown alongside `off`, `panel`, `popover`, `window` (`GraphToolbar.tsx:289`).
+
 Done when: the detail's home follows the map's width, and the reader never loses a third of the
 map to a panel.
 Verify: the component suite — a narrow map opens the detail in a window.
 
-### T18.4 The hybrid's keyboard — **planned**
+### T18.4 The hybrid's keyboard — **done**
 
 The hybrid is two surfaces and a divider, and none of it has been through the keyboard.
 
@@ -1384,6 +1388,11 @@ The hybrid is two surfaces and a divider, and none of it has been through the ke
   with its own key map: `f` fits, `1`/`2`/`3` set the level, `/` searches ✓ — those keys belong to
   the map's region, and the log's keys belong to the log);
 - the log's **text-size slider** is reachable and named ✓ (a range input with an accessible name ✓).
+
+**What was built.** `SessionGraphPanel.tsx` implements:
+- **Divider keyboard resize**: Arrow keys (2% normal), Shift+Arrow (0.5% fine), Ctrl/Cmd+Arrow (10% coarse), Home/End (min/max) — `handleDividerKeyDown` at line 193-227
+- **Focus cycling**: F6 cycles between log pane, divider, and map pane — `handleRootKeyDown` at line 95-110
+- **Log text-size slider**: Already implemented in T16.3 at the top of the log pane with accessible name — lines 254-274
 
 Done when: the hybrid is usable without a pointer.
 Verify: the component suite — the divider resizes from the keyboard; the app e2e — the map's keys
