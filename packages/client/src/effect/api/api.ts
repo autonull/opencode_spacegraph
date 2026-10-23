@@ -2233,6 +2233,108 @@ export interface VcsApi<E = never> {
   readonly diff: VcsDiffOperation<E>
 }
 
+export type ServerGraphWorkspaceInput = {
+  readonly location?: { readonly directory?: string | undefined } | undefined
+  readonly scope?: "session" | "directory" | "workspace" | undefined
+  readonly paths?: string | undefined
+}
+export type ServerGraphWorkspaceOutput = {
+  readonly location: Location.PublicRef
+  readonly data: {
+    readonly version: 1
+    readonly revision: string
+    readonly root: string
+    readonly scope: "session" | "directory" | "workspace"
+    readonly asOf: {
+      readonly tree?: number | undefined
+      readonly vcs?: number | undefined
+      readonly packages?: number | undefined
+      readonly symbols?: number | undefined
+    }
+    readonly truncated: boolean
+    readonly workspace: { readonly name: string; readonly path: string }
+    readonly directories: ReadonlyArray<{ readonly path: string; readonly parent?: string | undefined }>
+    readonly packages: ReadonlyArray<{
+      readonly path: string
+      readonly name?: string | undefined
+      readonly version?: string | undefined
+      readonly private?: boolean | undefined
+      readonly scripts?: ReadonlyArray<string> | undefined
+    }>
+    readonly files: ReadonlyArray<{
+      readonly path: string
+      readonly status?: "added" | "modified" | "deleted" | undefined
+      readonly doc?: boolean | undefined
+      readonly config?: boolean | undefined
+    }>
+    readonly head?: { readonly branch?: string | undefined; readonly sha?: string | undefined } | undefined
+    readonly base?: { readonly sha: string } | undefined
+    readonly branches: ReadonlyArray<{
+      readonly name: string
+      readonly sha: string
+      readonly upstream?: string | undefined
+      readonly remote?: boolean | undefined
+    }>
+    readonly commits: ReadonlyArray<{
+      readonly sha: string
+      readonly short: string
+      readonly message: string
+      readonly author?: string | undefined
+      readonly time?: number | undefined
+      readonly files?: ReadonlyArray<string> | undefined
+    }>
+    readonly symbols: ReadonlyArray<{
+      readonly path: string
+      readonly name: string
+      readonly qualified: string
+      readonly kind:
+        | "function"
+        | "method"
+        | "class"
+        | "interface"
+        | "type"
+        | "variable"
+        | "constant"
+        | "module"
+        | "enum"
+      readonly range: {
+        readonly start: { readonly line: number; readonly character: number }
+        readonly end: { readonly line: number; readonly character: number }
+      }
+      readonly signature?: string | undefined
+      readonly origin: "parser" | "hunk"
+    }>
+    readonly processes: ReadonlyArray<{
+      readonly id: string
+      readonly pid?: number | undefined
+      readonly command: string
+      readonly cwd?: string | undefined
+      readonly ports: ReadonlyArray<number>
+      readonly startedAt?: number | undefined
+    }>
+    readonly issues: ReadonlyArray<{
+      readonly provider: string
+      readonly repo?: string | undefined
+      readonly number: string
+      readonly title?: string | undefined
+      readonly state?: string | undefined
+      readonly url?: string | undefined
+    }>
+    readonly missing: ReadonlyArray<{
+      readonly source: "tree" | "vcs" | "packages" | "symbols" | "issues" | "processes" | "coverage"
+      readonly reason: string
+    }>
+    readonly capabilities: ReadonlyArray<string>
+  }
+}
+export type ServerGraphWorkspaceOperation<E = never> = (
+  input?: ServerGraphWorkspaceInput,
+) => Effect.Effect<ServerGraphWorkspaceOutput, E>
+
+export interface ServerGraphApi<E = never> {
+  readonly workspace: ServerGraphWorkspaceOperation<E>
+}
+
 export type DebugLocationListOutput = ReadonlyArray<Location.PublicRef>
 export type DebugLocationListOperation<E = never> = () => Effect.Effect<DebugLocationListOutput, E>
 
@@ -2334,6 +2436,7 @@ export interface AppApi<E = never> {
   readonly reference: ReferenceApi<E>
   readonly worktree: WorktreeApi<E>
   readonly vcs: VcsApi<E>
+  readonly "server.graph": ServerGraphApi<E>
   readonly debug: DebugApi<E>
   readonly migration: MigrationApi<E>
   readonly websearch: WebsearchApi<E>

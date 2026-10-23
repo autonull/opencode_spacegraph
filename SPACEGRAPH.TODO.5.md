@@ -124,7 +124,7 @@ Ordering is by *dependency*, not by value: G29 and G30 are prerequisites for eve
 
 **Why.** Every derived kind needs facts the session does not carry. One typed input, produced behind one seam, keeps the model pure and the domains cheap.
 
-#### T29.1 Protocol schema — **new**
+#### T29.1 Protocol schema — **done** (2026-10-23)
 
 `WorkspaceSnapshot` in `packages/protocol` (schema-only, so Client may read it without Core or Server):
 
@@ -156,7 +156,9 @@ type WorkspaceSnapshot = {
 
 **Verify:** `cd packages/protocol && bun test` (schema round-trip); `cd packages/client && bun run generate`.
 
-#### T29.2 Server read model — **new**
+**Landed:** `packages/protocol/src/workspace-snapshot.ts` (`Snapshot`, `Source`, `SymbolKind`, `Range`, scopes and every entry shape) plus `packages/protocol/test/workspace-snapshot.test.ts` (round-trip, absent optionals, version/source rejection). `WorkspaceSnapshot = Snapshot` is exported for consumers that prefer the plan's name.
+
+#### T29.2 Server read model — **done** (2026-10-23)
 
 One group, `server.graph`, one endpoint, `graph.workspace`, assembled from services that already exist:
 
@@ -171,6 +173,15 @@ Scopes are bounded: `scope=session` (default) takes the session's touched paths 
 **Done when:** one request returns a session-scoped snapshot for a fixture repo; a missing source appears in `missing` with a reason instead of failing the request.
 
 **Verify:** `cd packages/server && bun test src/graph` (snapshot endpoint + symbol index).
+
+**Landed:** `server.graph` / `graph.workspace` (`packages/protocol/src/groups/graph.ts`), handler `packages/server/src/handlers/graph.ts`, and `packages/server/src/graph/snapshot.ts` (`assembleSnapshot` pure; `collectWorkspaceSnapshot` reads `FileSystem`, `Vcs`, package manifests). `packages/server/src/graph/workspace.test.ts` covers ancestors, status, packages, revision stability, missing rows and a real repository request.
+
+**Deviations from the text, to resolve before T20/T21:**
+
+- The query takes `paths` as a comma-separated string for **both** `session` (touched files) and `directory` (one path). The server cannot know a session's touched files; the client owns them.
+- The VCS surface (`info`, `base`, `branches`, `status`, `diff`) exposes no commit ids, so `branches`, `commits`, `head.sha` and `base.sha` stay empty and `missing` says so. T20 needs a new provider capability (`Vcs.history` or equivalent) or an explicit decision to drop those facts.
+- Symbols, processes and issues are absent with a reason. T21.1 mints hunk symbols client-side, so the symbol snapshot is the parser upgrade (T21.2), not the baseline.
+- Memoisation per `(location, revision, scope)` and event invalidation are **not** implemented yet; each request reads through. This is safe but violates the read-model note. Track as remaining work on T29.2.
 
 #### T29.3 The model takes the snapshot — **new**
 
@@ -706,3 +717,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — TODO.5 rev 2.1: design review applied.** Removed `workspace` domain (directories/packages are roots); added `directories` domain and grouped Domains menu (Structure/Code/Runtime); expanded action registry with blame, compare, cherry-pick, PR, debug, proxy, branch creation; documented hunk-symbol edge cases (anonymous, deleted, no-name); added three snapshot scopes (session/directory/workspace); made empty states actionable with primary actions; tightened budgets (200ms/60ms/2ms); disabled force layout by default; added integration seams table; documented two architectural questions on `diffByTurn` sourcing.
 
 **2026-10-23 — TODO.5 rev 2.2: adaptive expand/collapse + continuous layout (T33/G33).** Added wave 6 for adaptive UI. Cluster state as local lens override (per-node `expanded` overriding `minLevel`). Continuous transitions for hierarchy/tree layouts (opt-in, 150–300 ms, cubic-bezier). Card tier interpolation on zoom (cross-fade, no level-boundary pop). Budget-aware animation (target-position budget eval, fade in/out). Stop rule: >50 ms pipeline overhead = off by default.
+
+**2026-10-23 — T29.1 and T29.2 done (foundation wave 0, first half).** The snapshot schema is one versioned, per-source-stamped struct in Protocol. The server read model is one location-scoped endpoint assembled from `FileSystem`, `Vcs` and package manifests; absence is a `missing` row. Two plan gaps surfaced and are recorded on T29.2: the client must supply session paths, and the VCS surface cannot supply commit ids. Memoisation and event invalidation remain open.

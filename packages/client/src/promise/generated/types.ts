@@ -296,6 +296,66 @@ export type VcsFileStatus = {
 
 export type VcsBranchList = Array<string>
 
+export type WorkspaceSnapshotDirectory = { path: string; parent?: string }
+
+export type WorkspaceSnapshotPackage = {
+  path: string
+  name?: string
+  version?: string
+  private?: boolean
+  scripts?: Array<string>
+}
+
+export type WorkspaceSnapshotFile = {
+  path: string
+  status?: "added" | "modified" | "deleted"
+  doc?: boolean
+  config?: boolean
+}
+
+export type WorkspaceSnapshotHead = { branch?: string; sha?: string }
+
+export type WorkspaceSnapshotBase = { sha: string }
+
+export type WorkspaceSnapshotBranch = { name: string; sha: string; upstream?: string; remote?: boolean }
+
+export type WorkspaceSnapshotCommit = {
+  sha: string
+  short: string
+  message: string
+  author?: string
+  time?: number
+  files?: Array<string>
+}
+
+export type WorkspaceSnapshotRange = {
+  start: { line: number; character: number }
+  end: { line: number; character: number }
+}
+
+export type WorkspaceSnapshotProcess = {
+  id: string
+  pid?: number
+  command: string
+  cwd?: string
+  ports: Array<number>
+  startedAt?: number
+}
+
+export type WorkspaceSnapshotIssue = {
+  provider: string
+  repo?: string
+  number: string
+  title?: string
+  state?: string
+  url?: string
+}
+
+export type WorkspaceSnapshotMissing = {
+  source: "tree" | "vcs" | "packages" | "symbols" | "issues" | "processes" | "coverage"
+  reason: string
+}
+
 export type WebSearchID = string
 
 export type WebSearchResult = { url: string; title?: string; content?: string; time: { published?: number } }
@@ -845,6 +905,16 @@ export type FormMultiselectField1 = {
 export type FormAnswer1 = { [x: string]: FormValue1 }
 
 export type VcsInfo = { provider?: string; branch: VcsBranch }
+
+export type WorkspaceSnapshotSymbol = {
+  path: string
+  name: string
+  qualified: string
+  kind: "function" | "method" | "class" | "interface" | "type" | "variable" | "constant" | "module" | "enum"
+  range: WorkspaceSnapshotRange
+  signature?: string
+  origin: "parser" | "hunk"
+}
 
 export type WebSearchProvider = { id: WebSearchID; name: string }
 
@@ -2034,6 +2104,28 @@ export type FormReplied = {
   type: "form.replied"
   location?: LocationRef
   data: { id: FormID; sessionID: string; answer: FormAnswer1 }
+}
+
+export type WorkspaceSnapshot = {
+  version: 1
+  revision: string
+  root: string
+  scope: "session" | "directory" | "workspace"
+  asOf: { tree?: number; vcs?: number; packages?: number; symbols?: number }
+  truncated: boolean
+  workspace: { name: string; path: string }
+  directories: Array<WorkspaceSnapshotDirectory>
+  packages: Array<WorkspaceSnapshotPackage>
+  files: Array<WorkspaceSnapshotFile>
+  head?: WorkspaceSnapshotHead
+  base?: WorkspaceSnapshotBase
+  branches: Array<WorkspaceSnapshotBranch>
+  commits: Array<WorkspaceSnapshotCommit>
+  symbols: Array<WorkspaceSnapshotSymbol>
+  processes: Array<WorkspaceSnapshotProcess>
+  issues: Array<WorkspaceSnapshotIssue>
+  missing: Array<WorkspaceSnapshotMissing>
+  capabilities: Array<string>
 }
 
 export type SessionInboxMove = {
@@ -5974,6 +6066,26 @@ export type VcsDiffInput = {
 }
 
 export type VcsDiffOutput = { location: LocationPublicRef; data: Array<FileDiffInfo> }
+
+export type ServerGraphWorkspaceInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined } | undefined
+    readonly scope?: "session" | "directory" | "workspace" | undefined
+    readonly paths?: string | undefined
+  }["location"]
+  readonly scope?: {
+    readonly location?: { readonly directory?: string | undefined } | undefined
+    readonly scope?: "session" | "directory" | "workspace" | undefined
+    readonly paths?: string | undefined
+  }["scope"]
+  readonly paths?: {
+    readonly location?: { readonly directory?: string | undefined } | undefined
+    readonly scope?: "session" | "directory" | "workspace" | undefined
+    readonly paths?: string | undefined
+  }["paths"]
+}
+
+export type ServerGraphWorkspaceOutput = { location: LocationPublicRef; data: WorkspaceSnapshot }
 
 export type DebugLocationListOutput = Array<LocationPublicRef>
 
