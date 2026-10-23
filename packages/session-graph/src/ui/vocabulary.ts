@@ -1,6 +1,7 @@
 import type { DepthMode } from "@spacegraphjs/renderer"
 import type {
   DetailMode,
+  Domain,
   GraphArrangement,
   GraphEdge,
   GraphNode,
@@ -10,6 +11,7 @@ import type {
   NodeKind,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
+import { DOMAIN_OF_KIND } from "@opencode/session-ui/graph"
 
 /**
  * The session graph's vocabulary as i18n keys. The inspector, the toolbar, the legend, and the
@@ -132,3 +134,23 @@ export const CONFIDENCE_KEY = {
   structural: "ui.sessionGraph.confidence.structural",
   inferred: "ui.sessionGraph.confidence.inferred",
 } as const satisfies Record<GraphEdge["confidence"], string>
+
+/** T27.1 — the domain checkboxes in the Domains menu. */
+export const DOMAIN_KEY = {
+  session: "ui.sessionGraph.domain.session",
+  directories: "ui.sessionGraph.domain.directories",
+  history: "ui.sessionGraph.domain.history",
+  code: "ui.sessionGraph.domain.code",
+  verification: "ui.sessionGraph.domain.verification",
+  runtime: "ui.sessionGraph.domain.runtime",
+  work: "ui.sessionGraph.domain.work",
+} as const satisfies Record<Domain, string>
+
+/** T27.1 — domain groups for the Domains menu. */
+export const DOMAIN_GROUPS = {
+  structure: ["directories", "history"] as Domain[],
+  code: ["code", "verification"] as Domain[],
+  runtime: ["runtime", "work"] as Domain[],
+} as const
+
+export { DOMAIN_OF_KIND }

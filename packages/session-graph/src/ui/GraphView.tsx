@@ -30,6 +30,7 @@ import {
   changedFiles,
   DETAIL_TIER_WIDTH,
   detailTier,
+  Domain,
   equalizerScale,
   fileRelations,
   isSummaryLayout,
@@ -47,6 +48,7 @@ import {
   nodeSize,
   ribbonLayout,
   scaleWindow,
+  scopeModel,
   scopeToTurns,
   sessionOrder,
   subtree,
@@ -248,6 +250,8 @@ export const GraphView = (props: GraphViewProps) => {
   const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
   // T18.1: whether the map follows the active turn from the log.
   const [followLog, setFollowLog] = createSignal<boolean>(props.followLog ?? false)
+  // T27.1 — the domain lens (Domains menu). Session is always included.
+  const [domains, setDomains] = createSignal<ReadonlySet<Domain>>(new Set(["session"]))
   const [hovered, setHovered] = createSignal<string>()
   // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
   const [popoverDismissed, setPopoverDismissed] = createSignal(false)
@@ -316,7 +320,10 @@ export const GraphView = (props: GraphViewProps) => {
       ),
     ),
   )
-  const scoped = createMemo(() => scopeToTurns(props.model, scale().turns))
+  const scoped = createMemo(() => {
+    const turnScoped = scopeToTurns(props.model, scale().turns)
+    return scopeModel(turnScoped, domains())
+  })
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
   const windowAnchor = createMemo(() => {
@@ -1065,6 +1072,9 @@ export const GraphView = (props: GraphViewProps) => {
         searching={searchOpen()}
         compact={compact()}
         endInset={props.endInset}
+        model={props.model}
+        domains={domains()}
+        onDomainsChange={setDomains}
       />
       <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
       <Show when={scaleNotice()}>

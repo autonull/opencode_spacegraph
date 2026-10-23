@@ -12,7 +12,9 @@ import {
   ZOOM_LEVELS,
   type DetailFraming,
   type DetailMode,
+  type Domain,
   type GraphArrangement,
+  type GraphModel,
   type GraphSide,
   type Layout,
   type ZoomLevel,
@@ -22,6 +24,9 @@ import {
   ARRANGEMENT_KEY,
   DEPTH_KEY,
   DETAIL_MODE_KEY,
+  DOMAIN_GROUPS,
+  DOMAIN_KEY,
+  DOMAIN_OF_KIND,
   LAYOUT_KEY,
   LEVEL_KEY,
   SIDE_KEY,
@@ -107,6 +112,12 @@ export type GraphToolbarProps = {
    * the graph panel's top-right keeps the renderer label and back control clickable.
    */
   endInset?: string
+  /** T27.1: the model to derive domain presence from. */
+  model?: GraphModel
+  /** T27.1: the currently selected domains (lens). */
+  domains?: ReadonlySet<Domain>
+  /** T27.1: callback when the domain lens changes. */
+  onDomainsChange?: (domains: ReadonlySet<Domain>) => void
 }
 
 /**
@@ -279,82 +290,173 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   )
 
   /** What the map says: where the detail goes, the peek, the minimap, and the reader's overlays. */
-  const showControls = () => (
-    <>
-      <Show when={props.onDetailModeChange}>
-        <div data-slot="graph-toolbar-detail">
-          <div class="px-2 py-1 text-12-regular text-text-weak">
-            {i18n.t("ui.sessionGraph.toolbar.detailMode")}
+  const showControls = () => {
+    // T27.1 — compute which domains have data in the model
+    const domainsWithData = new Set<Domain>()
+    if (props.model) {
+      for (const node of props.model.nodes) {
+        const domain = node.domain ?? (DOMAIN_OF_KIND[node.kind] as Domain | undefined)
+        if (domain) domainsWithData.add(domain)
+      }
+    }
+
+    const currentDomains = props.domains ?? new Set<Domain>(["session"])
+    const toggleDomain = (domain: Domain) => {
+      if (domain === "session") return // session is pinned
+      const next = new Set(currentDomains)
+      if (next.has(domain)) next.delete(domain)
+      else next.add(domain)
+      props.onDomainsChange?.(next)
+    }
+
+    return (
+      <>
+        <Show when={props.model && props.onDomainsChange}>
+          <ToolbarMenu
+            slot="graph-toolbar-domains"
+            label={i18n.t("ui.sessionGraph.toolbar.domains")}
+            icon="eye"
+            value={i18n.t("ui.sessionGraph.toolbar.domains")}
+          >
+            <div class="px-2 py-1 text-12-regular text-text-weak">
+              {i18n.t("ui.sessionGraph.toolbar.domains")}
+            </div>
+            {/* Session is always on and pinned */}
+            {option({
+              label: i18n.t(DOMAIN_KEY.session),
+              onClick: () => {},
+              pressed: true,
+              disabled: true,
+              slot: "graph-domain-option",
+              value: "session",
+              ariaLabel: i18n.t("ui.sessionGraph.toolbar.domainPinned"),
+              keepOpen: true,
+            })}
+            <div class="w-full border-t border-border-weaker-base my-1" />
+            {/* Structure group */}
+            <div class="px-2 py-1 text-11-medium text-text-weak uppercase tracking-wide">
+              {i18n.t("ui.sessionGraph.toolbar.domainGroup.structure")}
+            </div>
+            {DOMAIN_GROUPS.structure.map((domain) =>
+              option({
+                label: i18n.t(DOMAIN_KEY[domain]),
+                onClick: () => toggleDomain(domain),
+                pressed: currentDomains.has(domain),
+                slot: "graph-domain-option",
+                value: domain,
+                keepOpen: true,
+                title: domainsWithData.has(domain) ? undefined : i18n.t("ui.sessionGraph.toolbar.domainEmpty", { domain: i18n.t(DOMAIN_KEY[domain]) }),
+              }),
+            )}
+            <div class="w-full border-t border-border-weaker-base my-1" />
+            {/* Code group */}
+            <div class="px-2 py-1 text-11-medium text-text-weak uppercase tracking-wide">
+              {i18n.t("ui.sessionGraph.toolbar.domainGroup.code")}
+            </div>
+            {DOMAIN_GROUPS.code.map((domain) =>
+              option({
+                label: i18n.t(DOMAIN_KEY[domain]),
+                onClick: () => toggleDomain(domain),
+                pressed: currentDomains.has(domain),
+                slot: "graph-domain-option",
+                value: domain,
+                keepOpen: true,
+                title: domainsWithData.has(domain) ? undefined : i18n.t("ui.sessionGraph.toolbar.domainEmpty", { domain: i18n.t(DOMAIN_KEY[domain]) }),
+              }),
+            )}
+            <div class="w-full border-t border-border-weaker-base my-1" />
+            {/* Runtime group */}
+            <div class="px-2 py-1 text-11-medium text-text-weak uppercase tracking-wide">
+              {i18n.t("ui.sessionGraph.toolbar.domainGroup.runtime")}
+            </div>
+            {DOMAIN_GROUPS.runtime.map((domain) =>
+              option({
+                label: i18n.t(DOMAIN_KEY[domain]),
+                onClick: () => toggleDomain(domain),
+                pressed: currentDomains.has(domain),
+                slot: "graph-domain-option",
+                value: domain,
+                keepOpen: true,
+                title: domainsWithData.has(domain) ? undefined : i18n.t("ui.sessionGraph.toolbar.domainEmpty", { domain: i18n.t(DOMAIN_KEY[domain]) }),
+              }),
+            )}
+          </ToolbarMenu>
+        </Show>
+        <Show when={props.onDetailModeChange}>
+          <div data-slot="graph-toolbar-detail">
+            <div class="px-2 py-1 text-12-regular text-text-weak">
+              {i18n.t("ui.sessionGraph.toolbar.detailMode")}
+            </div>
+            {DETAIL_MODES.map((mode) =>
+              option({
+                label: i18n.t(DETAIL_MODE_KEY[mode]),
+                onClick: () => props.onDetailModeChange?.(mode),
+                pressed: props.detailMode === mode,
+                slot: "graph-detail-mode-option",
+                value: mode,
+              }),
+            )}
           </div>
-          {DETAIL_MODES.map((mode) =>
-            option({
-              label: i18n.t(DETAIL_MODE_KEY[mode]),
-              onClick: () => props.onDetailModeChange?.(mode),
-              pressed: props.detailMode === mode,
-              slot: "graph-detail-mode-option",
-              value: mode,
-            }),
-          )}
-        </div>
-      </Show>
-      <Show when={props.onTogglePeek}>
-        {option({
-          label: i18n.t("ui.sessionGraph.toolbar.peek"),
-          onClick: () => props.onTogglePeek?.(),
-          pressed: props.peek,
-          slot: "graph-peek-option",
-          keepOpen: true,
-        })}
-      </Show>
-      <Show when={props.onFollowLogChange}>
-        {option({
-          label: props.followLog ? i18n.t("ui.sessionGraph.toolbar.followLog") : i18n.t("ui.sessionGraph.toolbar.followLogOff"),
-          onClick: () => props.onFollowLogChange?.(!props.followLog),
-          pressed: props.followLog,
-          slot: "graph-follow-log-option",
-          keepOpen: true,
-          ariaLabel: i18n.t("ui.sessionGraph.toolbar.followLog"),
-        })}
-      </Show>
-      <Show when={props.onOpenWindow}>
-        <GraphIconButton
-          label={i18n.t("ui.sessionGraph.toolbar.minimap")}
-          icon="layout-bottom"
-          onClick={() => props.onOpenWindow?.("minimap")}
-        />
-      </Show>
-      <Show when={props.onToggleLegend}>
-        <GraphIconButton
-          label={i18n.t("ui.sessionGraph.toolbar.legend")}
-          icon="outline-sliders"
-          pressed={props.legend}
-          onClick={() => props.onToggleLegend?.()}
-        />
-      </Show>
-      <Show when={props.onToggleGallery}>
-        <GraphIconButton
-          label={i18n.t("ui.sessionGraph.toolbar.gallery")}
-          icon="dot-grid"
-          pressed={props.gallery}
-          onClick={() => props.onToggleGallery?.()}
-        />
-      </Show>
-      <Show when={props.onTurnMap}>
-        <GraphIconButton
-          label={i18n.t("ui.sessionGraph.toolbar.turnMap")}
-          icon="outline-worktree"
-          onClick={() => props.onTurnMap?.()}
-        />
-      </Show>
-      <Show when={props.onExpandGraph}>
-        <GraphIconButton
-          label={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
-          icon="arrow-up-right"
-          onClick={() => props.onExpandGraph?.()}
-        />
-      </Show>
-    </>
-  )
+        </Show>
+        <Show when={props.onTogglePeek}>
+          {option({
+            label: i18n.t("ui.sessionGraph.toolbar.peek"),
+            onClick: () => props.onTogglePeek?.(),
+            pressed: props.peek,
+            slot: "graph-peek-option",
+            keepOpen: true,
+          })}
+        </Show>
+        <Show when={props.onFollowLogChange}>
+          {option({
+            label: props.followLog ? i18n.t("ui.sessionGraph.toolbar.followLog") : i18n.t("ui.sessionGraph.toolbar.followLogOff"),
+            onClick: () => props.onFollowLogChange?.(!props.followLog),
+            pressed: props.followLog,
+            slot: "graph-follow-log-option",
+            keepOpen: true,
+            ariaLabel: i18n.t("ui.sessionGraph.toolbar.followLog"),
+          })}
+        </Show>
+        <Show when={props.onOpenWindow}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.minimap")}
+            icon="layout-bottom"
+            onClick={() => props.onOpenWindow?.("minimap")}
+          />
+        </Show>
+        <Show when={props.onToggleLegend}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.legend")}
+            icon="outline-sliders"
+            pressed={props.legend}
+            onClick={() => props.onToggleLegend?.()}
+          />
+        </Show>
+        <Show when={props.onToggleGallery}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.gallery")}
+            icon="dot-grid"
+            pressed={props.gallery}
+            onClick={() => props.onToggleGallery?.()}
+          />
+        </Show>
+        <Show when={props.onTurnMap}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.turnMap")}
+            icon="outline-worktree"
+            onClick={() => props.onTurnMap?.()}
+          />
+        </Show>
+        <Show when={props.onExpandGraph}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.expandGraph")}
+            icon="arrow-up-right"
+            onClick={() => props.onExpandGraph?.()}
+          />
+        </Show>
+      </>
+    )
+  }
 
   /** The commands: the search, and the export. */
   const commandControls = () => (
