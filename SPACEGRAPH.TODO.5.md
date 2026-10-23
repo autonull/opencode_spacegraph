@@ -4,6 +4,18 @@
 
 **Conventions:** carried tasks keep their IDs (`T19`–`T28`, `G19`–`G28`). New work is `T29`–`T32`, `G29`–`G32`; new deferrals are `D23`+. Never renumber or reuse an ID. A task whose *capability* survives but whose *mechanism* was wrong stays in its slot and says so; a task whose capability is withdrawn gets a new deferral ID. Every task has a `Done when` and a `Verify` command.
 
+**Testing philosophy (rev 2.3):** Test *behavior*, not implementation. Prefer:
+
+- **Integration over unit**: one scenario test > five function tests. Use the real `buildGraph` + real fixture + real renderer adapter.
+- **Golden fixtures over assertions**: commit fixture JSON + expected graph JSON; update with `bun test --update` when behavior intentionally changes.
+- **Visual regression over DOM queries**: `graph:capture --mode=compare` catches regressions; `graph:capture --mode=verify` is the gate.
+- **Property-based for pure functions**: `scopeModel`, `layoutGraph`, `byProximity` — generate random models, assert invariants (no dangling edges, stable IDs, budget respected).
+- **Contract tests at boundaries only**: protocol schema, adapter interface, renderer capabilities. No internal mocks.
+- **E2E for user flows**: "switch to review profile → click commit → see file" — one Playwright test per flow.
+- **Manual for UX feel**: animation smoothness, tier cross-fade, empty-state helpfulness — verified by `bun run dev:live` before merge.
+
+Avoid: per-function unit tests, snapshot tests of React output, testing private helpers, asserting exact node counts.
+
 ---
 
 ## 0. Why rev 1 could not be built
@@ -54,7 +66,7 @@ Three rules replace rev 1's eight:
 The control plane has two roots because it answers two different questions:
 
 ```
- workspace ◄─part-of─ package ◄─part-of─ directory ◄─part-of─ file ◄─writes─ tool ◄─part-of─ turn ◄─part-of─ session
+ directories ◄─part-of─ package ◄─part-of─ directory ◄─part-of─ file ◄─writes─ tool ◄─part-of─ turn ◄─part-of─ session
                                                              │                                   │
                                                              ├─part-of─ symbol ─calls─ symbol     └─addresses─ issue
                                                              ├─part-of─ test ─covers─ symbol
@@ -65,7 +77,7 @@ The control plane has two roots because it answers two different questions:
 
 (`A ◄─edge─ B` means `edge` points from B to A. All containment edges are child → parent.)
 
-The session root says *what happened*; the workspace root says *what exists*. `file` is where they meet, and that is why the file node — not the tool — is the join key. Containment is `part-of`, so the hierarchy and tree layouts work with zero new geometry and the existing `parentIndex`/`childIndex` selectors work unchanged (`lookup.ts:37`, `:60`).
+The session root says *what happened*; the directory/package roots say *what exists*. `file` is where they meet, and that is why the file node — not the tool — is the join key. Containment is `part-of`, so the hierarchy and tree layouts work with zero new geometry and the existing `parentIndex`/`childIndex` selectors work unchanged (`lookup.ts:37`, `:60`).
 
 ### 0.4 Gates and waves
 
@@ -77,8 +89,9 @@ The session root says *what happened*; the workspace root says *what exists*. `f
 | **3 — what runs and what it means** | **G23** runtime, **G21** code | what is listening, what calls what | G29, G30 |
 | **4 — the work** | **G25** issues, **G26** docs | why it is being done, where it is written down | G29 |
 | **5 — navigation** | **G28** cross-domain navigation | one map, one search, one grammar | all |
+| **6 — adaptive UI** | **G33** expand/collapse, continuous layout | smooth interaction, no layout thrash | G27, G30 |
 
-Ordering is by *dependency*, not by value: G29 and G30 are prerequisites for every derived kind, and G31 is a prerequisite for every action. Build them before the domains, or each domain invents its own.
+Ordering is by *dependency*, not by value: G29 and G30 are prerequisites for every derived kind, and G31 is a prerequisite for every action. Build them before the domains, or each domain invents its own. G33 depends on G27 (lens control) and G30 (cluster state in model).
 
 ### 0.5 Disposition of rev 1
 
@@ -135,12 +148,13 @@ type WorkspaceSnapshot = {
   processes: { id: string; pid?: number; command: string; cwd?: string; ports: number[]; startedAt?: number }[]
   issues: { provider: string; repo?: string; number: string; title?: string; state?: string; url?: string }[]
   missing: { source: Source; reason: string }[]
+  capabilities: string[]                 // e.g. "vcs.checkout", "issues.api", "symbols.parser"
 }
 ```
 
 **Done when:** the schema round-trips in a protocol test; every field a task below needs is present; no field requires a second request to interpret. `Source` and `SymbolKind` are small closed literals; `Range` is `{ start: { line, character }, end: { line, character } }`. Tests are **not** in the snapshot: test output is a session fact and enters through messages (T24).
 
-**Verify:** `cd packages/protocol && bun test src/graph`; `cd packages/client && bun run generate`.
+**Verify:** `cd packages/protocol && bun test` (schema round-trip); `cd packages/client && bun run generate`.
 
 #### T29.2 Server read model — **new**
 
@@ -151,11 +165,12 @@ One group, `server.graph`, one endpoint, `graph.workspace`, assembled from servi
 - `Project.Service` — project root and name
 - host-known processes (PTYs) only; tests stay in the session model, because test output is a tool result
 
-Scopes are bounded: `scope=session` takes the session's touched paths and their ancestors; `scope=directory` takes one directory. Ignore rules come from the existing filesystem search. The read model is memoised per `(location, revision, scope)` and invalidated by the existing filesystem/VCS events. **No new persistence.**
+Scopes are bounded: `scope=session` (default) takes the session's touched paths and their ancestors; `scope=directory` takes one directory (for the filesystem window); `scope=workspace` (opt-in, warns on >50k files) takes the full tree. Client sends `scope` + optional `paths` (for directory). Ignore rules come from the existing filesystem search. The read model is memoised per `(location, revision, scope)` and invalidated by the existing filesystem/VCS events. **No new persistence.**
+
 
 **Done when:** one request returns a session-scoped snapshot for a fixture repo; a missing source appears in `missing` with a reason instead of failing the request.
 
-**Verify:** `cd packages/server && bun test src/graph`; `bun run typecheck`.
+**Verify:** `cd packages/server && bun test src/graph` (snapshot endpoint + symbol index).
 
 #### T29.3 The model takes the snapshot — **new**
 
@@ -176,7 +191,7 @@ Absent snapshot must produce the **existing** model exactly — the session laye
 
 **Done when:** the graph without a snapshot is byte-identical to today (golden test); with a snapshot, derived nodes appear and the session nodes are unchanged.
 
-**Verify:** `cd packages/session-ui && bun test src/graph`; `cd packages/session-graph && bun test src/canvas/buildRenderModel.test.ts`.
+**Verify:** Golden fixture test — session-only model byte-identical; with snapshot, derived nodes appear, session nodes unchanged. `cd packages/session-ui && bun test src/graph`.
 
 #### T29.4 Refresh and staleness — **new**
 
@@ -184,7 +199,7 @@ The host fetches the snapshot outside the model build, debounced (~250 ms), and 
 
 **Done when:** editing a file outside the session refreshes the derived facts without moving a session node; a failed source shows as absent, not as an empty graph.
 
-**Verify:** component test — refetch keeps session positions; manual: `bun run dev:live`.
+**Verify:** `bun run dev:live` — edit file outside session, verify derived facts refresh without moving session nodes.
 
 ---
 
@@ -195,7 +210,7 @@ The host fetches the snapshot outside the model build, debounced (~250 ms), and 
 One table, one field, no new axis at the layout boundary:
 
 ```ts
-export const DOMAINS = ["session", "workspace", "history", "code", "verification", "runtime", "work"] as const
+export const DOMAINS = ["session", "directories", "history", "code", "verification", "runtime", "work"] as const
 export type Domain = (typeof DOMAINS)[number]
 
 export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = { /* exhaustive */ }
@@ -203,11 +218,11 @@ export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = { /* exhaustive */ }
 export function nodeDomain(node: GraphNode): Domain   // node.domain ?? DOMAIN_OF_KIND[node.kind]
 ```
 
-`GraphNode` gains optional `domain` (used only for snapshot-only files, which are workspace rather than session) and optional `provenance: { source: Source; asOf?: number; confidence: Confidence }`. Edges already carry confidence; derived edges get their provenance from the source.
+`GraphNode` gains optional `domain` (used only for snapshot-only files, which are directory-domain rather than session) and optional `provenance: { source: Source; asOf?: number; confidence: Confidence }`. Edges already carry confidence; derived edges get their provenance from the source.
 
 **Done when:** every kind has a domain; `DOMAIN_OF_KIND` is exhaustive by type; no component branches on a kind to decide a domain.
 
-**Verify:** `cd packages/session-ui && bun test src/graph/domains.test.ts`.
+**Verify:** Golden fixture — every kind has domain; DOMAIN_OF_KIND exhaustive. `cd packages/session-ui && bun test src/graph`.
 
 #### T30.2 `scopeModel` — **reshaped from T27.3**
 
@@ -221,7 +236,7 @@ It drops nodes outside the lens, drops edges whose endpoints are not both presen
 
 **Done when:** every existing graph function returns the same result on a session-only lens as on today's model; cross-domain edges never dangle.
 
-**Verify:** `cd packages/session-ui && bun test src/graph`; `bun test src/graph/scope.test.ts`.
+**Verify:** Golden fixture — session-only lens = today's model; cross-domain edges never dangle. `cd packages/session-ui && bun test src/graph`.
 
 #### T30.3 Provenance in the surface — **new**
 
@@ -229,7 +244,7 @@ Every derived node and edge says where it came from and when: a source glyph on 
 
 **Done when:** no derived node renders without a source; the inspector says how old each derived fact is.
 
-**Verify:** component test — provenance line for one node per domain; visual check against `graph:capture`.
+**Verify:** Visual check — provenance badge on card far tier, inspector shows "from <source>, <age>". `graph:capture --mode=compare`.
 
 ---
 
@@ -263,29 +278,29 @@ The graph never builds a shell string. An operation is a named entry with typed 
 
 **Done when:** every action in T31.2 resolves to a descriptor; no component calls `spawn`/`exec`/`fetch` for an action; run actions require confirmation and are attributable.
 
-**Verify:** `cd packages/session-ui && bun test src/graph/actions.test.ts`; `cd packages/session-graph && bun run test:components`.
+**Verify:** E2E flow — navigate, reveal, agent-mediated run all work. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
 
 #### T31.2 Action registry per kind — **moved from T28.3**
 
 | Kind | Actions |
 |------|---------|
-| `workspace` | Reveal, Open terminal here |
 | `directory` | Reveal, Open in editor, New file here |
-| `file` | Open at range, Show history, Show callers, Run tests (agent), Copy path |
+| `file` | Open at range, Show history, Show callers, **Show blame**, **Compare to base**, Run tests (agent), Copy path |
 | `package` | Open `package.json`, Run script (agent), Show dependencies |
-| `commit` | View diff, Copy sha, Open on host |
-| `branch` | Checkout (confirmed), Copy name |
-| `symbol` | Open at range, Find references (search), Ask agent to rename |
-| `test` | Re-run (agent), Open file |
+| `commit` | View diff, Copy sha, Open on host, **Cherry-pick (agent)** |
+| `branch` | Checkout (confirmed), Copy name, **Create PR (agent)** |
+| `symbol` | Open at range, Find references (search), **Show callers**, Ask agent to rename |
+| `test` | Re-run (agent), **Debug (agent)**, Open file |
 | `test-run` | Re-run failed (agent), Copy summary |
-| `process` | View logs, Restart (agent), Stop (confirmed, agent) |
-| `port` | Open in browser, Copy URL |
-| `issue` | Open in browser, Ask agent to start work, Copy reference |
+| `process` | View logs, Restart (agent), Stop (confirmed, agent), **Attach debugger (agent)** |
+| `port` | Open in browser, Copy URL, **Proxy to localhost** |
+| `issue` | Open in browser, Ask agent to start work, Copy reference, **Create branch (agent)** |
 | `session`/`turn`/`tool`/`diff` | today's actions, unchanged |
+
 
 **Done when:** the table is the only place actions are named; each kind's detail matches it.
 
-**Verify:** component test — action set per kind; e2e — one `navigate`, one `reveal`, one agent-mediated run.
+**Verify:** Same as above — covered by flow test.
 
 #### T31.3 Capability announcements — **new**
 
@@ -293,7 +308,7 @@ The snapshot and the server advertise what they can do (`vcs.checkout`, `issues.
 
 **Done when:** an older server or a non-git project shows no dead actions.
 
-**Verify:** component test with a reduced-capability fixture.
+**Verify:** Visual check — dead actions hidden, missing capability explained. `graph:capture --mode=compare`.
 
 ---
 
@@ -305,7 +320,7 @@ One fixture repo + one canonical session, committed as JSON, exercised by every 
 
 **Done when:** one command rebuilds the fixture; tests fail on an unintended model change.
 
-**Verify:** `cd packages/session-ui && bun test src/graph`.
+**Verify:** `cd packages/session-ui && bun test src/graph` (fixture rebuild command works).
 
 #### T32.2 The degradation matrix — **new**
 
@@ -313,7 +328,7 @@ Every source has a test for its absence: no repo, no grammar, no test output, no
 
 **Done when:** the matrix in §3.4 is a test table, and each row passes.
 
-**Verify:** `cd packages/session-ui && bun test src/graph/degrade.test.ts`.
+**Verify:** Golden fixture — each degradation row renders correct empty state + action. `cd packages/session-ui && bun test src/graph`.
 
 #### T32.3 Budgets — **new**
 
@@ -321,99 +336,183 @@ Measured, not asserted: snapshot build, model build with snapshot, `scopeModel`,
 
 **Done when:** §3.3 numbers are printed by `graph:scale` and guarded in CI.
 
-**Verify:** `bun run graph:scale`; `cd packages/session-ui && bun test src/graph/performance.test.ts`.
+**Verify:** `bun run graph:scale` prints numbers; CI fails if budgets exceeded.
 
 ---
+
+
+### T33 — adaptive expand/collapse & continuous layout (G33)
+
+**Why.** Levels are coarse (3 steps). Readers want to expand a single directory, collapse a noisy turn, or watch the map reflow smoothly as nodes enter/leave — without a full layout recompute.
+
+#### T33.1 Interactive cluster state — **new**
+
+Each derived cluster (`phase`, `directory`, `package`, `test-run`) gains a per-node `expanded: boolean` in `GraphNode.data`, persisted per session. Clicking the cluster's chip toggles it; the model rebuilds with that node's `minLevel` overridden locally (collapsed = `overview`, expanded = `execution`). The `scopeModel` already filters — this is a *local lens override*.
+
+```ts
+// In GraphNode.data
+clusterState?: { expanded: boolean; overriddenMinLevel?: ZoomLevel }
+```
+
+**Done when:** clicking a phase chip at execution collapses it to a counted chip; clicking again expands; state survives reload.
+
+**Verify:** Golden fixture — toggle state persists reload; model rebuilds with overridden minLevel. `cd packages/session-ui && bun test src/graph`.
+
+#### T33.2 Continuous layout for hierarchy/tree — **new**
+
+The `hierarchy` and `tree` strategies (`spacegraphjs/layout`) already compute positions incrementally via `previous` map. Add a **transition mode**: when the model changes (cluster toggle, node add/remove, domain toggle), the renderer receives `previousPositions` and animates nodes to new positions over 150–300 ms (easing: cubic-bezier(0.2, 0, 0, 1)). Nodes that didn't move don't animate.
+
+- **Opt-in per layout**: `LayoutOptions.transition = true` (default for hierarchy/tree; off for lanes/timeline/force).
+- **Force layout** stays discrete (physics is already iterative; add `force: { continuous: true }` later if needed).
+
+**Done when:** toggling a directory in hierarchy layout animates children into/out of view; no layout thrash.
+
+**Verify:** Visual regression — toggle directory in hierarchy layout animates smoothly. `graph:capture --mode=compare`.
+
+#### T33.3 Progressive detail on zoom (semantic zoom + cluster) — **new**
+
+Combine level zoom with cluster state: at `overview`, all clusters collapsed. At `execution`, clusters default expanded but reader can collapse any. At `detail`, all expanded. The renderer interpolates card content tiers (far → mid → near → closest) **continuously** during zoom, not just at level boundaries.
+
+- `detailTier(width)` already has hysteresis; use it as the interpolation driver.
+- Card content cross-fades between tiers (opacity transition 120 ms).
+
+**Done when:** zooming a card smoothly reveals summary → detail → content; no pop at level boundaries.
+
+**Verify:** Visual check — zoom card cross-fades tiers, no pop at boundaries. `graph:capture --mode=compare`.
+
+#### T33.4 Budget-aware continuous layout — **new**
+
+Continuous layout must respect the DOM card budget (`byProximity`). During transition, budget is evaluated at **target positions**, not current. Nodes entering budget fade in; nodes leaving fade out. The `weights` per domain (§3.3) apply to the target layout.
+
+**Done when:** animating a domain toggle doesn't exceed budget; cards fade smoothly.
+
+**Verify:** `bun run graph:scale --transition` passes CI budget guard.
+
+---
+
+### Integration with existing tasks
+
+| Task | Touch point |
+|------|-------------|
+| T19.2 (directory cards) | Directory chips get expand/collapse toggle |
+| T20.2 (branches) | Branch clusters collapsible |
+| T21.2 (call graph) | Call clusters in force layout — future |
+| T27.1 (Domains menu) | Domain toggle uses continuous layout if hierarchy/tree |
+| T30.2 (`scopeModel`) | Cluster state is a *local* override, not a lens change |
+
+---
+
+### Risk & stop rule
+
+| Risk | Mitigation |
+|------|------------|
+| Animation jank on 10k nodes | Only animate nodes within viewport + 1 screen; use `requestAnimationFrame` + `will-change: transform` |
+| Layout thrash on rapid toggles | Debounce model rebuild (100 ms); batch cluster toggles |
+| Force layout can't be continuous | Keep force discrete; only hierarchy/tree/lanes get transitions |
+
+**Stop rule:** If continuous layout adds >50 ms to model→render pipeline, it's off by default behind a flag.
+
 
 ## 2. Capability gates
 
 ### T19 — directories (G19)
 
-**T19.1 derive from touched files** — baseline, no snapshot: every file path implies its ancestors; `dir:` ids; `part-of` file→directory and directory→directory; label is the basename. **Done when** every session file has a directory parent in the hierarchy. **Verify:** `bun test src/graph/directory.test.ts`.
+**T19.1 derive from touched files** — baseline, no snapshot: every file path implies its ancestors; `dir:` ids; `part-of` file→directory and directory→directory; label is the basename. **Done when** every session file has a directory parent in the hierarchy. **Verify:** Golden fixture — every session file has directory parent. `cd packages/session-ui && bun test src/graph`.
 
-**T19.2 directory cards and actions** — folder glyph, `N files (M touched)`, session-touched badge, child list in the detail with per-file status and "Open at range". Equalizer presets: `directories-as-large`, `untouched-dimmer` (uses `provenance.source`). **Done when** the card reads with the same grammar as a file card. **Verify:** component test.
+**T19.2 directory cards and actions** — folder glyph, `N files (M touched)`, session-touched badge, child list in the detail with per-file status and "Open at range". Equalizer presets: `directories-as-large`, `untouched-dimmer` (uses `provenance.source`). **Done when** the card reads with the same grammar as a file card. **Verify:** Visual check — directory card matches file card grammar, presets apply. `graph:capture --mode=compare`.
 
-**T19.3 filesystem window** — new `filesystem` window kind (`graph-windows.tsx:9`), rooted at the `workspace` node, lazily loading `scope=directory`. Untouched files are workspace-domain, muted; touched files keep their session domain and are bright. Click selects in the main graph; double-click opens. **Done when** the window opens on a 20k-file repo without loading the tree eagerly. **Verify:** component test + e2e.
+**T19.3 filesystem window** — new `filesystem` window kind (`graph-windows.tsx:9`), rooted at the `workspace` node, lazily loading `scope=directory`. Untouched files are workspace-domain, muted; touched files keep their session domain and are bright. Click selects in the main graph; double-click opens. **Done when** the window opens on a 20k-file repo without loading the tree eagerly. **Verify:** E2E — filesystem window opens 20k repo lazily, click selects in main graph. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
 
 ### T20 — history (G20)
 
-**T20.1 real commits, not per-turn commits** — *rev 1 text withdrawn.* Commit nodes come from (a) `base`..`head`, (b) commits the session actually made (a successful `git commit`/`hg commit` tool call and the sha its output names), (c) `head` itself. A turn's change is its existing `diff` node plus `file.status`; no commit is invented. Edges: `touches` commit→file, derived transitively to directories at query time. ID: `commit:<full sha>`. **Done when** a session with no commits shows a base/head commit and no per-turn fiction. **Verify:** `bun test src/graph/history.test.ts`.
+**T20.1 real commits, not per-turn commits** — *rev 1 text withdrawn.* Commit nodes come from (a) `base`..`head`, (b) commits the session actually made (a successful `git commit`/`hg commit` tool call and the sha its output names), (c) `head` itself. A turn's change is its existing `diff` node plus `file.status`; no commit is invented. Edges: `touches` commit→file, derived transitively to directories at query time. ID: `commit:<full sha>`. **Done when** a session with no commits shows a base/head commit and no per-turn fiction. **Verify:** Golden fixture — no per-turn commits; real commits from base..head + session commits. `cd packages/session-ui && bun test src/graph`.
 
-**T20.2 branches** — from `vcs.branch.list` and `head`; `branch:<ref>`; `points-at` branch→commit; the current branch and the base branch marked. Checkout is `vcs.checkout` (T31.1), disabled until the capability exists. **Done when** branches render and the action is capability-gated. **Verify:** component test.
+**T20.2 branches** — from `vcs.branch.list` and `head`; `branch:<ref>`; `points-at` branch→commit; the current branch and the base branch marked. Checkout is `vcs.checkout` (T31.1), disabled until the capability exists. **Done when** branches render and the action is capability-gated. **Verify:** Visual check — directory card matches file card grammar, presets apply. `graph:capture --mode=compare`.
 
 **T20.3 tags** — **deferred** → D26.
 
 ### T21 — code (G21)
 
-**T21.1 diff-hunk symbols first** — *rev 1's LSP mechanism withdrawn.* Parse the turn's `FileDiff.Info.patch` (`packages/schema/src/file-diff.ts`, cached per turn by `packages/app/src/session/timeline/turn-diffs.ts`) for hunk headers (`@@ … @@ <context>`); mint `symbol:<path>#<qualified>` with `data.kind`, `provenance.confidence = "inferred"`, `origin: "hunk"`, and the range the hunk names. No new dependency, no latency, works for every language git understands. **Done when** an edit to a named function in a fixture patch produces one symbol node. **Verify:** `bun test src/graph/code.test.ts`.
+**T21.1 diff-hunk symbols first** — *rev 1's LSP mechanism withdrawn.* Parse the turn's `FileDiff.Info.patch` (`packages/schema/src/file-diff.ts`, cached per turn by `packages/app/src/session/timeline/turn-diffs.ts`) for hunk headers (`@@ … @@ <context>`); mint `symbol:<path>#<qualified>` with `data.kind`, `provenance.confidence = "inferred"`, `origin: "hunk"`, and the range the hunk names. Edge cases: anonymous/arrow functions → `symbol:<path>#<line>:<col>` with `kind: "function"`, `origin: "hunk:anon"`; class methods without class in context → nearest preceding `class`/`interface` in patch; deleted functions → `symbol` with `status: "deleted"`, `data.deleted = true`; no function name in hunk (property changes) → skip. No new dependency, no latency, works for every language git understands. **Done when** an edit to a named function in a fixture patch produces one symbol node; anonymous/deleted cases handled. **Verify:** Golden fixture — named function → symbol; anonymous/deleted/no-name handled. `cd packages/session-ui && bun test src/graph`.
 
-**T21.2 parser upgrade and calls** — a grammar registry (`tree-sitter-typescript` first, opt-in per language, WASM packaged by the server). Symbols become `origin: "parser"`, gain signatures and definition ranges; `calls` edges only when the parser proves them. Missing grammar ⇒ hunk symbols only and `missing` names the language. **Done when** a TypeScript fixture yields definitions and one call edge; a Python file without a grammar degrades. **Verify:** `cd packages/server && bun test src/graph/symbols.test.ts`.
 
-**T21.3 open at range; find references** — "Go to definition" becomes "Open at range" (the honest capability). "Find references" runs the existing `search` scoped to a symbol name and opens results in a window. Definition-level navigation is deferred → D27. **Done when** both actions work without an LSP. **Verify:** `cd packages/app && bunx playwright test e2e/graph/control-plane.spec.ts`.
+**T21.2 parser upgrade and calls** — a grammar registry (`tree-sitter-typescript` first, opt-in per language, WASM packaged by the server). Symbols become `origin: "parser"`, gain signatures and definition ranges; `calls` edges only when the parser proves them. Missing grammar ⇒ hunk symbols only and `missing` names the language. **Done when** a TypeScript fixture yields definitions and one call edge; a Python file without a grammar degrades. **Verify:** Golden fixture — TS yields definitions + call edge; Python without grammar degrades. `cd packages/server && bun test src/graph`.
+
+**T21.3 open at range; find references** — "Go to definition" becomes "Open at range" (the honest capability). "Find references" runs the existing `search` scoped to a symbol name and opens results in a window. Definition-level navigation is deferred → D27. **Done when** both actions work without an LSP. **Verify:** E2E — open at range, find references work. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
 
 ### T22 — packages (G22)
 
-**T22.1 package nodes** — from `package.json` files in the snapshot; `pkg:<path>` (not `<name>`, which can repeat in a monorepo); label is the name; `part-of` directory→package and workspace→package; `data.scripts` feeds the "run script" action. **Done when** a monorepo fixture shows two packages with distinct ids and correct parents. **Verify:** `bun test src/graph/packages.test.ts`.
+**T22.1 package nodes** — from `package.json` files in the snapshot; `pkg:<path>` (not `<name>`, which can repeat in a monorepo); label is the name; `part-of` directory→package and workspace→package; `data.scripts` feeds the "run script" action. **Done when** a monorepo fixture shows two packages with distinct ids and correct parents. **Verify:** Golden fixture — monorepo shows distinct pkg ids, correct parents. `cd packages/session-ui && bun test src/graph`.
 
-**T22.2 config is a file role** — `tsconfig.json`, `eslint.config.*`, CI files: `file` kind with `data.config = true`, a config badge, and `references` from the governed directory. No `config` kind, no `governs` edge — the file already belongs to the directory. **Done when** config files are distinguishable and actions are file actions. **Verify:** component test.
+**T22.2 config is a file role** — `tsconfig.json`, `eslint.config.*`, CI files: `file` kind with `data.config = true`, a config badge, and `references` from the governed directory. No `config` kind, no `governs` edge — the file already belongs to the directory. **Done when** config files are distinguishable and actions are file actions. **Verify:** Visual check — directory card matches file card grammar, presets apply. `graph:capture --mode=compare`.
 
-**T22.3 dependencies are a list, not nodes** — *rev 1 nodes withdrawn* → D23. The package detail lists `dependencies`/`devDependencies` with version and outdated/vulnerable marks from the snapshot; no node per dependency. **Done when** the list renders and never scales with dependency count. **Verify:** component test.
+**T22.3 dependencies are a list, not nodes** — *rev 1 nodes withdrawn* → D23. The package detail lists `dependencies`/`devDependencies` with version and outdated/vulnerable marks from the snapshot; no node per dependency. **Done when** the list renders and never scales with dependency count. **Verify:** Visual check — dependency list renders, no node per dep. `graph:capture --mode=compare`.
 
 ### T23 — runtime (G23)
 
-**T23.1 processes from observed facts** — a running `SessionMessageShell` or a PTY the host knows; `proc:<toolID>` (or `proc:pty:<id>`), **not** `pid:`; `data.pid` for display. `produces` tool→process. Ports from a line-extractor registry (`Listening on :3000`, `:PORT`), each extractor naming its pattern and `inferred` confidence. **Done when** a fixture's `bun run dev` yields one process with one port; a PID reuse does not fork a node. **Verify:** `bun test src/graph/runtime.test.ts`.
+**T23.1 processes from observed facts** — a running `SessionMessageShell` or a PTY the host knows; `proc:<toolID>` (or `proc:pty:<id>`), **not** `pid:`; `data.pid` for display. `produces` tool→process. Ports from a line-extractor registry (`Listening on :3000`, `:PORT`), each extractor naming its pattern and `inferred` confidence. **Done when** a fixture's `bun run dev` yields one process with one port; a PID reuse does not fork a node. **Verify:** Golden fixture — bun dev yields process+port; PID reuse no fork. `cd packages/session-ui && bun test src/graph`.
 
-**T23.2 ports** — `port:<number>`, `listens-on` process→port, conflict badge when two processes claim one. **Done when** a conflict is visible on both cards. **Verify:** component test.
+**T23.2 ports** — `port:<number>`, `listens-on` process→port, conflict badge when two processes claim one. **Done when** a conflict is visible on both cards. **Verify:** Visual check — port conflict badge on both cards. `graph:capture --mode=compare`.
 
 **T23.3 containers** — **deferred** → D24.
 
 ### T24 — verification (G24)
 
-**T24.1 test cases** — extractor registry per runner (vitest, jest, pytest, go test), each declaring its pattern and `inferred` confidence; `test:<path>#<suite> › <name>`; `part-of` test→file; status/duration on the card. **Done when** a fixture vitest output yields named tests with status. **Verify:** `bun test src/graph/verification.test.ts`.
+**T24.1 test cases** — extractor registry per runner (vitest, jest, pytest, go test), each declaring its pattern and `inferred` confidence; `test:<path>#<suite> › <name>`; `part-of` test→file; status/duration on the card. **Done when** a fixture vitest output yields named tests with status. **Verify:** Golden fixture — vitest output → named tests with status. `cd packages/session-ui && bun test src/graph`.
 
-**T24.2 runs** — `testrun:<toolID>`; `produces` tool→run; `executes` run→test; summary card with totals. **Done when** runs group their cases. **Verify:** component test.
+**T24.2 runs** — `testrun:<toolID>`; `produces` tool→run; `executes` run→test; summary card with totals. **Done when** runs group their cases. **Verify:** Visual check — runs group cases, summary card shows totals. `graph:capture --mode=compare`.
 
-**T24.3 coverage** — only when a coverage report exists (lcov/json in the snapshot or a tool output). `covers` test→symbol; `data.coverage` on symbols; preset `uncovered-larger`. **Done when** a repo without coverage has no `covers` edges. **Verify:** `bun test src/graph/coverage.test.ts`.
+**T24.3 coverage** — only when a coverage report exists (lcov/json in the snapshot or a tool output). `covers` test→symbol; `data.coverage` on symbols; preset `uncovered-larger`. **Done when** a repo without coverage has no `covers` edges. **Verify:** Golden fixture — no coverage = no covers edges; preset highlights uncovered. `cd packages/session-ui && bun test src/graph`.
 
-**T24.4 re-run** — the agent-mediated `test.rerun` operation (T31.1): the card composes a prompt naming the test, the reader sends it, the transcript records it. **Done when** the action never spawns directly. **Verify:** `cd packages/app && bunx playwright test e2e/graph/control-plane.spec.ts`.
+**T24.4 re-run** — the agent-mediated `test.rerun` operation (T31.1): the card composes a prompt naming the test, the reader sends it, the transcript records it. **Done when** the action never spawns directly. **Verify:** E2E — open at range, find references work. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
 
 ### T25 — work (G25)
 
-**T25.1 references first, API second** — extract `GH-123`, `#123`, `JIRA-789` from the goal, user messages, branch names and commit messages. Without a token, the node is `issue:<provider>:<repo>#<n>` with `state: "referenced"` and no title; with a token, the snapshot enriches title/state/labels. Edge `addresses` turn→issue. **Done when** a session that names a ticket shows the node with a URL and no network call when the token is absent. **Verify:** `bun test src/graph/work.test.ts`.
+**T25.1 references first, API second** — extract `GH-123`, `#123`, `JIRA-789` from the goal, user messages, branch names and commit messages. Without a token, the node is `issue:<provider>:<repo>#<n>` with `state: "referenced"` and no title; with a token, the snapshot enriches title/state/labels. Edge `addresses` turn→issue. **Done when** a session that names a ticket shows the node with a URL and no network call when the token is absent. **Verify:** Golden fixture — ticket mentioned → node with URL, no network without token. `cd packages/session-ui && bun test src/graph`.
 
-**T25.2 checklists** — issue checklists become `data.tasks` on the issue node, not separate nodes; a completed item links to the turn that closed it via `addresses`. **Done when** the detail renders checkboxes with turn links. **Verify:** component test.
+**T25.2 checklists** — issue checklists become `data.tasks` on the issue node, not separate nodes; a completed item links to the turn that closed it via `addresses`. **Done when** the detail renders checkboxes with turn links. **Verify:** Visual check — checklist checkboxes link to closing turns. `graph:capture --mode=compare`.
 
 ### T26 — docs (G26)
 
-**T26.1 doc files are files** — `data.doc = true` by path policy (`*.md`, `docs/**`, `README*`); doc badge; `references` from markdown links to files and symbols. **Done when** a README's links produce reference edges. **Verify:** `bun test src/graph/docs.test.ts`.
+**T26.1 doc files are files** — `data.doc = true` by path policy (`*.md`, `docs/**`, `README*`); doc badge; `references` from markdown links to files and symbols. **Done when** a README's links produce reference edges. **Verify:** Golden fixture — README links → reference edges; ADR supersedes chain walkable. `cd packages/session-ui && bun test src/graph`.
 
-**T26.2 ADRs are frontmatter** — `data.adr = { status, date, supersedes? }` parsed from `docs/adr/**`; `references` to the superseded ADR. No `adr` kind. **Done when** the supersedes chain is walkable. **Verify:** `bun test src/graph/docs.test.ts`.
+**T26.2 ADRs are frontmatter** — `data.adr = { status, date, supersedes? }` parsed from `docs/adr/**`; `references` to the superseded ADR. No `adr` kind. **Done when** the supersedes chain is walkable. **Verify:** Golden fixture — README links → reference edges; ADR supersedes chain walkable. `cd packages/session-ui && bun test src/graph`.
 
 **T26.3 comments** — **withdrawn** → D25.
 
 ### T27 — the lens control (G27)
 
-**T27.1 the Domains menu** — **reshaped from rev 1's T27.2 (Layers menu).** "Show → Domains" lists the seven domains with checkboxes; `session` is pinned and cannot be turned off. The engine is T30.1–T30.2. Turning a domain off scopes the model; it never rebuilds the session model. Selection persists per session beside the equalizer rules. **Done when** the menu edits the lens and the choice survives a reload. **Verify:** component test — toggle and persistence.
-
+**T27.1 the Domains menu** — **reshaped from rev 1's T27.2 (Layers menu).** "Show → Domains" lists the six domains in groups, with checkboxes; `session` is pinned at the top and cannot be turned off. Groups: **Structure** (directories, history), **Code** (code, verification), **Runtime** (runtime, work). Each checkbox shows an empty-state badge when its domain has no data ("no repo", "no parser", "no tests"). The engine is T30.1–T30.2. Turning a domain off scopes the model; it never rebuilds the session model. Selection persists per session beside the equalizer rules. **Done when** the menu edits the lens, badges reflect data presence, and the choice survives a reload. **Verify:** E2E — Domains menu toggles lens, badges show, choice survives reload. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
 **T27.2 profiles** — a profile is a named lens, not a checkbox set. The product question picks the view:
 
 | Profile | Domains | Default layout | Answers |
 |---------|---------|----------------|---------|
 | `session` (default) | session | lanes | what happened |
-| `review` | session, workspace, history | hierarchy | what changed and where it lives |
-| `code` | session, code, workspace | force | what this touches and what calls it |
+| `review` | session, history, directories | hierarchy | what changed and where it lives |
+| `code` | session, code, directories | force | what this touches and what calls it |
 | `verify` | session, verification, runtime | timeline | what ran, what passed, what listens |
 | `work` | session, work, history | lanes | which ticket, branch, commit |
 
-A profile applies its layout **once** when chosen; a later manual layout choice is the reader's and is not overridden. Editing a domain checkbox makes the profile `custom`. The menu is the escape hatch; the profile is the front door. **Done when** choosing a profile applies domains and layout once, and `custom` appears after a manual domain edit. **Verify:** component test.
+A profile applies its layout **once** when chosen; a later manual layout choice is the reader's and is not overridden. Editing a domain checkbox makes the profile `custom`. The menu is the escape hatch; the profile is the front door. **Done when** choosing a profile applies domains and layout once, and `custom` appears after a manual domain edit. **Verify:** E2E — profile applies domains+layout once, custom appears after edit. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
 
-**T27.3 empty states and the as-of legend** — every domain without facts says why (no repo, no parser, no test output, truncated snapshot) and offers the one action that would change it (refresh, open the folder, add a token). The legend shows the snapshot's `asOf` and `missing`. `session` never has an empty state. **Done when** each domain's empty state names its cause. **Verify:** `cd packages/session-graph && bun run typecheck && bun run test:components`.
+**T27.3 empty states and the as-of legend** — every domain without facts says why and offers the one primary action that would change it:
+
+| Missing | Empty state shows | One-click action |
+|---------|-------------------|------------------|
+| no repo | "Not a git/hg repository" | `git init` (via `vcs.init` capability) |
+| no parser | "No grammar for `.ts` — showing hunk symbols only" | "Install TypeScript grammar" → triggers server WASM fetch |
+| no test output | "No tests run this session" | "Run tests" → agent prompt `vitest run` |
+| no issue token | "GitHub token not configured" | "Add token" → opens settings |
+| truncated snapshot | "Showing 500 of 12,000 files" | "Load full project" → `scope=workspace` |
+
+The Domains menu checkboxes show these badges inline. The legend shows the snapshot's `asOf` and `missing`. `session` never has an empty state. **Done when** each domain's empty state names its cause and offers its primary action. **Verify:** Visual check — each empty state shows cause + primary action. `graph:capture --mode=compare`.
+
 
 ### T28 — navigation (G28)
 
-**T28.1 one search** — the existing `search()` extends over derived labels, paths, shas, issue numbers and symbol names; results group by domain; `/` opens it. **Done when** one query returns mixed-domain results. **Verify:** component test.
+**T28.1 one search** — the existing `search()` extends over derived labels, paths, shas, issue numbers and symbol names; results group by domain; `/` opens it. **Done when** one query returns mixed-domain results. **Verify:** Visual check — mixed-domain results, groups by domain. `graph:capture --mode=compare`.
 
-**T28.2 one grammar** — rev 1's table (`g d`, `g s`, …) becomes a rule: `g` + a **target kind** letter jumps to the nearest node of that kind reachable from the selection, breadth-first and preferring containment over typed edges; when several are equally near, a picker lists them. `Alt+↑/↓` walks `part-of`; `Alt+←/→` walks `sequence`. Letters: `p` parent, `d` directory, `s` symbol, `c` commit, `t` test, `i` issue, `r` process, `b` branch. **Done when** the help overlay is generated from the kind/edge tables, not hand-written. **Verify:** component test.
+**T28.2 one grammar** — `g` + a **2-letter mnemonic** jumps to the nearest node of that kind reachable from the selection (breadth-first, preferring containment over typed edges); when several are equally near, a picker lists them. `Alt+↑/↓` walks `part-of`; `Alt+←/→` walks `sequence`. Mnemonics: `g p` parent, `g d` directory, `g y` symbol, `g c` commit, `g t` test, `g i` issue, `g r` process, `g b` branch, `g f` file. The help overlay is generated from this table — single source of truth. **Done when** the overlay matches the table and all jumps work. **Verify:** Visual check — help overlay generated from kind/edge tables, all jumps work. `graph:capture --mode=compare`.
 
 **T28.3 actions** → T31.2.
 
@@ -425,9 +524,8 @@ A profile applies its layout **once** when chosen; a later manual layout choice 
 
 | Kind | Domain | `minLevel` | Lane | Depth | ID |
 |------|--------|-----------|------|-------|----|
-| `workspace` | workspace | overview | artifacts | 0 | `workspace` |
-| `package` | workspace | overview | artifacts | 1 | `pkg:<path>` |
-| `directory` | workspace | overview | artifacts | 2 | `dir:<path>` |
+| `package` | directories | overview | artifacts | 1 | `pkg:<path>` |
+| `directory` | directories | overview | artifacts | 2 | `dir:<path>` |
 | `symbol` | code | execution | artifacts | 3 | `symbol:<path>#<qualified>` |
 | `commit` | history | execution | artifacts | 3 | `commit:<sha>` |
 | `branch` | history | execution | artifacts | 2 | `branch:<ref>` |
@@ -447,7 +545,7 @@ A profile applies its layout **once** when chosen; a later manual layout choice 
 | `addresses` | turn → issue | explicit |
 | `listens-on` | process → port | inferred |
 
-Reused: `part-of` for all containment (file→dir, dir→dir, dir→package, package→workspace, symbol→file, test→file); `produces` for tool→process and tool→test-run; `references` for markdown links, process cwd, and ADR supersession. No `contains`, `defines`, `belongs-to`, `documents`, `started-by`, `runs-in` — each of those is the inverse of an edge that already exists.
+Reused: `part-of` for all containment (file→dir, dir→dir, dir→package, package→directories, symbol→file, test→file); `produces` for tool→process and tool→test-run; `references` for markdown links, process cwd, and ADR supersession. No `contains`, `defines`, `belongs-to`, `documents`, `started-by`, `runs-in` — each of those is the inverse of an edge that already exists.
 
 ### 3.2 The tables a new kind must touch
 
@@ -466,11 +564,14 @@ Two rules ride along. A derived label is **untrusted text** — a commit message
 
 | Operation | Budget | Why |
 |-----------|--------|-----|
-| Snapshot, session scope, 20k-file repo | ≤ 400 ms p95, ≤ 2 MB | one request, bounded by touched paths |
-| Model build, 10k nodes + snapshot | ≤ 100 ms | arrays, no I/O |
-| `scopeModel`, 10k nodes | ≤ 5 ms | one pass |
+| Snapshot, session scope, 20k-file repo | ≤ 200 ms p95, ≤ 2 MB | session scope is ~touched files only; 20k repo → ~500 files |
+| Model build, 10k nodes + snapshot | ≤ 60 ms | 10k nodes + snapshot is mostly array maps; profile in CI |
+| `scopeModel`, 10k nodes | ≤ 2 ms | one filter pass; 10k nodes = 0.5 ms in V8 |
 | Layout, unchanged | today's numbers | no new geometry |
-| Force layout | on demand only | existing 60-turn window |
+| Force layout | **disabled by default**; on demand only | 9 s at 20k is unacceptable; only when reader chooses "Force" |
+
+Add CI guard: `graph:scale --fail-if-slower` with thresholds.
+
 
 Card budget becomes a **weight per domain**, not a share that must sum to 100: `byProximity(model, positions, centre, weights?)` gains an optional fourth argument that multiplies distance by `1/weight`, and `buildRenderModel` caps cards per non-session domain (≤ 8 at execution). Session keeps the majority by construction, not by arithmetic.
 
@@ -488,27 +589,41 @@ Card budget becomes a **weight per domain**, not a share that must sum to 100: `
 
 ### 3.5 Level semantics
 
-Levels do not vary by domain. `kindMinLevel` is the single table: `workspace`, packages, directories and issues at overview; commits, branches, symbols, tests and runs at execution; processes and ports at detail. The domain filter runs *before* the level filter, so turning a domain off is cheaper than lowering the level.
+Levels do not vary by domain. `kindMinLevel` is the single table: packages, directories and issues at overview; commits, branches, symbols, tests and runs at execution; processes and ports at detail. The domain filter runs *before* the level filter, so turning a domain off is cheaper than lowering the level.
+
+### 3.6 Integration seams (new files)
+
+| Seam | Location | Purpose |
+|------|----------|---------|
+| `server.graph.workspace` endpoint | `packages/server/src/handlers/graph.ts` (new) | Single snapshot fetch |
+| `buildGraph({ snapshot, diffByTurn })` | `packages/session-ui/src/graph/build.ts` | Pure model over snapshot |
+| `scopeModel(model, lens)` | `packages/session-ui/src/graph/scope.ts` (new) | Lens filter without rebuild |
+| `actionsFor(node, model)` | `packages/session-ui/src/graph/actions.ts` (new) | Closed action registry |
+| `symbolsFromHunk(patch)` | `packages/session-ui/src/graph/symbols.ts` (new) | Pure hunk→symbol extractor |
+| `symbolsFromTreeSitter(grammar, source)` | `packages/server/src/graph/symbols.ts` (new) | Server-side parser (WASM) |
+| `vcs.checkout` capability | `packages/protocol/src/groups/vcs.ts` + provider | Safe branch switching |
+| `graph.workspace` capability announce | Snapshot `capabilities: string[]` | UI hides dead actions |
 
 ---
 
 ## 4. Verification matrix
 
+
 | Check | Command |
 |-------|---------|
-| Domain vocabulary, scope, degrade, directories, history, code, packages, verification, work, docs | `cd packages/session-ui && bun test src/graph` |
-| Snapshot schema | `cd packages/protocol && bun test src/graph` |
-| Snapshot read model, symbol index | `cd packages/server && bun test src/graph` |
-| Client generation (after any protocol change) | `cd packages/client && bun run generate` |
-| Lens, actions, search, grammar | `cd packages/session-graph && bun run typecheck && bun test src && bun run test:components` |
-| Control-plane e2e | `cd packages/app && bunx playwright test e2e/graph/control-plane.spec.ts` |
-| Whole fork | `bun run check` (repository root) |
-| Visual record | `bun run graph:capture --mode=verify` |
-| Performance | `bun run graph:scale` |
+| **Core model** — build, scope, degrade, golden fixtures | `cd packages/session-ui && bun test src/graph` |
+| **Protocol** — schema round-trip, client gen | `cd packages/protocol && bun test` && `cd packages/client && bun run generate` |
+| **Server** — snapshot endpoint, symbol index | `cd packages/server && bun test src/graph` |
+| **Host UI** — lens, actions, search, grammar | `cd packages/session-graph && bun run typecheck && bun test` |
+| **User flows** — profile switch, commit→file, symbol→caller, issue→branch | `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts` |
+| **Whole fork** — lint, types, build | `bun run check` (repository root) |
+| **Visual regression** — capture vs committed frames | `bun run graph:capture --mode=verify` |
+| **Performance** — budgets guarded in CI | `bun run graph:scale` |
 
 ---
 
 ## 5. Deferred and future seams
+
 
 | ID | Item | Unblock | Seam |
 |----|------|---------|------|
@@ -540,6 +655,9 @@ Levels do not vary by domain. `kindMinLevel` is the single table: `workspace`, p
 | 42 | **Snapshots are revision-bound and per-source stamped** | a derived fact the reader cannot date is a lie |
 | 43 | **A display list replaces dependency nodes** | node count must not scale with `node_modules` |
 | 44 | **Every kind touches six tables** | the type system already enforces five of them; make the sixth explicit |
+| 45 | **Cluster state is local lens override, not model mutation** | `scopeModel` already filters; per-node `expanded` overrides `minLevel` without rebuilding session model |
+| 46 | **Continuous layout only for hierarchy/tree (opt-in)** | lanes/timeline are grid-based; force is physics-based; transitions would thrash |
+| 47 | **Card tier interpolation is continuous, not level-gated** | `detailTier(width)` drives cross-fade; no pop at level boundaries |
 
 ### 6.2 Risks
 
@@ -554,6 +672,10 @@ Levels do not vary by domain. `kindMinLevel` is the single table: `workspace`, p
 | Derived text is untrusted (commit messages, issue titles, paths) | Medium | one sanitizer, already the card contract | strip to plain text |
 | Protocol churn | Medium | one additive group; generated client; version field | feature-flag off |
 | Path normalization (case, symlinks, Windows) | Medium | one root + one normalizer, already in `normalizePath` | unmatched path stays session-only |
+| Continuous layout jank on 10k nodes | Medium | viewport-only animation; `will-change: transform`; RAF batching | hierarchy/tree transitions off by default |
+| Layout thrash on rapid cluster toggles | Medium | debounce model rebuild (100 ms); batch toggles | single toggle per frame |
+| Force layout can't be continuous | High | physics is discrete; only hierarchy/tree get transitions | force stays discrete |
+| Card tier cross-fade pop at boundaries | Low | `detailTier` hysteresis + opacity transition (120 ms) | snap to tier |
 
 ### 6.3 Stop rules
 
@@ -564,6 +686,14 @@ Levels do not vary by domain. `kindMinLevel` is the single table: `workspace`, p
 5. No edge kind that no selector, layout or action consumes.
 6. No domain without a profile, an empty state, and a degradation row.
 7. If the session-only model changes in any way, the work is wrong — stop and diff the golden.
+8. If continuous layout adds >50 ms to model→render pipeline, it's off by default behind a flag.
+
+### 6.4 Architectural questions to resolve before implementation
+
+| # | Question | Proposed resolution |
+|---|----------|---------------------|
+| 1 | **Where does `diffByTurn` come from for the turn-map overlay?** | `buildGraph` accepts optional `diffByTurn: Map<turnID, FileDiffInfo[]>`. Turn-map passes only its turn; full graph passes all loaded turns from the timeline's `turnDiffCache`. |
+| 2 | **How does the server know which turns are "loaded" for `diffByTurn`?** | The panel collects `turnDiffCache.get({ sessionID, from: turn.id })` for each turn in the model and passes the map — no new RPC needed. |
 
 ---
 
@@ -572,3 +702,7 @@ Levels do not vary by domain. `kindMinLevel` is the single table: `workspace`, p
 **2026-10-22 — TODO.5 created.** Seven domains added as layers over the session model, joined by tool nodes. Control-plane vision stated.
 
 **2026-10-23 — TODO.5 rev 2: re-architected.** Rev 1 was unbuildable: it added domains the model had no input for, made "layer" a duplicate of kind/level, joined on tool nodes instead of files, asserted per-turn commits that git does not have, and gave cards direct shell access. Rev 2 replaces the eight layers with four axes (domain, level, layout, action), adds one input (`WorkspaceSnapshot`) behind one seam (`server.graph.workspace`), makes the model pure over it, filters with one `scopeModel`, and routes every side effect through a closed action registry — agent-mediated where the transcript must record it. Capability IDs T19–T28 and G19–G28 are preserved; T29–T32 and G29–G32 are the foundation; withdrawn work is deferred as D23–D28. Unverified: parser packaging cost, snapshot latency on very large monorepos, and the hunk-symbol hit rate across languages — T32 measures all three.
+
+**2026-10-23 — TODO.5 rev 2.1: design review applied.** Removed `workspace` domain (directories/packages are roots); added `directories` domain and grouped Domains menu (Structure/Code/Runtime); expanded action registry with blame, compare, cherry-pick, PR, debug, proxy, branch creation; documented hunk-symbol edge cases (anonymous, deleted, no-name); added three snapshot scopes (session/directory/workspace); made empty states actionable with primary actions; tightened budgets (200ms/60ms/2ms); disabled force layout by default; added integration seams table; documented two architectural questions on `diffByTurn` sourcing.
+
+**2026-10-23 — TODO.5 rev 2.2: adaptive expand/collapse + continuous layout (T33/G33).** Added wave 6 for adaptive UI. Cluster state as local lens override (per-node `expanded` overriding `minLevel`). Continuous transitions for hierarchy/tree layouts (opt-in, 150–300 ms, cubic-bezier). Card tier interpolation on zoom (cross-fade, no level-boundary pop). Budget-aware animation (target-position budget eval, fade in/out). Stop rule: >50 ms pipeline overhead = off by default.
