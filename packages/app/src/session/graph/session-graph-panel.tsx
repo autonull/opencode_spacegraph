@@ -189,13 +189,17 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
   }
 
   // T18.4: keyboard support for the divider — arrow keys resize, Home/End go to min/max.
+  // Shift+Arrow: 0.5% (fine), Arrow: 2% (normal), Ctrl/Cmd+Arrow: 10% (coarse)
   const handleDividerKeyDown = (event: KeyboardEvent) => {
     const total = axis()
     if (total <= 0) return
     const currentPixels = firstPanePixels()
-    const step = total * 0.02 // 2% per key press
     const min = handleMin()
     const max = handleMax()
+
+    let step = total * 0.02 // 2% normal
+    if (event.shiftKey) step = total * 0.005 // 0.5% fine
+    if (event.ctrlKey || event.metaKey) step = total * 0.1 // 10% coarse
 
     let nextPixels: number | undefined
     switch (event.key) {
