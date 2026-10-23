@@ -66,7 +66,7 @@ export {
   type SummaryLayout,
 } from "./vocabulary"
 
-export { nodeIndex, lookupNode } from "./lookup"
+export { nodeIndex, lookupNode, childIndex } from "./lookup"
 
 export { scopeModel } from "./scope"
 

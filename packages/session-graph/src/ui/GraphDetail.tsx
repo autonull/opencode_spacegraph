@@ -2,6 +2,7 @@ import type { GraphEdge, GraphModel, GraphNode, Provenance } from "@opencode/ses
 import {
   actionsFor,
   capabilitiesFromSnapshot,
+  childIndex,
   filterActionsByCapabilities,
   type ActionSpec,
 } from "@opencode/session-ui/graph"
@@ -265,6 +266,37 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         {field(i18n.t("ui.sessionGraph.inspector.exit"), count(data()?.exit))}
         {field(i18n.t("ui.sessionGraph.inspector.source"), provenance)}
       </dl>
+
+      {props.node.kind === "directory" && (() => {
+        const node = props.node
+        const children = childIndex(props.model).get(node.id) ?? []
+        const fileChildren = children
+          .map((id) => nodeByID(props.model, id))
+          .filter((n): n is GraphNode => !!n && n.kind === "file")
+        return fileChildren.length > 0 ? (
+          <div class="mt-3">
+            <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.files")}</div>
+            <ul class="mt-1 flex flex-col gap-0.5">
+              <For each={fileChildren}>
+                {(file) => (
+                  <li class="flex items-center gap-2 text-12-mono text-text-base">
+                    <span class="truncate">{file.label}</span>
+                    <button
+                      type="button"
+                      class="shrink-0 rounded-sm px-1.5 py-0.5 text-10-regular text-text-weak hover:bg-surface-base-hover hover:text-text-base"
+                      onClick={() => props.onActionNavigate?.({ file: file.data?.path as string, range: file.data?.range as any })}
+                    >
+                      {i18n.t("ui.graph.actions.openAtRange")}
+                    </button>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </div>
+        ) : (
+          <div class="mt-3 text-12-regular text-text-weaker">{i18n.t("ui.sessionGraph.inspector.noFiles")}</div>
+        )
+      })()}
 
       <Show when={flag(data()?.replayed)}>
         <div class="mt-2 grid grid-cols-[7rem_1fr] gap-2" data-slot="graph-inspector-field">

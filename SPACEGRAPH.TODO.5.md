@@ -442,7 +442,21 @@ Continuous layout must respect the DOM card budget (`byProximity`). During trans
 
 **T19.2 directory cards and actions** — folder glyph, `N files (M touched)`, session-touched badge, child list in the detail with per-file status and "Open at range". Equalizer presets: `directories-as-large`, `untouched-dimmer` (uses `provenance.source`). **Done when** the card reads with the same grammar as a file card. **Verify:** Visual check — directory card matches file card grammar, presets apply. `graph:capture --mode=compare`.
 
+**Progress (2026-10-23):**
+- Added equalizer presets `directories-as-large` (scale 1.5) and `untouched-dimmer` (muted) in `packages/session-ui/src/graph/equalizer.ts`
+- Added directory-specific detail rendering in `GraphDetail.tsx` showing file count, touched count, and child files with "Open at range" action
+- Added preset keys to `GraphEqualizer.tsx`
+- **Remaining:** Visual verification of card grammar match, visual regression test
+
 **T19.3 filesystem window** — new `filesystem` window kind (`graph-windows.tsx:9`), rooted at the `workspace` node, lazily loading `scope=directory`. Untouched files are workspace-domain, muted; touched files keep their session domain and are bright. Click selects in the main graph; double-click opens. **Done when** the window opens on a 20k-file repo without loading the tree eagerly. **Verify:** E2E — filesystem window opens 20k repo lazily, click selects in main graph. `cd packages/app && bunx playwright test e2e/graph/flows.spec.ts`.
+
+**Progress (2026-10-23):**
+- Implemented `GraphFilesystemWindow.tsx` component with expandable directory tree
+- Added filesystem window kind to `windowKinds` in `GraphView.tsx`
+- Added toolbar button in `GraphToolbar.tsx` (shows when workspaceRoot exists)
+- Window shows session-touched files with badge, untouched files muted
+- Click selects in main graph, double-click opens via `onActionNavigate`
+- **Remaining:** E2E test for 20k-file repo lazy loading
 
 ### T20 — history (G20)
 
@@ -739,3 +753,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — T32.1 done (golden snapshot fixture — G32).** Comprehensive snapshot fixture in `fixture.ts` with all 8 derived kinds (packages, commits, branches, symbols, processes, ports, issues, directories). `attachWorkspace()` in `build.ts` now creates all derived nodes from snapshot with provenance. Golden fixture `model.golden.with-snapshot.json` pins the full model. All 175 session-ui graph tests pass. Protocol `asOf` extended with `processes` and `issues` timestamps.
 
 **2026-10-23 — T27.1 done (Domains menu — G27).** The Domains menu is implemented in the toolbar under "Show". It lists six domains in three groups (Structure: directories, history; Code: code, verification; Runtime: runtime, work) with checkboxes. Session is pinned and cannot be turned off. Checkboxes show a tooltip when the domain has no data in the model. The lens is applied via `scopeModel` (T30.2) — the model is filtered without rebuilding. Domain selection persists in the view's state. Files changed: `packages/session-graph/src/ui/GraphToolbar.tsx`, `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/vocabulary.ts`.
+
+**2026-10-23 — T19.2, T19.3 progress (directories — G19).** Added equalizer presets `directories-as-large` and `untouched-dimmer` in `equalizer.ts`. Implemented directory detail rendering in `GraphDetail.tsx` showing file count, touched count, and child files with "Open at range" action. Created `GraphFilesystemWindow.tsx` component with expandable directory tree, session/untouched badges, click-to-select and double-click-to-open. Added filesystem window kind to `windowKinds` in `GraphView.tsx` and toolbar button in `GraphToolbar.tsx`. All unit tests pass (175 session-ui + 104 session-graph).

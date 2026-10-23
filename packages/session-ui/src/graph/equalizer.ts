@@ -86,4 +86,12 @@ export const EQUALIZER_PRESETS: readonly { id: string; rules: EqualizerRuleSet }
     id: "old-files-dimmer",
     rules: [{ id: "old-files-dimmer", kind: "file", fadeAfter: 600 }],
   },
+  {
+    id: "directories-as-large",
+    rules: [{ id: "directories-as-large", kind: "directory", scale: 1.5 }],
+  },
+  {
+    id: "untouched-dimmer",
+    rules: [{ id: "untouched-dimmer", kind: "file", muted: true }],
+  },
 ]

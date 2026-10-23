@@ -87,6 +87,7 @@ import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
 import { GraphToolbar } from "./GraphToolbar"
+import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { createGraphTheme } from "./theme"
 import { buildAxisLabels } from "./axisLabels"
@@ -207,6 +208,11 @@ export type GraphViewProps = {
   onWindowsChange?: (windows: GraphWindowState[]) => void
   /** T12: the host opens a window. The view proposes its first placement; the host owns its lifetime. */
   onOpenWindow?: (window: GraphWindowState) => void
+  /** T31 — action handlers from the host. */
+  onActionNavigate?: (target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void
+  onActionReveal?: (target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void
+  onActionCopy?: (text: string) => void
+  onActionRun?: (operation: { id: string; params: Record<string, unknown> }) => void
   /**
    * T15: the equalizer's rules. A size rule re-lays-out the map (the rules are part of the layout
    * key, so the map moves like it does when the level changes); a style rule rebuilds the cards.
@@ -725,6 +731,19 @@ export const GraphView = (props: GraphViewProps) => {
           />
         )
       },
+    },
+    {
+      name: "filesystem",
+      title: () => i18n.t("ui.sessionGraph.filesystem.title"),
+      render: (window) => (
+        <GraphFilesystemWindow
+          model={props.model}
+          workspaceRoot={props.model.workspaceRoot ?? props.model.root}
+          onSelect={selection.select}
+          onOpen={(file) => props.onActionNavigate?.({ file: file.data?.path as string })}
+          selection={selection.selection()[0]}
+        />
+      ),
     },
     {
       name: "legend",

@@ -424,6 +424,13 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
             onClick={() => props.onOpenWindow?.("minimap")}
           />
         </Show>
+        <Show when={props.onOpenWindow && props.model?.workspaceRoot}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.toolbar.filesystem")}
+            icon="folder-tree"
+            onClick={() => props.onOpenWindow?.("filesystem")}
+          />
+        </Show>
         <Show when={props.onToggleLegend}>
           <GraphIconButton
             label={i18n.t("ui.sessionGraph.toolbar.legend")}

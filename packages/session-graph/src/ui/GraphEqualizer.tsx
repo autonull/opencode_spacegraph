@@ -20,6 +20,8 @@ const PRESET_KEY: Record<string, string> = {
   "errors-larger": "ui.sessionGraph.equalizer.preset.errorsLarger",
   "subagents-as-large": "ui.sessionGraph.equalizer.preset.subagentsAsLarge",
   "old-files-dimmer": "ui.sessionGraph.equalizer.preset.oldFilesDimmer",
+  "directories-as-large": "ui.sessionGraph.equalizer.preset.directoriesAsLarge",
+  "untouched-dimmer": "ui.sessionGraph.equalizer.preset.untouchedDimmer",
 }
 
 export type GraphEqualizerBodyProps = {
