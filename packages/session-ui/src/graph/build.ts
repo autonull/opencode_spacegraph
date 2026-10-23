@@ -1,4 +1,5 @@
 import type {
+  FileDiffInfo,
   JsonValue,
   PromptFileAttachment,
   SessionMessageAssistant,
@@ -39,6 +40,7 @@ import {
   type NodeStatus,
   type PhaseCategory,
   type Provenance,
+  type Range,
   type SessionLineage,
 } from "./model"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
@@ -156,6 +158,8 @@ class GraphBuilder {
   private readonly phaseOrdinalsByTurn = new Map<string, number>()
   /** The last failure in a turn, so a retry can point back at it. */
   private readonly lastErrorByTurn = new Map<string, string>()
+  /** T21.1 — per-turn diffs for hunk symbol extraction. */
+  private readonly diffByTurn?: Map<string, FileDiffInfo[]>
   private previousTurn: string | undefined
   private readonly goal: string | undefined
 
@@ -165,8 +169,10 @@ class GraphBuilder {
     private readonly snapshot?: WorkspaceSnapshot,
     sessionID?: string,
     lineage?: SessionLineage,
+    diffByTurn?: Map<string, FileDiffInfo[]>,
   ) {
     this.goal = messages.find((message) => message.type === "user")?.text
+    this.diffByTurn = diffByTurn
 
     this.addNode({
       id: SESSION_NODE_ID,
@@ -234,6 +240,8 @@ class GraphBuilder {
     }
 
     if (this.snapshot) this.attachWorkspace(this.snapshot)
+
+    if (this.diffByTurn) this.attachHunkSymbols(this.diffByTurn)
 
     return {
       root: SESSION_NODE_ID,
@@ -411,6 +419,190 @@ class GraphBuilder {
       // part-of file
       const fileId = this.fileNodes.get(normalizePath(sym.path))
       if (fileId) this.partOf(id, fileId, "structural")
+    }
+  }
+
+  /**
+   * T21.1 — extract symbols from a unified diff patch by parsing hunk headers.
+   * Parses `@@ -oldStart,oldCount +newStart,newCount @@ [context]` to find function/class names.
+   */
+  private symbolsFromHunk(patch: string, filePath: string): Array<{
+    name: string
+    qualified: string
+    kind: "function" | "class" | "method"
+    range: Range
+    signature?: string
+    origin: "hunk" | "hunk:anon" | "hunk:deleted"
+    deleted?: boolean
+  }> {
+    const symbols: Array<{
+      name: string
+      qualified: string
+      kind: "function" | "class" | "method"
+      range: Range
+      signature?: string
+      origin: "hunk" | "hunk:anon" | "hunk:deleted"
+      deleted?: boolean
+    }> = []
+
+    const lines = patch.split("\n")
+    let currentClass: string | undefined
+    let lineNumber = 0
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      // Track line numbers from the hunk header
+      const hunkHeaderMatch = line.match(/^@@\s*-(\d+)(?:,(\d+))?\s*\+(\d+)(?:,(\d+))?\s*@@/)
+      if (hunkHeaderMatch) {
+        lineNumber = Number(hunkHeaderMatch[3]) - 1 // newStart is 1-based
+        continue
+      }
+
+      // Increment line number for each line in the patch (after hunk header)
+      lineNumber++
+
+      // Detect class/interface declarations to qualify method names
+      const classMatch = line.match(/^\+\s*(?:export\s+)?(?:abstract\s+)?(?:class|interface)\s+(\w+)/)
+      if (classMatch) {
+        const className = classMatch[1]
+        // Create symbol for the class itself
+        symbols.push({
+          name: className,
+          qualified: className,
+          kind: "class",
+          range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 20, character: 0 } },
+          origin: "hunk",
+        })
+        currentClass = className
+        continue
+      }
+
+      // Detect function declarations (including async, generators)
+      const funcMatch = line.match(/^\+\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
+      if (funcMatch) {
+        const name = funcMatch[1] || funcMatch[2]
+        if (name) {
+          symbols.push({
+            name,
+            qualified: currentClass ? `${currentClass}.${name}` : name,
+            kind: "function",
+            range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
+            origin: "hunk",
+          })
+        }
+        continue
+      }
+
+      // Detect method declarations (inside class)
+      const methodMatch = line.match(/^\+\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{?/)
+      if (methodMatch && currentClass) {
+        const name = methodMatch[1]
+        // Skip common non-method keywords
+        if (!["constructor", "get", "set", "static", "public", "private", "protected"].includes(name)) {
+          symbols.push({
+            name,
+            qualified: `${currentClass}.${name}`,
+            kind: "method",
+            range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
+            origin: "hunk",
+          })
+        }
+        continue
+      }
+
+      // Detect arrow functions assigned to properties (class fields)
+      const arrowMatch = line.match(/^\+\s*(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
+      if (arrowMatch && currentClass) {
+        const name = arrowMatch[1]
+        symbols.push({
+          name,
+          qualified: `${currentClass}.${name}`,
+          kind: "method",
+          range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
+          origin: "hunk",
+        })
+        continue
+      }
+
+      // Detect deleted functions (lines starting with - that look like function declarations)
+      const deletedFuncMatch = line.match(/^-\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
+      if (deletedFuncMatch) {
+        const name = deletedFuncMatch[1] || deletedFuncMatch[2]
+        if (name) {
+          symbols.push({
+            name,
+            qualified: currentClass ? `${currentClass}.${name}` : name,
+            kind: "function",
+            range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
+            signature: line.slice(1).trim(),
+            origin: "hunk:deleted",
+            deleted: true,
+          })
+        }
+        continue
+      }
+
+      // Detect anonymous/arrow functions without a name (heuristic: => or function() without name)
+      const anonMatch = line.match(/^\+\s*(?:const|let|var)\s*[A-Z_a-z][A-Z_a-z0-9]*\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
+      if (anonMatch) {
+        // Use line:col as qualified name for anonymous functions
+        symbols.push({
+          name: "anonymous",
+          qualified: `${filePath}:${lineNumber}:0`,
+          kind: "function",
+          range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 5, character: 0 } },
+          origin: "hunk:anon",
+        })
+        continue
+      }
+
+      // Reset class context when we see a class-level closing brace (no indentation after +)
+      // Class-level: +} or + } (0-1 spaces after +)
+      // Method-level: +  } (2+ spaces after +)
+      const braceMatch = line.match(/^\+(\s*)\}\s*$/)
+      if (braceMatch && braceMatch[1].length <= 1) {
+        currentClass = undefined
+      }
+    }
+
+    return symbols
+  }
+
+  /** T21.1 — extract and attach hunk symbols from per-turn diffs. */
+  private attachHunkSymbols(diffByTurn: Map<string, FileDiffInfo[]>) {
+    for (const [_turnID, diffs] of diffByTurn) {
+      for (const diff of diffs) {
+        const symbols = this.symbolsFromHunk(diff.patch, diff.file)
+        for (const sym of symbols) {
+          const id = `symbol:${normalizePath(diff.file)}#${sym.qualified}`
+          // Skip if already added (from snapshot)
+          if (this.nodeIDs.has(id)) continue
+
+          this.addNode({
+            id,
+            kind: "symbol",
+            label: sym.name,
+            status: sym.deleted ? "failed" : "neutral",
+            minLevel: "execution",
+            domain: "code",
+            provenance: { source: "tree", confidence: "inferred" },
+            data: this.filterDefined({
+              path: diff.file,
+              name: sym.name,
+              qualified: sym.qualified,
+              kind: sym.kind,
+              range: sym.range,
+              signature: sym.signature,
+              origin: sym.origin,
+              deleted: sym.deleted,
+            }),
+          })
+          // part-of file
+          const fileId = this.fileNodes.get(normalizePath(diff.file))
+          if (fileId) this.partOf(id, fileId, "structural")
+        }
+      }
     }
   }
 
@@ -1231,8 +1423,10 @@ export type BuildGraphInput = {
   lineage?: SessionLineage
   /** T29.3 — absent keeps the session-only model byte-identical. */
   snapshot?: WorkspaceSnapshot
+  /** T21.1 — per-turn file diffs for hunk symbol extraction. */
+  diffByTurn?: Map<string, FileDiffInfo[]>
 }
 
 export function buildGraph(input: BuildGraphInput): GraphModel {
-  return new GraphBuilder(input.messages, input.status, input.snapshot, input.sessionID, input.lineage).build()
+  return new GraphBuilder(input.messages, input.status, input.snapshot, input.sessionID, input.lineage, input.diffByTurn).build()
 }

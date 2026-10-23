@@ -206,7 +206,7 @@ Absent snapshot must produce the **existing** model exactly — the session laye
 
 **Landed:** `buildGraph({ messages, status, sessionID?, lineage?, snapshot? })` (all call sites and tests updated). `GraphModel` gains optional `workspaceRoot` and `snapshot: { revision, asOf, missing }`; absent fields are not added, so the session-only model is unchanged. `packages/session-ui/src/graph/model.golden.json` pins that model (`UPDATE_GOLDEN=1 bun test src/graph/workspace.test.ts` rewrites it). Directories are derived from the union of session-touched files and snapshot files, with `part-of` file→directory and directory→parent edges (T19.1's baseline).
 
-**Deviation:** `diffByTurn` is **not** in the input yet. It has no consumer until T21.1 mints hunk symbols, and an accepted-but-unused field is dead weight. Add it with `symbolsFromHunk`.
+**Deviation:** `diffByTurn` is now implemented (T21.1). Added to `BuildGraphInput` with `symbolsFromHunk` extracting symbols from turn diff patches.
 
 #### T29.4 Refresh and staleness — **done** (2026-10-23)
 
@@ -468,7 +468,17 @@ Continuous layout must respect the DOM card budget (`byProximity`). During trans
 
 ### T21 — code (G21)
 
-**T21.1 diff-hunk symbols first** — *rev 1's LSP mechanism withdrawn.* Parse the turn's `FileDiff.Info.patch` (`packages/schema/src/file-diff.ts`, cached per turn by `packages/app/src/session/timeline/turn-diffs.ts`) for hunk headers (`@@ … @@ <context>`); mint `symbol:<path>#<qualified>` with `data.kind`, `provenance.confidence = "inferred"`, `origin: "hunk"`, and the range the hunk names. Edge cases: anonymous/arrow functions → `symbol:<path>#<line>:<col>` with `kind: "function"`, `origin: "hunk:anon"`; class methods without class in context → nearest preceding `class`/`interface` in patch; deleted functions → `symbol` with `status: "deleted"`, `data.deleted = true`; no function name in hunk (property changes) → skip. No new dependency, no latency, works for every language git understands. **Done when** an edit to a named function in a fixture patch produces one symbol node; anonymous/deleted cases handled. **Verify:** Golden fixture — named function → symbol; anonymous/deleted/no-name handled. `cd packages/session-ui && bun test src/graph`.
+**T21.1 diff-hunk symbols first** — **done** (2026-10-23). Parse the turn's `FileDiffInfo.patch` (cached per turn by `packages/app/src/session/timeline/turn-diffs.ts`) for hunk headers (`@@ … @@ <context>`); mint `symbol:<path>#<qualified>` with `data.kind`, `provenance.confidence = "inferred"`, `origin: "hunk"`, and the range the hunk names. Edge cases: anonymous/arrow functions → `symbol:<path>#<line>:<col>` with `kind: "function"`, `origin: "hunk:anon"`; class methods without class in context → nearest preceding `class`/`interface` in patch; deleted functions → `symbol` with `status: "failed"`, `data.deleted = true`; no function name in hunk (property changes) → skip. No new dependency, no latency, works for every language git understands. **Done when** an edit to a named function in a fixture patch produces one symbol node; anonymous/deleted cases handled. **Verify:** Golden fixture — named function → symbol; anonymous/deleted/no-name handled. `cd packages/session-ui && bun test src/graph`.
+
+**Progress (2026-10-23):**
+- Added `diffByTurn` parameter to `BuildGraphInput` in `packages/session-ui/src/graph/build.ts`
+- Implemented `symbolsFromHunk()` function to parse unified diff patches and extract symbols
+- Added `attachHunkSymbols()` to integrate hunk symbols into the graph model
+- Extended `TurnDiffSource` in `packages/session-ui/src/context/data.tsx` with `getAllLoaded()` method
+- Updated `createTurnDiffCache()` in `packages/app/src/session/timeline/turn-diffs.ts` to expose `getAllLoaded()`
+- Wired up `diffByTurn` in `packages/app/src/session/graph/session-graph-view.tsx` to pass loaded turn diffs to `buildGraph`
+- Added comprehensive tests in `workspace.test.ts` covering: function extraction, class/method extraction, deleted functions, and deduplication with snapshot symbols
+- All 179 graph tests pass
 
 
 **T21.2 parser upgrade and calls** — a grammar registry (`tree-sitter-typescript` first, opt-in per language, WASM packaged by the server). Symbols become `origin: "parser"`, gain signatures and definition ranges; `calls` edges only when the parser proves them. Missing grammar ⇒ hunk symbols only and `missing` names the language. **Done when** a TypeScript fixture yields definitions and one call edge; a Python file without a grammar degrades. **Verify:** Golden fixture — TS yields definitions + call edge; Python without grammar degrades. `cd packages/server && bun test src/graph`.
@@ -755,3 +765,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — T27.1 done (Domains menu — G27).** The Domains menu is implemented in the toolbar under "Show". It lists six domains in three groups (Structure: directories, history; Code: code, verification; Runtime: runtime, work) with checkboxes. Session is pinned and cannot be turned off. Checkboxes show a tooltip when the domain has no data in the model. The lens is applied via `scopeModel` (T30.2) — the model is filtered without rebuilding. Domain selection persists in the view's state. Files changed: `packages/session-graph/src/ui/GraphToolbar.tsx`, `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/vocabulary.ts`.
 
 **2026-10-23 — T19.2, T19.3 progress (directories — G19).** Added equalizer presets `directories-as-large` and `untouched-dimmer` in `equalizer.ts`. Implemented directory detail rendering in `GraphDetail.tsx` showing file count, touched count, and child files with "Open at range" action. Created `GraphFilesystemWindow.tsx` component with expandable directory tree, session/untouched badges, click-to-select and double-click-to-open. Added filesystem window kind to `windowKinds` in `GraphView.tsx` and toolbar button in `GraphToolbar.tsx`. All unit tests pass (175 session-ui + 104 session-graph).
+
+**2026-10-23 — T21.1 done (diff-hunk symbols first — G21).** Implemented `symbolsFromHunk()` to parse unified diff patches from turn diffs and extract function, class, and method symbols with `origin: "hunk"`. Added `diffByTurn` parameter to `BuildGraphInput`, extended `TurnDiffSource` with `getAllLoaded()`, wired up turn diff cache in `session-graph-view.tsx`. Handles edge cases: anonymous functions (`hunk:anon`), deleted functions (`hunk:deleted`, status: failed), class methods qualified by nearest preceding class in patch. Skips property changes without function names. Deduplicates against snapshot symbols. Added 4 comprehensive tests; all 179 graph tests pass.

@@ -26,5 +26,16 @@ export function createTurnDiffCache() {
         )
         .finally(() => loading.delete(id))
     },
+    /** Get all loaded diffs, keyed by turn ID (without session prefix). */
+    getAllLoaded: () => {
+      const result = new Map<string, FileDiffInfo[]>()
+      for (const [key, value] of Object.entries(diffs)) {
+        if (value) {
+          const turnID = key.split("/")[1]
+          if (turnID) result.set(turnID, [...value] as FileDiffInfo[])
+        }
+      }
+      return result
+    },
   }
 }

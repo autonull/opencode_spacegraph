@@ -113,6 +113,7 @@ export function SessionUIProvider(
       turnDiff={{
         get: (input) => turnDiffs()?.get(input),
         load: (input) => turnDiffs()?.load(input, () => serverSDK.api.session.diff(input)),
+        getAllLoaded: () => turnDiffs()?.getAllLoaded() ?? new Map(),
       }}
       snapshot={{
         get: (scope, paths) => snapshotCache.get(scope, paths),

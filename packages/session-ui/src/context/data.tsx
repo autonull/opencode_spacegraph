@@ -46,6 +46,8 @@ export type TurnDiffSource = {
   get: (input: TurnDiffInput) => readonly FileDiffInfo[] | undefined
   /** Starts loading the turn's diffs unless they are cached or already loading. */
   load: (input: TurnDiffInput) => void
+  /** Returns all loaded diffs, keyed by turn ID (without session prefix). */
+  getAllLoaded: () => Map<string, FileDiffInfo[]>
 }
 
 /** The host's cache of the workspace snapshot. */

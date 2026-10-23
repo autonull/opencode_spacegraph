@@ -100,6 +100,7 @@ export function SessionGraphView(props: {
       sessionID: session.data.info()?.id,
       lineage: lineage(),
       snapshot: snapshot(),
+      diffByTurn: diffByTurn(),
     }),
   )
 
@@ -115,6 +116,17 @@ export function SessionGraphView(props: {
       get: (from: string) => source.get({ sessionID, from }),
       load: (from: string) => source.load({ sessionID, from }),
     }
+  })
+
+  // T21.1: collect all loaded turn diffs for hunk symbol extraction.
+  // The turnDiff cache loads diffs on demand; we pass what's already loaded.
+  const diffByTurn = createMemo(() => {
+    const source = data.turnDiff
+    const sessionID = data.sessionID
+
+    if (!source || !sessionID) return undefined
+
+    return source.getAllLoaded()
   })
 
   // T3.5: a graph permalink names the node to frame and, optionally, the layout to show.
