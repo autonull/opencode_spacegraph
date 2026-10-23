@@ -1,3 +1,5 @@
+import type { GraphNode } from "./model"
+
 /**
  * The session graph's vocabulary: the semantic levels a reader zooms through, the kinds a node can
  * have, the statuses it can carry, the phase categories its activity clusters into, and the box a
@@ -21,6 +23,7 @@ export const NODE_KINDS = [
   "reasoning",
   "tool",
   "file",
+  "directory",
   "subagent",
   "result",
   "error",
@@ -31,6 +34,34 @@ export const NODE_KINDS = [
 ] as const
 
 export type NodeKind = (typeof NODE_KINDS)[number]
+
+/**
+ * T30.1 — the domains a reader can put in the lens. They qualify what a node is about; they are not
+ * an axis in every signature. `directories` owns the project's skeleton, while a touched file stays
+ * in `session`.
+ */
+export const DOMAINS = ["session", "directories", "history", "code", "verification", "runtime", "work"] as const
+
+export type Domain = (typeof DOMAINS)[number]
+
+/** The domain of every kind. Exhaustive by type: a new kind without a domain does not compile. */
+export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = {
+  session: "session",
+  turn: "session",
+  phase: "session",
+  message: "session",
+  reasoning: "session",
+  tool: "session",
+  file: "session",
+  directory: "directories",
+  subagent: "session",
+  result: "session",
+  error: "session",
+  retry: "session",
+  compaction: "session",
+  notice: "session",
+  diff: "session",
+}
 
 /** The outcomes a node can carry. */
 export const NODE_STATUSES = ["pending", "running", "success", "failed", "interrupted", "neutral"] as const
@@ -150,3 +181,8 @@ export const CARD_SIZE: readonly [number, number] = [220, 72]
 
 /** The box a structural chip occupies (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
+
+/** T30.1 — a node's domain, unless the snapshot placed it elsewhere (an untouched file). */
+export function nodeDomain(node: GraphNode): Domain {
+  return node.domain ?? DOMAIN_OF_KIND[node.kind]
+}

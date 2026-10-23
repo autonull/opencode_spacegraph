@@ -6,6 +6,7 @@ import type {
   SessionMessageInfo,
   SessionMessageShell,
   SessionStatus,
+  WorkspaceSnapshot,
 } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import stripAnsi from "strip-ansi"
@@ -16,6 +17,7 @@ import {
   SESSION_NODE_ID,
   decodeString,
   diffNodeID,
+  directoryNodeID,
   errorNodeID,
   fileNodeID,
   messageNodeID,
@@ -159,6 +161,7 @@ class GraphBuilder {
   constructor(
     private readonly messages: SessionMessageInfo[],
     private readonly status: SessionStatus,
+    private readonly snapshot?: WorkspaceSnapshot,
     sessionID?: string,
     lineage?: SessionLineage,
   ) {
@@ -229,6 +232,8 @@ class GraphBuilder {
       node.data = { ...node.data, active: this.status.type !== "idle" }
     }
 
+    if (this.snapshot) this.attachWorkspace(this.snapshot)
+
     return {
       root: SESSION_NODE_ID,
       goal: this.goal,
@@ -237,6 +242,60 @@ class GraphBuilder {
       turns: this.turns,
       turnByMessageID,
       activeTurn,
+      ...(this.snapshot
+        ? {
+            workspaceRoot: this.snapshot.root,
+            snapshot: {
+              revision: this.snapshot.revision,
+              asOf: this.snapshot.asOf,
+              missing: this.snapshot.missing,
+            },
+          }
+        : {}),
+    }
+  }
+
+  /**
+   * T19.1/T29.3 — the directory skeleton derived from the files the session touched and the
+   * snapshot's own files. It runs only when a snapshot is present, so the session-only model stays
+   * byte-identical. Edges use the existing `part-of` vocabulary; no new layout geometry is needed.
+   */
+  private attachWorkspace(snapshot: WorkspaceSnapshot) {
+    const files = new Set<string>(this.fileNodes.keys())
+    for (const file of snapshot.files) files.add(normalizePath(file.path))
+
+    const counts = new Map<string, { fileCount: number; touchedCount: number }>()
+    for (const file of files) {
+      const touched = this.fileNodes.has(file)
+      for (const directory of parentPaths(file)) {
+        const count = counts.get(directory) ?? { fileCount: 0, touchedCount: 0 }
+        count.fileCount += 1
+        if (touched) count.touchedCount += 1
+        counts.set(directory, count)
+      }
+    }
+
+    const directories = [...counts.keys()].sort((a, b) => depth(a) - depth(b) || a.localeCompare(b))
+    for (const directory of directories) {
+      const count = counts.get(directory)!
+      this.addNode({
+        id: directoryNodeID(directory),
+        kind: "directory",
+        label: directory.slice(directory.lastIndexOf("/") + 1),
+        status: "neutral",
+        minLevel: "overview",
+        data: { path: directory, fileCount: count.fileCount, touchedCount: count.touchedCount },
+      })
+    }
+
+    for (const [file, id] of this.fileNodes) {
+      const parent = parentPath(file)
+      if (parent) this.partOf(id, directoryNodeID(parent), "structural")
+    }
+
+    for (const directory of directories) {
+      const parent = parentPath(directory)
+      if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
     }
   }
 
@@ -965,17 +1024,36 @@ function isNotice(message: SessionMessageInfo): message is GraphNotice {
   return !ACTIVITY_MESSAGE_TYPES.some((type) => type === message.type)
 }
 
+function parentPath(file: string) {
+  const normalized = normalizePath(file)
+  const slash = normalized.lastIndexOf("/")
+  return slash === -1 ? "" : normalized.slice(0, slash)
+}
+
+function parentPaths(file: string) {
+  const parts = normalizePath(file).split("/")
+  return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))
+}
+
+function depth(directory: string) {
+  return directory.split("/").length
+}
+
 /**
  * Builds the graph model. `sessionID` is optional: when the host knows the session, the root node
  * carries it (T3.6) so an exported map names its session. The root id stays literal, so nothing
  * that resolves a node by id changes. `lineage` is optional too (T6.5): it records where the
  * session came from, without drawing an edge into another session.
  */
-export function buildGraph(
-  messages: SessionMessageInfo[],
-  status: SessionStatus,
-  sessionID?: string,
-  lineage?: SessionLineage,
-): GraphModel {
-  return new GraphBuilder(messages, status, sessionID, lineage).build()
+export type BuildGraphInput = {
+  messages: SessionMessageInfo[]
+  status: SessionStatus
+  sessionID?: string
+  lineage?: SessionLineage
+  /** T29.3 — absent keeps the session-only model byte-identical. */
+  snapshot?: WorkspaceSnapshot
+}
+
+export function buildGraph(input: BuildGraphInput): GraphModel {
+  return new GraphBuilder(input.messages, input.status, input.snapshot, input.sessionID, input.lineage).build()
 }

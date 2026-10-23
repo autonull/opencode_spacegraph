@@ -488,6 +488,7 @@ const source = {
   "ui.sessionGraph.kind.reasoning": "Reasoning",
   "ui.sessionGraph.kind.tool": "Tool call",
   "ui.sessionGraph.kind.file": "File",
+  "ui.sessionGraph.kind.directory": "Directory",
   "ui.sessionGraph.kind.subagent": "Subagent",
   "ui.sessionGraph.kind.result": "Result",
   "ui.sessionGraph.kind.error": "Error",

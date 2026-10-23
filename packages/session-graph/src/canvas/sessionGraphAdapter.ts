@@ -34,6 +34,7 @@ const NODE_SHAPE: Record<NodeKind, Shape> = {
   reasoning: "panel",
   tool: "card",
   file: "card",
+  directory: "card",
   subagent: "card",
   result: "card",
   error: "badge",

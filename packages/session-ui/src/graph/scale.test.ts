@@ -28,7 +28,7 @@ function session(turns: number): SessionModel {
     messages.push(idle(`i${index}`))
   }
 
-  return buildGraph(messages, { type: "idle" })
+  return buildGraph({ messages: messages, status: { type: "idle" } })
 }
 
 type SessionModel = GraphModel

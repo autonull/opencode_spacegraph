@@ -27,7 +27,7 @@ export default function SessionMapPanel(props: {
     const status: SessionStatus =
       data.session.status(props.session.id) === "running" ? { type: "busy" } : { type: "idle" }
 
-    return buildGraph(data.session.message.list(props.session.id), status)
+    return buildGraph({ messages: data.session.message.list(props.session.id), status: status })
   })
 
   const geometry = createMemo(() => {

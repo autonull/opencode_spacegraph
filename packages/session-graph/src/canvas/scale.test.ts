@@ -45,7 +45,7 @@ function session(count: number): SessionMessageInfo[] {
 }
 
 const messages = session(MESSAGES)
-const model = buildGraph(messages, { type: "idle" })
+const model = buildGraph({ messages: messages, status: { type: "idle" } })
 
 test("a long session's render model is built within the scale budget", () => {
   const positions = layoutGraph(model).positions

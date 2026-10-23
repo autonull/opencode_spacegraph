@@ -195,6 +195,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
       <dl class="flex flex-col gap-2">
         {field(i18n.t("ui.sessionGraph.inspector.time"), time(props.node.time))}
         {field(i18n.t("ui.sessionGraph.inspector.path"), text(data()?.path))}
+        {field(i18n.t("ui.sessionGraph.inspector.files"), count(data()?.fileCount))}
         {field(i18n.t("ui.sessionGraph.inspector.agent"), text(data()?.agent))}
         {field(i18n.t("ui.sessionGraph.inspector.childSession"), text(data()?.childSessionID))}
         {field(i18n.t("ui.sessionGraph.inspector.forkedFrom"), text(data()?.forkedFrom))}

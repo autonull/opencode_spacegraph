@@ -1,6 +1,6 @@
-import type { JsonValue } from "@opencode/client/promise"
+import type { JsonValue, WorkspaceSnapshot } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
-import type { NodeKind, NodeStatus, PhaseCategory, ZoomLevel } from "./vocabulary"
+import type { Domain, NodeKind, NodeStatus, PhaseCategory, ZoomLevel } from "./vocabulary"
 import {
   EDIT_TOOLS,
   PHASE_CATEGORIES,
@@ -12,6 +12,16 @@ import {
 export type { NodeKind, NodeStatus, PhaseCategory, ZoomLevel }
 
 export type Confidence = "explicit" | "structural" | "inferred"
+
+/** T30.1 — what a derived fact came from. The snapshot's own source vocabulary. */
+export type SnapshotSource = WorkspaceSnapshot["missing"][number]["source"]
+
+/** T30.3 — every derived node and edge can be attributed and dated. */
+export type Provenance = {
+  source: SnapshotSource
+  asOf?: number
+  confidence: Confidence
+}
 
 export type EdgeKind =
   | "part-of"
@@ -40,6 +50,10 @@ export type GraphNode = {
   derived?: boolean
   minLevel?: ZoomLevel
   clusterOf?: string[]
+  /** T30.1 — set only when the node's kind does not decide its domain. */
+  domain?: Domain
+  /** T30.3 — the source and age of a derived fact. */
+  provenance?: Provenance
   data?: Record<string, JsonValue>
 }
 
@@ -52,8 +66,22 @@ export type GraphEdge = {
   label?: string
 }
 
+/**
+ * T29.3 — the snapshot facts the model carries for the inspector and the legend. The snapshot
+ * itself never rides on the model: only the revision, the per-source stamps and what is absent.
+ */
+export type GraphSnapshotMeta = {
+  revision: string
+  asOf: WorkspaceSnapshot["asOf"]
+  missing: WorkspaceSnapshot["missing"]
+}
+
 export type GraphModel = {
   root: string
+  /** T29.3 — the workspace root when a snapshot is present; `root` stays the literal session id. */
+  workspaceRoot?: string
+  /** T29.4 — how old the derived facts are and which sources are absent. */
+  snapshot?: GraphSnapshotMeta
   goal?: string
   nodes: GraphNode[]
   edges: GraphEdge[]
@@ -91,6 +119,8 @@ export const messageNodeID = (messageID: string) => `msg:${messageID}`
 export const toolNodeID = (toolID: string) => `tool:${toolID}`
 
 export const fileNodeID = (path: string) => `file:${normalizePath(path)}`
+
+export const directoryNodeID = (path: string) => `dir:${normalizePath(path)}`
 
 export const subagentNodeID = (childSessionID: string) => `sub:${childSessionID}`
 

@@ -5,6 +5,7 @@ import type {
   SessionMessageAssistantTool,
   SessionMessageInfo,
   SessionMessageToolStateCompleted,
+  WorkspaceSnapshot,
 } from "@opencode/client/promise"
 import { buildGraph } from "./build"
 import type { GraphModel } from "./model"
@@ -251,8 +252,34 @@ export function buildFixtureMessages(): SessionMessageInfo[] {
 
 export const fixtureMessages: SessionMessageInfo[] = buildFixtureMessages()
 
+export function buildFixtureSnapshot(): WorkspaceSnapshot {
+  return {
+    version: 1,
+    revision: "fixture-r1",
+    root: "/workspace/project",
+    scope: "session",
+    asOf: { tree: FIXTURE_BASE_TIME, vcs: FIXTURE_BASE_TIME },
+    truncated: false,
+    workspace: { name: "project", path: "/workspace/project" },
+    directories: [{ path: "src" }, { path: "src/auth", parent: "src" }],
+    packages: [],
+    files: CHANGED_FILES.map((path) => ({
+      path,
+      status: path === "src/auth/session.test.ts" ? "added" : "modified",
+    })),
+    head: { branch: "dev" },
+    branches: [],
+    commits: [],
+    symbols: [],
+    processes: [],
+    issues: [],
+    missing: [],
+    capabilities: ["fs.tree", "vcs.status"],
+  }
+}
+
 export function buildFixtureGraph(): GraphModel {
-  return buildGraph(fixtureMessages, { type: "idle" })
+  return buildGraph({ messages: fixtureMessages, status: { type: "idle" } })
 }
 
 /** Variant with an interrupted idle for error-path tests. */

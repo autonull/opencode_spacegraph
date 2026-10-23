@@ -19,6 +19,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     message: "execution",
     tool: "execution",
     file: "execution",
+    directory: "overview",
     result: "execution",
     diff: "execution",
     compaction: "execution",

@@ -79,7 +79,7 @@ export function SessionGraphView(props: {
 
   // T3.6: the session id rides on the root node, so an exported map names its session.
   const model = createMemo(() =>
-    buildGraph(session.history.messages(), session.data.status(), session.data.info()?.id, lineage()),
+    buildGraph({ messages: session.history.messages(), status: session.data.status(), sessionID: session.data.info()?.id, lineage: lineage() }),
   )
 
   // RF.8: the inspector's on-demand diffs read the same per-tab turn-diff cache the timeline uses,

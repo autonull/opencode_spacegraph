@@ -96,6 +96,7 @@ const DEPTH: Record<NodeKind, number> = {
   notice: 2,
   compaction: 2,
   file: 3,
+  directory: 2,
   result: 3,
   diff: 3,
   error: 3,
@@ -161,7 +162,7 @@ function laneOf(node: GraphNode): Lane {
 
   if (node.kind === "phase") return "phases"
 
-  if (node.kind === "file" || node.kind === "diff") return "artifacts"
+  if (node.kind === "file" || node.kind === "diff" || node.kind === "directory") return "artifacts"
 
   if (node.kind === "message") {
     const role = node.data?.role

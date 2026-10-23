@@ -81,8 +81,8 @@ describe("layout — determinism and append-only", () => {
   test("appending a new turn leaves earlier positions unchanged", () => {
     const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
     const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
-    const before = layoutGraph(buildGraph(base, { type: "idle" }))
-    const after = layoutGraph(buildGraph(extended, { type: "idle" }))
+    const before = layoutGraph(buildGraph({ messages: base, status: { type: "idle" } }))
+    const after = layoutGraph(buildGraph({ messages: extended, status: { type: "idle" } }))
 
     for (const id of before.positions.keys())
       expect(after.positions.get(id)).toEqual(before.positions.get(id))
@@ -198,8 +198,8 @@ describe("layout — level-aware overview", () => {
   test("overview is stable within the level across appends", () => {
     const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
     const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
-    const before = layoutGraph(buildGraph(base, { type: "idle" }), { level: "overview" })
-    const after = layoutGraph(buildGraph(extended, { type: "idle" }), { level: "overview" })
+    const before = layoutGraph(buildGraph({ messages: base, status: { type: "idle" } }), { level: "overview" })
+    const after = layoutGraph(buildGraph({ messages: extended, status: { type: "idle" } }), { level: "overview" })
 
     for (const id of before.positions.keys())
       expect(after.positions.get(id)).toEqual(before.positions.get(id))
@@ -325,9 +325,9 @@ describe("layout — the tree and the force layout", () => {
   test("the tree keeps every placed node where it was when the session grows", () => {
     const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
     const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
-    const before = layoutGraph(buildGraph(base, { type: "idle" }), { strategy: "tree" })
+    const before = layoutGraph(buildGraph({ messages: base, status: { type: "idle" } }), { strategy: "tree" })
 
-    const after = layoutGraph(buildGraph(extended, { type: "idle" }), {
+    const after = layoutGraph(buildGraph({ messages: extended, status: { type: "idle" } }), {
       strategy: "tree",
       previous: before.positions,
     })
@@ -339,9 +339,9 @@ describe("layout — the tree and the force layout", () => {
   test("the force layout keeps every placed node where it was when the session grows", () => {
     const base = [user("u1"), text("a1", "hi"), idle("i1")] satisfies SessionMessageInfo[]
     const extended = [...base, user("u2"), text("a2", "more"), idle("i2")] satisfies SessionMessageInfo[]
-    const before = layoutGraph(buildGraph(base, { type: "idle" }), { strategy: "force" })
+    const before = layoutGraph(buildGraph({ messages: base, status: { type: "idle" } }), { strategy: "force" })
 
-    const after = layoutGraph(buildGraph(extended, { type: "idle" }), {
+    const after = layoutGraph(buildGraph({ messages: extended, status: { type: "idle" } }), {
       strategy: "force",
       previous: before.positions,
     })

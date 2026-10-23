@@ -183,7 +183,7 @@ Scopes are bounded: `scope=session` (default) takes the session's touched paths 
 - Symbols, processes and issues are absent with a reason. T21.1 mints hunk symbols client-side, so the symbol snapshot is the parser upgrade (T21.2), not the baseline.
 - Memoisation per `(location, revision, scope)` and event invalidation are **not** implemented yet; each request reads through. This is safe but violates the read-model note. Track as remaining work on T29.2.
 
-#### T29.3 The model takes the snapshot — **new**
+#### T29.3 The model takes the snapshot — **done** (2026-10-23)
 
 `buildGraph` becomes one object argument. The definition is in `build.ts:974`; the five call sites to update are `fixture.ts:255`, `packages/app/src/session/graph/session-graph-view.tsx:82`, `turn-map-overlay.tsx:29`, `packages/gui-extensions/src/session-map/panel.tsx:30`, and `packages/session-graph/script/scale-bench.ts:89` (plus stories):
 
@@ -204,6 +204,10 @@ Absent snapshot must produce the **existing** model exactly — the session laye
 
 **Verify:** Golden fixture test — session-only model byte-identical; with snapshot, derived nodes appear, session nodes unchanged. `cd packages/session-ui && bun test src/graph`.
 
+**Landed:** `buildGraph({ messages, status, sessionID?, lineage?, snapshot? })` (all call sites and tests updated). `GraphModel` gains optional `workspaceRoot` and `snapshot: { revision, asOf, missing }`; absent fields are not added, so the session-only model is unchanged. `packages/session-ui/src/graph/model.golden.json` pins that model (`UPDATE_GOLDEN=1 bun test src/graph/workspace.test.ts` rewrites it). Directories are derived from the union of session-touched files and snapshot files, with `part-of` file→directory and directory→parent edges (T19.1's baseline).
+
+**Deviation:** `diffByTurn` is **not** in the input yet. It has no consumer until T21.1 mints hunk symbols, and an accepted-but-unused field is dead weight. Add it with `symbolsFromHunk`.
+
 #### T29.4 Refresh and staleness — **new**
 
 The host fetches the snapshot outside the model build, debounced (~250 ms), and never during a layout. A refetch rebuilds the model; positions for session nodes never move, and derived nodes place relative to their anchor (the `previous` map already in `layoutGraph`). The model exposes `snapshot: { revision, asOf, missing }` so the inspector and the legend can say how old a fact is and what is absent.
@@ -216,7 +220,7 @@ The host fetches the snapshot outside the model build, debounced (~250 ms), and 
 
 ### T30 — domains, provenance, scoping (G30)
 
-#### T30.1 Domain vocabulary — **reshaped from T27.1**
+#### T30.1 Domain vocabulary — **done** (2026-10-23)
 
 One table, one field, no new axis at the layout boundary:
 
@@ -235,7 +239,9 @@ export function nodeDomain(node: GraphNode): Domain   // node.domain ?? DOMAIN_O
 
 **Verify:** Golden fixture — every kind has domain; DOMAIN_OF_KIND exhaustive. `cd packages/session-ui && bun test src/graph`.
 
-#### T30.2 `scopeModel` — **reshaped from T27.3**
+**Landed:** `DOMAINS`, `Domain`, exhaustive `DOMAIN_OF_KIND` and `nodeDomain` in `vocabulary.ts`; `GraphNode.domain` and `GraphNode.provenance` (`{ source, asOf?, confidence }`) on the model. `directory` is the first non-session kind. `provenance` is defined but not populated yet — T30.3 owns that surface.
+
+#### T30.2 `scopeModel` — **done** (2026-10-23)
 
 The lens is a **pure filter over the model**, so levels, layout, summary, budget and selectors need no signature changes:
 
@@ -248,6 +254,8 @@ It drops nodes outside the lens, drops edges whose endpoints are not both presen
 **Done when:** every existing graph function returns the same result on a session-only lens as on today's model; cross-domain edges never dangle.
 
 **Verify:** Golden fixture — session-only lens = today's model; cross-domain edges never dangle. `cd packages/session-ui && bun test src/graph`.
+
+**Landed:** `scope.ts`. Enforces session, filters nodes by `nodeDomain`, drops edges with a missing endpoint, and filters `turns`/`activeTurn` to retained nodes. `packages/session-ui/src/graph/scope.test.ts` covers the session-only equality, enforcement, directory lens and a dangling-edge fixture.
 
 #### T30.3 Provenance in the surface — **new**
 
@@ -719,3 +727,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 **2026-10-23 — TODO.5 rev 2.2: adaptive expand/collapse + continuous layout (T33/G33).** Added wave 6 for adaptive UI. Cluster state as local lens override (per-node `expanded` overriding `minLevel`). Continuous transitions for hierarchy/tree layouts (opt-in, 150–300 ms, cubic-bezier). Card tier interpolation on zoom (cross-fade, no level-boundary pop). Budget-aware animation (target-position budget eval, fade in/out). Stop rule: >50 ms pipeline overhead = off by default.
 
 **2026-10-23 — T29.1 and T29.2 done (foundation wave 0, first half).** The snapshot schema is one versioned, per-source-stamped struct in Protocol. The server read model is one location-scoped endpoint assembled from `FileSystem`, `Vcs` and package manifests; absence is a `missing` row. Two plan gaps surfaced and are recorded on T29.2: the client must supply session paths, and the VCS surface cannot supply commit ids. Memoisation and event invalidation remain open.
+
+**2026-10-23 — T29.3, T30.1 and T30.2 done (model foundation).** `buildGraph` is one object input; all call sites and tests moved. A snapshot adds directory nodes (`dir:` + `part-of`) and a `workspaceRoot`/`snapshot` summary to the model, while the session-only model is pinned by `model.golden.json`. Domains and `scopeModel` now exist: session is enforced, edges never dangle, and the lens is a pure filter. `diffByTurn` is deliberately deferred to T21.1. Next: T29.4 refresh, T30.3 provenance surface, then T31 actions and T32 evidence before the capability tasks in wave 1.

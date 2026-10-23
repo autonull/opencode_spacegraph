@@ -1,0 +1,1323 @@
+{
+  "root": "session",
+  "goal": "Fix the authentication test failures.",
+  "nodes": [
+    {
+      "id": "session",
+      "kind": "session",
+      "label": "Session",
+      "status": "neutral",
+      "minLevel": "overview",
+      "summary": "Fix the authentication test failures."
+    },
+    {
+      "id": "turn:msg_user_1",
+      "kind": "turn",
+      "label": "Fix the authentication test failures.",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_user_1",
+      "time": 1730000001000,
+      "minLevel": "overview"
+    },
+    {
+      "id": "msg:msg_user_1",
+      "kind": "message",
+      "label": "Fix the authentication test failures.",
+      "summary": "Fix the authentication test failures.",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_user_1",
+      "time": 1730000001000,
+      "minLevel": "overview",
+      "data": {
+        "role": "user"
+      }
+    },
+    {
+      "id": "file:src/auth/session.ts",
+      "kind": "file",
+      "label": "src/auth/session.ts",
+      "status": "neutral",
+      "data": {
+        "path": "src/auth/session.ts"
+      }
+    },
+    {
+      "id": "file:src/auth/session.test.ts",
+      "kind": "file",
+      "label": "src/auth/session.test.ts",
+      "status": "neutral",
+      "data": {
+        "path": "src/auth/session.test.ts"
+      }
+    },
+    {
+      "id": "msg_plan_1:text:0",
+      "kind": "message",
+      "label": "I will inspect the failing authentication tests, trace the affected code, and f…",
+      "summary": "I will inspect the failing authentication tests, trace the affected code, and fix the failures.",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_plan_1",
+      "time": 1730000002000,
+      "minLevel": "execution",
+      "data": {
+        "role": "assistant"
+      }
+    },
+    {
+      "id": "tool:prt_tool_glob_1",
+      "kind": "tool",
+      "label": "glob",
+      "summary": "src/auth/session.test.ts",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_explore_1",
+      "partID": "prt_tool_glob_1",
+      "toolID": "prt_tool_glob_1",
+      "time": 1730000006000,
+      "minLevel": "execution",
+      "data": {
+        "name": "glob",
+        "category": "tools",
+        "input": {
+          "pattern": "**/*.test.ts"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_1:explore:1",
+      "kind": "phase",
+      "label": "Explore",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_glob_1",
+        "tool:prt_tool_grep_1",
+        "tool:prt_tool_read_1",
+        "tool:prt_tool_read_2",
+        "tool:prt_tool_read_3"
+      ],
+      "data": {
+        "category": "explore"
+      }
+    },
+    {
+      "id": "tool:prt_tool_grep_1",
+      "kind": "tool",
+      "label": "grep",
+      "summary": "12 matches across 3 files",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_explore_1",
+      "partID": "prt_tool_grep_1",
+      "toolID": "prt_tool_grep_1",
+      "time": 1730000008000,
+      "minLevel": "execution",
+      "data": {
+        "name": "grep",
+        "category": "tools",
+        "input": {
+          "pattern": "auth"
+        }
+      }
+    },
+    {
+      "id": "tool:prt_tool_read_1",
+      "kind": "tool",
+      "label": "read",
+      "summary": "export function session() {}",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_explore_1",
+      "partID": "prt_tool_read_1",
+      "toolID": "prt_tool_read_1",
+      "time": 1730000010000,
+      "minLevel": "execution",
+      "data": {
+        "name": "read",
+        "category": "tools",
+        "input": {
+          "path": "src/auth/session.ts"
+        }
+      }
+    },
+    {
+      "id": "tool:prt_tool_read_2",
+      "kind": "tool",
+      "label": "read",
+      "summary": "test('auth')",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_explore_1",
+      "partID": "prt_tool_read_2",
+      "toolID": "prt_tool_read_2",
+      "time": 1730000012000,
+      "minLevel": "execution",
+      "data": {
+        "name": "read",
+        "category": "tools",
+        "input": {
+          "path": "src/auth/session.test.ts"
+        }
+      }
+    },
+    {
+      "id": "tool:prt_tool_read_3",
+      "kind": "tool",
+      "label": "read",
+      "summary": "…output truncated…",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_explore_1",
+      "partID": "prt_tool_read_3",
+      "toolID": "prt_tool_read_3",
+      "time": 1730000014000,
+      "minLevel": "execution",
+      "data": {
+        "name": "read",
+        "category": "tools",
+        "input": {
+          "path": "src/auth/store.ts"
+        }
+      }
+    },
+    {
+      "id": "file:src/auth/store.ts",
+      "kind": "file",
+      "label": "src/auth/store.ts",
+      "status": "neutral",
+      "data": {
+        "path": "src/auth/store.ts"
+      }
+    },
+    {
+      "id": "sub:ses_child_auth",
+      "kind": "subagent",
+      "label": "Authentication design",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_delegate_1",
+      "partID": "prt_tool_subagent_1",
+      "toolID": "prt_tool_subagent_1",
+      "time": 1730000018000,
+      "minLevel": "overview",
+      "data": {
+        "category": "subagents",
+        "agent": "explore",
+        "childSessionID": "ses_child_auth"
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_1:delegate:2",
+      "kind": "phase",
+      "label": "Delegate",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "sub:ses_child_auth"
+      ],
+      "data": {
+        "category": "delegate"
+      }
+    },
+    {
+      "id": "msg:msg_synthetic_1",
+      "kind": "notice",
+      "label": "Authentication design",
+      "summary": "Subagent finished: Authentication design",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_synthetic_1",
+      "time": 1730000020000,
+      "minLevel": "detail",
+      "data": {
+        "type": "synthetic",
+        "source": "subagent",
+        "childSessionID": "ses_child_auth"
+      }
+    },
+    {
+      "id": "tool:prt_tool_edit_1",
+      "kind": "tool",
+      "label": "edit",
+      "summary": "updated session token handling",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_edit_1",
+      "partID": "prt_tool_edit_1",
+      "toolID": "prt_tool_edit_1",
+      "time": 1730000023000,
+      "minLevel": "execution",
+      "data": {
+        "name": "edit",
+        "category": "edit",
+        "input": {
+          "path": "src/auth/session.ts"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_1:edit:3",
+      "kind": "phase",
+      "label": "Edit",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_edit_1",
+        "tool:prt_tool_write_1",
+        "tool:prt_tool_patch_1"
+      ],
+      "data": {
+        "category": "edit"
+      }
+    },
+    {
+      "id": "tool:prt_tool_write_1",
+      "kind": "tool",
+      "label": "write",
+      "summary": "created token module",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_edit_1",
+      "partID": "prt_tool_write_1",
+      "toolID": "prt_tool_write_1",
+      "time": 1730000025000,
+      "minLevel": "execution",
+      "data": {
+        "name": "write",
+        "category": "edit",
+        "input": {
+          "path": "src/auth/token.ts"
+        }
+      }
+    },
+    {
+      "id": "file:src/auth/token.ts",
+      "kind": "file",
+      "label": "src/auth/token.ts",
+      "status": "neutral",
+      "data": {
+        "path": "src/auth/token.ts"
+      }
+    },
+    {
+      "id": "tool:prt_tool_patch_1",
+      "kind": "tool",
+      "label": "patch",
+      "summary": "applied patch",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_edit_1",
+      "partID": "prt_tool_patch_1",
+      "toolID": "prt_tool_patch_1",
+      "time": 1730000027000,
+      "minLevel": "execution",
+      "data": {
+        "name": "patch",
+        "category": "edit",
+        "input": {}
+      }
+    },
+    {
+      "id": "file:src/auth/guards.ts",
+      "kind": "file",
+      "label": "src/auth/guards.ts",
+      "status": "neutral",
+      "data": {
+        "path": "src/auth/guards.ts"
+      }
+    },
+    {
+      "id": "tool:prt_tool_shell_1",
+      "kind": "tool",
+      "label": "shell",
+      "summary": "ok",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_verify_1",
+      "partID": "prt_tool_shell_1",
+      "toolID": "prt_tool_shell_1",
+      "time": 1730000031000,
+      "minLevel": "execution",
+      "data": {
+        "name": "shell",
+        "category": "shell",
+        "input": {
+          "command": "bun test src/auth/session.test.ts"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_1:verify:4",
+      "kind": "phase",
+      "label": "Verify",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_shell_1",
+        "result:prt_tool_shell_1",
+        "tool:prt_tool_shell_2",
+        "result:prt_tool_shell_2"
+      ],
+      "data": {
+        "category": "verify"
+      }
+    },
+    {
+      "id": "result:prt_tool_shell_1",
+      "kind": "result",
+      "label": "ok",
+      "summary": "ok",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_verify_1",
+      "partID": "prt_tool_shell_1",
+      "toolID": "prt_tool_shell_1",
+      "time": 1730000032000,
+      "minLevel": "execution",
+      "data": {
+        "exit": 0,
+        "timeout": false,
+        "output": "ok"
+      }
+    },
+    {
+      "id": "tool:prt_tool_shell_2",
+      "kind": "tool",
+      "label": "shell",
+      "summary": "FAIL auth refresh token",
+      "status": "failed",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_verify_1",
+      "partID": "prt_tool_shell_2",
+      "toolID": "prt_tool_shell_2",
+      "time": 1730000033000,
+      "minLevel": "execution",
+      "data": {
+        "name": "shell",
+        "category": "shell",
+        "input": {
+          "command": "bun test"
+        }
+      }
+    },
+    {
+      "id": "result:prt_tool_shell_2",
+      "kind": "result",
+      "label": "failed",
+      "summary": "FAIL auth refresh token",
+      "status": "failed",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_verify_1",
+      "partID": "prt_tool_shell_2",
+      "toolID": "prt_tool_shell_2",
+      "time": 1730000034000,
+      "minLevel": "execution",
+      "data": {
+        "exit": 1,
+        "timeout": false,
+        "output": "FAIL auth refresh token"
+      }
+    },
+    {
+      "id": "tool:prt_tool_edit_2",
+      "kind": "tool",
+      "label": "edit",
+      "summary": "fixed refresh path",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_retry_1",
+      "partID": "prt_tool_edit_2",
+      "toolID": "prt_tool_edit_2",
+      "time": 1730000037000,
+      "minLevel": "execution",
+      "data": {
+        "name": "edit",
+        "category": "edit",
+        "input": {
+          "path": "src/auth/session.test.ts"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_1:edit:5",
+      "kind": "phase",
+      "label": "Edit",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_edit_2"
+      ],
+      "data": {
+        "category": "edit"
+      }
+    },
+    {
+      "id": "err:msg_retry_1:assistant",
+      "kind": "error",
+      "label": "Expected refresh token to be stored",
+      "summary": "Expected refresh token to be stored",
+      "status": "failed",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_retry_1",
+      "time": 1730000036000,
+      "minLevel": "execution",
+      "data": {
+        "type": "tool_error"
+      }
+    },
+    {
+      "id": "retry:msg_retry_1:2",
+      "kind": "retry",
+      "label": "Retry #2",
+      "summary": "Expected refresh token to be stored",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_retry_1",
+      "time": 1730000038000,
+      "minLevel": "execution",
+      "data": {
+        "attempt": 2
+      }
+    },
+    {
+      "id": "tool:prt_tool_shell_3",
+      "kind": "tool",
+      "label": "shell",
+      "summary": "3 pass 0 fail",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_recovery_1",
+      "partID": "prt_tool_shell_3",
+      "toolID": "prt_tool_shell_3",
+      "time": 1730000041000,
+      "minLevel": "execution",
+      "data": {
+        "name": "shell",
+        "category": "shell",
+        "input": {
+          "command": "bun test"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_1:verify:6",
+      "kind": "phase",
+      "label": "Verify",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_shell_3",
+        "result:prt_tool_shell_3"
+      ],
+      "data": {
+        "category": "verify"
+      }
+    },
+    {
+      "id": "result:prt_tool_shell_3",
+      "kind": "result",
+      "label": "ok",
+      "summary": "3 pass 0 fail",
+      "status": "success",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_recovery_1",
+      "partID": "prt_tool_shell_3",
+      "toolID": "prt_tool_shell_3",
+      "time": 1730000042000,
+      "minLevel": "execution",
+      "data": {
+        "exit": 0,
+        "timeout": false,
+        "output": "3 pass 0 fail"
+      }
+    },
+    {
+      "id": "diff:msg_idle_1",
+      "kind": "diff",
+      "label": "4 files changed",
+      "status": "neutral",
+      "turnID": "turn:msg_user_1",
+      "messageID": "msg_idle_1",
+      "time": 1730000043000,
+      "minLevel": "execution",
+      "data": {
+        "files": [
+          "src/auth/guards.ts",
+          "src/auth/session.test.ts",
+          "src/auth/session.ts",
+          "src/auth/token.ts"
+        ]
+      }
+    },
+    {
+      "id": "turn:msg_user_2",
+      "kind": "turn",
+      "label": "Also cover the refresh path",
+      "status": "neutral",
+      "turnID": "turn:msg_user_2",
+      "messageID": "msg_user_2",
+      "time": 1730000044000,
+      "minLevel": "overview",
+      "data": {
+        "active": false
+      }
+    },
+    {
+      "id": "msg:msg_user_2",
+      "kind": "message",
+      "label": "Also cover the refresh path",
+      "summary": "Also cover the refresh path",
+      "status": "neutral",
+      "turnID": "turn:msg_user_2",
+      "messageID": "msg_user_2",
+      "time": 1730000044000,
+      "minLevel": "overview",
+      "data": {
+        "role": "user"
+      }
+    },
+    {
+      "id": "tool:prt_tool_edit_3",
+      "kind": "tool",
+      "label": "edit",
+      "summary": "added refresh coverage",
+      "status": "success",
+      "turnID": "turn:msg_user_2",
+      "messageID": "msg_edit_3",
+      "partID": "prt_tool_edit_3",
+      "toolID": "prt_tool_edit_3",
+      "time": 1730000047000,
+      "minLevel": "execution",
+      "data": {
+        "name": "edit",
+        "category": "edit",
+        "input": {
+          "path": "src/auth/session.test.ts"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_2:edit:1",
+      "kind": "phase",
+      "label": "Edit",
+      "status": "neutral",
+      "turnID": "turn:msg_user_2",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_edit_3"
+      ],
+      "data": {
+        "category": "edit"
+      }
+    },
+    {
+      "id": "tool:prt_tool_shell_4",
+      "kind": "tool",
+      "label": "shell",
+      "summary": "4 pass 0 fail",
+      "status": "success",
+      "turnID": "turn:msg_user_2",
+      "messageID": "msg_edit_3",
+      "partID": "prt_tool_shell_4",
+      "toolID": "prt_tool_shell_4",
+      "time": 1730000049000,
+      "minLevel": "execution",
+      "data": {
+        "name": "shell",
+        "category": "shell",
+        "input": {
+          "command": "bun test"
+        }
+      }
+    },
+    {
+      "id": "phase:turn:msg_user_2:verify:2",
+      "kind": "phase",
+      "label": "Verify",
+      "status": "neutral",
+      "turnID": "turn:msg_user_2",
+      "derived": true,
+      "minLevel": "overview",
+      "clusterOf": [
+        "tool:prt_tool_shell_4",
+        "result:prt_tool_shell_4"
+      ],
+      "data": {
+        "category": "verify"
+      }
+    },
+    {
+      "id": "result:prt_tool_shell_4",
+      "kind": "result",
+      "label": "ok",
+      "summary": "4 pass 0 fail",
+      "status": "success",
+      "turnID": "turn:msg_user_2",
+      "messageID": "msg_edit_3",
+      "partID": "prt_tool_shell_4",
+      "toolID": "prt_tool_shell_4",
+      "time": 1730000050000,
+      "minLevel": "execution",
+      "data": {
+        "exit": 0,
+        "timeout": false,
+        "output": "4 pass 0 fail"
+      }
+    },
+    {
+      "id": "diff:msg_idle_2",
+      "kind": "diff",
+      "label": "1 file changed",
+      "status": "neutral",
+      "turnID": "turn:msg_user_2",
+      "messageID": "msg_idle_2",
+      "time": 1730000051000,
+      "minLevel": "execution",
+      "data": {
+        "files": [
+          "src/auth/session.test.ts"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "part-of:turn:msg_user_1->session",
+      "kind": "part-of",
+      "source": "turn:msg_user_1",
+      "target": "session",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:msg:msg_user_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "msg:msg_user_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "references:msg:msg_user_1->file:src/auth/session.ts",
+      "kind": "references",
+      "source": "msg:msg_user_1",
+      "target": "file:src/auth/session.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "references:msg:msg_user_1->file:src/auth/session.test.ts",
+      "kind": "references",
+      "source": "msg:msg_user_1",
+      "target": "file:src/auth/session.test.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:msg_plan_1:text:0->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "msg_plan_1:text:0",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:msg:msg_user_1->msg_plan_1:text:0",
+      "kind": "sequence",
+      "source": "msg:msg_user_1",
+      "target": "msg_plan_1:text:0",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_glob_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_glob_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:msg_plan_1:text:0->tool:prt_tool_glob_1",
+      "kind": "sequence",
+      "source": "msg_plan_1:text:0",
+      "target": "tool:prt_tool_glob_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_1:explore:1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_1:explore:1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_grep_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_grep_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_glob_1->tool:prt_tool_grep_1",
+      "kind": "sequence",
+      "source": "tool:prt_tool_glob_1",
+      "target": "tool:prt_tool_grep_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_read_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_read_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_grep_1->tool:prt_tool_read_1",
+      "kind": "sequence",
+      "source": "tool:prt_tool_grep_1",
+      "target": "tool:prt_tool_read_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "reads:tool:prt_tool_read_1->file:src/auth/session.ts",
+      "kind": "reads",
+      "source": "tool:prt_tool_read_1",
+      "target": "file:src/auth/session.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_read_2->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_read_2",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_read_1->tool:prt_tool_read_2",
+      "kind": "sequence",
+      "source": "tool:prt_tool_read_1",
+      "target": "tool:prt_tool_read_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "reads:tool:prt_tool_read_2->file:src/auth/session.test.ts",
+      "kind": "reads",
+      "source": "tool:prt_tool_read_2",
+      "target": "file:src/auth/session.test.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_read_3->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_read_3",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_read_2->tool:prt_tool_read_3",
+      "kind": "sequence",
+      "source": "tool:prt_tool_read_2",
+      "target": "tool:prt_tool_read_3",
+      "confidence": "explicit"
+    },
+    {
+      "id": "reads:tool:prt_tool_read_3->file:src/auth/store.ts",
+      "kind": "reads",
+      "source": "tool:prt_tool_read_3",
+      "target": "file:src/auth/store.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:sub:ses_child_auth->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "sub:ses_child_auth",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_read_3->sub:ses_child_auth",
+      "kind": "sequence",
+      "source": "tool:prt_tool_read_3",
+      "target": "sub:ses_child_auth",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_1:delegate:2->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_1:delegate:2",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:msg:msg_synthetic_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "msg:msg_synthetic_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:sub:ses_child_auth->msg:msg_synthetic_1",
+      "kind": "sequence",
+      "source": "sub:ses_child_auth",
+      "target": "msg:msg_synthetic_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "delegates:msg:msg_synthetic_1->sub:ses_child_auth",
+      "kind": "delegates",
+      "source": "msg:msg_synthetic_1",
+      "target": "sub:ses_child_auth",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:turn:msg_user_1->file:src/auth/session.ts",
+      "kind": "writes",
+      "source": "turn:msg_user_1",
+      "target": "file:src/auth/session.ts",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:tool:prt_tool_edit_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_edit_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:msg:msg_synthetic_1->tool:prt_tool_edit_1",
+      "kind": "sequence",
+      "source": "msg:msg_synthetic_1",
+      "target": "tool:prt_tool_edit_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_1:edit:3->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_1:edit:3",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:tool:prt_tool_edit_1->file:src/auth/session.ts",
+      "kind": "writes",
+      "source": "tool:prt_tool_edit_1",
+      "target": "file:src/auth/session.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_write_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_write_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_edit_1->tool:prt_tool_write_1",
+      "kind": "sequence",
+      "source": "tool:prt_tool_edit_1",
+      "target": "tool:prt_tool_write_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:tool:prt_tool_write_1->file:src/auth/token.ts",
+      "kind": "writes",
+      "source": "tool:prt_tool_write_1",
+      "target": "file:src/auth/token.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_patch_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_patch_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_write_1->tool:prt_tool_patch_1",
+      "kind": "sequence",
+      "source": "tool:prt_tool_write_1",
+      "target": "tool:prt_tool_patch_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:tool:prt_tool_patch_1->file:src/auth/session.ts",
+      "kind": "writes",
+      "source": "tool:prt_tool_patch_1",
+      "target": "file:src/auth/session.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:tool:prt_tool_patch_1->file:src/auth/guards.ts",
+      "kind": "writes",
+      "source": "tool:prt_tool_patch_1",
+      "target": "file:src/auth/guards.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_shell_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_shell_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_patch_1->tool:prt_tool_shell_1",
+      "kind": "sequence",
+      "source": "tool:prt_tool_patch_1",
+      "target": "tool:prt_tool_shell_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_1:verify:4->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_1:verify:4",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:result:prt_tool_shell_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "result:prt_tool_shell_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:tool:prt_tool_shell_1->result:prt_tool_shell_1",
+      "kind": "produces",
+      "source": "tool:prt_tool_shell_1",
+      "target": "result:prt_tool_shell_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_shell_1->result:prt_tool_shell_1",
+      "kind": "sequence",
+      "source": "tool:prt_tool_shell_1",
+      "target": "result:prt_tool_shell_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_shell_2->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_shell_2",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:result:prt_tool_shell_1->tool:prt_tool_shell_2",
+      "kind": "sequence",
+      "source": "result:prt_tool_shell_1",
+      "target": "tool:prt_tool_shell_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:result:prt_tool_shell_2->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "result:prt_tool_shell_2",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:tool:prt_tool_shell_2->result:prt_tool_shell_2",
+      "kind": "produces",
+      "source": "tool:prt_tool_shell_2",
+      "target": "result:prt_tool_shell_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_shell_2->result:prt_tool_shell_2",
+      "kind": "sequence",
+      "source": "tool:prt_tool_shell_2",
+      "target": "result:prt_tool_shell_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_edit_2->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_edit_2",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:result:prt_tool_shell_2->tool:prt_tool_edit_2",
+      "kind": "sequence",
+      "source": "result:prt_tool_shell_2",
+      "target": "tool:prt_tool_edit_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_1:edit:5->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_1:edit:5",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:tool:prt_tool_edit_2->file:src/auth/session.test.ts",
+      "kind": "writes",
+      "source": "tool:prt_tool_edit_2",
+      "target": "file:src/auth/session.test.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:err:msg_retry_1:assistant->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "err:msg_retry_1:assistant",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_edit_2->err:msg_retry_1:assistant",
+      "kind": "sequence",
+      "source": "tool:prt_tool_edit_2",
+      "target": "err:msg_retry_1:assistant",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:retry:msg_retry_1:2->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "retry:msg_retry_1:2",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:err:msg_retry_1:assistant->retry:msg_retry_1:2",
+      "kind": "sequence",
+      "source": "err:msg_retry_1:assistant",
+      "target": "retry:msg_retry_1:2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "evidence:err:msg_retry_1:assistant->retry:msg_retry_1:2",
+      "kind": "evidence",
+      "source": "err:msg_retry_1:assistant",
+      "target": "retry:msg_retry_1:2",
+      "confidence": "structural"
+    },
+    {
+      "id": "part-of:tool:prt_tool_shell_3->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "tool:prt_tool_shell_3",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:retry:msg_retry_1:2->tool:prt_tool_shell_3",
+      "kind": "sequence",
+      "source": "retry:msg_retry_1:2",
+      "target": "tool:prt_tool_shell_3",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_1:verify:6->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_1:verify:6",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:result:prt_tool_shell_3->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "result:prt_tool_shell_3",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:tool:prt_tool_shell_3->result:prt_tool_shell_3",
+      "kind": "produces",
+      "source": "tool:prt_tool_shell_3",
+      "target": "result:prt_tool_shell_3",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_shell_3->result:prt_tool_shell_3",
+      "kind": "sequence",
+      "source": "tool:prt_tool_shell_3",
+      "target": "result:prt_tool_shell_3",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:diff:msg_idle_1->turn:msg_user_1",
+      "kind": "part-of",
+      "source": "diff:msg_idle_1",
+      "target": "turn:msg_user_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:result:prt_tool_shell_3->diff:msg_idle_1",
+      "kind": "sequence",
+      "source": "result:prt_tool_shell_3",
+      "target": "diff:msg_idle_1",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:diff:msg_idle_1->file:src/auth/guards.ts",
+      "kind": "produces",
+      "source": "diff:msg_idle_1",
+      "target": "file:src/auth/guards.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:diff:msg_idle_1->file:src/auth/session.test.ts",
+      "kind": "produces",
+      "source": "diff:msg_idle_1",
+      "target": "file:src/auth/session.test.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:diff:msg_idle_1->file:src/auth/session.ts",
+      "kind": "produces",
+      "source": "diff:msg_idle_1",
+      "target": "file:src/auth/session.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:diff:msg_idle_1->file:src/auth/token.ts",
+      "kind": "produces",
+      "source": "diff:msg_idle_1",
+      "target": "file:src/auth/token.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:turn:msg_user_2->session",
+      "kind": "part-of",
+      "source": "turn:msg_user_2",
+      "target": "session",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:turn:msg_user_1->turn:msg_user_2",
+      "kind": "sequence",
+      "source": "turn:msg_user_1",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:msg:msg_user_2->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "msg:msg_user_2",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_edit_3->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "tool:prt_tool_edit_3",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:msg:msg_user_2->tool:prt_tool_edit_3",
+      "kind": "sequence",
+      "source": "msg:msg_user_2",
+      "target": "tool:prt_tool_edit_3",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_2:edit:1->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_2:edit:1",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "writes:tool:prt_tool_edit_3->file:src/auth/session.test.ts",
+      "kind": "writes",
+      "source": "tool:prt_tool_edit_3",
+      "target": "file:src/auth/session.test.ts",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:tool:prt_tool_shell_4->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "tool:prt_tool_shell_4",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_edit_3->tool:prt_tool_shell_4",
+      "kind": "sequence",
+      "source": "tool:prt_tool_edit_3",
+      "target": "tool:prt_tool_shell_4",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:phase:turn:msg_user_2:verify:2->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "phase:turn:msg_user_2:verify:2",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:result:prt_tool_shell_4->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "result:prt_tool_shell_4",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:tool:prt_tool_shell_4->result:prt_tool_shell_4",
+      "kind": "produces",
+      "source": "tool:prt_tool_shell_4",
+      "target": "result:prt_tool_shell_4",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:tool:prt_tool_shell_4->result:prt_tool_shell_4",
+      "kind": "sequence",
+      "source": "tool:prt_tool_shell_4",
+      "target": "result:prt_tool_shell_4",
+      "confidence": "explicit"
+    },
+    {
+      "id": "part-of:diff:msg_idle_2->turn:msg_user_2",
+      "kind": "part-of",
+      "source": "diff:msg_idle_2",
+      "target": "turn:msg_user_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "sequence:result:prt_tool_shell_4->diff:msg_idle_2",
+      "kind": "sequence",
+      "source": "result:prt_tool_shell_4",
+      "target": "diff:msg_idle_2",
+      "confidence": "explicit"
+    },
+    {
+      "id": "produces:diff:msg_idle_2->file:src/auth/session.test.ts",
+      "kind": "produces",
+      "source": "diff:msg_idle_2",
+      "target": "file:src/auth/session.test.ts",
+      "confidence": "explicit"
+    }
+  ],
+  "turns": [
+    "turn:msg_user_1",
+    "turn:msg_user_2"
+  ],
+  "turnByMessageID": {
+    "msg_user_1": "msg_user_1",
+    "msg_plan_1": "msg_user_1",
+    "msg_explore_1": "msg_user_1",
+    "msg_delegate_1": "msg_user_1",
+    "msg_synthetic_1": "msg_user_1",
+    "msg_edit_1": "msg_user_1",
+    "msg_verify_1": "msg_user_1",
+    "msg_retry_1": "msg_user_1",
+    "msg_recovery_1": "msg_user_1",
+    "msg_idle_1": "msg_user_1",
+    "msg_user_2": "msg_user_2",
+    "msg_edit_3": "msg_user_2",
+    "msg_idle_2": "msg_user_2"
+  },
+  "activeTurn": "turn:msg_user_2"
+}

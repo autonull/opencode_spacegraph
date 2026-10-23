@@ -1,5 +1,6 @@
 export {
   diffNodeID,
+  directoryNodeID,
   errorNodeID,
   fileNodeID,
   messageNodeID,
@@ -20,6 +21,9 @@ export {
   type GraphEdge,
   type GraphModel,
   type GraphNode,
+  type GraphSnapshotMeta,
+  type Provenance,
+  type SnapshotSource,
   type NodeKind,
   type NodeStatus,
   type PhaseCategory,
@@ -27,10 +31,13 @@ export {
   type ZoomLevel,
 } from "./model"
 
-export { buildGraph } from "./build"
+export { buildGraph, type BuildGraphInput } from "./build"
 
 export {
   CARD_SIZE,
+  DOMAINS,
+  DOMAIN_OF_KIND,
+  nodeDomain,
   COMPACT_SIZE,
   DETAIL_MODES,
   GRAPH_ARRANGEMENTS,
@@ -49,6 +56,7 @@ export {
   isLogLayout,
   isSummaryOrLogLayout,
   type DetailFraming,
+  type Domain,
   type DetailMode,
   type GraphArrangement,
   type GraphMode,
@@ -60,9 +68,12 @@ export {
 
 export { nodeIndex, lookupNode } from "./lookup"
 
+export { scopeModel } from "./scope"
+
 export {
   buildFixtureGraph,
   buildFixtureMessages,
+  buildFixtureSnapshot,
   buildInterruptedFixtureMessages,
   CHANGED_FILES,
   FIXTURE_BASE_TIME,

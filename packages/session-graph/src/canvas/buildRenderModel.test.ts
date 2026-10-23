@@ -289,7 +289,7 @@ test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () =
 })
 
 test("the render model carries the session identity of the root (T3.6)", () => {
-  const identified = buildGraph([{ id: "m1", type: "user", text: "hi", time: { created: 1 } }], { type: "idle" }, "ses_abc")
+  const identified = buildGraph({ messages: [{ id: "m1", type: "user", text: "hi", time: { created: 1 } }], status: { type: "idle" }, sessionID: "ses_abc" })
   const built = buildRenderModel(identified, { level: "overview", positions: layoutGraph(identified).positions })
   const root = built.nodes.find((node) => node.kind === "session")
 

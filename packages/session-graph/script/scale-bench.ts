@@ -86,9 +86,9 @@ for (const messages of SIZES) {
   const status = { type: "idle" } as const
 
   // Warm the walk so the first measurement is not dominated by JIT.
-  buildGraph(stream, status)
+  buildGraph({ messages: stream, status: status })
 
-  const built = timed(() => buildGraph(stream, status))
+  const built = timed(() => buildGraph({ messages: stream, status: status }))
   const model = built.value
   const laid = timed(() => layoutGraph(model))
   const layout = laid.value
@@ -107,7 +107,7 @@ for (const messages of SIZES) {
     { id: "u_next", type: "user", text: "next", time: { created: 9999 } } as SessionMessageInfo,
   ]
   const update = timed(() => {
-    const nextModel = buildGraph(extended, status)
+    const nextModel = buildGraph({ messages: extended, status: status })
     const nextLayout = layoutGraph(nextModel)
     const nextRender = buildRenderModel(nextModel, {
       level: "execution",

@@ -48,10 +48,10 @@ describe("graph model — build cost", () => {
   test(`builds and lays out ${TURNS * 3} messages within the complexity guard`, () => {
     const messages = syntheticStream(TURNS)
     // Warm the walk once so the measurement is not dominated by first-call JIT.
-    const warm = buildGraph(messages, { type: "idle" })
+    const warm = buildGraph({ messages: messages, status: { type: "idle" } })
 
     const start = performance.now()
-    const model = buildGraph(messages, { type: "idle" })
+    const model = buildGraph({ messages: messages, status: { type: "idle" } })
     const layout = layoutGraph(model)
     const elapsed = performance.now() - start
 

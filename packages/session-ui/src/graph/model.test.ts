@@ -42,7 +42,7 @@ describe("graph model — turn ownership", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const model = buildGraph(messages, { type: "idle" })
+    const model = buildGraph({ messages: messages, status: { type: "idle" } })
 
     expect(model.turns).toEqual([turnNodeID("u1")])
     expect(model.turnByMessageID.get("u2")).toBe("u1")
@@ -64,7 +64,7 @@ describe("graph model — turn ownership", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const model = buildGraph(messages, { type: "idle" })
+    const model = buildGraph({ messages: messages, status: { type: "idle" } })
 
     expect(model.turns).toEqual([turnNodeID("s1")])
     expect(model.turnByMessageID.get("i1")).toBe("s1")
@@ -72,7 +72,7 @@ describe("graph model — turn ownership", () => {
   })
 
   test("an interrupted idle produces an interrupted error node", () => {
-    const model = buildGraph(buildInterruptedFixtureMessages(), { type: "idle" })
+    const model = buildGraph({ messages: buildInterruptedFixtureMessages(), status: { type: "idle" } })
     const error = nodesOf(model, "error").at(-1)
 
     expect(error?.status).toBe("interrupted")
@@ -145,7 +145,7 @@ describe("graph model — provenance and delegation", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    expect(ids(buildGraph(messages, { type: "idle" }))).toContain(toolNodeID("t_mystery"))
+    expect(ids(buildGraph({ messages: messages, status: { type: "idle" } }))).toContain(toolNodeID("t_mystery"))
   })
 
   test("malformed tool metadata and streaming JSON do not throw", () => {
@@ -177,7 +177,7 @@ describe("graph model — provenance and delegation", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    expect(() => buildGraph(messages, { type: "idle" })).not.toThrow()
+    expect(() => buildGraph({ messages: messages, status: { type: "idle" } })).not.toThrow()
   })
 })
 
@@ -224,7 +224,7 @@ describe("graph model — terminal output", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const result = nodesOf(buildGraph(messages, { type: "idle" }), "result")[0]
+    const result = nodesOf(buildGraph({ messages: messages, status: { type: "idle" } }), "result")[0]
 
     expect(result?.data?.output).toBe("FAIL src/auth/session.test.ts\n  expected 1 to be 2")
   })
@@ -240,8 +240,8 @@ describe("graph model — invariants", () => {
   test("construction is pure: two builds are equal and inputs are untouched", () => {
     const messages = buildFixtureMessages()
     const before = structuredClone(messages)
-    const a = buildGraph(messages, { type: "idle" })
-    const b = buildGraph(messages, { type: "idle" })
+    const a = buildGraph({ messages: messages, status: { type: "idle" } })
+    const b = buildGraph({ messages: messages, status: { type: "idle" } })
 
     expect(a.nodes.map((node) => node.id)).toEqual(b.nodes.map((node) => node.id))
     expect(a.edges.map((edge) => edge.id)).toEqual(b.edges.map((edge) => edge.id))
@@ -315,7 +315,7 @@ describe("graph model — semantic phases", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const phases = nodesOf(buildGraph(messages, { type: "idle" }), "phase")
+    const phases = nodesOf(buildGraph({ messages: messages, status: { type: "idle" } }), "phase")
 
     expect(phases.map((phase) => phase.data?.category)).toEqual(["explore", "edit", "explore"])
   })
@@ -323,14 +323,14 @@ describe("graph model — semantic phases", () => {
 
 describe("model — session identity (T3.6)", () => {
   test("the root node carries the session id while its literal id stays", () => {
-    const model = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc")
+    const model = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc" })
 
     expect(model.root).toBe("session")
     expect(model.nodes.find((node) => node.id === model.root)?.data?.sessionID).toBe("ses_abc")
   })
 
   test("a model built without a session id carries none", () => {
-    const model = buildGraph(buildFixtureMessages(), { type: "idle" })
+    const model = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" } })
 
     expect(model.nodes.find((node) => node.id === model.root)?.data?.sessionID).toBeUndefined()
   })
@@ -338,10 +338,10 @@ describe("model — session identity (T3.6)", () => {
 
 describe("model — session lineage (T6.5)", () => {
   test("the root node carries where the session came from", () => {
-    const model = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc", {
+    const model = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
       forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
       parentSessionID: "ses_parent",
-    })
+    } })
 
     const root = model.nodes.find((node) => node.id === model.root)
 
@@ -351,7 +351,7 @@ describe("model — session lineage (T6.5)", () => {
   })
 
   test("a model built without lineage carries none", () => {
-    const root = buildGraph(buildFixtureMessages(), { type: "idle" }).nodes.find(
+    const root = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" } }).nodes.find(
       (node) => node.id === "session",
     )
 
@@ -360,9 +360,9 @@ describe("model — session lineage (T6.5)", () => {
   })
 
   test("the lineage is attribution, not a cross-session edge", () => {
-    const model = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc", {
+    const model = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
       forkedFrom: { sessionID: "ses_origin", boundary: { type: "before", messageID: "msg_user_1" } },
-    })
+    } })
 
     // Every edge stays inside this session: no node of another session is drawn.
     for (const edge of model.edges) {
@@ -387,7 +387,7 @@ describe("model — child sessions and dangling edges (T6.5)", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const model = buildGraph(messages, { type: "idle" })
+    const model = buildGraph({ messages: messages, status: { type: "idle" } })
     const notice = model.nodes.find((node) => node.kind === "notice")
 
     expect(model.edges.filter((edge) => edge.kind === "delegates")).toHaveLength(0)
@@ -427,7 +427,7 @@ describe("model — interruption, compaction and outcomes (T6.5)", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const error = nodesOf(buildGraph(messages, { type: "idle" }), "error")[0]
+    const error = nodesOf(buildGraph({ messages: messages, status: { type: "idle" } }), "error")[0]
 
     expect(error?.status).toBe("interrupted")
     expect(error?.label).toBe("Interrupted")
@@ -448,7 +448,7 @@ describe("model — interruption, compaction and outcomes (T6.5)", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const compaction = nodesOf(buildGraph(messages, { type: "idle" }), "compaction")[0]
+    const compaction = nodesOf(buildGraph({ messages: messages, status: { type: "idle" } }), "compaction")[0]
 
     expect(compaction?.status).toBe("failed")
     expect(compaction?.summary).toBe("Compaction failed")
@@ -469,7 +469,7 @@ describe("model — interruption, compaction and outcomes (T6.5)", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const compaction = nodesOf(buildGraph(messages, { type: "idle" }), "compaction")[0]
+    const compaction = nodesOf(buildGraph({ messages: messages, status: { type: "idle" } }), "compaction")[0]
 
     expect(compaction?.data?.replayed).toBe(true)
   })
@@ -488,30 +488,24 @@ describe("model — interruption, compaction and outcomes (T6.5)", () => {
       idle("i1"),
     ] satisfies SessionMessageInfo[]
 
-    const compaction = nodesOf(buildGraph(messages, { type: "idle" }), "compaction")[0]
+    const compaction = nodesOf(buildGraph({ messages: messages, status: { type: "idle" } }), "compaction")[0]
 
     expect(compaction?.data?.replayed).toBe(false)
     expect(compaction?.summary).toBe("Earlier work, summarised.")
   })
 
   test("the idle outcome decides what the turn shows", () => {
-    const succeeded = buildGraph([user("u1"), idle("i1")], { type: "idle" })
+    const succeeded = buildGraph({ messages: [user("u1"), idle("i1")], status: { type: "idle" } })
 
-    const failed = buildGraph(
-      [
+    const failed = buildGraph({ messages: [
         user("u1"),
         { id: "i1", type: "idle", outcome: "failed", error: { type: "provider_error", message: "It failed" }, time: { created: 1 } },
-      ],
-      { type: "idle" },
-    )
+      ], status: { type: "idle" } })
 
-    const interrupted = buildGraph(
-      [
+    const interrupted = buildGraph({ messages: [
         user("u1"),
         { id: "i1", type: "idle", outcome: "interrupted", error: { type: "aborted", message: "Stopped" }, time: { created: 1 } },
-      ],
-      { type: "idle" },
-    )
+      ], status: { type: "idle" } })
 
     expect(nodesOf(succeeded, "error")).toHaveLength(0)
     expect(nodesOf(failed, "error")[0]?.status).toBe("failed")

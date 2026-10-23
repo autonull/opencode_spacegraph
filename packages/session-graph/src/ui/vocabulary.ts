@@ -98,6 +98,7 @@ export const KIND_KEY = {
   reasoning: "ui.sessionGraph.kind.reasoning",
   tool: "ui.sessionGraph.kind.tool",
   file: "ui.sessionGraph.kind.file",
+  directory: "ui.sessionGraph.kind.directory",
   subagent: "ui.sessionGraph.kind.subagent",
   result: "ui.sessionGraph.kind.result",
   error: "ui.sessionGraph.kind.error",

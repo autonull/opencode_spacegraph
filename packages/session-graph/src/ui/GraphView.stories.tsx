@@ -93,16 +93,15 @@ const SCALE_MODEL: GraphModel = (() => {
  * T6.5: a session that was forked from another one. The attribution rides on the root node, so the
  * inspector can name where this session came from and offer to open it.
  */
-const FORKED_MODEL: GraphModel = buildGraph(buildFixtureMessages(), { type: "idle" }, "ses_abc", {
+const FORKED_MODEL: GraphModel = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
   forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
-})
+} })
 
 /**
  * T6.5: a compaction that replayed the provider's replacement window instead of leaving a summary.
  * The node says which one it was, so the reader knows what the agent could still see.
  */
-const COMPACTED_MODEL: GraphModel = buildGraph(
-  [
+const COMPACTED_MODEL: GraphModel = buildGraph({ messages: [
     ...buildFixtureMessages().slice(0, 2),
     {
       id: "msg_compact_1",
@@ -113,9 +112,7 @@ const COMPACTED_MODEL: GraphModel = buildGraph(
       native: { messages: [{ role: "user", content: "earlier work" }] },
       time: { created: 3 },
     },
-  ],
-  { type: "idle" },
-)
+  ], status: { type: "idle" } })
 
 /** A failing adapter factory pair forces the registry to throw, exercising the error state. */
 const FAILING: Partial<Record<RendererID, RendererFactory>> = {
