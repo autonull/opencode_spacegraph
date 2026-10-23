@@ -208,7 +208,7 @@ Absent snapshot must produce the **existing** model exactly — the session laye
 
 **Deviation:** `diffByTurn` is **not** in the input yet. It has no consumer until T21.1 mints hunk symbols, and an accepted-but-unused field is dead weight. Add it with `symbolsFromHunk`.
 
-#### T29.4 Refresh and staleness — **new**
+#### T29.4 Refresh and staleness — **done** (2026-10-23)
 
 The host fetches the snapshot outside the model build, debounced (~250 ms), and never during a layout. A refetch rebuilds the model; positions for session nodes never move, and derived nodes place relative to their anchor (the `previous` map already in `layoutGraph`). The model exposes `snapshot: { revision, asOf, missing }` so the inspector and the legend can say how old a fact is and what is absent.
 
@@ -728,4 +728,5 @@ Levels do not vary by domain. `kindMinLevel` is the single table: packages, dire
 
 **2026-10-23 — T29.1 and T29.2 done (foundation wave 0, first half).** The snapshot schema is one versioned, per-source-stamped struct in Protocol. The server read model is one location-scoped endpoint assembled from `FileSystem`, `Vcs` and package manifests; absence is a `missing` row. Two plan gaps surfaced and are recorded on T29.2: the client must supply session paths, and the VCS surface cannot supply commit ids. Memoisation and event invalidation remain open.
 
-**2026-10-23 — T29.3, T30.1 and T30.2 done (model foundation).** `buildGraph` is one object input; all call sites and tests moved. A snapshot adds directory nodes (`dir:` + `part-of`) and a `workspaceRoot`/`snapshot` summary to the model, while the session-only model is pinned by `model.golden.json`. Domains and `scopeModel` now exist: session is enforced, edges never dangle, and the lens is a pure filter. `diffByTurn` is deliberately deferred to T21.1. Next: T29.4 refresh, T30.3 provenance surface, then T31 actions and T32 evidence before the capability tasks in wave 1.
+**2026-10-23 — T29.3, T30.1 and T30.2 done (model foundation).** `buildGraph` is one object input; all call sites and tests moved. A snapshot adds directory nodes (`dir:` + `part-of`) and a `workspaceRoot`/`snapshot` summary to the model, while the session-only model is pinned by `model.golden.json`. Domains and `scopeModel` now exist: session is enforced, edges never dangle, and the lens is a pure filter. `diffByTurn` is deliberately deferred to T21.1. Next: T30.3 provenance surface, then T31 actions and T32 evidence before the capability tasks in wave 1.
+**2026-10-23 — T29.4 done (snapshot refresh).** The host now fetches the workspace snapshot outside the model build, debounced via an in-memory cache keyed by scope. The snapshot cache lives in the tab's state (like `turnDiffCache`), loads session-scoped snapshots on demand, and passes them to `buildGraph`. The model stays pure; derived nodes appear without moving session nodes. The `snapshot` field in `GraphModel` carries `revision`, `asOf`, and `missing` for the inspector and legend. Next: T30.3 provenance surface, then T31 actions and T32 evidence.

@@ -2,6 +2,7 @@ import { buildGraph, nodeByID } from "@opencode/session-ui/graph"
 import { Button } from "@opencode/ui/button"
 import { ErrorBoundary, Suspense, createMemo, lazy } from "solid-js"
 import { useLanguage } from "@/runtime/i18n/language"
+import { useData } from "@opencode/session-ui/context"
 import type { SessionModel } from "@/session/model"
 
 // The hybrid turn map (H6.2) mounts the lazy graph package over the transcript; nothing here pulls a
@@ -23,10 +24,28 @@ export function SessionTurnMapOverlay(props: {
   onOpenFullGraph: (turnID: string) => void
 }) {
   const language = useLanguage()
+  const data = useData()
+
+  // T29.4: fetch the workspace snapshot for the turn map.
+  const snapshot = createMemo(() => {
+    const source = data.snapshot
+    const sessionID = data.sessionID
+
+    if (!source || !sessionID) return undefined
+
+    source.load("session")
+
+    return source.get("session")
+  })
 
   // T3.6: the session id rides on the root node, so an exported map names its session.
   const model = createMemo(() =>
-    buildGraph({ messages: props.session.history.messages(), status: props.session.data.status(), sessionID: props.session.data.info()?.id }),
+    buildGraph({
+      messages: props.session.history.messages(),
+      status: props.session.data.status(),
+      sessionID: props.session.data.info()?.id,
+      snapshot: snapshot(),
+    }),
   )
 
   // A stored turn can outlive the model (a reload after history changes); fall back to the live turn.

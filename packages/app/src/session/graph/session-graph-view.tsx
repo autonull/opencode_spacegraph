@@ -77,15 +77,34 @@ export function SessionGraphView(props: {
     }
   })
 
+  // T29.4: fetch the workspace snapshot (debounced ~250ms) and pass it to the model.
+  // The model stays pure; the snapshot is fetched outside the model build.
+  const data = useData()
+  const snapshot = createMemo(() => {
+    const source = data.snapshot
+    const sessionID = data.sessionID
+
+    if (!source || !sessionID) return undefined
+
+    // Load session-scoped snapshot (covers touched files + ancestors)
+    source.load("session")
+
+    return source.get("session")
+  })
+
   // T3.6: the session id rides on the root node, so an exported map names its session.
   const model = createMemo(() =>
-    buildGraph({ messages: session.history.messages(), status: session.data.status(), sessionID: session.data.info()?.id, lineage: lineage() }),
+    buildGraph({
+      messages: session.history.messages(),
+      status: session.data.status(),
+      sessionID: session.data.info()?.id,
+      lineage: lineage(),
+      snapshot: snapshot(),
+    }),
   )
 
   // RF.8: the inspector's on-demand diffs read the same per-tab turn-diff cache the timeline uses,
   // scoped to the current session so the graph package never holds a session id.
-  const data = useData()
-
   const diffSource = createMemo(() => {
     const source = data.turnDiff
     const sessionID = data.sessionID
