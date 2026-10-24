@@ -29,6 +29,7 @@ import {
   ancestors,
   applyFacets,
   applyNodeBudget,
+  breadcrumbs,
   byProximity,
   CARD_SIZE,
   changedFiles,
@@ -92,7 +93,6 @@ import { GraphLegend, GraphLegendBody } from "./GraphLegend"
 import { GraphEqualizerBody } from "./GraphEqualizer"
 import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
 import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
-import { breadcrumbs } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
