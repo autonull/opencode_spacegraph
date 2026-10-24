@@ -69,7 +69,6 @@ export {
   type Domain,
   type DetailMode,
   type GraphArrangement,
-  type GraphMode,
   type GraphSide,
   type Layout,
   type LayoutStrategy,

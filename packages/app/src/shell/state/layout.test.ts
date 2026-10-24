@@ -87,6 +87,20 @@ describe("layout persistence", () => {
     ).toEqual({ [key]: { scroll: {} } })
   })
 
+  test("migrates the retired graph mode to independent surfaces", () => {
+    const key = "local\u0000L3Byb2plY3Q/session"
+    const graph = (mode: string) =>
+      decode({ sessionView: { [key]: { scroll: {}, graph: { mode } } } }).sessionView[key]?.graph
+
+    expect(graph("transcript")).toMatchObject({ map: false, sideBySide: false })
+    expect(graph("graph")).toMatchObject({ map: true, sideBySide: false })
+    expect(graph("hybrid")).toMatchObject({ map: true, sideBySide: true })
+    expect(
+      decode({ sessionView: { [key]: { scroll: {}, graph: { map: true, sideBySide: false } } } }).sessionView[key]
+        ?.graph,
+    ).toMatchObject({ map: true, sideBySide: false })
+  })
+
   test("keeps scoped state and salvages valid tab entries", () => {
     const key = "local\u0000L3Byb2plY3Q/session"
 

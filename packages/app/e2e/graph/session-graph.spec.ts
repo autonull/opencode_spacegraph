@@ -612,6 +612,8 @@ test("falls back to the transcript when the graph module fails to load", async (
   await page.getByRole("button", { name: "Back to transcript" }).click()
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
   await expect(page.locator(canvasHost)).toHaveCount(0)
+  // The transcript is an independent surface: it renders and accepts input without the graph module.
+  await expect(page.locator('[data-slot="session-graph-panel-log"] [data-timeline-row]').first()).toBeVisible()
 })
 
 test("names the session a fork came from and opens it", async ({ page }) => {
@@ -671,7 +673,7 @@ test("the card budget follows the camera (T17.5)", async ({ page }) => {
   await openGraph(page, graphFixture())
 
   // The detail level's budget is 24 cards, and the fixture's session has more activity than that.
-  await page.locator(toolbar).getByRole("button", { name: "Detail", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-rail"]').getByRole("button", { name: "Detail", exact: true }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind]`).count()).toBeGreaterThan(0)
 
   const cards = () =>

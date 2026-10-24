@@ -1052,11 +1052,6 @@ export const GraphView = (props: GraphViewProps) => {
         renderer={rendererID()}
       />
       <GraphToolbar
-        level={level()}
-        onLevel={setLevel}
-        depth={depth()}
-        onDepth={changeDepth}
-        depthModes={DEPTH_MODES}
         capabilities={capabilities()}
         renderer={rendererID()}
         onFit={camera.fitContent}

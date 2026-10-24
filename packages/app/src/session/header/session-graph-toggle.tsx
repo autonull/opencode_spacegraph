@@ -8,9 +8,7 @@ import { useSessionLayout } from "@/session/session-layout"
 import { useSettings } from "@/settings/model"
 import { Metrics } from "@opencode/session-ui/graph"
 
-type GraphMode = "transcript" | "graph" | "hybrid"
-
-/** Log | Map switch plus one split-view control for the session header (T18.2). */
+/** The map surface switch and the split control for the session header (T18.2). */
 export function SessionGraphToggle() {
   const command = useCommand()
   const language = useLanguage()
@@ -21,21 +19,25 @@ export function SessionGraphToggle() {
 
   if (!enabled) return null
 
-  const mode = graph().mode
+  const state = graph()
 
-  const setMode = (nextMode: GraphMode) => {
+  const toggleMap = () => {
     // T2.3: a surface switch is an interaction the protocol measures.
     Metrics.count("mode-switch")
-    graph().setMode(nextMode)
+    state.setMap(!state.map())
   }
 
-  const icon = () => (mode() === "transcript" ? "filetree" : mode() === "graph" ? "window-analytics" : "split")
-  const label = () =>
-    mode() === "transcript"
-      ? language.t("command.graph.mode.log")
-      : mode() === "graph"
-        ? language.t("command.graph.mode.map")
-        : language.t("command.graph.mode.both")
+  const toggleSplit = () => {
+    Metrics.count("mode-switch")
+    if (state.sideBySide()) {
+      state.setSideBySide(false)
+
+      return
+    }
+
+    state.setMap(true)
+    state.setSideBySide(true)
+  }
 
   return (
     <div class="flex shrink-0 items-center gap-0.5">
@@ -43,7 +45,7 @@ export function SessionGraphToggle() {
         placement="bottom"
         value={
           <>
-            {label()}
+            {language.t("command.graph.toggle")}
             {command.keybindParts("graph.toggle").length > 0 ? (
               <Keybind keys={command.keybindParts("graph.toggle")} variant="neutral" />
             ) : null}
@@ -55,9 +57,9 @@ export function SessionGraphToggle() {
           variant="ghost-muted"
           size="large"
           aria-label={language.t("command.graph.toggle")}
-          data-state={mode() !== "transcript" ? "pressed" : undefined}
-          icon={<Icon name={icon()} />}
-          onClick={() => setMode(mode() === "transcript" ? "graph" : "transcript")}
+          data-state={state.map() ? "pressed" : undefined}
+          icon={<Icon name={state.map() ? "window-analytics" : "filetree"} />}
+          onClick={toggleMap}
         />
       </Tooltip>
       <Tooltip placement="bottom" value={language.t("command.graph.hybrid")}>
@@ -66,10 +68,10 @@ export function SessionGraphToggle() {
           variant="ghost-muted"
           size="large"
           aria-label={language.t("command.graph.hybrid")}
-          aria-pressed={mode() === "hybrid"}
-          data-state={mode() === "hybrid" ? "pressed" : undefined}
+          aria-pressed={state.sideBySide()}
+          data-state={state.sideBySide() ? "pressed" : undefined}
           icon={<Icon name="split" />}
-          onClick={() => setMode(mode() === "hybrid" ? "graph" : "hybrid")}
+          onClick={toggleSplit}
         />
       </Tooltip>
     </div>

@@ -24,7 +24,6 @@ import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings, type SettingsContext } from "@/settings/model"
 import { Metrics } from "@opencode/session-ui/graph"
-import type { GraphMode } from "@opencode/session-ui/graph"
 import type { SessionModel } from "@/session/model"
 import { SESSION_PANEL_WIDTH_MIN } from "@/session/session-panel-width"
 import { SessionPanelFrame } from "@/session/session-frame"
@@ -106,19 +105,16 @@ function SessionScreenContent(props: {
 
   const graph = session.layout.graph()
   const graphEnabled = () => settings.experimental.sessionGraph()
-  // The panel holds the log, the map, or both. The hybrid needs room for two surfaces, so a narrow
-  // screen falls back to the map alone.
-  const panelMode = createMemo<GraphMode>(() => {
-    if (!graphEnabled()) return "transcript"
-    const mode = graph.mode()
-    if (mode === "hybrid" && !isDesktop()) return "graph"
-    return mode
-  })
+  // The transcript is the baseline surface. The map is an independent surface, and `split` asks it to
+  // share the panel with the transcript. A narrow screen has room for one surface, so the map takes
+  // the panel alone even when a split was requested.
+  const mapVisible = createMemo(() => graphEnabled() && graph.map())
+  const splitVisible = createMemo(() => mapVisible() && graph.sideBySide() && isDesktop())
   const location = useLocation()
 
-  // T3.5: a graph permalink opens the graph, so a shared link lands on the node it names. The mode is
-  // read untracked, so leaving the graph for the transcript does not pull it back, and the flag is part
-  // of the sources, so a link opened before the settings load still opens the graph.
+  // T3.5: a graph permalink opens the map, so a shared link lands on the node it names. The map
+  // visibility is read untracked, so closing the map does not pull it back, and the flag is part of
+  // the sources, so a link opened before the settings load still opens the map.
   createEffect(
     on(
       () => [location.hash, graphEnabled()] as const,
@@ -127,9 +123,9 @@ function SessionScreenContent(props: {
 
         if (!graphPermalinkFromHash(hash)) return
 
-        if (untrack(graph.mode) !== "transcript") return
+        if (untrack(graph.map)) return
 
-        graph.setMode("graph")
+        graph.setMap(true)
       },
     ),
   )
@@ -142,13 +138,13 @@ function SessionScreenContent(props: {
 
   const openGraphTranscript = (messageID: string, partID?: string) => {
     // T2.3: the graph counts its own "return" action, so this switch is not counted twice.
-    graph.setMode("transcript")
+    graph.setMap(false)
     revealInLog(messageID, partID)
   }
 
   const leaveGraph = () => {
     Metrics.count("mode-switch")
-    graph.setMode("transcript")
+    graph.setMap(false)
   }
 
   // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
@@ -365,11 +361,11 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={selectMobile}
-          graphActive={graphEnabled() && graph.mode() !== "transcript"}
+          graphActive={mapVisible()}
           onGraphToggle={graphEnabled() ? () => {
             if (mobileView() !== "session") selectMobile("session")
             Metrics.count("mode-switch")
-            graph.setMode(graph.mode() === "transcript" ? "graph" : "transcript")
+            graph.setMap(!graph.map())
           } : undefined}
         />
       )}
@@ -434,23 +430,25 @@ function SessionScreenContent(props: {
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
               <SessionGraphPanel
-                mode={panelMode()}
+                map={mapVisible()}
+                sideBySide={splitVisible()}
                 graph={() => (
                   <SessionGraphView
                     session={session}
                     onBack={leaveGraph}
                     onOpenTranscript={openGraphTranscript}
-                    onReveal={panelMode() === "hybrid" ? revealInLog : undefined}
+                    onReveal={splitVisible() ? revealInLog : undefined}
                     onSplitView={
-                      panelMode() === "graph"
-                        ? () => {
+                      splitVisible()
+                        ? undefined
+                        : () => {
                             Metrics.count("mode-switch")
-                            graph.setMode("hybrid")
+                            graph.setMap(true)
+                            graph.setSideBySide(true)
                           }
-                        : undefined
                     }
-                    activeMessageID={panelMode() === "hybrid" ? timeline.currentMessageId() : undefined}
-                    refitKey={panelMode()}
+                    activeMessageID={splitVisible() ? timeline.currentMessageId() : undefined}
+                    refitKey={splitVisible() ? "split" : "map"}
                     arrangement={graph.arrangement()}
                     onArrangementChange={graph.setArrangement}
                     arrangementSide={graph.arrangementSide()}
@@ -682,7 +680,8 @@ function SessionScreenContent(props: {
                   onOpenFullGraph={(id) => {
                     Metrics.count("expand")
                     graph.setTurnMap(undefined)
-                    graph.setMode("graph")
+                    graph.setMap(true)
+                    graph.setSideBySide(false)
                     graph.setSelected(id)
                   }}
                 />

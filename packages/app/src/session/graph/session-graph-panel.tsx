@@ -1,6 +1,6 @@
 import { Icon } from "@opencode/ui/icon"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
-import type { GraphArrangement, GraphMode, GraphSide } from "@opencode/session-ui/graph"
+import type { GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js"
 import { useLanguage } from "@/runtime/i18n/language"
 import "./graph-panel.css"
@@ -43,8 +43,10 @@ export const DEFAULT_PANE_BOX: GraphPaneBox = { x: 0.58, y: 0.04, width: 0.4, he
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 export type SessionGraphPanelProps = {
-  /** Which surfaces the panel holds. */
-  mode: GraphMode
+  /** Whether the map surface is shown. */
+  map: boolean
+  /** Whether the map shares the panel with the transcript instead of taking it alone. */
+  sideBySide: boolean
   /**
    * The map pane, as a factory: the map's chunk and the graph model are only built when the map is
    * actually on, so a reader who never opens it never pays for it.
@@ -82,18 +84,16 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
     onCleanup(() => observer.disconnect())
   })
 
-  const hybrid = () => props.mode === "hybrid"
-  const floating = () => hybrid() && props.arrangement === "floating"
-  const beside = () => hybrid() && props.arrangement === "side"
+  const floating = () => props.sideBySide && props.arrangement === "floating"
+  const beside = () => props.sideBySide && props.arrangement === "side"
   const mapFirst = () => props.side === "start"
 
   // T18.4: focus management — F6 cycles focus between the log pane, the divider, and the map pane.
   const focusOrder = createMemo(() => {
-    if (!hybrid()) return []
     const order: ("log" | "divider" | "map")[] = []
-    if (props.mode !== "graph") order.push("log")
-    if (hybrid() && !floating()) order.push("divider")
-    if (props.mode !== "transcript") order.push("map")
+    if (!props.map || props.sideBySide) order.push("log")
+    if (props.sideBySide && !floating()) order.push("divider")
+    if (props.map) order.push("map")
     return order
   })
 
@@ -231,7 +231,8 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
       ref={root}
       data-slot="session-graph-panel"
       data-component="session-graph-panel"
-      data-mode={props.mode}
+      data-map={props.map}
+      data-side-by-side={props.sideBySide}
       data-arrangement={props.arrangement}
       class="relative flex h-full min-h-0 overflow-hidden"
       classList={{
@@ -240,15 +241,18 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
       }}
       onKeyDown={handleRootKeyDown}
     >
-      <Show when={props.mode !== "graph"}>
-        <div
-          ref={logPane}
-          data-slot="session-graph-panel-log"
-          class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-          style={{ order: mapFirst() ? 2 : 0, "--text-scale": props.logTextScale }}
-          tabIndex={0}
-        >
-          <Show when={hybrid()}>
+      <div
+        ref={logPane}
+        data-slot="session-graph-panel-log"
+        class="min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        classList={{
+          flex: !props.map || props.sideBySide,
+          hidden: props.map && !props.sideBySide,
+        }}
+        style={{ order: props.sideBySide && mapFirst() ? 2 : 0, "--text-scale": props.logTextScale }}
+        tabIndex={0}
+      >
+          <Show when={props.sideBySide}>
             {/* The log's text size, at hand: in a split panel the log is narrow, and the reader
                 wants it bigger or smaller without leaving the map to find a setting. */}
             <div
@@ -274,9 +278,8 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
             </div>
           </Show>
           <div class="min-h-0 flex-1">{props.transcript}</div>
-        </div>
-      </Show>
-      <Show when={hybrid() && !floating()}>
+      </div>
+      <Show when={props.sideBySide && !floating()}>
         <div
           ref={dividerEl}
           data-slot="session-graph-panel-divider"
@@ -301,7 +304,7 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
           />
         </div>
       </Show>
-      <Show when={props.mode !== "transcript"}>
+      <Show when={props.map}>
         <div
           ref={mapPane}
           data-slot="session-graph-panel-map"
@@ -324,9 +327,9 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
                   // content leaves the percentage heights inside it unresolved, and the map view
                   // would shrink to its content instead of filling the panel. Beside the log the
                   // pane fills the row; above it the pane holds the map's share of the height.
-                  flex: hybrid() ? `0 0 ${mapShare() * 100}%` : "1 1 auto",
-                  height: hybrid() && !beside() ? `${mapShare() * 100}%` : "100%",
-                  order: mapFirst() ? 0 : 2,
+                  flex: props.sideBySide ? `0 0 ${mapShare() * 100}%` : "1 1 auto",
+                  height: props.sideBySide && !beside() ? `${mapShare() * 100}%` : "100%",
+                  order: props.sideBySide && mapFirst() ? 0 : 2,
                 }
           }
           tabIndex={0}

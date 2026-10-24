@@ -173,13 +173,10 @@ export type DetailMode = (typeof DETAIL_MODES)[number]
 export type DetailFraming = "off" | "card"
 
 /**
- * How the map meets the transcript. The transcript is the dependable baseline, the graph is the
- * alternative view of the same session, and the hybrid is the two together: the log stays where the
- * reader left it and the map answers the question beside it.
+ * The retired transcript|map|both vocabulary. Only persisted state migration reads these values;
+ * the UI composes independent surfaces and has no mode.
  */
 export const GRAPH_MODES = ["transcript", "graph", "hybrid"] as const
-
-export type GraphMode = (typeof GRAPH_MODES)[number]
 
 /**
  * How the map and the log meet in the hybrid. The three arrangements are the same two surfaces

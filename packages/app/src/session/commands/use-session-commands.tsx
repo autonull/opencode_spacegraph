@@ -469,8 +469,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
           const graph = actions.session.layout.graph()
           // T2.3: a surface switch is an interaction the protocol measures.
           Metrics.count("mode-switch")
-          // The map is the map: the hybrid counts as the map, so the toggle leaves it for the log.
-          graph.setMode(graph.mode() === "transcript" ? "graph" : "transcript")
+          graph.setMap(!graph.map())
         },
       }),
       viewCommand({
@@ -481,7 +480,9 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         onSelect: () => {
           const graph = actions.session.layout.graph()
           Metrics.count("mode-switch")
-          graph.setMode(graph.mode() === "hybrid" ? "transcript" : "hybrid")
+          const next = !graph.sideBySide()
+          if (next) graph.setMap(true)
+          graph.setSideBySide(next)
         },
       }),
       viewCommand({

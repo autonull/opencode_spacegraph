@@ -88,7 +88,10 @@ const sessionTabsSchema = Persistence.struct({
 
 const sessionGraphSchema = Persistence.migrateField(
   Persistence.struct({
-    mode: Schema.Literals(GRAPH_MODES),
+    // The two surfaces are independent: the transcript is the baseline, the map is an optional
+    // surface beside or over it. `split` only means anything while the map is shown.
+    map: Schema.optional(Schema.Boolean),
+    sideBySide: Schema.optional(Schema.Boolean),
     // The hybrid's geometry: how the map and the log meet, which side the map takes, and how much of
     // the panel the map holds. Absent means the default arrangement.
     arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
@@ -162,12 +165,16 @@ const sessionGraphSchema = Persistence.migrateField(
   // T17.1: the past stored a representation beside the strategy. A stored ribbon or matrix becomes
   // the layout; anything else keeps the stored strategy, because "graph" was the default family.
   Persistence.legacy({
-    mode: Schema.Literals(GRAPH_MODES),
+    mode: Schema.optional(Schema.Literals(GRAPH_MODES)),
+    map: Schema.optional(Schema.Boolean),
+    sideBySide: Schema.optional(Schema.Boolean),
     layout: Schema.optional(Schema.Literals(LAYOUTS)),
     representation: Schema.optional(Schema.String),
   }),
   (value) => ({
     ...value,
+    map: value.map ?? (value.mode === "graph" || value.mode === "hybrid"),
+    sideBySide: value.sideBySide ?? value.mode === "hybrid",
     layout: value.layout ?? (value.representation === "ribbon" || value.representation === "matrix" ? value.representation : undefined),
   }),
 )
@@ -183,7 +190,7 @@ const sessionViewSchema = Persistence.struct({
   reviewFile: Schema.optional(Schema.String),
   pendingMessage: Schema.optional(Schema.String),
   pendingMessageAt: Schema.optional(Schema.Finite),
-  // Transcript | graph mode and its renderer/projection/selection, per session. Absent means transcript.
+  // The map surface and its renderer/projection/selection, per session. Absent means map closed.
   graph: Persistence.optional(sessionGraphSchema),
 })
 
@@ -614,7 +621,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
         }
       },
-      /** Transcript | graph mode and its renderer/projection/selection, per session. Absent means transcript. */
+      /** The map surface and its renderer/projection/selection, per session. Absent means map closed. */
       graph(sessionKey: string | Accessor<string>) {
         const key = createSessionKeyReader(sessionKey, ensureKey)
         const state = () => store.sessionView[key()]?.graph
@@ -623,7 +630,12 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           const session = key()
           touch(session)
           const current = store.sessionView[session]
-          const merged: SessionGraphState = { mode: current?.graph?.mode ?? "transcript", ...current?.graph, ...next }
+          const merged: SessionGraphState = {
+            map: current?.graph?.map ?? false,
+            sideBySide: current?.graph?.sideBySide ?? false,
+            ...current?.graph,
+            ...next,
+          }
 
           if (!current) {
             setStore("sessionView", session, { scroll: {}, graph: merged })
@@ -636,7 +648,8 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         }
 
         return {
-          mode: createMemo(() => state()?.mode ?? "transcript"),
+          map: createMemo(() => state()?.map ?? false),
+          sideBySide: createMemo(() => state()?.sideBySide ?? false),
           arrangement: createMemo(() => state()?.arrangement ?? "stacked"),
           arrangementSide: createMemo(() => state()?.arrangementSide ?? "start"),
           split: createMemo(() => state()?.split ?? 0.5),
@@ -656,8 +669,11 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           detailFraming: createMemo(() => state()?.detailFraming ?? "off"),
           peek: createMemo(() => state()?.peek ?? false),
           followLog: createMemo(() => state()?.followLog ?? false),
-          setMode(mode: SessionGraphState["mode"]) {
-            write({ mode })
+          setMap(map: boolean) {
+            write({ map })
+          },
+          setSideBySide(sideBySide: boolean) {
+            write({ sideBySide })
           },
           setArrangement(arrangement: NonNullable<SessionGraphState["arrangement"]>) {
             write({ arrangement })

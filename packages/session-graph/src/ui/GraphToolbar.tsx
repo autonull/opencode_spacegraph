@@ -1,4 +1,4 @@
-import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
+import type { RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show, type JSX } from "solid-js"
@@ -9,23 +9,15 @@ import {
   LAYOUTS,
   type DetailFraming,
   type DetailMode,
-  type Domain,
   type GraphArrangement,
   type GraphViewData,
   type GraphSide,
   type Layout,
-  type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import { ARRANGEMENT_KEY, DETAIL_MODE_KEY, LAYOUT_KEY, SIDE_KEY } from "./vocabulary"
 
 export type GraphToolbarProps = {
-  level: ZoomLevel
-  onLevel: (level: ZoomLevel) => void
-  /** LE.14: the depth spectrum chooser (flat 2D | layered | depth-stack | orbit 3D). */
-  depth?: DepthMode
-  onDepth?: (depth: DepthMode) => void
-  depthModes?: readonly DepthMode[]
   capabilities?: RendererCapabilities
   renderer?: string
   onFit: () => void
@@ -101,10 +93,6 @@ export type GraphToolbarProps = {
   endInset?: string
   /** T27.1: the model to derive domain presence from. */
   model?: GraphViewData
-  /** T27.1: the currently selected domains (lens). */
-  domains?: ReadonlySet<Domain>
-  /** T27.1: callback when the domain lens changes. */
-  onDomainsChange?: (domains: ReadonlySet<Domain>) => void
 }
 
 /**

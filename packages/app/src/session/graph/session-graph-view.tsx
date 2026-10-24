@@ -27,7 +27,7 @@ import type { SessionModel } from "@/session/model"
 const GraphView = lazy(() => import("@opencode/session-graph").then((mod) => ({ default: mod.GraphView })))
 
 /**
- * Lazy graph mode for one session (I4.2). It reads the session's own store, builds the pure graph
+ * The lazy map surface for one session (I4.2). It reads the session's own store, builds the pure graph
  * model, and hands only data and callbacks to `@opencode/session-graph`; it never imports an adapter.
  * A load or mount failure falls back to the transcript so the session never breaks.
  */
