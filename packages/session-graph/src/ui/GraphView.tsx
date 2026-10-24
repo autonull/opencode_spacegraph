@@ -625,6 +625,23 @@ export const GraphView = (props: GraphViewProps) => {
     const handleCopyTraceOutline = () => copyTraceOutline()
     window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
     onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
+
+    // A1/B1/C1 — the command palette asks the same questions as the keys.
+    const handleCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ name?: string; source?: string }>).detail
+      const name = detail?.name
+      if (name === "why" || name === "led-here" || name === "related") {
+        startTrace(name, detail?.source)
+        return
+      }
+      if (name === "compare") {
+        compareSelectedTurns()
+        return
+      }
+      if (name === "note") openNoteComposer()
+    }
+    window.addEventListener("graph:command", handleCommand)
+    onCleanup(() => window.removeEventListener("graph:command", handleCommand))
   })
 
   // The canvas region's size, for the same reason: the card tier is measured in screen pixels, and

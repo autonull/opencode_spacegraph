@@ -3,7 +3,7 @@ import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createSignal, Show, type JSX } from "solid-js"
+import { createSignal, onCleanup, onMount, Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
@@ -59,6 +59,8 @@ export type GraphToolbarProps = {
   onSearch: () => void
   /** A2: copy the current facet question as a permalink. */
   onCopyView?: () => void
+  /** A1/B1/C1: route a named question to the host; falls back to the graph:command event. */
+  dispatchCommand?: (command: string) => void
   /** T17.1: the layout on screen; the host persists the choice. */
   layout?: Layout
   onLayoutChange?: (layout: Layout) => void
@@ -177,6 +179,19 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   const offLive = () =>
     props.checkpoint !== undefined && props.turnCount !== undefined && props.checkpoint < props.turnCount - 1
   const timeShown = () => timeOpen() ?? offLive()
+
+  let rootEl!: HTMLDivElement
+  // A2 — the palette can open the facet question without hunting for the toolbar.
+  onMount(() => {
+    const handleCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ name?: string }>).detail
+      if (detail?.name !== "facets") return
+      const menu = rootEl?.querySelector<HTMLDetailsElement>('[data-slot="graph-toolbar-facets"]')
+      if (menu) menu.open = true
+    }
+    window.addEventListener("graph:command", handleCommand)
+    onCleanup(() => window.removeEventListener("graph:command", handleCommand))
+  })
 
   const facets = () => props.facets
   const presetStatuses = (preset: (typeof PROFILE_PRESETS)[number]) =>
@@ -720,7 +735,43 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     </>
   )
 
-  /** The commands: the search, and the export. */
+  /** A1/B1/C1 — the reader's questions, beside the search. */
+  const commandsControl = () => {
+    const ask = (name: "why" | "led-here" | "related" | "compare" | "note" | "facets") => {
+      if (props.dispatchCommand) {
+        props.dispatchCommand(name)
+        return
+      }
+      window.dispatchEvent(new CustomEvent("graph:command", { detail: { name } }))
+    }
+    const question = (
+      name: "why" | "led-here" | "related" | "compare" | "note" | "facets",
+      label: string,
+    ) =>
+      option({
+        label,
+        onClick: () => ask(name),
+        slot: "graph-question-option",
+        value: name,
+      })
+    return (
+      <ToolbarMenu
+        slot="graph-toolbar-questions"
+        label={i18n.t("ui.sessionGraph.questions.title")}
+        icon="magnifying-glass"
+        align="end"
+      >
+        {question("why", i18n.t("ui.sessionGraph.questions.why"))}
+        {question("led-here", i18n.t("ui.sessionGraph.questions.ledHere"))}
+        {question("related", i18n.t("ui.sessionGraph.questions.related"))}
+        {question("compare", i18n.t("ui.sessionGraph.questions.compare"))}
+        {question("note", i18n.t("ui.sessionGraph.questions.note"))}
+        {question("facets", i18n.t("ui.sessionGraph.questions.facets"))}
+      </ToolbarMenu>
+    )
+  }
+
+  /** The commands: the search, the questions, and the export. */
   const commandControls = () => (
     <>
       <GraphIconButton
@@ -729,6 +780,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         pressed={props.searching}
         onClick={props.onSearch}
       />
+      {commandsControl()}
       <Show when={props.onCopyView}>
         <GraphIconButton
           label={i18n.t("ui.sessionGraph.toolbar.copyView")}
@@ -764,6 +816,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
 
   return (
     <div
+      ref={rootEl}
       data-component="session-graph-toolbar"
       data-slot="graph-toolbar"
       class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
