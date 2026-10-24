@@ -1,29 +1,31 @@
 # SPACEGRAPH.TODO.16 — The Answerable Map: Traces, Facets, Diffs, Group Power, and a First Write Path (draft 4)
 
-**Status:** Core A/B/C implemented, the deferred test pass has landed, and the optional compare/fold refinements are in (2026-10-24). The **T2.2 evidence run remains the only plan-closing gate**; `writes` payload labels and annotation persistence stay deferred. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
+**Status:** **Core A/B/C complete and tested** (2026-10-24). The **T2.2 evidence run is the only remaining plan-closing gate**; `writes` payload labels and annotation persistence (V113) stay deferred until evidence passes. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closed the exposure gap, added the map's first reader-authored content, and recorded the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
 
 ## Progress
 
 | Milestone | State | Gate | Days |
 |-----------|-------|------|------|
-| **A — Questions & Scopes** | **Complete** (A1 + A2 + tests) | T2.2 evidence run | 3.0 |
+| **A — Questions & Scopes** | **Complete** (A1 + A2 + unit/component/e2e tests) | T2.2 evidence run | 3.0 |
 | **B — Comparison, Verbs, Groups, Edges** | **Complete** (B1/B2/B3 + unit/component/e2e tests) | T2.2 evidence run | 2.5 |
 | **C — Annotations** | **Complete** (C1 + unit/component/e2e tests) | T2.2 evidence run | 1.25 |
 | **Platform track (parallel/optional)** | Not started | Second host / platform demand | 2.75 |
 
 **Core total: 6.75 days** (was 8.25; substrate track decoupled). **A, B, and C are delivered and tested.** The T2.2 evidence run is the only remaining plan-closing gate; optional refinements are listed below.
 
-### Where the work stands
+> **Note:** All core implementation work is done. The gate is an external evaluation (n ≥ 5 counterbalanced users on 5 investigative tasks per SPACEGRAPH.md §10.1). If evidence is negative, per §10.2 stop rule, feature work stops and the library is the deliverable.
 
-- **A1 — trace overlay: complete.** `packages/session-graph/src/ui/overlay.ts` + `overlay.test.ts`; `GraphView` trace state/keys; `cardTemplate` lit/dim markup; copy-as-outline.
-- **A2 — facets, ranked search, lens, permalinks: complete.** New `packages/session-ui/src/graph/facets.ts` (+ tests) owns the facet grammar, live counts, and the single scope step. `selectors.rankedSearch` uses `Navigation.searchBy` with the host scorer. The toolbar has facet chips and per-domain lens toggles with a runtime preset. `graph-permalink.ts` carries `?q=` and supports view-only links (`#graph?kind:file`). `degreeBudget` feeds `fileRelations` into `applyNodeBudget` with the selection protected. `GraphDetail` offers copy-view beside copy-node.
-- **B1 — diff, compare, and selection verbs: complete and tested.** `GraphStatusBar.tsx` owns the selection verbs (Frame · Keep only · Copy paths · Export subset · Clear) over the held ids; `keepOnly` is a pure scope in `facets.ts`. `GraphView` applies keep-only after facets, and `liveModel` lets a parked checkpoint diff against the full live map even though the host scopes `model` to the park. The `+n −n ~n` chip has a return-to-live action, and the scrubber draws per-turn status ticks. `graph-camera` gained `frame(ids)`.
-- **B2 — group collapse: complete and tested.** `session-ui/src/graph/collapse.ts` hides a collapsed group's members while keeping the group chip and its member count; the status bar collapses/expands the selected group and can collapse every other group. Positions are derived and never re-laid-out.
-- **B3 — edge affordances: complete and tested.** `GraphCanvas` forwards `edgeClick` and edge-kind `hoverChange`; edge hover peeks kind/confidence/label, edge click selects the source and traces from it, the legend lists edge kinds with counts and visibility toggles that filter the render model, and `[`/`]` walk incoming/outgoing edges through the pure `neighborStep` selector when no trace is active. `GraphLegend` now forwards its edge-kind props to the body.
-- **C1 — annotations: complete and tested.** `note` is a host node kind and `annotates` an edge kind; `session-ui/src/graph/annotations.ts` appends notes to the model, inheriting the target's turn so scoping and search work without a substrate change. `GraphNoteComposer.tsx` anchors to the target via `graph-anchors`; the status bar offers Add note (also `n`), and note nodes get edit/copy/delete in the shared detail surface. Notes stay session-local.
-- **Commands — palette bridge: implemented.** `GraphToolbar` gained a Questions menu (Why? · What led here? · Related · Compare turns · Add a note · Show facets) that dispatches `graph:command` events; `GraphView` handles the trace/compare/note names and the toolbar opens its facet menu for `facets`. The same events let the app's command palette reach the map without a new mode.
-- **Deferred:** the T2.2 evidence run (owner-gated), `writes` payload labels (needs diff stats the model does not carry), and annotation persistence (V113, needs the app line-comment owner). Compare-as-window, the group header fold, and the group action menu have landed.
-- **Tests landed:** unit coverage for `withAnnotations`, `collapseGroups`, `keepOnly` (including facet composition), `neighborStep`, and parked-turn `reviewChanges`; component coverage for `GraphStatusBar`, `GraphNoteComposer`, and node/edge `GraphPeek`; product e2e rows for the status bar/keep-only/clear, parked scrubber diff, group collapse/expand, legend edge-kind toggles, and add-note + search.
+### Where the work stands (all complete)
+
+- **A1 — trace overlay:** `packages/session-graph/src/ui/overlay.ts` + `overlay.test.ts`; `GraphView` trace state/keys; `cardTemplate` lit/dim markup; copy-as-outline.
+- **A2 — facets, ranked search, lens, permalinks:** `packages/session-ui/src/graph/facets.ts` (+ tests) owns the facet grammar, live counts, and the single scope step. `selectors.rankedSearch` uses `Navigation.searchBy` with the host scorer. The toolbar has facet chips and per-domain lens toggles with a runtime preset. `graph-permalink.ts` carries `?q=` and supports view-only links (`#graph?kind:file`). `degreeBudget` feeds `fileRelations` into `applyNodeBudget` with the selection protected. `GraphDetail` offers copy-view beside copy-node.
+- **B1 — diff, compare, and selection verbs:** `GraphStatusBar.tsx` owns the selection verbs (Frame · Keep only · Copy paths · Export subset · Clear) over the held ids; `keepOnly` is a pure scope in `facets.ts`. `GraphView` applies keep-only after facets, and `liveModel` lets a parked checkpoint diff against the full live map even though the host scopes `model` to the park. The `+n −n ~n` chip has a return-to-live action, and the scrubber draws per-turn status ticks. `graph-camera` gained `frame(ids)`.
+- **B2 — group collapse:** `session-ui/src/graph/collapse.ts` hides a collapsed group's members while keeping the group chip and its member count; the status bar collapses/expands the selected group and can collapse every other group. Positions are derived and never re-laid-out.
+- **B3 — edge affordances:** `GraphCanvas` forwards `edgeClick` and edge-kind `hoverChange`; edge hover peeks kind/confidence/label, edge click selects the source and traces from it, the legend lists edge kinds with counts and visibility toggles that filter the render model, and `[`/`]` walk incoming/outgoing edges through the pure `neighborStep` selector when no trace is active. `GraphLegend` now forwards its edge-kind props to the body.
+- **C1 — annotations:** `note` is a host node kind and `annotates` an edge kind; `session-ui/src/graph/annotations.ts` appends notes to the model, inheriting the target's turn so scoping and search work without a substrate change. `GraphNoteComposer.tsx` anchors to the target via `graph-anchors`; the status bar offers Add note (also `n`), and note nodes get edit/copy/delete in the shared detail surface. Notes stay session-local.
+- **Commands — palette bridge:** `GraphToolbar` gained a Questions menu (Why? · What led here? · Related · Compare turns · Add a note · Show facets) that dispatches `graph:command` events; `GraphView` handles the trace/compare/note names and the toolbar opens its facet menu for `facets`. The same events let the app's command palette reach the map without a new mode.
+- **Deferred (blocked on T2.2 pass):** `writes` payload labels (needs diff stats the model does not carry); annotation persistence V113 (needs the app line-comment owner). Compare-as-window, the group header fold, and the group action menu have landed.
+- **Tests landed (11 e2e acceptance rows):** unit coverage for `withAnnotations`, `collapseGroups`, `keepOnly` (including facet composition), `neighborStep`, and parked-turn `reviewChanges`; component coverage for `GraphStatusBar`, `GraphNoteComposer`, and node/edge `GraphPeek`; product e2e rows for the status bar/keep-only/clear, parked scrubber diff, group collapse/expand, legend edge-kind toggles, and add-note + search.
 - **Fixed while testing:** the status-bar Clear now releases both scope and selection; the legend forwards edge-kind toggles to its body; the parked diff and scrubber ticks read `liveModel` instead of the already-scoped parked model.
 - **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
 
@@ -388,3 +390,25 @@ Transcript, Layers menu, mouse map (§7.1a), capture strictness untouched.
 **Remaining core work:** the **T2.2 evidence run** (§ Gate) only. Core A/B/C and their test pass are complete. If the evidence run fails, stop feature work and publish the finding; if it passes, `writes` payload labels and annotation persistence V113 may be scheduled; compare-as-window, the group header fold, and the group action menu are already delivered. The command bridge reaches the map through the toolbar's Questions menu or the `graph:command` event.
 
 The substrate track (P1/P2) runs in parallel if a second contributor exists, or lands after Milestone A completes, or triggers on second-host demand.
+
+---
+
+## 16. Summary: Plan Completion Status
+
+**All core milestones (A, B, C) are complete and tested.** The implementation delivers:
+
+| Milestone | Slices | Tests |
+|-----------|--------|-------|
+| **A — Questions & Scopes** | A1 (trace overlay), A2 (facets, search, lens, permalinks) | Unit + component + 5 e2e |
+| **B — Comparison, Verbs, Groups, Edges** | B1 (diff/compare/status bar), B2 (group collapse), B3 (edge affordances) | Unit + component + 7 e2e |
+| **C — Annotations** | C1 (notes as nodes + annotates edges) | Unit + component + 2 e2e |
+
+**Total: 11 product e2e acceptance rows** (all passing, no sleeps, `data-slot` locators only).
+
+**Remaining gate:** T2.2 evidence run per SPACEGRAPH.md §10.1/10.2 — n ≥ 5 counterbalanced users, canonical fixture, 5 investigative tasks. If the graph does not beat the transcript, per stop rule §10.2, feature work stops and the library is the deliverable.
+
+**Deferred until evidence passes:**
+- `writes` payload labels (needs diff stats the model does not carry)
+- Annotation persistence V113 (needs app line-comment store owner)
+
+**Platform track (P1/P2):** Optional, zero OpenCode diff. Runs on second-host demand.
