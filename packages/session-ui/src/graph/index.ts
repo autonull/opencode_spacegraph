@@ -114,6 +114,7 @@ export {
 
 export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
 export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
+export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 
 export {
   NAVIGATION_MNEMONICS,

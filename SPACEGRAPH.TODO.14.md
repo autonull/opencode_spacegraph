@@ -52,7 +52,10 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   - [x] `PROFILE_PRESETS` / `applyProfile` (all, session, code, review) and a Domains-menu preset row; 4 tests.
   - [x] Empty states already ship for canvas, inspector, file rail, and equalizer.
   - [ ] `SessionKernel.checkpoint()` remains deferred.
-- [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
+- [x] **Slice 6 — Clusters + adaptive** (`deriveZoom` + expansion; adapter bands already grouped turns/phases).
+  - [x] Kernel `deriveZoom({ levelOf, rank, level, expansion })`: rank table or function, per-node expansion override; 5 tests.
+  - [x] Host `zoomModel(model, level, expansion)` using `minLevel` + `ZOOM_RANK`; 4 tests.
+  - [x] Expansion state and turn/phase swimlane bands already exist in the adapter/view; no kernel nodes are used for groups.
 - [ ] **Slice 7 — Continuous layout** (`LayoutStrategy`, `computeIncremental`).
 - [ ] **Slice 8 — Spatial + scale** (`SpatialIndex2D`, `q.near`, budgets).
 - [ ] **Slice 9 — A11y + export**.
