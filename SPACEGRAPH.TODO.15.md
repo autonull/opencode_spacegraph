@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.15 — Unified Session Lens: Live, Animated, Multi-Layer (draft 2)
 
-**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **In progress** — S1 and S2 are complete; S3–S5 are not started.
+**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **In progress** — S1, S2 and S3 are complete; S4 is next, S5 stays optional.
 
 ## Progress (2026-10-23)
 
@@ -8,7 +8,7 @@
 |-------|-------|--------|-----------|
 | **S1 — Deriver memoization** | **Done** | `runPipeline(derivers, kernel, inputs?, versions?, memo?)` memoizes each deriver by name + stage kernel version + prefix token versions. Four laws tested (partial = full, unchanged-token zero executions, entries stable across kernel versions, seeded kernels). Kernel 72 tests green; `bun run check` green. | — |
 | **S2 — Incremental layout substrate + clock** | **Done** | `spacegraphjs/src/layout/incremental.ts`: `computeIncremental`/`diffPositions`, `interpolatePosition`, `interpolatedPositions`, `LayoutMove` with no stored `t`; vitest invariants in `test/layout/incremental.test.ts`. Session-ui delegates to the substrate; `moved` no longer carries `t`. Renderer clock `packages/renderer/src/clock.ts` consumes `moved` with explicit `advance(t)` and is re-exported from the renderer package. New kernel `applyNodeBudget` in `packages/kernel/src/budget.ts` (weights are host data, protected ids survive). `demo/delta-animation.html` drives a live merge and a layer switch through derive → diff → incremental → clock. `test/e2e/delta-animation.spec.ts` asserts the same clock, t=0/t=1 endpoints, and silent per-frame a11y announcements without sleeps. Kernel 75 tests, layout 7 tests, demo spec green; `build:packages` green. | — |
-| **S3 — Layer transitions demo** | Not started | — | `layers.html` one control writing level/lens/depth through derive → diff → incremental → interpolate. Substrate API needs no new surface. |
+| **S3 — Layer transitions demo** | **Done** | `demo/layers.html`: one range control writes a preset's level/lens/depth into `runPipeline` (three thin derivers over `deriveZoom`/`deriveScope`, shared memo and token versions), `diffKernels` feeds the added/removed report, and the host positions the derived kernel through `LaneLayout` → `diffPositions` → `createRenderClock`. `test/e2e/layers.spec.ts` asserts the control writes all three parameters, node/diff counts, t=0/t=1 endpoints, and a silent live region. Added `@spacegraphjs/kernel` demo/tsconfig aliases only. Demo spec and `build:packages` green; no new substrate API. | — |
 | **S4 — Unified session surface** | Not started | — | Mode deletion, surfaces composition, layers rail, scrubber, 21-row acceptance retarget, capture renames, transcript-without-graph assertion. |
 | **S5 — History (optional)** | Not started | — | Only if the scrubber must name commits. |
 
@@ -18,7 +18,9 @@
 
 ### Slice detail and next actions
 
-S1 and S2 need no follow-up. S3 starts next: add `layers.html` with one control writing level/lens/depth and route each change through derive → diff → incremental → interpolate, reusing the S2 clock without new substrate API. S4 is the first host change and should start only after S3 proves the layer-switch path. S5 stays optional.
+S1–S3 need no follow-up. S4 is next and is the first host change: delete `GraphMode` and the View/Domains menus, compose transcript and map as surfaces, add one layers rail writing the S3 level/lens/depth parameters, drive a scrubber over `SessionKernel.checkpoint()` through the same pipeline, and retarget the 21-row acceptance suite plus capture names without relaxing determinism. Assert the transcript still renders with the graph module failed. S5 remains optional and starts only if the scrubber must name commits.
+
+**S3 API note:** no substrate surface was added. The demo composes `deriveZoom` + `deriveScope` in a three-deriver `runPipeline` and exposes only demo state (`setLayer`, `draw`, `params`, `nodeCount`, `diff`, `positionOf`). `@spacegraphjs/kernel` is now aliased in `vite.demo.config.ts` and `tsconfig.json` so demos can import the kernel source directly.
 
 ### Known follow-ups
 
@@ -121,7 +123,7 @@ These are the laws each slice must carry; each has exactly one testable owner:
 
 - **S1:** 0 files. Rebuild gate only.
 - **S2:** `packages/session-ui/src/graph/layout.ts` shrinks as `computeIncremental`/`interpolatePosition` move; call sites migrate in the same change; session-graph camera wiring ≈2 files.
-- **S3:** 0 files (demo-only).
+- **S3:** 0 product files (demo-only); `demo/layers.html`, `test/e2e/layers.spec.ts`, plus the demo/tsconfig kernel alias.
 - **S4:** host slice proper — `session-graph-panel.tsx`, `screen.tsx`, deletion of the toggle's mode remnants, layers-rail mapping, capture/e2e retarget, i18n keys.
 - **S5:** server files only; no UI change.
 
