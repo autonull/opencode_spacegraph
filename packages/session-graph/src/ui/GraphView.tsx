@@ -468,7 +468,18 @@ export const GraphView = (props: GraphViewProps) => {
       ),
     ),
   )
-  const turnScoped = createMemo(() => scopeToTurns(model(), scale().turns))
+  // B1 — two turns compare explicitly; a parked scrubber compares implicitly against live.
+  const [comparedTurns, setComparedTurns] = createSignal<readonly [string, string] | null>(null)
+  const selectedTurns = () =>
+    selection
+      .selection()
+      .map((id) => nodeByID(model(), id))
+      .filter((node): node is GraphNode => node?.kind === "turn")
+  const turnScoped = createMemo(() => {
+    const turns = new Set(scale().turns)
+    for (const turn of comparedTurns() ?? []) turns.add(turn)
+    return scopeToTurns(model(), turns)
+  })
   // B1 — "keep only" is a scope over the held set, applied after facets so the two compose.
   const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
   // B2 — collapse is session-local model state; expanding restores the same derived positions.
@@ -521,6 +532,24 @@ export const GraphView = (props: GraphViewProps) => {
   // B1 — a parked view is a diff against the live map, not a different map: the same positions
   // carry added and changed marks, and nothing re-lays-out when the scrubber moves.
   const comparison = createMemo(() => {
+    const pair = comparedTurns()
+    if (pair) {
+      const changes = reviewChanges(
+        scopeToTurns(model(), new Set([pair[0]])),
+        scopeToTurns(model(), new Set([pair[1]])),
+      )
+      return {
+        added: new Set(changes.added),
+        removed: new Set(changes.removed),
+        changed: new Set(changes.changed),
+        counts: {
+          added: changes.added.length,
+          removed: changes.removed.length,
+          changed: changes.changed.length,
+        },
+        label: "turns" as const,
+      }
+    }
     const checkpoint = props.checkpoint
     const turns = model().turns
     if (checkpoint === undefined || props.turnCount === undefined) return undefined
@@ -536,9 +565,21 @@ export const GraphView = (props: GraphViewProps) => {
         removed: changes.removed.length,
         changed: changes.changed.length,
       },
+      label: "parked" as const,
     }
   })
-  const clearComparison = () => props.onCheckpoint?.(Math.max(0, model().turns.length - 1))
+  const compareSelectedTurns = () => {
+    const turns = selectedTurns()
+    if (turns.length < 2) return
+    setComparedTurns([turns[0]!.id, turns[1]!.id])
+  }
+  const clearComparison = () => {
+    if (comparedTurns()) {
+      setComparedTurns(null)
+      return
+    }
+    props.onCheckpoint?.(Math.max(0, model().turns.length - 1))
+  }
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
   const windowAnchor = createMemo(() => {
@@ -1306,6 +1347,11 @@ export const GraphView = (props: GraphViewProps) => {
         openNoteComposer()
         return
       }
+      if (event.key === "Enter" && selectedGroup()) {
+        event.preventDefault()
+        toggleGroup()
+        return
+      }
       if (event.key === "w") {
         event.preventDefault()
         startTrace("why", selectionId)
@@ -1539,6 +1585,15 @@ export const GraphView = (props: GraphViewProps) => {
         onExportSubset={exportSelection}
         onClear={clearSelectionScope}
         onAddNote={openNoteComposer}
+        compare={
+          selectedTurns().length >= 2 || comparedTurns()
+            ? {
+                active: comparedTurns() !== null,
+                onCompare: compareSelectedTurns,
+                onClear: clearComparison,
+              }
+            : undefined
+        }
         group={
           selectedGroup()
             ? {
@@ -1562,7 +1617,11 @@ export const GraphView = (props: GraphViewProps) => {
                 changed: String(diff().counts.changed),
               })}
             </span>
-            <span class="min-w-0 flex-1 truncate">{i18n.t("ui.sessionGraph.compare.parked")}</span>
+            <span class="min-w-0 flex-1 truncate">
+              {i18n.t(
+                diff().label === "turns" ? "ui.sessionGraph.compare.twoTurns" : "ui.sessionGraph.compare.parked",
+              )}
+            </span>
             <button
               type="button"
               data-slot="graph-compare-clear"

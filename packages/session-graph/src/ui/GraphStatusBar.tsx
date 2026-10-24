@@ -12,6 +12,8 @@ export type GraphStatusBarProps = {
   onClear: () => void
   /** C1: attach a note to the selected node. */
   onAddNote?: () => void
+  /** B1: two turns are held; compare them, or clear the active comparison. */
+  compare?: { active: boolean; onCompare: () => void; onClear: () => void }
   /** B2: the selected node is a group; the verbs collapse it or every other group. */
   group?: { collapsed: boolean; onToggle: () => void; onCollapseOthers: () => void }
 }
@@ -76,6 +78,23 @@ export const GraphStatusBar = (props: GraphStatusBarProps) => {
             >
               {i18n.t("ui.sessionGraph.note.add")}
             </button>
+          </Show>
+          <Show when={props.compare}>
+            {(compare) => (
+              <button
+                type="button"
+                data-slot="graph-status-compare"
+                data-active={compare().active}
+                class="rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+                onClick={() => (compare().active ? compare().onClear() : compare().onCompare())}
+              >
+                {i18n.t(
+                  compare().active
+                    ? "ui.sessionGraph.compare.clear"
+                    : "ui.sessionGraph.compare.turns",
+                )}
+              </button>
+            )}
           </Show>
           <Show when={props.group}>
             {(group) => (
