@@ -111,4 +111,16 @@ describe("visibility budget", () => {
     expect(budgeted.goal).toBe(model.goal)
     expect(budgeted.turns).toEqual(model.turns)
   })
+
+  test("never drops a protected node", () => {
+    const model = buildFixtureGraph()
+    const protectedID = model.nodes.find((node) => node.kind === "file")!.id
+    const budgeted = applyNodeBudget(model, {
+      ...DEFAULT_BUDGET,
+      maxNodes: 5,
+      protectedIds: [protectedID],
+    })
+
+    expect(budgeted.nodes.some((node) => node.id === protectedID)).toBe(true)
+  })
 })

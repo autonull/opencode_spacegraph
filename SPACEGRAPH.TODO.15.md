@@ -1,8 +1,8 @@
 # SPACEGRAPH.TODO.15 — Unified Session Lens: Live, Animated, Multi-Layer (draft 2)
 
-**Status:** complete, 2026-10-24. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **S1–S4 are complete and verified.** S5 remains optional and is not required by the shipped scrubber (decision recorded below). A follow-up refinement folds the scrubber into the toolbar and groups level/lens/depth under one Layers menu.
+**Status:** complete, 2026-10-24. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **S1–S4 are complete and verified.** S5 remains optional and is not required by the shipped scrubber (decision recorded below). A follow-up refinement folds the scrubber into the toolbar and groups level/lens/depth under one Layers menu. The remaining S2 follow-up — the host duplicating the kernel node budget — is also closed: the host now delegates to `@spacegraphjs/kernel`.
 
-## Progress (2026-10-23)
+## Progress (2026-10-24)
 
 | Slice | State | Landed | Remaining |
 |-------|-------|--------|-----------|
@@ -10,6 +10,7 @@
 | **S2 — Incremental layout substrate + clock** | **Done** | `spacegraphjs/src/layout/incremental.ts`: `computeIncremental`/`diffPositions`, `interpolatePosition`, `interpolatedPositions`, `LayoutMove` with no stored `t`; vitest invariants in `test/layout/incremental.test.ts`. Session-ui delegates to the substrate; `moved` no longer carries `t`. Renderer clock `packages/renderer/src/clock.ts` consumes `moved` with explicit `advance(t)` and is re-exported from the renderer package. New kernel `applyNodeBudget` in `packages/kernel/src/budget.ts` (weights are host data, protected ids survive). `demo/delta-animation.html` drives a live merge and a layer switch through derive → diff → incremental → clock. `test/e2e/delta-animation.spec.ts` asserts the same clock, t=0/t=1 endpoints, and silent per-frame a11y announcements without sleeps. Kernel 75 tests, layout 7 tests, demo spec green; `build:packages` green. | — |
 | **S3 — Layer transitions demo** | **Done** | `demo/layers.html`: one range control writes a preset's level/lens/depth into `runPipeline` (three thin derivers over `deriveZoom`/`deriveScope`, shared memo and token versions), `diffKernels` feeds the added/removed report, and the host positions the derived kernel through `LaneLayout` → `diffPositions` → `createRenderClock`. `test/e2e/layers.spec.ts` asserts the control writes all three parameters, node/diff counts, t=0/t=1 endpoints, and a silent live region. Added `@spacegraphjs/kernel` demo/tsconfig aliases only. Demo spec and `build:packages` green; no new substrate API. | — |
 | **S4 — Unified session surface** | **Done (verified)** | The toolbar's one-row Layers menu writes level/lens/depth with no controller state; layout sits beside it. `GraphMode` is deleted from the public vocabulary; persisted modes migrate to independent `map`/`sideBySide` surface flags. The panel mounts the transcript and map as independent surfaces, the header/commands toggle surfaces instead of modes, and the graph-failure e2e asserts the transcript renders without the graph module. The checkpoint scrubber scopes turn boundaries and is folded behind a toolbar toggle. Two stale capture frames (`11 graph timeline`, `12 graph hierarchy`) clicked the deleted toolbar `Flat` button; they now set `graph-layers-depth` to `flat`, so the capture matrix exercises the Layers menu. | — |
+| **S4 follow-up — Host budget delegation** | **Done** | `packages/session-ui/src/graph/budget.ts` now delegates `applyNodeBudget` to the kernel's generic implementation, so the host no longer duplicates the priority sort and gains `protectedIds` pass-through. `VisibilityBudget` aliases the kernel's `NodeBudget`; host tests keep the `GraphViewData` conversion and metadata contract and add protected-node coverage. | — |
 | **S5 — History (optional)** | **Not needed** | — | The scrubber names turn boundaries, not commits; no consumer exists. Do not start without a concrete request (see the scrubber decision below). |
 
 **S1 API note:** versions are passed beside inputs as a fourth argument; the memo is an optional fifth. Omitting the memo preserves the old pure `pipe` path exactly, so existing callers are untouched. The memo key includes the stage kernel version and every prefix deriver's token versions so a cached downstream kernel can never hide an upstream change.
@@ -20,12 +21,15 @@
 
 | Gate | Command | Result |
 |------|---------|--------|
-| Host graph suite (21 acceptance rows) | `bun test src/graph` in `packages/session-ui` | 236 pass, 0 fail (23 files) |
+| Host graph suite (21 acceptance rows) | `bun test src/graph` in `packages/session-ui` | 237 pass, 0 fail (23 files) |
+| Host graph typecheck | `bun run typecheck` in `packages/session-ui` | pass |
 | Session-graph units | `bun test src` in `packages/session-graph` | 104 pass, 0 fail (9 files) |
 | Product graph e2e | `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` | 31 pass, 0 fail |
 | Capture matrix + duplicate-hash gate | `bun run graph:capture --mode=verify` | 28 app frames pass, 2 Cytoscape component frames pass, committed set and T6.19 duplicate-hash gate pass |
 | Product screenshots | `bun run graph:capture --mode=demo` | 28 frames regenerated in `docs/spacegraph/screenshots/`, including `34-graph-surfaces.png` (transcript + map surfaces with the Layers menu and folded scrubber) and `35-graph-scrubber.png` (the scrubber opened on the first turn) |
 | Substrate demo screenshots | `demo-screenshots.spec.ts -g "delta-animation\|layers"` | `screenshots/verified-delta-animation.png` (layer switch mid-flight) and `verified-layers.png` written in the nested repo |
+| Host budget delegation | `bun test src/graph` in `packages/session-ui` (2026-10-24 follow-up) | 237 pass, 0 fail; new protected-node case green |
+| Full lint + typecheck | `bun run check` from the repository root | lint 0 errors (warnings pre-existing), typecheck 41/41 packages pass |
 
 One product e2e case (`picking a node in the map moves the log to it`) failed once inside a full-file run and passed on isolated and full reruns; treat it as a pre-existing timing flake to watch, not an S4 regression.
 
@@ -35,7 +39,7 @@ Turn scoping is the intended semantic. The host model is derived from the sessio
 
 ### Slice detail and next actions
 
-S1–S5 require no follow-up. The plan is complete; reopen S5 only for a commit-naming scrubber, V99 only when a settings owner exists for Layers presets, and V95/V102 only as cleanup or marketing artifacts.
+S1–S5 require no further follow-up. The plan is complete; reopen S5 only for a commit-naming scrubber, V99 only when a settings owner exists for Layers presets, and V95/V102 only as cleanup or marketing artifacts. The only open observations are environmental (the local Solid `jsxDEV` test-runner failure) or a watched flake, not plan work.
 
 **S4b note:** `GraphMode` is gone from the public vocabulary. `graph-toolbar-view` remains as the map-tools menu (billboard, files, equalizer, arrangement, detail, windows); it no longer contains any layer parameter, so the toolbar's Layers menu is the only place level/lens/depth are written. The panel keeps both surfaces mounted and hides the transcript only while the map has the panel alone, which preserves transcript scroll and focus when the map opens or closes.
 
@@ -45,7 +49,7 @@ S1–S5 require no follow-up. The plan is complete; reopen S5 only for a commit-
 
 ### Known follow-ups
 
-- S2's kernel `applyNodeBudget` is generic and tested; the host `session-ui` still uses its own `GraphViewData` budget until S4 migrates it. Do not duplicate the host budget in new substrate code.
+- ~~S2's kernel `applyNodeBudget` is generic and tested; the host `session-ui` still uses its own `GraphViewData` budget until S4 migrates it.~~ **Closed 2026-10-24:** the host budget delegates to the kernel implementation and passes `protectedIds` through. Do not reintroduce a second priority sort in the host.
 - The demo's added nodes appear at their target position at `t=0` (only moved nodes interpolate). This is acceptable for S2; if added-node fade-in is wanted, it belongs in a later renderer extension, not the clock.
 - The scrubber filters the graph with `scopeToTurns`; turn boundaries are the intended checkpoint semantic (see the decision above). Do not add a durable `SessionKernel.checkpoint()` path or mix it with turn scoping unless S5 is reopened for commit names.
 - `graph-toolbar-view` remains as the map-tools menu (billboard, files, equalizer, arrangement, detail, windows); it no longer writes any layer parameter. Do not re-add level/lens/depth there.

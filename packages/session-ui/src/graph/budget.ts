@@ -1,4 +1,5 @@
-import type { GraphViewData, GraphNode } from "./model"
+import { applyNodeBudget as budgetKernel, type NodeBudget } from "@spacegraphjs/kernel"
+import type { GraphViewData } from "./model"
 import type { Position } from "./layout"
 import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
 
@@ -41,10 +42,7 @@ export function sessionOrder(model: GraphViewData): Map<string, number> {
   return new Map(model.nodes.map((node, index) => [node.id, index]))
 }
 
-export type VisibilityBudget = {
-  readonly maxNodes: number
-  readonly weights: Readonly<Record<string, number>>
-}
+export type VisibilityBudget = NodeBudget
 
 export const DEFAULT_BUDGET: VisibilityBudget = {
   maxNodes: 2_000,
@@ -73,21 +71,10 @@ export const DEFAULT_BUDGET: VisibilityBudget = {
   },
 }
 
-const priority = (node: GraphNode, weights: Readonly<Record<string, number>>) =>
-  weights[node.kind] ?? 0
-
 export const applyNodeBudget = (
   model: GraphViewData,
   budget: VisibilityBudget = DEFAULT_BUDGET,
 ): GraphViewData => {
   if (model.nodes.length <= budget.maxNodes) return model
-  const kept = [...model.nodes]
-    .sort(
-      (a, b) =>
-        priority(b, budget.weights) - priority(a, budget.weights) || a.id.localeCompare(b.id),
-    )
-    .slice(0, budget.maxNodes)
-  const ids = new Set(kept.map((node) => node.id))
-  const kernel = graphModelToKernel(model).subgraph(ids)
-  return toGraphView(kernel, graphViewMeta(model))
+  return toGraphView(budgetKernel(graphModelToKernel(model), budget), graphViewMeta(model))
 }
