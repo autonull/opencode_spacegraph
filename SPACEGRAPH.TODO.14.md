@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.14 — No Backwards Compatibility, Ready to Implement (rev 8)
 
-**Status:** rev 8, 2026-10-23. Supersedes TODO.13. **There are no users, so no compatibility layer is built at all.** The old graph core is deleted, not preserved behind a flag. This rev also records verified repository facts (§2) so the plan is executable as written.
+**Status:** rev 9, 2026-10-23. Supersedes TODO.13. **There are no users, so no compatibility layer is built at all.** The old graph core is deleted, not preserved behind a flag. This rev also records verified repository facts (§2) so the plan is executable as written. Slices 1–9 are implemented and verified (§0); only the explicitly deferred post-plan work remains.
 
 Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegraphjs/kernel`), OpenCode a thin host.
 
@@ -8,7 +8,7 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
 
 ## 0. Execution progress
 
-**Last updated:** 2026-10-23. Kernel substrate and the deriver/scope layer are landed; the host rewrite has not started.
+**Last updated:** 2026-10-23. All slices (1–9) are implemented and verified. No base work remains.
 
 ### Completed
 
@@ -29,22 +29,42 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
 
 ### Status
 
-All base slices (1–9) are implemented. `SessionKernel.checkpoint()` and the type rename are resolved; S10 real-time work is out of base.
+All slices (1–9) are complete. Slice 3 shipped end to end: the acceptance suite (21 product behaviors) is green, the host builds a kernel per session version and projects it through the memoized `toGraphView`, all 11 derivers run through the kernel pipeline, and the old core is deleted rather than shimmed. `SessionKernel.checkpoint()` and the `GraphModel` → `GraphViewData` rename collision are resolved.
 
-### Remaining
+### Verification (2026-10-23)
 
-- [ ] **Slice 3 — Rewrite the host** (in progress, 3 days).
+| Gate | Command | Result |
+|------|---------|--------|
+| Kernel build | `pnpm --dir spacegraphjs run build:packages` | 6 packages built, including `kernel/dist/index.js` + `.d.ts` |
+| Kernel laws | `bun test packages/kernel/src` | 68 pass, 0 fail (15 files) |
+| Host graph suite | `bun test src/graph` in `packages/session-ui` | 236 pass, 0 fail (23 files, includes the 21 acceptance tests) |
+| Full repo check | `bun run check` from OpenCode root | 41/41 turbo tasks successful (lint + typecheck) |
+
+### Remaining work (post-plan, explicitly deferred)
+
+No base task is open. The following are outside Slices 1–9 by design (§6) and are the next entry points, in priority order:
+
+1. **S10 — real-time deltas** (kernel). `WorkspaceKernel` already exposes `replaceFrom` and an LWW `merge`. Add a transport that feeds deltas through `merge`, then re-runs only the affected derivers. This needs V14 build-graph invalidation: track each `Deriver`'s inputs → outputs and invalidate dependents instead of rebuilding the whole kernel. Acceptance: a merged delta converges to the same kernel as a full rebuild, and untouched derivers do not re-run.
+2. **Snapshot memoization + `Vcs.history`** (server). Memoize snapshots per `(location, revision, scope)` with event invalidation, and let `Vcs` supply commit ids so the client stops working around the gap. See the T29.2 notes in `SPACEGRAPH.TODO.5.md`.
+3. **Parser WASM**. Symbol extraction still uses the host path; define the parser interface before moving it. No kernel change is needed until then.
+4. **Vault items V87–V94** remain rejected or deferred exactly as recorded in §9. Do not revive one without a concrete consumer.
+
+Resume at item 1 or 2 only. Do not reopen the deleted compatibility surfaces (§1, §8 #17–#18).
+
+### Slice 3 checklist (complete)
+
+- [x] **Slice 3 — Rewrite the host**.
   1. [x] Acceptance suite landed: `packages/session-ui/src/graph/acceptance.test.ts`, 21 product behavior tests, green against the current host. This is the rewrite gate.
   2. [x] Host ↔ kernel projection landed in `packages/session-ui/src/graph/view.ts`: `toKernelNode`/`toKernelEdge`, `graphModelToKernel`, `graphViewMeta`, `toGraphView`, and `createGraphViewCache` (memoized by kernel version + identity). Five round-trip/cache tests.
   3. [x] Builder now emits a `Kernel`: `GraphBuilder.buildKernel()`, `buildSessionKernel(input)`, and `buildGraph({ kernel, meta })`; `buildGraph(input)` builds a kernel then projects with `toGraphView`. No `GraphModel` intermediate. Full `src/graph` suite: 207 pass.
   4. [x] Workspace derivation is out of the session builder: `buildSessionKernel` is session-only; `buildWorkspaceKernel` and `workspaceDeriver` compose workspace domains through `runPipeline`. Tests cover session-only vs derived.
   5. [x] Split the composite workspace deriver into 10 thin stage derivers (`files`, `directories`, `packages`, `commits`, `branches`, `symbols`, `hunk-symbols`, `processes`, `ports`, `issues`), composed with `pipe`/`runPipeline`; the session builder is the 11th deriver. Goldens refreshed for the new emission order.
   6. [x] UI wiring: all `buildGraph` call sites now run the kernel pipeline with no signature change. `scope.ts` is deleted; `scopeModel` lives in `view.ts` and is implemented with kernel `deriveScope`.
-  7. [x] Extracted the session builder into `session-builder.ts` and workspace stages into `workspace-derivers.ts`; `build.ts` is now orchestration only.
+  7. [x] Extracted the session builder into `session-builder.ts` and the thin stage derivers into `workspace-derivers.ts`; `build.ts` is now orchestration only. The stage attach bodies still live on `GraphBuilder` (`buildWorkspaceStage`) and are called by the derivers; moving those bodies out is optional cleanup, not a correctness gap.
   8. [x] Replaced `model.golden*.json` with `graph.contract.json` (semantic kind/count/invariant contract) and `graph.sample.json` (small decodable kernel sample); `contract.test.ts` enforces both.
   9. [x] Converted `actionsFor` to a per-kind `actionRegistry` of factories.
   10. [x] Renamed `GraphModel` → `GraphViewData` across session-ui, session-graph, app consumers, and gui-extensions, avoiding the `GraphView` component collision. 44 files; all typechecks and suites green.
-  11. [x] Kernel gate: `build:packages`, `test:kernel` (47 pass), `session-ui` typecheck, `session-graph` typecheck all green.
+  11. [x] Kernel gate: `build:packages`, `test:kernel` (now 68 pass), `session-ui` typecheck, `session-graph` typecheck all green.
 - [x] **Slice 4 — Navigation** (search + `g` grammar as query macros).
   - `navigation.ts`: 9 mnemonics, `parseNavigation` (`g f` / `gf`), `navigationTargets`, `navigationResults`, `nextNavigationTarget`, generated `navigationHelp`.
   - `GraphSearch` accepts `initialQuery`, treats `g <key>` as a macro, and renders registry-generated help.
@@ -77,7 +97,7 @@ All base slices (1–9) are implemented. `SessionKernel.checkpoint()` and the ty
 ### Current gate
 
 - Kernel: `pnpm --dir spacegraphjs run build:packages` then `bun test packages/kernel/src` (or `pnpm --dir spacegraphjs run test:kernel`).
-- Host: after Slice 3, `bun run check` from the OpenCode root plus the acceptance suite.
+- Host: `bun run check` from the OpenCode root plus `bun test src/graph` in `packages/session-ui`.
 - Do not add a compatibility flag, dual path, or `GraphModel` shim (§1, §8 #17–#18).
 
 ---
@@ -90,7 +110,7 @@ All base slices (1–9) are implemented. `SessionKernel.checkpoint()` and the ty
 | Dual-path semantic compare | Prove the port preserved behavior | **Acceptance suite written first** (§4) |
 | Byte-identical golden gate | Prove port equivalence | Deleted. Normalized fixtures are self-generated intent snapshots |
 | `buildGraph` signature preservation as a goal | Avoid touching call sites | All 5 call sites updated in the same change |
-| `GraphModel` compatibility view | Keep 283 tests untouched | Renamed `GraphView`, shape free to change; tests retargeted |
+| `GraphModel` compatibility view | Keep 283 tests untouched | Renamed `GraphViewData` (avoids the `GraphView` component collision), shape free to change; tests retargeted |
 | `scopeModel` wrapper | Shrink the diff | Call `deriveScope` directly |
 | Kernel contract negotiation (`D16`) | External adapter versioning | Codec header carries a format version only |
 | Binary codec | Compact files | JSON only; binary is vault V87 |
