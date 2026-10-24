@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.15 — Unified Session Lens: Live, Animated, Multi-Layer (draft 2)
 
-**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **In progress** — S1–S3 are complete. S4a (rail + scrubber) and S4b (mode deletion + independent surfaces + transcript independence) have landed; the full acceptance/capture run is the remaining S4 gate. S5 stays optional.
+**Status:** complete, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **S1–S4 are complete and verified.** S5 remains optional and is not required by the shipped scrubber (decision recorded below).
 
 ## Progress (2026-10-23)
 
@@ -9,16 +9,31 @@
 | **S1 — Deriver memoization** | **Done** | `runPipeline(derivers, kernel, inputs?, versions?, memo?)` memoizes each deriver by name + stage kernel version + prefix token versions. Four laws tested (partial = full, unchanged-token zero executions, entries stable across kernel versions, seeded kernels). Kernel 72 tests green; `bun run check` green. | — |
 | **S2 — Incremental layout substrate + clock** | **Done** | `spacegraphjs/src/layout/incremental.ts`: `computeIncremental`/`diffPositions`, `interpolatePosition`, `interpolatedPositions`, `LayoutMove` with no stored `t`; vitest invariants in `test/layout/incremental.test.ts`. Session-ui delegates to the substrate; `moved` no longer carries `t`. Renderer clock `packages/renderer/src/clock.ts` consumes `moved` with explicit `advance(t)` and is re-exported from the renderer package. New kernel `applyNodeBudget` in `packages/kernel/src/budget.ts` (weights are host data, protected ids survive). `demo/delta-animation.html` drives a live merge and a layer switch through derive → diff → incremental → clock. `test/e2e/delta-animation.spec.ts` asserts the same clock, t=0/t=1 endpoints, and silent per-frame a11y announcements without sleeps. Kernel 75 tests, layout 7 tests, demo spec green; `build:packages` green. | — |
 | **S3 — Layer transitions demo** | **Done** | `demo/layers.html`: one range control writes a preset's level/lens/depth into `runPipeline` (three thin derivers over `deriveZoom`/`deriveScope`, shared memo and token versions), `diffKernels` feeds the added/removed report, and the host positions the derived kernel through `LaneLayout` → `diffPositions` → `createRenderClock`. `test/e2e/layers.spec.ts` asserts the control writes all three parameters, node/diff counts, t=0/t=1 endpoints, and a silent live region. Added `@spacegraphjs/kernel` demo/tsconfig aliases only. Demo spec and `build:packages` green; no new substrate API. | — |
-| **S4 — Unified session surface** | **In progress (S4a + S4b landed; acceptance run pending)** | `GraphLayersRail` writes level/lens/depth with no controller state. `GraphMode` is deleted from the public vocabulary; persisted modes migrate to independent `map`/`sideBySide` surface flags. The panel mounts the transcript and map as independent surfaces, the header/commands toggle surfaces instead of modes, and the graph-failure e2e now asserts the transcript renders without the graph module. The checkpoint scrubber scopes turn boundaries. `session-graph` unit tests (104), targeted component tests (7), and `session-graph`/`session-ui`/`app` typechecks are green. | Run the full 21-row graph acceptance suite and the capture matrix; decide whether the scrubber needs durable `SessionKernel.checkpoint()` rather than turn scoping; update capture expectations if frame names change. |
-| **S5 — History (optional)** | Not started | — | Only if the scrubber must name commits. |
+| **S4 — Unified session surface** | **Done (verified)** | `GraphLayersRail` writes level/lens/depth with no controller state. `GraphMode` is deleted from the public vocabulary; persisted modes migrate to independent `map`/`sideBySide` surface flags. The panel mounts the transcript and map as independent surfaces, the header/commands toggle surfaces instead of modes, and the graph-failure e2e asserts the transcript renders without the graph module. The checkpoint scrubber scopes turn boundaries. Two stale capture frames (`11 graph timeline`, `12 graph hierarchy`) clicked the deleted toolbar `Flat` button; they now set `graph-layers-depth` to `flat`, so the capture matrix exercises the rail. | — |
+| **S5 — History (optional)** | **Not needed** | — | The scrubber names turn boundaries, not commits; no consumer exists. Do not start without a concrete request (see the scrubber decision below). |
 
 **S1 API note:** versions are passed beside inputs as a fourth argument; the memo is an optional fifth. Omitting the memo preserves the old pure `pipe` path exactly, so existing callers are untouched. The memo key includes the stage kernel version and every prefix deriver's token versions so a cached downstream kernel can never hide an upstream change.
 
 **S2 API note:** the clock lives in the renderer package (`createRenderClock(model, moves).advance(t)`), and the kernel budget is generic (`applyNodeBudget(kernel, { maxNodes, weights, protectedIds? })`). The demo uses the lane layout with explicit group open/close so a merge moves an existing node rather than silently stacking columns.
 
+### Verification (2026-10-23)
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Host graph suite (21 acceptance rows) | `bun test src/graph` in `packages/session-ui` | 236 pass, 0 fail (23 files) |
+| Session-graph units | `bun test src` in `packages/session-graph` | 104 pass, 0 fail (9 files) |
+| Product graph e2e | `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` | 31 pass, 0 fail |
+| Capture matrix + duplicate-hash gate | `bun run graph:capture --mode=verify` | 26 app frames pass, 2 Cytoscape component frames pass, committed set and T6.19 duplicate-hash gate pass |
+
+One product e2e case (`picking a node in the map moves the log to it`) failed once inside a full-file run and passed on isolated and full reruns; treat it as a pre-existing timing flake to watch, not an S4 regression.
+
+### Scrubber checkpoint decision
+
+Turn scoping is the intended semantic. The host model is derived from the session message history, not from a `SessionKernel` entry log, so `SessionKernel.checkpoint()` has no host-side state to checkpoint; its versions are kernel-append versions, not product turn boundaries. `scopeToTurns` gives the reader exactly the contract the scrubber promises: show the map as of the last turn the rail names, while the newest checkpoint returns the live `fullModel()` so appends stay current. A durable checkpoint would add no user-visible capability until S5 names commits, so S5 stays closed. Do not mix the two: if a future scrubber must name commits or survive a reload mid-scrub, that is the trigger to reopen S5 and replace turn scoping wholesale.
+
 ### Slice detail and next actions
 
-S1–S3 need no follow-up. S4a and S4b are landed; the remaining S4 gate is verification: run the 21-row graph acceptance suite and the capture matrix, then decide whether turn scoping is a sufficient checkpoint semantic or S5-style durable checkpoints are required. S5 remains optional and starts only if the scrubber must name commits.
+S1–S5 require no follow-up. The plan is complete; reopen S5 only for a commit-naming scrubber, V99 only when a settings owner exists for rail presets, and V95/V102 only as cleanup or marketing artifacts.
 
 **S4b note:** `GraphMode` is gone from the public vocabulary. `graph-toolbar-view` remains as the map-tools menu (billboard, files, equalizer, arrangement, detail, windows); it no longer contains any layer parameter, so the layers rail is the only place level/lens/depth are written. The panel keeps both surfaces mounted and hides the transcript only while the map has the panel alone, which preserves transcript scroll and focus when the map opens or closes.
 
@@ -28,10 +43,11 @@ S1–S3 need no follow-up. S4a and S4b are landed; the remaining S4 gate is veri
 
 - S2's kernel `applyNodeBudget` is generic and tested; the host `session-ui` still uses its own `GraphViewData` budget until S4 migrates it. Do not duplicate the host budget in new substrate code.
 - The demo's added nodes appear at their target position at `t=0` (only moved nodes interpolate). This is acceptable for S2; if added-node fade-in is wanted, it belongs in a later renderer extension, not the clock.
-- The scrubber filters the graph with `scopeToTurns`, which preserves the newest view exactly but does not yet use a durable `SessionKernel.checkpoint()`. Decide whether turn boundaries are the intended checkpoint semantic or whether S5 must supply durable checkpoints; do not silently mix the two.
+- The scrubber filters the graph with `scopeToTurns`; turn boundaries are the intended checkpoint semantic (see the decision above). Do not add a durable `SessionKernel.checkpoint()` path or mix it with turn scoping unless S5 is reopened for commit names.
 - `graph-toolbar-view` remains as the map-tools menu (billboard, files, equalizer, arrangement, detail, windows); it no longer writes any layer parameter. Do not re-add level/lens/depth there.
-- The full graph acceptance suite and capture matrix were not rerun after S4b because the Playwright run was too slow in this environment; only typechecks, `session-graph` unit tests, and targeted component tests were verified. Run both before closing S4.
+- Capture fixtures must drive depth through `[data-slot="graph-layers-depth"]`, never through a toolbar mode button. The two frames that regressed did exactly that; the rail is the only writer.
 - The persisted `map`/`sideBySide` migration is covered by `packages/app/src/shell/state/layout.test.ts`; the local bun test runner currently fails on a pre-existing Solid `jsxDEV` resolution error, so that test was typechecked but not executed here.
+- `picking a node in the map moves the log to it` flaked once in a full-file e2e run and passed on reruns. Do not relax its poll; investigate only if it recurs.
 
 
 Architecture direction unchanged: the mechanism lands in **SpaceGraphJS** (domain-agnostic substrate, own repo and test suite), OpenCode stays a thin host that consumes finished APIs.
@@ -91,7 +107,7 @@ Net: draft 1 base was 5.5 days with three new concepts; draft 2 base is **4 days
 | **S1 — Deriver memoization** | 1.5 | kernel | `runPipeline` memoizes each deriver's output by the versions of the `inputToken`s it declares. Laws: (a) a partial re-run after one token changes is equal to a full re-run; (b) derivers whose tokens did not change execute zero times (counter-proven); (c) memo hits are stable across kernel versions. No new types. |
 | **S2 — Incremental layout substrate + clock** | 2 | spacegraphjs `src/layout` + renderer | Move `computeIncremental`/`interpolatePosition` into `src/layout`; `moved` loses its stored `t`; renderer consumes `moved` with an explicit `t` clock and exposes `advance(t)` for tests; interpolation laws (stable ids keep positions, endpoints exact, `added`/`removed` reported); demo `delta-animation.html` shows a live merge *and* a layer switch through the same path; vitest invariants in `test/layout/`, demo spec under `playwright.demo.config.ts` with no sleeps. |
 | **S3 — Layer transitions demo** | 0.5 | spacegraphjs demo | `layers.html`: one control writing level/lens/depth; each change flows through derive → diff → incremental → interpolate, proving the unification with a generic fixture. No new substrate API. |
-| **S4 — Unified session surface** | 2.5 | OpenCode host | The mode concept is deleted: the panel composes the transcript and map as surfaces; the toolbar's View/Domains menus are replaced by one layers rail writing the S2/S3 parameters; a scrubber drives `SessionKernel.checkpoint()` across turn boundaries through the same pipeline. The 21-row acceptance suite retargets with zero product-behavior loss; capture frames are renamed, not relaxed. The transcript keeps loading without the graph (asserted). |
+| **S4 — Unified session surface** | 2.5 | OpenCode host | The mode concept is deleted: the panel composes the transcript and map as surfaces; the toolbar's View/Domains menus are replaced by one layers rail writing the S2/S3 parameters; a scrubber scopes turn boundaries through the same pipeline. Turn boundaries, not kernel versions, are the checkpoint semantic (see the decision above). The 21-row acceptance suite retargets with zero product-behavior loss; capture frames are renamed, not relaxed. The transcript keeps loading without the graph (asserted). |
 | **S5 — History (optional)** | 1 | server | Snapshot memoization per `(location, revision, scope)` with event invalidation, and `Vcs.history` commit ids so the scrubber can name commits. Carried unchanged from TODO.14 §0 / TODO.5 T29.2. Only if the scrubber must name commits. |
 
 ---
@@ -155,7 +171,7 @@ These are the laws each slice must carry; each has exactly one testable owner:
 | **Layers rail control (one UI writing level/lens/depth)** | OpenCode `session-graph` | Writes substrate parameters; no controller state |
 | **Transcript surface** | OpenCode `app` | Independent; survives graph failure (mission constraint) |
 | **Panel composition (surfaces + rail + scrubber)** | OpenCode `session-graph` / `app` | Host UI assembly |
-| **Scrubber over `SessionKernel.checkpoint()`** | OpenCode `session-graph` | Turn boundaries are session concept; uses substrate pipeline |
+| **Scrubber over turn boundaries (`scopeToTurns`)** | OpenCode `session-graph` | Turn boundaries are session concept; uses substrate pipeline. Kernel checkpoint versions are not product turns, so no durable checkpoint path exists |
 | **Snapshot fetch/cache** | OpenCode `app` | Session-scoped, debounced, protocol-aware |
 | **Export (SVG/JSON/HTML)** | OpenCode `session-graph` | Host formats; substrate provides render model |
 | **Capture/determinism contract** | OpenCode `app` e2e | Product documentation images |
@@ -206,7 +222,7 @@ The transcript itself is never deleted and never graph-derived (mission constrai
 | 4 | Where are substrate screenshots generated? | In the nested repo, by `demo-screenshots.spec.ts` from a demo page; never in the OpenCode app matrix |
 | 5 | How is animation tested without wall clock? | The renderer takes `t` explicitly; tests call `advance(t)`; no sleeps, ever |
 | 6 | Is the layers control host or substrate? | The parameters are substrate (`deriveScope`/`deriveZoom`); the one control writing them is host; no controller state |
-| 7 | Does the scrubber need `Vcs.history`? | No — turn boundaries come from `SessionKernel.checkpoint()`; commit names arrive only with S5 |
+| 7 | Does the scrubber need `Vcs.history`? | No — the scrubber moves across turn boundaries via `scopeToTurns`; `SessionKernel.checkpoint()` versions are kernel-appends, not product turns. Commit names would require S5, which has no consumer |
 | 8 | Is the transcript a lens? | No. It is an independent surface. Modes die at the control level; the transcript never depends on graph code |
 | 9 | Can the acceptance suite survive S4 unchanged? | Yes — rows describe product behavior, not modes; only locator vocabulary retargets |
 | 10 | Do we relax capture determinism for animation? | No (stop rule #24); animated frames are a separate, ungated mode |
