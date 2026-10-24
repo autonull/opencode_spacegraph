@@ -668,3 +668,37 @@ test("35 graph scrubber", async ({ page }) => {
   await capture(page, "35-graph-scrubber.png")
   expect(errors).toEqual([])
 })
+
+test("36 graph trace overlay", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Trigger "Why?" trace on the first user message
+  await focusNode(page, "turn:msg_user_1", "authentication test failures")
+  await page.locator(inspector).getByRole("button", { name: "Why?" }).click()
+  await still(page)
+  await capture(page, "36-graph-trace-overlay.png")
+  expect(errors).toEqual([])
+})
+
+test("37 graph collapsed group", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Select a phase group node and collapse it via the status bar
+  await focusNode(page, "phase:turn:msg_user_1:explore:1", "explore")
+  await expect(page.locator(inspector)).toBeVisible()
+  // Collapse the group via the status bar
+  await page.locator('[data-slot="graph-status-bar"] [data-slot="graph-status-group-toggle"]').click()
+  await still(page)
+  await capture(page, "37-graph-collapsed-group.png")
+  expect(errors).toEqual([])
+})
