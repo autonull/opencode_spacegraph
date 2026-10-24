@@ -112,6 +112,8 @@ export {
   type TranscriptRef,
 } from "./selectors"
 
+export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
+
 export {
   NAVIGATION_MNEMONICS,
   navigationHelp,
