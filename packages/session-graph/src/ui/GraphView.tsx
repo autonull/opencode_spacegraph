@@ -791,6 +791,9 @@ export const GraphView = (props: GraphViewProps) => {
       level: level(),
       previous: layoutHistory.get(key),
       nodeSizeFn: sizedCard,
+      // Give lanes more vertical breathing room: the default 24px gap between 72px cards
+      // makes 8 lanes feel cramped at typical viewport heights.
+      laneGap: 40,
     })
 
     layoutHistory.set(key, next.positions)
