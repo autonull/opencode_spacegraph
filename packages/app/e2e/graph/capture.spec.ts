@@ -246,7 +246,8 @@ async function still(page: Page) {
 
 async function chooseProfile(page: Page, profile: string) {
   await openLayers(page)
-  await page.locator('[data-slot="graph-layers-lens"]').selectOption(profile)
+  // New UI: preset buttons inside the Layers menu with data-slot="graph-lens-preset"
+  await page.locator('[data-slot="graph-lens-preset"][data-value="' + profile + '"]').click()
   await closeLayers(page)
 }
 
