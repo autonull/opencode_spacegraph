@@ -491,6 +491,9 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   )
 
   /** The session time axis, folded until the reader opens it or leaves the live turn. */
+  const turnStatuses = () =>
+    (props.model?.turns ?? []).map((id) => props.model?.nodes.find((node) => node.id === id))
+
   const timeControls = () => (
     <Show when={props.onCheckpoint && (props.turnCount ?? 0) > 1}>
       <GraphIconButton
@@ -505,16 +508,29 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           data-slot="session-graph-scrubber"
           class="flex min-w-40 items-center gap-2 text-12-regular text-text-weak"
         >
-          <input
-            type="range"
-            min="1"
-            max={props.turnCount}
-            step="1"
-            value={(props.checkpoint ?? 0) + 1}
-            aria-label={i18n.t("ui.sessionGraph.time.aria")}
-            class="h-1 min-w-24 flex-1"
-            onInput={(event) => props.onCheckpoint?.(Number(event.currentTarget.value) - 1)}
-          />
+          <div class="relative flex min-w-24 flex-1 items-center">
+            <input
+              type="range"
+              min="1"
+              max={props.turnCount}
+              step="1"
+              value={(props.checkpoint ?? 0) + 1}
+              aria-label={i18n.t("ui.sessionGraph.time.aria")}
+              class="h-1 w-full"
+              onInput={(event) => props.onCheckpoint?.(Number(event.currentTarget.value) - 1)}
+            />
+            <div data-slot="graph-time-ticks" class="pointer-events-none absolute inset-x-0 top-2 flex justify-between">
+              {turnStatuses().map((node) => (
+                <span
+                  data-slot="graph-time-tick"
+                  data-status={node?.status ?? "neutral"}
+                  title={node?.label}
+                  class="h-1 w-px bg-border-weaker-base"
+                  classList={{ "bg-[var(--border-critical-selected)]": node?.status === "failed" }}
+                />
+              ))}
+            </div>
+          </div>
           <output class="shrink-0 tabular-nums">
             {i18n.t("ui.sessionGraph.time.value", {
               current: String((props.checkpoint ?? 0) + 1),

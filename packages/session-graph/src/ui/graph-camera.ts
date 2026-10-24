@@ -75,6 +75,12 @@ export function createGraphCamera(options: GraphCameraOptions) {
     request(() => options.renderer()?.fit(untrack(options.content), options.fit()))
   }
 
+  /** B1 — frame a reader-held set, not only the whole content. */
+  const frame = (ids: readonly string[]) => {
+    if (ids.length === 0) return
+    request(() => options.renderer()?.fit([...ids], options.fit()))
+  }
+
   /** The renderer reported a viewport: while the fit settles, the baseline follows it. */
   const report = (viewport: RendererViewport) => {
     if (!pending()) return
@@ -155,6 +161,7 @@ export function createGraphCamera(options: GraphCameraOptions) {
     pending,
     endFitWindow,
     fitContent,
+    frame,
     focus,
     frameReadable,
     report,

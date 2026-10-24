@@ -7,17 +7,18 @@
 | Milestone | State | Gate | Days |
 |-----------|-------|------|------|
 | **A — Questions & Scopes** | **Complete** (A1 + A2) | T2.2 evidence run | 3.0 |
-| **B — Comparison, Verbs, Groups, Edges** | Not started — blocked on T2.2 | Evidence pass | 2.5 |
+| **B — Comparison, Verbs, Groups, Edges** | **B1 implemented**; B2/B3 not started | Evidence pass (deferred by owner) | 2.5 |
 | **C — Annotations** | Not started — blocked on T2.2 | Evidence pass | 1.25 |
 | **Platform track (parallel/optional)** | Not started | Second host / platform demand | 2.75 |
 
-**Core total: 6.75 days** (was 8.25; substrate track decoupled). **A is delivered; earliest user value is available now.** The next action is the T2.2 evidence run, not more feature work.
+**Core total: 6.75 days** (was 8.25; substrate track decoupled). **A is delivered; B1 is implemented.** The owner has explicitly deferred the T2.2 gate and test authoring for B1; both remain required before the plan is closed.
 
 ### Where the work stands
 
 - **A1 — trace overlay: complete.** `packages/session-graph/src/ui/overlay.ts` + `overlay.test.ts`; `GraphView` trace state/keys; `cardTemplate` lit/dim markup; copy-as-outline.
 - **A2 — facets, ranked search, lens, permalinks: complete.** New `packages/session-ui/src/graph/facets.ts` (+ tests) owns the facet grammar, live counts, and the single scope step. `selectors.rankedSearch` uses `Navigation.searchBy` with the host scorer. The toolbar has facet chips and per-domain lens toggles with a runtime preset. `graph-permalink.ts` carries `?q=` and supports view-only links (`#graph?kind:file`). `degreeBudget` feeds `fileRelations` into `applyNodeBudget` with the selection protected. `GraphDetail` offers copy-view beside copy-node.
-- **Evidence before invention:** B/C remain queued by design. The T2.2 run compares the graph with the transcript on the five investigative tasks; a fail ends feature work and leaves the library as the deliverable.
+- **B1 — diff, compare, and selection verbs: implemented (tests deferred).** New `GraphStatusBar.tsx` owns the selection verbs (Frame · Keep only · Copy paths · Export subset · Clear) as pure functions over the held ids. `GraphView` applies keep-only after facets. A parked scrubber turn diffs against the live map through `reviewChanges`, marking cards with `data-diff="added|changed|removed"` and showing a `+n −n ~n` chip with a return-to-live action. The scrubber draws per-turn status ticks. `graph-camera` gained `frame(ids)`.
+- **Deferred:** the T2.2 evidence run, B1 e2e rows, and B1 unit/component tests. The plan does not close until they land. Two-turn compare from multi-select, compare-as-window, B2 group collapse, and B3 edge affordances remain.
 - **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
 
 
@@ -141,7 +142,7 @@ Stated measurably:
 
 | Slice | Days | Delivers |
 |-------|------|----------|
-| **B1 — Diff & compare + status bar verbs** | 1.25 | Scrub-park on turn N ⇒ diff parked vs live (`reviewChanges` → lit/ghost markup, non-answer edges hidden); "+12 −3 ~7" chip; two-turn compare from multi-select; optional compare-as-window (windows machinery exists); scrubber failure ticks + hover peek. **Shared status bar:** frame selection, keep-only (scope), copy paths, export subset (export gains id-set overload). Pure over the id array. +3 e2e rows. |
+| **B1 — Diff & compare + status bar verbs** ✅ core (tests deferred) | 1.25 | Scrub-park on turn N ⇒ diff parked vs live (`reviewChanges` → `data-diff` lit/ghost markup, non-answer edges hidden); "+12 −3 ~7" chip; **shared status bar:** frame selection, keep-only (scope), copy paths, export subset, clear — pure over the id array; scrubber failure ticks. **Deferred:** two-turn compare from multi-select and optional compare-as-window. |
 | **B2 — Group collapse** | 0.5 | Adapter emits collapsed group (compact chip, `data.memberCount`, stats line from `data.members`); header click toggles, session-local; "collapse others"; group context menu reuses action registry (`directory`/`package`); budget `protectedIds` keeps selected members on expand. +2 e2e rows. |
 | **B3 — Edge affordances** | 0.5 | Edge hover → peek (kind, confidence, label); `writes` edges carry "+n −m" in build-time label, so peek has a payload; edge click selects + "trace from here"; legend edge-kind visibility toggles with counts; `[`/`]` traversal over `incoming`/`outgoing`. +2 e2e rows. |
 
@@ -218,7 +219,16 @@ Platform track invariants (P1/P2): walk determinism, scorer law, union conservat
 
 **Anti-brittleness rules (carried):** no DOM-depth beyond `data-slot`; no color/style/i18n pinning where a count/state exists; acceptance rows name reader outcomes; no snapshots/pixels/Cartesian captures (#24); a flake gets one isolated rerun, then `test.skip` with TODO.16 note — never a sleep.
 
-**Testing ladder rule #38:** assert at the cheapest layer that can fail. Unit > component > e2e. If a unit test can catch it, it doesn't belong in e2e.
+**Testing ladder rule #38:** assert at the cheapest layer that can fail. Unit > component > e2e.
+
+### Deferred tests (owner decision, must land before plan close)
+
+B1 shipped without new tests by explicit owner direction. Capture these when the deferred pass runs:
+
+- **Unit:** status-bar verbs are pure over ids; `reviewChanges` classification for a parked turn; keep-only composition after facets.
+- **Component (Storybook):** `GraphStatusBar` verbs, compare chip, scrubber ticks.
+- **Product e2e:** select one node ⇒ status bar count; keep-only hides others; scrub-park shows `+n −n ~n` and return-to-live. Keep to `data-slot` assertions and add no sleeps.
+ If a unit test can catch it, it doesn't belong in e2e.
 
 ---
 

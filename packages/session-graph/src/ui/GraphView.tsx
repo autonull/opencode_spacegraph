@@ -52,6 +52,7 @@ import {
   nodeByID,
   nodeIndex,
   nodeSize,
+  reviewChanges,
   ribbonLayout,
   scaleWindow,
   scopeToTurns,
@@ -94,6 +95,7 @@ import { GraphMinimap } from "./GraphMinimap"
 import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
+import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
@@ -397,8 +399,44 @@ export const GraphView = (props: GraphViewProps) => {
     ),
   )
   const turnScoped = createMemo(() => scopeToTurns(props.model, scale().turns))
-  const scoped = createMemo(() => applyFacets(turnScoped(), facets()))
+  // B1 — "keep only" is a scope over the held set, applied after facets so the two compose.
+  const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
+  const scoped = createMemo(() => {
+    const base = applyFacets(turnScoped(), facets())
+    const keep = keptIds()
+    if (!keep) return base
+    const ids = new Set(keep)
+    ids.add(base.root)
+    return {
+      ...base,
+      nodes: base.nodes.filter((node) => ids.has(node.id)),
+      edges: base.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
+      turns: base.turns.filter((turn) => ids.has(turn)),
+      activeTurn: base.activeTurn !== undefined && ids.has(base.activeTurn) ? base.activeTurn : undefined,
+    }
+  })
   const counts = createMemo(() => facetCounts(turnScoped(), facets()))
+  // B1 — a parked view is a diff against the live map, not a different map: the same positions
+  // carry added and changed marks, and nothing re-lays-out when the scrubber moves.
+  const comparison = createMemo(() => {
+    const checkpoint = props.checkpoint
+    const turns = props.model.turns
+    if (checkpoint === undefined || props.turnCount === undefined) return undefined
+    if (checkpoint >= turns.length - 1 || checkpoint < 0) return undefined
+    const parked = scopeToTurns(props.model, new Set(turns.slice(0, checkpoint + 1)))
+    const changes = reviewChanges(parked, scoped())
+    return {
+      added: new Set(changes.added),
+      removed: new Set(changes.removed),
+      changed: new Set(changes.changed),
+      counts: {
+        added: changes.added.length,
+        removed: changes.removed.length,
+        changed: changes.changed.length,
+      },
+    }
+  })
+  const clearComparison = () => props.onCheckpoint?.(Math.max(0, props.model.turns.length - 1))
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
   const windowAnchor = createMemo(() => {
@@ -533,6 +571,7 @@ export const GraphView = (props: GraphViewProps) => {
         now,
         copy,
         trace: overlay ?? undefined,
+        diff: comparison(),
       })
     )
   })
@@ -726,6 +765,36 @@ export const GraphView = (props: GraphViewProps) => {
       sessionTitle: props.sessionTitle,
       testedCommit: props.testedCommit,
     })
+
+  // B1 — the selection verbs. Each is a pure function of the held ids.
+  const frameSelection = () => camera.frame(selection.selection())
+  const keepOnlySelection = () => {
+    const ids = selection.selection()
+    if (ids.length === 0) return
+    setKeptIds(new Set(ids))
+    announce(i18n.plural("ui.sessionGraph.status.kept", ids.length))
+  }
+  const copySelectedPaths = () => {
+    const ids = selection.selection()
+    const text = ids
+      .map((id) => breadcrumbs(props.model, id).map((node) => node.label).join(" › "))
+      .filter((line) => line.length > 0)
+      .join("\n")
+    if (!text) return
+    navigator.clipboard?.writeText(text)
+    announce(i18n.plural("ui.sessionGraph.status.copied", ids.length))
+  }
+  const exportSelection = () => {
+    const ids = new Set(selection.selection())
+    if (ids.size === 0) return
+    const model = ordered()
+    handleExport("json", {
+      ...model,
+      nodes: model.nodes.filter((node) => ids.has(node.id)),
+      edges: model.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
+    })
+  }
+  const clearSelectionScope = () => setKeptIds(null)
 
   const selectedNode = () => {
     const id = selection.selection()[0]
@@ -1296,6 +1365,39 @@ export const GraphView = (props: GraphViewProps) => {
         model={props.model}
       />
       <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
+      <GraphStatusBar
+        count={selection.selection().length}
+        onFrame={frameSelection}
+        onKeepOnly={keepOnlySelection}
+        onCopyPaths={copySelectedPaths}
+        onExportSubset={exportSelection}
+        onClear={clearSelectionScope}
+      />
+      <Show when={comparison()}>
+        {(diff) => (
+          <div
+            data-slot="graph-compare-bar"
+            class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1 text-12-regular text-text-weak"
+          >
+            <span data-slot="graph-compare-counts" class="tabular-nums">
+              {i18n.t("ui.sessionGraph.compare.chip", {
+                added: String(diff().counts.added),
+                removed: String(diff().counts.removed),
+                changed: String(diff().counts.changed),
+              })}
+            </span>
+            <span class="min-w-0 flex-1 truncate">{i18n.t("ui.sessionGraph.compare.parked")}</span>
+            <button
+              type="button"
+              data-slot="graph-compare-clear"
+              class="shrink-0 rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+              onClick={() => clearComparison()}
+            >
+              {i18n.t("ui.sessionGraph.compare.live")}
+            </button>
+          </div>
+        )}
+      </Show>
       <Show when={scaleNotice()}>
         {(notice) => (
           <div

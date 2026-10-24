@@ -227,6 +227,8 @@ export type CardTemplateOptions = {
   copy: CardCopy
   /** Trace overlay for focus+context highlighting. */
   trace?: TraceOverlay
+  /** B1: the diff overlay for a parked view or a two-turn comparison. */
+  diff?: { added: ReadonlySet<string>; removed: ReadonlySet<string>; changed: ReadonlySet<string> }
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -414,7 +416,28 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       : ""
     const traceStyle = trace && !isLitNode ? "opacity:0.35;" : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}${traceStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    // Diff overlay: added, changed, and removed ghosts classify the card; positions never move.
+    const diff = options.diff
+    const diffKind = diff
+      ? diff.removed.has(node.id)
+        ? "removed"
+        : diff.added.has(node.id)
+          ? "added"
+          : diff.changed.has(node.id)
+            ? "changed"
+            : undefined
+      : undefined
+    const diffAttrs = diffKind ? ` data-diff="${diffKind}"` : ""
+    const diffStyle =
+      diffKind === "removed"
+        ? "opacity:0.45;"
+        : diffKind === "added"
+          ? `box-shadow:inset 0 0 0 2px ${theme.success};`
+          : diffKind === "changed"
+            ? `box-shadow:inset 0 0 0 2px ${theme.warning};`
+            : ""
+
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}${traceStyle}${diffStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>
