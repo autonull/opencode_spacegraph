@@ -57,6 +57,8 @@ All 24 app frames (01–06, 11–17, 18–24, 28–31) were regenerated with the
 
 ### Remaining work (post-plan, explicitly deferred)
 
+**Next phase:** drafted in `SPACEGRAPH.TODO.15.md` (unified session lens: delta substrate, animated layout, layers controller, host lens slice). TODO.15 owns the go-forward plan; the items below are its inputs.
+
 No base task is open. The derived node types and the multi-layer controls (domain lenses/profiles, zoom levels, layouts, depth) are already wired end to end; against a real session they appear as soon as the server returns a `WorkspaceSnapshot`. The deferred items below are about live updates and scale, not about missing node kinds.
 
 The following are outside Slices 1–9 by design (§6) and are the next entry points, in priority order:
