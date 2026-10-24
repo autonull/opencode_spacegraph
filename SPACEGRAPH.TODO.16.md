@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.16 — The Answerable Map: Traces, Facets, Diffs, Group Power, and a First Write Path (draft 4)
 
-**Status:** A complete (A1 + A2 shipped 2026-10-24). Next gate is the T2.2 evidence run; **B and C are not started and must not start until that run passes**. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
+**Status:** Core A/B/C implemented (2026-10-24); A and B tested where noted, C core implemented. **Tests and the T2.2 evidence run are deferred by owner direction and must land before the plan closes.** Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
 
 ## Progress
 
@@ -385,6 +385,6 @@ Transcript, Layers menu, mouse map (§7.1a), capture strictness untouched.
 6. ✅ `graph-permalink.ts` — `?q=` round-trip and view-only links (`#graph?kind:file`); copy-view beside copy-node in `GraphDetail`, `GraphInspector`, and `GraphPopover`.
 7. ✅ Three product e2e rows: facet filtering, lens preset/domain toggles, and a view permalink. `bun run check` green.
 
-**Remaining core work:** the **T2.2 evidence run** (§ Gate). If it passes, implement B (§ Milestone B) then C (§ Milestone C). If it fails, stop feature work and publish the finding.
+**Remaining core work:** the **T2.2 evidence run** (§ Gate) and the deferred test pass (§7). Core A/B/C are implemented. If the evidence run fails, stop feature work and publish the finding; if it passes, close the deferred tests and refinements (two-turn compare, compare-as-window, header-click collapse, group menu, `writes` payload labels, annotation persistence V113).
 
 The substrate track (P1/P2) runs in parallel if a second contributor exists, or lands after Milestone A completes, or triggers on second-host demand.
