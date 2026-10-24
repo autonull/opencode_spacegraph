@@ -37,8 +37,8 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   5. [x] Split the composite workspace deriver into 10 thin stage derivers (`files`, `directories`, `packages`, `commits`, `branches`, `symbols`, `hunk-symbols`, `processes`, `ports`, `issues`), composed with `pipe`/`runPipeline`; the session builder is the 11th deriver. Goldens refreshed for the new emission order.
   6. [x] UI wiring: all `buildGraph` call sites now run the kernel pipeline with no signature change. `scope.ts` is deleted; `scopeModel` lives in `view.ts` and is implemented with kernel `deriveScope`.
   7. [x] Extracted the session builder into `session-builder.ts` and workspace stages into `workspace-derivers.ts`; `build.ts` is now orchestration only.
-  8. [ ] Remaining core cleanup: convert `actionsFor` to registry contributions and rename `GraphModel` to `GraphView` (`GraphNode = Node & { kind }`).
-  9. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
+  8. [x] Replaced `model.golden*.json` with `graph.contract.json` (semantic kind/count/invariant contract) and `graph.sample.json` (small decodable kernel sample); `contract.test.ts` enforces both.
+  9. [ ] Remaining core cleanup: convert `actionsFor` to registry contributions and rename `GraphModel` to `GraphView`.
   10. [ ] Run the kernel build gate before OpenCode typecheck/tests.
 - [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
 - [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).

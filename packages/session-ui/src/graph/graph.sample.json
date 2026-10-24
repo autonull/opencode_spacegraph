@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "kind": "kernel",
+  "version": 1,
+  "nodes": [
+    { "id": "org:acme", "kind": "org", "label": "Acme" },
+    { "id": "project:website", "kind": "project", "label": "Website" },
+    { "id": "task:design", "kind": "task", "label": "Design landing page" },
+    { "id": "task:auth", "kind": "task", "label": "Implement auth" }
+  ],
+  "edges": [
+    { "id": "owns:acme:website", "kind": "owns", "source": "org:acme", "target": "project:website" },
+    { "id": "contains:website:design", "kind": "contains", "source": "project:website", "target": "task:design" },
+    { "id": "contains:website:auth", "kind": "contains", "source": "project:website", "target": "task:auth" }
+  ],
+  "hyperedges": []
+}

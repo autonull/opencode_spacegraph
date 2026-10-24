@@ -1,24 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { buildGraph } from "./build"
 import { buildFixtureGraph, buildFixtureMessages, buildFixtureSnapshot, buildFixtureGraphWithSnapshot } from "./fixture"
-import { directoryNodeID, fileNodeID, normalizePath, type GraphModel } from "./model"
+import { directoryNodeID, fileNodeID, normalizePath } from "./model"
 import type { FileDiffInfo } from "@opencode/client/promise"
 
 const symbolNodeID = (path: string, qualified: string) => `symbol:${normalizePath(path)}#${qualified}`
 
-const serialize = (model: GraphModel) =>
-  JSON.parse(JSON.stringify({ ...model, turnByMessageID: Object.fromEntries(model.turnByMessageID) }))
-
 describe("T29.3 — the model takes the snapshot", () => {
-  test("without a snapshot the model is unchanged", async () => {
-    const model = buildFixtureGraph()
-    const file = new URL("./model.golden.json", import.meta.url)
-
-    if (process.env.UPDATE_GOLDEN) await Bun.write(file, `${JSON.stringify(serialize(model), null, 2)}\n`)
-
-    expect(serialize(model)).toEqual(await Bun.file(file).json())
-  })
-
   test("a snapshot adds derived kinds without changing the session", () => {
     const sessionOnly = buildFixtureGraph()
     const withSnapshot = buildGraph({
@@ -103,15 +91,6 @@ describe("T29.3 — the model takes the snapshot", () => {
 })
 
 describe("T32.1 — golden snapshot fixture", () => {
-  test("comprehensive snapshot produces expected graph", async () => {
-    const model = buildFixtureGraphWithSnapshot()
-    const file = new URL("./model.golden.with-snapshot.json", import.meta.url)
-
-    if (process.env.UPDATE_GOLDEN) await Bun.write(file, `${JSON.stringify(serialize(model), null, 2)}\n`)
-
-    expect(serialize(model)).toEqual(await Bun.file(file).json())
-  })
-
   test("derived kinds appear in the model", () => {
     const model = buildFixtureGraphWithSnapshot()
 
