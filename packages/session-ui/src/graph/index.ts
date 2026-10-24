@@ -34,6 +34,8 @@ export {
 export {
   buildGraph,
   buildSessionKernel,
+  buildWorkspaceKernel,
+  workspaceDeriver,
   type BuildGraphInput,
   type BuildSessionInput,
 } from "./build"

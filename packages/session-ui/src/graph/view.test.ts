@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { buildGraph, buildSessionKernel } from "./build"
-import { fixtureMessages } from "./fixture"
+import { buildGraph, buildSessionKernel, buildWorkspaceKernel } from "./build"
+import { buildFixtureSnapshot, fixtureMessages } from "./fixture"
 import {
   createGraphViewCache,
   graphModelToKernel,
@@ -139,6 +139,20 @@ describe("GraphView projection", () => {
       duplicateEdges: [],
       hyperedgeMissingNodes: [],
     })
+  })
+
+  test("buildSessionKernel stays session-only and the workspace deriver adds domains", () => {
+    const snapshot = buildFixtureSnapshot()
+    const session = buildSessionKernel({
+      messages: fixtureMessages,
+      status: { type: "idle" },
+      snapshot,
+    })
+    const workspace = buildWorkspaceKernel(session, snapshot)
+
+    expect(session.nodes.some((item) => item.kind === "directory")).toBe(false)
+    expect(workspace.nodes.some((item) => item.kind === "directory")).toBe(true)
+    expect(workspace.version).toBe(session.version + 1)
   })
 
   test("buildGraph accepts a kernel and its metadata", () => {

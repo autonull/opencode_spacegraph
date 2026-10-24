@@ -98,7 +98,7 @@ const asProvenance = (value: unknown): Provenance | undefined => {
   }
 }
 
-const toGraphNode = (node: Node): GraphNode => {
+export const toGraphNode = (node: Node): GraphNode => {
   const all = node.data ?? {}
   const host =
     typeof all[HOST_KEY] === "object" && all[HOST_KEY] !== null && !Array.isArray(all[HOST_KEY])
@@ -131,7 +131,7 @@ const toGraphNode = (node: Node): GraphNode => {
   }
 }
 
-const toGraphEdge = (edge: Edge): GraphEdge => ({
+export const toGraphEdge = (edge: Edge): GraphEdge => ({
   id: edge.id,
   kind: edge.kind as EdgeKind,
   source: edge.source,

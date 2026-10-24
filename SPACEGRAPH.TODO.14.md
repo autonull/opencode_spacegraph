@@ -33,10 +33,11 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   1. [x] Acceptance suite landed: `packages/session-ui/src/graph/acceptance.test.ts`, 21 product behavior tests, green against the current host. This is the rewrite gate.
   2. [x] Host ↔ kernel projection landed in `packages/session-ui/src/graph/view.ts`: `toKernelNode`/`toKernelEdge`, `graphModelToKernel`, `graphViewMeta`, `toGraphView`, and `createGraphViewCache` (memoized by kernel version + identity). Five round-trip/cache tests.
   3. [x] Builder now emits a `Kernel`: `GraphBuilder.buildKernel()`, `buildSessionKernel(input)`, and `buildGraph({ kernel, meta })`; `buildGraph(input)` builds a kernel then projects with `toGraphView`. No `GraphModel` intermediate. Full `src/graph` suite: 207 pass.
-  4. [ ] Split workspace derivations out of `GraphBuilder` into the 11 thin derivers so `buildSessionKernel` stays session-only and `runPipeline` composes workspace domains.
-  5. [ ] Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
-  6. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
-  7. [ ] Run the kernel build gate before OpenCode typecheck/tests.
+  4. [x] Workspace derivation is out of the session builder: `buildSessionKernel` is session-only; `buildWorkspaceKernel` and `workspaceDeriver` compose workspace domains through `runPipeline`. Tests cover session-only vs derived.
+  5. [ ] Split the composite workspace deriver into the 11 thin domain derivers.
+  6. [ ] Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
+  7. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
+  8. [ ] Run the kernel build gate before OpenCode typecheck/tests.
 - [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
 - [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).
 - [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).

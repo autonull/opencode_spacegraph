@@ -9,7 +9,7 @@ import type {
   SessionStatus,
   WorkspaceSnapshot,
 } from "@opencode/client/promise"
-import { Kernel } from "@spacegraphjs/kernel"
+import { defineDeriver, inputToken, Kernel, runPipeline } from "@spacegraphjs/kernel"
 import { Option, Schema } from "effect"
 import stripAnsi from "strip-ansi"
 import { timelineCategory } from "../timeline/detail"
@@ -44,7 +44,7 @@ import {
   type Range,
   type SessionLineage,
 } from "./model"
-import { toGraphView, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
+import { toGraphEdge, toGraphNode, toGraphView, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
 
 /**
@@ -175,6 +175,7 @@ class GraphBuilder {
     sessionID?: string,
     lineage?: SessionLineage,
     diffByTurn?: Map<string, FileDiffInfo[]>,
+    private readonly withWorkspace = true,
   ) {
     this.goal = messages.find((message) => message.type === "user")?.text
     this.diffByTurn = diffByTurn
@@ -245,22 +246,59 @@ class GraphBuilder {
       node.data = { ...node.data, active: this.status.type !== "idle" }
     }
 
-    if (this.snapshot) this.attachWorkspace(this.snapshot)
+    if (this.withWorkspace && this.snapshot) this.attachWorkspace(this.snapshot)
 
-    if (this.diffByTurn) this.attachHunkSymbols(this.diffByTurn)
+    if (this.withWorkspace && this.diffByTurn) this.attachHunkSymbols(this.diffByTurn)
 
     this.turnByMessageID = turnByMessageID
     this.activeTurn = activeTurn
     this.constructed = true
   }
 
-  buildKernel(): Kernel {
+  static fromKernel(
+    kernel: Kernel,
+    snapshot: WorkspaceSnapshot,
+    diffByTurn?: Map<string, FileDiffInfo[]>,
+  ): GraphBuilder {
+    const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined, diffByTurn, false)
+    builder.seed(kernel)
+    builder.attachWorkspace(snapshot)
+    if (diffByTurn) builder.attachHunkSymbols(diffByTurn)
+    return builder
+  }
+
+  private seed(kernel: Kernel) {
+    this.nodes.length = 0
+    this.edges.length = 0
+    this.nodeIDs.clear()
+    this.edgeIDs.clear()
+    this.nodesByID.clear()
+    this.fileNodes.clear()
+    for (const node of kernel.nodes) {
+      const graphNode = toGraphNode(node)
+      this.nodes.push(graphNode)
+      this.nodeIDs.add(graphNode.id)
+      this.nodesByID.set(graphNode.id, graphNode)
+      if (graphNode.kind === "file") {
+        const path = graphNode.data?.path
+        if (typeof path === "string") this.fileNodes.set(normalizePath(path), graphNode.id)
+      }
+    }
+    for (const edge of kernel.edges) {
+      const graphEdge = toGraphEdge(edge)
+      this.edges.push(graphEdge)
+      this.edgeIDs.add(graphEdge.id)
+    }
+    this.constructed = true
+  }
+
+  buildKernel(version = 0): Kernel {
     this.construct()
     return new Kernel({
       nodes: this.nodes.map(toKernelNode),
       edges: this.edges.map(toKernelEdge),
       hyperedges: [],
-      version: 0,
+      version,
     })
   }
 
@@ -1501,8 +1539,27 @@ export function buildSessionKernel(input: BuildSessionInput): Kernel {
     input.sessionID,
     input.lineage,
     input.diffByTurn,
+    false,
   ).buildKernel()
 }
+
+export function buildWorkspaceKernel(
+  kernel: Kernel,
+  snapshot: WorkspaceSnapshot,
+  diffByTurn?: Map<string, FileDiffInfo[]>,
+): Kernel {
+  return GraphBuilder.fromKernel(kernel, snapshot, diffByTurn).buildKernel(kernel.version + 1)
+}
+
+export const workspaceDeriver = (
+  snapshot: WorkspaceSnapshot,
+  diffByTurn?: Map<string, FileDiffInfo[]>,
+) =>
+  defineDeriver({
+    name: "workspace",
+    inputs: [inputToken<WorkspaceSnapshot>("workspace")],
+    derive: (kernel) => buildWorkspaceKernel(kernel, snapshot, diffByTurn),
+  })
 
 export function buildGraph(input: BuildGraphInput): GraphModel {
   if ("kernel" in input) return toGraphView(input.kernel, input.meta)
@@ -1513,6 +1570,13 @@ export function buildGraph(input: BuildGraphInput): GraphModel {
     input.sessionID,
     input.lineage,
     input.diffByTurn,
+    false,
   )
-  return toGraphView(builder.buildKernel(), builder.meta())
+  const session = builder.buildKernel()
+  const kernel = input.snapshot
+    ? runPipeline([workspaceDeriver(input.snapshot, input.diffByTurn)], session, {
+        workspace: input.snapshot,
+      })
+    : session
+  return toGraphView(kernel, builder.meta())
 }
