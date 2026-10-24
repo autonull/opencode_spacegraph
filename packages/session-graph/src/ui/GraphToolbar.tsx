@@ -3,7 +3,7 @@ import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { Icon } from "@opencode/ui/icon"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { Show, type JSX } from "solid-js"
+import { For, Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
@@ -18,6 +18,7 @@ import {
   type GraphSide,
   type Layout,
   type ZoomLevel,
+  PROFILE_PRESETS,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import {
@@ -321,6 +322,21 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
             <div class="px-2 py-1 text-12-regular text-text-weak">
               {i18n.t("ui.sessionGraph.toolbar.domains")}
             </div>
+            <div class="flex flex-wrap gap-1 px-2 pb-1" data-slot="graph-profile-presets">
+              <For each={PROFILE_PRESETS}>
+                {(preset) => (
+                  <button
+                    type="button"
+                    class="rounded border border-border-weaker-base px-1.5 py-0.5 text-11-regular text-text-weak hover:text-text-strong"
+                    data-profile={preset.id}
+                    onClick={() => props.onDomainsChange?.(new Set(preset.domains))}
+                  >
+                    {i18n.t(preset.labelKey)}
+                  </button>
+                )}
+              </For>
+            </div>
+            <div class="w-full border-t border-border-weaker-base my-1" />
             {/* Session is always on and pinned */}
             {option({
               label: i18n.t(DOMAIN_KEY.session),

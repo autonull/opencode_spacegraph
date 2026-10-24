@@ -113,6 +113,7 @@ export {
 } from "./selectors"
 
 export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
+export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
 
 export {
   NAVIGATION_MNEMONICS,

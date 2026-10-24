@@ -46,10 +46,11 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   - `GraphSearch` accepts `initialQuery`, treats `g <key>` as a macro, and renders registry-generated help.
   - `GraphView` maps `g` to opening search with the grammar prefix; selection reuses `jumpTo`.
   - Tests: 5 navigation grammar cases.
-- [ ] **Slice 5 — Profiles + review** (kernel/review core landed; UI presets and empty states remain).
+- [x] **Slice 5 — Profiles + review** (UI profile presets added atop existing empty states).
   - [x] `diffKernels` in `@spacegraphjs/kernel`: id-based, order-insensitive, stable data-key comparison; 4 tests.
   - [x] `reviewChanges` / `reviewModel` in session-ui using `diffKernels`; review projection keeps changed nodes and adjacent edge endpoints; 3 tests.
-  - [ ] UI profile presets (saved deriver/scope presets) and empty states with primary actions.
+  - [x] `PROFILE_PRESETS` / `applyProfile` (all, session, code, review) and a Domains-menu preset row; 4 tests.
+  - [x] Empty states already ship for canvas, inspector, file rail, and equalizer.
   - [ ] `SessionKernel.checkpoint()` remains deferred.
 - [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
 - [ ] **Slice 7 — Continuous layout** (`LayoutStrategy`, `computeIncremental`).
