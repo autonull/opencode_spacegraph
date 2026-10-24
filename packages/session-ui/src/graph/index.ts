@@ -31,7 +31,12 @@ export {
   type ZoomLevel,
 } from "./model"
 
-export { buildGraph, type BuildGraphInput } from "./build"
+export {
+  buildGraph,
+  buildSessionKernel,
+  type BuildGraphInput,
+  type BuildSessionInput,
+} from "./build"
 
 export {
   CARD_SIZE,

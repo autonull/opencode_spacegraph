@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test"
+import { buildGraph, buildSessionKernel } from "./build"
+import { fixtureMessages } from "./fixture"
 import {
   createGraphViewCache,
   graphModelToKernel,
@@ -125,5 +127,24 @@ describe("GraphView projection", () => {
 
     expect(cache(kernel, meta)).toBe(cache(kernel, meta))
     expect(cache(graphModelToKernel(model, 2), meta)).not.toBe(cache(kernel, meta))
+  })
+
+  test("buildSessionKernel emits a valid kernel", () => {
+    const kernel = buildSessionKernel({ messages: fixtureMessages, status: { type: "idle" } })
+
+    expect(kernel.nodes[0]?.id).toBe("session")
+    expect(kernel.diagnostics()).toEqual({
+      danglingEdges: [],
+      duplicateNodes: [],
+      duplicateEdges: [],
+      hyperedgeMissingNodes: [],
+    })
+  })
+
+  test("buildGraph accepts a kernel and its metadata", () => {
+    const view = buildGraph({ messages: fixtureMessages, status: { type: "idle" } })
+    const projected = buildGraph({ kernel: graphModelToKernel(view), meta: graphViewMeta(view) })
+
+    expect(projected).toEqual(view)
   })
 })

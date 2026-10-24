@@ -9,6 +9,7 @@ import type {
   SessionStatus,
   WorkspaceSnapshot,
 } from "@opencode/client/promise"
+import { Kernel } from "@spacegraphjs/kernel"
 import { Option, Schema } from "effect"
 import stripAnsi from "strip-ansi"
 import { timelineCategory } from "../timeline/detail"
@@ -43,6 +44,7 @@ import {
   type Range,
   type SessionLineage,
 } from "./model"
+import { toGraphView, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
 
 /**
@@ -162,6 +164,9 @@ class GraphBuilder {
   private readonly diffByTurn?: Map<string, FileDiffInfo[]>
   private previousTurn: string | undefined
   private readonly goal: string | undefined
+  private turnByMessageID = new Map<string, string>()
+  private activeTurn: string | undefined
+  private constructed = false
 
   constructor(
     private readonly messages: SessionMessageInfo[],
@@ -189,7 +194,8 @@ class GraphBuilder {
     if (this.goal) this.nodesByID.get(SESSION_NODE_ID)!.summary = truncate(this.goal)
   }
 
-  build(): GraphModel {
+  private construct() {
+    if (this.constructed) return
     const { turnByMessageID, activeMessageID } = Timeline.constructSessionMessageRows(this.messages, true, this.status)
     const openers = new Map<string, SessionMessageInfo>()
 
@@ -243,24 +249,39 @@ class GraphBuilder {
 
     if (this.diffByTurn) this.attachHunkSymbols(this.diffByTurn)
 
+    this.turnByMessageID = turnByMessageID
+    this.activeTurn = activeTurn
+    this.constructed = true
+  }
+
+  buildKernel(): Kernel {
+    this.construct()
+    return new Kernel({
+      nodes: this.nodes.map(toKernelNode),
+      edges: this.edges.map(toKernelEdge),
+      hyperedges: [],
+      version: 0,
+    })
+  }
+
+  meta(): GraphViewMeta {
+    this.construct()
     return {
       root: SESSION_NODE_ID,
-      goal: this.goal,
-      nodes: this.nodes,
-      edges: this.edges,
+      ...(this.goal === undefined ? {} : { goal: this.goal }),
       turns: this.turns,
-      turnByMessageID,
-      activeTurn,
-      ...(this.snapshot
-        ? {
+      turnByMessageID: this.turnByMessageID,
+      ...(this.activeTurn === undefined ? {} : { activeTurn: this.activeTurn }),
+      ...(this.snapshot === undefined
+        ? {}
+        : {
             workspaceRoot: this.snapshot.root,
             snapshot: {
               revision: this.snapshot.revision,
               asOf: this.snapshot.asOf,
               missing: this.snapshot.missing,
             },
-          }
-        : {}),
+          }),
     }
   }
 
@@ -1459,7 +1480,7 @@ function depth(directory: string) {
  * that resolves a node by id changes. `lineage` is optional too (T6.5): it records where the
  * session came from, without drawing an edge into another session.
  */
-export type BuildGraphInput = {
+export type BuildSessionInput = {
   messages: SessionMessageInfo[]
   status: SessionStatus
   sessionID?: string
@@ -1470,6 +1491,28 @@ export type BuildGraphInput = {
   diffByTurn?: Map<string, FileDiffInfo[]>
 }
 
+export type BuildGraphInput = BuildSessionInput | { kernel: Kernel; meta: GraphViewMeta }
+
+export function buildSessionKernel(input: BuildSessionInput): Kernel {
+  return new GraphBuilder(
+    input.messages,
+    input.status,
+    input.snapshot,
+    input.sessionID,
+    input.lineage,
+    input.diffByTurn,
+  ).buildKernel()
+}
+
 export function buildGraph(input: BuildGraphInput): GraphModel {
-  return new GraphBuilder(input.messages, input.status, input.snapshot, input.sessionID, input.lineage, input.diffByTurn).build()
+  if ("kernel" in input) return toGraphView(input.kernel, input.meta)
+  const builder = new GraphBuilder(
+    input.messages,
+    input.status,
+    input.snapshot,
+    input.sessionID,
+    input.lineage,
+    input.diffByTurn,
+  )
+  return toGraphView(builder.buildKernel(), builder.meta())
 }
