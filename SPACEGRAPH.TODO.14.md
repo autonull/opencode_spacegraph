@@ -38,8 +38,9 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   6. [x] UI wiring: all `buildGraph` call sites now run the kernel pipeline with no signature change. `scope.ts` is deleted; `scopeModel` lives in `view.ts` and is implemented with kernel `deriveScope`.
   7. [x] Extracted the session builder into `session-builder.ts` and workspace stages into `workspace-derivers.ts`; `build.ts` is now orchestration only.
   8. [x] Replaced `model.golden*.json` with `graph.contract.json` (semantic kind/count/invariant contract) and `graph.sample.json` (small decodable kernel sample); `contract.test.ts` enforces both.
-  9. [ ] Remaining core cleanup: convert `actionsFor` to registry contributions and rename `GraphModel` to `GraphView`.
-  10. [ ] Run the kernel build gate before OpenCode typecheck/tests.
+  9. [x] Converted `actionsFor` to a per-kind `actionRegistry` of factories.
+  10. [ ] Rename `GraphModel` → `GraphView` is deferred: `session-graph/src/ui/GraphView.tsx` already owns the `GraphView` component name and imports the type in the same file. Choose a non-colliding type name (for example `GraphViewData`) or rename the component first.
+  11. [x] Kernel gate: `build:packages`, `test:kernel` (47 pass), `session-ui` typecheck, `session-graph` typecheck all green.
 - [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
 - [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).
 - [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
