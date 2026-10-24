@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.15 — Unified Session Lens: Live, Animated, Multi-Layer (draft 2)
 
-**Status:** complete, 2026-10-24. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **S1–S4 are complete and verified.** S5 remains optional and is not required by the shipped scrubber (decision recorded below). A follow-up refinement folds the scrubber into the toolbar and groups level/lens/depth under one Layers menu. The remaining S2 follow-up — the host duplicating the kernel node budget — is also closed: the host now delegates to `@spacegraphjs/kernel`.
+**Status:** complete, re-verified 2026-10-24. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **S1–S4 are complete and verified.** S5 remains optional and is not required by the shipped scrubber (decision recorded below). A follow-up refinement folds the scrubber into the toolbar and groups level/lens/depth under one Layers menu. The remaining S2 follow-up — the host duplicating the kernel node budget — is also closed: the host now delegates to `@spacegraphjs/kernel`.
 
 ## Progress (2026-10-24)
 
@@ -34,13 +34,34 @@
 
 One product e2e case (`picking a node in the map moves the log to it`) failed once inside a full-file run and passed on isolated and full reruns; treat it as a pre-existing timing flake to watch, not an S4 regression. It did not recur in the 2026-10-24 full-file re-run.
 
+### Final verification (2026-10-24)
+
+Re-ran the plan's ownership boundaries from the shipped tree:
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Kernel | `bun test packages/kernel/src` in `spacegraphjs` | 75 pass, 0 fail (16 files) |
+| Substrate `src` | `npx vitest run` in `spacegraphjs` | 544 pass, 0 fail (56 files) |
+| Session-graph units | `bun test src` in `packages/session-graph` | 105 pass, 0 fail (9 files) |
+| Host graph suite | `bun test src/graph` in `packages/session-ui` | 237 pass, 0 fail (23 files) |
+| Full lint + typecheck | `bun run check` from the repository root | exit 0; 41/41 package typechecks pass |
+
+`GraphMode` has no remaining references in `packages` (only `turnGraphModel`, an unrelated helper). No stubs or TODO markers remain in the substrate/host graph paths.
+
 ### Scrubber checkpoint decision
 
 Turn scoping is the intended semantic. The host model is derived from the session message history, not from a `SessionKernel` entry log, so `SessionKernel.checkpoint()` has no host-side state to checkpoint; its versions are kernel-append versions, not product turn boundaries. `scopeToTurns` gives the reader exactly the contract the scrubber promises: show the map as of the last turn the scrubber names, while the newest checkpoint returns the live `fullModel()` so appends stay current. A durable checkpoint would add no user-visible capability until S5 names commits, so S5 stays closed. Do not mix the two: if a future scrubber must name commits or survive a reload mid-scrub, that is the trigger to reopen S5 and replace turn scoping wholesale.
 
 ### Slice detail and next actions
 
-S1–S5 require no further follow-up. The plan is complete; reopen S5 only for a commit-naming scrubber, V99 only when a settings owner exists for Layers presets, and V95/V102 only as cleanup or marketing artifacts. The only open observations are environmental (the local Solid `jsxDEV` test-runner failure) or a watched flake, not plan work.
+**Required work remaining: none.** S1–S4 are shipped and verified; S5 is closed while the scrubber names turns rather than commits. Do not start optional work without a concrete request:
+
+- **S5** — only if the scrubber must name commits or survive a reload mid-scrub; then replace turn scoping wholesale (see the decision above).
+- **V99 (Layers presets)** — only once a settings owner exists.
+- **V95 (animated marketing frames)** / **V102 (retrofit demo sleeps)** — cleanup or marketing artifacts, never a gate.
+- **Added-node fade-in** — a renderer extension, not the clock; only if a concrete request appears.
+
+The only open observations are environmental (the local Solid `jsxDEV` test-runner failure affects every app test that imports `solid-js`, not just `layout.test.ts`) or the watched `picking a node…` flake; neither is plan work.
 
 **S4b note:** `GraphMode` is gone from the public vocabulary. `graph-toolbar-view` remains as the map-tools menu (billboard, files, equalizer, arrangement, detail, windows); it no longer contains any layer parameter, so the toolbar's Layers menu is the only place level/lens/depth are written. The panel keeps both surfaces mounted and hides the transcript only while the map has the panel alone, which preserves transcript scroll and focus when the map opens or closes.
 
