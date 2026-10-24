@@ -103,7 +103,54 @@ These are the laws each slice must carry; each has exactly one testable owner:
 
 ---
 
-## 8. Delete list (part of S4)
+## 7b. Explicit ownership table (nothing falls through)
+
+| Capability | Lives in | Why |
+|------------|----------|-----|
+| **Kernel, derivers, tokens, memoization** | SpaceGraphJS kernel | Pure, domain-agnostic, no session vocabulary |
+| **`diffKernels`, `deriveScope`, `deriveZoom`** | SpaceGraphJS kernel | Generic graph operations |
+| **`SpatialIndex2D`, `applyNodeBudget`** | SpaceGraphJS kernel | Generic spatial ops; budget weights are data, not code |
+| **Incremental layout (`computeIncremental`, `interpolatePosition`)** | SpaceGraphJS `src/layout` | Domain-agnostic; moved from session-ui in S2 |
+| **Renderer interpolation clock (`advance(t)`, consumes `moved`)** | SpaceGraphJS renderer | Generic; host drives the clock |
+| **AccessibilityLayer** | SpaceGraphJS `src/a11y` | Already there; generic over render model |
+| **ZoomBands, level system, lane/force/tree layouts** | SpaceGraphJS `src/zoom`, `src/layout` | Already there; generic |
+| **Session vocabulary (turn, phase, tool, file, directory, package, commit, branch, symbol, process, port, issue)** | OpenCode `session-ui` | Domain-specific |
+| **Deriver implementations (11 thin derivers)** | OpenCode `session-ui` | Know session snapshot schema; call substrate pure fns |
+| **Graph builder (`buildSessionKernel`, `buildWorkspaceKernel`)** | OpenCode `session-ui` | Orchestrates session-specific derivers |
+| **View projection (`toGraphView`, `GraphViewData`)** | OpenCode `session-ui` | Host projection over kernel Node/Edge |
+| **Camera controller (`graph-camera.ts`)** | OpenCode `session-graph` | Session-specific: follows log, frames turn, knows phase bands |
+| **Selection state (`graph-selection.ts`)** | OpenCode `session-graph` | By stable ID (substrate); host owns UI meaning (inspector, actions) |
+| **Layers rail control (one UI writing level/lens/depth)** | OpenCode `session-graph` | Writes substrate parameters; no controller state |
+| **Transcript surface** | OpenCode `app` | Independent; survives graph failure (mission constraint) |
+| **Panel composition (surfaces + rail + scrubber)** | OpenCode `session-graph` / `app` | Host UI assembly |
+| **Scrubber over `SessionKernel.checkpoint()`** | OpenCode `session-graph` | Turn boundaries are session concept; uses substrate pipeline |
+| **Snapshot fetch/cache** | OpenCode `app` | Session-scoped, debounced, protocol-aware |
+| **Export (SVG/JSON/HTML)** | OpenCode `session-graph` | Host formats; substrate provides render model |
+| **Capture/determinism contract** | OpenCode `app` e2e | Product documentation images |
+
+**Rule:** if it knows "turn", "phase", "message", "session", "file path", or "protocol", it's OpenCode. If it only knows Node/Edge/Kind/Position/Level/Lens, it's SpaceGraphJS.
+
+---
+
+## 8. Animation interaction model (explicit, no surprises)
+
+| Interaction | Behavior |
+|-------------|----------|
+| **Clock ownership** | Host owns the clock; substrate exposes `advance(t)` and renders at the given `t`. Host may animate (e.g., 300ms ease), jump to `t=1`, or pause. |
+| **Selection during animation** | Selection is by stable ID (substrate). The selected node's interpolated position is visible mid-flight; inspector follows it. Budget never drops the selected node (invariant). |
+| **Keyboard/mouse during animation** | Host handles input; a click on a moving node selects it at its interpolated position. Keys (`j`/`k`, arrows) step the host clock or jump to `t=1` — no substrate changes. |
+| **Live delta during animation** | Kernel versions are monotonic. A new delta creates a new target view state; host re-starts the pipeline (derive → diff → incremental → new `moved` set, `t=0`). No frame state to clean up. |
+| **Layer switch during animation** | Same as live delta: the parameter change produces a new target; pipeline re-runs; clock resets to 0 for the new `moved` set. |
+| **Scrubber during live delta** | Scrubber position is a kernel version. A new delta appends a version; the scrubber's rail extends. If scrubbing an old version, the view is that version (pipeline idempotent). |
+| **Focus management (F6 cycling)** | Surfaces (transcript, map, inspector) keep their DOM; focus state is preserved because the panel composes surfaces, it doesn't swap them. |
+| **Minimap / multi-view** | Renderer supports multiple views of the same model. `computeIncremental` produces one `moved` set; each view interpolates with the same `t`. No substrate duplication. |
+| **Export during animation** | Exports the *settled* state (`t=1` of the current target). If the host wants the mid-flight frame it calls `advance(t)` on a headless renderer and exports that — explicit, not implicit. |
+| **A11y live region** | Announces *view changes* (level/lens/depth/scrub target) at `t=0` of a new pipeline run. Per-frame movement is silent. |
+| **Reduced motion** | Host forces `t=1` immediately (no animation). Pipeline still runs (derive → diff → incremental), so layout is correct; just no interpolation frames. |
+
+---
+
+## 9. Delete list (part of S4)
 
 | Path / symbol | Fate |
 |---------------|------|
@@ -117,7 +164,7 @@ The transcript itself is never deleted and never graph-derived (mission constrai
 
 ---
 
-## 9. Open questions — resolved
+## 10. Open questions — resolved
 
 | # | Question | Resolution |
 |---|----------|------------|
@@ -131,10 +178,13 @@ The transcript itself is never deleted and never graph-derived (mission constrai
 | 8 | Is the transcript a lens? | No. It is an independent surface. Modes die at the control level; the transcript never depends on graph code |
 | 9 | Can the acceptance suite survive S4 unchanged? | Yes — rows describe product behavior, not modes; only locator vocabulary retargets |
 | 10 | Do we relax capture determinism for animation? | No (stop rule #24); animated frames are a separate, ungated mode |
+| 11 | Who owns the clock? | Host. Substrate exposes `advance(t)`; host animates, jumps, or pauses. |
+| 12 | What if a live delta arrives during a layer animation? | New target view state replaces the in-flight one; pipeline re-runs from `t=0`. No frame state to clean up. |
+| 13 | Does the minimap animate? | Yes — same `moved` set, same `t`, separate renderer instance. Budget/index apply per view. |
 
 ---
 
-## 10. Stop rules (delta)
+## 11. Stop rules (delta)
 
 - **#21 (new): substrate-first.** No host-only mechanism. If a capability is generic it lands in SpaceGraphJS with a demo page and laws before OpenCode consumes it.
 - **#22 (new):** animation is proven by invariants (memo soundness, interpolation laws, position stability), never by pixels or timing.
@@ -142,10 +192,13 @@ The transcript itself is never deleted and never graph-derived (mission constrai
 - **#24 (new):** OpenCode capture strictness (reduced motion, still canvas, duplicate-hash gate) is never relaxed to make a feature pass.
 - **#25 (new):** every change the reader sees — live update, layer switch, scrub — flows through the same derive → diff → incremental → interpolate pipeline. A second path needs a stated reason.
 - **#26 (new):** no stateful controller where a composition of pure functions already expresses the behavior.
+- **#27 (new):** host owns the clock; substrate is time-independent. No wall clock, no stored `t`, no sleeps in tests.
+- **#28 (new):** selection is by stable ID; the selected node is never budgeted out of view. Both are substrate guarantees the host relies on.
+- **#29 (new):** the transcript is an independent surface that survives graph failure. No graph code on the transcript's critical path.
 
 ---
 
-## 11. Idea vault — additions (carried: TODO.14 §9 V86–V94)
+## 12. Idea vault — additions (carried: TODO.14 §9 V86–V94)
 
 | # | Idea | Status | Why not now |
 |---|------|--------|-------------|
@@ -160,7 +213,7 @@ The transcript itself is never deleted and never graph-derived (mission constrai
 
 ---
 
-## 12. Day 1 (Slice 1)
+## 13. Day 1 (Slice 1)
 
 In `spacegraphjs/packages/kernel` (nested repo, `main`):
 
