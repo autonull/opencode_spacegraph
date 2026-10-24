@@ -1399,28 +1399,16 @@ export const GraphView = (props: GraphViewProps) => {
         startTrace("related", selectionId)
         return
       }
-      if (event.key === "[") {
+      if (event.key === "[" || event.key === "]") {
         event.preventDefault()
+        const delta = event.key === "[" ? -1 : 1
         const overlay = traceOverlay()
         if (overlay) {
-          const current = traceOverlay()?.answerIds.has(selectionId) ? selectionId : undefined
-          const prev = stepLitNode(overlay, current, -1)
-          if (prev) selection.select(prev)
-        } else {
-          const next = neighborStep(model(), selectionId, -1)
-          if (next) selection.select(next)
-        }
-        return
-      }
-      if (event.key === "]") {
-        event.preventDefault()
-        const overlay = traceOverlay()
-        if (overlay) {
-          const current = traceOverlay()?.answerIds.has(selectionId) ? selectionId : undefined
-          const next = stepLitNode(overlay, current, 1)
+          const current = overlay.answerIds.has(selectionId) ? selectionId : undefined
+          const next = stepLitNode(overlay, current, delta)
           if (next) selection.select(next)
         } else {
-          const next = neighborStep(model(), selectionId, 1)
+          const next = neighborStep(model(), selectionId, delta)
           if (next) selection.select(next)
         }
         return
