@@ -30,11 +30,11 @@ const canvasHost = '[data-slot="graph-canvas-host"]'
 const toolbar = '[data-slot="graph-toolbar"]'
 
 /** T14: the toolbar's menus are popovers on a wide row and one overflow menu on a narrow one. */
-async function openMenu(page: Page, which: "draw" | "show") {
-  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-${which}"]`)
+async function openMenu(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-view"]`)
   if ((await menu.count()) > 0) {
     const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
-    if (!open) await menu.locator("summary").click()
+    if (!open) await menu.locator(":scope > summary").click()
     return
   }
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
@@ -67,7 +67,6 @@ async function openGraph(page: Page, input: GraphInput) {
 
 async function openGraphViaMenu(page: Page) {
   await page.getByRole("button", { name: "Toggle graph view" }).click()
-  await page.getByRole("menuitemradio", { name: "Map" }).click()
 }
 
 test("switches to the graph, renders the fixture, and persists the mode", async ({ page }) => {
@@ -94,7 +93,7 @@ test("turns the billboard off and on from the toolbar", async ({ page }) => {
   // perspective. The billboard switch turns them to face the reader.
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
 
-  await openMenu(page, "draw")
+  await openMenu(page)
   const billboard = page.locator(toolbar).getByRole("button", { name: "Billboard cards" })
   await expect(billboard).toHaveAttribute("aria-pressed", "false")
   await billboard.click()
@@ -314,7 +313,7 @@ test("opens the hybrid turn map over the graph and closes on Escape", async ({ p
   })
   await expect(page.locator(inspector).getByText("Turn", { exact: true })).toBeVisible()
 
-  await openMenu(page, "show")
+  await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Open turn map" }).click()
   const overlay = page.getByRole("dialog", { name: "Turn map" })
   await expect(overlay).toBeVisible()
@@ -350,11 +349,11 @@ test("shows the map and the log together, and the reader chooses how they meet",
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
   // The arrangement is the reader's choice, and it lives in the map's own Draw menu.
-  await openMenu(page, "draw")
+  await openMenu(page)
   await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="side"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "side")
 
-  await openMenu(page, "draw")
+  await openMenu(page)
   await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="floating"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "floating")
   await expect(page.locator('[data-slot="session-graph-panel-pane-bar"]')).toBeVisible()

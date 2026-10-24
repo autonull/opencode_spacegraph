@@ -41,7 +41,7 @@ story("a view too large for the frame keeps a legible scale", async ({ mount, pa
 
   // The file lens squeezes the canvas between the changed-files rail and the inspector.
   await pickLayout(root, "lanes")
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator('button[aria-label="Toggle changed files"]').click()
   await expect.poll(() => cardHeight(page)).toBeGreaterThanOrEqual(MIN_CARD_HEIGHT_PX)
 })

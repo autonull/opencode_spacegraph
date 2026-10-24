@@ -12,7 +12,7 @@ story("shows every layout of the same model side by side", async ({ mount, page 
   const root = await mount("session-graph-view")
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
-  await root.locator('[data-slot="graph-toolbar-show"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await toolbar.getByRole("button", { name: "Compare the layouts" }).click()
   const gallery = root.locator('[data-slot="graph-gallery"]')
   await expect(gallery).toBeVisible()

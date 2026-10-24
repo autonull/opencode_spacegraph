@@ -92,7 +92,7 @@ story("assembles the graph view and answers node questions without the canvas", 
     .toBe(TOKEN_ID)
 
   // 3D (the orbit depth) is available on SpaceGraphJS and projects through the contract.
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Orbit" }).click()
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
 

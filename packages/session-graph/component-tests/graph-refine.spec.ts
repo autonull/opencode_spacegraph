@@ -198,7 +198,7 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
 
   // Selecting a segment offers the expand control, which opens the node-link map with the node selected.
   await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("session"))
-  await root.locator('[data-slot="graph-toolbar-show"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   const expand = toolbar.getByRole("button", { name: "Open in graph", exact: true })
   await expect(expand).toBeVisible()
   await expand.click()
@@ -223,7 +223,7 @@ story("the changed-files rail lists written files and selects one on click", asy
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   const toggle = toolbar.getByRole("button", { name: "Toggle changed files", exact: true })
   await expect(toggle).toHaveAttribute("aria-pressed", "false")
   await toggle.click()

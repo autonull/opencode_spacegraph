@@ -52,9 +52,8 @@ story("the toolbar keeps four things inline and the rest behind two menus", asyn
   // Where the camera is: the zoom and the fit.
   await expect(toolbar.getByRole("button", { name: "Zoom in" })).toBeVisible()
   await expect(toolbar.getByRole("button", { name: "Fit to view" })).toBeVisible()
-  // How it is drawn and what it says: one click away.
-  await expect(toolbar.locator('[data-slot="graph-toolbar-draw"]')).toBeVisible()
-  await expect(toolbar.locator('[data-slot="graph-toolbar-show"]')).toBeVisible()
+  // How it is drawn and what it says: one click away, in one menu.
+  await expect(toolbar.locator('[data-slot="graph-toolbar-view"]')).toBeVisible()
   // The commands sit at the end of the row.
   await expect(toolbar.getByRole("button", { name: "Search the graph" })).toBeVisible()
 })

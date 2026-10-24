@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { expect, test as base, type Page } from "@playwright/test"
-import { buildFixtureMessages } from "@opencode/session-ui/graph"
+import { buildFixtureMessages, buildFixtureSnapshot } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
@@ -74,11 +74,11 @@ function canvasSample(page: Page) {
 
 
 /** T14: the toolbar's menus are popovers on a wide row and one overflow menu on a narrow one. */
-async function openMenu(page: Page, which: "draw" | "show") {
-  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-${which}"]`)
+async function openMenu(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-view"]`)
   if ((await menu.count()) > 0) {
     const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
-    if (!open) await menu.locator("summary").click()
+    if (!open) await menu.locator(":scope > summary").click()
     return
   }
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
@@ -90,7 +90,7 @@ async function openMenu(page: Page, which: "draw" | "show") {
 async function pickLayout(page: Page, layout: string) {
   const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layout"]`)
   const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
-  if (!open) await menu.locator("summary").click()
+  if (!open) await menu.locator(":scope > summary").click()
   await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-value="${layout}"]`).click()
 }
 
@@ -210,215 +210,414 @@ async function focusNode(page: Page, nodeId: string, query: string) {
   await waitForStillCanvas(page)
 }
 
-test("captures the transcript, graph levels, selection, return, and 3D", async ({ page }) => {
+
+// Each frame is its own test so it can be generated in isolation (`-g "<frame>"`); the shared setup
+// below makes every frame deterministic without depending on the frames before it.
+function workspaceFixture() {
+  return { ...graphFixture(), graphWorkspace: buildFixtureSnapshot() }
+}
+
+async function openGraph(page: Page, input = graphFixture()) {
+  await openSession(page, input)
+  await settle(page)
+  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+}
+
+async function still(page: Page) {
+  await waitForStillCanvas(page)
+}
+
+async function chooseProfile(page: Page, profile: string) {
+  await openMenu(page)
+  const domains = page.locator(`${toolbar} [data-slot="graph-toolbar-domains"]`)
+  const open = await domains.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await domains.locator(":scope > summary").click()
+  await domains.locator(`[data-profile="${profile}"]`).click()
+}
+
+test("01 log", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-
-  // 01 — the transcript baseline.
   await openSession(page, graphFixture())
   await settle(page)
   await capture(page, "01-log.png")
+  expect(errors).toEqual([])
+})
 
-  if (mode === "baseline") {
-    expect(errors).toEqual([])
-
-    return
-  }
-
-  // 02 — overview: turns and phases carry meaning, tool calls are counts.
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
-  await page.getByRole("menuitemradio", { name: "Map" }).click()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+test("02 graph overview", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
   await setLevel(page, "Overview")
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "02-graph-overview.png")
+  expect(errors).toEqual([])
+})
 
-  // 03 — execution: tool calls and provenance files become individual objects. The level change must
-  // always reach the canvas: a representation change that does not repaint is the U3.3/U3.4 contract bug.
+test("03 graph execution", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Overview")
+  await fit(page)
+  await still(page)
   const overviewFrame = await canvasSample(page)
   await setLevel(page, "Execution")
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   expect(await canvasSample(page)).not.toEqual(overviewFrame)
   await capture(page, "03-graph-execution.png")
+  expect(errors).toEqual([])
+})
 
-  // 04 — a selected node with inspector detail in the DOM panel.
+test("04 graph selected", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("token.ts")
   await search.getByRole("option", { name: "src/auth/token.ts", exact: true }).click()
   await expect(page.locator(inspector).getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "04-graph-selected.png")
+  expect(errors).toEqual([])
+})
 
-  // 05 — return to the transcript (the header toggle; the toolbar's back control sits under the floating header).
+test("05 return to log", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
   await page.getByRole("button", { name: "Toggle graph view" }).click()
-  await page.getByRole("menuitemradio", { name: "Log" }).click()
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await expect(page.locator('[data-component="composer-editor"]')).toBeVisible({ timeout: 15000 })
   await settle(page)
   await capture(page, "05-return-to-log.png")
+  expect(errors).toEqual([])
+})
 
-  // 06 — the 3D (orbit) depth on the same model.
-  // In transcript mode, the button's accessible name changes to the mode label.
-  // Use the icon button inside the session-graph-toggle component.
-  await page.locator('button:has(svg[data-icon="filetree"])').first().click()
-  await page.getByRole("menuitemradio", { name: "Map" }).click()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await openMenu(page, "draw")
+test("06 graph 3d", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
-  await waitForStillCanvas(page)
+  await still(page)
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "06-graph-3d.png")
+  expect(errors).toEqual([])
+})
 
-  // 18 — the `layered` depth treatment (LE.14): a shallow camera and a subtle depth fade, still
-  // billboarded and flat-card; the depth spectrum's minimum legible 2.5D bar.
-  await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Layer", exact: true }).click()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
-  await waitForStillCanvas(page)
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "18-graph-layered.png")
-
-  // 19 — the `depth-stack` treatment (LE.14/LE.16): the last depth value, completing the spectrum at
-  // the benchmark lanes layout. The matrix captures one frame per option value (LE.16). The pose
-  // animates, so settle before fitting (the fit measures the projected bounds of the settled camera).
-  await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Stack", exact: true }).click()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
-  await waitForStillCanvas(page)
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "19-graph-depth-stack.png")
-
-  // 31 — the tilted camera with the billboard off: the cards lie in the content plane, so the
-  // perspective shears them. That shear is the camera working, not a broken renderer (T1.19), and
-  // this frame is the proof. The billboard is off by default; the toggle is exercised to show it
-  // is the switch that turns the cards back to face the reader.
-  await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
-  await setLevel(page, "Detail")
-  await waitForStillCanvas(page)
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "31-graph-perspective.png")
-
-  // 11 — the Timeline layout strategy (RF.2) on the same model.
-  await openMenu(page, "draw")
+test("11 graph timeline", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
   await setLevel(page, "Execution")
   await pickLayout(page, "timeline")
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "11-graph-timeline.png")
+  expect(errors).toEqual([])
+})
 
-  // 12 — the Hierarchy layout strategy: ancestry reads as an indent, not a horizontal fan.
+test("12 graph hierarchy", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Flat", exact: true }).click()
+  await setLevel(page, "Execution")
   await pickLayout(page, "hierarchy")
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "12-graph-hierarchy.png")
+  expect(errors).toEqual([])
+})
 
-  // 28 — the Tree layout (T7.2): the work hangs under the turn it belongs to, and the tree grows
-  // downward. A different geometry, not a redraw of the lanes.
+test("13 graph narrow", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  await page.setViewportSize({ width: 390, height: 900 })
+  await fit(page)
+  await still(page)
+  await capture(page, "13-graph-narrow.png")
+  await page.setViewportSize({ width: 1440, height: 900 })
+  expect(errors).toEqual([])
+})
+
+test("14 graph light", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await page.emulateMedia({ colorScheme: "light" })
+  await setLevel(page, "Overview")
+  await fit(page)
+  await still(page)
+  await capture(page, "14-graph-light.png")
+  expect(errors).toEqual([])
+})
+
+test("15 graph ribbon", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Overview")
+  await pickLayout(page, "ribbon")
+  await still(page)
+  await fit(page)
+  await still(page)
+  await capture(page, "15-graph-ribbon.png")
+  expect(errors).toEqual([])
+})
+
+test("16 graph matrix", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Overview")
+  await pickLayout(page, "matrix")
+  await still(page)
+  await fit(page)
+  await still(page)
+  await capture(page, "16-graph-matrix.png")
+  expect(errors).toEqual([])
+})
+
+test("17 graph files", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
+  await expect(page.locator('[data-slot="graph-file-rail"]')).toBeVisible()
+  await fit(page)
+  await still(page)
+  await capture(page, "17-graph-files.png")
+  expect(errors).toEqual([])
+})
+
+test("18 graph layered", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Layer", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
+  await still(page)
+  await fit(page)
+  await still(page)
+  await capture(page, "18-graph-layered.png")
+  expect(errors).toEqual([])
+})
+
+test("19 graph depth stack", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Stack", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
+  await still(page)
+  await fit(page)
+  await still(page)
+  await capture(page, "19-graph-depth-stack.png")
+  expect(errors).toEqual([])
+})
+
+test("20 graph zoom 150", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  await zoomToPercent(page, 150)
+  await still(page)
+  await capture(page, "20-graph-zoom-150.png")
+  expect(errors).toEqual([])
+})
+
+test("21 graph zoom max", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  await zoomToMax(page)
+  await still(page)
+  await capture(page, "21-graph-zoom-max.png")
+  expect(errors).toEqual([])
+})
+
+test("22 graph turn 1", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  await zoomToPercent(page, 150)
+  await focusNode(page, "turn:msg_user_1", "authentication test failures")
+  await capture(page, "22-graph-turn-1.png")
+  expect(errors).toEqual([])
+})
+
+test("23 graph turn 2", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  await focusNode(page, "turn:msg_user_2", "cover the refresh path")
+  await capture(page, "23-graph-turn-2.png")
+  expect(errors).toEqual([])
+})
+
+test("24 graph failure chain", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  await zoomToMax(page)
+  await focusNode(page, "tool:prt_tool_shell_2", "FAIL auth refresh token")
+  await capture(page, "24-graph-failure-chain.png")
+  expect(errors).toEqual([])
+})
+
+test("28 graph tree", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
   await pickLayout(page, "tree")
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "28-graph-tree.png")
+  expect(errors).toEqual([])
+})
 
-  // 29 — the Force layout (T7.3): the session's own shape. Linked work pulls together, the rest
-  // drifts apart.
+test("29 graph force", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
   await pickLayout(page, "force")
   await fit(page)
-  await waitForStillCanvas(page)
+  await still(page)
   await capture(page, "29-graph-force.png")
+  expect(errors).toEqual([])
+})
 
-  // 30 — the layout gallery (T7.5): the same model in every layout, side by side.
-  await openMenu(page, "show")
+test("30 graph gallery", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Compare the layouts", exact: true }).click()
   await expect(page.locator('[data-slot="graph-gallery"]')).toBeVisible()
   await capture(page, "30-graph-gallery.png")
   await page.keyboard.press("Escape")
   await expect(page.locator('[data-slot="graph-gallery"]')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
 
-  // 15 — the turn ribbon layout (LE.8): one horizontal bar of phase segments per turn. The summary
-  // layouts draw the level's grain, so the overview is the frame that shows the phase segments. The
-  // layout swaps the whole geometry, so let the adapter settle before framing the new bounds.
+test("31 graph perspective", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await openMenu(page)
+  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
+  await setLevel(page, "Detail")
+  await still(page)
+  await fit(page)
+  await still(page)
+  await capture(page, "31-graph-perspective.png")
+  expect(errors).toEqual([])
+})
+
+test("32 graph workspace code", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  const workspaceResponse = page.waitForResponse((response) => response.url().includes("/api/graph/workspace"))
+  await openGraph(page, workspaceFixture())
+  expect((await (await workspaceResponse).json()).data.packages).toHaveLength(2)
+  await setLevel(page, "Detail")
+  await pickLayout(page, "hierarchy")
+  await chooseProfile(page, "code")
+  const a11yNodes = page.locator('[data-component="session-graph-a11y"] li')
+  await expect(a11yNodes.filter({ hasText: "refreshToken" })).not.toHaveCount(0)
+  await still(page)
+  await fit(page)
+  await still(page)
+  await capture(page, "32-graph-workspace-code.png")
+  expect(errors).toEqual([])
+})
+
+test("33 graph workspace all", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  const workspaceResponse = page.waitForResponse((response) => response.url().includes("/api/graph/workspace"))
+  await openGraph(page, workspaceFixture())
+  expect((await (await workspaceResponse).json()).data.packages).toHaveLength(2)
   await setLevel(page, "Overview")
-  await pickLayout(page, "ribbon")
-  await waitForStillCanvas(page)
+  await pickLayout(page, "tree")
+  await chooseProfile(page, "all")
+  const a11yNodes = page.locator('[data-component="session-graph-a11y"] li')
+  await expect(a11yNodes.filter({ hasText: "@project/ui" })).not.toHaveCount(0)
+  await still(page)
   await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "15-graph-ribbon.png")
-
-  // 16 — the turn matrix layout (LE.9): turns as rows, phase categories as columns.
-  await pickLayout(page, "matrix")
-  await waitForStillCanvas(page)
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "16-graph-matrix.png")
-
-  // Back to the node-link graph, lanes layout, for the file lens and the narrow/light frames.
-  await pickLayout(page, "lanes")
-  await setLevel(page, "Execution")
-
-  // 20 — camera zoom at 150% of the fit. The toolbar steps a tenth of the fit, so the readout is 150%.
-  await fit(page)
-  await waitForStillCanvas(page)
-  await zoomToPercent(page, 150)
-  await waitForStillCanvas(page)
-  await capture(page, "20-graph-zoom-150.png")
-
-  // 21 — the closest zoom the renderer allows.
-  await zoomToMax(page)
-  await waitForStillCanvas(page)
-  await capture(page, "21-graph-zoom-max.png")
-
-  // 22 — the camera centred on the first turn, read at the 150% zoom.
-  await fit(page)
-  await waitForStillCanvas(page)
-  await zoomToPercent(page, 150)
-  await focusNode(page, "turn:msg_user_1", "authentication test failures")
-  await capture(page, "22-graph-turn-1.png")
-
-  // 23 — the camera centred on the second turn.
-  await focusNode(page, "turn:msg_user_2", "cover the refresh path")
-  await capture(page, "23-graph-turn-2.png")
-
-  // 24 — the failure chain: the failing test run, read at the closest zoom.
-  await zoomToMax(page)
-  await focusNode(page, "tool:prt_tool_shell_2", "FAIL auth refresh token")
-  await capture(page, "24-graph-failure-chain.png")
-
-  // 17 — the file-first lens (LE.12): the changed-files rail with provenance bundled to turn spines.
-  await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
-  await expect(page.locator('[data-slot="graph-file-rail"]')).toBeVisible()
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "17-graph-files.png")
-  await openMenu(page, "draw")
-  await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
-
-  // 13 — a narrow 390×900 viewport (RF.11): the toolbar wraps and the canvas stays framed.
-  await page.setViewportSize({ width: 390, height: 900 })
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "13-graph-narrow.png")
-  await page.setViewportSize({ width: 1440, height: 900 })
-
-  // 14 — light scheme parity (RF.9/RF.11): the same model re-themes from the host tokens.
-  await page.emulateMedia({ colorScheme: "light" })
-  await setLevel(page, "Overview")
-  await fit(page)
-  await waitForStillCanvas(page)
-  await capture(page, "14-graph-light.png")
-
+  await still(page)
+  await capture(page, "33-graph-workspace-all.png")
   expect(errors).toEqual([])
 })

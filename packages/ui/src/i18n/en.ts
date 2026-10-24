@@ -364,6 +364,7 @@ const source = {
   "ui.sessionGraph.toolbar.expandGraph": "Open in graph",
   "ui.sessionGraph.toolbar.back": "Back to transcript",
   "ui.sessionGraph.toolbar.depth": "Depth",
+  "ui.sessionGraph.toolbar.view": "View",
   "ui.sessionGraph.toolbar.draw": "How the map is drawn",
   "ui.sessionGraph.toolbar.show": "What the map says",
   "ui.sessionGraph.depth.flat": "Flat",

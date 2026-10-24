@@ -9,13 +9,13 @@ story("the equalizer's panel applies a preset and lists the rule", async ({ moun
     timeout: 30_000,
   })
 
-  // The panel is a window: the reader opens it from the map's Draw menu.
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  // The panel is a window: the reader opens it from the map's View menu.
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator('[data-slot="graph-equalizer-option"]').click()
 
   const panel = root.locator('[data-slot="graph-window"]')
   await expect(panel).toBeVisible()
-  await expect(panel.locator('[data-slot="graph-equalizer-preset"]')).toHaveCount(3)
+  await expect(panel.locator('[data-slot="graph-equalizer-preset"]')).toHaveCount(5)
 
   await panel.locator('[data-preset="errors-larger"]').click()
   await expect(panel.locator('[data-slot="graph-equalizer-rule"]')).toHaveCount(1)

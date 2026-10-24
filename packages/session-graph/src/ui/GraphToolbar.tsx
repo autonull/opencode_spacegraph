@@ -481,6 +481,24 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     )
   }
 
+  /** Everything the map draws or says, grouped in one menu instead of two. */
+  const viewControls = () => (
+    <>
+      <div data-slot="graph-toolbar-draw-group">
+        <div class="px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+          {i18n.t("ui.sessionGraph.toolbar.draw")}
+        </div>
+        {drawControls()}
+      </div>
+      <div data-slot="graph-toolbar-show-group">
+        <div class="px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+          {i18n.t("ui.sessionGraph.toolbar.show")}
+        </div>
+        {showControls()}
+      </div>
+    </>
+  )
+
   /** The commands: the search, and the export. */
   const commandControls = () => (
     <>
@@ -604,33 +622,25 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         when={!props.compact}
         fallback={
           <ToolbarMenu slot="graph-toolbar-overflow" label={i18n.t("ui.sessionGraph.toolbar.more")} icon="outline-dots">
-            {drawControls()}
-            {showControls()}
+            {viewControls()}
             {commandControls()}
           </ToolbarMenu>
         }
       >
         <ToolbarMenu
-          slot="graph-toolbar-draw"
-          label={i18n.t("ui.sessionGraph.toolbar.draw")}
+          slot="graph-toolbar-view"
+          label={i18n.t("ui.sessionGraph.toolbar.view")}
           icon="outline-sliders"
-        >
-          {drawControls()}
-        </ToolbarMenu>
-        <ToolbarMenu
-          slot="graph-toolbar-show"
-          label={i18n.t("ui.sessionGraph.toolbar.show")}
-          icon="eye"
           value={i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"])}
         >
-          {showControls()}
+          {viewControls()}
         </ToolbarMenu>
       </Show>
 
       {/* The renderer label and the back control sit at the end of the row: the host's own chrome
           floats over the panel's top-right, and the end inset keeps them clear of it. */}
       <div class="ml-auto flex items-center gap-2">
-        {commandControls()}
+        <Show when={!props.compact}>{commandControls()}</Show>
         {props.renderer ? (
           <span
             class="text-12-regular text-text-weak"

@@ -12,7 +12,7 @@ story("U3.13 minimap: overview renders from positions and pans through the share
 
   // RF.7: the minimap defaults off and is a toggle.
   await expect(root.locator('[data-slot="graph-minimap"]')).toHaveCount(0)
-  await root.locator('[data-slot="graph-toolbar-show"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator('[data-slot="graph-toolbar"] button[aria-label="Toggle minimap"]').click()
 
   const minimap = root.locator('[data-slot="graph-minimap"]')

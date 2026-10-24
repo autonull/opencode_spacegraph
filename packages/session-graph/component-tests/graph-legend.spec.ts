@@ -9,7 +9,7 @@ story("names every encoding the canvas draws", async ({ mount, page }) => {
   const root = await mount("session-graph-view")
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
-  await root.locator('[data-slot="graph-toolbar-show"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await toolbar.getByRole("button", { name: "Show the legend" }).click()
   const legend = root.locator('[data-slot="graph-legend"]')
   await expect(legend).toBeVisible()

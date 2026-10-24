@@ -14,7 +14,7 @@ story("the minimap opens as a window and does not affect frame insets", async ({
   await root.locator('[data-slot="graph-layout-option"][data-value="tree"]').click()
 
   // Open the minimap window from the Show menu
-  await root.locator('[data-slot="graph-toolbar-show"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator('button[aria-label="Toggle minimap"]').click()
 
   // The minimap should now be a window, not an overlay

@@ -19,7 +19,7 @@ story("changes depth without changing node identity or inspector content", async
   await expect(inspector).toContainText("Tool call")
   await expect(inspector).toContainText("src/auth/session.ts")
 
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator(toolbar).locator("button", { hasText: "Orbit" }).click()
   await expect(host).toHaveAttribute("data-graph-depth", "orbit")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
@@ -28,7 +28,7 @@ story("changes depth without changing node identity or inspector content", async
   await expect(inspector).toContainText("src/auth/session.ts")
   await expect(root.locator('[data-slot="graph-breadcrumbs"]')).toContainText("Session")
 
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator(toolbar).locator("button", { hasText: "Flat" }).click()
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
@@ -51,16 +51,16 @@ story("switches the depth treatment through the spectrum", async ({ mount, page 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await control.locator("button", { hasText: "Layer" }).click()
   await expect(host).toHaveAttribute("data-graph-depth", "layered")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
 
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await control.locator("button", { hasText: "Stack" }).click()
   await expect(host).toHaveAttribute("data-graph-depth", "depth-stack")
 
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await control.locator("button", { hasText: "Flat" }).click()
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
@@ -95,7 +95,7 @@ story("shears the cards in a tilted depth treatment until the billboard is turne
   // it, so it no longer keeps that ratio on screen.
   expect(sheared!.ratio).not.toBeCloseTo(220 / 72, 1)
 
-  await root.locator('[data-slot="graph-toolbar-draw"] summary').click()
+  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
   await root.locator(toolbar).getByRole("button", { name: "Billboard cards" }).click()
   await expect(host).toHaveAttribute("data-graph-card-facing", "camera")
 
