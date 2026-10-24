@@ -6,6 +6,7 @@ import {
   breadcrumbs,
   changedFiles,
   forwardChain,
+  neighborStep,
   openInTranscript,
   outgoing,
   search,
@@ -182,5 +183,25 @@ describe("selectors — subtree (U3.11 breadcrumb fit)", () => {
 
   test("an unknown node has no subtree", () => {
     expect(subtree(model, "missing")).toEqual([])
+  })
+
+  test("edge steps follow edge order and wrap", () => {
+    const node = model.nodes.find(
+      (item) => model.edges.filter((edge) => edge.source === item.id || edge.target === item.id).length > 1,
+    )!
+    const order = [
+      ...new Set(
+        model.edges
+          .filter((edge) => edge.source === node.id || edge.target === node.id)
+          .map((edge) => (edge.source === node.id ? edge.target : edge.source)),
+      ),
+    ]
+
+    expect(neighborStep(model, node.id, 1)).toBe(order[0])
+    expect(neighborStep(model, node.id, -1)).toBe(order[order.length - 1])
+  })
+
+  test("a node without edges has no neighbor step", () => {
+    expect(neighborStep(model, "missing", 1)).toBeUndefined()
   })
 })

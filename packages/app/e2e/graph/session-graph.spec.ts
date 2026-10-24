@@ -273,6 +273,120 @@ test("opens a view permalink with its facet question applied", async ({ page }) 
   expect(errors).toEqual([])
 })
 
+test("the status bar acts on the held set and clears it", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  await page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`).click()
+
+  const bar = page.locator('[data-slot="graph-status-bar"]')
+  await expect(bar).toBeVisible()
+
+  // Keep only the held file: the tools leave the map, the held file stays.
+  await bar.locator('[data-slot="graph-status-keep-only"]').click()
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="tool"]`).count()).toBe(0)
+  await expect(page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`)).toBeVisible()
+
+  // Clear releases both the scope and the selection.
+  await bar.getByRole("button", { name: "Clear the selection scope" }).click()
+  await expect(bar).toBeHidden()
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="tool"]`).count()).toBeGreaterThan(0)
+
+  expect(errors).toEqual([])
+})
+
+test("a parked scrubber diffs the earlier turn against the live map", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  await page.locator('[data-slot="graph-time-toggle"]').click()
+  const scrubber = page.locator('[data-slot="session-graph-scrubber"]')
+  await scrubber.locator("input").evaluate((element) => {
+    const input = element as HTMLInputElement
+    input.value = "1"
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+
+  const compare = page.locator('[data-slot="graph-compare-bar"]')
+  await expect(compare).toBeVisible()
+  await expect(compare.locator('[data-slot="graph-compare-counts"]')).toContainText("+")
+
+  await compare.locator('[data-slot="graph-compare-clear"]').click()
+  await expect(compare).toBeHidden()
+
+  expect(errors).toEqual([])
+})
+
+test("collapses a group to its chip and expands it again", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const groupID = "phase:turn:msg_user_1:explore:1"
+  const group = page.locator(`${canvasHost} [data-node-id="${groupID}"]`)
+  const member = page.locator(`${canvasHost} [data-node-id="tool:prt_tool_read_1"]`)
+  await expect(member).toBeVisible()
+
+  const box = (await group.boundingBox())!
+  await page.mouse.click(box.x + 24, box.y + 18)
+
+  const toggle = page.locator('[data-slot="graph-status-group-toggle"]')
+  await expect(toggle).toHaveAttribute("data-collapsed", "false")
+  await toggle.click()
+
+  await expect(toggle).toHaveAttribute("data-collapsed", "true")
+  await expect.poll(() => member.count()).toBe(0)
+  await expect(group).toBeVisible()
+
+  await toggle.click()
+  await expect.poll(() => member.count()).toBe(1)
+
+  expect(errors).toEqual([])
+})
+
+test("toggles an edge kind from the legend", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-view"] > summary`).click()
+  await page.getByRole("button", { name: "Show the legend" }).click()
+  const legend = page.locator('[data-slot="graph-legend"]')
+  const writes = legend.locator('[data-slot="graph-legend-edge-kind"][data-kind="writes"]')
+  await expect(writes).toHaveAttribute("aria-pressed", "true")
+
+  await writes.click()
+  await expect(writes).toHaveAttribute("aria-pressed", "false")
+  await expect(writes).toHaveAttribute("data-hidden", "true")
+
+  await writes.click()
+  await expect(writes).toHaveAttribute("aria-pressed", "true")
+
+  expect(errors).toEqual([])
+})
+
+test("adds a note to the selected node and finds it by search", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  await page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`).click()
+  await page.locator('[data-slot="graph-status-add-note"]').click()
+
+  const composer = page.locator('[data-slot="graph-note-composer"]')
+  await expect(composer).toBeVisible()
+  await composer.locator('[data-slot="graph-note-input"]').fill("Investigate token refresh")
+  await composer.locator('[data-slot="graph-note-save"]').click()
+  await expect(composer).toBeHidden()
+
+  const note = page.locator(`${canvasHost} [data-node-id^="note:"]`)
+  await expect(note).toHaveCount(1)
+
+  await page.getByRole("button", { name: "Search the graph" }).click()
+  const search = page.getByRole("dialog", { name: "Search the graph" })
+  await search.getByRole("combobox").fill("Investigate token refresh")
+  await expect(search.getByRole("option", { name: /Investigate token refresh/ })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
 test("renders an assistant message as Markdown in the inspector", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

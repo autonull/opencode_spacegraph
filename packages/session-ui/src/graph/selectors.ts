@@ -39,6 +39,28 @@ export function neighbors(model: GraphViewData, id: string): Subgraph {
   return { edges, nodes: model.nodes.filter((node) => nodeIDs.has(node.id)) }
 }
 
+/**
+ * B3 — step through direct neighbors in edge order. `delta` is direction only; from an id that is
+ * not itself a neighbor, `]` starts at the first and `[` at the last.
+ */
+export function neighborStep(model: GraphViewData, id: string, delta: number): string | undefined {
+  const neighbors = [
+    ...new Set(
+      model.edges
+        .filter((edge) => edge.source === id || edge.target === id)
+        .map((edge) => (edge.source === id ? edge.target : edge.source)),
+    ),
+  ]
+
+  if (neighbors.length === 0) return undefined
+
+  const index = neighbors.indexOf(id)
+
+  if (index === -1) return delta >= 0 ? neighbors[0] : neighbors[neighbors.length - 1]
+
+  return neighbors[(index + delta + neighbors.length) % neighbors.length]
+}
+
 /** The `part-of` chain from a node up to the session root, nearest ancestor first. */
 export function ancestors(model: GraphViewData, id: string): GraphNode[] {
   const result: GraphNode[] = []

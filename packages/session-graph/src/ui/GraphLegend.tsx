@@ -219,7 +219,13 @@ export const GraphLegend = (props: GraphLegendProps) => {
         <GraphIconButton label={i18n.t("ui.sessionGraph.legend.close")} icon="close-small" onClick={props.onClose} />
       </div>
 
-      <GraphLegendBody theme={props.theme} layout={props.layout} rules={props.rules} />
+      <GraphLegendBody
+        theme={props.theme}
+        layout={props.layout}
+        rules={props.rules}
+        edgeKinds={props.edgeKinds}
+        onToggleEdgeKind={props.onToggleEdgeKind}
+      />
     </div>
   )
 }

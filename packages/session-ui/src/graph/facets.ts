@@ -70,6 +70,23 @@ export const applyFacets = (model: GraphViewData, facets: GraphFacets): GraphVie
   }
 }
 
+/**
+ * B1 — "keep only" is a scope over held ids, applied after facets so the two compose. The session
+ * root always stays so the answer keeps an address.
+ */
+export const keepOnly = (model: GraphViewData, ids: Iterable<string>): GraphViewData => {
+  const kept = new Set(ids)
+  kept.add(model.root)
+  return {
+    ...model,
+    nodes: model.nodes.filter((node) => kept.has(node.id)),
+    edges: model.edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)),
+    turns: model.turns.filter((turn) => kept.has(turn)),
+    activeTurn:
+      model.activeTurn !== undefined && kept.has(model.activeTurn) ? model.activeTurn : undefined,
+  }
+}
+
 const countGroup = (
   nodes: readonly GraphNode[],
   values: readonly string[],

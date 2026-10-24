@@ -50,8 +50,10 @@ import {
   matrixLayout,
   LEVEL_RANK,
   isVisibleAt,
+  keepOnly,
   Metrics,
   minLevelOf,
+  neighborStep,
   nodeByID,
   nodeIndex,
   nodeSize,
@@ -152,6 +154,8 @@ export type GraphViewProps = {
   /** The turn the map is pinned to (0-based), and how many turns the session has. */
   checkpoint?: number
   turnCount?: number
+  /** B1: the live model a parked checkpoint diffs against; the host still scopes `model` to the park. */
+  liveModel?: GraphViewData
   onCheckpoint?: (index: number) => void
   /** A2: the facet question carried by a permalink, in the `q=` grammar. */
   facetQuery?: string
@@ -484,23 +488,12 @@ export const GraphView = (props: GraphViewProps) => {
   const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
   // B2 — collapse is session-local model state; expanding restores the same derived positions.
   const [collapsedGroups, setCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
-  const scoped = createMemo(() => {
-    const base = applyFacets(turnScoped(), facets())
+  const scopeBase = (source: GraphViewData) => {
+    const base = applyFacets(source, facets())
     const keep = keptIds()
-    if (!keep) return collapseGroups(base, collapsedGroups())
-    const ids = new Set(keep)
-    ids.add(base.root)
-    return collapseGroups(
-      {
-        ...base,
-        nodes: base.nodes.filter((node) => ids.has(node.id)),
-        edges: base.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
-        turns: base.turns.filter((turn) => ids.has(turn)),
-        activeTurn: base.activeTurn !== undefined && ids.has(base.activeTurn) ? base.activeTurn : undefined,
-      },
-      collapsedGroups(),
-    )
-  })
+    return collapseGroups(keep ? keepOnly(base, keep) : base, collapsedGroups())
+  }
+  const scoped = createMemo(() => scopeBase(turnScoped()))
   const selectedGroup = () => {
     const id = selection.selection()[0]
     if (!id) return undefined
@@ -551,11 +544,12 @@ export const GraphView = (props: GraphViewProps) => {
       }
     }
     const checkpoint = props.checkpoint
-    const turns = model().turns
+    const live = props.liveModel ?? model()
+    const turns = live.turns
     if (checkpoint === undefined || props.turnCount === undefined) return undefined
     if (checkpoint >= turns.length - 1 || checkpoint < 0) return undefined
-    const parked = scopeToTurns(model(), new Set(turns.slice(0, checkpoint + 1)))
-    const changes = reviewChanges(parked, scoped())
+    const parked = scopeBase(scopeToTurns(live, new Set(turns.slice(0, checkpoint + 1))))
+    const changes = reviewChanges(parked, scopeBase(live))
     return {
       added: new Set(changes.added),
       removed: new Set(changes.removed),
@@ -578,7 +572,7 @@ export const GraphView = (props: GraphViewProps) => {
       setComparedTurns(null)
       return
     }
-    props.onCheckpoint?.(Math.max(0, model().turns.length - 1))
+    props.onCheckpoint?.(Math.max(0, (props.liveModel ?? model()).turns.length - 1))
   }
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
@@ -971,7 +965,10 @@ export const GraphView = (props: GraphViewProps) => {
       edges: model.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
     })
   }
-  const clearSelectionScope = () => setKeptIds(null)
+  const clearSelection = () => {
+    setKeptIds(null)
+    selection.select(undefined)
+  }
 
   const selectedNode = () => {
     const id = selection.selection()[0]
@@ -1328,20 +1325,6 @@ export const GraphView = (props: GraphViewProps) => {
     openSearch()
   }
 
-  // B3 — without a trace, the brackets walk the edges: incoming and outgoing in model order.
-  const stepNeighbor = (id: string, delta: number) => {
-    const neighbors = [
-      ...new Set(
-        model().edges
-          .filter((edge) => edge.source === id || edge.target === id)
-          .map((edge) => (edge.source === id ? edge.target : edge.source)),
-      ),
-    ]
-    if (neighbors.length === 0) return undefined
-    const index = neighbors.indexOf(id)
-    return neighbors[(index + delta + neighbors.length) % neighbors.length]
-  }
-
   // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
   // originate inside the a11y list or a form control are left to their owner.
   const onRegionKeyDown = (event: KeyboardEvent) => {
@@ -1392,7 +1375,7 @@ export const GraphView = (props: GraphViewProps) => {
           const prev = stepLitNode(overlay, current, -1)
           if (prev) selection.select(prev)
         } else {
-          const next = stepNeighbor(selectionId, -1)
+          const next = neighborStep(model(), selectionId, -1)
           if (next) selection.select(next)
         }
         return
@@ -1405,7 +1388,7 @@ export const GraphView = (props: GraphViewProps) => {
           const next = stepLitNode(overlay, current, 1)
           if (next) selection.select(next)
         } else {
-          const next = stepNeighbor(selectionId, 1)
+          const next = neighborStep(model(), selectionId, 1)
           if (next) selection.select(next)
         }
         return
@@ -1600,7 +1583,7 @@ export const GraphView = (props: GraphViewProps) => {
         onKeepOnly={keepOnlySelection}
         onCopyPaths={copySelectedPaths}
         onExportSubset={exportSelection}
-        onClear={clearSelectionScope}
+        onClear={clearSelection}
         onAddNote={openNoteComposer}
         compare={
           selectedTurns().length >= 2 || comparedTurns()

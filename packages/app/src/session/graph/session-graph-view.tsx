@@ -231,6 +231,7 @@ export function SessionGraphView(props: {
           projection={graph.projection()}
           checkpoint={activeCheckpoint()}
           turnCount={fullModel().turns.length}
+          liveModel={fullModel()}
           onCheckpoint={setCheckpoint}
           depth={graph.depth()}
           preferredRenderer={graph.renderer()}

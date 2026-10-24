@@ -6,6 +6,7 @@ import {
   facetCounts,
   facetsFromQuery,
   facetsToQuery,
+  keepOnly,
 } from "./facets"
 import { rankedSearch } from "./selectors"
 import type { GraphFacets } from "./facets"
@@ -68,5 +69,33 @@ describe("facets — one question, one scope", () => {
     const results = rankedSearch(model, "token")
     expect(results.length).toBeGreaterThan(1)
     expect(results[0]?.label.toLowerCase()).toContain("token")
+  })
+})
+
+describe("keep only — a scope over the held set, after facets", () => {
+  test("keeps the held ids and the session root, dropping everything else", () => {
+    const held = model.nodes.find((node) => node.kind === "file")!
+    const kept = keepOnly(model, [held.id])
+    const ids = new Set(kept.nodes.map((node) => node.id))
+
+    expect(ids.has(held.id)).toBe(true)
+    expect(ids.has(model.root)).toBe(true)
+    expect(kept.nodes).toHaveLength(2)
+    expect(kept.edges.every((edge) => ids.has(edge.source) && ids.has(edge.target))).toBe(true)
+  })
+
+  test("it composes after facets: the result is the intersection", () => {
+    const file = model.nodes.find((node) => node.kind === "file")!
+    const tool = model.nodes.find((node) => node.kind === "tool")!
+    const faceted = applyFacets(model, { ...DEFAULT_FACETS, kinds: new Set(["file"]) })
+    const kept = keepOnly(faceted, [file.id, tool.id])
+
+    expect(kept.nodes.map((node) => node.id).sort()).toEqual([file.id, model.root].sort())
+  })
+
+  test("the active turn leaves with its node", () => {
+    const kept = keepOnly({ ...model, activeTurn: model.turns[0] }, [])
+
+    expect(kept.activeTurn).toBeUndefined()
   })
 })
