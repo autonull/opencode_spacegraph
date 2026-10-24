@@ -2,6 +2,7 @@ import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import { nodeByID, childIndex } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createMemo, createSignal, type JSX } from "solid-js"
+import { fileCount, touchedCount } from "./node-data"
 
 export type GraphFilesystemWindowProps = {
   model: GraphViewData
@@ -71,9 +72,9 @@ export const GraphFilesystemWindow = (props: GraphFilesystemWindowProps) => {
           </span>
           <span class="text-12-regular text-text-base truncate">{dir.label}</span>
           <span class="text-10-regular text-text-weaker">
-            {typeof dir.data?.fileCount === "number" ? dir.data.fileCount : 0} files
-            {typeof dir.data?.touchedCount === "number" && dir.data.touchedCount > 0 && (
-              <span class="ml-1 text-text-base">({dir.data.touchedCount} touched)</span>
+            {fileCount(dir)} files
+            {touchedCount(dir) > 0 && (
+              <span class="ml-1 text-text-base">({touchedCount(dir)} touched)</span>
             )}
           </span>
         </div>

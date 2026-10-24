@@ -23,3 +23,11 @@ export const noteData = (node: { data?: Record<string, unknown> }): { noteID: st
   const target = typeof node.data?.target === "string" ? node.data.target : undefined
   return noteID && target ? { noteID, target } : undefined
 }
+
+/** A directory node's file count from its data. */
+export const fileCount = (node: { data?: Record<string, unknown> }): number =>
+  typeof node.data?.fileCount === "number" ? node.data.fileCount : 0
+
+/** A directory node's touched file count from its data. */
+export const touchedCount = (node: { data?: Record<string, unknown> }): number =>
+  typeof node.data?.touchedCount === "number" ? node.data.touchedCount : 0
