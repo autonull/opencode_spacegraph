@@ -36,8 +36,11 @@ export {
   buildSessionKernel,
   buildWorkspaceKernel,
   workspaceDeriver,
+  workspaceDerivers,
+  WORKSPACE_STAGES,
   type BuildGraphInput,
   type BuildSessionInput,
+  type WorkspaceStage,
 } from "./build"
 
 export {

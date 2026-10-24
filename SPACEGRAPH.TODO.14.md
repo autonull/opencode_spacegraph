@@ -34,7 +34,7 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   2. [x] Host ↔ kernel projection landed in `packages/session-ui/src/graph/view.ts`: `toKernelNode`/`toKernelEdge`, `graphModelToKernel`, `graphViewMeta`, `toGraphView`, and `createGraphViewCache` (memoized by kernel version + identity). Five round-trip/cache tests.
   3. [x] Builder now emits a `Kernel`: `GraphBuilder.buildKernel()`, `buildSessionKernel(input)`, and `buildGraph({ kernel, meta })`; `buildGraph(input)` builds a kernel then projects with `toGraphView`. No `GraphModel` intermediate. Full `src/graph` suite: 207 pass.
   4. [x] Workspace derivation is out of the session builder: `buildSessionKernel` is session-only; `buildWorkspaceKernel` and `workspaceDeriver` compose workspace domains through `runPipeline`. Tests cover session-only vs derived.
-  5. [ ] Split the composite workspace deriver into the 11 thin domain derivers.
+  5. [x] Split the composite workspace deriver into 10 thin stage derivers (`files`, `directories`, `packages`, `commits`, `branches`, `symbols`, `hunk-symbols`, `processes`, `ports`, `issues`), composed with `pipe`/`runPipeline`; the session builder is the 11th deriver. Goldens refreshed for the new emission order.
   6. [ ] Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
   7. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
   8. [ ] Run the kernel build gate before OpenCode typecheck/tests.

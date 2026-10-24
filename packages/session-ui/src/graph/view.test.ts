@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { buildGraph, buildSessionKernel, buildWorkspaceKernel } from "./build"
+import { buildGraph, buildSessionKernel, buildWorkspaceKernel, WORKSPACE_STAGES } from "./build"
 import { buildFixtureSnapshot, fixtureMessages } from "./fixture"
 import {
   createGraphViewCache,
@@ -152,7 +152,7 @@ describe("GraphView projection", () => {
 
     expect(session.nodes.some((item) => item.kind === "directory")).toBe(false)
     expect(workspace.nodes.some((item) => item.kind === "directory")).toBe(true)
-    expect(workspace.version).toBe(session.version + 1)
+    expect(workspace.version).toBe(session.version + WORKSPACE_STAGES.length)
   })
 
   test("buildGraph accepts a kernel and its metadata", () => {

@@ -9,7 +9,7 @@ import type {
   SessionStatus,
   WorkspaceSnapshot,
 } from "@opencode/client/promise"
-import { defineDeriver, inputToken, Kernel, runPipeline } from "@spacegraphjs/kernel"
+import { defineDeriver, inputToken, Kernel, pipe, runPipeline } from "@spacegraphjs/kernel"
 import { Option, Schema } from "effect"
 import stripAnsi from "strip-ansi"
 import { timelineCategory } from "../timeline/detail"
@@ -142,6 +142,31 @@ function rootData(sessionID?: string, lineage?: SessionLineage): Record<string, 
  * rules that connect them. Every activity in a turn enters the model the same way (`attach`), so a
  * node is never half-attached, and the order the model is built in is the order it is drawn in.
  */
+export type WorkspaceStage =
+  | "files"
+  | "directories"
+  | "packages"
+  | "commits"
+  | "branches"
+  | "symbols"
+  | "hunk-symbols"
+  | "processes"
+  | "ports"
+  | "issues"
+
+export const WORKSPACE_STAGES: readonly WorkspaceStage[] = [
+  "files",
+  "directories",
+  "packages",
+  "commits",
+  "branches",
+  "symbols",
+  "hunk-symbols",
+  "processes",
+  "ports",
+  "issues",
+]
+
 class GraphBuilder {
   private readonly nodes: GraphNode[] = []
   private readonly edges: GraphEdge[] = []
@@ -151,6 +176,7 @@ class GraphBuilder {
   private readonly nodesByID = new Map<string, GraphNode>()
   /** The files the model knows, by normalized path. */
   private readonly fileNodes = new Map<string, string>()
+  private readonly touchedFiles = new Set<string>()
   /** The files each turn touched, for the turn's diff node. */
   private readonly turnFiles = new Map<string, Set<string>>()
   /** The last child of a turn, for the turn's `sequence` chain. */
@@ -160,8 +186,6 @@ class GraphBuilder {
   private readonly phaseOrdinalsByTurn = new Map<string, number>()
   /** The last failure in a turn, so a retry can point back at it. */
   private readonly lastErrorByTurn = new Map<string, string>()
-  /** T21.1 — per-turn diffs for hunk symbol extraction. */
-  private readonly diffByTurn?: Map<string, FileDiffInfo[]>
   private previousTurn: string | undefined
   private readonly goal: string | undefined
   private turnByMessageID = new Map<string, string>()
@@ -174,11 +198,8 @@ class GraphBuilder {
     private readonly snapshot?: WorkspaceSnapshot,
     sessionID?: string,
     lineage?: SessionLineage,
-    diffByTurn?: Map<string, FileDiffInfo[]>,
-    private readonly withWorkspace = true,
   ) {
     this.goal = messages.find((message) => message.type === "user")?.text
-    this.diffByTurn = diffByTurn
 
     this.addNode({
       id: SESSION_NODE_ID,
@@ -246,25 +267,52 @@ class GraphBuilder {
       node.data = { ...node.data, active: this.status.type !== "idle" }
     }
 
-    if (this.withWorkspace && this.snapshot) this.attachWorkspace(this.snapshot)
-
-    if (this.withWorkspace && this.diffByTurn) this.attachHunkSymbols(this.diffByTurn)
-
     this.turnByMessageID = turnByMessageID
     this.activeTurn = activeTurn
     this.constructed = true
   }
 
-  static fromKernel(
+  static buildWorkspaceStage(
     kernel: Kernel,
+    stage: WorkspaceStage,
     snapshot: WorkspaceSnapshot,
     diffByTurn?: Map<string, FileDiffInfo[]>,
-  ): GraphBuilder {
-    const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined, diffByTurn, false)
+  ): Kernel {
+    const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined)
     builder.seed(kernel)
-    builder.attachWorkspace(snapshot)
-    if (diffByTurn) builder.attachHunkSymbols(diffByTurn)
-    return builder
+    switch (stage) {
+      case "files":
+        builder.attachFiles(snapshot)
+        break
+      case "directories":
+        builder.attachDirectories(snapshot)
+        break
+      case "packages":
+        builder.attachPackages(snapshot)
+        break
+      case "commits":
+        builder.attachCommits(snapshot)
+        break
+      case "branches":
+        builder.attachBranches(snapshot)
+        break
+      case "symbols":
+        builder.attachSymbols(snapshot)
+        break
+      case "hunk-symbols":
+        if (diffByTurn) builder.attachHunkSymbols(diffByTurn)
+        break
+      case "processes":
+        builder.attachProcesses(snapshot)
+        break
+      case "ports":
+        builder.attachPorts(snapshot)
+        break
+      case "issues":
+        builder.attachIssues(snapshot)
+        break
+    }
+    return builder.buildKernel(kernel.version + 1)
   }
 
   private seed(kernel: Kernel) {
@@ -274,6 +322,7 @@ class GraphBuilder {
     this.edgeIDs.clear()
     this.nodesByID.clear()
     this.fileNodes.clear()
+    this.touchedFiles.clear()
     for (const node of kernel.nodes) {
       const graphNode = toGraphNode(node)
       this.nodes.push(graphNode)
@@ -281,7 +330,10 @@ class GraphBuilder {
       this.nodesByID.set(graphNode.id, graphNode)
       if (graphNode.kind === "file") {
         const path = graphNode.data?.path
-        if (typeof path === "string") this.fileNodes.set(normalizePath(path), graphNode.id)
+        if (typeof path === "string") {
+          this.fileNodes.set(normalizePath(path), graphNode.id)
+          if (graphNode.provenance === undefined) this.touchedFiles.add(normalizePath(path))
+        }
       }
     }
     for (const edge of kernel.edges) {
@@ -328,13 +380,48 @@ class GraphBuilder {
    * snapshot's own files. It runs only when a snapshot is present, so the session-only model stays
    * byte-identical. Edges use the existing `part-of` vocabulary; no new layout geometry is needed.
    */
-  private attachWorkspace(snapshot: WorkspaceSnapshot) {
-    const files = new Set<string>(this.fileNodes.keys())
-    for (const file of snapshot.files) files.add(normalizePath(file.path))
+  private attachFiles(snapshot: WorkspaceSnapshot) {
+    const snapshotFileMeta = new Map<string, { config?: boolean; doc?: boolean }>()
+    for (const file of snapshot.files) {
+      const normalized = normalizePath(file.path)
+      if (file.config || file.doc) {
+        snapshotFileMeta.set(normalized, { config: file.config, doc: file.doc })
+      }
+    }
 
+    for (const file of snapshot.files) {
+      const normalized = normalizePath(file.path)
+      const existingId = this.fileNodes.get(normalized)
+      if (existingId) {
+        const meta = snapshotFileMeta.get(normalized)
+        if (meta) {
+          const node = this.nodesByID.get(existingId)!
+          node.data = this.filterDefined({ ...node.data, config: meta.config, doc: meta.doc })
+        }
+        continue
+      }
+      const id = fileNodeID(normalized)
+      this.fileNodes.set(normalized, id)
+      this.addNode({
+        id,
+        kind: "file",
+        label: normalized,
+        status: "neutral",
+        domain: "directories",
+        provenance: this.provenanceForSource(snapshot, "tree"),
+        data: this.filterDefined({
+          path: normalized,
+          config: snapshotFileMeta.get(normalized)?.config,
+          doc: snapshotFileMeta.get(normalized)?.doc,
+        }),
+      })
+    }
+  }
+
+  private attachDirectories(snapshot: WorkspaceSnapshot) {
     const counts = new Map<string, { fileCount: number; touchedCount: number }>()
-    for (const file of files) {
-      const touched = this.fileNodes.has(file)
+    for (const file of this.fileNodes.keys()) {
+      const touched = this.touchedFiles.has(file)
       for (const directory of parentPaths(file)) {
         const count = counts.get(directory) ?? { fileCount: 0, touchedCount: 0 }
         count.fileCount += 1
@@ -358,42 +445,6 @@ class GraphBuilder {
       })
     }
 
-    // T22.2 — create file nodes for snapshot files (including untouched ones)
-    // Build a map of snapshot file metadata for config/doc flags
-    const snapshotFileMeta = new Map<string, { config?: boolean; doc?: boolean }>()
-    for (const file of snapshot.files) {
-      const normalized = normalizePath(file.path)
-      if (file.config || file.doc) {
-        snapshotFileMeta.set(normalized, { config: file.config, doc: file.doc })
-      }
-    }
-
-    // Create file nodes for all files (session + snapshot)
-    for (const file of files) {
-      const existingId = this.fileNodes.get(file)
-      if (existingId) {
-        // Session file already exists - update with snapshot metadata if any
-        const meta = snapshotFileMeta.get(file)
-        if (meta) {
-          const node = this.nodesByID.get(existingId)!
-          node.data = this.filterDefined({ ...node.data, config: meta.config, doc: meta.doc })
-        }
-        continue
-      }
-      // Snapshot-only file: create file node with provenance
-      const id = fileNodeID(file)
-      this.fileNodes.set(file, id)
-      this.addNode({
-        id,
-        kind: "file",
-        label: file,
-        status: "neutral",
-        domain: "directories", // untouched files belong to directories domain
-        provenance: this.provenanceForSource(snapshot, "tree"),
-        data: this.filterDefined({ path: file, config: snapshotFileMeta.get(file)?.config, doc: snapshotFileMeta.get(file)?.doc }),
-      })
-    }
-
     for (const [file, id] of this.fileNodes) {
       const parent = parentPath(file)
       if (parent) this.partOf(id, directoryNodeID(parent), "structural")
@@ -403,24 +454,6 @@ class GraphBuilder {
       const parent = parentPath(directory)
       if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
     }
-
-    // T22.1 — packages from snapshot
-    this.attachPackages(snapshot)
-
-    // T20.1 — commits from snapshot
-    this.attachCommits(snapshot)
-
-    // T20.2 — branches from snapshot
-    this.attachBranches(snapshot)
-
-    // T21.1/T21.2 — symbols from snapshot
-    this.attachSymbols(snapshot)
-
-    // T23.1/T23.2 — processes and ports from snapshot
-    this.attachProcesses(snapshot)
-
-    // T25.1 — issues from snapshot
-    this.attachIssues(snapshot)
   }
 
   /** T22.1 — package nodes from snapshot packages array. */
@@ -722,7 +755,12 @@ class GraphBuilder {
         provenance: this.provenanceForSource(snapshot, "processes"),
         data: this.filterDefined({ pid: proc.pid, command: proc.command, cwd: proc.cwd, ports: proc.ports, startedAt: proc.startedAt }),
       })
-      // ports
+    }
+  }
+
+  private attachPorts(snapshot: WorkspaceSnapshot) {
+    for (const proc of snapshot.processes) {
+      const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
       for (const port of proc.ports) {
         const portId = `port:${port}`
         this.addNode({
@@ -826,6 +864,7 @@ class GraphBuilder {
     if (existing) return existing
 
     this.fileNodes.set(normalized, id)
+    this.touchedFiles.add(normalized)
     this.addNode({
       id,
       kind: "file",
@@ -1538,28 +1577,37 @@ export function buildSessionKernel(input: BuildSessionInput): Kernel {
     input.snapshot,
     input.sessionID,
     input.lineage,
-    input.diffByTurn,
-    false,
   ).buildKernel()
 }
+
+const workspaceStageDeriver = (
+  stage: WorkspaceStage,
+  snapshot: WorkspaceSnapshot,
+  diffByTurn?: Map<string, FileDiffInfo[]>,
+) =>
+  defineDeriver({
+    name: `workspace:${stage}`,
+    inputs: [inputToken<WorkspaceSnapshot>("workspace")],
+    derive: (kernel) => GraphBuilder.buildWorkspaceStage(kernel, stage, snapshot, diffByTurn),
+  })
+
+export const workspaceDerivers = (
+  snapshot: WorkspaceSnapshot,
+  diffByTurn?: Map<string, FileDiffInfo[]>,
+) => WORKSPACE_STAGES.map((stage) => workspaceStageDeriver(stage, snapshot, diffByTurn))
 
 export function buildWorkspaceKernel(
   kernel: Kernel,
   snapshot: WorkspaceSnapshot,
   diffByTurn?: Map<string, FileDiffInfo[]>,
 ): Kernel {
-  return GraphBuilder.fromKernel(kernel, snapshot, diffByTurn).buildKernel(kernel.version + 1)
+  return runPipeline(workspaceDerivers(snapshot, diffByTurn), kernel, { workspace: snapshot })
 }
 
 export const workspaceDeriver = (
   snapshot: WorkspaceSnapshot,
   diffByTurn?: Map<string, FileDiffInfo[]>,
-) =>
-  defineDeriver({
-    name: "workspace",
-    inputs: [inputToken<WorkspaceSnapshot>("workspace")],
-    derive: (kernel) => buildWorkspaceKernel(kernel, snapshot, diffByTurn),
-  })
+) => pipe(...workspaceDerivers(snapshot, diffByTurn))
 
 export function buildGraph(input: BuildGraphInput): GraphModel {
   if ("kernel" in input) return toGraphView(input.kernel, input.meta)
@@ -1569,12 +1617,10 @@ export function buildGraph(input: BuildGraphInput): GraphModel {
     input.snapshot,
     input.sessionID,
     input.lineage,
-    input.diffByTurn,
-    false,
   )
   const session = builder.buildKernel()
   const kernel = input.snapshot
-    ? runPipeline([workspaceDeriver(input.snapshot, input.diffByTurn)], session, {
+    ? runPipeline(workspaceDerivers(input.snapshot, input.diffByTurn), session, {
         workspace: input.snapshot,
       })
     : session
