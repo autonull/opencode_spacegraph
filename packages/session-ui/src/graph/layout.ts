@@ -85,6 +85,58 @@ export type GraphLayout = {
   strategy: LayoutStrategy
 }
 
+export type LayoutMove = {
+  from: Position
+  to: Position
+  t: number
+}
+
+export type IncrementalLayout = {
+  layout: GraphLayout
+  added: ReadonlyMap<string, Position>
+  removed: readonly string[]
+  moved: ReadonlyMap<string, LayoutMove>
+}
+
+export type IncrementalLayoutOptions = LayoutOptions & {
+  /** Interpolation progress for moved nodes. `1` snaps to the new layout. */
+  t?: number
+}
+
+export const interpolatePosition = (from: Position, to: Position, t: number): Position => ({
+  ...from,
+  x: from.x + (to.x - from.x) * t,
+  y: from.y + (to.y - from.y) * t,
+  ...(to.z === undefined && from.z === undefined
+    ? {}
+    : { z: (from.z ?? 0) + ((to.z ?? 0) - (from.z ?? 0)) * t }),
+})
+
+export const computeIncremental = (
+  model: GraphModel,
+  previous?: GraphLayout | ReadonlyMap<string, Position>,
+  options: IncrementalLayoutOptions = {},
+): IncrementalLayout => {
+  const prior = previous === undefined ? undefined : "positions" in previous ? previous.positions : previous
+  const layout = layoutGraph(model, { ...options, previous: prior })
+  const added = new Map(
+    [...layout.positions].filter(([id]) => prior === undefined || !prior.has(id)),
+  )
+  const removed =
+    prior === undefined ? [] : [...prior.keys()].filter((id) => !layout.positions.has(id))
+  const t = options.t ?? 1
+  const moved = new Map<string, LayoutMove>()
+  if (prior !== undefined) {
+    for (const [id, to] of layout.positions) {
+      const from = prior.get(id)
+      if (!from) continue
+      if (from.x === to.x && from.y === to.y && from.z === to.z) continue
+      moved.set(id, { from, to, t })
+    }
+  }
+  return { layout, added, removed, moved }
+}
+
 const DEPTH: Record<NodeKind, number> = {
   session: 0,
   turn: 1,

@@ -145,12 +145,17 @@ export {
 
 export {
   LANES,
+  computeIncremental,
+  interpolatePosition,
   laneAnchors,
   layoutGraph,
   nodeSize,
   type ClusterBounds,
   type GraphLayout,
+  type IncrementalLayout,
+  type IncrementalLayoutOptions,
   type Lane,
+  type LayoutMove,
   type LayoutOptions,
   type Position,
 } from "./layout"

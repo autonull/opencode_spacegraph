@@ -56,7 +56,11 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   - [x] Kernel `deriveZoom({ levelOf, rank, level, expansion })`: rank table or function, per-node expansion override; 5 tests.
   - [x] Host `zoomModel(model, level, expansion)` using `minLevel` + `ZOOM_RANK`; 4 tests.
   - [x] Expansion state and turn/phase swimlane bands already exist in the adapter/view; no kernel nodes are used for groups.
-- [ ] **Slice 7 — Continuous layout** (`LayoutStrategy`, `computeIncremental`).
+- [x] **Slice 7 — Continuous layout**.
+  - [x] `LayoutStrategy` vocabulary already existed; `layoutGraph` already consumes `previous` positions and keeps earlier coordinates stable.
+  - [x] `computeIncremental` returns `{ layout, added, removed, moved }`; `moved` carries `{ from, to, t }`.
+  - [x] `interpolatePosition` and the `t` option provide interpolation for callers that want it.
+  - [x] 5 incremental layout tests.
 - [ ] **Slice 8 — Spatial + scale** (`SpatialIndex2D`, `q.near`, budgets).
 - [ ] **Slice 9 — A11y + export**.
 
