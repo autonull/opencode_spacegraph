@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { buildGraph } from "./build"
 import { buildFixtureGraph, buildFixtureMessages, buildFixtureSnapshot } from "./fixture"
-import { directoryNodeID, type GraphModel, type GraphNode } from "./model"
+import { directoryNodeID, type GraphViewData, type GraphNode } from "./model"
 import { scopeModel } from "./view"
 import type { Domain } from "./vocabulary"
 
@@ -42,7 +42,7 @@ describe("T30.2 — scopeModel", () => {
   })
 
   test("dropping a domain never leaves a dangling edge", () => {
-    const model: GraphModel = {
+    const model: GraphViewData = {
       root: "session",
       nodes: [
         { id: "session", kind: "session", label: "Session", status: "neutral" },
@@ -75,7 +75,7 @@ describe("T30.2 — scopeModel", () => {
       domain: "directories",
     }
 
-    const model: GraphModel = {
+    const model: GraphViewData = {
       root: "session",
       nodes: [node],
       edges: [],

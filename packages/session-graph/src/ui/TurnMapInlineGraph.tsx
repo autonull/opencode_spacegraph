@@ -1,12 +1,12 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import { InlineGraph } from "@spacegraphjs/svg-renderer"
 import { useI18n } from "@opencode/ui/context/i18n"
-import type { GraphModel } from "@opencode/session-ui/graph"
+import type { GraphViewData } from "@opencode/session-ui/graph"
 import { createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { buildTurnRenderModel } from "./turnMap"
 
 export type TurnMapInlineGraphProps = {
-  model: GraphModel
+  model: GraphViewData
   turnID: string
   /** Partial theme override for the static SVG; the library fills the rest from its own defaults. */
   theme?: Partial<RenderTheme>

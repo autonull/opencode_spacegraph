@@ -1,6 +1,6 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import { renderToSVG } from "@spacegraphjs/svg-renderer"
-import type { GraphModel, Layout } from "@opencode/session-ui/graph"
+import type { GraphViewData, Layout } from "@opencode/session-ui/graph"
 import { LAYOUT_STRATEGIES, layoutGraph } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -12,7 +12,7 @@ import { LAYOUT_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 
 export type GraphGalleryProps = {
-  model: GraphModel
+  model: GraphViewData
   theme: RenderTheme
   /** The layout the reader is looking at; it is marked in the gallery. */
   current?: Layout

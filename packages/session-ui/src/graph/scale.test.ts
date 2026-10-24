@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { SessionMessageInfo } from "@opencode/client/promise"
 import { buildGraph } from "./build"
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 import { layoutGraph } from "./layout"
 import { scaleWindow, scopeToTurns, TURN_WINDOW } from "./scale"
 
@@ -31,7 +31,7 @@ function session(turns: number): SessionModel {
   return buildGraph({ messages: messages, status: { type: "idle" } })
 }
 
-type SessionModel = GraphModel
+type SessionModel = GraphViewData
 
 describe("scale — the drawn window", () => {
   test("a session that fits the window is drawn whole", () => {

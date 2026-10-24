@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { buildFixtureGraph } from "./fixture"
 import { computeIncremental, interpolatePosition, layoutGraph } from "./layout"
-import type { GraphModel, GraphNode } from "./model"
+import type { GraphViewData, GraphNode } from "./model"
 
 const extra = (id: string): GraphNode => ({
   id,
@@ -16,7 +16,7 @@ describe("incremental layout", () => {
   test("reports added nodes and leaves existing positions stable", () => {
     const model = buildFixtureGraph()
     const first = layoutGraph(model)
-    const next: GraphModel = { ...model, nodes: [...model.nodes, extra("message:new")] }
+    const next: GraphViewData = { ...model, nodes: [...model.nodes, extra("message:new")] }
     const incremental = computeIncremental(next, first)
 
     expect(incremental.added.has("message:new")).toBe(true)
@@ -28,7 +28,7 @@ describe("incremental layout", () => {
     const model = buildFixtureGraph()
     const first = layoutGraph(model)
     const removedID = model.nodes[0]!.id
-    const next: GraphModel = {
+    const next: GraphViewData = {
       ...model,
       nodes: model.nodes.filter((node) => node.id !== removedID),
       edges: model.edges.filter((edge) => edge.source !== removedID && edge.target !== removedID),

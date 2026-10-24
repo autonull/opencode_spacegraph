@@ -5,7 +5,7 @@ import type {
   Confidence,
   EdgeKind,
   GraphEdge,
-  GraphModel,
+  GraphViewData,
   GraphNode,
   GraphSnapshotMeta,
   Provenance,
@@ -63,7 +63,7 @@ export const toKernelEdge = (edge: GraphEdge): Edge => ({
   },
 })
 
-export const graphModelToKernel = (model: GraphModel, version = 0): Kernel =>
+export const graphModelToKernel = (model: GraphViewData, version = 0): Kernel =>
   new Kernel({
     nodes: model.nodes.map(toKernelNode),
     edges: model.edges.map(toKernelEdge),
@@ -140,7 +140,7 @@ export const toGraphEdge = (edge: Edge): GraphEdge => ({
   ...(asString(edge.data?.label) === undefined ? {} : { label: asString(edge.data?.label)! }),
 })
 
-export const graphViewMeta = (model: GraphModel): GraphViewMeta => ({
+export const graphViewMeta = (model: GraphViewData): GraphViewMeta => ({
   root: model.root,
   ...(model.workspaceRoot === undefined ? {} : { workspaceRoot: model.workspaceRoot }),
   ...(model.snapshot === undefined ? {} : { snapshot: model.snapshot }),
@@ -150,7 +150,7 @@ export const graphViewMeta = (model: GraphModel): GraphViewMeta => ({
   ...(model.activeTurn === undefined ? {} : { activeTurn: model.activeTurn }),
 })
 
-export const toGraphView = (kernel: Kernel, meta: GraphViewMeta): GraphModel => ({
+export const toGraphView = (kernel: Kernel, meta: GraphViewMeta): GraphViewData => ({
   root: meta.root,
   ...(meta.workspaceRoot === undefined ? {} : { workspaceRoot: meta.workspaceRoot }),
   ...(meta.snapshot === undefined ? {} : { snapshot: meta.snapshot }),
@@ -165,7 +165,7 @@ export const toGraphView = (kernel: Kernel, meta: GraphViewMeta): GraphModel => 
   ...(meta.activeTurn === undefined ? {} : { activeTurn: meta.activeTurn }),
 })
 
-export const scopeModel = (model: GraphModel, lens: ReadonlySet<Domain>): GraphModel => {
+export const scopeModel = (model: GraphViewData, lens: ReadonlySet<Domain>): GraphViewData => {
   const domains = new Set(lens)
   domains.add("session")
   const scoped = deriveScope(graphModelToKernel(model), (node) =>
@@ -182,8 +182,8 @@ export const scopeModel = (model: GraphModel, lens: ReadonlySet<Domain>): GraphM
 }
 
 export const createGraphViewCache = () => {
-  const cache = new Map<number, { kernel: Kernel; view: GraphModel }>()
-  return (kernel: Kernel, meta: GraphViewMeta): GraphModel => {
+  const cache = new Map<number, { kernel: Kernel; view: GraphViewData }>()
+  return (kernel: Kernel, meta: GraphViewMeta): GraphViewData => {
     const cached = cache.get(kernel.version)
     if (cached && cached.kernel === kernel) return cached.view
     const view = toGraphView(kernel, meta)

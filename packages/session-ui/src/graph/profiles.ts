@@ -1,4 +1,4 @@
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 import { scopeModel } from "./view"
 import { DOMAINS, type Domain } from "./vocabulary"
 
@@ -21,5 +21,5 @@ export const PROFILE_PRESETS = [
   },
 ] as const satisfies readonly ProfilePreset[]
 
-export const applyProfile = (model: GraphModel, profile: ProfilePreset): GraphModel =>
+export const applyProfile = (model: GraphViewData, profile: ProfilePreset): GraphViewData =>
   scopeModel(model, new Set(profile.domains))

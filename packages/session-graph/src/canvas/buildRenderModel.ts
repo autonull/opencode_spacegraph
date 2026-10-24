@@ -1,5 +1,5 @@
 import type { RenderModel } from "@spacegraphjs/renderer"
-import type { ClusterBounds, GraphModel, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
+import type { ClusterBounds, GraphViewData, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { sessionGraphAdapter } from "./sessionGraphAdapter"
 
 /** Host-owned, sanitized markup for a `card`. Text must be escaped by the template. */
@@ -41,11 +41,11 @@ export type BuildRenderModelOptions = {
 }
 
 /**
- * Pure `GraphModel` + level + positions → `RenderModel` (§5.4). Rendering-agnostic: it imports only
+ * Pure `GraphViewData` + level + positions → `RenderModel` (§5.4). Rendering-agnostic: it imports only
  * the contract, never a backend. The pipeline lives in the library's `ModelAdapter`; this module is
  * the session's vocabulary and the default adapter.
  */
-export function buildRenderModel(model: GraphModel, options: BuildRenderModelOptions): RenderModel {
+export function buildRenderModel(model: GraphViewData, options: BuildRenderModelOptions): RenderModel {
   return sessionGraphAdapter.build(model, options)
 }
 

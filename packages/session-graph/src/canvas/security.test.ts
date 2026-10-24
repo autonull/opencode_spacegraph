@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { GraphModel, GraphNode } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import { buildRenderModel, escapeHtml } from "./buildRenderModel"
 import { parseRenderModel, renderToSVG, serializeRenderModel } from "@spacegraphjs/svg-renderer"
 
@@ -23,7 +23,7 @@ const ATTACK = {
   rtl: "normal\u202Ereversed",
 }
 
-function hostileModel(): GraphModel {
+function hostileModel(): GraphViewData {
   const nodes: GraphNode[] = [
     { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },
     { id: "turn", kind: "turn", label: "Turn 1", status: "success", minLevel: "overview" },

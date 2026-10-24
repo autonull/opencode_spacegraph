@@ -1,4 +1,4 @@
-import type { GraphModel, GraphNode } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import {
   navigationHelp,
   navigationResults,
@@ -10,7 +10,7 @@ import { createEffect, createMemo, createSignal, For, onMount, Show } from "soli
 import { GraphIconButton } from "./GraphIconButton"
 
 export type GraphSearchProps = {
-  model: GraphModel
+  model: GraphViewData
   onSelect: (node: GraphNode) => void
   onClose: () => void
   initialQuery?: string

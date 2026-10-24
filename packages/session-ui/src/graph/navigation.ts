@@ -1,4 +1,4 @@
-import type { GraphModel, GraphNode } from "./model"
+import type { GraphViewData, GraphNode } from "./model"
 import type { NodeKind } from "./vocabulary"
 
 export type NavigationMnemonic = {
@@ -31,18 +31,18 @@ export const parseNavigation = (query: string): NavigationMnemonic | undefined =
   return match ? byKey.get(match[1]!) : undefined
 }
 
-export const navigationTargets = (model: GraphModel, mnemonic: NavigationMnemonic): GraphNode[] => {
+export const navigationTargets = (model: GraphViewData, mnemonic: NavigationMnemonic): GraphNode[] => {
   const kinds = new Set<NodeKind>(mnemonic.kinds)
   return model.nodes.filter((node) => kinds.has(node.kind))
 }
 
-export const navigationResults = (model: GraphModel, query: string): GraphNode[] | undefined => {
+export const navigationResults = (model: GraphViewData, query: string): GraphNode[] | undefined => {
   const mnemonic = parseNavigation(query)
   return mnemonic ? navigationTargets(model, mnemonic) : undefined
 }
 
 export const nextNavigationTarget = (
-  model: GraphModel,
+  model: GraphViewData,
   mnemonic: NavigationMnemonic,
   current?: string,
 ): GraphNode | undefined => {

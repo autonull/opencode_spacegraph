@@ -19,7 +19,7 @@ export {
   type Confidence,
   type EdgeKind,
   type GraphEdge,
-  type GraphModel,
+  type GraphViewData,
   type GraphNode,
   type GraphSnapshotMeta,
   type Provenance,

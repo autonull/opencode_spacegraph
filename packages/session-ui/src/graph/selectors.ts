@@ -2,7 +2,7 @@ import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
-import type { EdgeKind, GraphModel, GraphEdge, GraphNode, NodeKind } from "./model"
+import type { EdgeKind, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
 
 export type Subgraph = {
@@ -15,20 +15,20 @@ export type TranscriptRef = {
   partID?: string
 }
 
-export function nodeByID(model: GraphModel, id: string) {
+export function nodeByID(model: GraphViewData, id: string) {
   return lookupNode(model, id)
 }
 
-export function incoming(model: GraphModel, id: string) {
+export function incoming(model: GraphViewData, id: string) {
   return model.edges.filter((edge) => edge.target === id)
 }
 
-export function outgoing(model: GraphModel, id: string) {
+export function outgoing(model: GraphViewData, id: string) {
   return model.edges.filter((edge) => edge.source === id)
 }
 
 /** Direct neighbors in either direction, with the edges that connect them. */
-export function neighbors(model: GraphModel, id: string): Subgraph {
+export function neighbors(model: GraphViewData, id: string): Subgraph {
   const edges = model.edges.filter((edge) => edge.source === id || edge.target === id)
   const nodeIDs = new Set<string>()
 
@@ -40,7 +40,7 @@ export function neighbors(model: GraphModel, id: string): Subgraph {
 }
 
 /** The `part-of` chain from a node up to the session root, nearest ancestor first. */
-export function ancestors(model: GraphModel, id: string): GraphNode[] {
+export function ancestors(model: GraphViewData, id: string): GraphNode[] {
   const result: GraphNode[] = []
   const seen = new Set([id])
   const parents = parentIndex(model)
@@ -70,7 +70,7 @@ export function ancestors(model: GraphModel, id: string): GraphNode[] {
  * not `part-of` a turn, so they are collected one hop out; a file shared across turns appears under
  * both. Returned in model order so the caller can fit the exact node set the bands draw.
  */
-export function subtree(model: GraphModel, id: string): GraphNode[] {
+export function subtree(model: GraphViewData, id: string): GraphNode[] {
   const node = lookupNode(model, id)
 
   if (!node) return []
@@ -104,7 +104,7 @@ export function subtree(model: GraphModel, id: string): GraphNode[] {
 }
 
 /** Breadcrumb line from the session root down to the node (root first). */
-export function breadcrumbs(model: GraphModel, id: string, seen: Set<string> = new Set()): GraphNode[] {
+export function breadcrumbs(model: GraphViewData, id: string, seen: Set<string> = new Set()): GraphNode[] {
   const node = nodeByID(model, id)
 
   if (!node || seen.has(id)) return []
@@ -123,7 +123,7 @@ export function breadcrumbs(model: GraphModel, id: string, seen: Set<string> = n
 
 const PROVENANCE: ReadonlySet<EdgeKind> = new Set(["writes", "reads", "produces", "searches", "compacts", "evidence"])
 
-function provenanceOwner(model: GraphModel, node: GraphNode): GraphNode | undefined {
+function provenanceOwner(model: GraphViewData, node: GraphNode): GraphNode | undefined {
   const related = model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)
 
   const ordered = [
@@ -144,7 +144,7 @@ function provenanceOwner(model: GraphModel, node: GraphNode): GraphNode | undefi
  * Why a node exists: the edges that point at it (`writes`/`reads`/`produces`/`evidence`), the
  * hierarchy it belongs to, and its ordered `sequence` neighbors. Causality is never inferred here.
  */
-export function why(model: GraphModel, id: string) {
+export function why(model: GraphViewData, id: string) {
   const sequence = sequenceIndex(model)
 
   return {
@@ -157,7 +157,7 @@ export function why(model: GraphModel, id: string) {
 }
 
 /** Shortest undirected path between two nodes by node IDs, or undefined when disconnected. */
-export function shortestPath(model: GraphModel, from: string, to: string): string[] | undefined {
+export function shortestPath(model: GraphViewData, from: string, to: string): string[] | undefined {
   if (from === to) return [from]
   const adjacency = new Map<string, string[]>()
 
@@ -197,7 +197,7 @@ export function shortestPath(model: GraphModel, from: string, to: string): strin
 }
 
 /** Nodes that follow `id` in its turn's `sequence` stream, in order. */
-export function forwardChain(model: GraphModel, id: string): GraphNode[] {
+export function forwardChain(model: GraphViewData, id: string): GraphNode[] {
   const result: GraphNode[] = []
   const seen = new Set([id])
   const sequence = sequenceIndex(model)
@@ -234,7 +234,7 @@ const searchable = (node: GraphNode) =>
     node.data?.input ? JSON.stringify(node.data.input) : undefined,
   ].filter((value): value is string => !!value)
 
-export function search(model: GraphModel, query: string): GraphNode[] {
+export function search(model: GraphViewData, query: string): GraphNode[] {
   return Navigation.search(model, query, searchable)
 }
 
@@ -255,7 +255,7 @@ export type ChangedFile = {
  * file-first rail renders this; selecting a file inverts the "why did this change?" question by
  * focusing its writers. Files that were only read never appear.
  */
-export function changedFiles(model: GraphModel): ChangedFile[] {
+export function changedFiles(model: GraphViewData): ChangedFile[] {
   const nodes = nodeIndex(model)
   const byID = new Map<string, ChangedFile>()
   const order: string[] = []
@@ -286,7 +286,7 @@ export function changedFiles(model: GraphModel): ChangedFile[] {
 }
 
 /** The message/part a node points back to in the transcript, when it has one. */
-export function openInTranscript(model: GraphModel, id: string): TranscriptRef | undefined {
+export function openInTranscript(model: GraphViewData, id: string): TranscriptRef | undefined {
   const node = nodeByID(model, id)
 
   if (!node?.messageID) return undefined
@@ -299,7 +299,7 @@ export function openInTranscript(model: GraphModel, id: string): TranscriptRef |
  * carries its path, not the traffic on it. The card of a file says it, so the reader sees who
  * touched the file without leaving the map.
  */
-export function fileRelations(model: GraphModel): Map<string, { reads: number; writes: number }> {
+export function fileRelations(model: GraphViewData): Map<string, { reads: number; writes: number }> {
   const relations = new Map<string, { reads: number; writes: number }>()
 
   for (const edge of model.edges) {
@@ -339,7 +339,7 @@ const TURN_CHILD_PRIORITY: Partial<Record<NodeKind, number>> = {
  *
  * The scope is the library's (`spacegraphjs/overlays`); the signal order below is the session's.
  */
-export function turnSubgraph(model: GraphModel, turnID: string, limit = 7): Subgraph {
+export function turnSubgraph(model: GraphViewData, turnID: string, limit = 7): Subgraph {
   const scope = extractSubgraph(model, turnID, {
     limit,
     childEdgeKind: "part-of",

@@ -1,8 +1,8 @@
 import { KernelCodec } from "@spacegraphjs/kernel"
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 import { graphModelToKernel } from "./view"
 
-export const exportGraphJSON = (model: GraphModel): string =>
+export const exportGraphJSON = (model: GraphViewData): string =>
   KernelCodec.encode(graphModelToKernel(model))
 
 export const exportGraphFilename = (goal?: string): string => {

@@ -1,5 +1,5 @@
 import { Strategies, type LayoutConfig, type Position } from "spacegraphjs/layout"
-import type { GraphEdge, GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
+import type { GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
 import { nodeIndex, parentIndex } from "./lookup"
@@ -113,7 +113,7 @@ export const interpolatePosition = (from: Position, to: Position, t: number): Po
 })
 
 export const computeIncremental = (
-  model: GraphModel,
+  model: GraphViewData,
   previous?: GraphLayout | ReadonlyMap<string, Position>,
   options: IncrementalLayoutOptions = {},
 ): IncrementalLayout => {
@@ -199,7 +199,7 @@ export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: numbe
   return Strategies.laneAnchors(LAYOUT, { laneGap: options.laneGap })
 }
 
-export function layoutGraph(model: GraphModel, options: LayoutOptions = {}): GraphLayout {
+export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): GraphLayout {
   const config = options.nodeSizeFn ? { ...LAYOUT, nodeSizeFn: options.nodeSizeFn } : LAYOUT
   return Strategies.layoutGraph(model, config, {
     strategy: options.strategy,

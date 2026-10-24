@@ -1,6 +1,6 @@
 import { For, Show, createMemo } from "solid-js"
 import { buildGraph, layoutGraph, nodeSize, nodesAtLevel, turnNodeID } from "@opencode/session-ui/graph"
-import type { GraphNode, GraphModel } from "@opencode/session-ui/graph"
+import type { GraphNode, GraphViewData } from "@opencode/session-ui/graph"
 import type { SessionStatus } from "@opencode/client/promise"
 import { useExtension } from "../sdk"
 import type { MountedSession, SessionScreen } from "../sdk"
@@ -21,7 +21,7 @@ export default function SessionMapPanel(props: {
 }) {
   const ctx = useExtension()
 
-  const model = createMemo<GraphModel>(() => {
+  const model = createMemo<GraphViewData>(() => {
     const data = props.session.server.data
 
     const status: SessionStatus =

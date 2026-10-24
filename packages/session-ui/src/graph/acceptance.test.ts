@@ -18,16 +18,16 @@ import {
   buildInterruptedFixtureMessages,
 } from "./fixture"
 import { nodesAtLevel } from "./levels"
-import { fileNodeID, turnNodeID, type GraphModel } from "./model"
+import { fileNodeID, turnNodeID, type GraphViewData } from "./model"
 import { scopeModel } from "./view"
 import { search } from "./selectors"
 import { DOMAINS, nodeDomain } from "./vocabulary"
 
-const node = (model: GraphModel, id: string) => model.nodes.find((item) => item.id === id)
-const nodesOfKind = (model: GraphModel, kind: string) =>
+const node = (model: GraphViewData, id: string) => model.nodes.find((item) => item.id === id)
+const nodesOfKind = (model: GraphViewData, kind: string) =>
   model.nodes.filter((item) => item.kind === kind)
 const hasEdge = (
-  model: GraphModel,
+  model: GraphViewData,
   kind: string,
   source: string,
   target: string,

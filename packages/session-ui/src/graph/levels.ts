@@ -1,5 +1,5 @@
 import { Levels, type LabelMode, type LevelConfig } from "spacegraphjs/levels"
-import type { EdgeKind, GraphEdge, GraphModel, GraphNode, NodeKind, ZoomLevel } from "./model"
+import type { EdgeKind, GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { nodeIndex } from "./lookup"
 
 /**
@@ -100,11 +100,11 @@ export function isVisibleAt(node: GraphNode, level: ZoomLevel) {
   return Levels.isVisibleAt(node, level, LEVELS)
 }
 
-export function nodesAtLevel(model: GraphModel, level: ZoomLevel) {
+export function nodesAtLevel(model: GraphViewData, level: ZoomLevel) {
   return Levels.nodesAtLevel(model, level, LEVELS)
 }
 
-export function edgesAtLevel(model: GraphModel, level: ZoomLevel, focus?: string) {
+export function edgesAtLevel(model: GraphViewData, level: ZoomLevel, focus?: string) {
   return Levels.edgesAtLevel(model, level, focus, LEVELS)
 }
 

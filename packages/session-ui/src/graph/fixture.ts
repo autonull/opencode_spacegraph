@@ -8,7 +8,7 @@ import type {
   WorkspaceSnapshot,
 } from "@opencode/client/promise"
 import { buildGraph } from "./build"
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 
 /**
  * Canonical representative session (SPACEGRAPH.TODO.1 §7). Deterministic: fixed base timestamp,
@@ -321,12 +321,12 @@ export function buildFixtureSnapshot(): WorkspaceSnapshot {
   }
 }
 
-export function buildFixtureGraph(): GraphModel {
+export function buildFixtureGraph(): GraphViewData {
   return buildGraph({ messages: fixtureMessages, status: { type: "idle" } })
 }
 
 /** T32.1 — fixture graph with comprehensive snapshot (all derived kinds). */
-export function buildFixtureGraphWithSnapshot(): GraphModel {
+export function buildFixtureGraphWithSnapshot(): GraphViewData {
   return buildGraph({ messages: fixtureMessages, status: { type: "idle" }, snapshot: buildFixtureSnapshot() })
 }
 

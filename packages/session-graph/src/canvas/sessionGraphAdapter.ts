@@ -13,7 +13,7 @@ import {
   type ClusterBounds,
   type EdgeKind,
   type GraphEdge,
-  type GraphModel,
+  type GraphViewData,
   type GraphNode,
   type NodeKind,
   type ZoomLevel,
@@ -66,14 +66,14 @@ const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {
 /** LE.13: provenance edges that a file-first lens rebases onto the owning turn node. */
 const BUNDLED_KINDS = new Set<EdgeKind>(["writes", "reads", "searches", "references", "produces"])
 
-export type SessionGraphAdapterConfig = AdapterConfig<GraphNode, GraphEdge, ZoomLevel, GraphModel>
+export type SessionGraphAdapterConfig = AdapterConfig<GraphNode, GraphEdge, ZoomLevel, GraphViewData>
 
 /**
  * The session's answer to the renderer contract: the vocabulary (kinds, statuses, structural
  * kinds), the level policy, the swimlane bands, and the provenance bundling. The pipeline itself
  * lives in the library's `ModelAdapter`.
  */
-export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, ZoomLevel, GraphModel> {
+export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, ZoomLevel, GraphViewData> {
   constructor(config: SessionGraphAdapterConfig = {}) {
     super({
       cardBudget: (level) => domBudget(level),
@@ -150,7 +150,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
    * around its members, which leaves the header its own slot above them (T1.17).
    */
   buildBands(
-    model: GraphModel,
+    model: GraphViewData,
     level: ZoomLevel,
     positions: ReadonlyMap<string, AdapterPosition>,
     renderBand: (node: GraphNode, count: number, bounds: ClusterBounds) => string,
@@ -219,7 +219,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
    * crossing wire per writer/reader. Edges that do not target a file, or whose activity has no turn, are
    * kept verbatim. The rebased id is stable (`bundle:${source}:${target}:${kind}`) for renderer diffing.
    */
-  bundleEdges(model: GraphModel, edges: readonly GraphEdge[]): GraphEdge[] {
+  bundleEdges(model: GraphViewData, edges: readonly GraphEdge[]): GraphEdge[] {
     const byID = nodeIndex(model)
     // `GraphNode.turnID` is already the owning turn node id (`turn:<opener>`), not the opener message id.
     const turnOf = (id: string) => byID.get(id)?.turnID ?? id

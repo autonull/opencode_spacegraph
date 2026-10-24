@@ -1,5 +1,5 @@
 import type { RendererViewport, RenderTheme } from "@spacegraphjs/renderer"
-import type { GraphModel, GraphNode, Position } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode, Position } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Navigation } from "spacegraphjs/navigation"
 import { createMemo, For, Show, createSignal } from "solid-js"
@@ -16,7 +16,7 @@ export const MINIMAP_SIZE = { width: BOX_W, height: BOX_H }
 export const MINIMAP_GAP = 8
 
 export type GraphMinimapProps = {
-  model: GraphModel
+  model: GraphViewData
   positions: ReadonlyMap<string, Position>
   theme: RenderTheme
   /** Latest viewport report from the active renderer; drives the view rectangle. */

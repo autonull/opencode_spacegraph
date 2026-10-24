@@ -1,5 +1,5 @@
 import { diffKernels } from "@spacegraphjs/kernel"
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
 
 export type ReviewChanges = {
@@ -8,7 +8,7 @@ export type ReviewChanges = {
   changed: readonly string[]
 }
 
-export const reviewChanges = (before: GraphModel, after: GraphModel): ReviewChanges => {
+export const reviewChanges = (before: GraphViewData, after: GraphViewData): ReviewChanges => {
   const diff = diffKernels(graphModelToKernel(before), graphModelToKernel(after))
   return {
     added: diff.nodes.added.map((node) => node.id),
@@ -17,7 +17,7 @@ export const reviewChanges = (before: GraphModel, after: GraphModel): ReviewChan
   }
 }
 
-export const reviewModel = (before: GraphModel, after: GraphModel): GraphModel => {
+export const reviewModel = (before: GraphViewData, after: GraphViewData): GraphViewData => {
   const beforeKernel = graphModelToKernel(before)
   const afterKernel = graphModelToKernel(after)
   const diff = diffKernels(beforeKernel, afterKernel)

@@ -3,7 +3,7 @@ import type { GraphLayout } from "./layout"
 import { nodeSize } from "./layout"
 import { isClusterExpanded, isVisibleAt } from "./levels"
 import { nodeIndex } from "./lookup"
-import type { GraphModel, GraphNode, PhaseCategory, ZoomLevel } from "./model"
+import type { GraphViewData, GraphNode, PhaseCategory, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
 import { COMPACT_SIZE, PHASE_CATEGORIES } from "./vocabulary"
 
@@ -40,7 +40,7 @@ const CATEGORY_MAP: Readonly<Record<number, string>> = {
  * segments. A turn that revisits a category keeps its distinct phase runs, so the ribbon shows the
  * real exploration/edit/verify rhythm instead of a single flattened bar.
  */
-export function ribbonLayout(model: GraphModel, options: SummaryLayoutOptions = {}): GraphLayout {
+export function ribbonLayout(model: GraphViewData, options: SummaryLayoutOptions = {}): GraphLayout {
   return Representations.ribbonLayout(summary(model), config(model, options.level), options)
 }
 
@@ -50,7 +50,7 @@ export function ribbonLayout(model: GraphModel, options: SummaryLayoutOptions = 
  * (turn, category) cell; a turn with two runs of one category fans them within the cell rather than
  * dropping one.
  */
-export function matrixLayout(model: GraphModel, options: SummaryLayoutOptions = {}): GraphLayout {
+export function matrixLayout(model: GraphViewData, options: SummaryLayoutOptions = {}): GraphLayout {
   return Representations.matrixLayout(summary(model), config(model, options.level), options)
 }
 
@@ -59,7 +59,7 @@ export function matrixLayout(model: GraphModel, options: SummaryLayoutOptions = 
  * owning turn), then one row per turn. Within a row the turn header leads, then the phase segments in
  * model order, then the remaining members — so a bar reads left-to-right in the order it happened.
  */
-export function turnRows(model: GraphModel, level: ZoomLevel = "overview"): GraphNode[][] {
+export function turnRows(model: GraphViewData, level: ZoomLevel = "overview"): GraphNode[][] {
   return Representations.summaryRows(summary(model), config(model, level))
 }
 
@@ -68,7 +68,7 @@ export function turnRows(model: GraphModel, level: ZoomLevel = "overview"): Grap
  * cluster yielding to its members once those members are visible. A row never counts the same work
  * twice, so a phase stands for its work at the overview and the work stands for itself below it.
  */
-export function summaryUnits(model: GraphModel, level: ZoomLevel): Set<string> {
+export function summaryUnits(model: GraphViewData, level: ZoomLevel): Set<string> {
   const nodes = nodeIndex(model)
   const units = new Set<string>()
 
@@ -86,7 +86,7 @@ export function summaryUnits(model: GraphModel, level: ZoomLevel): Set<string> {
  * that stands for it. A node with no category — a failure, a retry — takes the trailing signals
  * column.
  */
-export function matrixColumn(model: GraphModel, node: GraphNode) {
+export function matrixColumn(model: GraphViewData, node: GraphNode) {
   if (node.kind === "session" || node.kind === "turn") return 0
   const category = clusterCategories(model).get(node.id) ?? phaseCategoryOf(node)
 
@@ -97,13 +97,13 @@ export function matrixColumn(model: GraphModel, node: GraphNode) {
 }
 
 /** The summary model: the model rows are the model's turns. */
-function summary(model: GraphModel) {
+function summary(model: GraphViewData) {
   return { nodes: model.nodes, rows: model.turns }
 }
 
 /** The session's summary vocabulary: which row a node belongs to, how a row is ordered, which column
  *  it occupies, and which nodes take part. The library owns the packing. */
-function config(model: GraphModel, level: ZoomLevel | undefined): RepresentationConfig<GraphNode> {
+function config(model: GraphViewData, level: ZoomLevel | undefined): RepresentationConfig<GraphNode> {
   const units = summaryUnits(model, level ?? "overview")
 
   return {
@@ -146,7 +146,7 @@ function yieldsToMembers(node: GraphNode, nodes: ReadonlyMap<string, GraphNode>,
  */
 const CLUSTER_CATEGORIES = new WeakMap<readonly GraphNode[], ReadonlyMap<string, PhaseCategory>>()
 
-function clusterCategories(model: GraphModel): ReadonlyMap<string, PhaseCategory> {
+function clusterCategories(model: GraphViewData): ReadonlyMap<string, PhaseCategory> {
   const cached = CLUSTER_CATEGORIES.get(model.nodes)
 
   if (cached) return cached
@@ -176,7 +176,7 @@ function clusterCategories(model: GraphModel): ReadonlyMap<string, PhaseCategory
  * The log layout drops the lanes — a turn's nodes in one column in the order they happened,
  * the phases as depth, the sequence as a spine.
  */
-export function logLayout(model: GraphModel, options: SummaryLayoutOptions = {}): GraphLayout {
+export function logLayout(model: GraphViewData, options: SummaryLayoutOptions = {}): GraphLayout {
   return Representations.logLayout(summary(model), config(model, options.level), options)
 }
 
@@ -184,6 +184,6 @@ export function logLayout(model: GraphModel, options: SummaryLayoutOptions = {})
  * T17.3 — the nodes the log layout draws at a level: the session row, then one row per turn with
  * the turn's nodes in session order (the order they happened).
  */
-export function logRows(model: GraphModel, level: ZoomLevel = "overview"): GraphNode[][] {
+export function logRows(model: GraphViewData, level: ZoomLevel = "overview"): GraphNode[][] {
   return Representations.logRows(summary(model), config(model, level))
 }

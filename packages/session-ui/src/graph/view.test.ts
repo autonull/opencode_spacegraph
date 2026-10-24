@@ -7,14 +7,14 @@ import {
   graphViewMeta,
   toGraphView,
 } from "./view"
-import type { GraphModel, GraphNode } from "./model"
+import type { GraphViewData, GraphNode } from "./model"
 
 const node = (overrides: Partial<GraphNode> & Pick<GraphNode, "id" | "kind" | "label">): GraphNode => ({
   status: "neutral",
   ...overrides,
 })
 
-const model: GraphModel = {
+const model: GraphViewData = {
   root: "session",
   workspaceRoot: "/repo",
   snapshot: {

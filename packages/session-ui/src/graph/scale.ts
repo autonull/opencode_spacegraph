@@ -1,4 +1,4 @@
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 
 /**
  * How many turns the map draws at once. A long session is drawn as its recent tail: the map is a
@@ -20,7 +20,7 @@ export type ScaleWindow = {
  * The turns the map draws: the recent tail of the session, plus any turn the reader is looking at
  * (the selection, or a linked node). A session that fits the window is drawn whole.
  */
-export function scaleWindow(model: GraphModel, keep: readonly string[] = []): ScaleWindow {
+export function scaleWindow(model: GraphViewData, keep: readonly string[] = []): ScaleWindow {
   const total = model.turns.length
 
   if (total <= TURN_WINDOW) return { turns: new Set(model.turns), total, hidden: 0 }
@@ -37,7 +37,7 @@ export function scaleWindow(model: GraphModel, keep: readonly string[] = []): Sc
  * position of a node that stays in the window does not move when the window slides; only the nodes
  * the map draws change.
  */
-export function scopeToTurns(model: GraphModel, turns: ReadonlySet<string>): GraphModel {
+export function scopeToTurns(model: GraphViewData, turns: ReadonlySet<string>): GraphViewData {
   if (turns.size >= model.turns.length) return model
 
   const nodes = model.nodes.filter((node) => !node.turnID || turns.has(node.turnID))

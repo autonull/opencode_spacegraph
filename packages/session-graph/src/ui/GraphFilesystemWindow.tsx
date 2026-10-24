@@ -1,10 +1,10 @@
-import type { GraphModel, GraphNode } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import { nodeByID, childIndex } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createMemo, createSignal, type JSX } from "solid-js"
 
 export type GraphFilesystemWindowProps = {
-  model: GraphModel
+  model: GraphViewData
   workspaceRoot: string
   onSelect: (id: string) => void
   onOpen?: (file: GraphNode) => void

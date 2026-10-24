@@ -1,4 +1,4 @@
-import type { GraphEdge, GraphModel, GraphNode, Provenance } from "@opencode/session-ui/graph"
+import type { GraphEdge, GraphViewData, GraphNode, Provenance } from "@opencode/session-ui/graph"
 import type { JsonValue } from "@opencode/client/promise"
 import {
   actionsFor,
@@ -70,7 +70,7 @@ function formatProvenance(provenance: Provenance | undefined, now: number): stri
 type Connection = { edge: GraphEdge; other: GraphNode; direction: "in" | "out" }
 
 export type GraphDetailProps = {
-  model: GraphModel
+  model: GraphViewData
   node: GraphNode
   /** RF.8: host loader for a finished turn's changed-file diffs; when absent, diff nodes list paths only. */
   diffSource?: GraphDiffSource
@@ -462,7 +462,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
 /** T31 — actions for a node, filtered by capabilities. */
 function GraphDetailActions(props: {
   node: GraphNode
-  model: GraphModel
+  model: GraphViewData
   snapshot?: { capabilities?: string[] }
   onNavigate?: (target: ActionSpec["target"]) => void
   onReveal?: (target: ActionSpec["target"]) => void

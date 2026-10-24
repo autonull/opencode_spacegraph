@@ -7,7 +7,7 @@ import {
   type DetailMode,
   type EqualizerRuleSet,
   type GraphEdge,
-  type GraphModel,
+  type GraphViewData,
   type GraphNode,
   type Layout,
   type ZoomLevel,
@@ -41,13 +41,13 @@ const FIXTURE_DIFFS = [
 ]
 
 /** The fixture has a session root; a truly empty model proves the empty state. */
-const EMPTY_MODEL: GraphModel = { root: "session", nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
+const EMPTY_MODEL: GraphViewData = { root: "session", nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
 
 /**
  * T6.6: a session long enough to hit the drawn window. The map shows its recent tail and says how
  * much of the session it left out, so a capped view is never a silent one.
  */
-const SCALE_MODEL: GraphModel = (() => {
+const SCALE_MODEL: GraphViewData = (() => {
   const nodes: GraphNode[] = [
     { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },
   ]
@@ -93,7 +93,7 @@ const SCALE_MODEL: GraphModel = (() => {
  * T6.5: a session that was forked from another one. The attribution rides on the root node, so the
  * inspector can name where this session came from and offer to open it.
  */
-const FORKED_MODEL: GraphModel = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
+const FORKED_MODEL: GraphViewData = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
   forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
 } })
 
@@ -101,7 +101,7 @@ const FORKED_MODEL: GraphModel = buildGraph({ messages: buildFixtureMessages(), 
  * T6.5: a compaction that replayed the provider's replacement window instead of leaving a summary.
  * The node says which one it was, so the reader knows what the agent could still see.
  */
-const COMPACTED_MODEL: GraphModel = buildGraph({ messages: [
+const COMPACTED_MODEL: GraphViewData = buildGraph({ messages: [
     ...buildFixtureMessages().slice(0, 2),
     {
       id: "msg_compact_1",
@@ -135,7 +135,7 @@ type Harness = {
 }
 
 type HarnessProps = {
-  model?: GraphModel
+  model?: GraphViewData
   selection?: string
   level?: ZoomLevel
   projection?: Projection
@@ -422,7 +422,7 @@ export const Narrow = {
 }
 
 /** A tool node with long output proves the inspector scrolls rather than growing the panel. */
-const LONG_OUTPUT_MODEL: GraphModel = {
+const LONG_OUTPUT_MODEL: GraphViewData = {
   root: "session",
   nodes: [
     {
@@ -464,7 +464,7 @@ export const LongOutput = {
  * T6.7 — hostile content in a label, a summary and a tool command. The card markup is injected with
  * `innerHTML` by the renderer, so this story is the end-to-end proof that escaping holds.
  */
-const HOSTILE_MODEL: GraphModel = {
+const HOSTILE_MODEL: GraphViewData = {
   root: "session",
   nodes: [
     { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },

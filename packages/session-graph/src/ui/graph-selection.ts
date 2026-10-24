@@ -1,10 +1,10 @@
-import { breadcrumbs, type GraphModel } from "@opencode/session-ui/graph"
+import { breadcrumbs, type GraphViewData } from "@opencode/session-ui/graph"
 import { GraphController } from "spacegraphjs/control"
 import { createEffect, createSignal, onCleanup } from "solid-js"
 
 export type GraphSelectionOptions = {
   /** The model the selection is read from. */
-  model: () => GraphModel
+  model: () => GraphViewData
   /** The host's controlled selection; the view mirrors it into the controller. */
   controlled: () => string | undefined
   /** The host is told what the reader selected. */

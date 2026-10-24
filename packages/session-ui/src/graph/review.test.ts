@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { reviewChanges, reviewModel } from "./review"
-import type { GraphModel, GraphNode } from "./model"
+import type { GraphViewData, GraphNode } from "./model"
 
 const node = (id: string, label = id): GraphNode => ({
   id,
@@ -10,7 +10,7 @@ const node = (id: string, label = id): GraphNode => ({
   data: { path: label },
 })
 
-const model = (nodes: GraphNode[], edges: GraphModel["edges"] = []): GraphModel => ({
+const model = (nodes: GraphNode[], edges: GraphViewData["edges"] = []): GraphViewData => ({
   root: "session",
   nodes,
   edges,
@@ -47,7 +47,7 @@ describe("review profile", () => {
 
   test("keeps model metadata in the review projection", () => {
     const before = model([node("file:a", "a.ts")])
-    const after: GraphModel = {
+    const after: GraphViewData = {
       ...model([node("file:a", "a.ts"), node("file:b", "b.ts")]),
       goal: "Review changes",
       turns: ["turn:u1"],

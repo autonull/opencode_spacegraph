@@ -89,7 +89,7 @@ export type GraphSnapshotMeta = {
   missing: WorkspaceSnapshot["missing"]
 }
 
-export type GraphModel = {
+export type GraphViewData = {
   root: string
   /** T29.3 — the workspace root when a snapshot is present; `root` stays the literal session id. */
   workspaceRoot?: string

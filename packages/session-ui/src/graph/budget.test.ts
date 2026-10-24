@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { DEFAULT_BUDGET, applyNodeBudget, byProximity, sessionOrder } from "./budget"
 import { buildFixtureGraph } from "./fixture"
 import { layoutGraph } from "./layout"
-import type { GraphModel } from "./model"
+import type { GraphViewData } from "./model"
 
 // T17.5 — the DOM card budget follows the camera. The adapter spends the budget in the order it
 // walks the model's nodes, so the order decides which nodes get a card and which fall back to a
@@ -39,7 +39,7 @@ describe("the card budget follows the camera", () => {
   })
 
   test("the order keeps the session's order among equal distances", () => {
-    const model: GraphModel = {
+    const model: GraphViewData = {
       root: "session",
       nodes: [
         { id: "a", kind: "tool", label: "a", status: "success" },

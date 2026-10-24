@@ -1,4 +1,4 @@
-import type { GraphModel, GraphNode, Layout } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode, Layout } from "@opencode/session-ui/graph"
 import { COMPACT_SIZE, PHASE_CATEGORIES, matrixColumn, nodeSize } from "@opencode/session-ui/graph"
 
 export type AxisLabel = { id: string; label: string; x: number; y: number; role: "row" | "column" }
@@ -23,7 +23,7 @@ export type Translate = (key: string, params?: Record<string, string | number | 
  * windowed map still says which turn it shows.
  */
 export function buildAxisLabels(
-  model: GraphModel,
+  model: GraphViewData,
   rows: GraphNode[][],
   layout: Layout,
   turnNumbers: ReadonlyMap<string, number>,

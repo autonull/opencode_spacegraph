@@ -1,4 +1,4 @@
-import type { GraphModel, GraphNode, Range } from "./model"
+import type { GraphViewData, GraphNode, Range } from "./model"
 import type { NodeKind } from "./vocabulary"
 
 /**
@@ -125,7 +125,7 @@ export const actionRegistry: Partial<Record<NodeKind, ActionFactory>> = {
   },
 }
 
-export function actionsFor(node: GraphNode, _model?: GraphModel): ActionSpec[] {
+export function actionsFor(node: GraphNode, _model?: GraphViewData): ActionSpec[] {
   return actionRegistry[node.kind]?.(node) ?? []
 }
 

@@ -1,5 +1,5 @@
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import { nodeByID, type GraphModel } from "@opencode/session-ui/graph"
+import { nodeByID, type GraphViewData } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { ScopedOverlay } from "spacegraphjs/overlays"
@@ -12,7 +12,7 @@ import { createGraphTheme } from "./theme"
 import { GraphIconButton } from "./GraphIconButton"
 
 export type TurnMapOverlayProps = {
-  model: GraphModel
+  model: GraphViewData
   /** The turn to summarize; the overlay is empty when it is not in the model. */
   turnID: string
   /** Defaults to the live host theme read from CSS tokens (U3.7). */

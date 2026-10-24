@@ -1,6 +1,6 @@
 import { deriveZoom } from "@spacegraphjs/kernel"
 import type { Node } from "@spacegraphjs/kernel"
-import type { GraphModel, GraphNode } from "./model"
+import type { GraphViewData, GraphNode } from "./model"
 import { graphModelToKernel, graphViewMeta, toGraphNode, toGraphView } from "./view"
 import type { ZoomLevel } from "./vocabulary"
 
@@ -13,10 +13,10 @@ export const ZOOM_RANK: Readonly<Record<ZoomLevel, number>> = {
 export type ZoomExpansion = ReadonlySet<string> | ((node: GraphNode) => boolean)
 
 export const zoomModel = (
-  model: GraphModel,
+  model: GraphViewData,
   level: ZoomLevel,
   expansion?: ZoomExpansion,
-): GraphModel => {
+): GraphViewData => {
   const expanded =
     expansion === undefined
       ? undefined

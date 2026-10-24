@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { actionsFor, filterActionsByCapabilities, capabilitiesFromSnapshot } from "./actions"
-import { type GraphModel, type GraphNode } from "./model"
+import { type GraphViewData, type GraphNode } from "./model"
 
-function makeModel(nodes: GraphNode[] = []): GraphModel {
+function makeModel(nodes: GraphNode[] = []): GraphViewData {
   return {
     root: "session",
     nodes,

@@ -6,7 +6,7 @@ import {
   layoutGraph,
   nodeSize,
   nodesAtLevel,
-  type GraphModel,
+  type GraphViewData,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { buildRenderModel } from "./buildRenderModel"
@@ -128,7 +128,7 @@ test("cards are budgeted and degrade to labels above the cap", () => {
 })
 
 test("card markup escapes host content", () => {
-  const synthetic: GraphModel = {
+  const synthetic: GraphViewData = {
     root: "session",
     nodes: [
       { id: "session", kind: "session", label: "Session", status: "neutral" },

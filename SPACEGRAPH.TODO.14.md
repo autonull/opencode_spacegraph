@@ -29,7 +29,7 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
 
 ### Status
 
-All base slices (1–9) are implemented. Remaining items are explicitly deferred: `SessionKernel.checkpoint()`, the `GraphModel` → `GraphView` rename collision, and the out-of-base S10 real-time work.
+All base slices (1–9) are implemented. `SessionKernel.checkpoint()` and the type rename are resolved; S10 real-time work is out of base.
 
 ### Remaining
 
@@ -43,7 +43,7 @@ All base slices (1–9) are implemented. Remaining items are explicitly deferred
   7. [x] Extracted the session builder into `session-builder.ts` and workspace stages into `workspace-derivers.ts`; `build.ts` is now orchestration only.
   8. [x] Replaced `model.golden*.json` with `graph.contract.json` (semantic kind/count/invariant contract) and `graph.sample.json` (small decodable kernel sample); `contract.test.ts` enforces both.
   9. [x] Converted `actionsFor` to a per-kind `actionRegistry` of factories.
-  10. [ ] Rename `GraphModel` → `GraphView` is deferred: `session-graph/src/ui/GraphView.tsx` already owns the `GraphView` component name and imports the type in the same file. Choose a non-colliding type name (for example `GraphViewData`) or rename the component first.
+  10. [x] Renamed `GraphModel` → `GraphViewData` across session-ui, session-graph, app consumers, and gui-extensions, avoiding the `GraphView` component collision. 44 files; all typechecks and suites green.
   11. [x] Kernel gate: `build:packages`, `test:kernel` (47 pass), `session-ui` typecheck, `session-graph` typecheck all green.
 - [x] **Slice 4 — Navigation** (search + `g` grammar as query macros).
   - `navigation.ts`: 9 mnemonics, `parseNavigation` (`g f` / `gf`), `navigationTargets`, `navigationResults`, `nextNavigationTarget`, generated `navigationHelp`.
@@ -55,7 +55,7 @@ All base slices (1–9) are implemented. Remaining items are explicitly deferred
   - [x] `reviewChanges` / `reviewModel` in session-ui using `diffKernels`; review projection keeps changed nodes and adjacent edge endpoints; 3 tests.
   - [x] `PROFILE_PRESETS` / `applyProfile` (all, session, code, review) and a Domains-menu preset row; 4 tests.
   - [x] Empty states already ship for canvas, inspector, file rail, and equalizer.
-  - [ ] `SessionKernel.checkpoint()` remains deferred.
+  - [x] `SessionKernel.checkpoint()` returns the memoized state + version and stays stable across later appends; 2 tests.
 - [x] **Slice 6 — Clusters + adaptive** (`deriveZoom` + expansion; adapter bands already grouped turns/phases).
   - [x] Kernel `deriveZoom({ levelOf, rank, level, expansion })`: rank table or function, per-node expansion override; 5 tests.
   - [x] Host `zoomModel(model, level, expansion)` using `minLevel` + `ZOOM_RANK`; 4 tests.

@@ -14,7 +14,7 @@ import {
   type DetailMode,
   type Domain,
   type GraphArrangement,
-  type GraphModel,
+  type GraphViewData,
   type GraphSide,
   type Layout,
   type ZoomLevel,
@@ -114,7 +114,7 @@ export type GraphToolbarProps = {
    */
   endInset?: string
   /** T27.1: the model to derive domain presence from. */
-  model?: GraphModel
+  model?: GraphViewData
   /** T27.1: the currently selected domains (lens). */
   domains?: ReadonlySet<Domain>
   /** T27.1: callback when the domain lens changes. */

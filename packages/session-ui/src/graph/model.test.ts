@@ -8,16 +8,16 @@ import {
   toolNodeID,
   turnNodeID,
   type EdgeKind,
-  type GraphModel,
+  type GraphViewData,
   type NodeKind,
 } from "./model"
 import { buildFixtureGraph, buildFixtureMessages, buildInterruptedFixtureMessages, CHANGED_FILES } from "./fixture"
 
-const nodesOf = (model: GraphModel, kind: NodeKind) => model.nodes.filter((node) => node.kind === kind)
+const nodesOf = (model: GraphViewData, kind: NodeKind) => model.nodes.filter((node) => node.kind === kind)
 
-const edgesOf = (model: GraphModel, kind: EdgeKind) => model.edges.filter((edge) => edge.kind === kind)
+const edgesOf = (model: GraphViewData, kind: EdgeKind) => model.edges.filter((edge) => edge.kind === kind)
 
-const ids = (model: GraphModel) => model.nodes.map((node) => node.id)
+const ids = (model: GraphViewData) => model.nodes.map((node) => node.id)
 
 const idle = (id: string) => ({ id, type: "idle", outcome: "succeeded", time: { created: 1 } }) as const
 

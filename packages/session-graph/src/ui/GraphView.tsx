@@ -16,7 +16,7 @@ import type {
   EqualizerRuleSet,
   GraphArrangement,
   GraphLayout,
-  GraphModel,
+  GraphViewData,
   GraphNode,
   GraphSide,
   Layout,
@@ -120,7 +120,7 @@ const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
 const REST_SETTLE_MS = 120
 
 export type GraphViewProps = {
-  model: GraphModel
+  model: GraphViewData
   /** Defaults to the live host theme read from CSS tokens (U3.7). */
   theme?: RenderTheme
   level?: ZoomLevel

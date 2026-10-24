@@ -1,4 +1,4 @@
-import type { GraphModel, GraphNode } from "./model"
+import type { GraphViewData, GraphNode } from "./model"
 import type { Position } from "./layout"
 import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
 
@@ -14,10 +14,10 @@ import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
  * saved map reads the same whoever opens it.
  */
 export function byProximity(
-  model: GraphModel,
+  model: GraphViewData,
   positions: ReadonlyMap<string, Position>,
   centre: readonly [number, number, number],
-): GraphModel {
+): GraphViewData {
   const distance = new Map<string, number>()
 
   for (const node of model.nodes) {
@@ -37,7 +37,7 @@ export function byProximity(
 }
 
 /** Where each node sits in the session's own order, so a surface that reads the session can say so. */
-export function sessionOrder(model: GraphModel): Map<string, number> {
+export function sessionOrder(model: GraphViewData): Map<string, number> {
   return new Map(model.nodes.map((node, index) => [node.id, index]))
 }
 
@@ -77,9 +77,9 @@ const priority = (node: GraphNode, weights: Readonly<Record<string, number>>) =>
   weights[node.kind] ?? 0
 
 export const applyNodeBudget = (
-  model: GraphModel,
+  model: GraphViewData,
   budget: VisibilityBudget = DEFAULT_BUDGET,
-): GraphModel => {
+): GraphViewData => {
   if (model.nodes.length <= budget.maxNodes) return model
   const kept = [...model.nodes]
     .sort(
