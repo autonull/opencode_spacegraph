@@ -31,10 +31,11 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
 
 - [ ] **Slice 3 — Rewrite the host** (in progress, 3 days).
   1. [x] Acceptance suite landed: `packages/session-ui/src/graph/acceptance.test.ts`, 21 product behavior tests, green against the current host. This is the rewrite gate.
-  2. [ ] Add `buildSessionKernel`, 11 thin derivers, `toGraphView` memoized by kernel version, and `buildGraph({ kernel? })`.
-  3. [ ] Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
-  4. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
-  5. [ ] Run the kernel build gate before OpenCode typecheck/tests.
+  2. [x] Host ↔ kernel projection landed in `packages/session-ui/src/graph/view.ts`: `toKernelNode`/`toKernelEdge`, `graphModelToKernel`, `graphViewMeta`, `toGraphView`, and `createGraphViewCache` (memoized by kernel version + identity). Five round-trip/cache tests.
+  3. [ ] Make the builder emit a `Kernel` directly (no GraphModel intermediate), add `buildSessionKernel`, the 11 thin derivers, and `buildGraph({ kernel? })`.
+  4. [ ] Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
+  5. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
+  6. [ ] Run the kernel build gate before OpenCode typecheck/tests.
 - [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
 - [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).
 - [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
