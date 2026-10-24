@@ -27,6 +27,10 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   - Nested repo: `script/build-packages.ts` `PACKAGES`, `test/package-exports.test.ts` `LEAF_PACKAGES`, `test/boundaries.test.ts` dependency-free kernel rule, `package.json` `test:kernel` and `test:full`.
   - `test:exports` and `test:boundaries` are green after the build.
 
+### Status
+
+All base slices (1–9) are implemented. Remaining items are explicitly deferred: `SessionKernel.checkpoint()`, the `GraphModel` → `GraphView` rename collision, and the out-of-base S10 real-time work.
+
 ### Remaining
 
 - [ ] **Slice 3 — Rewrite the host** (in progress, 3 days).
