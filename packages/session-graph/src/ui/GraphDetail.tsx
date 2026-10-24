@@ -78,6 +78,8 @@ export type GraphDetailProps = {
   renderSummary?: (node: GraphNode) => JSX.Element | undefined
   /** T3.5: the shareable link to the selected node; the detail offers to copy it. */
   link?: string
+  /** A2: copies the current facet question as a view link, beside the node link. */
+  onCopyView?: () => void
   onSelect: (id: string) => void
   onOpenTranscript?: (id: string) => void
   /** T6.5: opens another session — the child of a delegation, the session a fork came from, or the parent of a child session. */
@@ -163,6 +165,13 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
             onClick={() => copyLink(link())}
           />
         )}
+      </Show>
+      <Show when={props.onCopyView}>
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.inspector.copyView")}
+          icon="outline-eye"
+          onClick={() => props.onCopyView?.()}
+        />
       </Show>
       <Show when={props.onOpenTranscript && openInTranscript(props.model, props.node.id)}>
         <GraphIconButton

@@ -48,6 +48,13 @@ async function openLayers(page: Page) {
   if (!open) await menu.locator(":scope > summary").click()
 }
 
+async function openFacets(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-facets"]`)
+  const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await menu.locator(":scope > summary").click()
+  return menu
+}
+
 
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -199,6 +206,69 @@ test("selects a node from search and inspects it in the DOM panel", async ({ pag
   const panel = page.locator(inspector)
   await expect(panel.getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()
   await expect(panel.getByText("File", { exact: true })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("filters the map with a facet chip and keeps the answer addressable", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const facets = await openFacets(page)
+  await facets.locator('[data-slot="graph-facet-kind"][data-value="file"]').click()
+  await expect(facets.locator('[data-slot="graph-facet-kind"][data-value="file"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+
+  // Only files (and the session root) survive the kind facet; the tools are gone from the map.
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="tool"]`).count()).toBe(0)
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="file"]`).count()).toBeGreaterThan(0)
+
+  // The chip reports what it kept against what the map had.
+  await expect(facets.locator('[data-slot="graph-facet-kind"][data-value="file"]')).toContainText("/")
+
+  expect(errors).toEqual([])
+})
+
+test("switches the lens by preset and by domain toggles", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const layers = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
+  await openLayers(page)
+  await layers.locator('[data-slot="graph-lens-preset"][data-value="runtime"]').click()
+  await expect(layers.locator('[data-slot="graph-lens-preset"][data-value="runtime"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+
+  // A domain toggle composes over the same scope; the preset is simply no longer the whole state.
+  await layers.locator('[data-slot="graph-domain-option"][data-value="code"]').click()
+  await expect(layers.locator('[data-slot="graph-domain-option"][data-value="code"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await expect(layers.locator('[data-slot="graph-lens-preset"][data-value="runtime"]')).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  )
+
+  expect(errors).toEqual([])
+})
+
+test("opens a view permalink with its facet question applied", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openSession(page, graphFixture())
+
+  await page.evaluate(() => {
+    window.location.hash = "#graph?kind:file"
+  })
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+
+  const facets = await openFacets(page)
+  await expect(facets.locator('[data-slot="graph-facet-kind"][data-value="file"]')).toHaveAttribute("aria-pressed", "true")
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="tool"]`).count()).toBe(0)
 
   expect(errors).toEqual([])
 })

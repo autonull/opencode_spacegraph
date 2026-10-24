@@ -101,7 +101,9 @@ export {
   nodeByID,
   openInTranscript,
   outgoing,
+  rankedSearch,
   search,
+  searchText,
   shortestPath,
   subtree,
   turnSubgraph,
@@ -113,8 +115,19 @@ export {
 
 export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
 export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
+export {
+  applyFacets,
+  DEFAULT_FACETS,
+  facetCounts,
+  facetsFromQuery,
+  facetsToQuery,
+  hasFacets,
+  type FacetCount,
+  type FacetCounts,
+  type GraphFacets,
+} from "./facets"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
-export { DEFAULT_BUDGET, applyNodeBudget, type VisibilityBudget } from "./budget"
+export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
 export { exportGraphFilename, exportGraphJSON } from "./export"
 
 export {

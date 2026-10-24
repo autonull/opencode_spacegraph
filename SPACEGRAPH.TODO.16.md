@@ -1,17 +1,25 @@
 # SPACEGRAPH.TODO.16 — The Answerable Map: Traces, Facets, Diffs, Group Power, and a First Write Path (draft 4)
 
-**Status:** drafted 2026-10-24, not started. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
+**Status:** A complete (A1 + A2 shipped 2026-10-24). Next gate is the T2.2 evidence run; **B and C are not started and must not start until that run passes**. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
 
 ## Progress
 
 | Milestone | State | Gate | Days |
 |-----------|-------|------|------|
-| **A — Questions & Scopes** | A1 complete | T2.2 evidence run | 3.0 |
-| **B — Comparison, Verbs, Groups, Edges** | Not started | Evidence pass | 2.5 |
-| **C — Annotations** | Not started | Evidence pass | 1.25 |
+| **A — Questions & Scopes** | **Complete** (A1 + A2) | T2.2 evidence run | 3.0 |
+| **B — Comparison, Verbs, Groups, Edges** | Not started — blocked on T2.2 | Evidence pass | 2.5 |
+| **C — Annotations** | Not started — blocked on T2.2 | Evidence pass | 1.25 |
 | **Platform track (parallel/optional)** | Not started | Second host / platform demand | 2.75 |
 
-**Core total: 6.75 days** (was 8.25; substrate track decoupled). **Earliest user value: day ~3** (Milestone A unblocks T2.2).
+**Core total: 6.75 days** (was 8.25; substrate track decoupled). **A is delivered; earliest user value is available now.** The next action is the T2.2 evidence run, not more feature work.
+
+### Where the work stands
+
+- **A1 — trace overlay: complete.** `packages/session-graph/src/ui/overlay.ts` + `overlay.test.ts`; `GraphView` trace state/keys; `cardTemplate` lit/dim markup; copy-as-outline.
+- **A2 — facets, ranked search, lens, permalinks: complete.** New `packages/session-ui/src/graph/facets.ts` (+ tests) owns the facet grammar, live counts, and the single scope step. `selectors.rankedSearch` uses `Navigation.searchBy` with the host scorer. The toolbar has facet chips and per-domain lens toggles with a runtime preset. `graph-permalink.ts` carries `?q=` and supports view-only links (`#graph?kind:file`). `degreeBudget` feeds `fileRelations` into `applyNodeBudget` with the selection protected. `GraphDetail` offers copy-view beside copy-node.
+- **Evidence before invention:** B/C remain queued by design. The T2.2 run compares the graph with the transcript on the five investigative tasks; a fail ends feature work and leaves the library as the deliverable.
+- **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
+
 
 ---
 
@@ -120,8 +128,8 @@ Stated measurably:
 
 | Slice | Days | Delivers |
 |-------|------|----------|
-| **A1 — Overlay core + traces** | 1.25 | Overlay classification algebra: `answerIds` set → `lit`/`dim` CSS classes on host card markup + `visible=false` on non-answer edges; one a11y announcement. Host: "Why" (`why`), "What led here" (`forwardChain`), "Related" (`incoming` ∪ `outgoing`) as buttons on cards + `w`/`e`/`r` keys; `[`/`]` steps lit nodes; copy answer as markdown outline (breadcrumbs per lit node); `graph.why`/`graph.led-here`/`graph.related` palette commands; trace presets replace self-navigating actions (`file.history`, `symbol.showCallers` → trace presets); +2 e2e rows. |
-| **A2 — Facets, ranked search, lens, permalinks** | 1.75 | Facet popover: text + kind/status/domain chips with live kept/total counts; "keep only these" scopes via existing `scopeModel`; ranked search via `searchBy(model, query, hostScoreFn)` — host scorer (label-prefix > name > path > body; model-order tie-break); lens menu gains per-domain toggles, presets as shortcuts, "custom" reachable or select deleted; runtime lens preset (session + runtime domains, `running`/`pending`, latest test-run); **degree-aware budget weights** from `fileRelations` (hubs + selection survive caps); facet state serializes to `?q=` in permalink; round-trip law; copy-view beside copy-node; +3 e2e rows. |
+| **A1 — Overlay core + traces** ✅ | 1.25 | Overlay classification algebra: `answerIds` set → `lit`/`dim` CSS classes on host card markup + `visible=false` on non-answer edges; one a11y announcement. Host: "Why" (`why`), "What led here" (`forwardChain`), "Related" (`incoming` ∪ `outgoing`) as buttons on cards + `w`/`e`/`r` keys; `[`/`]` steps lit nodes; copy answer as markdown outline (breadcrumbs per lit node); `graph.why`/`graph.led-here`/`graph.related` palette commands; trace presets replace self-navigating actions (`file.history`, `symbol.showCallers` → trace presets); +2 e2e rows. |
+| **A2 — Facets, ranked search, lens, permalinks** ✅ | 1.75 | Facet popover: text + kind/status/domain chips with live kept/total counts; "keep only these" scopes via existing `scopeModel`; ranked search via `searchBy(model, query, hostScoreFn)` — host scorer (label-prefix > name > path > body; model-order tie-break); lens menu gains per-domain toggles, presets as shortcuts, "custom" reachable or select deleted; runtime lens preset (session + runtime domains, `running`/`pending`, latest test-run); **degree-aware budget weights** from `fileRelations` (hubs + selection survive caps); facet state serializes to `?q=` in permalink; round-trip law; copy-view beside copy-node; +3 e2e rows. |
 
 **A acceptance rows: 5.**
 
@@ -270,8 +278,8 @@ RTL: popovers, status bar, group headers, compare window, note composer use logi
 
 | Path / symbol | Fate |
 |---------------|------|
-| Dead `custom` option in lens select | Reachable via toggles, or deleted — decided in A2 |
-| `applyProfile` (unused export) | Consumed by lens menu or deleted (stop rule #17) |
+| Dead `custom` option in lens select | **Deleted in A2**; custom state is the live domain-toggle set |
+| `applyProfile` (unused export) | Retained as the pure preset scope helper and exercised by `profiles.test.ts`; the toolbar's live path is `applyFacets` |
 | `shortestPath`/`forwardChain` as consumerless exports | Gain A1/B1 consumers; anything still consumerless at plan end is deleted |
 | Self-navigating action targets (`file.history`, `symbol.showCallers` → self) | Retarget to trace presets in A1; navigate-to-self is a bug after A |
 | Draft-1's four-demo surface | One demo survives; no orphan pages |
@@ -337,7 +345,9 @@ Transcript, Layers menu, mouse map (§7.1a), capture strictness untouched.
 
 ---
 
-## 15. Day 1 (Milestone A1 — host only, no substrate dependency) — **COMPLETE**
+## 15. Milestone A — **COMPLETE** (host only, no substrate dependency)
+
+### A1 — trace overlay (complete)
 
 **In `packages/session-ui/src/graph/` and `packages/session-graph/src/ui/`:**
 
@@ -351,5 +361,17 @@ Transcript, Layers menu, mouse map (§7.1a), capture strictness untouched.
 **Additional fixes:**
 - Fixed `parentIndex` in `session-ui/src/graph/lookup.ts` to correctly map child→parent for `part-of` edges (was inverted).
 - Updated `session-graph/src/ui/GraphDetail.tsx`, `GraphPopover.tsx`, `GraphInspector.tsx` to pass trace callbacks.
+
+### A2 — facets, ranked search, lens, permalinks (complete)
+
+1. ✅ `session-ui/src/graph/facets.ts` (new) — `GraphFacets`, `applyFacets`, `facetCounts`, `facetsFromQuery`, `facetsToQuery`, `hasFacets`; one `scopeModel` call plus classification; round-trip and count laws in `facets.test.ts`.
+2. ✅ `selectors.ts` — exported `searchText`; added `rankedSearch` using `Navigation.searchBy` with a host scorer (label prefix > label > name > path > body, model-order tie-break). `GraphSearch` uses it.
+3. ✅ `GraphToolbar.tsx` — facet popover (text + kind/status chips with live kept/total), per-domain lens toggles, preset shortcuts, and a runtime preset (`session + runtime + verification`, `running`/`pending`). The dead `custom` select option is deleted; custom state is the live set of toggles.
+4. ✅ `GraphView.tsx` — facet state drives one `turnScoped → applyFacets → drawn → budget → render` pipeline; `facetQuery` mirrors a permalink; copy-view copies the current `q=`; trace/facet overlays never re-layout.
+5. ✅ `budget.ts` — `degreeBudget(model, selection)` boosts the file weight by the hub's traffic and protects the selection; `GraphView` applies it through `applyNodeBudget`.
+6. ✅ `graph-permalink.ts` — `?q=` round-trip and view-only links (`#graph?kind:file`); copy-view beside copy-node in `GraphDetail`, `GraphInspector`, and `GraphPopover`.
+7. ✅ Three product e2e rows: facet filtering, lens preset/domain toggles, and a view permalink. `bun run check` green.
+
+**Remaining core work:** the **T2.2 evidence run** (§ Gate). If it passes, implement B (§ Milestone B) then C (§ Milestone C). If it fails, stop feature work and publish the finding.
 
 The substrate track (P1/P2) runs in parallel if a second contributor exists, or lands after Milestone A completes, or triggers on second-host demand.

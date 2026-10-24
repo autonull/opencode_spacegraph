@@ -7,21 +7,28 @@ import { createSignal, Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
+  DOMAINS,
   GRAPH_ARRANGEMENTS,
   LAYOUTS,
+  NODE_KINDS,
+  NODE_STATUSES,
   PROFILE_PRESETS,
   ZOOM_LEVELS,
   type DetailFraming,
   type DetailMode,
   type Domain,
+  type FacetCounts,
   type GraphArrangement,
+  type GraphFacets,
   type GraphViewData,
   type GraphSide,
   type Layout,
+  type NodeKind,
+  type NodeStatus,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
-import { ARRANGEMENT_KEY, DEPTH_KEY, DETAIL_MODE_KEY, LAYOUT_KEY, LEVEL_KEY, SIDE_KEY } from "./vocabulary"
+import { ARRANGEMENT_KEY, DEPTH_KEY, DETAIL_MODE_KEY, DOMAIN_KEY, KIND_KEY, LAYOUT_KEY, LEVEL_KEY, SIDE_KEY, STATUS_KEY } from "./vocabulary"
 
 export type GraphToolbarProps = {
   capabilities?: RendererCapabilities
@@ -29,9 +36,11 @@ export type GraphToolbarProps = {
   /** The semantic level: one axis of what the map shows. */
   level?: ZoomLevel
   onLevel?: (level: ZoomLevel) => void
-  /** The domain lens: which parts of the session the map keeps. */
-  domains?: ReadonlySet<Domain>
-  onDomainsChange?: (domains: ReadonlySet<Domain>) => void
+  /** The question the map answers: text, kind/status chips, and the domain lens, in one state. */
+  facets?: GraphFacets
+  /** Live kept/total counts for the facet chips. */
+  facetCounts?: FacetCounts
+  onFacetsChange?: (facets: GraphFacets) => void
   /** The projection spectrum: flat through orbit. */
   depth?: DepthMode
   onDepth?: (depth: DepthMode) => void
@@ -48,6 +57,8 @@ export type GraphToolbarProps = {
   zoomOutDisabled?: boolean
   zoomInDisabled?: boolean
   onSearch: () => void
+  /** A2: copy the current facet question as a permalink. */
+  onCopyView?: () => void
   /** T17.1: the layout on screen; the host persists the choice. */
   layout?: Layout
   onLayoutChange?: (layout: Layout) => void
@@ -167,12 +178,64 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     props.checkpoint !== undefined && props.turnCount !== undefined && props.checkpoint < props.turnCount - 1
   const timeShown = () => timeOpen() ?? offLive()
 
+  const facets = () => props.facets
+  const presetStatuses = (preset: (typeof PROFILE_PRESETS)[number]) =>
+    "statuses" in preset ? preset.statuses : undefined
   const activeProfile = () =>
     PROFILE_PRESETS.find(
-      (preset) =>
-        preset.domains.length === (props.domains?.size ?? 0) &&
-        preset.domains.every((domain) => props.domains?.has(domain)),
+      (preset) => {
+        const statuses = presetStatuses(preset) ?? []
+        return (
+          preset.domains.length === (facets()?.domains.size ?? 0) &&
+          preset.domains.every((domain) => facets()?.domains.has(domain)) &&
+          statuses.length === (facets()?.statuses.size ?? 0) &&
+          statuses.every((status) => facets()?.statuses.has(status))
+        )
+      },
     )?.id
+  const changeFacets = (next: Partial<GraphFacets>) => {
+    const current = facets()
+    if (!current) return
+    props.onFacetsChange?.({
+      query: next.query ?? current.query,
+      kinds: next.kinds ?? current.kinds,
+      statuses: next.statuses ?? current.statuses,
+      domains: next.domains ?? current.domains,
+    })
+  }
+  const toggleDomain = (domain: Domain) => {
+    const current = new Set(facets()?.domains ?? [])
+    if (current.has(domain)) {
+      if (domain === "session") return
+      current.delete(domain)
+    } else {
+      current.add(domain)
+    }
+    changeFacets({ domains: current })
+  }
+  const toggleKind = (kind: NodeKind) => {
+    const current = new Set(facets()?.kinds ?? [])
+    if (current.has(kind)) current.delete(kind)
+    else current.add(kind)
+    changeFacets({ kinds: current })
+  }
+  const toggleStatus = (status: NodeStatus) => {
+    const current = new Set(facets()?.statuses ?? [])
+    if (current.has(status)) current.delete(status)
+    else current.add(status)
+    changeFacets({ statuses: current })
+  }
+  const countOf = (value: string, counts: readonly { value: string; kept: number; total: number }[]) =>
+    counts.find((entry) => entry.value === value)
+  const countLabel = (value: string, counts: readonly { value: string; kept: number; total: number }[]) => {
+    const count = countOf(value, counts)
+    return count ? i18n.t("ui.sessionGraph.facets.count", { kept: String(count.kept), total: String(count.total) }) : undefined
+  }
+  const applyPreset = (preset: (typeof PROFILE_PRESETS)[number]) =>
+    changeFacets({
+      domains: new Set(preset.domains),
+      statuses: new Set(presetStatuses(preset) ?? []),
+    })
   const depthAvailable = (depth: DepthMode) => !props.capabilities || supportsDepth(props.capabilities, depth)
   const depthReason = (depth: DepthMode) =>
     depthAvailable(depth)
@@ -234,30 +297,122 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   )
 
   const lensControl = () => (
-    <Show when={props.onDomainsChange}>
-      <label class="flex items-center gap-1 text-12-regular text-text-weak">
-        <span>{i18n.t("ui.sessionGraph.layers.lens")}</span>
-        <select
-          data-slot="graph-layers-lens"
-          class="h-6 rounded-sm border border-border-weaker-base bg-surface-base px-1 text-12-regular text-text-base"
-          aria-label={i18n.t("ui.sessionGraph.layers.lens")}
-          value={activeProfile() ?? "custom"}
-          onChange={(event) => {
-            const preset = PROFILE_PRESETS.find((item) => item.id === event.currentTarget.value)
-            if (!preset) return
-            props.onDomainsChange?.(new Set(preset.domains))
-          }}
-        >
-          <Show when={!activeProfile()}>
-            <option value="custom" disabled>
-              {i18n.t("ui.sessionGraph.layers.custom")}
-            </option>
-          </Show>
-          {PROFILE_PRESETS.map((preset) => (
-            <option value={preset.id}>{i18n.t(preset.labelKey)}</option>
-          ))}
-        </select>
-      </label>
+    <Show when={props.onFacetsChange}>
+      <div data-slot="graph-lens" class="flex w-full flex-col gap-1">
+        <div class="px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+          {i18n.t("ui.sessionGraph.layers.lens")}
+        </div>
+        <div class="flex flex-wrap gap-1 px-1">
+          {PROFILE_PRESETS.map((preset) =>
+            option({
+              label: i18n.t(preset.labelKey),
+              onClick: () => applyPreset(preset),
+              pressed: activeProfile() === preset.id,
+              slot: "graph-lens-preset",
+              value: preset.id,
+              keepOpen: true,
+            }),
+          )}
+        </div>
+        <div class="flex flex-col">
+          {DOMAINS.map((domain) =>
+            option({
+              label: i18n.t(DOMAIN_KEY[domain]),
+              onClick: () => toggleDomain(domain),
+              pressed: facets()?.domains.has(domain),
+              disabled: domain === "session",
+              slot: "graph-domain-option",
+              value: domain,
+              keepOpen: true,
+            }),
+          )}
+        </div>
+        <Show when={props.facetCounts}>
+          {(counts) => (
+            <div data-slot="graph-facet-domain-counts" class="flex flex-col px-2 py-1 text-11-regular text-text-weaker">
+              {DOMAINS.map((domain) => {
+                const count = countOf(domain, counts().domains)
+                return (
+                  <span data-domain={domain}>
+                    {i18n.t(DOMAIN_KEY[domain])} · {count ? `${count.kept}/${count.total}` : "0/0"}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+        </Show>
+      </div>
+    </Show>
+  )
+
+
+  /**
+   * A2 — the facet chips. Each chip says what it keeps against what the map has; the text is the
+   * same question in words. Chips compose, and every change goes back through one scope pipeline.
+   */
+  const facetsControl = () => (
+    <Show when={props.onFacetsChange}>
+      <ToolbarMenu
+        slot="graph-toolbar-facets"
+        label={i18n.t("ui.sessionGraph.facets.title")}
+        icon="outline-sliders"
+        align="start"
+        value={i18n.t("ui.sessionGraph.facets.title")}
+        valueSlot="graph-facets-name"
+      >
+        <div class="flex w-72 flex-col gap-2">
+          <input
+            data-slot="graph-facet-query"
+            value={facets()?.query ?? ""}
+            class="h-6 w-full rounded-sm border border-border-weaker-base bg-surface-base px-2 text-12-regular text-text-base outline-none placeholder:text-text-weaker"
+            placeholder={i18n.t("ui.sessionGraph.facets.placeholder")}
+            aria-label={i18n.t("ui.sessionGraph.facets.placeholder")}
+            onInput={(event) => changeFacets({ query: event.currentTarget.value })}
+          />
+          <div class="flex max-h-72 flex-col gap-2 overflow-y-auto">
+            <div data-slot="graph-facet-kinds" class="flex flex-col">
+              <div class="px-1 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+                {i18n.t("ui.sessionGraph.facets.kinds")}
+              </div>
+              {NODE_KINDS.map((kind) =>
+                option({
+                  label: `${i18n.t(KIND_KEY[kind])} · ${countLabel(kind, props.facetCounts?.kinds ?? []) ?? "0/0"}`,
+                  onClick: () => toggleKind(kind),
+                  pressed: facets()?.kinds.has(kind),
+                  slot: "graph-facet-kind",
+                  value: kind,
+                  keepOpen: true,
+                  ariaLabel: i18n.t(KIND_KEY[kind]),
+                }),
+              )}
+            </div>
+            <div data-slot="graph-facet-statuses" class="flex flex-col">
+              <div class="px-1 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+                {i18n.t("ui.sessionGraph.facets.statuses")}
+              </div>
+              {NODE_STATUSES.map((status) =>
+                option({
+                  label: `${i18n.t(STATUS_KEY[status])} · ${countLabel(status, props.facetCounts?.statuses ?? []) ?? "0/0"}`,
+                  onClick: () => toggleStatus(status),
+                  pressed: facets()?.statuses.has(status),
+                  slot: "graph-facet-status",
+                  value: status,
+                  keepOpen: true,
+                  ariaLabel: i18n.t(STATUS_KEY[status]),
+                }),
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            data-slot="graph-facet-clear"
+            class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+            onClick={() => changeFacets({ query: "", kinds: new Set(), statuses: new Set() })}
+          >
+            {i18n.t("ui.sessionGraph.facets.clear")}
+          </button>
+        </div>
+      </ToolbarMenu>
     </Show>
   )
 
@@ -311,7 +466,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
    * separate strip.
    */
   const layersControl = () => (
-    <Show when={props.onLevel || props.onDomainsChange || props.onDepth}>
+    <Show when={props.onLevel || props.onFacetsChange || props.onDepth}>
       <ToolbarMenu
         slot="graph-toolbar-layers"
         label={i18n.t("ui.sessionGraph.layers.title")}
@@ -330,6 +485,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   const layerControls = () => (
     <>
       {layersControl()}
+      {facetsControl()}
       {layoutControl()}
     </>
   )
@@ -557,6 +713,14 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         pressed={props.searching}
         onClick={props.onSearch}
       />
+      <Show when={props.onCopyView}>
+        <GraphIconButton
+          label={i18n.t("ui.sessionGraph.toolbar.copyView")}
+          icon="outline-copy"
+          slot="graph-copy-view"
+          onClick={() => props.onCopyView?.()}
+        />
+      </Show>
       <Show when={props.onExport && props.renderModel}>
         <ToolbarMenu slot="graph-toolbar-export" label={i18n.t("ui.sessionGraph.toolbar.export")} icon="outline-share">
           {option({

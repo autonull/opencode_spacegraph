@@ -224,7 +224,7 @@ export function forwardChain(model: GraphViewData, id: string): GraphNode[] {
 const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))
 
 /** The text a search matches against: the label, the summary, and the tool's name, path, and command. */
-const searchable = (node: GraphNode) =>
+export const searchText = (node: GraphNode) =>
   [
     node.label,
     node.summary,
@@ -235,7 +235,30 @@ const searchable = (node: GraphNode) =>
   ].filter((value): value is string => !!value)
 
 export function search(model: GraphViewData, query: string): GraphNode[] {
-  return Navigation.search(model, query, searchable)
+  return Navigation.search(model, query, searchText)
+}
+
+/**
+ * A2 — ranked search. The host decides what a match is worth; the kernel orders. The scorer is
+ * deliberately coarse: a label prefix beats a label hit, which beats a tool name, a path, and the
+ * body. Ties keep model order (the sort is stable), so the same query reads the same every time.
+ */
+const rank = (node: GraphNode, needle: string): number => {
+  const label = node.label.toLowerCase()
+  if (label.startsWith(needle)) return 0
+  if (label.includes(needle)) return 1
+
+  const name = dataString(node.data?.name)?.toLowerCase()
+  if (name?.includes(needle)) return 2
+
+  const path = dataString(node.data?.path)?.toLowerCase()
+  if (path?.includes(needle)) return 3
+
+  return searchText(node).join("\n").toLowerCase().includes(needle) ? 4 : -1
+}
+
+export function rankedSearch(model: GraphViewData, query: string): GraphNode[] {
+  return Navigation.searchBy(model, query, rank)
 }
 
 const READ_KINDS = new Set<EdgeKind>(["reads", "searches", "references"])

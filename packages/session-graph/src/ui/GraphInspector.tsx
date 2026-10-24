@@ -46,6 +46,7 @@ export const GraphInspector = (props: GraphInspectorProps) => {
               diffSource={props.diffSource}
               renderSummary={props.renderSummary}
               link={props.link}
+              onCopyView={props.onCopyView}
               onSelect={props.onSelect}
               onOpenTranscript={props.onOpenTranscript}
               onOpenSession={props.onOpenSession}

@@ -15,6 +15,7 @@ import type {
   EqualizerRule,
   EqualizerRuleSet,
   GraphArrangement,
+  GraphFacets,
   GraphLayout,
   GraphViewData,
   GraphNode,
@@ -25,13 +26,18 @@ import type {
 } from "@opencode/session-ui/graph"
 import {
   ancestors,
+  applyFacets,
+  applyNodeBudget,
   byProximity,
   CARD_SIZE,
   changedFiles,
+  degreeBudget,
   DETAIL_TIER_WIDTH,
   detailTier,
-  Domain,
   equalizerScale,
+  facetCounts,
+  facetsFromQuery,
+  facetsToQuery,
   fileRelations,
   isSummaryLayout,
   isSummaryOrLogLayout,
@@ -48,7 +54,6 @@ import {
   nodeSize,
   ribbonLayout,
   scaleWindow,
-  scopeModel,
   scopeToTurns,
   sessionOrder,
   subtree,
@@ -142,6 +147,10 @@ export type GraphViewProps = {
   checkpoint?: number
   turnCount?: number
   onCheckpoint?: (index: number) => void
+  /** A2: the facet question carried by a permalink, in the `q=` grammar. */
+  facetQuery?: string
+  /** A2: the host turns the current facets into a shareable link. */
+  onCopyView?: (query: string) => void
   /**
    * Where a selected node's detail is shown: nowhere, on the node itself, in a popover beside it, or
    * in the side panel. The host persists the choice; the view mirrors it.
@@ -263,8 +272,9 @@ export const GraphView = (props: GraphViewProps) => {
   const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
   // T18.1: whether the map follows the active turn from the log.
   const [followLog, setFollowLog] = createSignal<boolean>(props.followLog ?? false)
-  // T27.1 — the domain lens (Domains menu). Session is always included.
-  const [domains, setDomains] = createSignal<ReadonlySet<Domain>>(new Set(["session"]))
+  // A2 — the question the map answers. Text, kind/status chips, and the domain lens compose into
+  // one scope; a permalink's `q=` is the same state in its shareable form.
+  const [facets, setFacets] = createSignal<GraphFacets>(facetsFromQuery(props.facetQuery ?? ""))
   const [hovered, setHovered] = createSignal<string>()
   // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
   const [popoverDismissed, setPopoverDismissed] = createSignal(false)
@@ -310,6 +320,16 @@ export const GraphView = (props: GraphViewProps) => {
     const text = copyTraceAsOutline(props.model, overlay, breadcrumbs)
     navigator.clipboard?.writeText(text)
     announce(i18n.t("ui.sessionGraph.trace.copied"))
+  }
+  // A2 — the question is an artifact too: its `q=` grammar is the shareable form.
+  const copyView = () => {
+    const query = facetsToQuery(facets())
+    if (props.onCopyView) {
+      props.onCopyView(query)
+      return
+    }
+    navigator.clipboard?.writeText(query)
+    announce(i18n.t("ui.sessionGraph.facets.copied"))
   }
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererReady, setRendererReady] = createSignal(false)
@@ -376,10 +396,9 @@ export const GraphView = (props: GraphViewProps) => {
       ),
     ),
   )
-  const scoped = createMemo(() => {
-    const turnScoped = scopeToTurns(props.model, scale().turns)
-    return scopeModel(turnScoped, domains())
-  })
+  const turnScoped = createMemo(() => scopeToTurns(props.model, scale().turns))
+  const scoped = createMemo(() => applyFacets(turnScoped(), facets()))
+  const counts = createMemo(() => facetCounts(turnScoped(), facets()))
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
   const windowAnchor = createMemo(() => {
@@ -637,9 +656,10 @@ export const GraphView = (props: GraphViewProps) => {
   // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
   const budget = createMemo(() => {
     const current = drawn()
+    const weighted = applyNodeBudget(current, degreeBudget(current, selection.selection()))
     const centre = resting()
-    if (!centre) return current
-    return byProximity(current, displayPositions(), centre)
+    if (!centre) return weighted
+    return byProximity(weighted, displayPositions(), centre)
   })
 
   const applyManualLayout = (model: RenderModel): RenderModel => {
@@ -1136,6 +1156,10 @@ export const GraphView = (props: GraphViewProps) => {
   mirror(() => props.detailMode, setDetailMode)
   mirror(() => props.peek, setPeek)
   mirror(() => props.followLog, setFollowLog)
+  mirror(
+    () => props.facetQuery,
+    (query) => setFacets(facetsFromQuery(query)),
+  )
   // A capability gap is never silent: when the active renderer cannot do 3D, fall back to 2D rather
   // than leaving the model in a projection the renderer ignores.
   createEffect(() => {
@@ -1206,8 +1230,9 @@ export const GraphView = (props: GraphViewProps) => {
         renderer={rendererID()}
         level={level()}
         onLevel={setLevel}
-        domains={domains()}
-        onDomainsChange={setDomains}
+        facets={facets()}
+        facetCounts={counts()}
+        onFacetsChange={setFacets}
         depth={depth()}
         onDepth={changeDepth}
         depthModes={DEPTH_MODES}
@@ -1221,6 +1246,7 @@ export const GraphView = (props: GraphViewProps) => {
         zoomOutDisabled={level() === "overview" || (viewport()?.zoom ?? 0) <= camera.zoomLimits().min}
         zoomInDisabled={(viewport()?.zoom ?? 0) >= camera.zoomLimits().max}
         onSearch={toggleSearch}
+        onCopyView={copyView}
         legend={legendOpen()}
         onToggleLegend={() => setLegendOpen((open) => !open)}
         gallery={galleryOpen()}
@@ -1394,6 +1420,7 @@ export const GraphView = (props: GraphViewProps) => {
                 diffSource={props.diffSource}
                 renderSummary={props.renderSummary}
                 link={props.link}
+                onCopyView={copyView}
                 onSelect={selection.select}
                 onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
                 onOpenSession={props.onOpenSession}
@@ -1509,6 +1536,7 @@ export const GraphView = (props: GraphViewProps) => {
               diffSource={props.diffSource}
               renderSummary={props.renderSummary}
               link={props.link}
+              onCopyView={copyView}
               onSelect={selection.select}
               onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
               onOpenSession={props.onOpenSession}

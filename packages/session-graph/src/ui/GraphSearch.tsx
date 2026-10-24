@@ -2,7 +2,7 @@ import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import {
   navigationHelp,
   navigationResults,
-  search,
+  rankedSearch,
 } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -25,7 +25,7 @@ export const GraphSearch = (props: GraphSearchProps) => {
   const [query, setQuery] = createSignal(props.initialQuery ?? "")
   const [active, setActive] = createSignal(0)
   const results = createMemo(
-    () => navigationResults(props.model, query()) ?? search(props.model, query()),
+    () => navigationResults(props.model, query()) ?? rankedSearch(props.model, query()),
   )
   const navigationHint = createMemo(() =>
     query().trim().toLowerCase() === "g" ? navigationHelp() : [],

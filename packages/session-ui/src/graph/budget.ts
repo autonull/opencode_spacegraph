@@ -2,6 +2,7 @@ import { applyNodeBudget as budgetKernel, type NodeBudget } from "@spacegraphjs/
 import type { GraphViewData } from "./model"
 import type { Position } from "./layout"
 import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
+import { fileRelations } from "./selectors"
 
 /**
  * T17.5 — the DOM card budget follows the camera.
@@ -78,3 +79,24 @@ export const applyNodeBudget = (
   if (model.nodes.length <= budget.maxNodes) return model
   return toGraphView(budgetKernel(graphModelToKernel(model), budget), graphViewMeta(model))
 }
+
+/**
+ * A2 — the budget reads the traffic on a file. A hub survives a cap because the session kept
+ * returning to it; the selection survives because a reader must not lose what they are holding.
+ */
+export const degreeBudget = (
+  model: GraphViewData,
+  selection: Iterable<string> = [],
+): VisibilityBudget => {
+  const relations = fileRelations(model)
+  const hub = Math.max(0, ...[...relations.values()].map((relation) => relation.reads + relation.writes))
+  return {
+    ...DEFAULT_BUDGET,
+    weights: {
+      ...DEFAULT_BUDGET.weights,
+      file: (DEFAULT_BUDGET.weights.file ?? 0) + hub,
+    },
+    protectedIds: [...selection],
+  }
+}
+

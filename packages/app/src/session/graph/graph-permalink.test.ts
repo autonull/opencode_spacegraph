@@ -12,6 +12,14 @@ const read: [string, GraphPermalink | undefined][] = [
   // The old links named a representation, and "graph" was its default: the lanes layout now.
   ["#graph:graph:turn:msg_user_1", { nodeID: "turn:msg_user_1", layout: "lanes" }],
   ["#graph:session", { nodeID: "session" }],
+  // A2: the facet question rides beside the node, or alone for a view link.
+  ["#graph:file:src/auth/token.ts?kind:file", { nodeID: "file:src/auth/token.ts", query: "kind:file" }],
+  ["#graph:ribbon:turn:msg_user_1?kind:file status:failed", {
+    nodeID: "turn:msg_user_1",
+    layout: "ribbon",
+    query: "kind:file status:failed",
+  }],
+  ["#graph?kind:file", { query: "kind:file" }],
   // Not a graph permalink.
   ["#message-msg_user_1", undefined],
   ["#graph:", undefined],
@@ -27,6 +35,8 @@ const written: [GraphPermalink, string][] = [
   [{ nodeID: "turn:msg_user_1" }, "#graph:turn:msg_user_1"],
   [{ nodeID: "turn:msg_user_1", layout: "ribbon" }, "#graph:ribbon:turn:msg_user_1"],
   [{ nodeID: "turn:msg_user_1", layout: "lanes" }, "#graph:turn:msg_user_1"],
+  [{ nodeID: "turn:msg_user_1", query: "kind:file" }, "#graph:turn:msg_user_1?kind:file"],
+  [{ layout: "matrix", query: "kind:file" }, "#graph:matrix?kind:file"],
 ]
 
 test.each(written)("writes the permalink for %o", (permalink, hash) => {

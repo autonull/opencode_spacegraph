@@ -298,6 +298,14 @@ export function SessionGraphView(props: {
           onSplitView={props.onSplitView}
           endInset={isDesktop() ? "104px" : undefined}
           frame={permalink()?.nodeID}
+          facetQuery={permalink()?.query}
+          onCopyView={(query) => {
+            const link = `${window.location.origin}${window.location.pathname}${window.location.search}${graphPermalinkHash({
+              layout: graph.layout(),
+              query,
+            })}`
+            navigator.clipboard?.writeText(link)
+          }}
           link={link()}
           sessionTitle={session.data.info()?.title ?? "OpenCode Session"}
             testedCommit={pkg.version ?? "unknown"}
