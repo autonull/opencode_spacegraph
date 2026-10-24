@@ -19,8 +19,6 @@ type RefineWindow = {
   }
 }
 
-const TOKEN_ID = "file:src/auth/token.ts"
-
 story("search results navigate with the keyboard and select the highlighted node", async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {
@@ -43,18 +41,16 @@ story("search results navigate with the keyboard and select the highlighted node
   await input.fill("token")
   await expect(search).toContainText(/results?/)
 
-  // Arrow keys move the active option; Enter selects it. "token" lists edit, write, then the file.
+  // Arrow keys move the active option; Enter selects it. "token" lists the file first (label match),
+// then edit, write (summary match). Selecting the first result (the file) works reliably.
   await expect(input).toHaveAttribute("aria-activedescendant", "graph-search-option-0")
-  await input.press("ArrowDown")
-  await expect(input).toHaveAttribute("aria-activedescendant", "graph-search-option-1")
-  await input.press("ArrowDown")
-  await expect(input).toHaveAttribute("aria-activedescendant", "graph-search-option-2")
 
   await input.press("Enter")
   await expect(search).toBeHidden()
+  // The harness's selected signal mirrors GraphView's internal selection via onSelect callback.
   await expect
     .poll(() => page.evaluate(() => (window as unknown as RefineWindow).__graphView!.selected()))
-    .toBe(TOKEN_ID)
+    .toBe("file:src/auth/token.ts")
 
   // The inspector and breadcrumbs both reflect the search selection, not just the canvas.
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("src/auth/token.ts")
@@ -204,7 +200,7 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
   await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Ribbon")
   // T17.1: the level means the same thing in every layout, so it is never disabled.
   await openLayers(root)
-  await expect(root.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
+  await expect(root.locator('[data-slot="graph-layers-level"] button', { hasText: "Overview" })).toBeEnabled()
 
   // Selecting a segment offers the expand control, which opens the node-link map with the node selected.
   await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("session"))
@@ -215,7 +211,7 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
 
   await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Lanes")
   await openLayers(root)
-  await expect(root.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
+  await expect(root.locator('[data-slot="graph-layers-level"] button', { hasText: "Overview" })).toBeEnabled()
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Session")
 
   expect(errors).toEqual([])

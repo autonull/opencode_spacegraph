@@ -135,8 +135,10 @@ async function closeLayers(page: Page) {
 async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") {
   await openLayers(page)
   const levels = page.locator('[data-slot="graph-layers-level"]')
-  await levels.getByRole("button", { name: level, exact: true }).click()
-  await expect(levels.getByRole("button", { name: level, exact: true })).toHaveAttribute("aria-pressed", "true")
+  // The SegmentedControl renders as a group with buttons inside; use CSS selector with hasText
+  // to avoid issues with the group's aria-label interfering with getByRole.
+  await levels.locator('button', { hasText: level }).click()
+  await expect(levels.locator('button', { hasText: level })).toHaveAttribute("aria-pressed", "true")
   await closeLayers(page)
 }
 

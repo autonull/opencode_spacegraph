@@ -52,7 +52,7 @@ story("the toolbar keeps four things inline and the rest behind two menus", asyn
   await expect(layers.locator('[data-slot="graph-layers-level-name"]')).toHaveText("Execution")
   await layers.locator(":scope > summary").click()
   await expect(layers.locator('[data-slot="graph-layers-level"]').getByRole("group", { name: "Zoom level" })).toBeVisible()
-  await expect(layers.locator('[data-slot="graph-layers-lens"]')).toBeVisible()
+  await expect(layers.locator('[data-slot="graph-lens"]')).toBeVisible()
   await expect(layers.locator('[data-slot="graph-layers-depth"]')).toBeVisible()
   // Where the camera is: the zoom and the fit.
   await expect(toolbar.getByRole("button", { name: "Zoom in" })).toBeVisible()

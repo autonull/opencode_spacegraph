@@ -152,7 +152,7 @@ test("switches to the ribbon layout, honours the level, and persists it", async 
 
   // T17.2: the level is the grain in a summary layout too, so the overview shows the phase segments.
   await openLayers(page)
-  await page.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Overview", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-level"] button', { hasText: "Overview" }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="phase"]`).count()).toBeGreaterThan(0)
 
   await page.reload()
@@ -937,7 +937,7 @@ test("the card budget follows the camera (T17.5)", async ({ page }) => {
 
   // The detail level's budget is 24 cards, and the fixture's session has more activity than that.
   await openLayers(page)
-  await page.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Detail", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-level"] button', { hasText: "Detail" }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind]`).count()).toBeGreaterThan(0)
 
   const cards = () =>

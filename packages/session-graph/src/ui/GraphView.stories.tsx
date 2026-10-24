@@ -169,6 +169,7 @@ const INITIAL_SELECTION = "tool:prt_tool_read_1"
 const ViewHarness = (props: HarnessProps) => {
   const [renderer, setRenderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
+  const [level] = createSignal<ZoomLevel>(props.level ?? "execution")
   // T12: the windows over the map. The harness owns them, as the app does.
   const [windows, setWindows] = createSignal<GraphWindowState[]>(props.windows ?? [])
   // T15.4: the equalizer's rules. The harness owns them, as the app does.
@@ -203,7 +204,7 @@ const ViewHarness = (props: HarnessProps) => {
       <GraphView
         model={props.model ?? graph}
         selection={selected()}
-        level={props.level}
+        level={level()}
         projection={props.projection}
         depth={props.depth}
         layout={props.layout}
