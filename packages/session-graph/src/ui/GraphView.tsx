@@ -112,7 +112,7 @@ import { exportGraph, type ExportFormat } from "./export"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import { createGraphSelection } from "./graph-selection"
-import { noteData } from "./node-data"
+import { filePath, noteData, sessionID } from "./node-data"
 import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "./graph-windows"
 
 /**
@@ -746,7 +746,10 @@ export const GraphView = (props: GraphViewProps) => {
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
   // a streamed session never moves a node the reader is looking at.
   const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
-  const sessionKey = () => nodeIndex(model()).get(model().root)?.data?.sessionID ?? "session"
+  const sessionKey = () => {
+    const root = nodeIndex(model()).get(model().root)
+    return root ? sessionID(root) ?? "session" : "session"
+  }
   // A manual arrangement belongs to the view it was made in. Changing session, layout, or level
   // returns the reader to the derived layout instead of carrying stale coordinates across views.
   const viewKey = createMemo(() => `${sessionKey()}:${layout()}:${level()}`)
@@ -1146,7 +1149,7 @@ export const GraphView = (props: GraphViewProps) => {
           model={model()}
           workspaceRoot={model().workspaceRoot ?? model().root}
           onSelect={selection.select}
-          onOpen={(file) => props.onActionNavigate?.({ file: file.data?.path as string })}
+          onOpen={(file) => props.onActionNavigate?.({ file: filePath(file) })}
           selection={selection.selection()[0]}
         />
       ),

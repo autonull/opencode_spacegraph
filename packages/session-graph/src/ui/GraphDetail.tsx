@@ -13,7 +13,7 @@ import { For, Show, createSignal, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
-import { childSessionID, count, flag, forkedFrom, parentSessionID, strings, text } from "./node-data"
+import { childSessionID, count, filePath, fileRange, flag, forkedFrom, parentSessionID, strings, text } from "./node-data"
 import { formatProvenance } from "./provenance"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
@@ -305,7 +305,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
                     <button
                       type="button"
                       class="shrink-0 rounded-sm px-1.5 py-0.5 text-10-regular text-text-weak hover:bg-surface-base-hover hover:text-text-base"
-                      onClick={() => props.onActionNavigate?.({ file: file.data?.path as string, range: file.data?.range as any })}
+                      onClick={() => props.onActionNavigate?.({ file: filePath(file), range: fileRange(file) })}
                     >
                       {i18n.t("ui.graph.actions.openAtRange")}
                     </button>

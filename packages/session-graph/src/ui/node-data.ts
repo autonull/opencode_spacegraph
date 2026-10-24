@@ -46,3 +46,17 @@ export const forkedFrom = (node: { data?: Record<string, unknown> }): string | u
 /** A session node's parent session ID from its data. */
 export const parentSessionID = (node: { data?: Record<string, unknown> }): string | undefined =>
   typeof node.data?.parentSessionID === "string" ? node.data.parentSessionID : undefined
+
+/** A file node's path from its data. */
+export const filePath = (node: { data?: Record<string, unknown> }): string | undefined =>
+  typeof node.data?.path === "string" ? node.data.path : undefined
+
+/** A file node's range from its data. */
+export const fileRange = (node: { data?: Record<string, unknown> }): { start: { line: number; character: number }; end: { line: number; character: number } } | undefined => {
+  const range = node.data?.range
+  return range && typeof range === "object" && "start" in range && "end" in range ? range as { start: { line: number; character: number }; end: { line: number; character: number } } : undefined
+}
+
+/** A session root node's session ID from its data. */
+export const sessionID = (node: { data?: Record<string, unknown> }): string | undefined =>
+  typeof node.data?.sessionID === "string" ? node.data.sessionID : undefined
