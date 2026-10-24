@@ -262,6 +262,7 @@ export const GraphView = (props: GraphViewProps) => {
   // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
   const [popoverDismissed, setPopoverDismissed] = createSignal(false)
   const [searchOpen, setSearchOpen] = createSignal(false)
+  const [searchInitial, setSearchInitial] = createSignal("")
   // T6.8: the legend names the encoding, so a first-time reader can decode the map without a briefing.
   const [legendOpen, setLegendOpen] = createSignal(false)
   // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
@@ -903,9 +904,10 @@ export const GraphView = (props: GraphViewProps) => {
   }
 
   // T2.3: the search is an interaction, so it is counted once per opening.
-  const openSearch = () => {
+  const openSearch = (initial = "") => {
     if (searchOpen()) return
     Metrics.count("search")
+    setSearchInitial(initial)
     setSearchOpen(true)
   }
   const toggleSearch = () => {
@@ -933,6 +935,13 @@ export const GraphView = (props: GraphViewProps) => {
     if (event.key === "/") {
       event.preventDefault()
       openSearch()
+
+      return
+    }
+
+    if (event.key === "g") {
+      event.preventDefault()
+      openSearch("g ")
 
       return
     }
@@ -1267,6 +1276,7 @@ export const GraphView = (props: GraphViewProps) => {
           <Show when={searchOpen()}>
             <GraphSearch
               model={props.model}
+              initialQuery={searchInitial()}
               onSelect={(node) => {
                 jumpTo(node)
                 setSearchOpen(false)

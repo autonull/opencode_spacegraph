@@ -41,7 +41,11 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   9. [x] Converted `actionsFor` to a per-kind `actionRegistry` of factories.
   10. [ ] Rename `GraphModel` → `GraphView` is deferred: `session-graph/src/ui/GraphView.tsx` already owns the `GraphView` component name and imports the type in the same file. Choose a non-colliding type name (for example `GraphViewData`) or rename the component first.
   11. [x] Kernel gate: `build:packages`, `test:kernel` (47 pass), `session-ui` typecheck, `session-graph` typecheck all green.
-- [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
+- [x] **Slice 4 — Navigation** (search + `g` grammar as query macros).
+  - `navigation.ts`: 9 mnemonics, `parseNavigation` (`g f` / `gf`), `navigationTargets`, `navigationResults`, `nextNavigationTarget`, generated `navigationHelp`.
+  - `GraphSearch` accepts `initialQuery`, treats `g <key>` as a macro, and renders registry-generated help.
+  - `GraphView` maps `g` to opening search with the grammar prefix; selection reuses `jumpTo`.
+  - Tests: 5 navigation grammar cases.
 - [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).
 - [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
 - [ ] **Slice 7 — Continuous layout** (`LayoutStrategy`, `computeIncremental`).

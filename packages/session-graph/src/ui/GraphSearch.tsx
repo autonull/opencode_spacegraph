@@ -1,5 +1,9 @@
 import type { GraphModel, GraphNode } from "@opencode/session-ui/graph"
-import { search } from "@opencode/session-ui/graph"
+import {
+  navigationHelp,
+  navigationResults,
+  search,
+} from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
@@ -9,6 +13,7 @@ export type GraphSearchProps = {
   model: GraphModel
   onSelect: (node: GraphNode) => void
   onClose: () => void
+  initialQuery?: string
 }
 
 /**
@@ -17,9 +22,14 @@ export type GraphSearchProps = {
  */
 export const GraphSearch = (props: GraphSearchProps) => {
   const i18n = useI18n()
-  const [query, setQuery] = createSignal("")
+  const [query, setQuery] = createSignal(props.initialQuery ?? "")
   const [active, setActive] = createSignal(0)
-  const results = createMemo(() => search(props.model, query()))
+  const results = createMemo(
+    () => navigationResults(props.model, query()) ?? search(props.model, query()),
+  )
+  const navigationHint = createMemo(() =>
+    query().trim().toLowerCase() === "g" ? navigationHelp() : [],
+  )
   let input!: HTMLInputElement
   let list!: HTMLDivElement
 
@@ -101,6 +111,23 @@ export const GraphSearch = (props: GraphSearchProps) => {
           onClick={props.onClose}
         />
       </div>
+
+      <Show when={navigationHint().length > 0}>
+        <div class="grid grid-cols-3 gap-x-3 gap-y-1 border-t border-border-weaker-base px-3 py-2">
+          <For each={navigationHint()}>
+            {(entry) => (
+              <button
+                type="button"
+                class="flex items-center gap-1 text-left text-12-regular text-text-weak hover:text-text-strong"
+                onClick={() => setQuery(`g ${entry.key}`)}
+              >
+                <kbd class="rounded border border-border-weaker-base px-1 text-11-regular">g {entry.key}</kbd>
+                <span class="truncate">{i18n.t(entry.labelKey)}</span>
+              </button>
+            )}
+          </For>
+        </div>
+      </Show>
 
       <Show when={query().trim().length > 0}>
         <div ref={list} class="max-h-72 overflow-y-auto border-t border-border-weaker-base">
