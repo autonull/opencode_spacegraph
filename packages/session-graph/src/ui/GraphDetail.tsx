@@ -13,7 +13,7 @@ import { For, Show, createSignal, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
-import { count, flag, strings, text } from "./node-data"
+import { childSessionID, count, flag, forkedFrom, parentSessionID, strings, text } from "./node-data"
 import { formatProvenance } from "./provenance"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
@@ -87,13 +87,13 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
   const sessionLink = () => {
     const node = props.node
 
-    const child = text(node.data?.childSessionID)
+    const child = childSessionID(node)
     if (child) return { id: child, label: i18n.t("ui.sessionGraph.inspector.openChildSession") }
 
-    const forked = text(node.data?.forkedFrom)
+    const forked = forkedFrom(node)
     if (forked) return { id: forked, label: i18n.t("ui.sessionGraph.inspector.openForkedSession") }
 
-    const parent = text(node.data?.parentSessionID)
+    const parent = parentSessionID(node)
     if (parent) return { id: parent, label: i18n.t("ui.sessionGraph.inspector.openParentSession") }
 
     return undefined

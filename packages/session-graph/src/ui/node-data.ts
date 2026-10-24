@@ -34,3 +34,15 @@ export const touchedCount = (node: { data?: Record<string, unknown> }): number =
 
 /** A file node's touched status from its data. */
 export const isTouched = (node: { data?: Record<string, unknown> }): boolean => node.data?.touched === true
+
+/** A session node's child session ID from its data. */
+export const childSessionID = (node: { data?: Record<string, unknown> }): string | undefined =>
+  typeof node.data?.childSessionID === "string" ? node.data.childSessionID : undefined
+
+/** A session node's forked-from session ID from its data. */
+export const forkedFrom = (node: { data?: Record<string, unknown> }): string | undefined =>
+  typeof node.data?.forkedFrom === "string" ? node.data.forkedFrom : undefined
+
+/** A session node's parent session ID from its data. */
+export const parentSessionID = (node: { data?: Record<string, unknown> }): string | undefined =>
+  typeof node.data?.parentSessionID === "string" ? node.data.parentSessionID : undefined
