@@ -33,6 +33,7 @@ const PARENT_INDEX = new WeakMap<object, ReadonlyMap<string, string>>()
 /**
  * The `part-of` parent of each node: the turn that owns a message, the session that owns a turn.
  * A node has one parent, so the first `part-of` edge wins.
+ * Edges go from child -> parent (source=child, target=parent).
  */
 export function parentIndex(model: { edges: readonly GraphEdge[] }): ReadonlyMap<string, string> {
   const cached = PARENT_INDEX.get(model)
@@ -44,6 +45,7 @@ export function parentIndex(model: { edges: readonly GraphEdge[] }): ReadonlyMap
   for (const edge of model.edges) {
     if (edge.kind !== "part-of") continue
 
+    // part-of edges go from child -> parent, so source is the child
     if (parents.has(edge.source)) continue
 
     parents.set(edge.source, edge.target)

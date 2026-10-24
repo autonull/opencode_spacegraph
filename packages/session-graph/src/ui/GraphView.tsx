@@ -79,6 +79,8 @@ import { GraphDetailSurface } from "./GraphDetail"
 import { GraphLegend, GraphLegendBody } from "./GraphLegend"
 import { GraphEqualizerBody } from "./GraphEqualizer"
 import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
+import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
+import { breadcrumbs } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
@@ -273,6 +275,42 @@ export const GraphView = (props: GraphViewProps) => {
   // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
   // committing to one.
   const [galleryOpen, setGalleryOpen] = createSignal(false)
+  // Trace overlay state (A1): active trace kind, source node, and computed overlay.
+  const [traceKind, setTraceKind] = createSignal<TraceKind | null>(null)
+  const [traceSource, setTraceSource] = createSignal<string | null>(null)
+  const traceOverlay = createMemo<TraceOverlay | null>(() => {
+    const kind = traceKind()
+    const source = traceSource()
+    if (!kind || !source) return null
+    return classifyTrace(props.model, kind, source)
+  })
+  const clearTrace = () => {
+    setTraceKind(null)
+    setTraceSource(null)
+  }
+  const startTrace = (kind: TraceKind, source?: string) => {
+    const from = source ?? selection.selection()[0]
+    if (!from) return
+    setTraceKind(kind)
+    setTraceSource(from)
+    // Announce to screen readers
+    const node = nodeByID(props.model, from)
+    const label = node?.label ?? from
+    const messages: Record<TraceKind, string> = {
+      why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
+      "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
+      related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
+    }
+    announce(messages[kind])
+  }
+  // Copy trace as markdown outline
+  const copyTraceOutline = () => {
+    const overlay = traceOverlay()
+    if (!overlay) return
+    const text = copyTraceAsOutline(props.model, overlay, breadcrumbs)
+    navigator.clipboard?.writeText(text)
+    announce(i18n.t("ui.sessionGraph.trace.copied"))
+  }
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererReady, setRendererReady] = createSignal(false)
   const [rendererID, setRendererID] = createSignal<RendererID>()
@@ -382,6 +420,11 @@ export const GraphView = (props: GraphViewProps) => {
     })
     observer.observe(rootEl)
     onCleanup(() => observer.disconnect())
+
+    // Handle copy trace outline request from detail actions
+    const handleCopyTraceOutline = () => copyTraceOutline()
+    window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
+    onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
   })
 
   // The canvas region's size, for the same reason: the card tier is measured in screen pixels, and
@@ -459,6 +502,7 @@ export const GraphView = (props: GraphViewProps) => {
   const renderCard = createMemo(() => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
     const now = Date.now()
+    const overlay = traceOverlay()
     return (
       props.renderCard ??
       createCardTemplate(theme(), {
@@ -469,6 +513,7 @@ export const GraphView = (props: GraphViewProps) => {
         rules: props.rules,
         now,
         copy,
+        trace: overlay ?? undefined,
       })
     )
   })
@@ -791,6 +836,12 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={selection.select}
             onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
             onOpenSession={props.onOpenSession}
+            traceKind={traceKind()}
+            onTraceWhy={(id) => startTrace("why", id)}
+            onTraceLedHere={(id) => startTrace("led-here", id)}
+            onTraceRelated={(id) => startTrace("related", id)}
+            onClearTrace={clearTrace}
+            onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
           />
         )
       },
@@ -959,6 +1010,15 @@ export const GraphView = (props: GraphViewProps) => {
     focusFrame(renderer)
   })
 
+  // A11y live region announcement helper.
+  const announce = (message: string) => {
+    const region = document.getElementById(a11yInstructionsId)
+    if (region) {
+      region.textContent = ""
+      region.textContent = message
+    }
+  }
+
   // T2.3: returning to the transcript is an interaction.
   const openInTranscript = (id: string) => {
     Metrics.count("return")
@@ -992,6 +1052,46 @@ export const GraphView = (props: GraphViewProps) => {
       dismissDetail()
 
       return
+    }
+
+    // Trace keyboard shortcuts (A1): w=Why, e=Led-here, r=Related, [/]=step lit nodes
+    const selectionId = selection.selection()[0]
+    if (selectionId) {
+      if (event.key === "w") {
+        event.preventDefault()
+        startTrace("why", selectionId)
+        return
+      }
+      if (event.key === "e") {
+        event.preventDefault()
+        startTrace("led-here", selectionId)
+        return
+      }
+      if (event.key === "r") {
+        event.preventDefault()
+        startTrace("related", selectionId)
+        return
+      }
+      if (event.key === "[") {
+        event.preventDefault()
+        const overlay = traceOverlay()
+        if (overlay) {
+          const current = traceOverlay()?.answerIds.has(selectionId) ? selectionId : undefined
+          const prev = stepLitNode(overlay, current, -1)
+          if (prev) selection.select(prev)
+        }
+        return
+      }
+      if (event.key === "]") {
+        event.preventDefault()
+        const overlay = traceOverlay()
+        if (overlay) {
+          const current = traceOverlay()?.answerIds.has(selectionId) ? selectionId : undefined
+          const next = stepLitNode(overlay, current, 1)
+          if (next) selection.select(next)
+        }
+        return
+      }
     }
 
     if (event.key === "/") {
@@ -1299,6 +1399,12 @@ export const GraphView = (props: GraphViewProps) => {
                 onOpenSession={props.onOpenSession}
                 onOpenWindow={(node) => openWindow("node", node.id)}
                 onClose={() => setPopoverDismissed(true)}
+                traceKind={traceKind()}
+                onTraceWhy={(id) => startTrace("why", id)}
+                onTraceLedHere={(id) => startTrace("led-here", id)}
+                onTraceRelated={(id) => startTrace("related", id)}
+                onClearTrace={clearTrace}
+                onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
               />
             </div>
           </Show>
@@ -1406,6 +1512,12 @@ export const GraphView = (props: GraphViewProps) => {
               onSelect={selection.select}
               onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
               onOpenSession={props.onOpenSession}
+              traceKind={traceKind()}
+              onTraceWhy={(id) => startTrace("why", id)}
+              onTraceLedHere={(id) => startTrace("led-here", id)}
+              onTraceRelated={(id) => startTrace("related", id)}
+              onClearTrace={clearTrace}
+              onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
             />
           </div>
         </Show>

@@ -11,6 +11,12 @@ export const POPOVER_GAP = 16
 export type GraphPopoverProps = Omit<GraphDetailProps, "node"> & {
   node?: GraphNode
   onClose?: () => void
+  traceKind?: GraphDetailProps["traceKind"]
+  onTraceWhy?: GraphDetailProps["onTraceWhy"]
+  onTraceLedHere?: GraphDetailProps["onTraceLedHere"]
+  onTraceRelated?: GraphDetailProps["onTraceRelated"]
+  onClearTrace?: GraphDetailProps["onClearTrace"]
+  onCopyTraceOutline?: GraphDetailProps["onCopyTraceOutline"]
 }
 
 /**
@@ -51,6 +57,12 @@ export const GraphPopover = (props: GraphPopoverProps) => {
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
             onOpenWindow={props.onOpenWindow}
+            traceKind={props.traceKind}
+            onTraceWhy={props.onTraceWhy}
+            onTraceLedHere={props.onTraceLedHere}
+            onTraceRelated={props.onTraceRelated}
+            onClearTrace={props.onClearTrace}
+            onCopyTraceOutline={props.onCopyTraceOutline}
           />
         </div>
       )}

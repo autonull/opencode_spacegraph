@@ -527,6 +527,16 @@ const source = {
   "ui.sessionGraph.card.reads.other": "{{count}} reads",
   "ui.sessionGraph.card.writes.one": "{{count}} write",
   "ui.sessionGraph.card.writes.other": "{{count}} writes",
+  // Trace overlay (A1)
+  "ui.sessionGraph.trace.why": "Why?",
+  "ui.sessionGraph.trace.ledHere": "What led here?",
+  "ui.sessionGraph.trace.related": "Related",
+  "ui.sessionGraph.trace.clear": "Clear trace",
+  "ui.sessionGraph.trace.copyOutline": "Copy as outline",
+  "ui.sessionGraph.trace.copied": "Trace copied as outline",
+  "ui.sessionGraph.trace.whyAnnouncement": "Why trace lit: {{label}} and its causes",
+  "ui.sessionGraph.trace.ledHereAnnouncement": "Forward chain trace lit: {{label}} and what followed",
+  "ui.sessionGraph.trace.relatedAnnouncement": "Related trace lit: {{label}} and its neighbors",
 } satisfies Record<string, string>
 
 export type Key = keyof typeof source

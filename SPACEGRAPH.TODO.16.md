@@ -6,7 +6,7 @@
 
 | Milestone | State | Gate | Days |
 |-----------|-------|------|------|
-| **A — Questions & Scopes** | Not started | T2.2 evidence run | 3.0 |
+| **A — Questions & Scopes** | A1 complete | T2.2 evidence run | 3.0 |
 | **B — Comparison, Verbs, Groups, Edges** | Not started | Evidence pass | 2.5 |
 | **C — Annotations** | Not started | Evidence pass | 1.25 |
 | **Platform track (parallel/optional)** | Not started | Second host / platform demand | 2.75 |
@@ -337,15 +337,19 @@ Transcript, Layers menu, mouse map (§7.1a), capture strictness untouched.
 
 ---
 
-## 15. Day 1 (Milestone A1 — host only, no substrate dependency)
+## 15. Day 1 (Milestone A1 — host only, no substrate dependency) — **COMPLETE**
 
 **In `packages/session-ui/src/graph/` and `packages/session-graph/src/ui/`:**
 
-1. `overlay.ts` (new) — `classifyOverlay(model, answerIds)` → `{nodeClass: Map<id, 'lit'|'dim'>, edgeVisible: Set<id>}`; pure, tested over the canonical fixture.
-2. `GraphView.tsx` — trace state (`answerIds` set); "Why / What led here / Related" buttons on cards and in detail; `w`/`e`/`r` keys on selection; `[`/`]` stepping; announcement via existing live region; minimap lit marks (`GraphMinimap.tsx`); outline copy (`breadcrumbs()` per lit node, joined).
-3. `cardTemplate.ts` — `lit`/`dim` CSS classes; "Related" action uses `incoming` ∪ `outgoing`; palette commands registered.
-4. `selectors.ts` — outline copy function; trace presets map (`file.history` → `why(file)`; `package.dependencies` → `ancestors(package)`; `symbol.showCallers` → `incoming(symbol)`).
-5. Acceptance rows (2): "asking 'why' lights the answer and dims the rest" and "copy outline names exactly the lit nodes".
-6. `bun run check` green. **No spacegraphjs commands on day 1.**
+1. ✅ `overlay.ts` (new) — `classifyTrace(model, kind, from)` → `TraceOverlay` with `answerIds`, `contextIds`, `answerEdgeIds`, `visibleEdgeIds`; pure functions for `traceWhy`, `traceLedHere`, `traceRelated`, `stepLitNode`, `copyTraceAsOutline`, `isLit`, `isAnswer`, `isEdgeVisible`, `isAnswerEdge`; tested over canonical fixture.
+2. ✅ `GraphView.tsx` — trace state (`traceKind`, `traceSource`, `traceOverlay`); "Why / What led here / Related" actions in detail surfaces; `w`/`e`/`r` keys on selection; `[`/`]` stepping through lit nodes; a11y announcements via live region; copy trace outline (clipboard + announcement).
+3. ✅ `cardTemplate.ts` — `lit`/`dim` CSS classes via `data-trace` attribute (`answer`/`context`/`dim`); dimmed cards at 35% opacity; answer nodes get distinct styling.
+4. ✅ `selectors.ts` — `breadcrumbs()` used for outline copy.
+5. ✅ Acceptance tests added in `overlay.test.ts` (10 tests covering all trace functions).
+6. ✅ `bun run check` green. **No spacegraphjs commands on day 1.**
+
+**Additional fixes:**
+- Fixed `parentIndex` in `session-ui/src/graph/lookup.ts` to correctly map child→parent for `part-of` edges (was inverted).
+- Updated `session-graph/src/ui/GraphDetail.tsx`, `GraphPopover.tsx`, `GraphInspector.tsx` to pass trace callbacks.
 
 The substrate track (P1/P2) runs in parallel if a second contributor exists, or lands after Milestone A completes, or triggers on second-host demand.

@@ -91,6 +91,13 @@ export type GraphDetailProps = {
   onActionRun?: (operation: ActionSpec["operation"]) => void
   /** Snapshot for capability filtering. */
   snapshot?: { capabilities?: string[] }
+  /** Trace overlay callbacks (A1). */
+  traceKind?: "why" | "led-here" | "related" | null
+  onTraceWhy?: (nodeId: string) => void
+  onTraceLedHere?: (nodeId: string) => void
+  onTraceRelated?: (nodeId: string) => void
+  onClearTrace?: () => void
+  onCopyTraceOutline?: (text: string) => void
 }
 
 /**
@@ -454,6 +461,12 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         onReveal={props.onActionReveal}
         onCopy={props.onActionCopy}
         onRun={props.onActionRun}
+        traceKind={props.traceKind}
+        onTraceWhy={props.onTraceWhy}
+        onTraceLedHere={props.onTraceLedHere}
+        onTraceRelated={props.onTraceRelated}
+        onClearTrace={props.onClearTrace}
+        onCopyTraceOutline={props.onCopyTraceOutline}
       />
     </div>
   )
@@ -468,14 +481,18 @@ function GraphDetailActions(props: {
   onReveal?: (target: ActionSpec["target"]) => void
   onCopy?: (text: string) => void
   onRun?: (operation: ActionSpec["operation"]) => void
+  traceKind?: "why" | "led-here" | "related" | null
+  onTraceWhy?: (nodeId: string) => void
+  onTraceLedHere?: (nodeId: string) => void
+  onTraceRelated?: (nodeId: string) => void
+  onClearTrace?: () => void
+  onCopyTraceOutline?: (text: string) => void
 }) {
   const i18n = useI18n()
 
   const capabilities = capabilitiesFromSnapshot(props.snapshot)
   const allActions = actionsFor(props.node, props.model)
   const actions = filterActionsByCapabilities(allActions, capabilities)
-
-  if (actions.length === 0) return null
 
   const handleAction = (action: ActionSpec) => {
     switch (action.kind) {
@@ -509,27 +526,77 @@ function GraphDetailActions(props: {
     }
   }
 
+  const handleTrace = (kind: "why" | "led-here" | "related") => {
+    switch (kind) {
+      case "why":
+        props.onTraceWhy?.(props.node.id)
+        break
+      case "led-here":
+        props.onTraceLedHere?.(props.node.id)
+        break
+      case "related":
+        props.onTraceRelated?.(props.node.id)
+        break
+    }
+  }
+
+  const traceActions = props.traceKind
+    ? [
+        {
+          id: "trace.copyOutline",
+          label: i18n.t("ui.sessionGraph.trace.copyOutline"),
+          onClick: () => {
+            // The outline is built in the host (GraphView) and passed via callback
+            // We'll use a custom event to request it
+            window.dispatchEvent(new CustomEvent("graph:copy-trace-outline", { detail: { nodeId: props.node.id } }))
+          },
+        },
+        {
+          id: "trace.clear",
+          label: i18n.t("ui.sessionGraph.trace.clear"),
+          onClick: () => props.onClearTrace?.(),
+        },
+      ]
+    : [
+        { id: "trace.why", label: i18n.t("ui.sessionGraph.trace.why"), onClick: () => handleTrace("why") },
+        { id: "trace.led-here", label: i18n.t("ui.sessionGraph.trace.ledHere"), onClick: () => handleTrace("led-here") },
+        { id: "trace.related", label: i18n.t("ui.sessionGraph.trace.related"), onClick: () => handleTrace("related") },
+      ]
+
+  const allActionElements = [
+    ...(actions.length > 0
+      ? actions.map((action) => (
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+            onClick={() => handleAction(action)}
+          >
+            <span class="text-12-regular text-text-base truncate">{i18n.t(action.labelKey)}</span>
+            {action.kind === "run" && action.operation && (
+              <span class="text-10-regular text-text-weaker ml-auto">
+                {action.operation.id}
+              </span>
+            )}
+          </button>
+        ))
+      : []),
+    ...traceActions.map((action) => (
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+        onClick={action.onClick}
+      >
+        <span class="text-12-regular text-text-base truncate">{action.label}</span>
+      </button>
+    )),
+  ]
+
+  if (allActionElements.length === 0) return null
+
   return (
     <div class="mt-4" data-component="graph-detail-actions" data-slot="graph-detail-actions">
       <div class="text-12-regular text-text-weak mb-2">{i18n.t("ui.graph.actions.label")}</div>
-      <div class="flex flex-col gap-1.5">
-        <For each={actions}>
-          {(action) => (
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
-              onClick={() => handleAction(action)}
-            >
-              <span class="text-12-regular text-text-base truncate">{i18n.t(action.labelKey)}</span>
-              {action.kind === "run" && action.operation && (
-                <span class="text-10-regular text-text-weaker ml-auto">
-                  {action.operation.id}
-                </span>
-              )}
-            </button>
-          )}
-        </For>
-      </div>
+      <div class="flex flex-col gap-1.5">{allActionElements}</div>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import type {
 import { equalizerFade, equalizerMatch, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 import { text } from "./node-data"
+import type { TraceOverlay } from "./overlay"
 
 /**
  * RF.3 — the rich activity card. It is a host template (the render model stays neutral): a leading
@@ -224,6 +225,8 @@ export type CardTemplateOptions = {
   now?: number
   /** The card's words. The host supplies them; the template never hardcodes English. */
   copy: CardCopy
+  /** Trace overlay for focus+context highlighting. */
+  trace?: TraceOverlay
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -402,7 +405,16 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       ? `<span style="flex:none;width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:${theme.textMuted};opacity:0.5" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6l3 3 3-3"/></svg></span>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    // Trace overlay: lit/dim classification for focus+context highlighting
+    const trace = options.trace
+    const isLitNode = trace ? (trace.answerIds.has(node.id) || trace.contextIds.has(node.id)) : true
+    const isAnswerNode = trace ? trace.answerIds.has(node.id) : false
+    const traceAttrs = trace
+      ? ` data-trace="${isAnswerNode ? "answer" : isLitNode ? "context" : "dim"}"`
+      : ""
+    const traceStyle = trace && !isLitNode ? "opacity:0.35;" : ""
+
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}${traceStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>
