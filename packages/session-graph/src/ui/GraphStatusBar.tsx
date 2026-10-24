@@ -10,6 +10,8 @@ export type GraphStatusBarProps = {
   onCopyPaths: () => void
   onExportSubset: () => void
   onClear: () => void
+  /** B2: the selected node is a group; the verbs collapse it or every other group. */
+  group?: { collapsed: boolean; onToggle: () => void; onCollapseOthers: () => void }
 }
 
 /**
@@ -63,6 +65,29 @@ export const GraphStatusBar = (props: GraphStatusBarProps) => {
           >
             {i18n.t("ui.sessionGraph.status.exportSubset")}
           </button>
+          <Show when={props.group}>
+            {(group) => (
+              <>
+                <button
+                  type="button"
+                  data-slot="graph-status-group-toggle"
+                  data-collapsed={group().collapsed}
+                  class="rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+                  onClick={() => group().onToggle()}
+                >
+                  {i18n.t(group().collapsed ? "ui.sessionGraph.status.expandGroup" : "ui.sessionGraph.status.collapseGroup")}
+                </button>
+                <button
+                  type="button"
+                  data-slot="graph-status-group-others"
+                  class="rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+                  onClick={() => group().onCollapseOthers()}
+                >
+                  {i18n.t("ui.sessionGraph.status.collapseOthers")}
+                </button>
+              </>
+            )}
+          </Show>
         </div>
         <GraphIconButton
           label={i18n.t("ui.sessionGraph.status.clear")}

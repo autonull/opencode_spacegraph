@@ -78,6 +78,7 @@ export {
 export { nodeIndex, lookupNode, childIndex } from "./lookup"
 
 export { scopeModel } from "./view"
+export { collapseGroups } from "./collapse"
 
 export {
   buildFixtureGraph,

@@ -3,9 +3,9 @@ import type { EqualizerRuleSet, Layout, GraphSnapshotMeta } from "@opencode/sess
 import { LANES, NODE_KINDS, NODE_STATUSES, PHASE_CATEGORIES } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { type JSX, onMount } from "solid-js"
+import { Show, type JSX, onMount } from "solid-js"
 import { categoryAccent, kindAccent, statusAccent, sourceLabel, formatAge } from "./cardTemplate"
-import { CONFIDENCE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
+import { CONFIDENCE_KEY, EDGE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 
 /** How an edge of each confidence is drawn; the adapter decides the same. */
@@ -23,6 +23,9 @@ export type GraphLegendProps = {
   rules?: EqualizerRuleSet
   /** T29.4/T30.3: snapshot metadata for provenance and missing sources. */
   snapshot?: GraphSnapshotMeta
+  /** B3: edge kinds present in the map, with counts and visibility. */
+  edgeKinds?: readonly { kind: string; count: number; hidden: boolean }[]
+  onToggleEdgeKind?: (kind: string) => void
   onClose: () => void
 }
 
@@ -34,6 +37,9 @@ export type GraphLegendBodyProps = {
   rules?: EqualizerRuleSet
   /** T29.4/T30.3: snapshot metadata for provenance and missing sources. */
   snapshot?: GraphSnapshotMeta
+  /** B3: edge kinds present in the map, with counts and visibility. */
+  edgeKinds?: readonly { kind: string; count: number; hidden: boolean }[]
+  onToggleEdgeKind?: (kind: string) => void
 }
 
 /**
@@ -129,6 +135,33 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
           </span>
         )),
       )}
+
+      <Show when={(props.edgeKinds?.length ?? 0) > 0}>
+        <div data-slot="graph-legend-edge-kinds" class="mt-2">
+          <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.edgeKinds")}</div>
+          <div class="mt-1 flex flex-col">
+            {props.edgeKinds?.map((entry) => (
+              <button
+                type="button"
+                data-slot="graph-legend-edge-kind"
+                data-kind={entry.kind}
+                data-hidden={entry.hidden}
+                aria-pressed={!entry.hidden}
+                class="flex items-center gap-2 rounded-sm px-1 py-0.5 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+                classList={{ "opacity-50": entry.hidden }}
+                onClick={() => props.onToggleEdgeKind?.(entry.kind)}
+              >
+                <span class="truncate">
+                  {i18n.t("ui.sessionGraph.legend.edgeKindCount", {
+                    kind: i18n.t(EDGE_KEY[entry.kind as keyof typeof EDGE_KEY]),
+                    count: String(entry.count),
+                  })}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Show>
 
       {section(
         i18n.t("ui.sessionGraph.legend.status"),

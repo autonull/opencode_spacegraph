@@ -129,8 +129,28 @@ export const STATUS_KEY = {
   neutral: "ui.sessionGraph.status.neutral",
 } as const satisfies Record<GraphNode["status"], string>
 
-export const CONFIDENCE_KEY = {
-  explicit: "ui.sessionGraph.confidence.explicit",
+export const EDGE_KEY = {
+  "part-of": "ui.sessionGraph.edge.partOf",
+  sequence: "ui.sessionGraph.edge.sequence",
+  delegates: "ui.sessionGraph.edge.delegates",
+  reads: "ui.sessionGraph.edge.reads",
+  writes: "ui.sessionGraph.edge.writes",
+  searches: "ui.sessionGraph.edge.searches",
+  produces: "ui.sessionGraph.edge.produces",
+  references: "ui.sessionGraph.edge.references",
+  compacts: "ui.sessionGraph.edge.compacts",
+  evidence: "ui.sessionGraph.edge.evidence",
+  "inferred-cause": "ui.sessionGraph.edge.inferredCause",
+  touches: "ui.sessionGraph.edge.touches",
+  "points-at": "ui.sessionGraph.edge.pointsAt",
+  addresses: "ui.sessionGraph.edge.addresses",
+  "listens-on": "ui.sessionGraph.edge.listensOn",
+  calls: "ui.sessionGraph.edge.calls",
+  covers: "ui.sessionGraph.edge.covers",
+  executes: "ui.sessionGraph.edge.executes",
+} as const satisfies Record<GraphEdge["kind"], string>
+
+export const CONFIDENCE_KEY = {  explicit: "ui.sessionGraph.confidence.explicit",
   structural: "ui.sessionGraph.confidence.structural",
   inferred: "ui.sessionGraph.confidence.inferred",
 } as const satisfies Record<GraphEdge["confidence"], string>

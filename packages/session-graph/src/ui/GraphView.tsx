@@ -31,6 +31,7 @@ import {
   byProximity,
   CARD_SIZE,
   changedFiles,
+  collapseGroups,
   degreeBudget,
   DETAIL_TIER_WIDTH,
   detailTier,
@@ -278,6 +279,9 @@ export const GraphView = (props: GraphViewProps) => {
   // one scope; a permalink's `q=` is the same state in its shareable form.
   const [facets, setFacets] = createSignal<GraphFacets>(facetsFromQuery(props.facetQuery ?? ""))
   const [hovered, setHovered] = createSignal<string>()
+  // B3 — edges are first-class: hover names one, click selects its source and traces from it.
+  const [edgeHovered, setEdgeHovered] = createSignal<string>()
+  const [hiddenEdgeKinds, setHiddenEdgeKinds] = createSignal<ReadonlySet<string>>(new Set())
   // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
   const [popoverDismissed, setPopoverDismissed] = createSignal(false)
   const [searchOpen, setSearchOpen] = createSignal(false)
@@ -401,20 +405,52 @@ export const GraphView = (props: GraphViewProps) => {
   const turnScoped = createMemo(() => scopeToTurns(props.model, scale().turns))
   // B1 — "keep only" is a scope over the held set, applied after facets so the two compose.
   const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
+  // B2 — collapse is session-local model state; expanding restores the same derived positions.
+  const [collapsedGroups, setCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
   const scoped = createMemo(() => {
     const base = applyFacets(turnScoped(), facets())
     const keep = keptIds()
-    if (!keep) return base
+    if (!keep) return collapseGroups(base, collapsedGroups())
     const ids = new Set(keep)
     ids.add(base.root)
-    return {
-      ...base,
-      nodes: base.nodes.filter((node) => ids.has(node.id)),
-      edges: base.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
-      turns: base.turns.filter((turn) => ids.has(turn)),
-      activeTurn: base.activeTurn !== undefined && ids.has(base.activeTurn) ? base.activeTurn : undefined,
-    }
+    return collapseGroups(
+      {
+        ...base,
+        nodes: base.nodes.filter((node) => ids.has(node.id)),
+        edges: base.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
+        turns: base.turns.filter((turn) => ids.has(turn)),
+        activeTurn: base.activeTurn !== undefined && ids.has(base.activeTurn) ? base.activeTurn : undefined,
+      },
+      collapsedGroups(),
+    )
   })
+  const selectedGroup = () => {
+    const id = selection.selection()[0]
+    if (!id) return undefined
+    const node = props.model.nodes.find((item) => item.id === id)
+    return node && (node.clusterOf?.length ?? 0) > 0 ? node : undefined
+  }
+  const toggleGroup = () => {
+    const group = selectedGroup()
+    if (!group) return
+    setCollapsedGroups((current) => {
+      const next = new Set(current)
+      if (next.has(group.id)) next.delete(group.id)
+      else next.add(group.id)
+      return next
+    })
+  }
+  const collapseOtherGroups = () => {
+    const group = selectedGroup()
+    if (!group) return
+    setCollapsedGroups(
+      new Set(
+        props.model.nodes
+          .filter((node) => node.id !== group.id && (node.clusterOf?.length ?? 0) > 0)
+          .map((node) => node.id),
+      ),
+    )
+  }
   const counts = createMemo(() => facetCounts(turnScoped(), facets()))
   // B1 — a parked view is a diff against the live map, not a different map: the same positions
   // carry added and changed marks, and nothing re-lays-out when the scrubber moves.
@@ -719,8 +755,8 @@ export const GraphView = (props: GraphViewProps) => {
     }
   }
 
-  const renderModel = createMemo(() =>
-    applyManualLayout(
+  const renderModel = createMemo(() => {
+    const model = applyManualLayout(
       buildRenderModel(budget(), {
         level: level(),
         positions: displayPositions(),
@@ -742,8 +778,25 @@ export const GraphView = (props: GraphViewProps) => {
         renderCard: renderCard(),
         renderBand: renderBand(),
       }),
-    ),
-  )
+    )
+    const hidden = hiddenEdgeKinds()
+    return hidden.size === 0
+      ? model
+      : { ...model, edges: model.edges.filter((edge) => !hidden.has(edge.kind)) }
+  })
+
+  const edgeKinds = createMemo(() => {
+    const counts = new Map<string, number>()
+    for (const edge of props.model.edges) counts.set(edge.kind, (counts.get(edge.kind) ?? 0) + 1)
+    return [...counts].map(([kind, count]) => ({ kind, count, hidden: hiddenEdgeKinds().has(kind) }))
+  })
+  const toggleEdgeKind = (kind: string) =>
+    setHiddenEdgeKinds((current) => {
+      const next = new Set(current)
+      if (next.has(kind)) next.delete(kind)
+      else next.add(kind)
+      return next
+    })
 
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
   // same whoever opens it. Both read the render model in the session's own order.
@@ -879,6 +932,11 @@ export const GraphView = (props: GraphViewProps) => {
     return nodeByID(props.model, id)
   })
   const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport })
+  const peekEdge = createMemo(() => {
+    if (!peek()) return undefined
+    const id = edgeHovered()
+    return id ? props.model.edges.find((edge) => edge.id === id) : undefined
+  })
   // Above the node's own box, so the peek never covers what it is about.
   const peekPlacement = createMemo(() => {
     const anchor = peekAnchor()
@@ -951,7 +1009,15 @@ export const GraphView = (props: GraphViewProps) => {
     {
       name: "legend",
       title: () => i18n.t("ui.sessionGraph.legend.label"),
-      render: () => <GraphLegendBody theme={theme()} layout={layout()} rules={props.rules} />,
+      render: () => (
+        <GraphLegendBody
+          theme={theme()}
+          layout={layout()}
+          rules={props.rules}
+          edgeKinds={edgeKinds()}
+          onToggleEdgeKind={toggleEdgeKind}
+        />
+      ),
     },
     {
       name: "equalizer",
@@ -1129,6 +1195,20 @@ export const GraphView = (props: GraphViewProps) => {
     openSearch()
   }
 
+  // B3 — without a trace, the brackets walk the edges: incoming and outgoing in model order.
+  const stepNeighbor = (id: string, delta: number) => {
+    const neighbors = [
+      ...new Set(
+        props.model.edges
+          .filter((edge) => edge.source === id || edge.target === id)
+          .map((edge) => (edge.source === id ? edge.target : edge.source)),
+      ),
+    ]
+    if (neighbors.length === 0) return undefined
+    const index = neighbors.indexOf(id)
+    return neighbors[(index + delta + neighbors.length) % neighbors.length]
+  }
+
   // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
   // originate inside the a11y list or a form control are left to their owner.
   const onRegionKeyDown = (event: KeyboardEvent) => {
@@ -1168,6 +1248,9 @@ export const GraphView = (props: GraphViewProps) => {
           const current = traceOverlay()?.answerIds.has(selectionId) ? selectionId : undefined
           const prev = stepLitNode(overlay, current, -1)
           if (prev) selection.select(prev)
+        } else {
+          const next = stepNeighbor(selectionId, -1)
+          if (next) selection.select(next)
         }
         return
       }
@@ -1177,6 +1260,9 @@ export const GraphView = (props: GraphViewProps) => {
         if (overlay) {
           const current = traceOverlay()?.answerIds.has(selectionId) ? selectionId : undefined
           const next = stepLitNode(overlay, current, 1)
+          if (next) selection.select(next)
+        } else {
+          const next = stepNeighbor(selectionId, 1)
           if (next) selection.select(next)
         }
         return
@@ -1372,6 +1458,15 @@ export const GraphView = (props: GraphViewProps) => {
         onCopyPaths={copySelectedPaths}
         onExportSubset={exportSelection}
         onClear={clearSelectionScope}
+        group={
+          selectedGroup()
+            ? {
+                collapsed: collapsedGroups().has(selectedGroup()!.id),
+                onToggle: toggleGroup,
+                onCollapseOthers: collapseOtherGroups,
+              }
+            : undefined
+        }
       />
       <Show when={comparison()}>
         {(diff) => (
@@ -1465,6 +1560,13 @@ export const GraphView = (props: GraphViewProps) => {
             onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => selection.select(undefined)}
             onHover={(id) => setHovered(id)}
+            onEdgeHover={(id) => setEdgeHovered(id)}
+            onEdgeSelect={(id) => {
+              const edge = props.model.edges.find((item) => item.id === id)
+              if (!edge) return
+              selection.select(edge.source)
+              startTrace("related", edge.source)
+            }}
             onNodeMoved={moveNodes}
             onNodeResized={resizeNode}
             cardFacing={cardFacing()}
@@ -1503,6 +1605,13 @@ export const GraphView = (props: GraphViewProps) => {
                 style={{ left: `${frame().left}px`, top: `${frame().top}px` }}
               >
                 <GraphPeek node={frame().node} />
+              </div>
+            )}
+          </Show>
+          <Show when={peekEdge()}>
+            {(edge) => (
+              <div data-slot="graph-edge-peek-anchor" class="absolute bottom-2 left-2 z-20">
+                <GraphPeek edge={edge()} />
               </div>
             )}
           </Show>
@@ -1591,6 +1700,8 @@ export const GraphView = (props: GraphViewProps) => {
               theme={theme()}
               layout={layout()}
               rules={props.rules}
+              edgeKinds={edgeKinds()}
+              onToggleEdgeKind={toggleEdgeKind}
               onClose={() => setLegendOpen(false)}
             />
           </Show>

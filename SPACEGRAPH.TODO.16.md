@@ -7,7 +7,7 @@
 | Milestone | State | Gate | Days |
 |-----------|-------|------|------|
 | **A — Questions & Scopes** | **Complete** (A1 + A2) | T2.2 evidence run | 3.0 |
-| **B — Comparison, Verbs, Groups, Edges** | **B1 implemented**; B2/B3 not started | Evidence pass (deferred by owner) | 2.5 |
+| **B — Comparison, Verbs, Groups, Edges** | **Complete core** (B1/B2/B3); tests deferred | Evidence pass (deferred by owner) | 2.5 |
 | **C — Annotations** | Not started — blocked on T2.2 | Evidence pass | 1.25 |
 | **Platform track (parallel/optional)** | Not started | Second host / platform demand | 2.75 |
 
@@ -18,7 +18,9 @@
 - **A1 — trace overlay: complete.** `packages/session-graph/src/ui/overlay.ts` + `overlay.test.ts`; `GraphView` trace state/keys; `cardTemplate` lit/dim markup; copy-as-outline.
 - **A2 — facets, ranked search, lens, permalinks: complete.** New `packages/session-ui/src/graph/facets.ts` (+ tests) owns the facet grammar, live counts, and the single scope step. `selectors.rankedSearch` uses `Navigation.searchBy` with the host scorer. The toolbar has facet chips and per-domain lens toggles with a runtime preset. `graph-permalink.ts` carries `?q=` and supports view-only links (`#graph?kind:file`). `degreeBudget` feeds `fileRelations` into `applyNodeBudget` with the selection protected. `GraphDetail` offers copy-view beside copy-node.
 - **B1 — diff, compare, and selection verbs: implemented (tests deferred).** New `GraphStatusBar.tsx` owns the selection verbs (Frame · Keep only · Copy paths · Export subset · Clear) as pure functions over the held ids. `GraphView` applies keep-only after facets. A parked scrubber turn diffs against the live map through `reviewChanges`, marking cards with `data-diff="added|changed|removed"` and showing a `+n −n ~n` chip with a return-to-live action. The scrubber draws per-turn status ticks. `graph-camera` gained `frame(ids)`.
-- **Deferred:** the T2.2 evidence run, B1 e2e rows, and B1 unit/component tests. The plan does not close until they land. Two-turn compare from multi-select, compare-as-window, B2 group collapse, and B3 edge affordances remain.
+- **B2 — group collapse: implemented (tests deferred).** `session-ui/src/graph/collapse.ts` hides a collapsed group's members while keeping the group chip and its member count; the status bar collapses/expands the selected group and can collapse every other group. Positions are derived and never re-laid-out.
+- **B3 — edge affordances: implemented (tests deferred).** `GraphCanvas` now forwards `edgeClick` and edge-kind `hoverChange`; edge hover peeks kind/confidence/label, edge click selects the source and traces from it, the legend lists edge kinds with counts and visibility toggles that filter the render model, and `[`/`]` walk incoming/outgoing edges when no trace is active.
+- **Deferred:** the T2.2 evidence run, B1–B3 e2e/unit/component tests, two-turn compare from multi-select, compare-as-window, adapter header-click collapse, the group action menu, and `writes` payload labels. The plan does not close until they land.
 - **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
 
 
@@ -143,8 +145,8 @@ Stated measurably:
 | Slice | Days | Delivers |
 |-------|------|----------|
 | **B1 — Diff & compare + status bar verbs** ✅ core (tests deferred) | 1.25 | Scrub-park on turn N ⇒ diff parked vs live (`reviewChanges` → `data-diff` lit/ghost markup, non-answer edges hidden); "+12 −3 ~7" chip; **shared status bar:** frame selection, keep-only (scope), copy paths, export subset, clear — pure over the id array; scrubber failure ticks. **Deferred:** two-turn compare from multi-select and optional compare-as-window. |
-| **B2 — Group collapse** | 0.5 | Adapter emits collapsed group (compact chip, `data.memberCount`, stats line from `data.members`); header click toggles, session-local; "collapse others"; group context menu reuses action registry (`directory`/`package`); budget `protectedIds` keeps selected members on expand. +2 e2e rows. |
-| **B3 — Edge affordances** | 0.5 | Edge hover → peek (kind, confidence, label); `writes` edges carry "+n −m" in build-time label, so peek has a payload; edge click selects + "trace from here"; legend edge-kind visibility toggles with counts; `[`/`]` traversal over `incoming`/`outgoing`. +2 e2e rows. |
+| **B2 — Group collapse** ✅ core (tests deferred) | 0.5 | `collapseGroups(model, collapsed)` hides a group's members while keeping the group chip and its `data-group-members` count; status-bar verbs collapse/expand the selected group, "collapse others", and expanding restores the derived positions. **Deferred:** adapter header click, group context menu via the action registry. |
+| **B3 — Edge affordances** ✅ core (tests deferred) | 0.5 | Edge hover peeks kind, confidence, and label; edge click selects the source and traces from it; the legend lists edge kinds with counts and visibility toggles that filter the render model; `[`/`]` walk incoming/outgoing edges when no trace is active. **Deferred:** `writes` payload labels (`+n −m`) from diff metadata. |
 
 **B acceptance rows: 7.**
 
@@ -225,9 +227,9 @@ Platform track invariants (P1/P2): walk determinism, scorer law, union conservat
 
 B1 shipped without new tests by explicit owner direction. Capture these when the deferred pass runs:
 
-- **Unit:** status-bar verbs are pure over ids; `reviewChanges` classification for a parked turn; keep-only composition after facets.
-- **Component (Storybook):** `GraphStatusBar` verbs, compare chip, scrubber ticks.
-- **Product e2e:** select one node ⇒ status bar count; keep-only hides others; scrub-park shows `+n −n ~n` and return-to-live. Keep to `data-slot` assertions and add no sleeps.
+- **Unit:** status-bar verbs are pure over ids; `reviewChanges` classification for a parked turn; keep-only composition after facets; `collapseGroups` conservation; neighbor traversal order.
+- **Component (Storybook):** `GraphStatusBar` verbs, compare chip, scrubber ticks, edge peek, legend edge-kind toggles.
+- **Product e2e:** select one node ⇒ status bar count; keep-only hides others; scrub-park shows `+n −n ~n` and return-to-live; collapse a group and expand it; toggle an edge kind from the legend; `[`/`]` walk edges. Keep to `data-slot` assertions and add no sleeps.
  If a unit test can catch it, it doesn't belong in e2e.
 
 ---

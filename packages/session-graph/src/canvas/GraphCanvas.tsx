@@ -32,6 +32,10 @@ export type GraphCanvasProps = {
   onBackgroundClick?: () => void
   /** The node under the pointer, and none when the pointer leaves one. */
   onHover?: (id: string | undefined) => void
+  /** B3: the edge under the pointer, and none when it leaves. */
+  onEdgeHover?: (id: string | undefined) => void
+  /** B3: an edge was clicked; the host names it and offers a trace from its source. */
+  onEdgeSelect?: (id: string) => void
   /** Settled drag positions; a group reports every descendant it carried. */
   onNodeMoved?: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
   /** A DOM node's settled size after its resize handle is released. */
@@ -92,7 +96,11 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
             host.dataset.graphBand = band
           }),
           result.renderer.on("viewportChange", (viewport) => props.onViewportChange?.(viewport)),
-          result.renderer.on("hoverChange", ({ id }) => props.onHover?.(id)),
+          result.renderer.on("hoverChange", ({ id, kind }) => {
+            props.onHover?.(kind === "edge" ? undefined : id)
+            props.onEdgeHover?.(kind === "edge" ? id : undefined)
+          }),
+          result.renderer.on("edgeClick", ({ id }) => props.onEdgeSelect?.(id)),
           result.renderer.on("nodeMoved", ({ nodes }) => props.onNodeMoved?.(nodes)),
           result.renderer.on("nodeResized", (resize) => props.onNodeResized?.(resize)),
         ]
