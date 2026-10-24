@@ -78,7 +78,7 @@ export {
 
 export { nodeIndex, lookupNode, childIndex } from "./lookup"
 
-export { scopeModel } from "./scope"
+export { scopeModel } from "./view"
 
 export {
   buildFixtureGraph,

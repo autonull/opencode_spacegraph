@@ -19,7 +19,7 @@ import {
 } from "./fixture"
 import { nodesAtLevel } from "./levels"
 import { fileNodeID, turnNodeID, type GraphModel } from "./model"
-import { scopeModel } from "./scope"
+import { scopeModel } from "./view"
 import { search } from "./selectors"
 import { DOMAINS, nodeDomain } from "./vocabulary"
 

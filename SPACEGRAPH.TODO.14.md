@@ -35,9 +35,10 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   3. [x] Builder now emits a `Kernel`: `GraphBuilder.buildKernel()`, `buildSessionKernel(input)`, and `buildGraph({ kernel, meta })`; `buildGraph(input)` builds a kernel then projects with `toGraphView`. No `GraphModel` intermediate. Full `src/graph` suite: 207 pass.
   4. [x] Workspace derivation is out of the session builder: `buildSessionKernel` is session-only; `buildWorkspaceKernel` and `workspaceDeriver` compose workspace domains through `runPipeline`. Tests cover session-only vs derived.
   5. [x] Split the composite workspace deriver into 10 thin stage derivers (`files`, `directories`, `packages`, `commits`, `branches`, `symbols`, `hunk-symbols`, `processes`, `ports`, `issues`), composed with `pipe`/`runPipeline`; the session builder is the 11th deriver. Goldens refreshed for the new emission order.
-  6. [ ] Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
-  7. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
-  8. [ ] Run the kernel build gate before OpenCode typecheck/tests.
+  6. [x] UI wiring: all `buildGraph` call sites now run the kernel pipeline with no signature change. `scope.ts` is deleted; `scopeModel` lives in `view.ts` and is implemented with kernel `deriveScope`.
+  7. [ ] Delete the remaining old core: extract the session builder out of `GraphBuilder`/`build.ts`, convert `actionsFor` to registry contributions, and rename `GraphModel` to `GraphView` (`GraphNode = Node & { kind }`).
+  8. [ ] Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
+  9. [ ] Run the kernel build gate before OpenCode typecheck/tests.
 - [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
 - [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).
 - [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
@@ -152,7 +153,7 @@ Fixtures after the rewrite: `graph.contract.json` (per-kind id sets + edge tripl
 | Path / symbol | Fate |
 |---------------|------|
 | `session-ui/src/graph/build.ts` — `GraphBuilder`, `attachWorkspace`, `attachPackages/Commits/Branches/Symbols/Processes/Issues`, `attachHunkSymbols`, `symbolsFromHunk` | Logic copied into `buildSessionKernel` + derivers; file deleted |
-| `session-ui/src/graph/scope.ts` — `scopeModel` | Deleted; `deriveScope` used directly |
+| `session-ui/src/graph/scope.ts` — `scopeModel` | Deleted; `scopeModel` now lives in `view.ts` and delegates to kernel `deriveScope` |
 | `session-ui/src/graph/actions.ts` — `actionsFor` switch | Becomes registry contributions |
 | `session-ui/src/graph/model.golden.json`, `model.golden.with-snapshot.json` | Deleted; replaced by contract + sample fixtures |
 | `session-ui/src/graph/model.ts` — `GraphModel` | Renamed `GraphView` (host projection over kernel `Node`/`Edge`); `GraphNode = Node & { kind: NodeKind }` |

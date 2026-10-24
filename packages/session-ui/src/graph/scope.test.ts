@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { buildGraph } from "./build"
 import { buildFixtureGraph, buildFixtureMessages, buildFixtureSnapshot } from "./fixture"
 import { directoryNodeID, type GraphModel, type GraphNode } from "./model"
-import { scopeModel } from "./scope"
+import { scopeModel } from "./view"
 import type { Domain } from "./vocabulary"
 
 const allDomains: Domain[] = ["session", "directories", "history", "code", "verification", "runtime", "work"]

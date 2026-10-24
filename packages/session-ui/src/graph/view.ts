@@ -1,4 +1,4 @@
-import { Kernel } from "@spacegraphjs/kernel"
+import { deriveScope, Kernel } from "@spacegraphjs/kernel"
 import type { Edge, Node } from "@spacegraphjs/kernel"
 import type { JsonValue } from "@opencode/client/promise"
 import type {
@@ -10,7 +10,7 @@ import type {
   GraphSnapshotMeta,
   Provenance,
 } from "./model"
-import type { Domain, NodeKind, NodeStatus, ZoomLevel } from "./vocabulary"
+import { nodeDomain, type Domain, type NodeKind, type NodeStatus, type ZoomLevel } from "./vocabulary"
 
 const HOST_KEY = "$host"
 
@@ -164,6 +164,22 @@ export const toGraphView = (kernel: Kernel, meta: GraphViewMeta): GraphModel => 
       : new Map(Object.entries(meta.turnByMessageID)),
   ...(meta.activeTurn === undefined ? {} : { activeTurn: meta.activeTurn }),
 })
+
+export const scopeModel = (model: GraphModel, lens: ReadonlySet<Domain>): GraphModel => {
+  const domains = new Set(lens)
+  domains.add("session")
+  const scoped = deriveScope(graphModelToKernel(model), (node) =>
+    domains.has(nodeDomain(toGraphNode(node))),
+  )
+  const view = toGraphView(scoped, graphViewMeta(model))
+  const kept = new Set(view.nodes.map((node) => node.id))
+  return {
+    ...view,
+    turns: view.turns.filter((turn) => kept.has(turn)),
+    activeTurn:
+      view.activeTurn !== undefined && kept.has(view.activeTurn) ? view.activeTurn : undefined,
+  }
+}
 
 export const createGraphViewCache = () => {
   const cache = new Map<number, { kernel: Kernel; view: GraphModel }>()
