@@ -6,6 +6,50 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
 
 ---
 
+## 0. Execution progress
+
+**Last updated:** 2026-10-23. Kernel substrate and the deriver/scope layer are landed; the host rewrite has not started.
+
+### Completed
+
+- [x] **Slice 1 — Kernel substrate** (`spacegraphjs/packages/kernel`)
+  - Package: `package.json` (single entry, zero deps), `tsconfig.json`, `README.md`.
+  - Core: `kernel.ts` (ordered nodes/edges/hyperedges, `version`, `modify`, `diagnostics`, `subgraph`, `filterNodes`), `session.ts` (append log, memoized fold, `tag`/`checkout`/`fork`), `workspace.ts` (`replaceFrom`, LWW `merge`), `codec.ts` (JSON, `format: 1`, kernel/session/workspace documents).
+  - Query/registry: `query.ts` (patterns, traverse, path, count, collect), `registry.ts` (`createRegistry`, `composeRegistry`), `conformance.ts` (`runConformance` + default rules), `generator.ts` (seeded LCG + `randomKernel`), `example/fixture.ts` (orgs → projects → tasks).
+  - Tests: laws beside source in `*.test.ts`; `bun test packages/kernel/src` is green.
+  - Build: `pnpm --dir spacegraphjs run build:packages` emits `packages/kernel/dist/index.js` + `.d.ts`.
+- [x] **Slice 2 — Deriver + scope** (`spacegraphjs/packages/kernel`)
+  - `deriver.ts`: typed `inputToken`, `defineDeriver`, `pipe`, `runPipeline`.
+  - `scope.ts`: `deriveScope(kernel, keep, pinned)` keeps pinned nodes and drops edges outside the scope.
+  - Tests cover pipe composition/order, input dedupe, pipeline application, scope pinning, and internal-edge retention.
+- [x] **Registration**
+  - Outer `package.json` workspaces includes `spacegraphjs/packages/kernel`; `packages/session-ui/package.json` depends on `@spacegraphjs/kernel`; `bun.lock` carries the workspace entry.
+  - Nested repo: `script/build-packages.ts` `PACKAGES`, `test/package-exports.test.ts` `LEAF_PACKAGES`, `test/boundaries.test.ts` dependency-free kernel rule, `package.json` `test:kernel` and `test:full`.
+  - `test:exports` and `test:boundaries` are green after the build.
+
+### Remaining
+
+- [ ] **Slice 3 — Rewrite the host** (next, 3 days). Order matters:
+  1. Write `packages/session-ui/src/graph/acceptance.test.ts` first (§4 rows 1–21), red.
+  2. Add `buildSessionKernel`, 11 thin derivers, `toGraphView` memoized by kernel version, and `buildGraph({ kernel? })`.
+  3. Wire UI (all 5 `buildGraph` call sites) and delete the old core per §5.
+  4. Regenerate `graph.contract.json` / `graph.sample.json`; delete `model.golden*.json`.
+  5. Run the kernel build gate before OpenCode typecheck/tests.
+- [ ] **Slice 4 — Navigation** (search + `g` grammar as query macros).
+- [ ] **Slice 5 — Profiles + review** (`diffKernels`, review profile; `SessionKernel.checkpoint()` remains deferred).
+- [ ] **Slice 6 — Clusters + adaptive** (`ClusterSpec` bands, expansion, `deriveZoom`).
+- [ ] **Slice 7 — Continuous layout** (`LayoutStrategy`, `computeIncremental`).
+- [ ] **Slice 8 — Spatial + scale** (`SpatialIndex2D`, `q.near`, budgets).
+- [ ] **Slice 9 — A11y + export**.
+
+### Current gate
+
+- Kernel: `pnpm --dir spacegraphjs run build:packages` then `bun test packages/kernel/src` (or `pnpm --dir spacegraphjs run test:kernel`).
+- Host: after Slice 3, `bun run check` from the OpenCode root plus the acceptance suite.
+- Do not add a compatibility flag, dual path, or `GraphModel` shim (§1, §8 #17–#18).
+
+---
+
 ## 1. What "no backwards compatibility" removes
 
 | Removed | Why it existed | Replacement |

@@ -710,6 +710,7 @@
         "remend": "catalog:",
         "shiki": "catalog:",
         "solid-js": "catalog:",
+        "@spacegraphjs/kernel": "workspace:*",
         "spacegraphjs": "workspace:*",
         "strip-ansi": "7.1.2",
       },
@@ -1113,6 +1114,10 @@
       "peerDependencies": {
         "cytoscape": ">=3.30.0",
       },
+    },
+    "spacegraphjs/packages/kernel": {
+      "name": "@spacegraphjs/kernel",
+      "version": "0.1.0",
     },
     "spacegraphjs/packages/renderer": {
       "name": "@spacegraphjs/renderer",
@@ -2933,6 +2938,8 @@
     "@spacegraphjs/adapter": ["@spacegraphjs/adapter@workspace:spacegraphjs/packages/adapter"],
 
     "@spacegraphjs/cytoscape-renderer": ["@spacegraphjs/cytoscape-renderer@workspace:spacegraphjs/packages/cytoscape-renderer"],
+
+    "@spacegraphjs/kernel": ["@spacegraphjs/kernel@workspace:spacegraphjs/packages/kernel"],
 
     "@spacegraphjs/renderer": ["@spacegraphjs/renderer@workspace:spacegraphjs/packages/renderer"],
 

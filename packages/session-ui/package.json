@@ -84,6 +84,7 @@
     "remend": "catalog:",
     "shiki": "catalog:",
     "solid-js": "catalog:",
+    "@spacegraphjs/kernel": "workspace:*",
     "spacegraphjs": "workspace:*",
     "strip-ansi": "7.1.2"
   }
