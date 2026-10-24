@@ -82,6 +82,11 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
     onCleanup(() => observer.disconnect())
   })
 
+  const hybrid = () => props.mode === "hybrid"
+  const floating = () => hybrid() && props.arrangement === "floating"
+  const beside = () => hybrid() && props.arrangement === "side"
+  const mapFirst = () => props.side === "start"
+
   // T18.4: focus management — F6 cycles focus between the log pane, the divider, and the map pane.
   const focusOrder = createMemo(() => {
     if (!hybrid()) return []
@@ -108,11 +113,6 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
     else if (next === "divider") dividerEl?.focus()
     else if (next === "map") mapPane?.focus()
   }
-
-  const hybrid = () => props.mode === "hybrid"
-  const floating = () => hybrid() && props.arrangement === "floating"
-  const beside = () => hybrid() && props.arrangement === "side"
-  const mapFirst = () => props.side === "start"
 
   // The split axis: the height when the panes are stacked, the width when they are beside each
   // other. The map's share is the same fraction either way, so the reader's proportion survives a

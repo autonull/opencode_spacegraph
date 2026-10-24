@@ -180,6 +180,16 @@ const Group = HttpApiGroup.make("mock")
   )
   .add(HttpApiEndpoint.get("websearchProviders", "/api/websearch/provider", { success: Json }))
   .add(
+    HttpApiEndpoint.get("graph.workspace", "/api/graph/workspace", {
+      query: Schema.Struct({
+        directory: Schema.optional(Schema.String),
+        scope: Schema.optional(Schema.Literals(["session", "directory", "workspace"])),
+        paths: Schema.optional(Schema.String),
+      }),
+      success: Json,
+    }),
+  )
+  .add(
     HttpApiEndpoint.get("worktreeList", "/api/worktree", {
       query: Schema.Struct({ projectID: Schema.String }),
       success: Json,

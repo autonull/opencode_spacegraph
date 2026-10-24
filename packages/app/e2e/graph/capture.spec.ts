@@ -227,6 +227,7 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
 
   // 02 — overview: turns and phases carry meaning, tool calls are counts.
   await page.getByRole("button", { name: "Toggle graph view" }).click()
+  await page.getByRole("menuitemradio", { name: "Map" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
   await setLevel(page, "Overview")
@@ -254,12 +255,17 @@ test("captures the transcript, graph levels, selection, return, and 3D", async (
 
   // 05 — return to the transcript (the header toggle; the toolbar's back control sits under the floating header).
   await page.getByRole("button", { name: "Toggle graph view" }).click()
-  await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
+  await page.getByRole("menuitemradio", { name: "Log" }).click()
+  await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
+  await expect(page.locator('[data-component="composer-editor"]')).toBeVisible({ timeout: 15000 })
   await settle(page)
   await capture(page, "05-return-to-log.png")
 
   // 06 — the 3D (orbit) depth on the same model.
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  // In transcript mode, the button's accessible name changes to the mode label.
+  // Use the icon button inside the session-graph-toggle component.
+  await page.locator('button:has(svg[data-icon="filetree"])').first().click()
+  await page.getByRole("menuitemradio", { name: "Map" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await openMenu(page, "draw")
   await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()

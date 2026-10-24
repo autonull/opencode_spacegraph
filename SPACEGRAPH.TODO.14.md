@@ -40,6 +40,17 @@ All slices (1–9) are complete. Slice 3 shipped end to end: the acceptance suit
 | Host graph suite | `bun test src/graph` in `packages/session-ui` | 236 pass, 0 fail (23 files, includes the 21 acceptance tests) |
 | Full repo check | `bun run check` from OpenCode root | 41/41 turbo tasks successful (lint + typecheck) |
 
+### Screenshot capture progress (2026-10-23, in progress)
+
+The `graph:capture` command runs the e2e capture spec to produce the 31-frame verification matrix. Fixes applied:
+
+- Fixed `hybrid` reference error in `session-graph-panel.tsx:87` (hoisted helper functions before use)
+- Added missing `graph.workspace` mock endpoint in `mock-api.ts` and handler in `mock-server.ts`
+- Fixed `diffByTurn` declaration order in `session-graph-view.tsx` (moved before first use)
+- Updated capture test to properly select "Map"/"Log" from mode menu
+
+**Current blocker:** Step 06 times out waiting for "Toggle graph view" button in transcript mode — the button's accessible name changes with mode (shows current mode label). Need to use a stable selector (data-slot, icon button, or menu radio group directly).
+
 ### Remaining work (post-plan, explicitly deferred)
 
 No base task is open. The following are outside Slices 1–9 by design (§6) and are the next entry points, in priority order:

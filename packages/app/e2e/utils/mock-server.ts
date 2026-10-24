@@ -1036,6 +1036,30 @@ function mockHandlers(
               ? config.vcsDiff({ mode: ctx.query.mode })
               : (config.vcsDiff ?? []),
           })),
+        // Minimal workspace snapshot for graph tests.
+        "graph.workspace": () =>
+          Effect.succeed({
+            location: location(config),
+            data: {
+              version: 1,
+              revision: "mock-revision",
+              root: config.directory,
+              scope: "workspace",
+              asOf: { tree: Date.now(), vcs: Date.now(), packages: Date.now(), symbols: Date.now(), processes: Date.now(), issues: Date.now() },
+              truncated: false,
+              workspace: { name: "mock", path: config.directory },
+              directories: [],
+              packages: [],
+              files: [],
+              branches: [],
+              commits: [],
+              symbols: [],
+              processes: [],
+              issues: [],
+              missing: [],
+              capabilities: [],
+            },
+          }),
         fsList: (ctx) =>
           Effect.promise(() => Promise.resolve(config.fileList?.(ctx.query.path ?? ""))).pipe(
             Effect.map((data) => ({ location: location(config), data })),
