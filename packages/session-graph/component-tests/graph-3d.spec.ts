@@ -19,8 +19,7 @@ story("changes depth without changing node identity or inspector content", async
   await expect(inspector).toContainText("Tool call")
   await expect(inspector).toContainText("src/auth/session.ts")
 
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await root.locator(toolbar).locator("button", { hasText: "Orbit" }).click()
+  await root.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
   await expect(host).toHaveAttribute("data-graph-depth", "orbit")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
   // Detail is depth-independent: the same node, breadcrumbs, and inspector content remain.
@@ -28,8 +27,7 @@ story("changes depth without changing node identity or inspector content", async
   await expect(inspector).toContainText("src/auth/session.ts")
   await expect(root.locator('[data-slot="graph-breadcrumbs"]')).toContainText("Session")
 
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await root.locator(toolbar).locator("button", { hasText: "Flat" }).click()
+  await root.locator('[data-slot="graph-layers-depth"]').selectOption("flat")
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
   await expect(inspector).toContainText("Tool call")
@@ -47,21 +45,17 @@ story("switches the depth treatment through the spectrum", async ({ mount, page 
 
   const root = await mount("session-graph-view")
   const host = root.locator('[data-slot="graph-canvas-host"]')
-  const control = root.locator(toolbar)
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await control.locator("button", { hasText: "Layer" }).click()
+  await root.locator('[data-slot="graph-layers-depth"]').selectOption("layered")
   await expect(host).toHaveAttribute("data-graph-depth", "layered")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
 
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await control.locator("button", { hasText: "Stack" }).click()
+  await root.locator('[data-slot="graph-layers-depth"]').selectOption("depth-stack")
   await expect(host).toHaveAttribute("data-graph-depth", "depth-stack")
 
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await control.locator("button", { hasText: "Flat" }).click()
+  await root.locator('[data-slot="graph-layers-depth"]').selectOption("flat")
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Tool call")

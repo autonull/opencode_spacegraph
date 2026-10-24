@@ -86,6 +86,7 @@ import { GraphMinimap } from "./GraphMinimap"
 import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
+import { GraphLayersRail } from "./GraphLayersRail"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
@@ -1039,6 +1040,17 @@ export const GraphView = (props: GraphViewProps) => {
       data-slot="graph-view"
       class="flex h-full w-full flex-col overflow-hidden"
     >
+      <GraphLayersRail
+        level={level()}
+        onLevel={setLevel}
+        domains={domains()}
+        onDomainsChange={setDomains}
+        depth={depth()}
+        onDepth={changeDepth}
+        depthModes={DEPTH_MODES}
+        capabilities={capabilities()}
+        renderer={rendererID()}
+      />
       <GraphToolbar
         level={level()}
         onLevel={setLevel}
@@ -1101,8 +1113,6 @@ export const GraphView = (props: GraphViewProps) => {
         compact={compact()}
         endInset={props.endInset}
         model={props.model}
-        domains={domains()}
-        onDomainsChange={setDomains}
       />
       <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
       <Show when={scaleNotice()}>

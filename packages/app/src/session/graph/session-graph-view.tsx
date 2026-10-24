@@ -3,6 +3,7 @@ import {
   buildGraph,
   nodeByID,
   openInTranscript,
+  scopeToTurns,
   turnNodeID,
   type EqualizerRule,
   type GraphArrangement,
@@ -14,7 +15,7 @@ import { useMarkdown } from "@opencode/session-ui/context/markdown"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
-import { ErrorBoundary, Suspense, createEffect, createMemo, lazy, on, untrack } from "solid-js"
+import { ErrorBoundary, Show, Suspense, createEffect, createMemo, createSignal, lazy, on, untrack } from "solid-js"
 import { messageIdFromHash } from "@/session/message-id-from-hash"
 import { graphPermalinkFromHash, graphPermalinkHash } from "@/session/graph/graph-permalink"
 import { useLanguage } from "@/runtime/i18n/language"
@@ -104,7 +105,7 @@ export function SessionGraphView(props: {
   })
 
   // T3.6: the session id rides on the root node, so an exported map names its session.
-  const model = createMemo(() =>
+  const fullModel = createMemo(() =>
     buildGraph({
       messages: session.history.messages(),
       status: session.data.status(),
@@ -114,6 +115,18 @@ export function SessionGraphView(props: {
       diffByTurn: diffByTurn(),
     }),
   )
+
+  // The scrubber moves across turn boundaries. The checkpoint is the last turn the map shows; at the
+  // newest checkpoint the map is the live model itself, so a live append keeps the map current.
+  const [checkpoint, setCheckpoint] = createSignal<number>()
+  const lastCheckpoint = () => Math.max(0, fullModel().turns.length - 1)
+  const activeCheckpoint = () => Math.min(checkpoint() ?? lastCheckpoint(), lastCheckpoint())
+  const model = createMemo(() => {
+    if (fullModel().turns.length === 0) return fullModel()
+    const index = activeCheckpoint()
+    if (index >= lastCheckpoint()) return fullModel()
+    return scopeToTurns(fullModel(), new Set(fullModel().turns.slice(0, index + 1)))
+  })
 
   // RF.8: the inspector's on-demand diffs read the same per-tab turn-diff cache the timeline uses,
   // scoped to the current session so the graph package never holds a session id.
@@ -210,8 +223,36 @@ export function SessionGraphView(props: {
         </div>
       }
     >
-      <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
-        <GraphView
+      <div class="flex h-full w-full flex-col overflow-hidden">
+        <Show when={fullModel().turns.length > 1}>
+          <div
+            data-slot="session-graph-scrubber"
+            class="flex h-7 shrink-0 items-center gap-2 border-b border-border-weaker-base px-3"
+          >
+            <label class="flex min-w-0 flex-1 items-center gap-2 text-12-regular text-text-weak">
+              <span class="shrink-0">{language.t("session.graph.scrubber.label")}</span>
+              <input
+                type="range"
+                min="1"
+                max={fullModel().turns.length}
+                step="1"
+                value={activeCheckpoint() + 1}
+                aria-label={language.t("session.graph.scrubber.aria")}
+                class="h-1 min-w-0 flex-1"
+                onInput={(event) => setCheckpoint(Number(event.currentTarget.value) - 1)}
+              />
+            </label>
+            <output class="shrink-0 text-12-regular tabular-nums text-text-weak">
+              {language.t("session.graph.scrubber.value", {
+                current: String(activeCheckpoint() + 1),
+                total: String(fullModel().turns.length),
+              })}
+            </output>
+          </div>
+        </Show>
+        <div class="min-h-0 flex-1">
+          <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
+            <GraphView
           model={model()}
           projection={graph.projection()}
           depth={graph.depth()}
@@ -282,9 +323,11 @@ export function SessionGraphView(props: {
           frame={permalink()?.nodeID}
           link={link()}
           sessionTitle={session.data.info()?.title ?? "OpenCode Session"}
-          testedCommit={pkg.version ?? "unknown"}
-        />
-      </Suspense>
+            testedCommit={pkg.version ?? "unknown"}
+          />
+          </Suspense>
+        </div>
+      </div>
     </ErrorBoundary>
   )
 }

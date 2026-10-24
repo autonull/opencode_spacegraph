@@ -58,7 +58,7 @@ story("assembles the graph view and answers node questions without the canvas", 
   // Level is a component prop: changing it must reach the toolbar's derived disabled state.
   const zoomOut = root.locator('button[aria-label="Zoom out"]')
   await expect(zoomOut).toBeEnabled()
-  await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Overview" }).click()
+  await root.locator('[data-slot="graph-layers-rail"] button', { hasText: "Overview" }).click()
   await expect(zoomOut).toBeDisabled()
 
   // T6.20: the zoom control stops at the renderer's own limit. The SpaceGraph's zoom is normalized
@@ -92,15 +92,14 @@ story("assembles the graph view and answers node questions without the canvas", 
     .toBe(TOKEN_ID)
 
   // 3D (the orbit depth) is available on SpaceGraphJS and projects through the contract.
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await root.locator('[data-slot="graph-toolbar"] button', { hasText: "Orbit" }).click()
+  await root.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
 
   // Switching backend rebuilds once on the same model; the perspective depths become unavailable, not broken.
   await page.evaluate(() => (window as unknown as ViewWindow).__graphView!.setRenderer("cytoscape"))
   await expect(host).toHaveAttribute("data-graph-renderer", "cytoscape", { timeout: 30_000 })
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
-  await expect(root.locator('[data-slot="graph-toolbar"] button', { hasText: "Orbit" })).toBeDisabled()
+  await expect(root.locator('[data-slot="graph-layers-depth"] option[value="orbit"]')).toHaveAttribute("disabled", "")
 
   expect(errors).toEqual([])
 })

@@ -1,15 +1,12 @@
 import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
-import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { Icon } from "@opencode/ui/icon"
-import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { For, Show, type JSX } from "solid-js"
+import { Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
   GRAPH_ARRANGEMENTS,
   LAYOUTS,
-  ZOOM_LEVELS,
   type DetailFraming,
   type DetailMode,
   type Domain,
@@ -18,20 +15,9 @@ import {
   type GraphSide,
   type Layout,
   type ZoomLevel,
-  PROFILE_PRESETS,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
-import {
-  ARRANGEMENT_KEY,
-  DEPTH_KEY,
-  DETAIL_MODE_KEY,
-  DOMAIN_GROUPS,
-  DOMAIN_KEY,
-  DOMAIN_OF_KIND,
-  LAYOUT_KEY,
-  LEVEL_KEY,
-  SIDE_KEY,
-} from "./vocabulary"
+import { ARRANGEMENT_KEY, DETAIL_MODE_KEY, LAYOUT_KEY, SIDE_KEY } from "./vocabulary"
 
 export type GraphToolbarProps = {
   level: ZoomLevel
@@ -161,11 +147,6 @@ const ToolbarMenu = (props: {
  */
 export const GraphToolbar = (props: GraphToolbarProps) => {
   const i18n = useI18n()
-  const depthAvailable = (depth: DepthMode) => !props.capabilities || supportsDepth(props.capabilities, depth)
-  const depthReason = (depth: DepthMode) =>
-    depthAvailable(depth)
-      ? undefined
-      : i18n.t("ui.sessionGraph.capability.depthUnavailable", { depth: i18n.t(DEPTH_KEY[depth]), renderer: props.renderer ?? "" })
 
   const option = (input: {
     label: string
@@ -202,24 +183,9 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     </button>
   )
 
-  /** How the map is drawn: the depth, the billboard, and the file lens. */
+  /** How the map is drawn: the billboard and the file lens. */
   const drawControls = () => (
     <>
-      <Show when={props.onDepth}>
-        <div data-slot="graph-toolbar-depth">
-          <div class="px-2 py-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.toolbar.depth")}</div>
-          {(props.depthModes ?? DEPTH_MODES).map((mode) =>
-            option({
-              label: i18n.t(DEPTH_KEY[mode]),
-              onClick: () => props.onDepth?.(mode),
-              pressed: props.depth === mode,
-              disabled: !depthAvailable(mode),
-              title: depthReason(mode),
-              slot: "graph-depth-option",
-            }),
-          )}
-        </div>
-      </Show>
       <Show when={props.capabilities?.cardFacing && props.onToggleBillboard}>
         {option({
           label: i18n.t(
@@ -292,112 +258,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
 
   /** What the map says: where the detail goes, the peek, the minimap, and the reader's overlays. */
   const showControls = () => {
-    // T27.1 — compute which domains have data in the model
-    const domainsWithData = new Set<Domain>()
-    if (props.model) {
-      for (const node of props.model.nodes) {
-        const domain = node.domain ?? (DOMAIN_OF_KIND[node.kind] as Domain | undefined)
-        if (domain) domainsWithData.add(domain)
-      }
-    }
-
-    const currentDomains = props.domains ?? new Set<Domain>(["session"])
-    const toggleDomain = (domain: Domain) => {
-      if (domain === "session") return // session is pinned
-      const next = new Set(currentDomains)
-      if (next.has(domain)) next.delete(domain)
-      else next.add(domain)
-      props.onDomainsChange?.(next)
-    }
-
     return (
       <>
-        <Show when={props.model && props.onDomainsChange}>
-          <ToolbarMenu
-            slot="graph-toolbar-domains"
-            label={i18n.t("ui.sessionGraph.toolbar.domains")}
-            icon="eye"
-            value={i18n.t("ui.sessionGraph.toolbar.domains")}
-          >
-            <div class="px-2 py-1 text-12-regular text-text-weak">
-              {i18n.t("ui.sessionGraph.toolbar.domains")}
-            </div>
-            <div class="flex flex-wrap gap-1 px-2 pb-1" data-slot="graph-profile-presets">
-              <For each={PROFILE_PRESETS}>
-                {(preset) => (
-                  <button
-                    type="button"
-                    class="rounded border border-border-weaker-base px-1.5 py-0.5 text-11-regular text-text-weak hover:text-text-strong"
-                    data-profile={preset.id}
-                    onClick={() => props.onDomainsChange?.(new Set(preset.domains))}
-                  >
-                    {i18n.t(preset.labelKey)}
-                  </button>
-                )}
-              </For>
-            </div>
-            <div class="w-full border-t border-border-weaker-base my-1" />
-            {/* Session is always on and pinned */}
-            {option({
-              label: i18n.t(DOMAIN_KEY.session),
-              onClick: () => {},
-              pressed: true,
-              disabled: true,
-              slot: "graph-domain-option",
-              value: "session",
-              ariaLabel: i18n.t("ui.sessionGraph.toolbar.domainPinned"),
-              keepOpen: true,
-            })}
-            <div class="w-full border-t border-border-weaker-base my-1" />
-            {/* Structure group */}
-            <div class="px-2 py-1 text-11-medium text-text-weak uppercase tracking-wide">
-              {i18n.t("ui.sessionGraph.toolbar.domainGroup.structure")}
-            </div>
-            {DOMAIN_GROUPS.structure.map((domain) =>
-              option({
-                label: i18n.t(DOMAIN_KEY[domain]),
-                onClick: () => toggleDomain(domain),
-                pressed: currentDomains.has(domain),
-                slot: "graph-domain-option",
-                value: domain,
-                keepOpen: true,
-                title: domainsWithData.has(domain) ? undefined : i18n.t("ui.sessionGraph.toolbar.domainEmpty", { domain: i18n.t(DOMAIN_KEY[domain]) }),
-              }),
-            )}
-            <div class="w-full border-t border-border-weaker-base my-1" />
-            {/* Code group */}
-            <div class="px-2 py-1 text-11-medium text-text-weak uppercase tracking-wide">
-              {i18n.t("ui.sessionGraph.toolbar.domainGroup.code")}
-            </div>
-            {DOMAIN_GROUPS.code.map((domain) =>
-              option({
-                label: i18n.t(DOMAIN_KEY[domain]),
-                onClick: () => toggleDomain(domain),
-                pressed: currentDomains.has(domain),
-                slot: "graph-domain-option",
-                value: domain,
-                keepOpen: true,
-                title: domainsWithData.has(domain) ? undefined : i18n.t("ui.sessionGraph.toolbar.domainEmpty", { domain: i18n.t(DOMAIN_KEY[domain]) }),
-              }),
-            )}
-            <div class="w-full border-t border-border-weaker-base my-1" />
-            {/* Runtime group */}
-            <div class="px-2 py-1 text-11-medium text-text-weak uppercase tracking-wide">
-              {i18n.t("ui.sessionGraph.toolbar.domainGroup.runtime")}
-            </div>
-            {DOMAIN_GROUPS.runtime.map((domain) =>
-              option({
-                label: i18n.t(DOMAIN_KEY[domain]),
-                onClick: () => toggleDomain(domain),
-                pressed: currentDomains.has(domain),
-                slot: "graph-domain-option",
-                value: domain,
-                keepOpen: true,
-                title: domainsWithData.has(domain) ? undefined : i18n.t("ui.sessionGraph.toolbar.domainEmpty", { domain: i18n.t(DOMAIN_KEY[domain]) }),
-              }),
-            )}
-          </ToolbarMenu>
-        </Show>
         <Show when={props.onDetailModeChange}>
           <div data-slot="graph-toolbar-detail">
             <div class="px-2 py-1 text-12-regular text-text-weak">
@@ -558,40 +420,6 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
             }),
           )}
         </ToolbarMenu>
-      </Show>
-
-      <Show
-        when={!props.compact}
-        fallback={
-          <ToolbarMenu
-            slot="graph-toolbar-level"
-            label={i18n.t("ui.sessionGraph.toolbar.level")}
-            icon="levels"
-            value={i18n.t(LEVEL_KEY[props.level])}
-          >
-            {ZOOM_LEVELS.map((level) =>
-              option({
-                label: i18n.t(LEVEL_KEY[level]),
-                onClick: () => props.onLevel(level),
-                pressed: props.level === level,
-                slot: "graph-level-option",
-                value: level,
-              }),
-            )}
-          </ToolbarMenu>
-        }
-      >
-        <SegmentedControl
-          value={props.level}
-          aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
-          onChange={(value) => value && props.onLevel(value as ZoomLevel)}
-        >
-          {ZOOM_LEVELS.map((level) => (
-            <SegmentedControlItem value={level}>
-              {i18n.t(LEVEL_KEY[level])}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
       </Show>
 
       <div class="flex items-center gap-1">

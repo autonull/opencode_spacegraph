@@ -45,10 +45,9 @@ story("the toolbar keeps four things inline and the rest behind two menus", asyn
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
-  // What is shown: the layout and the level. T17.1: one layout list, one control — the layout is a
-  // menu of seven names, and the level beside it.
+  // What is shown: the layout, and the layers rail above the row (level, lens, depth).
   await expect(toolbar.locator('[data-slot="graph-toolbar-layout"]')).toBeVisible()
-  await expect(toolbar.getByRole("group", { name: "Zoom level" })).toBeVisible()
+  await expect(root.locator('[data-slot="graph-layers-rail"]').getByRole("group", { name: "Zoom level" })).toBeVisible()
   // Where the camera is: the zoom and the fit.
   await expect(toolbar.getByRole("button", { name: "Zoom in" })).toBeVisible()
   await expect(toolbar.getByRole("button", { name: "Fit to view" })).toBeVisible()
@@ -67,6 +66,7 @@ story("the level is never disabled, whatever the layout (T17.1)", async ({ mount
   })
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
+  const rail = root.locator('[data-slot="graph-layers-rail"]')
 
   // The ribbon is a summary layout, and the level used to be greyed out for it.
   await toolbar.locator('[data-slot="graph-toolbar-layout"] summary').click()
@@ -74,6 +74,6 @@ story("the level is never disabled, whatever the layout (T17.1)", async ({ mount
   await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Ribbon")
 
   for (const level of ["Overview", "Execution", "Detail"]) {
-    await expect(toolbar.getByRole("button", { name: level, exact: true })).toBeEnabled()
+    await expect(rail.getByRole("button", { name: level, exact: true })).toBeEnabled()
   }
 })

@@ -138,7 +138,7 @@ test("switches to the ribbon layout, honours the level, and persists it", async 
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="turn"]`).count()).toBeGreaterThan(0)
 
   // T17.2: the level is the grain in a summary layout too, so the overview shows the phase segments.
-  await page.locator(toolbar).getByRole("button", { name: "Overview", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-rail"]').getByRole("button", { name: "Overview", exact: true }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="phase"]`).count()).toBeGreaterThan(0)
 
   await page.reload()
@@ -583,7 +583,7 @@ test("falls back to Cytoscape when the SpaceGraph adapter fails to load", async 
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "cytoscape", { timeout: 30_000 })
   // The fallback is declared to the user, not silent, and the perspective depths are disabled rather than broken.
   await expect(page.locator('[data-slot="graph-fallback"]')).toBeVisible()
-  await expect(page.locator(toolbar).locator("button", { hasText: "Orbit" })).toBeDisabled()
+  await expect(page.locator('[data-slot="graph-layers-depth"] option[value="orbit"]')).toHaveAttribute("disabled", "")
 })
 
 test("returns to the transcript when no renderer can mount", async ({ page }) => {

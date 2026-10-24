@@ -120,11 +120,9 @@ async function settle(page: Page) {
 }
 
 async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") {
-  await page.locator(toolbar).getByRole("button", { name: level, exact: true }).click()
-  await expect(page.locator(toolbar).getByRole("button", { name: level, exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  const rail = page.locator('[data-slot="graph-layers-rail"]')
+  await rail.getByRole("button", { name: level, exact: true }).click()
+  await expect(rail.getByRole("button", { name: level, exact: true })).toHaveAttribute("aria-pressed", "true")
 }
 
 async function fit(page: Page) {
@@ -230,11 +228,7 @@ async function still(page: Page) {
 }
 
 async function chooseProfile(page: Page, profile: string) {
-  await openMenu(page)
-  const domains = page.locator(`${toolbar} [data-slot="graph-toolbar-domains"]`)
-  const open = await domains.evaluate((element) => (element as HTMLDetailsElement).open)
-  if (!open) await domains.locator(":scope > summary").click()
-  await domains.locator(`[data-profile="${profile}"]`).click()
+  await page.locator('[data-slot="graph-layers-lens"]').selectOption(profile)
 }
 
 test("01 log", async ({ page }) => {
@@ -311,8 +305,7 @@ test("06 graph 3d", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
   await still(page)
   await fit(page)
@@ -428,10 +421,8 @@ test("18 graph layered", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Layer", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption("layered")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
   await still(page)
   await fit(page)
@@ -445,10 +436,8 @@ test("19 graph depth stack", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Stack", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption("depth-stack")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
   await still(page)
   await fit(page)
@@ -572,8 +561,7 @@ test("31 graph perspective", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Orbit", exact: true }).click()
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
   await setLevel(page, "Detail")
