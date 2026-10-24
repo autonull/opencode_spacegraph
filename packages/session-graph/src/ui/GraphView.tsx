@@ -112,6 +112,7 @@ import { exportGraph, type ExportFormat } from "./export"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import { createGraphSelection } from "./graph-selection"
+import { noteData } from "./node-data"
 import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "./graph-windows"
 
 /**
@@ -359,11 +360,10 @@ export const GraphView = (props: GraphViewProps) => {
     const node = nodeByID(model(), id)
     if (!node) return
     if (node.kind === "note") {
-      const noteID = typeof node.data?.noteID === "string" ? node.data.noteID : undefined
-      const target = typeof node.data?.target === "string" ? node.data.target : undefined
-      if (!noteID || !target) return
-      setEditingNote(noteID)
-      setNoteTarget(target)
+      const data = noteData(node)
+      if (!data) return
+      setEditingNote(data.noteID)
+      setNoteTarget(data.target)
       return
     }
     setEditingNote(undefined)
@@ -398,9 +398,9 @@ export const GraphView = (props: GraphViewProps) => {
     openNoteComposer()
   }
   const deleteNote = (node: GraphNode) => {
-    const noteID = typeof node.data?.noteID === "string" ? node.data.noteID : undefined
-    if (!noteID) return
-    setNotes(produce((all) => void delete all[noteID]))
+    const data = noteData(node)
+    if (!data) return
+    setNotes(produce((all) => void delete all[data.noteID]))
     announce(i18n.t("ui.sessionGraph.note.deleted"))
   }
   const copyNote = (node: GraphNode) => {

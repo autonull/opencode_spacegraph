@@ -16,3 +16,10 @@ export const flag = (value: unknown) => value === true
 /** The strings in a list, dropping everything that is not one. */
 export const strings = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+
+/** A note node's data: the annotation id and its target node id. */
+export const noteData = (node: { data?: Record<string, unknown> }): { noteID: string; target: string } | undefined => {
+  const noteID = typeof node.data?.noteID === "string" ? node.data.noteID : undefined
+  const target = typeof node.data?.target === "string" ? node.data.target : undefined
+  return noteID && target ? { noteID, target } : undefined
+}
