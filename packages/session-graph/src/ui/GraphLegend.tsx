@@ -4,7 +4,8 @@ import { LANES, NODE_KINDS, NODE_STATUSES, PHASE_CATEGORIES } from "@opencode/se
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show, type JSX, onMount } from "solid-js"
-import { categoryAccent, kindAccent, statusAccent, sourceLabel, formatAge } from "./cardTemplate"
+import { categoryAccent, kindAccent, statusAccent } from "./cardTemplate"
+import { formatAge, sourceLabel } from "./provenance"
 import { CONFIDENCE_KEY, EDGE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 

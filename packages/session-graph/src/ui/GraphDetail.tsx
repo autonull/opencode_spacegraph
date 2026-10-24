@@ -1,4 +1,4 @@
-import type { GraphEdge, GraphViewData, GraphNode, Provenance } from "@opencode/session-ui/graph"
+import type { GraphEdge, GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import type { JsonValue } from "@opencode/client/promise"
 import {
   actionsFor,
@@ -14,6 +14,7 @@ import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 import { count, flag, strings, text } from "./node-data"
+import { formatProvenance } from "./provenance"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
   pending: "text-text-weak",
@@ -22,49 +23,6 @@ const STATUS_TONE: Record<GraphNode["status"], string> = {
   failed: "text-text-on-critical-base",
   interrupted: "text-text-on-warning-base",
   neutral: "text-text-weak",
-}
-
-/** T30.3 — human-readable label for each snapshot source. */
-function sourceLabel(source: string): string {
-  switch (source) {
-    case "tree":
-      return "filesystem"
-    case "vcs":
-      return "git"
-    case "packages":
-      return "packages"
-    case "symbols":
-      return "symbols"
-    case "issues":
-      return "issues"
-    case "processes":
-      return "processes"
-    case "coverage":
-      return "coverage"
-    default:
-      return source
-  }
-}
-
-/** T30.3 — format a timestamp difference as a relative age string. */
-function formatAge(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-
-  if (days > 0) return `${days}d`
-  if (hours > 0) return `${hours}h`
-  if (minutes > 0) return `${minutes}m`
-  return `${seconds}s`
-}
-
-/** T30.3 — format provenance for display in the inspector. */
-function formatProvenance(provenance: Provenance | undefined, now: number): string | undefined {
-  if (!provenance) return undefined
-  const { source, asOf } = provenance
-  const age = asOf !== undefined ? formatAge(now - asOf) : undefined
-  return age ? `${sourceLabel(source)}, ${age}` : sourceLabel(source)
 }
 
 type Connection = { edge: GraphEdge; other: GraphNode; direction: "in" | "out" }

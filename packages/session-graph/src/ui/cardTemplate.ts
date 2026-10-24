@@ -12,6 +12,7 @@ import { equalizerFade, equalizerMatch, isClusterExpanded, phaseCategoryOf } fro
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 import { text } from "./node-data"
 import type { TraceOverlay } from "./overlay"
+import { formatAge, sourceLabel } from "./provenance"
 
 /**
  * RF.3 — the rich activity card. It is a host template (the render model stays neutral): a leading
@@ -156,41 +157,6 @@ export function statusAccent(theme: RenderTheme, status: GraphNode["status"], ne
 }
 
 const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])
-
-/** T30.3 — human-readable label for each snapshot source. */
-export function sourceLabel(source: string): string {
-  switch (source) {
-    case "tree":
-      return "filesystem"
-    case "vcs":
-      return "git"
-    case "packages":
-      return "packages"
-    case "symbols":
-      return "symbols"
-    case "issues":
-      return "issues"
-    case "processes":
-      return "processes"
-    case "coverage":
-      return "coverage"
-    default:
-      return source
-  }
-}
-
-/** T30.3 — format a timestamp difference as a relative age string. */
-export function formatAge(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-
-  if (days > 0) return `${days}d`
-  if (hours > 0) return `${hours}h`
-  if (minutes > 0) return `${minutes}m`
-  return `${seconds}s`
-}
 
 /**
  * The card's own words. A card is canvas markup, so the host owns its language: the template never
