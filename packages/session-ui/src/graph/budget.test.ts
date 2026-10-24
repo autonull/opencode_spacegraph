@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { byProximity, sessionOrder } from "./budget"
+import { DEFAULT_BUDGET, applyNodeBudget, byProximity, sessionOrder } from "./budget"
 import { buildFixtureGraph } from "./fixture"
 import { layoutGraph } from "./layout"
 import type { GraphModel } from "./model"
@@ -75,5 +75,40 @@ describe("the card budget follows the camera", () => {
 
     expect(order.get(model.nodes[0]!.id)).toBe(0)
     expect(order.get(model.nodes[1]!.id)).toBe(1)
+  })
+})
+
+describe("visibility budget", () => {
+  test("is a no-op below the budget", () => {
+    const model = buildFixtureGraph()
+    expect(applyNodeBudget(model, { ...DEFAULT_BUDGET, maxNodes: model.nodes.length })).toBe(model)
+  })
+
+  test("keeps the highest-priority nodes and the session", () => {
+    const model = buildFixtureGraph()
+    const budgeted = applyNodeBudget(model, { ...DEFAULT_BUDGET, maxNodes: 10 })
+
+    expect(budgeted.nodes.length).toBe(10)
+    expect(budgeted.nodes.some((node) => node.kind === "session")).toBe(true)
+    expect(budgeted.nodes.some((node) => node.kind === "turn")).toBe(true)
+  })
+
+  test("drops low-priority nodes first", () => {
+    const model = buildFixtureGraph()
+    const budgeted = applyNodeBudget(model, {
+      ...DEFAULT_BUDGET,
+      maxNodes: 12,
+      weights: { ...DEFAULT_BUDGET.weights, diff: 0, error: 0, retry: 0 },
+    })
+
+    expect(budgeted.nodes.some((node) => node.kind === "diff")).toBe(false)
+  })
+
+  test("keeps metadata", () => {
+    const model = buildFixtureGraph()
+    const budgeted = applyNodeBudget(model, { ...DEFAULT_BUDGET, maxNodes: 5 })
+
+    expect(budgeted.goal).toBe(model.goal)
+    expect(budgeted.turns).toEqual(model.turns)
   })
 })

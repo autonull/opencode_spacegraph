@@ -61,7 +61,10 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   - [x] `computeIncremental` returns `{ layout, added, removed, moved }`; `moved` carries `{ from, to, t }`.
   - [x] `interpolatePosition` and the `t` option provide interpolation for callers that want it.
   - [x] 5 incremental layout tests.
-- [ ] **Slice 8 — Spatial + scale** (`SpatialIndex2D`, `q.near`, budgets).
+- [x] **Slice 8 — Spatial + scale**.
+  - [x] Kernel `SpatialIndex2D`: grid buckets, `near`, `within`, insert/move/remove, limit + distance ordering; 6 tests.
+  - [x] `query(kernel, { positions }).near(x, y, radius, limit)` exported as `q.near`; returns `[]` without positions.
+  - [x] `applyNodeBudget(model, budget)` with `DEFAULT_BUDGET` weights; adapter-owned `byProximity`/`sessionOrder` retained; 4 tests.
 - [ ] **Slice 9 — A11y + export**.
 
 ### Current gate

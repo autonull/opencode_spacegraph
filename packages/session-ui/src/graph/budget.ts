@@ -1,5 +1,6 @@
-import type { GraphModel } from "./model"
+import type { GraphModel, GraphNode } from "./model"
 import type { Position } from "./layout"
+import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
 
 /**
  * T17.5 — the DOM card budget follows the camera.
@@ -38,4 +39,55 @@ export function byProximity(
 /** Where each node sits in the session's own order, so a surface that reads the session can say so. */
 export function sessionOrder(model: GraphModel): Map<string, number> {
   return new Map(model.nodes.map((node, index) => [node.id, index]))
+}
+
+export type VisibilityBudget = {
+  readonly maxNodes: number
+  readonly weights: Readonly<Record<string, number>>
+}
+
+export const DEFAULT_BUDGET: VisibilityBudget = {
+  maxNodes: 2_000,
+  weights: {
+    session: 1_000,
+    turn: 500,
+    phase: 300,
+    subagent: 200,
+    message: 100,
+    notice: 90,
+    error: 90,
+    diff: 80,
+    compaction: 70,
+    tool: 60,
+    result: 50,
+    file: 40,
+    directory: 30,
+    symbol: 20,
+    package: 15,
+    commit: 10,
+    branch: 10,
+    process: 8,
+    port: 8,
+    issue: 8,
+    retry: 20,
+  },
+}
+
+const priority = (node: GraphNode, weights: Readonly<Record<string, number>>) =>
+  weights[node.kind] ?? 0
+
+export const applyNodeBudget = (
+  model: GraphModel,
+  budget: VisibilityBudget = DEFAULT_BUDGET,
+): GraphModel => {
+  if (model.nodes.length <= budget.maxNodes) return model
+  const kept = [...model.nodes]
+    .sort(
+      (a, b) =>
+        priority(b, budget.weights) - priority(a, budget.weights) || a.id.localeCompare(b.id),
+    )
+    .slice(0, budget.maxNodes)
+  const ids = new Set(kept.map((node) => node.id))
+  const kernel = graphModelToKernel(model).subgraph(ids)
+  return toGraphView(kernel, graphViewMeta(model))
 }
