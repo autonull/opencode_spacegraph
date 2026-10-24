@@ -35,6 +35,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     process: "detail",
     port: "detail",
     issue: "overview",
+    note: "execution",
   },
   edgeMinLevel: {
     "part-of": "overview",
@@ -55,6 +56,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     calls: "execution",
     covers: "execution",
     executes: "execution",
+    annotates: "execution",
   },
   domBudget: { overview: 12, execution: 40, detail: 24 },
   isClusterExpanded: (level) => level !== "overview",

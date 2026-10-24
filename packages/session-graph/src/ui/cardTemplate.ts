@@ -46,6 +46,7 @@ const GLYPH: Record<NodeKind, string> = {
   process: "M4 1.5h8v10H4zM8 1.5V5h4",
   port: "M4 4v8M12 4v8M4 8h8M8 12v3M8 1v3",
   issue: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 7.5v4M8 4.5v.5M8 12.5v.5",
+  note: "M3 2h10v12l-3-2-3 2-3-2zM6 5h4M6 8h4",
 }
 
 /** A small stack glyph for phase/group nodes to indicate they contain members. */
@@ -87,6 +88,7 @@ const KIND_HUE: Record<NodeKind, number> = {
   process: 210,
   port: 210,
   issue: 0,
+  note: 265,
 }
 
 function hue(node: GraphNode): number {

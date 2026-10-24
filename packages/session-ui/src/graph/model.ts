@@ -48,6 +48,7 @@ export type EdgeKind =
   | "calls"
   | "covers"
   | "executes"
+  | "annotates"
 
 export type GraphNode = {
   id: string

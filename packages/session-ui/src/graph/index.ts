@@ -79,6 +79,12 @@ export { nodeIndex, lookupNode, childIndex } from "./lookup"
 
 export { scopeModel } from "./view"
 export { collapseGroups } from "./collapse"
+export {
+  noteNodeID,
+  withAnnotations,
+  type Annotation,
+  type Annotations,
+} from "./annotations"
 
 export {
   buildFixtureGraph,

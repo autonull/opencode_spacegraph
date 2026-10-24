@@ -64,6 +64,9 @@ export const GraphPopover = (props: GraphPopoverProps) => {
             onTraceRelated={props.onTraceRelated}
             onClearTrace={props.onClearTrace}
             onCopyTraceOutline={props.onCopyTraceOutline}
+            onEditNote={props.onEditNote}
+            onDeleteNote={props.onDeleteNote}
+            onCopyNote={props.onCopyNote}
           />
         </div>
       )}

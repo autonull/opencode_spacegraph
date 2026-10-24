@@ -9,6 +9,7 @@ import type {
 } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
 import type {
+  Annotations,
   DetailFraming,
   DetailMode,
   DetailTier,
@@ -33,6 +34,7 @@ import {
   changedFiles,
   collapseGroups,
   degreeBudget,
+  withAnnotations,
   DETAIL_TIER_WIDTH,
   detailTier,
   equalizerScale,
@@ -74,7 +76,7 @@ import {
   untrack,
   type JSX,
 } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createStore, produce } from "solid-js/store"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -94,6 +96,7 @@ import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
 import { GraphMinimap } from "./GraphMinimap"
 import { GraphPeek } from "./GraphPeek"
+import { GraphNoteComposer } from "./GraphNoteComposer"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
 import { GraphStatusBar } from "./GraphStatusBar"
@@ -278,6 +281,13 @@ export const GraphView = (props: GraphViewProps) => {
   // A2 — the question the map answers. Text, kind/status chips, and the domain lens compose into
   // one scope; a permalink's `q=` is the same state in its shareable form.
   const [facets, setFacets] = createSignal<GraphFacets>(facetsFromQuery(props.facetQuery ?? ""))
+  // C1 — notes are session-local nodes. The annotated model is the one every selector and pipeline
+  // reads, so notes are searchable, exportable, and scoped by their target's turn for free.
+  const [notes, setNotes] = createStore<Annotations>({})
+  const model = createMemo(() => withAnnotations(props.model, notes))
+  // C1 — the composer edits one note at a time; the target is the node the reader is holding.
+  const [noteTarget, setNoteTarget] = createSignal<string>()
+  const [editingNote, setEditingNote] = createSignal<string>()
   const [hovered, setHovered] = createSignal<string>()
   // B3 — edges are first-class: hover names one, click selects its source and traces from it.
   const [edgeHovered, setEdgeHovered] = createSignal<string>()
@@ -298,7 +308,7 @@ export const GraphView = (props: GraphViewProps) => {
     const kind = traceKind()
     const source = traceSource()
     if (!kind || !source) return null
-    return classifyTrace(props.model, kind, source)
+    return classifyTrace(model(), kind, source)
   })
   const clearTrace = () => {
     setTraceKind(null)
@@ -310,7 +320,7 @@ export const GraphView = (props: GraphViewProps) => {
     setTraceKind(kind)
     setTraceSource(from)
     // Announce to screen readers
-    const node = nodeByID(props.model, from)
+    const node = nodeByID(model(), from)
     const label = node?.label ?? from
     const messages: Record<TraceKind, string> = {
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
@@ -323,7 +333,7 @@ export const GraphView = (props: GraphViewProps) => {
   const copyTraceOutline = () => {
     const overlay = traceOverlay()
     if (!overlay) return
-    const text = copyTraceAsOutline(props.model, overlay, breadcrumbs)
+    const text = copyTraceAsOutline(model(), overlay, breadcrumbs)
     navigator.clipboard?.writeText(text)
     announce(i18n.t("ui.sessionGraph.trace.copied"))
   }
@@ -336,6 +346,62 @@ export const GraphView = (props: GraphViewProps) => {
     }
     navigator.clipboard?.writeText(query)
     announce(i18n.t("ui.sessionGraph.facets.copied"))
+  }
+  // C1 — a note is appended to session-local state; nothing on the transcript path is touched.
+  const openNoteComposer = () => {
+    const id = selection.selection()[0]
+    if (!id) return
+    const node = nodeByID(model(), id)
+    if (!node) return
+    if (node.kind === "note") {
+      const noteID = typeof node.data?.noteID === "string" ? node.data.noteID : undefined
+      const target = typeof node.data?.target === "string" ? node.data.target : undefined
+      if (!noteID || !target) return
+      setEditingNote(noteID)
+      setNoteTarget(target)
+      return
+    }
+    setEditingNote(undefined)
+    setNoteTarget(id)
+  }
+  const closeNoteComposer = () => {
+    setEditingNote(undefined)
+    setNoteTarget(undefined)
+  }
+  const saveNote = (body: string) => {
+    const target = noteTarget()
+    if (!target) return
+    const editing = editingNote()
+    if (editing) {
+      if (body.trim().length === 0) {
+        setNotes(produce((all) => void delete all[editing]))
+        announce(i18n.t("ui.sessionGraph.note.deleted"))
+      } else {
+        setNotes(editing, "body", body)
+        announce(i18n.t("ui.sessionGraph.note.updated"))
+      }
+      closeNoteComposer()
+      return
+    }
+    const id = crypto.randomUUID()
+    setNotes(id, { id, target, body, createdAt: Date.now() })
+    announce(i18n.t("ui.sessionGraph.note.added"))
+    closeNoteComposer()
+  }
+  const editNote = (node: GraphNode) => {
+    selection.select(node.id)
+    openNoteComposer()
+  }
+  const deleteNote = (node: GraphNode) => {
+    const noteID = typeof node.data?.noteID === "string" ? node.data.noteID : undefined
+    if (!noteID) return
+    setNotes(produce((all) => void delete all[noteID]))
+    announce(i18n.t("ui.sessionGraph.note.deleted"))
+  }
+  const copyNote = (node: GraphNode) => {
+    const body = typeof node.summary === "string" ? node.summary : node.label
+    navigator.clipboard?.writeText(body)
+    announce(i18n.t("ui.sessionGraph.note.copied"))
   }
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererReady, setRendererReady] = createSignal(false)
@@ -366,18 +432,18 @@ export const GraphView = (props: GraphViewProps) => {
   // The turn a node belongs to: a turn node owns itself, anything else inherits from its ancestry.
   const turnOf = (id: string | undefined) => {
     if (!id) return undefined
-    const node = nodeByID(props.model, id)
+    const node = nodeByID(model(), id)
 
     if (!node) return undefined
     if (node.kind === "turn") return node.id
 
-    return ancestors(props.model, id).find((ancestor) => ancestor.kind === "turn")?.id
+    return ancestors(model(), id).find((ancestor) => ancestor.kind === "turn")?.id
   }
 
   // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
   // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
   const selection = createGraphSelection({
-    model: () => props.model,
+    model: () => model(),
     controlled: () => props.selection,
     onSelect: (id) => props.onSelect?.(id),
     onChange: () => setPopoverDismissed(false),
@@ -396,13 +462,13 @@ export const GraphView = (props: GraphViewProps) => {
   // T18.1: when followLog is enabled, also keep the active turn from the log in the drawn window.
   const scale = createMemo(() =>
     scaleWindow(
-      props.model,
+      model(),
       [selectedTurn(), turnOf(props.frame), followLog() ? props.activeTurn : undefined].filter(
         (id): id is string => !!id,
       ),
     ),
   )
-  const turnScoped = createMemo(() => scopeToTurns(props.model, scale().turns))
+  const turnScoped = createMemo(() => scopeToTurns(model(), scale().turns))
   // B1 — "keep only" is a scope over the held set, applied after facets so the two compose.
   const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
   // B2 — collapse is session-local model state; expanding restores the same derived positions.
@@ -427,7 +493,7 @@ export const GraphView = (props: GraphViewProps) => {
   const selectedGroup = () => {
     const id = selection.selection()[0]
     if (!id) return undefined
-    const node = props.model.nodes.find((item) => item.id === id)
+    const node = model().nodes.find((item) => item.id === id)
     return node && (node.clusterOf?.length ?? 0) > 0 ? node : undefined
   }
   const toggleGroup = () => {
@@ -445,7 +511,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (!group) return
     setCollapsedGroups(
       new Set(
-        props.model.nodes
+        model().nodes
           .filter((node) => node.id !== group.id && (node.clusterOf?.length ?? 0) > 0)
           .map((node) => node.id),
       ),
@@ -456,10 +522,10 @@ export const GraphView = (props: GraphViewProps) => {
   // carry added and changed marks, and nothing re-lays-out when the scrubber moves.
   const comparison = createMemo(() => {
     const checkpoint = props.checkpoint
-    const turns = props.model.turns
+    const turns = model().turns
     if (checkpoint === undefined || props.turnCount === undefined) return undefined
     if (checkpoint >= turns.length - 1 || checkpoint < 0) return undefined
-    const parked = scopeToTurns(props.model, new Set(turns.slice(0, checkpoint + 1)))
+    const parked = scopeToTurns(model(), new Set(turns.slice(0, checkpoint + 1)))
     const changes = reviewChanges(parked, scoped())
     return {
       added: new Set(changes.added),
@@ -472,7 +538,7 @@ export const GraphView = (props: GraphViewProps) => {
       },
     }
   })
-  const clearComparison = () => props.onCheckpoint?.(Math.max(0, props.model.turns.length - 1))
+  const clearComparison = () => props.onCheckpoint?.(Math.max(0, model().turns.length - 1))
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
   const windowAnchor = createMemo(() => {
@@ -581,7 +647,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
   // T11.3 — a file's card says who read it and who wrote it: a fact only the graph's edges know.
   const copy = createCardCopy(i18n)
-  const relations = createMemo(() => fileRelations(props.model))
+  const relations = createMemo(() => fileRelations(model()))
   const relatedDetail = (node: GraphNode) => {
     if (node.kind !== "file") return undefined
     const relation = relations().get(node.id)
@@ -616,7 +682,7 @@ export const GraphView = (props: GraphViewProps) => {
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
   // a streamed session never moves a node the reader is looking at.
   const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
-  const sessionKey = () => nodeIndex(props.model).get(props.model.root)?.data?.sessionID ?? "session"
+  const sessionKey = () => nodeIndex(model()).get(model().root)?.data?.sessionID ?? "session"
   // A manual arrangement belongs to the view it was made in. Changing session, layout, or level
   // returns the reader to the derived layout instead of carrying stale coordinates across views.
   const viewKey = createMemo(() => `${sessionKey()}:${layout()}:${level()}`)
@@ -656,7 +722,7 @@ export const GraphView = (props: GraphViewProps) => {
     // T15: the rules are part of the layout key, because a size rule re-lays-out the map — the
     // same way a level or a layout change does.
     const key = `${sessionKey()}:${current}:${level()}:${rulesKey()}`
-    const next = layoutGraph(props.model, {
+    const next = layoutGraph(model(), {
       strategy: current,
       level: level(),
       previous: layoutHistory.get(key),
@@ -699,7 +765,7 @@ export const GraphView = (props: GraphViewProps) => {
     }),
   )
   // T1.11: the summary layouts name their axes; the node-link graph names itself.
-  const turnNumbers = createMemo(() => new Map(props.model.turns.map((id, index) => [id, index + 1])))
+  const turnNumbers = createMemo(() => new Map(model().turns.map((id, index) => [id, index + 1])))
   const axisLabels = createMemo(() => buildAxisLabels(scoped(), turnRows(scoped(), level()), layout(), turnNumbers(), i18n.t))
 
   // T17.2 — a summary draws the level's units, and a cluster yields to its members below the
@@ -787,7 +853,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   const edgeKinds = createMemo(() => {
     const counts = new Map<string, number>()
-    for (const edge of props.model.edges) counts.set(edge.kind, (counts.get(edge.kind) ?? 0) + 1)
+    for (const edge of model().edges) counts.set(edge.kind, (counts.get(edge.kind) ?? 0) + 1)
     return [...counts].map(([kind, count]) => ({ kind, count, hidden: hiddenEdgeKinds().has(kind) }))
   })
   const toggleEdgeKind = (kind: string) =>
@@ -830,7 +896,7 @@ export const GraphView = (props: GraphViewProps) => {
   const copySelectedPaths = () => {
     const ids = selection.selection()
     const text = ids
-      .map((id) => breadcrumbs(props.model, id).map((node) => node.label).join(" › "))
+      .map((id) => breadcrumbs(model(), id).map((node) => node.label).join(" › "))
       .filter((line) => line.length > 0)
       .join("\n")
     if (!text) return
@@ -851,7 +917,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   const selectedNode = () => {
     const id = selection.selection()[0]
-    return id ? nodeByID(props.model, id) : undefined
+    return id ? nodeByID(model(), id) : undefined
   }
   // T1.9: the inspector can describe a node the current level does not draw. Say so and offer the
   // level change, rather than leaving the user with an invisible selection.
@@ -877,7 +943,7 @@ export const GraphView = (props: GraphViewProps) => {
       .nodes.filter((node) => node.kind !== "band")
       .map((node) => node.id)
 
-    return scale().hidden > 0 ? ids.filter((id) => id !== props.model.root) : ids
+    return scale().hidden > 0 ? ids.filter((id) => id !== model().root) : ids
   }
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
@@ -929,13 +995,19 @@ export const GraphView = (props: GraphViewProps) => {
     if (!peek()) return undefined
     const id = hovered()
     if (!id || id === selection.selection()[0]) return undefined
-    return nodeByID(props.model, id)
+    return nodeByID(model(), id)
   })
   const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport })
+  const noteAnchor = createNodeAnchor({
+    node: () => (noteTarget() ? nodeByID(model(), noteTarget()!) : undefined),
+    renderer: () => renderer,
+    viewport,
+  })
+  const noteTargetNode = () => (noteTarget() ? nodeByID(model(), noteTarget()!) : undefined)
   const peekEdge = createMemo(() => {
     if (!peek()) return undefined
     const id = edgeHovered()
-    return id ? props.model.edges.find((edge) => edge.id === id) : undefined
+    return id ? model().edges.find((edge) => edge.id === id) : undefined
   })
   // Above the node's own box, so the peek never covers what it is about.
   const peekPlacement = createMemo(() => {
@@ -966,16 +1038,16 @@ export const GraphView = (props: GraphViewProps) => {
     {
       name: "node",
       title: (window) => {
-        const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
+        const node = window.nodeID ? nodeByID(model(), window.nodeID) : undefined
         return node?.label ?? i18n.t("ui.sessionGraph.window.detail")
       },
       render: (window) => {
-        const node = window.nodeID ? nodeByID(props.model, window.nodeID) : undefined
+        const node = window.nodeID ? nodeByID(model(), window.nodeID) : undefined
         if (!node)
           return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
         return (
           <GraphDetailSurface
-            model={props.model}
+            model={model()}
             node={node}
             diffSource={props.diffSource}
             renderSummary={props.renderSummary}
@@ -989,6 +1061,9 @@ export const GraphView = (props: GraphViewProps) => {
             onTraceRelated={(id) => startTrace("related", id)}
             onClearTrace={clearTrace}
             onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
+            onEditNote={editNote}
+            onDeleteNote={deleteNote}
+            onCopyNote={copyNote}
           />
         )
       },
@@ -998,8 +1073,8 @@ export const GraphView = (props: GraphViewProps) => {
       title: () => i18n.t("ui.sessionGraph.filesystem.title"),
       render: (window) => (
         <GraphFilesystemWindow
-          model={props.model}
-          workspaceRoot={props.model.workspaceRoot ?? props.model.root}
+          model={model()}
+          workspaceRoot={model().workspaceRoot ?? model().root}
           onSelect={selection.select}
           onOpen={(file) => props.onActionNavigate?.({ file: file.data?.path as string })}
           selection={selection.selection()[0]}
@@ -1034,7 +1109,7 @@ export const GraphView = (props: GraphViewProps) => {
       title: () => i18n.t("ui.sessionGraph.minimap.label"),
       render: () => (
         <GraphMinimap
-          model={props.model}
+          model={model()}
           positions={displayPositions()}
           theme={theme()}
           viewport={viewport()}
@@ -1090,7 +1165,7 @@ export const GraphView = (props: GraphViewProps) => {
   }
   // LE.8/LE.9: a segment/cell expands into the node-link graph with that node selected and framed.
   const expandToGraph = (id: string) => {
-    const node = nodeByID(props.model, id)
+    const node = nodeByID(model(), id)
 
     if (!node) return
     Metrics.count("expand")
@@ -1119,7 +1194,7 @@ export const GraphView = (props: GraphViewProps) => {
     selection.select(undefined)
   }
   // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
-  const changedFilesList = createMemo(() => changedFiles(props.model))
+  const changedFilesList = createMemo(() => changedFiles(model()))
   const jumpTo = (node: GraphNode) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
@@ -1130,7 +1205,7 @@ export const GraphView = (props: GraphViewProps) => {
   const fitSubtree = (id: string) => {
     selection.select(id)
     renderer?.fit(
-      subtree(props.model, id).map((node) => node.id),
+      subtree(model(), id).map((node) => node.id),
       fitOptions(),
     )
   }
@@ -1141,7 +1216,7 @@ export const GraphView = (props: GraphViewProps) => {
   const raiseLevelForFrame = () => {
     const id = props.frame
     if (!id) return false
-    const node = nodeByID(props.model, id)
+    const node = nodeByID(model(), id)
     if (!node) return false
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] <= LEVEL_RANK[level()]) return false
@@ -1151,7 +1226,7 @@ export const GraphView = (props: GraphViewProps) => {
   const focusFrame = (instance: GraphRenderer | undefined) => {
     const id = props.frame
     if (!id || !instance || framed() === id) return
-    const node = nodeByID(props.model, id)
+    const node = nodeByID(model(), id)
     if (!node) return
     selection.select(id, false)
     camera.focus(id)
@@ -1160,7 +1235,7 @@ export const GraphView = (props: GraphViewProps) => {
   // A permalink that changes while the graph is open frames its node too, not only on load.
   createEffect(() => {
     const id = props.frame
-    const node = id ? nodeByID(props.model, id) : undefined
+    const node = id ? nodeByID(model(), id) : undefined
     if (!node) return
     focusFrame(renderer)
   })
@@ -1199,7 +1274,7 @@ export const GraphView = (props: GraphViewProps) => {
   const stepNeighbor = (id: string, delta: number) => {
     const neighbors = [
       ...new Set(
-        props.model.edges
+        model().edges
           .filter((edge) => edge.source === id || edge.target === id)
           .map((edge) => (edge.source === id ? edge.target : edge.source)),
       ),
@@ -1226,6 +1301,11 @@ export const GraphView = (props: GraphViewProps) => {
     // Trace keyboard shortcuts (A1): w=Why, e=Led-here, r=Related, [/]=step lit nodes
     const selectionId = selection.selection()[0]
     if (selectionId) {
+      if (event.key === "n") {
+        event.preventDefault()
+        openNoteComposer()
+        return
+      }
       if (event.key === "w") {
         event.preventDefault()
         startTrace("why", selectionId)
@@ -1448,7 +1528,7 @@ export const GraphView = (props: GraphViewProps) => {
         searching={searchOpen()}
         compact={compact()}
         endInset={props.endInset}
-        model={props.model}
+        model={model()}
       />
       <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
       <GraphStatusBar
@@ -1458,6 +1538,7 @@ export const GraphView = (props: GraphViewProps) => {
         onCopyPaths={copySelectedPaths}
         onExportSubset={exportSelection}
         onClear={clearSelectionScope}
+        onAddNote={openNoteComposer}
         group={
           selectedGroup()
             ? {
@@ -1562,7 +1643,7 @@ export const GraphView = (props: GraphViewProps) => {
             onHover={(id) => setHovered(id)}
             onEdgeHover={(id) => setEdgeHovered(id)}
             onEdgeSelect={(id) => {
-              const edge = props.model.edges.find((item) => item.id === id)
+              const edge = model().edges.find((item) => item.id === id)
               if (!edge) return
               selection.select(edge.source)
               startTrace("related", edge.source)
@@ -1615,6 +1696,15 @@ export const GraphView = (props: GraphViewProps) => {
               </div>
             )}
           </Show>
+          <Show when={noteTarget()}>
+            <GraphNoteComposer
+              targetLabel={noteTargetNode()?.label ?? noteTarget() ?? ""}
+              initialValue={editingNote() ? notes[editingNote()!]?.body : undefined}
+              anchor={noteAnchor()}
+              onSave={saveNote}
+              onClose={closeNoteComposer}
+            />
+          </Show>
           <Show when={effectiveDetailMode() === "popover"}>
             <div
               data-slot="graph-popover-anchor"
@@ -1626,7 +1716,7 @@ export const GraphView = (props: GraphViewProps) => {
               }}
             >
               <GraphPopover
-                model={props.model}
+                model={model()}
                 node={popoverNode()}
                 diffSource={props.diffSource}
                 renderSummary={props.renderSummary}
@@ -1643,6 +1733,9 @@ export const GraphView = (props: GraphViewProps) => {
                 onTraceRelated={(id) => startTrace("related", id)}
                 onClearTrace={clearTrace}
                 onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
+            onEditNote={editNote}
+            onDeleteNote={deleteNote}
+            onCopyNote={copyNote}
               />
             </div>
           </Show>
@@ -1675,7 +1768,7 @@ export const GraphView = (props: GraphViewProps) => {
               </Show>
             </div>
           </Show>
-          <Show when={!error() && props.model.nodes.length === 0}>
+          <Show when={!error() && model().nodes.length === 0}>
             <div
               data-slot="graph-empty"
               class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center"
@@ -1686,7 +1779,7 @@ export const GraphView = (props: GraphViewProps) => {
           </Show>
           <Show when={searchOpen()}>
             <GraphSearch
-              model={props.model}
+              model={model()}
               initialQuery={searchInitial()}
               onSelect={(node) => {
                 jumpTo(node)
@@ -1707,7 +1800,7 @@ export const GraphView = (props: GraphViewProps) => {
           </Show>
           <Show when={galleryOpen()}>
             <GraphGallery
-              model={props.model}
+              model={model()}
               theme={theme()}
               current={layout()}
               onOpen={changeLayout}
@@ -1744,7 +1837,7 @@ export const GraphView = (props: GraphViewProps) => {
             data-layout={narrow() ? "sheet" : "side"}
           >
             <GraphInspector
-              model={props.model}
+              model={model()}
               node={selectedNode()}
               diffSource={props.diffSource}
               renderSummary={props.renderSummary}
@@ -1759,6 +1852,9 @@ export const GraphView = (props: GraphViewProps) => {
               onTraceRelated={(id) => startTrace("related", id)}
               onClearTrace={clearTrace}
               onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
+            onEditNote={editNote}
+            onDeleteNote={deleteNote}
+            onCopyNote={copyNote}
             />
           </div>
         </Show>

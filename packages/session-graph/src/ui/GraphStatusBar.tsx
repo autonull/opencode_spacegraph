@@ -10,6 +10,8 @@ export type GraphStatusBarProps = {
   onCopyPaths: () => void
   onExportSubset: () => void
   onClear: () => void
+  /** C1: attach a note to the selected node. */
+  onAddNote?: () => void
   /** B2: the selected node is a group; the verbs collapse it or every other group. */
   group?: { collapsed: boolean; onToggle: () => void; onCollapseOthers: () => void }
 }
@@ -65,6 +67,16 @@ export const GraphStatusBar = (props: GraphStatusBarProps) => {
           >
             {i18n.t("ui.sessionGraph.status.exportSubset")}
           </button>
+          <Show when={props.onAddNote}>
+            <button
+              type="button"
+              data-slot="graph-status-add-note"
+              class="rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+              onClick={() => props.onAddNote?.()}
+            >
+              {i18n.t("ui.sessionGraph.note.add")}
+            </button>
+          </Show>
           <Show when={props.group}>
             {(group) => (
               <>

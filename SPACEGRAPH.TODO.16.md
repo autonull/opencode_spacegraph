@@ -8,7 +8,7 @@
 |-----------|-------|------|------|
 | **A — Questions & Scopes** | **Complete** (A1 + A2) | T2.2 evidence run | 3.0 |
 | **B — Comparison, Verbs, Groups, Edges** | **Complete core** (B1/B2/B3); tests deferred | Evidence pass (deferred by owner) | 2.5 |
-| **C — Annotations** | Not started — blocked on T2.2 | Evidence pass | 1.25 |
+| **C — Annotations** | **Complete core** (C1); tests deferred | Evidence pass | 1.25 |
 | **Platform track (parallel/optional)** | Not started | Second host / platform demand | 2.75 |
 
 **Core total: 6.75 days** (was 8.25; substrate track decoupled). **A is delivered; B1 is implemented.** The owner has explicitly deferred the T2.2 gate and test authoring for B1; both remain required before the plan is closed.
@@ -20,7 +20,8 @@
 - **B1 — diff, compare, and selection verbs: implemented (tests deferred).** New `GraphStatusBar.tsx` owns the selection verbs (Frame · Keep only · Copy paths · Export subset · Clear) as pure functions over the held ids. `GraphView` applies keep-only after facets. A parked scrubber turn diffs against the live map through `reviewChanges`, marking cards with `data-diff="added|changed|removed"` and showing a `+n −n ~n` chip with a return-to-live action. The scrubber draws per-turn status ticks. `graph-camera` gained `frame(ids)`.
 - **B2 — group collapse: implemented (tests deferred).** `session-ui/src/graph/collapse.ts` hides a collapsed group's members while keeping the group chip and its member count; the status bar collapses/expands the selected group and can collapse every other group. Positions are derived and never re-laid-out.
 - **B3 — edge affordances: implemented (tests deferred).** `GraphCanvas` now forwards `edgeClick` and edge-kind `hoverChange`; edge hover peeks kind/confidence/label, edge click selects the source and traces from it, the legend lists edge kinds with counts and visibility toggles that filter the render model, and `[`/`]` walk incoming/outgoing edges when no trace is active.
-- **Deferred:** the T2.2 evidence run, B1–B3 e2e/unit/component tests, two-turn compare from multi-select, compare-as-window, adapter header-click collapse, the group action menu, and `writes` payload labels. The plan does not close until they land.
+- **C1 — annotations: implemented (tests deferred).** `note` is a host node kind and `annotates` an edge kind; `session-ui/src/graph/annotations.ts` appends notes to the model, inheriting the target's turn so scoping and search work without a substrate change. `GraphNoteComposer.tsx` anchors to the target via `graph-anchors`; the status bar offers Add note (also `n`), and note nodes get edit/copy/delete in the shared detail surface. Notes stay session-local.
+- **Deferred:** the T2.2 evidence run, all B1–B3/C1 e2e/unit/component tests, two-turn compare from multi-select, compare-as-window, adapter header-click collapse, the group action menu, `writes` payload labels, and annotation persistence (V113). The plan does not close until they land.
 - **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
 
 
@@ -154,7 +155,7 @@ Stated measurably:
 
 | Slice | Days | Delivers |
 |-------|------|----------|
-| **C1 — Annotations** | 1.25 | `note` node kind + `annotates` edge kind (host vocabulary in `vocabulary.ts`/`model.ts`); "add note" from selection/card; note composer popover anchored via `graph-anchors` (reuses existing popover anchor); note card renders beside target (deterministic placement, own lane discipline); searchable, exported, announced; inspector body for notes (edit, delete, copy) reusing `GraphDetailSurface`; scrubber scopes notes with their target's turn. Session-local; the app's line-comment store is the named persistence seam (V113), not this plan. Substrate: nothing — a note is just a node. +2 e2e rows. |
+| **C1 — Annotations** ✅ core (tests deferred) | 1.25 | `note` node kind + `annotates` edge kind (host vocabulary in `vocabulary.ts`/`model.ts`); "add note" from the status bar or `n`; note composer anchored via `graph-anchors`; note card renders as a normal node in its own narrative lane with deterministic layout; searchable (label/summary), exported, and announced; inspector actions edit/copy/delete reuse `GraphDetailSurface`; the note inherits its target's turn, so scrubbing scopes it with the target. Session-local; the app's line-comment store is the named persistence seam (V113). |
 
 **C acceptance rows: 2.** Total core: **11 rows** (was 14).
 
@@ -227,9 +228,9 @@ Platform track invariants (P1/P2): walk determinism, scorer law, union conservat
 
 B1 shipped without new tests by explicit owner direction. Capture these when the deferred pass runs:
 
-- **Unit:** status-bar verbs are pure over ids; `reviewChanges` classification for a parked turn; keep-only composition after facets; `collapseGroups` conservation; neighbor traversal order.
-- **Component (Storybook):** `GraphStatusBar` verbs, compare chip, scrubber ticks, edge peek, legend edge-kind toggles.
-- **Product e2e:** select one node ⇒ status bar count; keep-only hides others; scrub-park shows `+n −n ~n` and return-to-live; collapse a group and expand it; toggle an edge kind from the legend; `[`/`]` walk edges. Keep to `data-slot` assertions and add no sleeps.
+- **Unit:** status-bar verbs are pure over ids; `reviewChanges` classification for a parked turn; keep-only composition after facets; `collapseGroups` conservation; neighbor traversal order; `withAnnotations` adds one node + one `annotates` edge and inherits the target's turn.
+- **Component (Storybook):** `GraphStatusBar` verbs, compare chip, scrubber ticks, edge peek, legend edge-kind toggles, note composer, note inspector actions.
+- **Product e2e:** select one node ⇒ status bar count; keep-only hides others; scrub-park shows `+n −n ~n` and return-to-live; collapse a group and expand it; toggle an edge kind from the legend; `[`/`]` walk edges; add, edit, copy, and delete a note and find it by search. Keep to `data-slot` assertions and add no sleeps.
  If a unit test can catch it, it doesn't belong in e2e.
 
 ---

@@ -52,6 +52,7 @@ const NODE_SHAPE: Record<NodeKind, Shape> = {
   process: "card",
   port: "card",
   issue: "card",
+  note: "card",
 }
 
 const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {

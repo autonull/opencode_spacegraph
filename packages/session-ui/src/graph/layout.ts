@@ -147,6 +147,7 @@ const DEPTH: Record<NodeKind, number> = {
   process: 3,
   port: 4,
   issue: 1,
+  note: 2,
 }
 
 /**
@@ -223,6 +224,8 @@ function laneOf(node: GraphNode): Lane {
   if (node.kind === "result") return "verify"
 
   if (node.kind === "reasoning" || node.kind === "notice" || node.kind === "compaction") return "narrative"
+
+  if (node.kind === "note") return "narrative"
 
   if (node.kind === "error" || node.kind === "retry") return "narrative"
 

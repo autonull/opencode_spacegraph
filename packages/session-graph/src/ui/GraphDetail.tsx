@@ -100,6 +100,10 @@ export type GraphDetailProps = {
   onTraceRelated?: (nodeId: string) => void
   onClearTrace?: () => void
   onCopyTraceOutline?: (text: string) => void
+  /** C1: note actions for a reader-authored node. */
+  onEditNote?: (node: GraphNode) => void
+  onDeleteNote?: (node: GraphNode) => void
+  onCopyNote?: (node: GraphNode) => void
 }
 
 /**
@@ -172,6 +176,29 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
           icon="outline-eye"
           onClick={() => props.onCopyView?.()}
         />
+      </Show>
+      <Show when={props.node.kind === "note"}>
+        <Show when={props.onEditNote}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.note.edit")}
+            icon="edit"
+            onClick={() => props.onEditNote?.(props.node)}
+          />
+        </Show>
+        <Show when={props.onCopyNote}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.note.copy")}
+            icon="outline-copy"
+            onClick={() => props.onCopyNote?.(props.node)}
+          />
+        </Show>
+        <Show when={props.onDeleteNote}>
+          <GraphIconButton
+            label={i18n.t("ui.sessionGraph.note.delete")}
+            icon="trash"
+            onClick={() => props.onDeleteNote?.(props.node)}
+          />
+        </Show>
       </Show>
       <Show when={props.onOpenTranscript && openInTranscript(props.model, props.node.id)}>
         <GraphIconButton

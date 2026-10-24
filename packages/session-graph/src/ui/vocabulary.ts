@@ -118,6 +118,7 @@ export const KIND_KEY = {
   process: "ui.sessionGraph.kind.process",
   port: "ui.sessionGraph.kind.port",
   issue: "ui.sessionGraph.kind.issue",
+  note: "ui.sessionGraph.kind.note",
 } as const satisfies Record<NodeKind, string>
 
 export const STATUS_KEY = {
@@ -148,6 +149,7 @@ export const EDGE_KEY = {
   calls: "ui.sessionGraph.edge.calls",
   covers: "ui.sessionGraph.edge.covers",
   executes: "ui.sessionGraph.edge.executes",
+  annotates: "ui.sessionGraph.edge.annotates",
 } as const satisfies Record<GraphEdge["kind"], string>
 
 export const CONFIDENCE_KEY = {  explicit: "ui.sessionGraph.confidence.explicit",

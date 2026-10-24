@@ -41,6 +41,8 @@ export const NODE_KINDS = [
   "process",
   "port",
   "issue",
+  // C1 — reader-authored note (a node like any other).
+  "note",
 ] as const
 
 export type NodeKind = (typeof NODE_KINDS)[number]
@@ -81,6 +83,7 @@ export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = {
   process: "runtime",
   port: "runtime",
   issue: "work",
+  note: "session",
 }
 
 /** The outcomes a node can carry. */
