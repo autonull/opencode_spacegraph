@@ -47,12 +47,13 @@ describe("incremental layout", () => {
     expect(incremental.moved.size).toBe(0)
   })
 
-  test("carries interpolation progress", () => {
+  test("moved records carry no clock", () => {
     const model = buildFixtureGraph()
     const first = layoutGraph(model)
-    const incremental = computeIncremental(model, first, { t: 0.5 })
+    const incremental = computeIncremental(model, first)
 
     expect(incremental.layout.strategy).toBe(first.strategy)
+    for (const move of incremental.moved.values()) expect("t" in move).toBe(false)
   })
 
   test("interpolates positions", () => {

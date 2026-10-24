@@ -1,4 +1,11 @@
-import { Strategies, type LayoutConfig, type Position } from "spacegraphjs/layout"
+import {
+  diffPositions,
+  interpolatePosition,
+  Strategies,
+  type LayoutConfig,
+  type LayoutMove,
+  type Position,
+} from "spacegraphjs/layout"
 import type { GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
@@ -18,6 +25,8 @@ export type { Position }
  * The strategies live in SpaceGraphJS; this module is the session's vocabulary for them.
  */
 export type { LayoutStrategy } from "./vocabulary"
+
+export type { LayoutMove }
 
 export type LayoutOptions = {
   strategy?: LayoutStrategy
@@ -85,12 +94,6 @@ export type GraphLayout = {
   strategy: LayoutStrategy
 }
 
-export type LayoutMove = {
-  from: Position
-  to: Position
-  t: number
-}
-
 export type IncrementalLayout = {
   layout: GraphLayout
   added: ReadonlyMap<string, Position>
@@ -98,19 +101,9 @@ export type IncrementalLayout = {
   moved: ReadonlyMap<string, LayoutMove>
 }
 
-export type IncrementalLayoutOptions = LayoutOptions & {
-  /** Interpolation progress for moved nodes. `1` snaps to the new layout. */
-  t?: number
-}
+export type IncrementalLayoutOptions = LayoutOptions
 
-export const interpolatePosition = (from: Position, to: Position, t: number): Position => ({
-  ...from,
-  x: from.x + (to.x - from.x) * t,
-  y: from.y + (to.y - from.y) * t,
-  ...(to.z === undefined && from.z === undefined
-    ? {}
-    : { z: (from.z ?? 0) + ((to.z ?? 0) - (from.z ?? 0)) * t }),
-})
+export { interpolatePosition }
 
 export const computeIncremental = (
   model: GraphViewData,
@@ -119,22 +112,13 @@ export const computeIncremental = (
 ): IncrementalLayout => {
   const prior = previous === undefined ? undefined : "positions" in previous ? previous.positions : previous
   const layout = layoutGraph(model, { ...options, previous: prior })
-  const added = new Map(
-    [...layout.positions].filter(([id]) => prior === undefined || !prior.has(id)),
-  )
-  const removed =
-    prior === undefined ? [] : [...prior.keys()].filter((id) => !layout.positions.has(id))
-  const t = options.t ?? 1
-  const moved = new Map<string, LayoutMove>()
-  if (prior !== undefined) {
-    for (const [id, to] of layout.positions) {
-      const from = prior.get(id)
-      if (!from) continue
-      if (from.x === to.x && from.y === to.y && from.z === to.z) continue
-      moved.set(id, { from, to, t })
-    }
+  const incremental = diffPositions(layout.positions, prior)
+  return {
+    layout,
+    added: incremental.added,
+    removed: incremental.removed,
+    moved: incremental.moved,
   }
-  return { layout, added, removed, moved }
 }
 
 const DEPTH: Record<NodeKind, number> = {

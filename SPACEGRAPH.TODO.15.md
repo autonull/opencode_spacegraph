@@ -1,6 +1,23 @@
 # SPACEGRAPH.TODO.15 — Unified Session Lens: Live, Animated, Multi-Layer (draft 2)
 
-**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **Nothing here is implemented yet** — this is the executable proposal. Draft 2 replaces draft 1's delta/merge/controller machinery with one pipeline that live updates, layer switches, and time scrubbing all drive; it also corrects draft 1's transcript-as-lens error against the mission constraint.
+**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **In progress** — S1 is complete; S2's substrate seam has landed while its renderer/demo remainder is open; S3–S5 are not started.
+
+## Progress (2026-10-23)
+
+| Slice | State | Landed | Remaining |
+|-------|-------|--------|-----------|
+| **S1 — Deriver memoization** | **Done** | `runPipeline(derivers, kernel, inputs?, versions?, memo?)` memoizes each deriver by name + stage kernel version + prefix token versions. Four laws tested (partial = full, unchanged-token zero executions, entries stable across kernel versions, seeded kernels). Kernel 72 tests green; `bun run check` green. | — |
+| **S2 — Incremental layout substrate + clock** | **Partial** | `spacegraphjs/src/layout/incremental.ts`: `computeIncremental`/`diffPositions`, `interpolatePosition`, `interpolatedPositions`, `LayoutMove` with no stored `t`; vitest invariants in `test/layout/incremental.test.ts`. Session-ui `computeIncremental`/`interpolatePosition` delegate to the substrate; `moved` no longer carries `t`. | Renderer `advance(t)` / `moved` consumption; `delta-animation.html` + demo spec; `applyNodeBudget`/`SpatialIndex2D` mid-flight integration test; a11y view-change announcement. |
+| **S3 — Layer transitions demo** | Not started | — | `layers.html` one control writing level/lens/depth through derive → diff → incremental → interpolate. Substrate API needs no new surface. |
+| **S4 — Unified session surface** | Not started | — | Mode deletion, surfaces composition, layers rail, scrubber, 21-row acceptance retarget, capture renames, transcript-without-graph assertion. |
+| **S5 — History (optional)** | Not started | — | Only if the scrubber must name commits. |
+
+**S1 API note:** versions are passed beside inputs as a fourth argument; the memo is an optional fifth. Omitting the memo preserves the old pure `pipe` path exactly, so existing callers are untouched. The memo key includes the stage kernel version and every prefix deriver's token versions so a cached downstream kernel can never hide an upstream change.
+
+
+### Slice detail and next actions
+
+S1 needs no follow-up. For S2, finish in this order: (1) renderer clock — consume `moved` with an explicit `t` and expose `advance(t)`; (2) a deterministic `delta-animation.html` spec under `playwright.demo.config.ts` (no `waitForTimeout`) and the demo-screenshot page; (3) the budget/index mid-flight test using `interpolatedPositions` + `SpatialIndex2D`; (4) a11y view-change announcement. S3 then adds `layers.html` without new substrate API. S4 is the first host change and should start only after S2's clock seam is real. S5 stays optional.
 
 Architecture direction unchanged: the mechanism lands in **SpaceGraphJS** (domain-agnostic substrate, own repo and test suite), OpenCode stays a thin host that consumes finished APIs.
 
