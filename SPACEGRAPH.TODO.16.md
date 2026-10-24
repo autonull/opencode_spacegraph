@@ -24,7 +24,7 @@
 - **Commands — palette bridge: implemented.** `GraphToolbar` gained a Questions menu (Why? · What led here? · Related · Compare turns · Add a note · Show facets) that dispatches `graph:command` events; `GraphView` handles the trace/compare/note names and the toolbar opens its facet menu for `facets`. The same events let the app's command palette reach the map without a new mode.
 - **Deferred:** the T2.2 evidence run (owner-gated), optional compare-as-window, adapter header-click collapse, the group action menu, `writes` payload labels, and annotation persistence (V113). The test pass for B1–B3/C1 has landed.
 - **Tests landed:** unit coverage for `withAnnotations`, `collapseGroups`, `keepOnly` (including facet composition), `neighborStep`, and parked-turn `reviewChanges`; component coverage for `GraphStatusBar`, `GraphNoteComposer`, and node/edge `GraphPeek`; product e2e rows for the status bar/keep-only/clear, parked scrubber diff, group collapse/expand, legend edge-kind toggles, and add-note + search.
-- **Fixed while testing:** the status-bar Clear now releases both scope and selection; the legend forwards edge-kind toggles to its body; the parked diff compares against `liveModel` instead of the already-scoped parked model.
+- **Fixed while testing:** the status-bar Clear now releases both scope and selection; the legend forwards edge-kind toggles to its body; the parked diff and scrubber ticks read `liveModel` instead of the already-scoped parked model.
 - **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
 
 
@@ -230,8 +230,8 @@ Platform track invariants (P1/P2): walk determinism, scorer law, union conservat
 ### Test pass (landed)
 
 - **Unit:** ✅ `keepOnly` composition after facets (`facets.test.ts`); ✅ `reviewChanges` parked-turn classification (`review.test.ts`); ✅ `collapseGroups` conservation (`collapse.test.ts`); ✅ `neighborStep` edge-order traversal (`selectors.test.ts`); ✅ `withAnnotations` node/edge/turn inheritance (`annotations.test.ts`).
-- **Component (Storybook):** ✅ `GraphStatusBar` verbs and toggles; ✅ note composer save/empty guard; ✅ node and edge peak (`graph-write-path.spec.ts`). Remaining: scrubber ticks and note inspector actions ride the e2e/unit surfaces instead.
-- **Product e2e:** ✅ selection status bar + keep-only + clear; ✅ scrub-park `+n −n ~n` and return-to-live; ✅ collapse/expand a group; ✅ legend edge-kind toggle; ✅ add a note and find it by search. Remaining: explicit `[`/`]` walk row and note edit/copy/delete row (their logic is unit/component covered). Keep to `data-slot` assertions and add no sleeps.
+- **Component (Storybook):** ✅ `GraphStatusBar` verbs and toggles; ✅ note composer save/empty guard; ✅ node and edge peak (`graph-write-path.spec.ts`). Note inspector actions ride the product e2e row.
+- **Product e2e:** ✅ selection status bar + keep-only + clear; ✅ scrub-park `+n −n ~n`, per-turn ticks, and return-to-live; ✅ collapse/expand a group; ✅ legend edge-kind toggle; ✅ add, find, edit, and delete a note; ✅ `[`/`]` walk edges. Keep to `data-slot` assertions and add no sleeps.
 
 ---
 

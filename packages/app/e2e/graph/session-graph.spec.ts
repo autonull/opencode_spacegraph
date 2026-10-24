@@ -310,6 +310,7 @@ test("a parked scrubber diffs the earlier turn against the live map", async ({ p
   const compare = page.locator('[data-slot="graph-compare-bar"]')
   await expect(compare).toBeVisible()
   await expect(compare.locator('[data-slot="graph-compare-counts"]')).toContainText("+")
+  await expect(scrubber.locator('[data-slot="graph-time-tick"]')).toHaveCount(2)
 
   await compare.locator('[data-slot="graph-compare-clear"]').click()
   await expect(compare).toBeHidden()
@@ -383,6 +384,49 @@ test("adds a note to the selected node and finds it by search", async ({ page })
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("Investigate token refresh")
   await expect(search.getByRole("option", { name: /Investigate token refresh/ })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test("edits and deletes a note from the inspector", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  await page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`).click()
+  await page.locator('[data-slot="graph-status-add-note"]').click()
+  const composer = page.locator('[data-slot="graph-note-composer"]')
+  await composer.locator('[data-slot="graph-note-input"]').fill("First draft")
+  await composer.locator('[data-slot="graph-note-save"]').click()
+
+  // Select the note itself, then edit it in place.
+  await page.locator(`${canvasHost} [data-node-id^="note:"]`).click()
+  await page.getByRole("button", { name: "Edit note" }).first().click()
+  await expect(composer).toBeVisible()
+  await composer.locator('[data-slot="graph-note-input"]').fill("Refined note")
+  await composer.locator('[data-slot="graph-note-save"]').click()
+  await expect(page.locator(`${canvasHost} [data-node-id^="note:"]`)).toContainText("Refined note")
+
+  await page.locator(`${canvasHost} [data-node-id^="note:"]`).click()
+  await page.getByRole("button", { name: "Delete note" }).first().click()
+  await expect(page.locator(`${canvasHost} [data-node-id^="note:"]`)).toHaveCount(0)
+
+  expect(errors).toEqual([])
+})
+
+test("brackets walk the selected node's edges", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  await page.locator(`${canvasHost} [data-node-id="file:src/auth/token.ts"]`).click()
+  const selected = page.locator(`${canvasHost} [data-node-id]:has([data-selected="true"])`)
+  const before = await selected.getAttribute("data-node-id")
+
+  await page.keyboard.press("]")
+  await expect.poll(() => selected.getAttribute("data-node-id")).not.toBe(before)
+  await expect(page.locator('[data-slot="graph-status-bar"]')).toHaveAttribute("data-selection-count", "1")
+
+  await page.keyboard.press("[")
+  await expect(page.locator('[data-slot="graph-status-bar"]')).toHaveAttribute("data-selection-count", "1")
 
   expect(errors).toEqual([])
 })
