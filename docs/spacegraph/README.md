@@ -6,6 +6,8 @@
 
 ![Session graph overview](./screenshots/02-graph-overview.png)
 
+![Transcript and map as independent surfaces, with the layers rail and scrubber](./screenshots/34-graph-surfaces.png)
+
 ## Motivation
 
 Agent sessions are linear transcripts, but agent work is not linear: files are read, edited, tested,

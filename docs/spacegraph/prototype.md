@@ -134,6 +134,14 @@ en-US, reduced motion, clock-free fixture):
 | `23-graph-turn-2.png` | camera centred on the second turn |
 | `24-graph-failure-chain.png` | the failing test run, at the closest zoom |
 | `25-graph-scale-window.png` | a long session at the drawn window: 60 of 80 turns, with the notice |
+| `28-graph-tree.png` | the tree layout |
+| `29-graph-force.png` | the force layout |
+| `30-graph-gallery.png` | the layout gallery |
+| `31-graph-perspective.png` | the perspective view |
+| `32-graph-workspace-code.png` | the workspace `code` lens with symbols |
+| `33-graph-workspace-all.png` | every derived workspace domain |
+| `34-graph-surfaces.png` | transcript and map as independent surfaces, with the layers rail |
+| `35-graph-scrubber.png` | the scrubber scoped to the first turn |
 | `20`–`24-cytoscape-*.png` | the same five frames over the Cytoscape adapter |
 
 `02`/`03`/`04` come from the app's routed session (`packages/app/e2e/graph/capture.spec.ts`); `07`/`08`

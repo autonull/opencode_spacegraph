@@ -607,3 +607,37 @@ test("33 graph workspace all", async ({ page }) => {
   await capture(page, "33-graph-workspace-all.png")
   expect(errors).toEqual([])
 })
+
+test("34 graph surfaces", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+  await setLevel(page, "Execution")
+  await chooseProfile(page, "code")
+  await fit(page)
+  await still(page)
+  await capture(page, "34-graph-surfaces.png")
+  expect(errors).toEqual([])
+})
+
+test("35 graph scrubber", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  const scrubber = page.locator('[data-slot="session-graph-scrubber"] input')
+  await expect(scrubber).toBeVisible()
+  await scrubber.evaluate((element) => {
+    const input = element as HTMLInputElement
+    input.value = "1"
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+  await expect(page.locator('[data-slot="session-graph-scrubber"] output')).toContainText("1")
+  await fit(page)
+  await still(page)
+  await capture(page, "35-graph-scrubber.png")
+  expect(errors).toEqual([])
+})
