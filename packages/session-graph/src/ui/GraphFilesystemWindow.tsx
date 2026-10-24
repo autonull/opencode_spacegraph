@@ -2,7 +2,7 @@ import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import { nodeByID, childIndex } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createMemo, createSignal, type JSX } from "solid-js"
-import { fileCount, touchedCount } from "./node-data"
+import { fileCount, isTouched, touchedCount } from "./node-data"
 
 export type GraphFilesystemWindowProps = {
   model: GraphViewData
@@ -14,7 +14,7 @@ export type GraphFilesystemWindowProps = {
 
 function fileStatus(file: GraphNode): "touched" | "untouched" | "session" {
   if (file.domain === "session") return "session"
-  if (file.data?.touched === true) return "touched"
+  if (isTouched(file)) return "touched"
   return "untouched"
 }
 

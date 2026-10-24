@@ -31,3 +31,6 @@ export const fileCount = (node: { data?: Record<string, unknown> }): number =>
 /** A directory node's touched file count from its data. */
 export const touchedCount = (node: { data?: Record<string, unknown> }): number =>
   typeof node.data?.touchedCount === "number" ? node.data.touchedCount : 0
+
+/** A file node's touched status from its data. */
+export const isTouched = (node: { data?: Record<string, unknown> }): boolean => node.data?.touched === true
