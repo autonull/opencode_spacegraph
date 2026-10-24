@@ -83,6 +83,8 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       neighbors: (model, id) => neighbors(model, id).nodes.map((node) => node.id),
       // T1.17: the box each node occupies, so a band is sized around the cards it groups.
       nodeSizeFn: (node) => nodeSize(node),
+      // The group header is its own strip above the members; the sides and foot are breathing room.
+      geometry: { bandPadding: { top: 40, right: 20, bottom: 20, left: 20 } },
       ...config,
     })
   }
@@ -167,14 +169,22 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
         id: `band:${node.id}`,
         kind: "band",
         label: node.label,
-        shape: "panel",
-        interactive: false,
+        shape: "group",
+        interactive: true,
         html: renderBand(node, drawn.length, box),
         size: [box.max.x - box.min.x, box.max.y - box.min.y, 0],
         position: [(box.min.x + box.max.x) / 2, (box.min.y + box.max.y) / 2, 0],
-        // T1.3: bands are backdrops. Keep them flat on the content plane and facing the camera, so a
-        // tilted depth treatment does not turn a large band into a trapezoid across the cards.
-        data: { band: node.kind === "turn" ? "turn" : "phase", count: drawn.length, cluster: node.id, billboard: true },
+        // T1.3: groups sit on the content plane and face the camera, so a tilted depth treatment does
+        // not turn a large group into a trapezoid across the cards. Members name their group so a
+        // drag carries them with it.
+        data: {
+          band: node.kind === "turn" ? "turn" : "phase",
+          count: drawn.length,
+          cluster: node.id,
+          members: drawn,
+          group: true,
+          billboard: true,
+        },
       })
     }
 

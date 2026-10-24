@@ -32,6 +32,10 @@ export type GraphCanvasProps = {
   onBackgroundClick?: () => void
   /** The node under the pointer, and none when the pointer leaves one. */
   onHover?: (id: string | undefined) => void
+  /** Settled drag positions; a group reports every descendant it carried. */
+  onNodeMoved?: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
+  /** A DOM node's settled size after its resize handle is released. */
+  onNodeResized?: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
   /**
    * Fires once the adapter has applied the current model, so a host can sequence a fit *after* the
    * new nodes and positions exist (LE.1) instead of framing a stale layout.
@@ -89,6 +93,8 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
           }),
           result.renderer.on("viewportChange", (viewport) => props.onViewportChange?.(viewport)),
           result.renderer.on("hoverChange", ({ id }) => props.onHover?.(id)),
+          result.renderer.on("nodeMoved", ({ nodes }) => props.onNodeMoved?.(nodes)),
+          result.renderer.on("nodeResized", (resize) => props.onNodeResized?.(resize)),
         ]
         result.renderer.setModel(props.model)
         props.onModelApplied?.(result.renderer)

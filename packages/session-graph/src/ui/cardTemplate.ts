@@ -426,18 +426,16 @@ ${provenanceBadge}
  * fixed because its height is geometry, not typography.
  */
 export function createBandTemplate(theme: RenderTheme, rules?: EqualizerRuleSet): BandTemplate {
-  return (node: GraphNode, count: number, bounds) => {
+  return (node: GraphNode, count: number, _bounds) => {
     const { solid, soft } = accentOf(node, rules)
     const label = escapeHtml(node.label.replace(/\s+/g, " ").trim().slice(0, 48))
-    const width = Math.round(bounds.max.x - bounds.min.x)
-    const height = Math.round(bounds.max.y - bounds.min.y)
 
-    return `<div data-band="${node.kind}" style="width:${width}px;height:${height}px;box-sizing:border-box;border:1px solid ${solid};border-radius:14px;background:${soft};pointer-events:none;position:relative;font-family:${theme.fontFamily}">
-<span style="position:absolute;bottom:2px;left:8px;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 16px);padding:2px 8px;border-radius:9999px;background:${theme.surface};color:${theme.text};font-size:11px;font-weight:600;line-height:16px">
-<span style="width:6px;height:6px;border-radius:9999px;background:${solid}"></span>
-<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
-<span style="color:${theme.textMuted}">${count}</span>
-</span>
+    return `<div data-band="${node.kind}" style="width:100%;height:100%;box-sizing:border-box;border:1px solid ${solid};border-radius:16px;background:${soft};pointer-events:auto;position:relative;overflow:hidden;cursor:grab;font-family:${theme.fontFamily}">
+<div style="position:absolute;top:8px;left:10px;right:10px;display:flex;align-items:center;gap:6px;min-width:0;pointer-events:none">
+<span style="flex:none;width:6px;height:6px;border-radius:9999px;background:${solid}"></span>
+<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${theme.text};font-size:11px;font-weight:600;line-height:16px;letter-spacing:.04em;text-transform:uppercase">${label}</span>
+<span style="flex:none;color:${theme.textMuted};font-size:11px;font-weight:600;line-height:16px">${count}</span>
+</div>
 </div>`
   }
 }

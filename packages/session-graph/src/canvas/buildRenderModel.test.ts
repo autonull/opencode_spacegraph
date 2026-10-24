@@ -182,17 +182,32 @@ test("turn and phase swimlane bands wrap the members visible at the level (RF.5)
   expect(bands.length).toBeGreaterThan(0)
 
   for (const band of bands) {
-    expect(band.interactive).toBe(false)
+    expect(band.shape).toBe("group")
+    expect(band.interactive).toBe(true)
     expect(band.html).toBeDefined()
     expect(band.size?.[0]).toBeGreaterThan(0)
-    // T1.3: a backdrop stays on the content plane facing the camera in a tilted depth treatment.
+    // T1.3: a group stays on the content plane facing the camera in a tilted depth treatment.
     expect(band.position[2]).toBe(0)
     expect(band.data?.billboard).toBe(true)
+    expect(Array.isArray(band.data?.members)).toBe(true)
   }
 
   // Execution draws a band per turn and per expanded phase.
   const turnBands = bands.filter((band) => band.data?.band === "turn")
   expect(turnBands.length).toBe(model.turns.length)
+})
+
+test("group members name their group so a drag carries them with it", () => {
+  const built = buildRenderModel(model, { level: "execution", positions, bands: true })
+  const content = built.nodes.filter((node) => node.kind !== "band" && node.kind !== "lane")
+
+  for (const node of content) {
+    const parent = node.parent
+    if (!parent) continue
+    const group = built.nodes.find((candidate) => candidate.id === parent)
+    expect(group?.shape).toBe("group")
+    expect((group?.data?.members as string[] | undefined)?.includes(node.id)).toBe(true)
+  }
 })
 
 test("a band encloses the cards it groups, so its header has a slot of its own (T1.17)", () => {

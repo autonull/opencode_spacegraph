@@ -23,9 +23,10 @@
 |------|---------|--------|
 | Host graph suite (21 acceptance rows) | `bun test src/graph` in `packages/session-ui` | 237 pass, 0 fail (23 files) |
 | Host graph typecheck | `bun run typecheck` in `packages/session-ui` | pass |
-| Session-graph units | `bun test src` in `packages/session-graph` | 104 pass, 0 fail (9 files) |
-| Product graph e2e | `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` | 32 pass, 0 fail (2026-10-24 re-run) |
+| Session-graph units | `bun test src` in `packages/session-graph` | 105 pass, 0 fail (9 files) |
+| Product graph e2e | `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` | 34 pass, 0 fail (2026-10-24 re-run, including group drag/resize) |
 | Capture matrix + duplicate-hash gate | `bun run graph:capture --mode=verify` | 28 app frames pass, 2 Cytoscape component frames pass, committed set and T6.19 duplicate-hash gate pass (2026-10-24 re-run) |
+| SpaceGraph substrate | `pnpm test` + `bun test packages/kernel/src` in `spacegraphjs` | 544 vitest pass, 75 kernel pass |
 | Product screenshots | `bun run graph:capture --mode=demo` | 28 frames regenerated in `docs/spacegraph/screenshots/`, including `34-graph-surfaces.png` (transcript + map surfaces with the Layers menu and folded scrubber) and `35-graph-scrubber.png` (the scrubber opened on the first turn) |
 | Substrate demo screenshots | `demo-screenshots.spec.ts -g "delta-animation\|layers"` | `screenshots/verified-delta-animation.png` (layer switch mid-flight) and `verified-layers.png` written in the nested repo |
 | Host budget delegation | `bun test src/graph` in `packages/session-ui` (2026-10-24 follow-up) | 237 pass, 0 fail; new protected-node case green |
@@ -46,6 +47,19 @@ S1–S5 require no further follow-up. The plan is complete; reopen S5 only for a
 **Control-row refinement (2026-10-24):** the separate layers strip and the full-width scrubber row are gone. The toolbar now holds one Layers menu (level segmented inside, lens and depth selects) whose summary names the current level, plus the layout menu, the opt-in time toggle, and the camera/commands. The scrubber is folded by default at the live turn and reveals a compact slider when the reader opens it or when the map is parked on an earlier turn; the open choice is session-local. A start-aligned popover keeps the Layers menu on screen, and the desktop end inset grew from 72px to 104px because the toolbar now occupies the row under the floating header toggles.
 
 **S3 API note:** no substrate surface was added. The demo composes `deriveZoom` + `deriveScope` in a three-deriver `runPipeline` and exposes only demo state (`setLayer`, `draw`, `params`, `nodeCount`, `diff`, `positionOf`). `@spacegraphjs/kernel` is now aliased in `vite.demo.config.ts` and `tsconfig.json` so demos can import the kernel source directly.
+
+### Group-node follow-up (2026-10-24)
+
+The bands in the force/lane views were backdrops, not nodes. They now ship as first-class groups:
+
+- The renderer contract adds `shape: 'group'`, `RenderNode.parent`, and `nodeMoved`/`nodeResized` events. A group is a node like any other; children name it as parent.
+- SpaceGraph core maps groups to interactive DOM nodes with a real resize handle, and `DragHandler` carries a group's descendants (including nested groups) with the drag. The handle converts screen deltas back to world size, so resizing is not CSS-only.
+- The session adapter emits padded group nodes (40px header strip, 20px sides/foot), labels at top-left, member columns in `data.members`, and parents each member to its smallest containing group. Groups remain first in the render model, so they draw behind activity cards.
+- Manual group position and size survive a render-model rebuild; they are reset when the reader changes session, layout, or level.
+- Cytoscape renders the same nodes as compound parents; SVG export draws the group rectangle and header.
+- `graph-toolbar-view` is unchanged. Group headers are the drag target; padding around members is the group's own hit area.
+
+Verification: substrate `vitest` 544 pass, kernel 75 pass, session-graph 105 pass, product graph e2e 34 pass (including group drag and resize), capture matrix 28 app frames + 2 Cytoscape component frames pass, `bun run check` green.
 
 ### Known follow-ups
 

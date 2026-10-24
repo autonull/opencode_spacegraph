@@ -784,3 +784,83 @@ test("keeps the card styling when the layout changes", async ({ page }) => {
 
   expect(errors).toEqual([])
 })
+
+test("drags a group and carries its members", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const groups = page.locator(`${canvasHost} .spacegraph-group-node`)
+  const rects = () =>
+    groups.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { id: (element as HTMLElement).dataset.nodeId, x: rect.x, y: rect.y }
+      }),
+    )
+
+  const host = (await page.locator(canvasHost).boundingBox())!
+  const before = await rects()
+  const target = before.find((group) => group.x > host.x && group.x + 400 < host.x + host.width && group.y > host.y + 80)
+  expect(target).toBeDefined()
+
+  await page.mouse.move(target!.x + 24, target!.y + 18)
+  await page.mouse.down()
+  await page.mouse.move(target!.x + 114, target!.y + 68, { steps: 10 })
+  await page.mouse.up()
+
+  await expect
+    .poll(async () => {
+      const after = await rects()
+      return after.findIndex((group, index) => Math.abs(group.x - before[index]!.x) > 40)
+    })
+    .toBeGreaterThanOrEqual(0)
+
+  // A rebuild from a toolbar lens keeps the reader's drag.
+  const index = (await rects()).findIndex((group, at) => Math.abs(group.x - before[at]!.x) > 40)
+  expect(index).toBeGreaterThanOrEqual(0)
+  await openMenu(page)
+  await page.getByRole("button", { name: "Toggle changed files" }).click()
+  await expect.poll(async () => (await rects())[index]!.x).toBeGreaterThan(before[index]!.x + 40)
+
+  expect(errors).toEqual([])
+})
+
+test("resizes a group from its handle", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const handles = await page.locator(`${canvasHost} .resize-handle`).evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect()
+      const point = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+      return {
+        node: (element.closest('[data-node-id]') as HTMLElement | null)?.dataset.nodeId,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        hit: point === element || element.contains(point),
+      }
+    }),
+  )
+  const handle = handles.find((candidate) => candidate.hit)
+  expect(handle).toBeDefined()
+
+  const group = page.locator(`${canvasHost} [data-node-id="${handle!.node}"]`)
+  const before = (await group.boundingBox())!
+  const centre = { x: handle!.x + handle!.width / 2, y: handle!.y + handle!.height / 2 }
+
+  await page.mouse.move(centre.x, centre.y)
+  await page.mouse.down()
+  await page.mouse.move(centre.x + 90, centre.y + 60, { steps: 10 })
+  await page.mouse.up()
+
+  await expect.poll(async () => (await group.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 30)
+
+  // A rebuild from a toolbar lens keeps the reader's resize.
+  await openMenu(page)
+  await page.getByRole("button", { name: "Toggle changed files" }).click()
+  await expect.poll(async () => (await group.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 30)
+
+  expect(errors).toEqual([])
+})

@@ -67,6 +67,7 @@ import {
   untrack,
   type JSX,
 } from "solid-js"
+import { createStore } from "solid-js/store"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -284,6 +285,12 @@ export const GraphView = (props: GraphViewProps) => {
   // The canvas region's own size: the card tier and the popover's placement are measured against
   // the space the map actually has, not against the space the session panel has.
   const [canvasSize, setCanvasSize] = createSignal({ width: 0, height: 0 })
+  // Manual layout is a reader's act, not a model fact: a dragged position or resized group is kept
+  // beside the derived layout so the next stream append cannot snap it back.
+  const [manual, setManual] = createStore<{
+    positions: Record<string, [number, number, number]>
+    sizes: Record<string, [number, number]>
+  }>({ positions: {}, sizes: {} })
   // T18.3: the auto detail mode threshold — when the map is narrower than this, the detail
   // lives in a window instead of the panel. The toolbar's compact threshold is 1030px for the
   // whole panel; the map itself is narrower, so the threshold is proportionally smaller.
@@ -471,6 +478,17 @@ export const GraphView = (props: GraphViewProps) => {
   // a streamed session never moves a node the reader is looking at.
   const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
   const sessionKey = () => nodeIndex(props.model).get(props.model.root)?.data?.sessionID ?? "session"
+  // A manual arrangement belongs to the view it was made in. Changing session, layout, or level
+  // returns the reader to the derived layout instead of carrying stale coordinates across views.
+  const viewKey = createMemo(() => `${sessionKey()}:${layout()}:${level()}`)
+  createEffect((previous: string | undefined) => {
+    const key = viewKey()
+    if (previous !== undefined && previous !== key) {
+      setManual("positions", {})
+      setManual("sizes", {})
+    }
+    return key
+  }, undefined)
   // T15: a size rule scales the card's box, and the layout's cell cursor reads it.
   const sizedCard = (node: GraphNode): readonly [number, number] => {
     const [width, height] = nodeSize(node)
@@ -510,6 +528,26 @@ export const GraphView = (props: GraphViewProps) => {
 
     return next
   })
+
+  const displayPositions = createMemo(() => {
+    const base = geometry().positions
+    if (Object.keys(manual.positions).length === 0) return base
+
+    const positions = new Map(base)
+    for (const [id, position] of Object.entries(manual.positions)) {
+      positions.set(id, { x: position[0], y: position[1], z: position[2] })
+    }
+    return positions
+  })
+
+  const moveNodes = (nodes: readonly { id: string; position: [number, number, number] }[]) => {
+    for (const node of nodes) setManual("positions", node.id, node.position)
+  }
+
+  const resizeNode = (resize: { id: string; size: [number, number]; position: [number, number, number] }) => {
+    setManual("positions", resize.id, resize.position)
+    setManual("sizes", resize.id, resize.size)
+  }
   // LE.1: whether a structural change is waiting for the canvas to apply the matching model before we
   // frame it. Streaming model updates leave it false, so they never refit.
   const [needsFit, setNeedsFit] = createSignal(true)
@@ -556,31 +594,51 @@ export const GraphView = (props: GraphViewProps) => {
     const current = drawn()
     const centre = resting()
     if (!centre) return current
-    return byProximity(current, geometry().positions, centre)
+    return byProximity(current, displayPositions(), centre)
   })
 
+  const applyManualLayout = (model: RenderModel): RenderModel => {
+    if (Object.keys(manual.sizes).length === 0 && Object.keys(manual.positions).length === 0) return model
+
+    return {
+      ...model,
+      nodes: model.nodes.map((node) => {
+        const size = manual.sizes[node.id]
+        const position = manual.positions[node.id]
+        if (!size && !position) return node
+        return {
+          ...node,
+          ...(size ? { size: [size[0], size[1], node.size?.[2] ?? 0] } : {}),
+          ...(position ? { position } : {}),
+        }
+      }),
+    }
+  }
+
   const renderModel = createMemo(() =>
-    buildRenderModel(budget(), {
-      level: level(),
-      positions: geometry().positions,
-      bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
-      edges: !isSummaryOrLogLayout(layout()),
-      bundle: !isSummaryOrLogLayout(layout()) && files(),
-      focus: !isSummaryOrLogLayout(layout()) && level() === "execution" ? selection.selection()[0] : undefined,
-      laneLabels:
-        !isSummaryOrLogLayout(layout()) && layout() === "lanes"
-          ? laneAnchors().map((lane) => ({
-              id: lane.name,
-              label: i18n.t(LANE_KEY[lane.name]),
-              y: lane.y,
-              // T6.6: the gutter belongs to the drawn window, not to the session root far to the left.
-              anchorNodeId: windowAnchor(),
-            }))
-          : undefined,
-      axisLabels: axisLabels(),
-      renderCard: renderCard(),
-      renderBand: renderBand(),
-    }),
+    applyManualLayout(
+      buildRenderModel(budget(), {
+        level: level(),
+        positions: displayPositions(),
+        bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
+        edges: !isSummaryOrLogLayout(layout()),
+        bundle: !isSummaryOrLogLayout(layout()) && files(),
+        focus: !isSummaryOrLogLayout(layout()) && level() === "execution" ? selection.selection()[0] : undefined,
+        laneLabels:
+          !isSummaryOrLogLayout(layout()) && layout() === "lanes"
+            ? laneAnchors().map((lane) => ({
+                id: lane.name,
+                label: i18n.t(LANE_KEY[lane.name]),
+                y: lane.y,
+                // T6.6: the gutter belongs to the drawn window, not to the session root far to the left.
+                anchorNodeId: windowAnchor(),
+              }))
+            : undefined,
+        axisLabels: axisLabels(),
+        renderCard: renderCard(),
+        renderBand: renderBand(),
+      }),
+    ),
   )
 
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
@@ -650,7 +708,7 @@ export const GraphView = (props: GraphViewProps) => {
     capabilities,
     content: contentIDs,
     fit: fitOptions,
-    positionOf: (id) => geometry().positions.get(id),
+    positionOf: (id) => displayPositions().get(id),
     cardWidth: cardScreenWidth,
     cardWorldWidth: CARD_SIZE[0],
     readableWidth: READABLE_CARD_WIDTH,
@@ -771,7 +829,7 @@ export const GraphView = (props: GraphViewProps) => {
       render: () => (
         <GraphMinimap
           model={props.model}
-          positions={geometry().positions}
+          positions={displayPositions()}
           theme={theme()}
           viewport={viewport()}
           onPan={(center: [number, number]) => {
@@ -1179,6 +1237,8 @@ export const GraphView = (props: GraphViewProps) => {
             onNodeDoubleClick={expandToGraph}
             onBackgroundClick={() => selection.select(undefined)}
             onHover={(id) => setHovered(id)}
+            onNodeMoved={moveNodes}
+            onNodeResized={resizeNode}
             cardFacing={cardFacing()}
             onModelApplied={applyModel}
             onRenderer={(instance) => {
