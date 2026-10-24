@@ -65,7 +65,10 @@ Architecture unchanged: domain-agnostic substrate in **SpaceGraphJS** (`@spacegr
   - [x] Kernel `SpatialIndex2D`: grid buckets, `near`, `within`, insert/move/remove, limit + distance ordering; 6 tests.
   - [x] `query(kernel, { positions }).near(x, y, radius, limit)` exported as `q.near`; returns `[]` without positions.
   - [x] `applyNodeBudget(model, budget)` with `DEFAULT_BUDGET` weights; adapter-owned `byProximity`/`sessionOrder` retained; 4 tests.
-- [ ] **Slice 9 — A11y + export**.
+- [x] **Slice 9 — A11y + export**.
+  - [x] Kernel `buildA11ySupport(kernel)` returns a summary, flat semantic entries, and kind groups; 3 tests.
+  - [x] Host accessibility mirror already mounts the library `AccessibilityLayer` (`GraphA11y`), with instructions and selection/connection announcements.
+  - [x] Added `exportGraphJSON` / `exportGraphFilename`; the toolbar already exposes JSON export alongside SVG/HTML.
 
 ### Current gate
 
