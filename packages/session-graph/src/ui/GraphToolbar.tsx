@@ -297,7 +297,15 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
 
   const levelControl = () => (
     <Show when={props.onLevel}>
-      <div data-slot="graph-layers-level">
+      <div
+        data-slot="graph-layers-level"
+        onClick={(event) => {
+          // Choosing a level is a decision like any other menu option: the menu closes so the map
+          // it changed is not left under an open panel.
+          const menu = event.currentTarget.closest("details")
+          if (menu) menu.open = false
+        }}
+      >
         <SegmentedControl
           value={props.level ?? "execution"}
           aria-label={i18n.t("ui.sessionGraph.toolbar.level")}

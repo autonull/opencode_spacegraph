@@ -86,6 +86,7 @@ import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
+import { GraphCompare } from "./GraphCompare"
 import { GraphDetailSurface } from "./GraphDetail"
 import { GraphLegend, GraphLegendBody } from "./GraphLegend"
 import { GraphEqualizerBody } from "./GraphEqualizer"
@@ -488,6 +489,14 @@ export const GraphView = (props: GraphViewProps) => {
   const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
   // B2 — collapse is session-local model state; expanding restores the same derived positions.
   const [collapsedGroups, setCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
+  const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
+  const toggleGroupByID = (id: string) =>
+    setCollapsedGroups((previous) => {
+      const next = new Set(previous)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const scopeBase = (source: GraphViewData) => {
     const base = applyFacets(source, facets())
     const keep = keptIds()
@@ -726,10 +735,13 @@ export const GraphView = (props: GraphViewProps) => {
         copy,
         trace: overlay ?? undefined,
         diff: comparison(),
+        collapsedGroups: collapsedGroups(),
       })
     )
   })
-  const renderBand = createMemo(() => createBandTemplate(theme()))
+  const renderBand = createMemo(() =>
+    createBandTemplate(theme(), undefined, { copy, collapsedGroups: collapsedGroups() }),
+  )
   // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
   // a streamed session never moves a node the reader is looking at.
@@ -1150,6 +1162,16 @@ export const GraphView = (props: GraphViewProps) => {
       ),
     },
     {
+      name: "compare",
+      title: () => i18n.t("ui.sessionGraph.compare.title"),
+      render: () => {
+        const changes = comparison()
+        if (!changes)
+          return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
+        return <GraphCompare model={model()} changes={changes} />
+      },
+    },
+    {
       name: "equalizer",
       title: () => i18n.t("ui.sessionGraph.equalizer.title"),
       render: () => (
@@ -1334,6 +1356,10 @@ export const GraphView = (props: GraphViewProps) => {
 
     if (event.key === "Escape") {
       event.preventDefault()
+      if (groupMenu()) {
+        setGroupMenu(undefined)
+        return
+      }
       dismissDetail()
 
       return
@@ -1624,6 +1650,14 @@ export const GraphView = (props: GraphViewProps) => {
             </span>
             <button
               type="button"
+              data-slot="graph-compare-open"
+              class="shrink-0 rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+              onClick={() => openWindow("compare")}
+            >
+              {i18n.t("ui.sessionGraph.compare.window")}
+            </button>
+            <button
+              type="button"
               data-slot="graph-compare-clear"
               class="shrink-0 rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
               onClick={() => clearComparison()}
@@ -1696,9 +1730,15 @@ export const GraphView = (props: GraphViewProps) => {
             selection={selection.selection()}
             preferredRenderer={props.preferredRenderer}
             overrides={props.rendererOverrides}
-            onSelect={(ids) => selection.select(ids)}
+            onSelect={(ids) => {
+              setGroupMenu(undefined)
+              selection.select(ids)
+            }}
             onNodeDoubleClick={expandToGraph}
-            onBackgroundClick={() => selection.select(undefined)}
+            onBackgroundClick={() => {
+              setGroupMenu(undefined)
+              selection.select(undefined)
+            }}
             onHover={(id) => setHovered(id)}
             onEdgeHover={(id) => setEdgeHovered(id)}
             onEdgeSelect={(id) => {
@@ -1706,6 +1746,11 @@ export const GraphView = (props: GraphViewProps) => {
               if (!edge) return
               selection.select(edge.source)
               startTrace("related", edge.source)
+            }}
+            onGroupToggle={toggleGroupByID}
+            onGroupMenu={(id, at) => {
+              const rect = canvasRegionEl.getBoundingClientRect()
+              setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
             }}
             onNodeMoved={moveNodes}
             onNodeResized={resizeNode}
@@ -1729,6 +1774,63 @@ export const GraphView = (props: GraphViewProps) => {
               setViewport(next)
             }}
           />
+          <Show when={groupMenu()}>
+            {(menu) => (
+              <div
+                data-slot="graph-group-menu"
+                role="menu"
+                class="absolute z-30 flex min-w-40 flex-col rounded-md border border-border-weaker-base bg-surface-base p-1 shadow-lg"
+                style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+                  onClick={() => {
+                    toggleGroupByID(menu().id)
+                    setGroupMenu(undefined)
+                  }}
+                >
+                  {i18n.t(
+                    collapsedGroups().has(menu().id)
+                      ? "ui.sessionGraph.status.expandGroup"
+                      : "ui.sessionGraph.status.collapseGroup",
+                  )}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+                  onClick={() => {
+                    setCollapsedGroups(
+                      new Set(
+                        model()
+                          .nodes.filter((node) => node.kind === "phase" && (node.clusterOf?.length ?? 0) > 0)
+                          .map((node) => node.id)
+                          .filter((id) => id !== menu().id),
+                      ),
+                    )
+                    setGroupMenu(undefined)
+                  }}
+                >
+                  {i18n.t("ui.sessionGraph.status.collapseOthers")}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+                  onClick={() => {
+                    selection.select(menu().id)
+                    camera.frame([menu().id])
+                    setGroupMenu(undefined)
+                  }}
+                >
+                  {i18n.t("ui.sessionGraph.status.frame")}
+                </button>
+              </div>
+            )}
+          </Show>
           <GraphA11y
             model={ordered()}
             selection={selection.selection()}

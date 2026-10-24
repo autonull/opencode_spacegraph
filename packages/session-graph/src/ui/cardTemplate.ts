@@ -210,6 +210,9 @@ export type CardCopy = {
   reads: (count: number) => string
   /** How many activities wrote a file. */
   writes: (count: number) => string
+  /** The header toggle's action on a group card. */
+  collapseGroup: () => string
+  expandGroup: () => string
 }
 
 export type CardTemplateOptions = {
@@ -231,6 +234,8 @@ export type CardTemplateOptions = {
   trace?: TraceOverlay
   /** B1: the diff overlay for a parked view or a two-turn comparison. */
   diff?: { added: ReadonlySet<string>; removed: ReadonlySet<string>; changed: ReadonlySet<string> }
+  /** B2: groups the reader has folded; their header toggle says "expand" instead. */
+  collapsedGroups?: ReadonlySet<string>
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -404,9 +409,11 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const groupBg = isGroupNode ? `background:linear-gradient(180deg,${soft}00,${theme.surface});` : `background:${theme.surface};`
     const groupGlyph = isGroupNode ? GLYPH_GROUP : GLYPH[node.kind]
     const groupDataAttr = memberCount > 0 ? ` data-group-members="${escapeHtml(memberCount.toString())}"` : ""
-    // At execution level and below, show a subtle expand indicator for phase nodes
-    const expandIndicator = isGroupNode && level !== "overview"
-      ? `<span style="flex:none;width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:${theme.textMuted};opacity:0.5" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6l3 3 3-3"/></svg></span>`
+    // At execution level and below, the group header folds the group. The chevron points the way the
+    // members will go, and the header is the only part of a group card that carries the action.
+    const collapsed = isGroupNode && options.collapsedGroups?.has(node.id) === true
+    const groupToggle = isGroupNode && level !== "overview"
+      ? `<button type="button" data-group-toggle="${collapsed ? "expand" : "collapse"}" aria-label="${escapeHtml(collapsed ? options.copy.expandGroup() : options.copy.collapseGroup())}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${collapsed ? -90 : 0}deg)"><path d="M5 6l3 3 3-3"/></svg></button>`
       : ""
 
     // Trace overlay: lit/dim classification for focus+context highlighting
@@ -447,7 +454,7 @@ ${summary}
 ${contentRow}
 ${detailRow}
 </span>
-${expandIndicator}
+${groupToggle}
 ${provenanceBadge}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`
@@ -462,16 +469,26 @@ ${provenanceBadge}
  * own strip — clear of the cards — instead of on top of the first one. The header's line height is
  * fixed because its height is geometry, not typography.
  */
-export function createBandTemplate(theme: RenderTheme, rules?: EqualizerRuleSet): BandTemplate {
+export function createBandTemplate(
+  theme: RenderTheme,
+  rules?: EqualizerRuleSet,
+  options?: { copy?: CardCopy; collapsedGroups?: ReadonlySet<string> },
+): BandTemplate {
   return (node: GraphNode, count: number, _bounds) => {
     const { solid, soft } = accentOf(node, rules)
     const label = escapeHtml(node.label.replace(/\s+/g, " ").trim().slice(0, 48))
+    const collapsed = options?.collapsedGroups?.has(node.id) === true
+    const copy = options?.copy
+    const toggle = copy
+      ? `<button type="button" data-group-toggle="${collapsed ? "expand" : "collapse"}" aria-label="${escapeHtml(collapsed ? copy.expandGroup() : copy.collapseGroup())}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;pointer-events:auto"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${collapsed ? -90 : 0}deg)"><path d="M5 6l3 3 3-3"/></svg></button>`
+      : ""
 
-    return `<div data-band="${node.kind}" style="width:100%;height:100%;box-sizing:border-box;border:1px solid ${solid};border-radius:16px;background:${soft};pointer-events:auto;position:relative;overflow:hidden;cursor:grab;font-family:${theme.fontFamily}">
+    return `<div data-band="${node.kind}" data-group-members="${count}" data-collapsed="${collapsed}" style="width:100%;height:100%;box-sizing:border-box;border:1px solid ${solid};border-radius:16px;background:${soft};pointer-events:auto;position:relative;overflow:hidden;cursor:grab;font-family:${theme.fontFamily}">
 <div style="position:absolute;top:8px;left:10px;right:10px;display:flex;align-items:center;gap:6px;min-width:0;pointer-events:none">
 <span style="flex:none;width:6px;height:6px;border-radius:9999px;background:${solid}"></span>
-<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${theme.text};font-size:11px;font-weight:600;line-height:16px;letter-spacing:.04em;text-transform:uppercase">${label}</span>
+<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${theme.text};font-size:11px;font-weight:600;line-height:16px;letter-spacing:.04em;text-transform:uppercase">${label}</span>
 <span style="flex:none;color:${theme.textMuted};font-size:11px;font-weight:600;line-height:16px">${count}</span>
+${toggle}
 </div>
 </div>`
   }

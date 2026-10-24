@@ -12,6 +12,8 @@ type Harness = {
   setRenderer: (id: RendererID) => void
   setSelection: (ids: string[]) => void
   ready?: GraphCanvasReady
+  groupToggle?: string
+  groupMenu?: { id: string; x: number; y: number }
 }
 
 const CanvasHarness = () => {
@@ -34,6 +36,12 @@ const CanvasHarness = () => {
         preferredRenderer={renderer()}
         onReady={(info) => {
           harness.ready = info
+        }}
+        onGroupToggle={(id) => {
+          harness.groupToggle = id
+        }}
+        onGroupMenu={(id, at) => {
+          harness.groupMenu = { id, ...at }
         }}
       />
     </div>

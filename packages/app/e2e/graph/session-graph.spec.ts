@@ -312,6 +312,11 @@ test("a parked scrubber diffs the earlier turn against the live map", async ({ p
   await expect(compare.locator('[data-slot="graph-compare-counts"]')).toContainText("+")
   await expect(scrubber.locator('[data-slot="graph-time-tick"]')).toHaveCount(2)
 
+  await compare.locator('[data-slot="graph-compare-open"]').click()
+  const compareWindow = page.locator('[data-slot="graph-window"][data-window-kind="compare"]')
+  await expect(compareWindow).toBeVisible()
+  await expect(compareWindow.locator('[data-slot="graph-compare-section"][data-diff="added"]')).toBeVisible()
+
   await compare.locator('[data-slot="graph-compare-clear"]').click()
   await expect(compare).toBeHidden()
 

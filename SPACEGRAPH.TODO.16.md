@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.16 — The Answerable Map: Traces, Facets, Diffs, Group Power, and a First Write Path (draft 4)
 
-**Status:** Core A/B/C implemented and the deferred test pass has landed (2026-10-24). The **T2.2 evidence run remains the only plan-closing gate**; optional refinements stay vaulted or deferred. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
+**Status:** Core A/B/C implemented, the deferred test pass has landed, and the optional compare/fold refinements are in (2026-10-24). The **T2.2 evidence run remains the only plan-closing gate**; `writes` payload labels and annotation persistence stay deferred. Builds on TODO.15 (S1–S4 complete: memoized pipeline, incremental clock, Layers menu, surfaces, first-class groups). The model and substrate are ahead of the interface; this plan closes the exposure gap, adds the map's first reader-authored content, and records the trajectory toward SpaceGraphJS as a spatial operating environment — **without shipping any of that leap**.
 
 ## Progress
 
@@ -22,7 +22,7 @@
 - **B3 — edge affordances: complete and tested.** `GraphCanvas` forwards `edgeClick` and edge-kind `hoverChange`; edge hover peeks kind/confidence/label, edge click selects the source and traces from it, the legend lists edge kinds with counts and visibility toggles that filter the render model, and `[`/`]` walk incoming/outgoing edges through the pure `neighborStep` selector when no trace is active. `GraphLegend` now forwards its edge-kind props to the body.
 - **C1 — annotations: complete and tested.** `note` is a host node kind and `annotates` an edge kind; `session-ui/src/graph/annotations.ts` appends notes to the model, inheriting the target's turn so scoping and search work without a substrate change. `GraphNoteComposer.tsx` anchors to the target via `graph-anchors`; the status bar offers Add note (also `n`), and note nodes get edit/copy/delete in the shared detail surface. Notes stay session-local.
 - **Commands — palette bridge: implemented.** `GraphToolbar` gained a Questions menu (Why? · What led here? · Related · Compare turns · Add a note · Show facets) that dispatches `graph:command` events; `GraphView` handles the trace/compare/note names and the toolbar opens its facet menu for `facets`. The same events let the app's command palette reach the map without a new mode.
-- **Deferred:** the T2.2 evidence run (owner-gated), optional compare-as-window, adapter header-click collapse, the group action menu, `writes` payload labels, and annotation persistence (V113). The test pass for B1–B3/C1 has landed.
+- **Deferred:** the T2.2 evidence run (owner-gated), `writes` payload labels (needs diff stats the model does not carry), and annotation persistence (V113, needs the app line-comment owner). Compare-as-window, the group header fold, and the group action menu have landed.
 - **Tests landed:** unit coverage for `withAnnotations`, `collapseGroups`, `keepOnly` (including facet composition), `neighborStep`, and parked-turn `reviewChanges`; component coverage for `GraphStatusBar`, `GraphNoteComposer`, and node/edge `GraphPeek`; product e2e rows for the status bar/keep-only/clear, parked scrubber diff, group collapse/expand, legend edge-kind toggles, and add-note + search.
 - **Fixed while testing:** the status-bar Clear now releases both scope and selection; the legend forwards edge-kind toggles to its body; the parked diff and scrubber ticks read `liveModel` instead of the already-scoped parked model.
 - **Platform track P1/P2 remains optional** and adds zero product diff; it has no consumer until a second host exists.
@@ -148,9 +148,9 @@ Stated measurably:
 
 | Slice | Days | Delivers |
 |-------|------|----------|
-| **B1 — Diff & compare + status bar verbs** ✅ | 1.25 | Scrub-park on turn N ⇒ diff parked vs live (`reviewChanges` → `data-diff` lit/ghost markup, non-answer edges hidden); "+12 −3 ~7" chip; **shared status bar:** frame selection, keep-only (scope), copy paths, export subset, clear — pure over the id array; scrubber failure ticks; **two selected turns compare explicitly** and the map scopes to both. Optional compare-as-window remains. |
-| **B2 — Group collapse** ✅ | 0.5 | `collapseGroups(model, collapsed)` hides a group's members while keeping the group chip and its `data-group-members` count; status-bar verbs collapse/expand the selected group, "collapse others"; Enter toggles the selected group; expanding restores the derived positions. Deferred: adapter header-click and group context menu. |
-| **B3 — Edge affordances** ✅ | 0.5 | Edge hover peeks kind, confidence, and label; edge click selects the source and traces from it; the legend lists edge kinds with counts and visibility toggles that filter the render model; `[`/`]` walk incoming/outgoing edges when no trace is active. **Deferred:** `writes` payload labels (`+n −m`) from diff metadata. |
+| **B1 — Diff & compare + status bar verbs** ✅ | 1.25 | Scrub-park on turn N ⇒ diff parked vs live (`reviewChanges` → `data-diff` lit/ghost markup, non-answer edges hidden); "+12 −3 ~7" chip; **shared status bar:** frame selection, keep-only (scope), copy paths, export subset, clear — pure over the id array; scrubber failure ticks; **two selected turns compare explicitly** and the map scopes to both. Compare-open in a window; status-bar verbs are pure over ids. |
+| **B2 — Group collapse** ✅ | 0.5 | `collapseGroups(model, collapsed)` hides a group's members while keeping the group chip and its `data-group-members` count; status-bar verbs collapse/expand the selected group, "collapse others"; Enter toggles the selected group; expanding restores the derived positions. The group header folds via its chevron; right-click opens fold/expand, collapse-others, and frame. |
+| **B3 — Edge affordances** ✅ | 0.5 | Edge hover peeks kind, confidence, and label; edge click selects the source and traces from it; the legend lists edge kinds with counts and visibility toggles that filter the render model; `[`/`]` walk incoming/outgoing edges when no trace is active. **Deferred:** `writes` payload labels (`+n −m`) until diff stats reach the model. |
 
 **B acceptance rows: 7.**
 
@@ -230,7 +230,7 @@ Platform track invariants (P1/P2): walk determinism, scorer law, union conservat
 ### Test pass (landed)
 
 - **Unit:** ✅ `keepOnly` composition after facets (`facets.test.ts`); ✅ `reviewChanges` parked-turn classification (`review.test.ts`); ✅ `collapseGroups` conservation (`collapse.test.ts`); ✅ `neighborStep` edge-order traversal (`selectors.test.ts`); ✅ `withAnnotations` node/edge/turn inheritance (`annotations.test.ts`).
-- **Component (Storybook):** ✅ `GraphStatusBar` verbs and toggles; ✅ note composer save/empty guard; ✅ node and edge peak (`graph-write-path.spec.ts`). Note inspector actions ride the product e2e row.
+- **Component (Storybook):** ✅ `GraphStatusBar` verbs and toggles; ✅ note composer save/empty guard; ✅ node and edge peaks; ✅ comparison window changes/empty; ✅ group header fold and right-click menu (`graph-write-path.spec.ts`, `canvas.spec.ts`). Note inspector actions ride the product e2e row.
 - **Product e2e:** ✅ selection status bar + keep-only + clear; ✅ scrub-park `+n −n ~n`, per-turn ticks, and return-to-live; ✅ collapse/expand a group; ✅ legend edge-kind toggle; ✅ add, find, edit, and delete a note; ✅ `[`/`]` walk edges. Keep to `data-slot` assertions and add no sleeps.
 
 ---
@@ -385,6 +385,6 @@ Transcript, Layers menu, mouse map (§7.1a), capture strictness untouched.
 6. ✅ `graph-permalink.ts` — `?q=` round-trip and view-only links (`#graph?kind:file`); copy-view beside copy-node in `GraphDetail`, `GraphInspector`, and `GraphPopover`.
 7. ✅ Three product e2e rows: facet filtering, lens preset/domain toggles, and a view permalink. `bun run check` green.
 
-**Remaining core work:** the **T2.2 evidence run** (§ Gate) only. Core A/B/C and their test pass are complete. If the evidence run fails, stop feature work and publish the finding; if it passes, the optional refinements (compare-as-window, header-click collapse, group action menu, `writes` payload labels, annotation persistence V113) may be scheduled but are not plan-closing. The command bridge reaches the map through the toolbar's Questions menu or the `graph:command` event.
+**Remaining core work:** the **T2.2 evidence run** (§ Gate) only. Core A/B/C and their test pass are complete. If the evidence run fails, stop feature work and publish the finding; if it passes, `writes` payload labels and annotation persistence V113 may be scheduled; compare-as-window, the group header fold, and the group action menu are already delivered. The command bridge reaches the map through the toolbar's Questions menu or the `graph:command` event.
 
 The substrate track (P1/P2) runs in parallel if a second contributor exists, or lands after Milestone A completes, or triggers on second-host demand.

@@ -36,6 +36,10 @@ export type GraphCanvasProps = {
   onEdgeHover?: (id: string | undefined) => void
   /** B3: an edge was clicked; the host names it and offers a trace from its source. */
   onEdgeSelect?: (id: string) => void
+  /** B2: the group header's chevron was clicked, so the host folds or unfolds the group. */
+  onGroupToggle?: (id: string) => void
+  /** B2: the reader right-clicked a group card; the host owns the menu. */
+  onGroupMenu?: (id: string, at: { x: number; y: number }) => void
   /** Settled drag positions; a group reports every descendant it carried. */
   onNodeMoved?: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
   /** A DOM node's settled size after its resize handle is released. */
@@ -126,7 +130,40 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
       })
   }
 
-  onMount(() => start(props.preferredRenderer ?? "spacegraph"))
+  // The renderer owns card markup, so a control inside a card is a DOM event the host handles
+  // before the adapter turns the same click into a selection.
+  // A band is the group node's wrapper; its id names the band, while the host folds the group it
+  // carries, so the prefix comes off at the boundary.
+  const groupIDOf = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return undefined
+    const id = target.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId
+    return id?.startsWith("band:") ? id.slice("band:".length) : id
+  }
+  const onClick = (event: MouseEvent) => {
+    if (!(event.target instanceof Element) || !event.target.closest("[data-group-toggle]")) return
+    const id = groupIDOf(event.target)
+    if (!id) return
+    event.preventDefault()
+    event.stopPropagation()
+    props.onGroupToggle?.(id)
+  }
+  const onContextMenu = (event: MouseEvent) => {
+    if (!(event.target instanceof Element) || !event.target.closest("[data-group-members], [data-band]")) return
+    const id = groupIDOf(event.target)
+    if (!id) return
+    event.preventDefault()
+    props.onGroupMenu?.(id, { x: event.clientX, y: event.clientY })
+  }
+
+  onMount(() => {
+    host.addEventListener("click", onClick, true)
+    host.addEventListener("contextmenu", onContextMenu, true)
+    onCleanup(() => {
+      host.removeEventListener("click", onClick, true)
+      host.removeEventListener("contextmenu", onContextMenu, true)
+    })
+    start(props.preferredRenderer ?? "spacegraph")
+  })
 
   createEffect((previous: RendererID | undefined) => {
     const next = props.preferredRenderer ?? "spacegraph"

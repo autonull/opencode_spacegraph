@@ -13,5 +13,7 @@ export function createCardCopy(i18n: UiI18n): CardCopy {
     replayed: () => i18n.t("ui.sessionGraph.card.replayed"),
     reads: (count) => i18n.plural("ui.sessionGraph.card.reads", count),
     writes: (count) => i18n.plural("ui.sessionGraph.card.writes", count),
+    collapseGroup: () => i18n.t("ui.sessionGraph.status.collapseGroup"),
+    expandGroup: () => i18n.t("ui.sessionGraph.status.expandGroup"),
   }
 }

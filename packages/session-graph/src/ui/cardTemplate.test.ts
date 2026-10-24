@@ -10,6 +10,8 @@ const copy: CardCopy = {
   replayed: () => "replayed",
   reads: (count) => `${count} reads`,
   writes: (count) => `${count} writes`,
+  collapseGroup: () => "Collapse group",
+  expandGroup: () => "Expand group",
 }
 
 const node = (partial: Partial<GraphNode> & Pick<GraphNode, "id" | "kind" | "label" | "status">): GraphNode =>
@@ -25,6 +27,44 @@ test("cards carry a kind glyph, status dot, and monospaced tool/file labels", ()
 
   const message = render(node({ id: "m:1", kind: "message", label: "hi", status: "neutral" }), "execution")
   expect(message).not.toContain("ui-monospace")
+})
+
+test("a group card's header carries the fold toggle, and a collapsed group says expand", () => {
+  const render = createCardTemplate(theme, { copy })
+  const group = node({
+    id: "phase:1",
+    kind: "phase",
+    label: "Explore",
+    status: "neutral",
+    clusterOf: ["tool:1"],
+  })
+
+  const open = render(group, "execution")
+  expect(open).toContain('data-group-toggle="collapse"')
+  expect(open).toContain('aria-label="Collapse group"')
+  expect(open).toContain("rotate(0deg)")
+
+  const collapsed = createCardTemplate(theme, { copy, collapsedGroups: new Set(["phase:1"]) })(group, "execution")
+  expect(collapsed).toContain('data-group-toggle="expand"')
+  expect(collapsed).toContain('aria-label="Expand group"')
+  expect(collapsed).toContain("rotate(-90deg)")
+})
+
+test("a band header carries the member count and the same fold toggle", () => {
+  const group = node({ id: "phase:1", kind: "phase", label: "Explore", status: "neutral" })
+  const bounds = { min: { x: 0, y: 0, z: 0 }, max: { x: 100, y: 100, z: 0 } }
+  const band = createBandTemplate(theme, undefined, { copy })(group, 4, bounds)
+
+  expect(band).toContain('data-group-members="4"')
+  expect(band).toContain('data-collapsed="false"')
+  expect(band).toContain('data-group-toggle="collapse"')
+
+  const collapsed = createBandTemplate(theme, undefined, {
+    copy,
+    collapsedGroups: new Set(["phase:1"]),
+  })(group, 4, bounds)
+  expect(collapsed).toContain('data-collapsed="true"')
+  expect(collapsed).toContain('data-group-toggle="expand"')
 })
 
 test("cards escape host content and never emit raw markup", () => {

@@ -5,6 +5,8 @@ type CanvasWindow = {
     setRenderer: (id: "spacegraph" | "cytoscape") => void
     setSelection: (ids: string[]) => void
     ready?: { id: string; capabilities: { projections: readonly string[]; maxDomNodes: number }; fallback: boolean }
+    groupToggle?: string
+    groupMenu?: { id: string; x: number; y: number }
   }
 }
 
@@ -40,4 +42,19 @@ story("mounts a renderer through the registry and switches backends", async ({ m
   await expect(host.locator("canvas").first()).toBeVisible()
 
   expect(errors).toEqual([])
+})
+
+story("the group header folds the group and right-click opens the host menu", async ({ mount, page }) => {
+  const root = await mount("session-graph-view--default")
+  const host = root.locator('[data-slot="graph-canvas-host"]')
+  await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+  const group = host.locator("[data-group-members]").first()
+  await expect(group.locator("[data-group-toggle]")).toBeVisible()
+
+  await group.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 200, clientY: 200 })
+  const menu = root.locator('[data-slot="graph-group-menu"]')
+  await expect(menu).toBeVisible()
+  await menu.getByRole("menuitem", { name: "Frame" }).click()
+  await expect(menu).toBeHidden()
 })

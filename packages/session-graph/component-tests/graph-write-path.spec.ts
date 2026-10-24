@@ -46,6 +46,24 @@ story("the note composer saves text and refuses an empty note", async ({ mount }
   await expect(root.locator('[data-slot="note-result"]')).toHaveText("Investigate the refresh path")
 })
 
+story("the comparison window names what changed and stays empty when nothing did", async ({ mount }) => {
+  const root = await mount("session-graph-compare--changes")
+  const compare = root.locator('[data-slot="graph-compare-window"]')
+
+  await expect(compare.locator('[data-slot="graph-compare-section"][data-diff="added"]')).toContainText("2")
+  await expect(compare.locator('[data-slot="graph-compare-section"][data-diff="removed"]')).toContainText(
+    "src/auth/session.ts",
+  )
+  await expect(compare.locator('[data-slot="graph-compare-section"][data-diff="changed"]')).toContainText(
+    "src/auth/guards.ts",
+  )
+})
+
+story("the comparison window says when nothing changed", async ({ mount }) => {
+  const root = await mount("session-graph-compare--empty")
+  await expect(root.locator('[data-slot="graph-compare-window"]')).toContainText("No changes")
+})
+
 story("an edge peek names its kind, confidence, and label", async ({ mount }) => {
   const root = await mount("session-graph-peek--edge")
   const peek = root.locator('[data-slot="graph-peek"]')
