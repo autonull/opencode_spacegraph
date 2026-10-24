@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.15 — Unified Session Lens: Live, Animated, Multi-Layer (draft 2)
 
-**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **In progress** — S1, S2 and S3 are complete; S4 is next, S5 stays optional.
+**Status:** draft 2, 2026-10-23. Builds on TODO.14 rev 10 (Slices 1–9 shipped, demo UI simplified, capture matrix regenerated). **In progress** — S1–S3 are complete; S4 has landed its layers rail and checkpoint scrubber and still owes mode deletion, surface composition, and the full acceptance/capture retarget. S5 stays optional.
 
 ## Progress (2026-10-23)
 
@@ -9,7 +9,7 @@
 | **S1 — Deriver memoization** | **Done** | `runPipeline(derivers, kernel, inputs?, versions?, memo?)` memoizes each deriver by name + stage kernel version + prefix token versions. Four laws tested (partial = full, unchanged-token zero executions, entries stable across kernel versions, seeded kernels). Kernel 72 tests green; `bun run check` green. | — |
 | **S2 — Incremental layout substrate + clock** | **Done** | `spacegraphjs/src/layout/incremental.ts`: `computeIncremental`/`diffPositions`, `interpolatePosition`, `interpolatedPositions`, `LayoutMove` with no stored `t`; vitest invariants in `test/layout/incremental.test.ts`. Session-ui delegates to the substrate; `moved` no longer carries `t`. Renderer clock `packages/renderer/src/clock.ts` consumes `moved` with explicit `advance(t)` and is re-exported from the renderer package. New kernel `applyNodeBudget` in `packages/kernel/src/budget.ts` (weights are host data, protected ids survive). `demo/delta-animation.html` drives a live merge and a layer switch through derive → diff → incremental → clock. `test/e2e/delta-animation.spec.ts` asserts the same clock, t=0/t=1 endpoints, and silent per-frame a11y announcements without sleeps. Kernel 75 tests, layout 7 tests, demo spec green; `build:packages` green. | — |
 | **S3 — Layer transitions demo** | **Done** | `demo/layers.html`: one range control writes a preset's level/lens/depth into `runPipeline` (three thin derivers over `deriveZoom`/`deriveScope`, shared memo and token versions), `diffKernels` feeds the added/removed report, and the host positions the derived kernel through `LaneLayout` → `diffPositions` → `createRenderClock`. `test/e2e/layers.spec.ts` asserts the control writes all three parameters, node/diff counts, t=0/t=1 endpoints, and a silent live region. Added `@spacegraphjs/kernel` demo/tsconfig aliases only. Demo spec and `build:packages` green; no new substrate API. | — |
-| **S4 — Unified session surface** | Not started | — | Mode deletion, surfaces composition, layers rail, scrubber, 21-row acceptance retarget, capture renames, transcript-without-graph assertion. |
+| **S4 — Unified session surface** | **In progress (S4a landed)** | `GraphLayersRail` writes level/lens/depth with no controller state; the toolbar's separate level control and Domains/Depth menus are gone. `SessionGraphView` adds a checkpoint scrubber over turn boundaries (`scopeToTurns`; newest checkpoint is the live model). Level/lens/depth locators in the acceptance and capture suites point at the rail; `bun test src` (104), targeted component tests (7), and `session-graph`/`app` typechecks are green. | **S4b:** delete `GraphMode` and compose transcript/map as surfaces; remove the remaining View menu; route the scrubber through `SessionKernel.checkpoint()` semantics instead of turn scoping; retarget all 21 acceptance rows and capture frames; add the transcript-without-graph assertion. |
 | **S5 — History (optional)** | Not started | — | Only if the scrubber must name commits. |
 
 **S1 API note:** versions are passed beside inputs as a fourth argument; the memo is an optional fifth. Omitting the memo preserves the old pure `pipe` path exactly, so existing callers are untouched. The memo key includes the stage kernel version and every prefix deriver's token versions so a cached downstream kernel can never hide an upstream change.
@@ -18,7 +18,9 @@
 
 ### Slice detail and next actions
 
-S1–S3 need no follow-up. S4 is next and is the first host change: delete `GraphMode` and the View/Domains menus, compose transcript and map as surfaces, add one layers rail writing the S3 level/lens/depth parameters, drive a scrubber over `SessionKernel.checkpoint()` through the same pipeline, and retarget the 21-row acceptance suite plus capture names without relaxing determinism. Assert the transcript still renders with the graph module failed. S5 remains optional and starts only if the scrubber must name commits.
+S1–S3 need no follow-up. S4a is landed; S4b is next: delete `GraphMode` and the remaining View menu, compose transcript and map as surfaces, make the scrubber use `SessionKernel.checkpoint()` semantics rather than turn scoping, retarget the 21-row acceptance suite and capture names without relaxing determinism, and assert the transcript still renders with the graph module failed. S5 remains optional and starts only if the scrubber must name commits.
+
+**S4a note:** the rail is `packages/session-graph/src/ui/GraphLayersRail.tsx`; it reads `PROFILE_PRESETS` for the lens and `DEPTH_MODES` for depth, so no new substrate API was added. The scrubber lives in `SessionGraphView` and keeps the newest checkpoint identical to the live model, so a streaming append is not frozen by scrubbing. `GraphToolbar` keeps only the View menu's non-layer controls (billboard, files, equalizer, arrangement, detail, windows) until S4b removes it.
 
 **S3 API note:** no substrate surface was added. The demo composes `deriveZoom` + `deriveScope` in a three-deriver `runPipeline` and exposes only demo state (`setLayer`, `draw`, `params`, `nodeCount`, `diff`, `positionOf`). `@spacegraphjs/kernel` is now aliased in `vite.demo.config.ts` and `tsconfig.json` so demos can import the kernel source directly.
 
@@ -26,6 +28,9 @@ S1–S3 need no follow-up. S4 is next and is the first host change: delete `Grap
 
 - S2's kernel `applyNodeBudget` is generic and tested; the host `session-ui` still uses its own `GraphViewData` budget until S4 migrates it. Do not duplicate the host budget in new substrate code.
 - The demo's added nodes appear at their target position at `t=0` (only moved nodes interpolate). This is acceptable for S2; if added-node fade-in is wanted, it belongs in a later renderer extension, not the clock.
+- S4a's scrubber filters the graph with `scopeToTurns`, which preserves the newest view exactly but does not yet use a durable `SessionKernel.checkpoint()`. S4b must either adopt that semantic or record the deliberate turn-boundary equivalence.
+- S4a removed the Domains and Depth menus and the standalone level control from `GraphToolbar`; the View menu remains for non-layer controls. Removing it is part of S4b, together with the mode deletion.
+- The full graph acceptance suite was not rerun after S4a because the Playwright run was interrupted for runtime; only the targeted component tests, unit tests, and typechecks were verified. Run the acceptance suite before closing S4.
 
 
 Architecture direction unchanged: the mechanism lands in **SpaceGraphJS** (domain-agnostic substrate, own repo and test suite), OpenCode stays a thin host that consumes finished APIs.
@@ -124,7 +129,8 @@ These are the laws each slice must carry; each has exactly one testable owner:
 - **S1:** 0 files. Rebuild gate only.
 - **S2:** `packages/session-ui/src/graph/layout.ts` shrinks as `computeIncremental`/`interpolatePosition` move; call sites migrate in the same change; session-graph camera wiring ≈2 files.
 - **S3:** 0 product files (demo-only); `demo/layers.html`, `test/e2e/layers.spec.ts`, plus the demo/tsconfig kernel alias.
-- **S4:** host slice proper — `session-graph-panel.tsx`, `screen.tsx`, deletion of the toggle's mode remnants, layers-rail mapping, capture/e2e retarget, i18n keys.
+- **S4a:** `GraphLayersRail.tsx` (new), `GraphToolbar.tsx` (layer controls and Domains/Depth menus removed), `GraphView.tsx`, `session-graph-view.tsx` (scrubber), i18n keys, level/lens/depth locators in the graph e2e/capture and component suites.
+- **S4b:** `session-graph-panel.tsx`, `screen.tsx`, deletion of the toggle's mode remnants and remaining View menu, full acceptance/capture retarget, transcript-without-graph assertion.
 - **S5:** server files only; no UI change.
 
 ---
