@@ -23,7 +23,9 @@
 | Host graph suite (21 acceptance rows) | `bun test src/graph` in `packages/session-ui` | 236 pass, 0 fail (23 files) |
 | Session-graph units | `bun test src` in `packages/session-graph` | 104 pass, 0 fail (9 files) |
 | Product graph e2e | `bun run test:e2e -- e2e/graph/session-graph.spec.ts` in `packages/app` | 31 pass, 0 fail |
-| Capture matrix + duplicate-hash gate | `bun run graph:capture --mode=verify` | 26 app frames pass, 2 Cytoscape component frames pass, committed set and T6.19 duplicate-hash gate pass |
+| Capture matrix + duplicate-hash gate | `bun run graph:capture --mode=verify` | 28 app frames pass, 2 Cytoscape component frames pass, committed set and T6.19 duplicate-hash gate pass |
+| Product screenshots | `bun run graph:capture --mode=demo` | 28 frames regenerated in `docs/spacegraph/screenshots/`, including `34-graph-surfaces.png` (transcript + map surfaces with the layers rail) and `35-graph-scrubber.png` |
+| Substrate demo screenshots | `demo-screenshots.spec.ts -g "delta-animation\|layers"` | `screenshots/verified-delta-animation.png` (layer switch mid-flight) and `verified-layers.png` written in the nested repo |
 
 One product e2e case (`picking a node in the map moves the log to it`) failed once inside a full-file run and passed on isolated and full reruns; treat it as a pre-existing timing flake to watch, not an S4 regression.
 
