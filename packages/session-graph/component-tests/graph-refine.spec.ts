@@ -1,4 +1,12 @@
+import type { Locator } from "@playwright/test"
 import { expect, story } from "../../storybook/playwright/story"
+
+async function openLayers(root: Locator) {
+  const menu = root.locator('[data-slot="graph-toolbar-layers"]')
+  if (!(await menu.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await menu.locator(":scope > summary").click()
+  }
+}
 
 // Phase 9 refinement: the interaction polish that makes the graph quicker than the transcript —
 // keyboard-driven search (RF.10), breadcrumb fit-subtree (U3.11/RF.10), and the responsive inspector
@@ -95,7 +103,8 @@ story("execution dims cards outside the selected neighborhood (RF.10)", async ({
   await expect.poll(() => dimmed.count()).toBeGreaterThan(0)
 
   // Focus only applies at execution: at overview nothing is dimmed.
-  await root.locator('[data-slot="graph-layers-rail"] button', { hasText: "Overview" }).click()
+  await openLayers(root)
+  await root.locator('[data-slot="graph-layers-level"] button', { hasText: "Overview" }).click()
   await expect.poll(() => dimmed.count()).toBe(0)
 
   expect(errors).toEqual([])
@@ -194,7 +203,8 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
   await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Ribbon")
   // T17.1: the level means the same thing in every layout, so it is never disabled.
-  await expect(root.locator('[data-slot="graph-layers-rail"]').getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
+  await openLayers(root)
+  await expect(root.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
 
   // Selecting a segment offers the expand control, which opens the node-link map with the node selected.
   await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("session"))
@@ -204,7 +214,8 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
   await expand.click()
 
   await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Lanes")
-  await expect(root.locator('[data-slot="graph-layers-rail"]').getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
+  await openLayers(root)
+  await expect(root.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Overview", exact: true })).toBeEnabled()
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Session")
 
   expect(errors).toEqual([])

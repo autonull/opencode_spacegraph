@@ -19,6 +19,7 @@ story("changes depth without changing node identity or inspector content", async
   await expect(inspector).toContainText("Tool call")
   await expect(inspector).toContainText("src/auth/session.ts")
 
+  await root.locator('[data-slot="graph-toolbar-layers"] > summary').click()
   await root.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
   await expect(host).toHaveAttribute("data-graph-depth", "orbit")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
@@ -48,6 +49,7 @@ story("switches the depth treatment through the spectrum", async ({ mount, page 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
+  await root.locator('[data-slot="graph-toolbar-layers"] > summary').click()
   await root.locator('[data-slot="graph-layers-depth"]').selectOption("layered")
   await expect(host).toHaveAttribute("data-graph-depth", "layered")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")

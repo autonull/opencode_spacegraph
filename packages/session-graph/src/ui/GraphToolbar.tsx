@@ -1,25 +1,45 @@
-import type { RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
+import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
+import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
+import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { Show, type JSX } from "solid-js"
+import { createSignal, Show, type JSX } from "solid-js"
 import "./graph-toolbar.css"
 import {
   DETAIL_MODES,
   GRAPH_ARRANGEMENTS,
   LAYOUTS,
+  PROFILE_PRESETS,
+  ZOOM_LEVELS,
   type DetailFraming,
   type DetailMode,
+  type Domain,
   type GraphArrangement,
   type GraphViewData,
   type GraphSide,
   type Layout,
+  type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
-import { ARRANGEMENT_KEY, DETAIL_MODE_KEY, LAYOUT_KEY, SIDE_KEY } from "./vocabulary"
+import { ARRANGEMENT_KEY, DEPTH_KEY, DETAIL_MODE_KEY, LAYOUT_KEY, LEVEL_KEY, SIDE_KEY } from "./vocabulary"
 
 export type GraphToolbarProps = {
   capabilities?: RendererCapabilities
   renderer?: string
+  /** The semantic level: one axis of what the map shows. */
+  level?: ZoomLevel
+  onLevel?: (level: ZoomLevel) => void
+  /** The domain lens: which parts of the session the map keeps. */
+  domains?: ReadonlySet<Domain>
+  onDomainsChange?: (domains: ReadonlySet<Domain>) => void
+  /** The projection spectrum: flat through orbit. */
+  depth?: DepthMode
+  onDepth?: (depth: DepthMode) => void
+  depthModes?: readonly DepthMode[]
+  /** The turn the map is pinned to, and how many turns the session has. */
+  checkpoint?: number
+  turnCount?: number
+  onCheckpoint?: (index: number) => void
   onFit: () => void
   /** T1.8: camera zoom, independent of the semantic level control. */
   zoomPercent?: number
@@ -107,6 +127,8 @@ const ToolbarMenu = (props: {
   value?: string
   /** The slot the current value carries, so a test can read what the axis is set to. */
   valueSlot?: string
+  /** A menu at the start of the row anchors its popover to its start so it stays on screen. */
+  align?: "start" | "end"
   children: JSX.Element
 }) => (
   <details class="relative" data-slot={props.slot}>
@@ -119,7 +141,10 @@ const ToolbarMenu = (props: {
       {props.value ? <span data-slot={props.valueSlot ?? `${props.slot}-value`}>{props.value}</span> : null}
       {props.value ? <Icon name="outline-chevron-down" size="small" /> : null}
     </summary>
-    <div class="absolute end-0 z-30 mt-1 flex min-w-[180px] flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md">
+    <div
+      class="absolute z-30 mt-1 flex min-w-[180px] flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md"
+      classList={{ "start-0": props.align === "start", "end-0": props.align !== "start" }}
+    >
       {props.children}
     </div>
   </details>
@@ -135,6 +160,27 @@ const ToolbarMenu = (props: {
  */
 export const GraphToolbar = (props: GraphToolbarProps) => {
   const i18n = useI18n()
+  // The scrubber is folded by default; it opens when the reader asks, or when the map is not at
+  // the live turn so an old view cannot be mistaken for the newest one.
+  const [timeOpen, setTimeOpen] = createSignal<boolean>()
+  const offLive = () =>
+    props.checkpoint !== undefined && props.turnCount !== undefined && props.checkpoint < props.turnCount - 1
+  const timeShown = () => timeOpen() ?? offLive()
+
+  const activeProfile = () =>
+    PROFILE_PRESETS.find(
+      (preset) =>
+        preset.domains.length === (props.domains?.size ?? 0) &&
+        preset.domains.every((domain) => props.domains?.has(domain)),
+    )?.id
+  const depthAvailable = (depth: DepthMode) => !props.capabilities || supportsDepth(props.capabilities, depth)
+  const depthReason = (depth: DepthMode) =>
+    depthAvailable(depth)
+      ? undefined
+      : i18n.t("ui.sessionGraph.capability.depthUnavailable", {
+          depth: i18n.t(DEPTH_KEY[depth]),
+          renderer: props.renderer ?? "",
+        })
 
   const option = (input: {
     label: string
@@ -169,6 +215,159 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
     >
       {input.label}
     </button>
+  )
+
+  const levelControl = () => (
+    <Show when={props.onLevel}>
+      <div data-slot="graph-layers-level">
+        <SegmentedControl
+          value={props.level ?? "execution"}
+          aria-label={i18n.t("ui.sessionGraph.toolbar.level")}
+          onChange={(value) => value && props.onLevel?.(value as ZoomLevel)}
+        >
+          {ZOOM_LEVELS.map((level) => (
+            <SegmentedControlItem value={level}>{i18n.t(LEVEL_KEY[level])}</SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      </div>
+    </Show>
+  )
+
+  const lensControl = () => (
+    <Show when={props.onDomainsChange}>
+      <label class="flex items-center gap-1 text-12-regular text-text-weak">
+        <span>{i18n.t("ui.sessionGraph.layers.lens")}</span>
+        <select
+          data-slot="graph-layers-lens"
+          class="h-6 rounded-sm border border-border-weaker-base bg-surface-base px-1 text-12-regular text-text-base"
+          aria-label={i18n.t("ui.sessionGraph.layers.lens")}
+          value={activeProfile() ?? "custom"}
+          onChange={(event) => {
+            const preset = PROFILE_PRESETS.find((item) => item.id === event.currentTarget.value)
+            if (!preset) return
+            props.onDomainsChange?.(new Set(preset.domains))
+          }}
+        >
+          <Show when={!activeProfile()}>
+            <option value="custom" disabled>
+              {i18n.t("ui.sessionGraph.layers.custom")}
+            </option>
+          </Show>
+          {PROFILE_PRESETS.map((preset) => (
+            <option value={preset.id}>{i18n.t(preset.labelKey)}</option>
+          ))}
+        </select>
+      </label>
+    </Show>
+  )
+
+  const layoutControl = () => (
+    <Show when={props.onLayoutChange}>
+      <ToolbarMenu
+        slot="graph-toolbar-layout"
+        label={i18n.t("ui.sessionGraph.toolbar.layout")}
+        icon="workspace-isolated"
+        value={i18n.t(LAYOUT_KEY[props.layout ?? "lanes"])}
+        valueSlot="graph-layout-name"
+      >
+        {LAYOUTS.map((layout) =>
+          option({
+            label: i18n.t(LAYOUT_KEY[layout]),
+            onClick: () => props.onLayoutChange?.(layout),
+            pressed: props.layout === layout,
+            slot: "graph-layout-option",
+            value: layout,
+          }),
+        )}
+      </ToolbarMenu>
+    </Show>
+  )
+
+  const depthControl = () => (
+    <Show when={props.onDepth}>
+      <label class="flex items-center gap-1 text-12-regular text-text-weak">
+        <span>{i18n.t("ui.sessionGraph.toolbar.depth")}</span>
+        <select
+          data-slot="graph-layers-depth"
+          class="h-6 rounded-sm border border-border-weaker-base bg-surface-base px-1 text-12-regular text-text-base"
+          aria-label={i18n.t("ui.sessionGraph.toolbar.depth")}
+          value={props.depth}
+          onChange={(event) => props.onDepth?.(event.currentTarget.value as DepthMode)}
+        >
+          {(props.depthModes ?? DEPTH_MODES).map((depth) => (
+            <option value={depth} disabled={!depthAvailable(depth)} title={depthReason(depth)}>
+              {i18n.t(DEPTH_KEY[depth])}
+            </option>
+          ))}
+        </select>
+      </label>
+    </Show>
+  )
+
+  /**
+   * The axes that say what the map shows. The level, lens, and depth describe the same thing from
+   * different distances, so they share one "Layers" menu whose value is the current level; the
+   * layout sits beside it because it changes the arrangement rather than the content. One row, no
+   * separate strip.
+   */
+  const layersControl = () => (
+    <Show when={props.onLevel || props.onDomainsChange || props.onDepth}>
+      <ToolbarMenu
+        slot="graph-toolbar-layers"
+        label={i18n.t("ui.sessionGraph.layers.title")}
+        icon="outline-eye"
+        align="start"
+        value={props.onLevel ? i18n.t(LEVEL_KEY[props.level ?? "execution"]) : undefined}
+        valueSlot="graph-layers-level-name"
+      >
+        {levelControl()}
+        {lensControl()}
+        {depthControl()}
+      </ToolbarMenu>
+    </Show>
+  )
+
+  const layerControls = () => (
+    <>
+      {layersControl()}
+      {layoutControl()}
+    </>
+  )
+
+  /** The session time axis, folded until the reader opens it or leaves the live turn. */
+  const timeControls = () => (
+    <Show when={props.onCheckpoint && (props.turnCount ?? 0) > 1}>
+      <GraphIconButton
+        label={i18n.t("ui.sessionGraph.time.toggle")}
+        icon="outline-rotate-clockwise"
+        pressed={timeShown()}
+        slot="graph-time-toggle"
+        onClick={() => setTimeOpen(!timeShown())}
+      />
+      <Show when={timeShown()}>
+        <label
+          data-slot="session-graph-scrubber"
+          class="flex min-w-40 items-center gap-2 text-12-regular text-text-weak"
+        >
+          <input
+            type="range"
+            min="1"
+            max={props.turnCount}
+            step="1"
+            value={(props.checkpoint ?? 0) + 1}
+            aria-label={i18n.t("ui.sessionGraph.time.aria")}
+            class="h-1 min-w-24 flex-1"
+            onInput={(event) => props.onCheckpoint?.(Number(event.currentTarget.value) - 1)}
+          />
+          <output class="shrink-0 tabular-nums">
+            {i18n.t("ui.sessionGraph.time.value", {
+              current: String((props.checkpoint ?? 0) + 1),
+              total: String(props.turnCount),
+            })}
+          </output>
+        </label>
+      </Show>
+    </Show>
   )
 
   /** How the map is drawn: the billboard and the file lens. */
@@ -390,25 +589,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1.5"
       style={props.endInset ? { "padding-inline-end": props.endInset } : undefined}
     >
-      <Show when={props.onLayoutChange}>
-        <ToolbarMenu
-          slot="graph-toolbar-layout"
-          label={i18n.t("ui.sessionGraph.toolbar.layout")}
-          icon="workspace-isolated"
-          value={i18n.t(LAYOUT_KEY[props.layout ?? "lanes"])}
-          valueSlot="graph-layout-name"
-        >
-          {LAYOUTS.map((layout) =>
-            option({
-              label: i18n.t(LAYOUT_KEY[layout]),
-              onClick: () => props.onLayoutChange?.(layout),
-              pressed: props.layout === layout,
-              slot: "graph-layout-option",
-              value: layout,
-            }),
-          )}
-        </ToolbarMenu>
-      </Show>
+      {layerControls()}
+      {timeControls()}
 
       <div class="flex items-center gap-1">
         <GraphIconButton

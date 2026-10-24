@@ -140,8 +140,8 @@ en-US, reduced motion, clock-free fixture):
 | `31-graph-perspective.png` | the perspective view |
 | `32-graph-workspace-code.png` | the workspace `code` lens with symbols |
 | `33-graph-workspace-all.png` | every derived workspace domain |
-| `34-graph-surfaces.png` | transcript and map as independent surfaces, with the layers rail |
-| `35-graph-scrubber.png` | the scrubber scoped to the first turn |
+| `34-graph-surfaces.png` | transcript and map as independent surfaces, with the Layers menu and folded scrubber |
+| `35-graph-scrubber.png` | the opt-in scrubber scoped to the first turn |
 | `20`–`24-cytoscape-*.png` | the same five frames over the Cytoscape adapter |
 
 `02`/`03`/`04` come from the app's routed session (`packages/app/e2e/graph/capture.spec.ts`); `07`/`08`

@@ -86,7 +86,6 @@ import { GraphMinimap } from "./GraphMinimap"
 import { GraphPeek } from "./GraphPeek"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
-import { GraphLayersRail } from "./GraphLayersRail"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
@@ -136,6 +135,10 @@ export type GraphViewProps = {
   positions?: ReadonlyMap<string, Position>
   /** T17.1: the controlled layout — the one axis that says how the map is drawn. The host persists it. */
   layout?: Layout
+  /** The turn the map is pinned to (0-based), and how many turns the session has. */
+  checkpoint?: number
+  turnCount?: number
+  onCheckpoint?: (index: number) => void
   /**
    * Where a selected node's detail is shown: nowhere, on the node itself, in a popover beside it, or
    * in the side panel. The host persists the choice; the view mirrors it.
@@ -1040,7 +1043,9 @@ export const GraphView = (props: GraphViewProps) => {
       data-slot="graph-view"
       class="flex h-full w-full flex-col overflow-hidden"
     >
-      <GraphLayersRail
+      <GraphToolbar
+        capabilities={capabilities()}
+        renderer={rendererID()}
         level={level()}
         onLevel={setLevel}
         domains={domains()}
@@ -1048,12 +1053,9 @@ export const GraphView = (props: GraphViewProps) => {
         depth={depth()}
         onDepth={changeDepth}
         depthModes={DEPTH_MODES}
-        capabilities={capabilities()}
-        renderer={rendererID()}
-      />
-      <GraphToolbar
-        capabilities={capabilities()}
-        renderer={rendererID()}
+        checkpoint={props.checkpoint}
+        turnCount={props.turnCount}
+        onCheckpoint={props.onCheckpoint}
         onFit={camera.fitContent}
         zoomPercent={camera.zoomPercent()}
         onZoomOut={() => camera.zoomBy(-1)}

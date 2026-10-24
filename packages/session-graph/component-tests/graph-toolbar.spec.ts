@@ -45,9 +45,15 @@ story("the toolbar keeps four things inline and the rest behind two menus", asyn
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
-  // What is shown: the layout, and the layers rail above the row (level, lens, depth).
+  // What is shown: one Layers menu (level, lens, depth) and the layout sit on the row.
   await expect(toolbar.locator('[data-slot="graph-toolbar-layout"]')).toBeVisible()
-  await expect(root.locator('[data-slot="graph-layers-rail"]').getByRole("group", { name: "Zoom level" })).toBeVisible()
+  const layers = toolbar.locator('[data-slot="graph-toolbar-layers"]')
+  await expect(layers).toBeVisible()
+  await expect(layers.locator('[data-slot="graph-layers-level-name"]')).toHaveText("Execution")
+  await layers.locator(":scope > summary").click()
+  await expect(layers.locator('[data-slot="graph-layers-level"]').getByRole("group", { name: "Zoom level" })).toBeVisible()
+  await expect(layers.locator('[data-slot="graph-layers-lens"]')).toBeVisible()
+  await expect(layers.locator('[data-slot="graph-layers-depth"]')).toBeVisible()
   // Where the camera is: the zoom and the fit.
   await expect(toolbar.getByRole("button", { name: "Zoom in" })).toBeVisible()
   await expect(toolbar.getByRole("button", { name: "Fit to view" })).toBeVisible()
@@ -66,14 +72,15 @@ story("the level is never disabled, whatever the layout (T17.1)", async ({ mount
   })
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
-  const rail = root.locator('[data-slot="graph-layers-rail"]')
+  const levels = root.locator('[data-slot="graph-layers-level"]')
 
   // The ribbon is a summary layout, and the level used to be greyed out for it.
   await toolbar.locator('[data-slot="graph-toolbar-layout"] summary').click()
   await toolbar.locator('[data-slot="graph-layout-option"][data-value="ribbon"]').click()
   await expect(toolbar.locator('[data-slot="graph-layout-name"]')).toHaveText("Ribbon")
+  await toolbar.locator('[data-slot="graph-toolbar-layers"] > summary').click()
 
   for (const level of ["Overview", "Execution", "Detail"]) {
-    await expect(rail.getByRole("button", { name: level, exact: true })).toBeEnabled()
+    await expect(levels.getByRole("button", { name: level, exact: true })).toBeEnabled()
   }
 })

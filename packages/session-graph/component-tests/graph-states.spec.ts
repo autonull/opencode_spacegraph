@@ -71,6 +71,7 @@ story("explains a selection the current level hides and reveals it", async ({ mo
   await expect(hidden).toContainText("src/auth/token.ts")
   await hidden.getByRole("button", { name: "Show" }).click()
 
+  await root.locator('[data-slot="graph-toolbar-layers"] > summary').click()
   await expect(root.getByRole("button", { name: "Execution", exact: true })).toHaveAttribute("aria-pressed", "true")
   await expect(hidden).toHaveCount(0)
   await expect(root.locator('[data-slot="graph-inspector"]').getByRole("heading", { name: "src/auth/token.ts" })).toBeVisible()

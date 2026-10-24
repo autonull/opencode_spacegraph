@@ -6,7 +6,7 @@
 
 ![Session graph overview](./screenshots/02-graph-overview.png)
 
-![Transcript and map as independent surfaces, with the layers rail and scrubber](./screenshots/34-graph-surfaces.png)
+![Transcript and map as independent surfaces, with the Layers menu and opt-in scrubber](./screenshots/34-graph-surfaces.png)
 
 ## Motivation
 

@@ -15,7 +15,7 @@ import { useMarkdown } from "@opencode/session-ui/context/markdown"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { useLocation } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
-import { ErrorBoundary, Show, Suspense, createEffect, createMemo, createSignal, lazy, on, untrack } from "solid-js"
+import { ErrorBoundary, Suspense, createEffect, createMemo, createSignal, lazy, on, untrack } from "solid-js"
 import { messageIdFromHash } from "@/session/message-id-from-hash"
 import { graphPermalinkFromHash, graphPermalinkHash } from "@/session/graph/graph-permalink"
 import { useLanguage } from "@/runtime/i18n/language"
@@ -224,37 +224,14 @@ export function SessionGraphView(props: {
       }
     >
       <div class="flex h-full w-full flex-col overflow-hidden">
-        <Show when={fullModel().turns.length > 1}>
-          <div
-            data-slot="session-graph-scrubber"
-            class="flex h-7 shrink-0 items-center gap-2 border-b border-border-weaker-base px-3"
-          >
-            <label class="flex min-w-0 flex-1 items-center gap-2 text-12-regular text-text-weak">
-              <span class="shrink-0">{language.t("session.graph.scrubber.label")}</span>
-              <input
-                type="range"
-                min="1"
-                max={fullModel().turns.length}
-                step="1"
-                value={activeCheckpoint() + 1}
-                aria-label={language.t("session.graph.scrubber.aria")}
-                class="h-1 min-w-0 flex-1"
-                onInput={(event) => setCheckpoint(Number(event.currentTarget.value) - 1)}
-              />
-            </label>
-            <output class="shrink-0 text-12-regular tabular-nums text-text-weak">
-              {language.t("session.graph.scrubber.value", {
-                current: String(activeCheckpoint() + 1),
-                total: String(fullModel().turns.length),
-              })}
-            </output>
-          </div>
-        </Show>
         <div class="min-h-0 flex-1">
           <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
             <GraphView
           model={model()}
           projection={graph.projection()}
+          checkpoint={activeCheckpoint()}
+          turnCount={fullModel().turns.length}
+          onCheckpoint={setCheckpoint}
           depth={graph.depth()}
           preferredRenderer={graph.renderer()}
           selection={graph.selected()}
@@ -319,7 +296,7 @@ export function SessionGraphView(props: {
           onOpenSession={markdown?.openSession ? openSession : undefined}
           onBack={() => props.onBack()}
           onSplitView={props.onSplitView}
-          endInset={isDesktop() ? "72px" : undefined}
+          endInset={isDesktop() ? "104px" : undefined}
           frame={permalink()?.nodeID}
           link={link()}
           sessionTitle={session.data.info()?.title ?? "OpenCode Session"}

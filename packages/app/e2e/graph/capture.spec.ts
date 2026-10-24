@@ -119,10 +119,25 @@ async function settle(page: Page) {
   await page.evaluate(() => document.fonts.ready.then(() => undefined))
 }
 
+async function openLayers(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
+  const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await menu.locator(":scope > summary").click()
+}
+
+async function closeLayers(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
+  if (await menu.evaluate((element) => (element as HTMLDetailsElement).open)) {
+    await menu.locator(":scope > summary").click()
+  }
+}
+
 async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") {
-  const rail = page.locator('[data-slot="graph-layers-rail"]')
-  await rail.getByRole("button", { name: level, exact: true }).click()
-  await expect(rail.getByRole("button", { name: level, exact: true })).toHaveAttribute("aria-pressed", "true")
+  await openLayers(page)
+  const levels = page.locator('[data-slot="graph-layers-level"]')
+  await levels.getByRole("button", { name: level, exact: true }).click()
+  await expect(levels.getByRole("button", { name: level, exact: true })).toHaveAttribute("aria-pressed", "true")
+  await closeLayers(page)
 }
 
 async function fit(page: Page) {
@@ -228,7 +243,15 @@ async function still(page: Page) {
 }
 
 async function chooseProfile(page: Page, profile: string) {
+  await openLayers(page)
   await page.locator('[data-slot="graph-layers-lens"]').selectOption(profile)
+  await closeLayers(page)
+}
+
+async function chooseDepth(page: Page, depth: string) {
+  await openLayers(page)
+  await page.locator('[data-slot="graph-layers-depth"]').selectOption(depth)
+  await closeLayers(page)
 }
 
 test("01 log", async ({ page }) => {
@@ -305,7 +328,7 @@ test("06 graph 3d", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
+  await chooseDepth(page, "orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
   await still(page)
   await fit(page)
@@ -319,7 +342,7 @@ test("11 graph timeline", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("flat")
+  await chooseDepth(page, "flat")
   await setLevel(page, "Execution")
   await pickLayout(page, "timeline")
   await fit(page)
@@ -333,7 +356,7 @@ test("12 graph hierarchy", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("flat")
+  await chooseDepth(page, "flat")
   await setLevel(page, "Execution")
   await pickLayout(page, "hierarchy")
   await fit(page)
@@ -419,8 +442,8 @@ test("18 graph layered", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("layered")
+  await chooseDepth(page, "orbit")
+  await chooseDepth(page, "layered")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
   await still(page)
   await fit(page)
@@ -434,8 +457,8 @@ test("19 graph depth stack", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("depth-stack")
+  await chooseDepth(page, "orbit")
+  await chooseDepth(page, "depth-stack")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
   await still(page)
   await fit(page)
@@ -559,7 +582,7 @@ test("31 graph perspective", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
+  await chooseDepth(page, "orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
   await setLevel(page, "Detail")
@@ -628,6 +651,8 @@ test("35 graph scrubber", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
+  // The scrubber is folded into the toolbar; open it for the frame.
+  await page.locator('[data-slot="graph-time-toggle"]').click()
   const scrubber = page.locator('[data-slot="session-graph-scrubber"] input')
   await expect(scrubber).toBeVisible()
   await scrubber.evaluate((element) => {

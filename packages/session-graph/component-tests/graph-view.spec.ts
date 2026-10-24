@@ -58,7 +58,8 @@ story("assembles the graph view and answers node questions without the canvas", 
   // Level is a component prop: changing it must reach the toolbar's derived disabled state.
   const zoomOut = root.locator('button[aria-label="Zoom out"]')
   await expect(zoomOut).toBeEnabled()
-  await root.locator('[data-slot="graph-layers-rail"] button', { hasText: "Overview" }).click()
+  await root.locator('[data-slot="graph-toolbar-layers"] > summary').click()
+  await root.locator('[data-slot="graph-layers-level"] button', { hasText: "Overview" }).click()
   await expect(zoomOut).toBeDisabled()
 
   // T6.20: the zoom control stops at the renderer's own limit. The SpaceGraph's zoom is normalized
@@ -92,6 +93,10 @@ story("assembles the graph view and answers node questions without the canvas", 
     .toBe(TOKEN_ID)
 
   // 3D (the orbit depth) is available on SpaceGraphJS and projects through the contract.
+  const layers = root.locator('[data-slot="graph-toolbar-layers"]')
+  if (!(await layers.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await layers.locator(":scope > summary").click()
+  }
   await root.locator('[data-slot="graph-layers-depth"]').selectOption("orbit")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
 

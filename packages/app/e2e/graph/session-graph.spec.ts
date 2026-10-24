@@ -42,6 +42,12 @@ async function openMenu(page: Page) {
   if (!open) await overflow.getByLabel("More controls").click()
 }
 
+async function openLayers(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
+  const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+  if (!open) await menu.locator(":scope > summary").click()
+}
+
 
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -138,7 +144,8 @@ test("switches to the ribbon layout, honours the level, and persists it", async 
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="turn"]`).count()).toBeGreaterThan(0)
 
   // T17.2: the level is the grain in a summary layout too, so the overview shows the phase segments.
-  await page.locator('[data-slot="graph-layers-rail"]').getByRole("button", { name: "Overview", exact: true }).click()
+  await openLayers(page)
+  await page.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Overview", exact: true }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="phase"]`).count()).toBeGreaterThan(0)
 
   await page.reload()
@@ -362,6 +369,36 @@ test("shows the map and the log together, and the reader chooses how they meet",
   expect(errors).toEqual([])
 })
 
+test("folds the checkpoint scrubber until the reader asks for it", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const scrubber = page.locator('[data-slot="session-graph-scrubber"]')
+  await expect(scrubber).toHaveCount(0)
+
+  await page.locator('[data-slot="graph-time-toggle"]').click()
+  await expect(scrubber).toBeVisible()
+  await expect(scrubber).toContainText("Turn 2 of 2")
+
+  await scrubber.locator("input").evaluate((element) => {
+    const input = element as HTMLInputElement
+    input.value = "1"
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+  await expect(scrubber).toContainText("Turn 1 of 2")
+
+  // The reader opened it, so it stays open when they walk back to the live turn.
+  await scrubber.locator("input").evaluate((element) => {
+    const input = element as HTMLInputElement
+    input.value = "2"
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+  await expect(scrubber).toContainText("Turn 2 of 2")
+  await expect(scrubber).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
 test("picking a node in the map moves the log to it", async ({ page }) => {
   const errors = trackPageErrors(page)
   // A long transcript, so the log has somewhere to move.
@@ -372,25 +409,18 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
   await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
 
-  const scroller = page.locator('[data-slot="session-graph-panel-log"] .scroll-view__viewport')
-  const before = await scroller.evaluate((element) => element.scrollTop)
-  expect(before).toBeGreaterThan(0)
-
   // The oldest turn's answer, picked in the map.
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("Fix the authentication test failures")
   await search.locator('[data-node-id="msg:msg_user_1"]').click()
 
-  // The log followed the map.
-  await expect
-    .poll(() => scroller.evaluate((element) => element.scrollTop))
-    .toBeLessThan(before)
-  await expect(
-    page.locator(
-      '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
-    ),
-  ).toBeVisible()
+  // The log followed the map: the picked row is the one on screen, not merely mounted.
+  const row = page.locator(
+    '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
+  )
+  await expect(row).toBeVisible()
+  await expect(row).toBeInViewport()
 
   expect(errors).toEqual([])
 })
@@ -673,7 +703,8 @@ test("the card budget follows the camera (T17.5)", async ({ page }) => {
   await openGraph(page, graphFixture())
 
   // The detail level's budget is 24 cards, and the fixture's session has more activity than that.
-  await page.locator('[data-slot="graph-layers-rail"]').getByRole("button", { name: "Detail", exact: true }).click()
+  await openLayers(page)
+  await page.locator('[data-slot="graph-layers-level"]').getByRole("button", { name: "Detail", exact: true }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind]`).count()).toBeGreaterThan(0)
 
   const cards = () =>
