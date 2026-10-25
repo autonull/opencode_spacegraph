@@ -71,7 +71,6 @@ export function useNotes(options: UseNotesOptions): UseNotesReturn {
   }
 
   const editNote = (node: GraphNode) => {
-    options.selection()[0] !== node.id // selection is external
     openNoteComposer()
   }
 
