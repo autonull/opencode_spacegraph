@@ -25,8 +25,7 @@ import type {
   Position,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
-import {
-  ancestors,
+import { ancestors,
   applyFacets,
   applyNodeBudget,
   breadcrumbs,
@@ -58,7 +57,6 @@ import {
   nodeByID,
   nodeIndex,
   nodeSize,
-  reviewChanges,
   ribbonLayout,
   scaleWindow,
   scopeToTurns,
@@ -79,7 +77,7 @@ import {
   untrack,
   type JSX,
 } from "solid-js"
-import { createStore, produce } from "solid-js/store"
+import { createStore } from "solid-js/store"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -92,7 +90,6 @@ import { GraphDetailSurface } from "./GraphDetail"
 import { GraphLegend, GraphLegendBody } from "./GraphLegend"
 import { GraphEqualizerBody } from "./GraphEqualizer"
 import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
-import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphGallery } from "./GraphGallery"
@@ -112,8 +109,13 @@ import { exportGraph, type ExportFormat } from "./export"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import { createGraphSelection } from "./graph-selection"
-import { filePath, noteData, sessionID } from "./node-data"
+import { filePath, sessionID } from "./node-data"
 import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "./graph-windows"
+import { useTraceOverlay } from "./useTraceOverlay"
+import { useComparison } from "./useComparison"
+import { useGroupCollapse } from "./useGroupCollapse"
+import { useNotes } from "./useNotes"
+import { useEdgeKinds } from "./useEdgeKinds"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -287,17 +289,20 @@ export const GraphView = (props: GraphViewProps) => {
   // A2 — the question the map answers. Text, kind/status chips, and the domain lens compose into
   // one scope; a permalink's `q=` is the same state in its shareable form.
   const [facets, setFacets] = createSignal<GraphFacets>(facetsFromQuery(props.facetQuery ?? ""))
+
+  // Announce to screen readers via the live region
+  const announce = (message: string) => {
+    const region = document.getElementById(a11yInstructionsId)
+    if (region) region.textContent = message
+  }
+
   // C1 — notes are session-local nodes. The annotated model is the one every selector and pipeline
   // reads, so notes are searchable, exportable, and scoped by their target's turn for free.
-  const [notes, setNotes] = createStore<Annotations>({})
-  const model = createMemo(() => withAnnotations(props.model, notes))
-  // C1 — the composer edits one note at a time; the target is the node the reader is holding.
-  const [noteTarget, setNoteTarget] = createSignal<string>()
-  const [editingNote, setEditingNote] = createSignal<string>()
+  const [notesStore] = createStore<Annotations>({})
+  const model = createMemo(() => withAnnotations(props.model, notesStore))
   const [hovered, setHovered] = createSignal<string>()
   // B3 — edges are first-class: hover names one, click selects its source and traces from it.
   const [edgeHovered, setEdgeHovered] = createSignal<string>()
-  const [hiddenEdgeKinds, setHiddenEdgeKinds] = createSignal<ReadonlySet<string>>(new Set())
   // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
   const [popoverDismissed, setPopoverDismissed] = createSignal(false)
   const [searchOpen, setSearchOpen] = createSignal(false)
@@ -307,42 +312,27 @@ export const GraphView = (props: GraphViewProps) => {
   // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
   // committing to one.
   const [galleryOpen, setGalleryOpen] = createSignal(false)
-  // Trace overlay state (A1): active trace kind, source node, and computed overlay.
-  const [traceKind, setTraceKind] = createSignal<TraceKind | null>(null)
-  const [traceSource, setTraceSource] = createSignal<string | null>(null)
-  const traceOverlay = createMemo<TraceOverlay | null>(() => {
-    const kind = traceKind()
-    const source = traceSource()
-    if (!kind || !source) return null
-    return classifyTrace(model(), kind, source)
+
+  // Hooks for modular state/logic
+  const trace = useTraceOverlay({
+    model,
+    selection: () => selection.selection(),
+    onAnnounce: announce,
   })
-  const clearTrace = () => {
-    setTraceKind(null)
-    setTraceSource(null)
-  }
-  const startTrace = (kind: TraceKind, source?: string) => {
-    const from = source ?? selection.selection()[0]
-    if (!from) return
-    setTraceKind(kind)
-    setTraceSource(from)
-    // Announce to screen readers
-    const node = nodeByID(model(), from)
-    const label = node?.label ?? from
-    const messages: Record<TraceKind, string> = {
-      why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
-      "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
-      related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
-    }
-    announce(messages[kind])
-  }
-  // Copy trace as markdown outline
-  const copyTraceOutline = () => {
-    const overlay = traceOverlay()
-    if (!overlay) return
-    const text = copyTraceAsOutline(model(), overlay, breadcrumbs)
-    navigator.clipboard?.writeText(text)
-    announce(i18n.t("ui.sessionGraph.trace.copied"))
-  }
+
+  // Trace wrappers for GraphDetailSurface/GraphInspector (expect single nodeId argument)
+  const onTraceWhy = (nodeId: string) => trace.startTrace("why", nodeId)
+  const onTraceLedHere = (nodeId: string) => trace.startTrace("led-here", nodeId)
+  const onTraceRelated = (nodeId: string) => trace.startTrace("related", nodeId)
+
+  const notes = useNotes({
+    model,
+    selection: () => selection.selection(),
+    onAnnounce: announce,
+  })
+
+  const edgeKinds = useEdgeKinds({ model })
+
   // A2 — the question is an artifact too: its `q=` grammar is the shareable form.
   const copyView = () => {
     const query = facetsToQuery(facets())
@@ -352,61 +342,6 @@ export const GraphView = (props: GraphViewProps) => {
     }
     navigator.clipboard?.writeText(query)
     announce(i18n.t("ui.sessionGraph.facets.copied"))
-  }
-  // C1 — a note is appended to session-local state; nothing on the transcript path is touched.
-  const openNoteComposer = () => {
-    const id = selection.selection()[0]
-    if (!id) return
-    const node = nodeByID(model(), id)
-    if (!node) return
-    if (node.kind === "note") {
-      const data = noteData(node)
-      if (!data) return
-      setEditingNote(data.noteID)
-      setNoteTarget(data.target)
-      return
-    }
-    setEditingNote(undefined)
-    setNoteTarget(id)
-  }
-  const closeNoteComposer = () => {
-    setEditingNote(undefined)
-    setNoteTarget(undefined)
-  }
-  const saveNote = (body: string) => {
-    const target = noteTarget()
-    if (!target) return
-    const editing = editingNote()
-    if (editing) {
-      if (body.trim().length === 0) {
-        setNotes(produce((all) => void delete all[editing]))
-        announce(i18n.t("ui.sessionGraph.note.deleted"))
-      } else {
-        setNotes(editing, "body", body)
-        announce(i18n.t("ui.sessionGraph.note.updated"))
-      }
-      closeNoteComposer()
-      return
-    }
-    const id = crypto.randomUUID()
-    setNotes(id, { id, target, body, createdAt: Date.now() })
-    announce(i18n.t("ui.sessionGraph.note.added"))
-    closeNoteComposer()
-  }
-  const editNote = (node: GraphNode) => {
-    selection.select(node.id)
-    openNoteComposer()
-  }
-  const deleteNote = (node: GraphNode) => {
-    const data = noteData(node)
-    if (!data) return
-    setNotes(produce((all) => void delete all[data.noteID]))
-    announce(i18n.t("ui.sessionGraph.note.deleted"))
-  }
-  const copyNote = (node: GraphNode) => {
-    const body = typeof node.summary === "string" ? node.summary : node.label
-    navigator.clipboard?.writeText(body)
-    announce(i18n.t("ui.sessionGraph.note.copied"))
   }
   const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
   const [rendererReady, setRendererReady] = createSignal(false)
@@ -462,6 +397,12 @@ export const GraphView = (props: GraphViewProps) => {
     openWindow("node", id)
   })
   const selectedTurn = () => turnOf(selection.selection()[0])
+  const selectedTurns = () =>
+    selection
+      .selection()
+      .map((id) => nodeByID(model(), id))
+      .filter((node): node is GraphNode => node?.kind === "turn")
+
   // T6.6: a long session is drawn as its recent tail. The window is declared — the view says how
   // much of the session it shows — and it keeps the turn the reader is looking at.
   // T18.1: when followLog is enabled, also keep the active turn from the log in the drawn window.
@@ -473,116 +414,55 @@ export const GraphView = (props: GraphViewProps) => {
       ),
     ),
   )
-  // B1 — two turns compare explicitly; a parked scrubber compares implicitly against live.
-  const [comparedTurns, setComparedTurns] = createSignal<readonly [string, string] | null>(null)
-  const selectedTurns = () =>
-    selection
-      .selection()
-      .map((id) => nodeByID(model(), id))
-      .filter((node): node is GraphNode => node?.kind === "turn")
-  const turnScoped = createMemo(() => {
-    const turns = new Set(scale().turns)
-    for (const turn of comparedTurns() ?? []) turns.add(turn)
-    return scopeToTurns(model(), turns)
+
+  // Hooks for comparison and group collapse
+  const comparisonHook = useComparison({
+    model,
+    liveModel: () => props.liveModel ?? model(),
+    checkpoint: props.checkpoint,
+    turnCount: props.turnCount,
+    selection: () => selection.selection(),
+    nodeByID: (id) => nodeByID(model(), id),
   })
+
+  const groupCollapse = useGroupCollapse({
+    model,
+    selection: () => selection.selection(),
+    nodeByID: (id) => model().nodes.find((n) => n.id === id),
+  })
+
   // B1 — "keep only" is a scope over the held set, applied after facets so the two compose.
   const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
-  // B2 — collapse is session-local model state; expanding restores the same derived positions.
-  const [collapsedGroups, setCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
   const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
-  const toggleGroupByID = (id: string) =>
-    setCollapsedGroups((previous) => {
-      const next = new Set(previous)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+
   const scopeBase = (source: GraphViewData) => {
     const base = applyFacets(source, facets())
     const keep = keptIds()
-    return collapseGroups(keep ? keepOnly(base, keep) : base, collapsedGroups())
+    return groupCollapse.collapsedGroups().size > 0
+      ? collapseGroups(keep ? keepOnly(base, keep) : base, groupCollapse.collapsedGroups())
+      : keep
+        ? keepOnly(base, keep)
+        : base
   }
-  const scoped = createMemo(() => scopeBase(turnScoped()))
-  const selectedGroup = () => {
-    const id = selection.selection()[0]
-    if (!id) return undefined
-    const node = model().nodes.find((item) => item.id === id)
-    return node && (node.clusterOf?.length ?? 0) > 0 ? node : undefined
-  }
-  const toggleGroup = () => {
-    const group = selectedGroup()
-    if (!group) return
-    setCollapsedGroups((current) => {
-      const next = new Set(current)
-      if (next.has(group.id)) next.delete(group.id)
-      else next.add(group.id)
-      return next
-    })
-  }
-  const collapseOtherGroups = () => {
-    const group = selectedGroup()
-    if (!group) return
-    setCollapsedGroups(
-      new Set(
-        model().nodes
-          .filter((node) => node.id !== group.id && (node.clusterOf?.length ?? 0) > 0)
-          .map((node) => node.id),
-      ),
-    )
-  }
-  const counts = createMemo(() => facetCounts(turnScoped(), facets()))
-  // B1 — a parked view is a diff against the live map, not a different map: the same positions
-  // carry added and changed marks, and nothing re-lays-out when the scrubber moves.
-  const comparison = createMemo(() => {
-    const pair = comparedTurns()
-    if (pair) {
-      const changes = reviewChanges(
-        scopeToTurns(model(), new Set([pair[0]])),
-        scopeToTurns(model(), new Set([pair[1]])),
-      )
-      return {
-        added: new Set(changes.added),
-        removed: new Set(changes.removed),
-        changed: new Set(changes.changed),
-        counts: {
-          added: changes.added.length,
-          removed: changes.removed.length,
-          changed: changes.changed.length,
-        },
-        label: "turns" as const,
-      }
-    }
-    const checkpoint = props.checkpoint
-    const live = props.liveModel ?? model()
-    const turns = live.turns
-    if (checkpoint === undefined || props.turnCount === undefined) return undefined
-    if (checkpoint >= turns.length - 1 || checkpoint < 0) return undefined
-    const parked = scopeBase(scopeToTurns(live, new Set(turns.slice(0, checkpoint + 1))))
-    const changes = reviewChanges(parked, scopeBase(live))
-    return {
-      added: new Set(changes.added),
-      removed: new Set(changes.removed),
-      changed: new Set(changes.changed),
-      counts: {
-        added: changes.added.length,
-        removed: changes.removed.length,
-        changed: changes.changed.length,
-      },
-      label: "parked" as const,
-    }
+
+  const turnScoped = createMemo(() => {
+    const turns = new Set(scale().turns)
+    for (const turn of comparisonHook.comparedTurns() ?? []) turns.add(turn)
+    return scopeToTurns(model(), turns)
   })
-  const compareSelectedTurns = () => {
-    const turns = selectedTurns()
-    if (turns.length < 2) return
-    setComparedTurns([turns[0]!.id, turns[1]!.id])
-  }
-  const clearComparison = () => {
-    if (comparedTurns()) {
-      setComparedTurns(null)
-      return
-    }
-    props.onCheckpoint?.(Math.max(0, (props.liveModel ?? model()).turns.length - 1))
-  }
+
+  const scoped = createMemo(() => scopeBase(turnScoped()))
+
+  const counts = createMemo(() => facetCounts(turnScoped(), facets()))
+
+  const comparison = comparisonHook.comparison
+
+  const compareSelectedTurns = comparisonHook.compareSelectedTurns
+  const clearComparison = comparisonHook.clearComparison
+
+  // GraphCanvas needs this for group toggle via context menu
+  const toggleGroupByID = groupCollapse.toggleGroupByID
+
   // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
   // capped map is a readable window instead of an empty stretch of the session.
   const windowAnchor = createMemo(() => {
@@ -625,7 +505,7 @@ export const GraphView = (props: GraphViewProps) => {
     onCleanup(() => observer.disconnect())
 
     // Handle copy trace outline request from detail actions
-    const handleCopyTraceOutline = () => copyTraceOutline()
+    const handleCopyTraceOutline = () => trace.copyTraceOutline()
     window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
     onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
 
@@ -634,14 +514,14 @@ export const GraphView = (props: GraphViewProps) => {
       const detail = (event as CustomEvent<{ name?: string; source?: string }>).detail
       const name = detail?.name
       if (name === "why" || name === "led-here" || name === "related") {
-        startTrace(name, detail?.source)
+        trace.startTrace(name, detail?.source)
         return
       }
       if (name === "compare") {
         compareSelectedTurns()
         return
       }
-      if (name === "note") openNoteComposer()
+      if (name === "note") notes.openNoteComposer()
     }
     window.addEventListener("graph:command", handleCommand)
     onCleanup(() => window.removeEventListener("graph:command", handleCommand))
@@ -722,7 +602,7 @@ export const GraphView = (props: GraphViewProps) => {
   const renderCard = createMemo(() => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
     const now = Date.now()
-    const overlay = traceOverlay()
+    const overlay = trace.traceOverlay()
     return (
       props.renderCard ??
       createCardTemplate(theme(), {
@@ -735,12 +615,12 @@ export const GraphView = (props: GraphViewProps) => {
         copy,
         trace: overlay ?? undefined,
         diff: comparison(),
-        collapsedGroups: collapsedGroups(),
+        collapsedGroups: groupCollapse.collapsedGroups(),
       })
     )
   })
   const renderBand = createMemo(() =>
-    createBandTemplate(theme(), undefined, { copy, collapsedGroups: collapsedGroups() }),
+    createBandTemplate(theme(), undefined, { copy, collapsedGroups: groupCollapse.collapsedGroups() }),
   )
   // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
@@ -915,24 +795,15 @@ export const GraphView = (props: GraphViewProps) => {
         renderBand: renderBand(),
       }),
     )
-    const hidden = hiddenEdgeKinds()
+    const hidden = edgeKinds.hiddenEdgeKinds()
     return hidden.size === 0
       ? model
       : { ...model, edges: model.edges.filter((edge) => !hidden.has(edge.kind)) }
   })
 
-  const edgeKinds = createMemo(() => {
-    const counts = new Map<string, number>()
-    for (const edge of model().edges) counts.set(edge.kind, (counts.get(edge.kind) ?? 0) + 1)
-    return [...counts].map(([kind, count]) => ({ kind, count, hidden: hiddenEdgeKinds().has(kind) }))
-  })
-  const toggleEdgeKind = (kind: string) =>
-    setHiddenEdgeKinds((current) => {
-      const next = new Set(current)
-      if (next.has(kind)) next.delete(kind)
-      else next.add(kind)
-      return next
-    })
+  // Edge kinds for the legend - use the hook
+  const edgeKindsMemo = edgeKinds.edgeKinds
+  const toggleEdgeKind = edgeKinds.toggleEdgeKind
 
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
   // same whoever opens it. Both read the render model in the session's own order.
@@ -1072,11 +943,11 @@ export const GraphView = (props: GraphViewProps) => {
   })
   const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport })
   const noteAnchor = createNodeAnchor({
-    node: () => (noteTarget() ? nodeByID(model(), noteTarget()!) : undefined),
+    node: () => (notes.noteTarget() ? nodeByID(model(), notes.noteTarget()!) : undefined),
     renderer: () => renderer,
     viewport,
   })
-  const noteTargetNode = () => (noteTarget() ? nodeByID(model(), noteTarget()!) : undefined)
+  const noteTargetNode = () => (notes.noteTarget() ? nodeByID(model(), notes.noteTarget()!) : undefined)
   const peekEdge = createMemo(() => {
     if (!peek()) return undefined
     const id = edgeHovered()
@@ -1128,15 +999,15 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={selection.select}
             onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
             onOpenSession={props.onOpenSession}
-            traceKind={traceKind()}
-            onTraceWhy={(id) => startTrace("why", id)}
-            onTraceLedHere={(id) => startTrace("led-here", id)}
-            onTraceRelated={(id) => startTrace("related", id)}
-            onClearTrace={clearTrace}
-            onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
-            onEditNote={editNote}
-            onDeleteNote={deleteNote}
-            onCopyNote={copyNote}
+            traceKind={trace.traceKind()}
+            onTraceWhy={onTraceWhy}
+            onTraceLedHere={onTraceLedHere}
+            onTraceRelated={onTraceRelated}
+            onClearTrace={trace.clearTrace}
+            onCopyTraceOutline={trace.copyTraceOutline}
+            onEditNote={notes.editNote}
+            onDeleteNote={notes.deleteNote}
+            onCopyNote={notes.copyNote}
           />
         )
       },
@@ -1162,7 +1033,7 @@ export const GraphView = (props: GraphViewProps) => {
           theme={theme()}
           layout={layout()}
           rules={props.rules}
-          edgeKinds={edgeKinds()}
+          edgeKinds={edgeKindsMemo()}
           onToggleEdgeKind={toggleEdgeKind}
         />
       ),
@@ -1324,13 +1195,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // A11y live region announcement helper.
-  const announce = (message: string) => {
-    const region = document.getElementById(a11yInstructionsId)
-    if (region) {
-      region.textContent = ""
-      region.textContent = message
-    }
-  }
+  // (defined earlier at line 294)
 
   // T2.3: returning to the transcript is an interaction.
   const openInTranscript = (id: string) => {
@@ -1376,36 +1241,35 @@ export const GraphView = (props: GraphViewProps) => {
     if (selectionId) {
       if (event.key === "n") {
         event.preventDefault()
-        openNoteComposer()
+        notes.openNoteComposer()
         return
       }
-      if (event.key === "Enter" && selectedGroup()) {
+      if (event.key === "Enter" && groupCollapse.selectedGroup()) {
         event.preventDefault()
-        toggleGroup()
+        groupCollapse.toggleGroup()
         return
       }
       if (event.key === "w") {
         event.preventDefault()
-        startTrace("why", selectionId)
+        trace.startTrace("why", selectionId)
         return
       }
       if (event.key === "e") {
         event.preventDefault()
-        startTrace("led-here", selectionId)
+        trace.startTrace("led-here", selectionId)
         return
       }
       if (event.key === "r") {
         event.preventDefault()
-        startTrace("related", selectionId)
+        trace.startTrace("related", selectionId)
         return
       }
       if (event.key === "[" || event.key === "]") {
         event.preventDefault()
         const delta = event.key === "[" ? -1 : 1
-        const overlay = traceOverlay()
+        const overlay = trace.traceOverlay()
         if (overlay) {
-          const current = overlay.answerIds.has(selectionId) ? selectionId : undefined
-          const next = stepLitNode(overlay, current, delta)
+          const next = trace.stepLitNode(delta)
           if (next) selection.select(next)
         } else {
           const next = neighborStep(model(), selectionId, delta)
@@ -1604,22 +1468,22 @@ export const GraphView = (props: GraphViewProps) => {
         onCopyPaths={copySelectedPaths}
         onExportSubset={exportSelection}
         onClear={clearSelection}
-        onAddNote={openNoteComposer}
+        onAddNote={notes.openNoteComposer}
         compare={
-          selectedTurns().length >= 2 || comparedTurns()
+          selectedTurns().length >= 2 || comparisonHook.comparedTurns()
             ? {
-                active: comparedTurns() !== null,
+                active: comparisonHook.comparedTurns() !== null,
                 onCompare: compareSelectedTurns,
                 onClear: clearComparison,
               }
             : undefined
         }
         group={
-          selectedGroup()
+          groupCollapse.selectedGroup()
             ? {
-                collapsed: collapsedGroups().has(selectedGroup()!.id),
-                onToggle: toggleGroup,
-                onCollapseOthers: collapseOtherGroups,
+                collapsed: groupCollapse.collapsedGroups().has(groupCollapse.selectedGroup()!.id),
+                onToggle: groupCollapse.toggleGroup,
+                onCollapseOthers: groupCollapse.collapseOtherGroups,
               }
             : undefined
         }
@@ -1739,7 +1603,7 @@ export const GraphView = (props: GraphViewProps) => {
               const edge = model().edges.find((item) => item.id === id)
               if (!edge) return
               selection.select(edge.source)
-              startTrace("related", edge.source)
+              trace.startTrace("related", edge.source)
             }}
             onGroupToggle={toggleGroupByID}
             onGroupMenu={(id, at) => {
@@ -1787,7 +1651,7 @@ export const GraphView = (props: GraphViewProps) => {
                   }}
                 >
                   {i18n.t(
-                    collapsedGroups().has(menu().id)
+                    groupCollapse.collapsedGroups().has(menu().id)
                       ? "ui.sessionGraph.status.expandGroup"
                       : "ui.sessionGraph.status.collapseGroup",
                   )}
@@ -1797,14 +1661,7 @@ export const GraphView = (props: GraphViewProps) => {
                   role="menuitem"
                   class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
                   onClick={() => {
-                    setCollapsedGroups(
-                      new Set(
-                        model()
-                          .nodes.filter((node) => node.kind === "phase" && (node.clusterOf?.length ?? 0) > 0)
-                          .map((node) => node.id)
-                          .filter((id) => id !== menu().id),
-                      ),
-                    )
+                    groupCollapse.collapseOtherGroups()
                     setGroupMenu(undefined)
                   }}
                 >
@@ -1851,13 +1708,13 @@ export const GraphView = (props: GraphViewProps) => {
               </div>
             )}
           </Show>
-          <Show when={noteTarget()}>
+          <Show when={notes.noteTarget()}>
             <GraphNoteComposer
-              targetLabel={noteTargetNode()?.label ?? noteTarget() ?? ""}
-              initialValue={editingNote() ? notes[editingNote()!]?.body : undefined}
+              targetLabel={noteTargetNode()?.label ?? notes.noteTarget() ?? ""}
+              initialValue={notes.editingNote() ? (notes as unknown as Record<string, { body: string }>)[notes.editingNote()!]?.body : undefined}
               anchor={noteAnchor()}
-              onSave={saveNote}
-              onClose={closeNoteComposer}
+              onSave={notes.saveNote}
+              onClose={notes.closeNoteComposer}
             />
           </Show>
           <Show when={effectiveDetailMode() === "popover"}>
@@ -1882,15 +1739,15 @@ export const GraphView = (props: GraphViewProps) => {
                 onOpenSession={props.onOpenSession}
                 onOpenWindow={(node) => openWindow("node", node.id)}
                 onClose={() => setPopoverDismissed(true)}
-                traceKind={traceKind()}
-                onTraceWhy={(id) => startTrace("why", id)}
-                onTraceLedHere={(id) => startTrace("led-here", id)}
-                onTraceRelated={(id) => startTrace("related", id)}
-                onClearTrace={clearTrace}
-                onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
-            onEditNote={editNote}
-            onDeleteNote={deleteNote}
-            onCopyNote={copyNote}
+                traceKind={trace.traceKind()}
+                onTraceWhy={onTraceWhy}
+                onTraceLedHere={onTraceLedHere}
+                onTraceRelated={onTraceRelated}
+                onClearTrace={trace.clearTrace}
+                onCopyTraceOutline={trace.copyTraceOutline}
+                onEditNote={notes.editNote}
+                onDeleteNote={notes.deleteNote}
+                onCopyNote={notes.copyNote}
               />
             </div>
           </Show>
@@ -1948,8 +1805,8 @@ export const GraphView = (props: GraphViewProps) => {
               theme={theme()}
               layout={layout()}
               rules={props.rules}
-              edgeKinds={edgeKinds()}
-              onToggleEdgeKind={toggleEdgeKind}
+              edgeKinds={edgeKinds.edgeKinds()}
+              onToggleEdgeKind={edgeKinds.toggleEdgeKind}
               onClose={() => setLegendOpen(false)}
             />
           </Show>
@@ -2001,15 +1858,15 @@ export const GraphView = (props: GraphViewProps) => {
               onSelect={selection.select}
               onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
               onOpenSession={props.onOpenSession}
-              traceKind={traceKind()}
-              onTraceWhy={(id) => startTrace("why", id)}
-              onTraceLedHere={(id) => startTrace("led-here", id)}
-              onTraceRelated={(id) => startTrace("related", id)}
-              onClearTrace={clearTrace}
-              onCopyTraceOutline={(text) => navigator.clipboard?.writeText(text)}
-            onEditNote={editNote}
-            onDeleteNote={deleteNote}
-            onCopyNote={copyNote}
+              traceKind={trace.traceKind()}
+              onTraceWhy={onTraceWhy}
+              onTraceLedHere={onTraceLedHere}
+              onTraceRelated={onTraceRelated}
+              onClearTrace={trace.clearTrace}
+              onCopyTraceOutline={trace.copyTraceOutline}
+              onEditNote={notes.editNote}
+              onDeleteNote={notes.deleteNote}
+              onCopyNote={notes.copyNote}
             />
           </div>
         </Show>
