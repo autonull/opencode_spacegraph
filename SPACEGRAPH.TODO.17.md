@@ -173,12 +173,12 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ### Library track (`spacegraphjs/`, 4 slices, ~5.5 days)
 
-#### Slice L1 — Incremental RenderModelPatch (2 days)
+#### Slice L1 — Incremental RenderModelPatch (2 days) ✅ COMPLETE
 
-1. `@spacegraphjs/adapter`: `diffRenderModels(old, new) → RenderModelPatch`
-2. `@spacegraphjs/renderer`: Add `applyPatch(patch)` to `GraphRenderer` contract
-3. `spacegraph-renderer` + `cytoscape-renderer`: Implement partial updates
-4. `GraphView.tsx`: Compute patch on streaming update → `applyPatch()`
+1. ✅ `@spacegraphjs/adapter`: `diffRenderModels(old, new) → RenderModelPatch`
+2. ✅ `@spacegraphjs/renderer`: Add `applyPatch(patch)` to `GraphRenderer` contract (v4)
+3. ✅ `spacegraph-renderer` + `cytoscape-renderer`: Implement partial updates
+4. ⏳ `GraphView.tsx`: Compute patch on streaming update → `applyPatch()`
 5. Target: 100-node incremental < 10ms
 
 ---
