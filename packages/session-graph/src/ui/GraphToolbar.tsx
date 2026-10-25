@@ -120,6 +120,13 @@ export type GraphToolbarProps = {
   followLog?: boolean
   onFollowLogChange?: (follow: boolean) => void
   /**
+   * V115: Undo/redo for manual positions (dragged nodes).
+   */
+  manualHistoryLength?: number
+  manualFutureLength?: number
+  onUndoManual?: () => void
+  onRedoManual?: () => void
+  /**
    * CSS length reserved at the inline end of the row, so a host whose floating chrome overlaps
    * the graph panel's top-right keeps the renderer label and back control clickable.
    */
@@ -642,6 +649,24 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   const showControls = () => {
     return (
       <>
+        <Show when={props.manualHistoryLength !== undefined || props.manualFutureLength !== undefined}>
+          <div data-slot="graph-toolbar-manual-history">
+            <GraphIconButton
+              label={i18n.t("ui.sessionGraph.toolbar.undo")}
+              icon="outline-undo"
+              onClick={props.onUndoManual ?? (() => {})}
+              disabled={(props.manualHistoryLength ?? 0) === 0}
+              slot="graph-undo-option"
+            />
+            <GraphIconButton
+              label={i18n.t("ui.sessionGraph.toolbar.redo")}
+              icon="outline-redo"
+              onClick={props.onRedoManual ?? (() => {})}
+              disabled={(props.manualFutureLength ?? 0) === 0}
+              slot="graph-redo-option"
+            />
+          </div>
+        </Show>
         <Show when={props.onDetailModeChange}>
           <div data-slot="graph-toolbar-detail">
             <div class="px-2 py-1 text-12-regular text-text-weak">

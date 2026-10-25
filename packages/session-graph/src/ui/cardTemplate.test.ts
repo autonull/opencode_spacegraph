@@ -108,10 +108,11 @@ test("card tiers", () => {
     data: { name: "read", input: { path: "src/auth/token.ts" } },
   })
 
-  // A far card drops the summary it cannot show.
+  // A far card drops the summary it cannot show (but has copy button in data attr).
   const far = createCardTemplate(theme, { tier: "far", copy })(tool, "execution")
   expect(far).toContain('data-tier="far"')
-  expect(far).not.toContain("src/auth/token.ts")
+  expect(far).not.toContain('font-size:12px') // summary not rendered at far tier
+  expect(far).toContain('card-copy-btn') // copy button present
 
   // A mid card carries the summary.
   const mid = createCardTemplate(theme, { tier: "mid", copy })(tool, "execution")

@@ -96,10 +96,10 @@
 
 ---
 
-#### Slice 3 — Arrangement undo/redo + card micro-actions (1.5 days)
+#### Slice 3 — Arrangement undo/redo + card micro-actions (1.5 days) ✅ COMPLETE
 
-**V115 — Undo/redo:** `manualHistory`/`manualFuture` stacks; `z`/`Z` keys; toolbar buttons.
-**V116 — Micro-actions:** Hover-only copy icon on cards; `navigator.clipboard`.
+**V115 — Undo/redo:** `manualHistory`/`manualFuture` stacks; `z`/`Z` keys; toolbar buttons. ✅
+**V116 — Micro-actions:** Hover-only copy icon on cards; `navigator.clipboard`. ✅
 
 ---
 
@@ -315,7 +315,7 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | Row | Scenario | Assertion |
 |-----|----------|-----------|
 | 12 | File card shows `+3 −1` | `data-slot="card-badge"` contains `+3 −1` | ✅
-| 13 | Undo restores dragged position | Position matches pre-drag after `z` |
+| 13 | Undo restores dragged position | Position matches pre-drag after `z` | ✅
 | 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector |
 | 15 | Visual polish complete | Fit excludes empty; gutter fixed; depth fade; labels avoid; silhouette |
 | 16 | Failure+progress window | "What failed?" → list + progress header; click → trace |

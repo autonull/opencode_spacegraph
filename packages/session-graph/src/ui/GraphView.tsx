@@ -106,6 +106,7 @@ import { GraphHiddenSelection } from "./GraphHiddenSelection"
 import { GraphFallback } from "./GraphFallback"
 import { GraphEmpty } from "./GraphEmpty"
 import { GraphError } from "./GraphError"
+import "./graph-cards.css"
 import { createGraphTheme } from "./theme"
 import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
@@ -360,6 +361,48 @@ export const GraphView = (props: GraphViewProps) => {
     positions: Record<string, [number, number, number]>
     sizes: Record<string, [number, number]>
   }>({ positions: {}, sizes: {} })
+
+  // V115: undo/redo for manual positions
+  const [manualHistory, setManualHistory] = createSignal<{ positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]>([])
+  const [manualFuture, setManualFuture] = createSignal<{ positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]>([])
+
+  const MAX_HISTORY = 50
+
+  const captureManualState = () => ({
+    positions: { ...manual.positions },
+    sizes: { ...manual.sizes },
+  })
+
+  const pushHistory = () => {
+    const state = captureManualState()
+    // Only push if there are actual changes
+    if (Object.keys(state.positions).length > 0 || Object.keys(state.sizes).length > 0) {
+      setManualHistory((prev) => [...prev.slice(-MAX_HISTORY + 1), state])
+      setManualFuture([])
+    }
+  }
+
+  const undoManual = () => {
+    setManualHistory((prev) => {
+      if (prev.length === 0) return prev
+      const last = prev[prev.length - 1]
+      setManualFuture((fut) => [captureManualState(), ...fut.slice(-MAX_HISTORY + 1)])
+      setManual("positions", last.positions)
+      setManual("sizes", last.sizes)
+      return prev.slice(0, -1)
+    })
+  }
+
+  const redoManual = () => {
+    setManualFuture((fut) => {
+      if (fut.length === 0) return fut
+      const next = fut[0]
+      setManualHistory((prev) => [...prev.slice(-MAX_HISTORY + 1), captureManualState()])
+      setManual("positions", next.positions)
+      setManual("sizes", next.sizes)
+      return fut.slice(1)
+    })
+  }
   // T18.3: the auto detail mode threshold — when the map is narrower than this, the detail
   // lives in a window instead of the panel. The toolbar's compact threshold is 1030px for the
   // whole panel; the map itself is narrower, so the threshold is proportionally smaller.
@@ -696,10 +739,15 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   const moveNodes = (nodes: readonly { id: string; position: [number, number, number] }[]) => {
+    // Capture state before first move in a drag sequence
+    const hasChanges = nodes.some((n) => manual.positions[n.id] && manual.positions[n.id] !== n.position)
+    if (hasChanges) pushHistory()
     for (const node of nodes) setManual("positions", node.id, node.position)
   }
 
   const resizeNode = (resize: { id: string; size: [number, number]; position: [number, number, number] }) => {
+    const hasChanges = manual.positions[resize.id] && manual.positions[resize.id] !== resize.position
+    if (hasChanges) pushHistory()
     setManual("positions", resize.id, resize.position)
     setManual("sizes", resize.id, resize.size)
   }
@@ -1272,9 +1320,23 @@ export const GraphView = (props: GraphViewProps) => {
       return
     }
 
-    const level = { "1": "overview", "2": "execution", "3": "detail" }[event.key] as ZoomLevel | undefined
+    if (event.key === "1" || event.key === "2" || event.key === "3") {
+      const level = { "1": "overview", "2": "execution", "3": "detail" }[event.key] as ZoomLevel
+      event.preventDefault()
+      setLevel(level)
+      return
+    }
 
-    if (level) setLevel(level)
+    // V115: Undo/redo for manual positions (z / Z)
+    if ((event.key === "z" || event.key === "Z") && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault()
+      if (event.shiftKey || event.key === "Z") {
+        redoManual()
+      } else {
+        undoManual()
+      }
+      return
+    }
   }
 
   // The host owns the controlled values; the view keeps its own copy so an uncontrolled view still
@@ -1408,6 +1470,10 @@ export const GraphView = (props: GraphViewProps) => {
         onTogglePeek={togglePeek}
         followLog={followLog()}
         onFollowLogChange={setFollowLog}
+        manualHistoryLength={manualHistory().length}
+        manualFutureLength={manualFuture().length}
+        onUndoManual={undoManual}
+        onRedoManual={redoManual}
         onTurnMap={
           props.onTurnMap
             ? () => {
