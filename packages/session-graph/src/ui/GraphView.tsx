@@ -582,7 +582,8 @@ export const GraphView = (props: GraphViewProps) => {
     const current = tier()
     setTier(detailTier(width, current))
   })
-  // T11.3 — a file's card says who read it and who wrote it: a fact only the graph's edges know.
+  // T11.3 — a file's card says who read it, who wrote it, and how much it changed: facts only the
+  // graph's edges know.
   const copy = createCardCopy(i18n)
   const relations = createMemo(() => fileRelations(model()))
   const relatedDetail = (node: GraphNode) => {
@@ -592,6 +593,9 @@ export const GraphView = (props: GraphViewProps) => {
     const parts = [
       relation.reads > 0 ? copy.reads(relation.reads) : undefined,
       relation.writes > 0 ? copy.writes(relation.writes) : undefined,
+      relation.additions > 0 || relation.deletions > 0
+        ? copy.diff(relation.additions, relation.deletions)
+        : undefined,
     ].filter((part): part is string => !!part)
     return parts.length > 0 ? parts.join(" · ") : undefined
   }

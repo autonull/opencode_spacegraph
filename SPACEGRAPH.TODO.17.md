@@ -76,14 +76,14 @@
 
 ### Host track (10 slices, ~6.5 days)
 
-#### Slice 1 — Writes payload labels (1.5 days)
+#### Slice 1 — Writes payload labels (1.5 days) ✅ COMPLETE
 
 **Data flow:** `diffByTurn` → `writes` edge `data` → card/peek badge
 
-1. `session-builder.ts`: Attach `{ additions, deletions }` from `FileDiffInfo` to `writes` edges
-2. `model.ts`: Extend `GraphEdge.data` with optional diff stats
-3. `cardTemplate.ts`: `+n −m` badge on file cards
-4. `GraphPeek.tsx`: Diff stats in edge peek
+1. ✅ `session-builder.ts`: Attach `{ additions, deletions }` from `FileDiffInfo` to `writes` edges
+2. ✅ `model.ts`: Extend `GraphEdge.data` with optional diff stats
+3. ✅ `cardTemplate.ts` + `card-copy.ts` + `GraphView.tsx`: `+n −m` badge on file cards (via `related` function)
+4. ✅ `GraphPeek.tsx`: Diff stats in edge peek
 
 ---
 
@@ -314,7 +314,7 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 
 | Row | Scenario | Assertion |
 |-----|----------|-----------|
-| 12 | File card shows `+3 −1` | `data-slot="card-badge"` contains `+3 −1` |
+| 12 | File card shows `+3 −1` | `data-slot="card-badge"` contains `+3 −1` | ✅
 | 13 | Undo restores dragged position | Position matches pre-drag after `z` |
 | 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector |
 | 15 | Visual polish complete | Fit excludes empty; gutter fixed; depth fade; labels avoid; silhouette |

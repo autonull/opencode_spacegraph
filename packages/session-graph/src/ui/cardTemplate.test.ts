@@ -10,6 +10,12 @@ const copy: CardCopy = {
   replayed: () => "replayed",
   reads: (count) => `${count} reads`,
   writes: (count) => `${count} writes`,
+  diff: (additions, deletions) => {
+    const parts: string[] = []
+    if (additions > 0) parts.push(`+${additions}`)
+    if (deletions > 0) parts.push(`−${deletions}`)
+    return parts.join(" ")
+  },
   collapseGroup: () => "Collapse group",
   expandGroup: () => "Expand group",
 }

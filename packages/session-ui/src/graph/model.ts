@@ -78,6 +78,8 @@ export type GraphEdge = {
   target: string
   confidence: Confidence
   label?: string
+  /** T31.1 — diff stats for writes edges: additions and deletions from the patch. */
+  data?: { additions: number; deletions: number }
 }
 
 /**

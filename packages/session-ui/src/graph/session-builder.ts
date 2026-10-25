@@ -185,6 +185,8 @@ export class GraphBuilder {
   private readonly phaseOrdinalsByTurn = new Map<string, number>()
   /** The last failure in a turn, so a retry can point back at it. */
   private readonly lastErrorByTurn = new Map<string, string>()
+  /** T31.1 — per-turn file diffs for writes edge payload labels. */
+  private readonly diffByTurn?: Map<string, FileDiffInfo[]>
   private previousTurn: string | undefined
   private readonly goal: string | undefined
   private turnByMessageID = new Map<string, string>()
@@ -197,7 +199,9 @@ export class GraphBuilder {
     private readonly snapshot?: WorkspaceSnapshot,
     sessionID?: string,
     lineage?: SessionLineage,
+    diffByTurn?: Map<string, FileDiffInfo[]>,
   ) {
+    this.diffByTurn = diffByTurn
     this.goal = messages.find((message) => message.type === "user")?.text
 
     this.addNode({
@@ -277,7 +281,7 @@ export class GraphBuilder {
     snapshot: WorkspaceSnapshot,
     diffByTurn?: Map<string, FileDiffInfo[]>,
   ): Kernel {
-    const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined)
+    const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined, diffByTurn)
     builder.seed(kernel)
     switch (stage) {
       case "files":
@@ -888,6 +892,15 @@ export class GraphBuilder {
     return id
   }
 
+  /** T31.1 — find diff info for a file in a turn. */
+  private diffForFile(turnID: string | undefined, path: string): FileDiffInfo | undefined {
+    if (!turnID || !this.diffByTurn) return undefined
+    const diffs = this.diffByTurn.get(turnID)
+    if (!diffs) return undefined
+    const normalized = normalizePath(path)
+    return diffs.find((d) => normalizePath(d.file) === normalized)
+  }
+
   /** The parent turn node for a message, creating it on first sight of its opener. */
   private ensureTurn(opener: SessionMessageInfo, owner: string | undefined): string {
     if (!owner) return SESSION_NODE_ID
@@ -1043,7 +1056,14 @@ export class GraphBuilder {
   private appendAssistant(message: SessionMessageAssistant, turnID: string) {
     message.snapshot?.files?.forEach((file) => {
       const id = this.recordFile(turnID, file)
-      this.addEdge({ kind: "writes", source: turnID, target: id, confidence: "structural" })
+      const diff = this.diffForFile(turnID, file)
+      this.addEdge({
+        kind: "writes",
+        source: turnID,
+        target: id,
+        confidence: "structural",
+        data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+      })
     })
 
     let textOrdinal = 0
@@ -1394,18 +1414,42 @@ export class GraphBuilder {
     if (tool.name === "edit" || tool.name === "write") {
       const path = stringField(input, "path")
 
-      if (path)
-        this.addEdge({ kind: "writes", source: toolID, target: this.recordFile(turnID, path), confidence: "explicit" })
+      if (path) {
+        const diff = this.diffForFile(turnID, path)
+        this.addEdge({
+          kind: "writes",
+          source: toolID,
+          target: this.recordFile(turnID, path),
+          confidence: "explicit",
+          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+        })
+      }
 
-      for (const file of metadataFilePaths(metadata))
-        this.addEdge({ kind: "writes", source: toolID, target: this.recordFile(turnID, file), confidence: "explicit" })
+      for (const file of metadataFilePaths(metadata)) {
+        const diff = this.diffForFile(turnID, file)
+        this.addEdge({
+          kind: "writes",
+          source: toolID,
+          target: this.recordFile(turnID, file),
+          confidence: "explicit",
+          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+        })
+      }
 
       return
     }
 
     if (tool.name === "patch" || tool.name === "apply_patch") {
-      for (const file of metadataFilePaths(metadata))
-        this.addEdge({ kind: "writes", source: toolID, target: this.recordFile(turnID, file), confidence: "explicit" })
+      for (const file of metadataFilePaths(metadata)) {
+        const diff = this.diffForFile(turnID, file)
+        this.addEdge({
+          kind: "writes",
+          source: toolID,
+          target: this.recordFile(turnID, file),
+          confidence: "explicit",
+          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+        })
+      }
 
       return
     }
@@ -1574,5 +1618,6 @@ export function buildSessionKernel(input: BuildSessionInput): Kernel {
     input.snapshot,
     input.sessionID,
     input.lineage,
+    input.diffByTurn,
   ).buildKernel()
 }

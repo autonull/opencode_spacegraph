@@ -176,6 +176,8 @@ export type CardCopy = {
   reads: (count: number) => string
   /** How many activities wrote a file. */
   writes: (count: number) => string
+  /** Diff stats for a file: additions and deletions. */
+  diff: (additions: number, deletions: number) => string
   /** The header toggle's action on a group card. */
   collapseGroup: () => string
   expandGroup: () => string

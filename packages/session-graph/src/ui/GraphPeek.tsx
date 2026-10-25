@@ -38,6 +38,16 @@ export const GraphPeek = (props: GraphPeekProps) => {
                 <Show when={edge().label}>
                   <span class="truncate text-12-regular text-text-strong">{edge().label}</span>
                 </Show>
+                {(() => {
+                  const e = edge()
+                  if (e.kind !== "writes" || !e.data) return null
+                  return (
+                    <>
+                      <span class="shrink-0 text-12-regular text-text-weaker">+{e.data.additions}</span>
+                      <span class="shrink-0 text-12-regular text-text-weaker">−{e.data.deletions}</span>
+                    </>
+                  )
+                })()}
               </>
             )}
           </Show>

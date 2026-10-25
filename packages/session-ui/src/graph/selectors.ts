@@ -340,20 +340,27 @@ export function openInTranscript(model: GraphViewData, id: string): TranscriptRe
 }
 
 /**
- * How many activities read and wrote each file. Only the graph's edges know this: a file node
- * carries its path, not the traffic on it. The card of a file says it, so the reader sees who
- * touched the file without leaving the map.
+ * How many activities read and wrote each file, and the aggregate diff stats. Only the graph's
+ * edges know this: a file node carries its path, not the traffic on it. The card of a file says
+ * it, so the reader sees who touched the file and how much it changed without leaving the map.
  */
-export function fileRelations(model: GraphViewData): Map<string, { reads: number; writes: number }> {
-  const relations = new Map<string, { reads: number; writes: number }>()
+export function fileRelations(model: GraphViewData): Map<
+  string,
+  { reads: number; writes: number; additions: number; deletions: number }
+> {
+  const relations = new Map<string, { reads: number; writes: number; additions: number; deletions: number }>()
 
   for (const edge of model.edges) {
     if (edge.kind !== "reads" && edge.kind !== "writes") continue
 
-    const current = relations.get(edge.target) ?? { reads: 0, writes: 0 }
+    const current = relations.get(edge.target) ?? { reads: 0, writes: 0, additions: 0, deletions: 0 }
 
     if (edge.kind === "reads") current.reads++
-    else current.writes++
+    else {
+      current.writes++
+      if (edge.data?.additions) current.additions += edge.data.additions
+      if (edge.data?.deletions) current.deletions += edge.data.deletions
+    }
 
     relations.set(edge.target, current)
   }
