@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.17 — Writes Payload Labels, Usability Polish & Library Hardening
 
-**Status:** Draft. Builds on TODO.16 (core A/B/C complete, T2.2 gate removed for single-user focus).
+**Status:** Complete. All 14 slices implemented and tested.
 
 ---
 
@@ -197,7 +197,7 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 1. ✅ `spacegraphjs/packages/kernel/src/walks.ts`: `walk(kernel, { starts, steps, maxDepth })` → `{ nodes, edges }`; `pathsBetween(from, to)`
 2. ✅ `spacegraphjs/packages/kernel/src/walks.ts`: Default scorer (label-prefix > name > path > body; model-order tie-break)
 3. ✅ Tests: `walks.test.ts`
-4. Second host: exercises walk API against contract fixture (pending)
+4. ✅ Second host: exercises walk API against contract fixture (test:second-host passes)
 
 ---
 
@@ -208,7 +208,7 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 | Edge thickness/opacity by confidence (explicit > structural > inferred) | `@spacegraphjs/renderer/src/edge.ts` | ✅ Done |
 | Time-range filter (`filterByTime(model, from, to)`) | `@spacegraphjs/kernel/src/time-filter.ts` | ✅ Done |
 | Minimap mirror fix (Cytoscape) | `cytoscape-renderer/src/index.ts` | ✅ Done |
-| `test:publish` + API docs | All library packages | Pending |
+| `test:publish` + API docs | All library packages | ✅ Done (publish check passed) |
 
 ---
 
