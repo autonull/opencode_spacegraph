@@ -368,6 +368,65 @@ export function fileRelations(model: GraphViewData): Map<
   return relations
 }
 
+/**
+ * All error and retry nodes in the session, in session order with turn context.
+ * Returns nodes that represent failures (errors, retries) for the failure digest window.
+ */
+export function failures(model: GraphViewData): Array<{
+  node: GraphNode
+  turnID: string
+  turnLabel: string
+  turnNumber: number
+}> {
+  const turnNumbers = new Map(model.turns.map((id, index) => [id, index + 1]))
+  return model.nodes
+    .filter((node) => node.kind === "error" || node.kind === "retry")
+    .map((node) => {
+      const turnID = node.turnID ?? model.turns[0]
+      return {
+        node,
+        turnID,
+        turnLabel: node.turnID ? lookupNode(model, node.turnID)?.label ?? turnID : "Session",
+        turnNumber: turnID ? turnNumbers.get(turnID) ?? 0 : 0,
+      }
+    })
+    .sort((a, b) => a.turnNumber - b.turnNumber)
+}
+
+/**
+ * Session progress summary: turns, files touched, tools run, errors.
+ * Used for the failure digest header.
+ */
+export function sessionProgress(model: GraphViewData): {
+  turns: number
+  filesTouched: number
+  toolsRun: number
+  errors: number
+  retries: number
+} {
+  const filesTouched = new Set<string>()
+  let toolsRun = 0
+  let errors = 0
+  let retries = 0
+
+  for (const node of model.nodes) {
+    if (node.kind === "file" && node.data?.path) {
+      filesTouched.add(node.data.path as string)
+    }
+    if (node.kind === "tool") toolsRun++
+    if (node.kind === "error") errors++
+    if (node.kind === "retry") retries++
+  }
+
+  return {
+    turns: model.turns.length,
+    filesTouched: filesTouched.size,
+    toolsRun,
+    errors,
+    retries,
+  }
+}
+
 /** Signal order for a turn's children: phases and failures summarize a turn better than raw tools. */
 const TURN_CHILD_PRIORITY: Partial<Record<NodeKind, number>> = {
   phase: 0,

@@ -115,6 +115,7 @@ import { createNodeAnchor } from "./graph-anchors"
 import { createGraphSelection } from "./graph-selection"
 import { filePath, sessionID } from "./node-data"
 import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "./graph-windows"
+import { GraphFailureProgress } from "./GraphFailureProgress"
 import { useTraceOverlay } from "./useTraceOverlay"
 import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
@@ -561,6 +562,7 @@ export const GraphView = (props: GraphViewProps) => {
         return
       }
       if (name === "note") notes.openNoteComposer()
+      if (name === "failureProgress") openWindow("failureProgress")
     }
     window.addEventListener("graph:command", handleCommand)
     onCleanup(() => window.removeEventListener("graph:command", handleCommand))
@@ -1167,6 +1169,24 @@ export const GraphView = (props: GraphViewProps) => {
           }}
         />
       ),
+    },
+    {
+      name: "failureProgress",
+      title: () => i18n.t("ui.sessionGraph.failureProgress.title"),
+      render: () => {
+        const overlay = trace.traceOverlay()
+        return (
+          <GraphFailureProgress
+            model={model()}
+            traceOverlay={overlay ?? undefined}
+            onSelect={selection.select}
+            onTraceWhy={trace.traceWhy}
+            onTraceLedHere={trace.traceLedHere}
+            onTraceRelated={trace.traceRelated}
+            onFrame={(ids) => renderer?.focus(ids[0])}
+          />
+        )
+      },
     },
   ])
 

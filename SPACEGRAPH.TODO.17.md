@@ -121,13 +121,13 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ---
 
-#### Slice 6 — Failure digest + progress (0.5 days)
+#### Slice 6 — Failure digest + progress (0.5 days) ✅ COMPLETE
 
-**One window** (opened from Questions menu → "What failed?"):
-- Header: session progress "Turn 12 · 34 files · 87 tools · 3 errors"
-- List: all error/retry nodes in session order with turn context
-- Click → select node, run `why` trace, frame camera
-- Reuses: `failures()` selector + `sessionProgress()` selector + existing `why` trace
+**One window** (opened from Questions menu → "What failed?"): ✅
+- Header: session progress "Turn 12 · 34 files · 87 tools · 3 errors" ✅
+- List: all error/retry nodes in session order with turn context ✅
+- Click → select node, run `why` trace, frame camera ✅
+- Reuses: `failures()` selector + `sessionProgress()` selector + existing `why` trace ✅
 
 ---
 
@@ -318,7 +318,7 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | 13 | Undo restores dragged position | Position matches pre-drag after `z` | ✅
 | 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector | ✅
 | 15 | Visual polish complete | Depth fade on DOM cards | ✅ (host) |
-| 16 | Failure+progress window | "What failed?" → list + progress header; click → trace |
+| 16 | Failure+progress window | "What failed?" → list + progress header; click → trace | ✅
 | 17 | Unified Find panel | Search + filters + outline in one window |
 | 18 | Inspector pretty I/O | Tool input syntax highlighted; expand/collapse works |
 | 19 | Inspector subagent/hot-file | Subagent node → stats; file node → activity rank |
