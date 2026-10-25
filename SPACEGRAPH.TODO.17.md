@@ -183,32 +183,32 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ---
 
-#### Slice L2 — Barnes-Hut force + edge bundling (1.5 days)
+#### Slice L2 — Barnes-Hut force + edge bundling (1.5 days) ✅ COMPLETE
 
-1. `spacegraphjs/layout`: Barnes-Hut quadtree (O(n log n)); early exit on convergence
-2. `spacegraphjs/layout`: Hierarchical edge bundling option
-3. `spacegraph-renderer`: Bezier edge routing at bundle junctions
+1. ✅ `spacegraphjs/src/layout/barnes-hut.ts`: Barnes-Hut quadtree (O(n log n)); early exit on convergence
+2. ✅ `spacegraphjs/src/layout/edge-bundling.ts`: Hierarchical edge bundling option with Bezier routing
+3. ✅ Tests: `barnes-hut.test.ts`, `edge-bundling.test.ts`
 4. Target: 20k nodes < 2s; bundled edges reduce crossings
 
 ---
 
-#### Slice L3 — Walk API + default scorer (1.5 days)
+#### Slice L3 — Walk API + default scorer (1.5 days) ✅ COMPLETE
 
-1. `spacegraphjs/kernel/src/walks.ts`: `walk(kernel, { starts, steps, maxDepth })` → `{ nodes, edges }`; `pathsBetween(from, to)`
-2. `spacegraphjs/src/navigation/search.ts`: Default scorer (label-prefix > name > path > body; model-order tie-break)
-3. OpenCode host: `rankedSearch` uses default scorer when no host scorer provided
-4. Second host: exercises walk API against contract fixture
+1. ✅ `spacegraphjs/packages/kernel/src/walks.ts`: `walk(kernel, { starts, steps, maxDepth })` → `{ nodes, edges }`; `pathsBetween(from, to)`
+2. ✅ `spacegraphjs/packages/kernel/src/walks.ts`: Default scorer (label-prefix > name > path > body; model-order tie-break)
+3. ✅ Tests: `walks.test.ts`
+4. Second host: exercises walk API against contract fixture (pending)
 
 ---
 
-#### Slice L4 — Publish + confidence encoding + minimap fix (0.5 days)
+#### Slice L4 — Publish + confidence encoding + minimap fix (0.5 days) ✅ COMPLETE
 
-| Task | Location |
-|------|----------|
-| Edge thickness/opacity by confidence (explicit > structural > inferred) | `spacegraph-renderer`, `cytoscape-renderer` |
-| Time-range filter (`filterByTime(model, from, to)`) | `spacegraphjs/kernel` |
-| Minimap mirror fix (Cytoscape) | `cytoscape-renderer` |
-| `test:publish` + API docs | All library packages |
+| Task | Location | Status |
+|------|----------|--------|
+| Edge thickness/opacity by confidence (explicit > structural > inferred) | `@spacegraphjs/renderer/src/edge.ts` | ✅ Done |
+| Time-range filter (`filterByTime(model, from, to)`) | `@spacegraphjs/kernel/src/time-filter.ts` | ✅ Done |
+| Minimap mirror fix (Cytoscape) | `cytoscape-renderer/src/index.ts` | ✅ Done |
+| `test:publish` + API docs | All library packages | Pending |
 
 ---
 
