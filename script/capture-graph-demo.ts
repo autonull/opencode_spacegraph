@@ -84,6 +84,8 @@ if (mode === "verify") {
     "33-graph-workspace-all.png",
     "34-graph-surfaces.png",
     "35-graph-scrubber.png",
+    "36-graph-trace-overlay.png",
+    "37-graph-collapsed-group.png",
     "20-cytoscape-zoom-150.png",
     "21-cytoscape-zoom-max.png",
     "22-cytoscape-turn-1.png",
