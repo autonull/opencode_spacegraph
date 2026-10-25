@@ -87,12 +87,12 @@
 
 ---
 
-#### Slice 2 — Cleanup & bug fixes (0.5 days)
+#### Slice 2 — Cleanup & bug fixes (0.5 days) ✅ COMPLETE
 
 | Task | File |
 |------|------|
-| Remove `shortestPath`/`forwardChain` from public export | `session-ui/graph/index.ts` |
-| Fix `file.history`/`symbol.showCallers` self-nav | `session-ui/graph/actions.ts` |
+| Remove `shortestPath`/`forwardChain` from public export | `session-ui/graph/index.ts` | ✅
+| Fix `file.history`/`symbol.showCallers` self-nav | `session-ui/graph/actions.ts` | ✅
 
 ---
 

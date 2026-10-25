@@ -1,5 +1,39 @@
-import type { GraphNode, GraphViewData } from "@opencode/session-ui/graph"
-import { ancestors, incoming, outgoing, forwardChain, why } from "@opencode/session-ui/graph"
+import type { GraphNode, GraphViewData, GraphEdge } from "@opencode/session-ui/graph"
+import { ancestors, incoming, outgoing, why, lookupNode } from "@opencode/session-ui/graph"
+
+const SEQUENCE_INDEX = new WeakMap<object, { next: Map<string, string>; previous: Map<string, string> }>()
+
+function sequenceIndex(model: { edges: readonly GraphEdge[] }): { next: Map<string, string>; previous: Map<string, string> } {
+  const cached = SEQUENCE_INDEX.get(model)
+  if (cached) return cached
+  const next = new Map<string, string>()
+  const previous = new Map<string, string>()
+  for (const edge of model.edges) {
+    if (edge.kind !== "sequence") continue
+    if (!next.has(edge.source)) next.set(edge.source, edge.target)
+    if (!previous.has(edge.target)) previous.set(edge.target, edge.source)
+  }
+  const index = { next, previous }
+  SEQUENCE_INDEX.set(model, index)
+  return index
+}
+
+function forwardChain(model: GraphViewData, id: string): GraphNode[] {
+  const result: GraphNode[] = []
+  const seen = new Set([id])
+  const sequence = sequenceIndex(model)
+  let current = id
+  for (;;) {
+    const next = sequence.next.get(current)
+    if (!next || seen.has(next)) break
+    seen.add(next)
+    const node = lookupNode(model, next)
+    if (!node) break
+    result.push(node)
+    current = next
+  }
+  return result
+}
 
 /** The trace kinds the host exposes. Each trace answers one question. */
 export type TraceKind = "why" | "led-here" | "related"

@@ -30,8 +30,8 @@ export const actionRegistry: Partial<Record<NodeKind, ActionFactory>> = {
     const range = node.data?.range as Range | undefined
     return [
       { id: "file.open", kind: "navigate", labelKey: "ui.graph.actions.openAtRange", target: { file: path, range } },
-      { id: "file.history", kind: "navigate", labelKey: "ui.graph.actions.showHistory", target: { node: node.id } },
-      { id: "file.callers", kind: "navigate", labelKey: "ui.graph.actions.showCallers", target: { node: node.id } },
+      { id: "file.history", kind: "navigate", labelKey: "ui.graph.actions.showHistory", target: { file: path } },
+      { id: "file.callers", kind: "navigate", labelKey: "ui.graph.actions.showCallers", target: { file: path } },
       { id: "file.blame", kind: "run", labelKey: "ui.graph.actions.showBlame", operation: { id: "vcs.blame", params: { path } } },
       { id: "file.compareBase", kind: "run", labelKey: "ui.graph.actions.compareToBase", operation: { id: "vcs.diff", params: { path, mode: "branch" } } },
       { id: "file.runTests", kind: "run", labelKey: "ui.graph.actions.runTests", operation: { id: "agent.prompt", params: { prompt: `Run tests for ${path}` } } },
@@ -72,8 +72,8 @@ export const actionRegistry: Partial<Record<NodeKind, ActionFactory>> = {
     const range = node.data?.range as Range | undefined
     return [
       { id: "symbol.open", kind: "navigate", labelKey: "ui.graph.actions.openAtRange", target: { file: path, range } },
-      { id: "symbol.findReferences", kind: "navigate", labelKey: "ui.graph.actions.findReferences", target: { node: node.id } },
-      { id: "symbol.showCallers", kind: "navigate", labelKey: "ui.graph.actions.showCallers", target: { node: node.id } },
+      { id: "symbol.findReferences", kind: "navigate", labelKey: "ui.graph.actions.findReferences", target: { file: path, range } },
+      { id: "symbol.showCallers", kind: "navigate", labelKey: "ui.graph.actions.showCallers", target: { file: path, range } },
       { id: "symbol.rename", kind: "run", labelKey: "ui.graph.actions.rename", operation: { id: "agent.prompt", params: { prompt: `Rename symbol ${node.label}` } } },
     ]
   },
