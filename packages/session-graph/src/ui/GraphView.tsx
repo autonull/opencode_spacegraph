@@ -26,12 +26,11 @@ import type {
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { ancestors,
-  applyFacets,
   applyNodeBudget,
   byProximity,
   CARD_SIZE,
   changedFiles,
-  collapseGroups,
+  composeScopes,
   degreeBudget,
   withAnnotations,
   DETAIL_TIER_WIDTH,
@@ -48,7 +47,6 @@ import { ancestors,
   logLayout,
   matrixLayout,
   LEVEL_RANK,
-  keepOnly,
   Metrics,
   minLevelOf,
   neighborStep,
@@ -440,15 +438,8 @@ export const GraphView = (props: GraphViewProps) => {
 
   const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
 
-  const scopeBase = (source: GraphViewData) => {
-    const base = applyFacets(source, facets())
-    const keep = selectionVerbs.keptIds()
-    return groupCollapse.collapsedGroups().size > 0
-      ? collapseGroups(keep ? keepOnly(base, keep) : base, groupCollapse.collapsedGroups())
-      : keep
-        ? keepOnly(base, keep)
-        : base
-  }
+  const scopeBase = (source: GraphViewData) =>
+    composeScopes(source, facets(), selectionVerbs.keptIds(), groupCollapse.collapsedGroups())
 
   const turnScoped = createMemo(() => {
     const turns = new Set(scale().turns)

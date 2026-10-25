@@ -125,6 +125,7 @@ export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
 export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
 export {
   applyFacets,
+  composeScopes,
   DEFAULT_FACETS,
   facetCounts,
   facetsFromQuery,

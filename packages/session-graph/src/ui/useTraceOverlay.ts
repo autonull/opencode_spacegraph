@@ -1,8 +1,7 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo } from "solid-js"
-import { nodeByID } from "@opencode/session-ui/graph"
+import { nodeByID, breadcrumbs, type GraphViewData } from "@opencode/session-ui/graph"
 import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
-import type { GraphViewData } from "@opencode/session-ui/graph"
 
 export type UseTraceOverlayOptions = {
   model: () => GraphViewData
@@ -62,19 +61,7 @@ export function useTraceOverlay(options: UseTraceOverlayOptions): UseTraceOverla
   const copyTraceOutline = () => {
     const overlay = traceOverlay()
     if (!overlay) return
-    const text = copyTraceAsOutline(options.model(), overlay, (model, id) => {
-      const node = nodeByID(model, id)
-      if (!node) return []
-      const ancestry = []
-      let current = node
-      while (current) {
-        ancestry.unshift(current)
-        const parent = nodeByID(model, current.id)
-        if (!parent || parent.id === current.id) break
-        current = parent
-      }
-      return ancestry
-    })
+    const text = copyTraceAsOutline(options.model(), overlay, breadcrumbs)
     navigator.clipboard?.writeText(text)
     options.onAnnounce(i18n.t("ui.sessionGraph.trace.copied"))
   }

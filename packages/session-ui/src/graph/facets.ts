@@ -2,6 +2,7 @@ import type { GraphNode, GraphViewData } from "./model"
 import { scopeModel } from "./view"
 import { nodeDomain, DOMAINS, NODE_KINDS, NODE_STATUSES, type Domain, type NodeKind, type NodeStatus } from "./vocabulary"
 import { searchText } from "./selectors"
+import { collapseGroups } from "./collapse"
 
 /**
  * A2 — the reader's question, as data. Text, kinds, statuses, and domains are independent facets;
@@ -184,3 +185,19 @@ export const facetsFromQuery = (query: string): GraphFacets => {
 
 export const hasFacets = (facets: GraphFacets) =>
   facets.query.trim().length > 0 || facets.kinds.size > 0 || facets.statuses.size > 0
+
+/**
+ * Compose the scope pipeline: facets → keepOnly → collapseGroups.
+ * This is the single scope pipeline used by the host (GraphView.scopeBase).
+ */
+export const composeScopes = (
+  model: GraphViewData,
+  facets: GraphFacets,
+  keptIds: ReadonlySet<string> | null,
+  collapsedGroups: ReadonlySet<string>,
+): GraphViewData => {
+  let result = applyFacets(model, facets)
+  if (keptIds) result = keepOnly(result, keptIds)
+  if (collapsedGroups.size > 0) result = collapseGroups(result, collapsedGroups)
+  return result
+}
