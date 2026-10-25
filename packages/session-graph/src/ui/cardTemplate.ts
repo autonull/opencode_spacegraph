@@ -6,6 +6,7 @@ import type {
   GraphNode,
   NodeKind,
   PhaseCategory,
+  Position,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { equalizerFade, equalizerMatch, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
@@ -204,6 +205,8 @@ export type CardTemplateOptions = {
   diff?: { added: ReadonlySet<string>; removed: ReadonlySet<string>; changed: ReadonlySet<string> }
   /** B2: groups the reader has folded; their header toggle says "expand" instead. */
   collapsedGroups?: ReadonlySet<string>
+  /** Depth fade: positions map to calculate z-based fade for DOM cards. */
+  positions?: ReadonlyMap<string, Position>
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -360,6 +363,25 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
     const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
 
+    // Depth fade: fade cards based on their z-position (distance from camera).
+    // Only applies when positions map is provided and not in 2D/flat mode.
+    const depthFade = options.positions
+      ? (() => {
+          const pos = options.positions!.get(node.id)
+          if (!pos) return 1
+          // Position is { x, y, z } from spacegraphjs/layout
+          const z = (pos as { x: number; y: number; z: number }).z
+          // Fade starts at z=500, fully faded at z=2000 (arbitrary world units)
+          // This gives a subtle depth cue without making distant cards unreadable.
+          const fadeStart = 500
+          const fadeEnd = 2000
+          if (z <= fadeStart) return 1
+          if (z >= fadeEnd) return 0.3
+          return 1 - (z - fadeStart) / (fadeEnd - fadeStart) * 0.7
+        })()
+      : 1
+    const combinedFade = fade * depthFade
+
     // T30.3 — provenance badge on far tier: shows the source and age of derived facts
     const provenanceBadge = tier === "far" && node.provenance
       ? (() => {
@@ -420,7 +442,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       ? `<button type="button" class="card-copy-btn" aria-label="Copy" data-copy-text="${escapeHtml(copyText)}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;opacity:0;transition:opacity 0.15s;margin-left:auto;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${fade === 1 ? "" : `opacity:${fade};`}${traceStyle}${diffStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${combinedFade === 1 ? "" : `opacity:${combinedFade};`}${traceStyle}${diffStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>

@@ -731,6 +731,7 @@ export const GraphView = (props: GraphViewProps) => {
         trace: overlay ?? undefined,
         diff: comparison(),
         collapsedGroups: groupCollapse.collapsedGroups(),
+        positions: displayPositions(),
       })
     )
   })

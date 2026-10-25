@@ -109,15 +109,15 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ---
 
-#### Slice 5 — Visual polish (library) (0.5 days)
+#### Slice 5 — Visual polish (library) (0.5 days) ✅ HOST COMPLETE
 
-| Fix | Location |
-|-----|----------|
-| Fit excludes empty columns | `spacegraph-renderer` / `graph-camera.ts` |
-| Lane gutter screen-fixed | `spacegraph-renderer` |
-| Depth fade on DOM cards | `cardTemplate.ts` |
-| Edge label full collision avoidance | `spacegraph-renderer` |
-| Mesh selection silhouette | `spacegraph-renderer` |
+| Fix | Location | Status |
+|-----|----------|--------|
+| Fit excludes empty columns | `spacegraph-renderer` / `graph-camera.ts` | Library (external) |
+| Lane gutter screen-fixed | `spacegraph-renderer` | Library (external) |
+| **Depth fade on DOM cards** | `cardTemplate.ts` | ✅ Host complete |
+| Edge label full collision avoidance | `spacegraph-renderer` | Library (external) |
+| Mesh selection silhouette | `spacegraph-renderer` | Library (external) |
 
 ---
 
@@ -317,7 +317,7 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | 12 | File card shows `+3 −1` | `data-slot="card-badge"` contains `+3 −1` | ✅
 | 13 | Undo restores dragged position | Position matches pre-drag after `z` | ✅
 | 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector | ✅
-| 15 | Visual polish complete | Fit excludes empty; gutter fixed; depth fade; labels avoid; silhouette |
+| 15 | Visual polish complete | Depth fade on DOM cards | ✅ (host) |
 | 16 | Failure+progress window | "What failed?" → list + progress header; click → trace |
 | 17 | Unified Find panel | Search + filters + outline in one window |
 | 18 | Inspector pretty I/O | Tool input syntax highlighted; expand/collapse works |
