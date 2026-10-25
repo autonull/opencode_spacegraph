@@ -352,8 +352,8 @@ export const GraphView = (props: GraphViewProps) => {
   const [narrow, setNarrow] = createSignal(false)
   const [compact, setCompact] = createSignal(false)
   const [inspectorWidth, setInspectorWidth] = createSignal(288)
-  // The canvas region's own size: the card tier and the popover's placement are measured against
-  // the space the map actually has, not against the space the session panel has.
+  // V117: bottom-sheet inspector for narrow/mobile
+  const [inspectorSheetOpen, setInspectorSheetOpen] = createSignal(false)
   const [canvasSize, setCanvasSize] = createSignal({ width: 0, height: 0 })
   // Manual layout is a reader's act, not a model fact: a dragged position or resized group is kept
   // beside the derived layout so the next stream append cannot snap it back.
@@ -598,6 +598,78 @@ export const GraphView = (props: GraphViewProps) => {
     window.addEventListener("pointerup", resizeEnd)
   }
   onCleanup(stopResize)
+
+  // V117: Touch gestures for mobile — pan and pinch-to-zoom
+  let touchStart: { x: number; y: number; time: number; touches: TouchList } | undefined
+  let touchPan: { lastX: number; lastY: number; startViewport: RendererViewport } | undefined
+
+  const handleTouchStart = (event: TouchEvent) => {
+    const instance = renderer
+    if (!instance || event.touches.length === 0) return
+    const vp = instance.getViewport?.()
+    if (!vp) return
+    touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY, time: Date.now(), touches: event.touches }
+    if (event.touches.length === 2) {
+      // Pinch-to-zoom: store initial distance and viewport
+      touchPan = { lastX: 0, lastY: 0, startViewport: { ...vp } }
+    } else if (event.touches.length === 1) {
+      // Single-finger pan
+      touchPan = { lastX: event.touches[0].clientX, lastY: event.touches[0].clientY, startViewport: { ...vp } }
+    }
+  }
+
+  const handleTouchMove = (event: TouchEvent) => {
+    const instance = renderer
+    if (!instance || !touchStart || !touchPan) return
+    event.preventDefault()
+    if (event.touches.length === 2 && touchStart.touches.length === 2) {
+      // Pinch-to-zoom
+      const dx = event.touches[0].clientX - event.touches[1].clientX
+      const dy = event.touches[0].clientY - event.touches[1].clientY
+      const distance = Math.hypot(dx, dy)
+      const startDx = touchStart.touches[0].clientX - touchStart.touches[1].clientX
+      const startDy = touchStart.touches[0].clientY - touchStart.touches[1].clientY
+      const startDistance = Math.hypot(startDx, startDy)
+      const scale = distance / startDistance
+      const caps = instance.capabilities
+      const minZoom = caps.zoomRange?.min ?? 0.1
+      const maxZoom = caps.zoomRange?.max ?? 10
+      const newZoom = Math.max(minZoom, Math.min(maxZoom, touchPan.startViewport.zoom * scale))
+      const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2
+      const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2
+      instance.setViewport({ ...touchPan.startViewport, zoom: newZoom, center: [centerX, centerY, touchPan.startViewport.center[2]] })
+    } else if (event.touches.length === 1 && touchStart.touches.length === 1) {
+      // Pan
+      const deltaX = (touchPan.lastX - event.touches[0].clientX) / touchPan.startViewport.zoom
+      const deltaY = (touchPan.lastY - event.touches[0].clientY) / touchPan.startViewport.zoom
+      instance.setViewport({
+        ...touchPan.startViewport,
+        center: [touchPan.startViewport.center[0] + deltaX, touchPan.startViewport.center[1] + deltaY, touchPan.startViewport.center[2]],
+      })
+      touchPan.lastX = event.touches[0].clientX
+      touchPan.lastY = event.touches[0].clientY
+    }
+  }
+
+  const handleTouchEnd = (event: TouchEvent) => {
+    // Clear touch state when all touches end
+    if (event.touches.length === 0) {
+      touchStart = undefined
+      touchPan = undefined
+    }
+  }
+
+  onMount(() => {
+    const el = canvasRegionEl
+    el.addEventListener("touchstart", handleTouchStart, { passive: false })
+    el.addEventListener("touchmove", handleTouchMove, { passive: false })
+    el.addEventListener("touchend", handleTouchEnd, { passive: false })
+    onCleanup(() => {
+      el.removeEventListener("touchstart", handleTouchStart)
+      el.removeEventListener("touchmove", handleTouchMove)
+      el.removeEventListener("touchend", handleTouchEnd)
+    })
+  })
 
   const theme = () => props.theme ?? resolvedTheme()
   // The width of an activity card on the screen, in pixels: the card's world width times how many
@@ -917,7 +989,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
   // The panel takes layout width and reframes the camera when it opens; the popover and the card do
   // neither, so the map does not move under the reader when a node is selected.
-  const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode())
+  const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode() || (narrow() && inspectorSheetOpen()))
 
   const camera = createGraphCamera({
     renderer: () => renderer,
@@ -1743,6 +1815,58 @@ export const GraphView = (props: GraphViewProps) => {
             />
           </Show>
         </div>
+        <Show when={narrow() && selectedNode() && !inspectorSheetOpen()}>
+          <button
+            type="button"
+            class="absolute bottom-4 right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-surface-base shadow-lg border border-border-weaker-base text-text-base"
+            onClick={() => setInspectorSheetOpen(true)}
+            aria-label={i18n.t("ui.sessionGraph.inspector.openSheet")}
+            data-slot="graph-inspector-fab"
+          >
+            <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h12v10H2zM7 3v10M11 3v10" />
+            </svg>
+          </button>
+        </Show>
+        <Show when={narrow() && inspectorSheetOpen()}>
+          <div class="absolute inset-0 z-30 flex flex-col" data-slot="graph-inspector-sheet">
+            <div class="flex h-12 items-center justify-between border-b border-border-weaker-base bg-surface-base px-3">
+              <span class="text-13-medium text-text-base">{selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title")}</span>
+              <button
+                type="button"
+                class="flex h-8 w-8 items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover"
+                onClick={() => setInspectorSheetOpen(false)}
+                aria-label={i18n.t("ui.sessionGraph.inspector.closeSheet")}
+              >
+                <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            </div>
+            <div class="flex-1 overflow-auto">
+              <GraphInspector
+                model={model()}
+                node={selectedNode()}
+                diffSource={props.diffSource}
+                renderSummary={props.renderSummary}
+                link={props.link}
+                onCopyView={copyView}
+                onSelect={selection.select}
+                onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+                onOpenSession={props.onOpenSession}
+                traceKind={trace.traceKind()}
+                onTraceWhy={trace.traceWhy}
+                onTraceLedHere={trace.traceLedHere}
+                onTraceRelated={trace.traceRelated}
+                onClearTrace={trace.clearTrace}
+                onCopyTraceOutline={trace.copyTraceOutline}
+                onEditNote={notes.editNote}
+                onDeleteNote={notes.deleteNote}
+                onCopyNote={notes.copyNote}
+              />
+            </div>
+          </div>
+        </Show>
         <Show when={effectiveDetailMode() === "panel"}>
           <Show when={inspectorOpen() && !narrow()}>
             <div

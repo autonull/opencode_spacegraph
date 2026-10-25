@@ -103,9 +103,9 @@
 
 ---
 
-#### Slice 4 — Mobile graph mode (1 day)
+#### Slice 4 — Mobile graph mode (1 day) ✅ COMPLETE
 
-Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures.
+Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures. ✅
 
 ---
 
@@ -316,7 +316,7 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 |-----|----------|-----------|
 | 12 | File card shows `+3 −1` | `data-slot="card-badge"` contains `+3 −1` | ✅
 | 13 | Undo restores dragged position | Position matches pre-drag after `z` | ✅
-| 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector |
+| 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector | ✅
 | 15 | Visual polish complete | Fit excludes empty; gutter fixed; depth fade; labels avoid; silhouette |
 | 16 | Failure+progress window | "What failed?" → list + progress header; click → trace |
 | 17 | Unified Find panel | Search + filters + outline in one window |
