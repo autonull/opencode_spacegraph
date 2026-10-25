@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.17 — Writes Payload Labels, Usability Polish & Library Hardening
 
-**Status:** Complete. All 14 slices implemented and tested.
+**Status:** Complete. All 14 slices implemented and tested. Host follow-up for Slice L1 (contract version negotiation removal in session-graph) completed.
 
 ---
 
@@ -179,7 +179,8 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 2. ✅ `@spacegraphjs/renderer`: Add `applyPatch(patch)` to `GraphRenderer` contract
 3. ✅ `spacegraph-renderer` + `cytoscape-renderer`: Implement partial updates
 4. ✅ Removed contract version negotiation (no backwards compatibility needed)
-5. Target: 100-node incremental < 10ms
+5. ✅ **Host follow-up**: `packages/session-graph/src/canvas/renderer-registry.ts` - removed `negotiateContract` and `CONTRACT_VERSION` usage; updated tests
+6. Target: 100-node incremental < 10ms
 
 ---
 

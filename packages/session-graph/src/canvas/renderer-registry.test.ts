@@ -1,12 +1,11 @@
 import { expect, test } from "bun:test"
-import { CONTRACT_VERSION, type GraphRenderer } from "@spacegraphjs/renderer"
+import { type GraphRenderer } from "@spacegraphjs/renderer"
 import { DARK_THEME } from "../fixtures"
 import { createRenderer, mountRenderer, rendererOrder } from "./renderer-registry"
 
 function stub(): GraphRenderer {
   return {
     capabilities: {
-      contractVersion: CONTRACT_VERSION,
       projections: ["2d"],
       depths: ["flat"],
       domNodes: false,
@@ -62,19 +61,4 @@ test("every renderer failing rethrows the last error", async () => {
   })
 
   await expect(run).rejects.toThrow("no dom")
-})
-
-test("a renderer with an unsupported contract version is rejected and falls through", async () => {
-  const incompatible: GraphRenderer = {
-    ...stub(),
-    capabilities: { ...stub().capabilities, contractVersion: CONTRACT_VERSION + 1 },
-  }
-  const mounted = await mountRenderer(container, options, {
-    spacegraph: async () => incompatible,
-    cytoscape: async () => stub(),
-  })
-
-  expect(mounted.id).toBe("cytoscape")
-  expect(mounted.fallback).toBe(true)
-  expect((mounted.error as Error).message).toContain(String(CONTRACT_VERSION + 1))
 })

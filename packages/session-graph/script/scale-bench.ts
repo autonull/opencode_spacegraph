@@ -130,7 +130,13 @@ for (const messages of SIZES) {
     renderMs: rendered.ms,
     diffMs: diffed.ms,
     updateMs: update.ms,
-    changedNodes: update.value.added.length + update.value.changed.length + update.value.removed.length,
+    changedNodes:
+      update.value.nodes.added.length +
+      update.value.nodes.changed.length +
+      update.value.nodes.removed.length +
+      update.value.edges.added.length +
+      update.value.edges.changed.length +
+      update.value.edges.removed.length,
   })
 }
 

@@ -1,15 +1,10 @@
-import { negotiateContract, type GraphRenderer, type Projection, type RenderTheme } from "@spacegraphjs/renderer"
+import { type GraphRenderer, type Projection, type RenderTheme } from "@spacegraphjs/renderer"
 
 export type RendererID = "spacegraph" | "cytoscape"
 
 export type RendererFactory = () => Promise<GraphRenderer>
 
-/** P8.7: a renderer that declares an unsupported contract version is rejected with a clear message. */
 function requireCompatible(renderer: GraphRenderer): GraphRenderer {
-  const negotiation = negotiateContract(renderer.capabilities.contractVersion)
-
-  if (!negotiation.ok) throw new Error(negotiation.message)
-
   return renderer
 }
 
