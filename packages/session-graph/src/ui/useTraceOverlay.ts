@@ -15,6 +15,9 @@ export type UseTraceOverlayReturn = {
   traceSource: () => string | null
   traceOverlay: () => TraceOverlay | null
   startTrace: (kind: TraceKind, source?: string) => void
+  traceWhy: (nodeId: string) => void
+  traceLedHere: (nodeId: string) => void
+  traceRelated: (nodeId: string) => void
   clearTrace: () => void
   copyTraceOutline: () => void
   stepLitNode: (direction: 1 | -1) => string | undefined
@@ -107,11 +110,18 @@ export function useTraceOverlay(options: UseTraceOverlayOptions): UseTraceOverla
     return overlay.answerEdgeIds.has(edgeId)
   }
 
+  const traceWhy = (nodeId: string) => startTrace("why", nodeId)
+  const traceLedHere = (nodeId: string) => startTrace("led-here", nodeId)
+  const traceRelated = (nodeId: string) => startTrace("related", nodeId)
+
   return {
     traceKind,
     traceSource,
     traceOverlay,
     startTrace,
+    traceWhy,
+    traceLedHere,
+    traceRelated,
     clearTrace,
     copyTraceOutline,
     stepLitNode: step,

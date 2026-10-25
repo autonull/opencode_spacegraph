@@ -28,7 +28,6 @@ import type {
 import { ancestors,
   applyFacets,
   applyNodeBudget,
-  breadcrumbs,
   byProximity,
   CARD_SIZE,
   changedFiles,
@@ -49,7 +48,6 @@ import { ancestors,
   logLayout,
   matrixLayout,
   LEVEL_RANK,
-  isVisibleAt,
   keepOnly,
   Metrics,
   minLevelOf,
@@ -103,6 +101,13 @@ import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
+import { GraphGroupMenu } from "./GraphGroupMenu"
+import { GraphCompareBar } from "./GraphCompareBar"
+import { GraphScaleNotice } from "./GraphScaleNotice"
+import { GraphHiddenSelection } from "./GraphHiddenSelection"
+import { GraphFallback } from "./GraphFallback"
+import { GraphEmpty } from "./GraphEmpty"
+import { GraphError } from "./GraphError"
 import { createGraphTheme } from "./theme"
 import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
@@ -116,6 +121,7 @@ import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
 import { useNotes } from "./useNotes"
 import { useEdgeKinds } from "./useEdgeKinds"
+import { useSelectionVerbs } from "./useSelectionVerbs"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -320,11 +326,6 @@ export const GraphView = (props: GraphViewProps) => {
     onAnnounce: announce,
   })
 
-  // Trace wrappers for GraphDetailSurface/GraphInspector (expect single nodeId argument)
-  const onTraceWhy = (nodeId: string) => trace.startTrace("why", nodeId)
-  const onTraceLedHere = (nodeId: string) => trace.startTrace("led-here", nodeId)
-  const onTraceRelated = (nodeId: string) => trace.startTrace("related", nodeId)
-
   const notes = useNotes({
     model,
     selection: () => selection.selection(),
@@ -431,13 +432,17 @@ export const GraphView = (props: GraphViewProps) => {
     nodeByID: (id) => model().nodes.find((n) => n.id === id),
   })
 
-  // B1 — "keep only" is a scope over the held set, applied after facets so the two compose.
-  const [keptIds, setKeptIds] = createSignal<ReadonlySet<string> | null>(null)
+  const selectionVerbs = useSelectionVerbs({
+    model,
+    selection: () => selection.selection(),
+    onAnnounce: announce,
+  })
+
   const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
 
   const scopeBase = (source: GraphViewData) => {
     const base = applyFacets(source, facets())
-    const keep = keptIds()
+    const keep = selectionVerbs.keptIds()
     return groupCollapse.collapsedGroups().size > 0
       ? collapseGroups(keep ? keepOnly(base, keep) : base, groupCollapse.collapsedGroups())
       : keep
@@ -826,24 +831,10 @@ export const GraphView = (props: GraphViewProps) => {
       testedCommit: props.testedCommit,
     })
 
-  // B1 — the selection verbs. Each is a pure function of the held ids.
+  // B1 — the selection verbs. frameSelection and exportSelection need camera/ordered (defined later).
   const frameSelection = () => camera.frame(selection.selection())
-  const keepOnlySelection = () => {
-    const ids = selection.selection()
-    if (ids.length === 0) return
-    setKeptIds(new Set(ids))
-    announce(i18n.plural("ui.sessionGraph.status.kept", ids.length))
-  }
-  const copySelectedPaths = () => {
-    const ids = selection.selection()
-    const text = ids
-      .map((id) => breadcrumbs(model(), id).map((node) => node.label).join(" › "))
-      .filter((line) => line.length > 0)
-      .join("\n")
-    if (!text) return
-    navigator.clipboard?.writeText(text)
-    announce(i18n.plural("ui.sessionGraph.status.copied", ids.length))
-  }
+  const keepOnlySelection = selectionVerbs.keepOnlySelection
+  const copySelectedPaths = selectionVerbs.copySelectedPaths
   const exportSelection = () => {
     const ids = new Set(selection.selection())
     if (ids.size === 0) return
@@ -855,7 +846,7 @@ export const GraphView = (props: GraphViewProps) => {
     })
   }
   const clearSelection = () => {
-    setKeptIds(null)
+    selectionVerbs.setKeptIds(null)
     selection.select(undefined)
   }
 
@@ -863,20 +854,6 @@ export const GraphView = (props: GraphViewProps) => {
     const id = selection.selection()[0]
     return id ? nodeByID(model(), id) : undefined
   }
-  // T1.9: the inspector can describe a node the current level does not draw. Say so and offer the
-  // level change, rather than leaving the user with an invisible selection.
-  const hiddenSelection = () => {
-    const node = selectedNode()
-    return node && !isVisibleAt(node, level()) ? node : undefined
-  }
-  // T6.6: the map says how much of the session it shows, so a capped view is never a silent one.
-  const scaleNotice = createMemo(() => {
-    const { turns, total, hidden } = scale()
-
-    if (hidden === 0) return undefined
-
-    return { shown: turns.size, total, text: i18n.t("ui.sessionGraph.scale.notice", { shown: turns.size, total }) }
-  })
   // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
   // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
   // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
@@ -1000,9 +977,9 @@ export const GraphView = (props: GraphViewProps) => {
             onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
             onOpenSession={props.onOpenSession}
             traceKind={trace.traceKind()}
-            onTraceWhy={onTraceWhy}
-            onTraceLedHere={onTraceLedHere}
-            onTraceRelated={onTraceRelated}
+            onTraceWhy={trace.traceWhy}
+            onTraceLedHere={trace.traceLedHere}
+            onTraceRelated={trace.traceRelated}
             onClearTrace={trace.clearTrace}
             onCopyTraceOutline={trace.copyTraceOutline}
             onEditNote={notes.editNote}
@@ -1488,80 +1465,25 @@ export const GraphView = (props: GraphViewProps) => {
             : undefined
         }
       />
-      <Show when={comparison()}>
-        {(diff) => (
-          <div
-            data-slot="graph-compare-bar"
-            class="flex flex-wrap items-center gap-2 border-b border-border-weaker-base px-2 py-1 text-12-regular text-text-weak"
-          >
-            <span data-slot="graph-compare-counts" class="tabular-nums">
-              {i18n.t("ui.sessionGraph.compare.chip", {
-                added: String(diff().counts.added),
-                removed: String(diff().counts.removed),
-                changed: String(diff().counts.changed),
-              })}
-            </span>
-            <span class="min-w-0 flex-1 truncate">
-              {i18n.t(
-                diff().label === "turns" ? "ui.sessionGraph.compare.twoTurns" : "ui.sessionGraph.compare.parked",
-              )}
-            </span>
-            <button
-              type="button"
-              data-slot="graph-compare-open"
-              class="shrink-0 rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
-              onClick={() => openWindow("compare")}
-            >
-              {i18n.t("ui.sessionGraph.compare.window")}
-            </button>
-            <button
-              type="button"
-              data-slot="graph-compare-clear"
-              class="shrink-0 rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
-              onClick={() => clearComparison()}
-            >
-              {i18n.t("ui.sessionGraph.compare.live")}
-            </button>
-          </div>
-        )}
-      </Show>
-      <Show when={scaleNotice()}>
-        {(notice) => (
-          <div
-            data-slot="graph-scale-notice"
-            class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-1 text-12-regular text-text-weak"
-          >
-            <span class="min-w-0 flex-1 truncate">{notice().text}</span>
-          </div>
-        )}
-      </Show>
-      <Show when={hiddenSelection()}>
-        {(node) => (
-          <div
-            data-slot="graph-selection-hidden"
-            class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-1 text-12-regular text-text-weak"
-          >
-            <span class="min-w-0 flex-1 truncate">
-              {i18n.t("ui.sessionGraph.selection.hidden", { label: node().label })}
-            </span>
-            <button
-              type="button"
-              class="shrink-0 rounded-sm px-1 text-text-base hover:text-text-strong"
-              onClick={() => jumpTo(node())}
-            >
-              {i18n.t("ui.sessionGraph.selection.show")}
-            </button>
-          </div>
-        )}
-      </Show>
-      <Show when={fallback() && !error()}>
-        <div
-          data-slot="graph-fallback"
-          class="border-b border-border-weaker-base bg-surface-base px-2 py-1 text-12-regular text-text-weak"
-        >
-          {i18n.t("ui.sessionGraph.fallback")}
-        </div>
-      </Show>
+      <GraphCompareBar
+        diff={comparison()}
+        onOpenWindow={() => openWindow("compare")}
+        onClear={clearComparison}
+      />
+      <GraphScaleNotice
+        model={model}
+        selectedTurn={selectedTurn}
+        frameTurn={() => props.frame}
+        followLog={followLog()}
+        activeTurn={props.activeTurn}
+      />
+      <GraphHiddenSelection
+        model={model}
+        selection={() => selection.selection()}
+        level={level}
+        onJumpTo={jumpTo}
+      />
+      <GraphFallback fallback={fallback()} error={error()} />
       <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
         <Show when={files() && !isSummaryLayout(layout()) && !narrow()}>
           <GraphFileRail
@@ -1633,55 +1555,20 @@ export const GraphView = (props: GraphViewProps) => {
             }}
           />
           <Show when={groupMenu()}>
-            {(menu) => (
-              <div
-                data-slot="graph-group-menu"
-                role="menu"
-                class="absolute z-30 flex min-w-40 flex-col rounded-md border border-border-weaker-base bg-surface-base p-1 shadow-lg"
-                style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
-                  onClick={() => {
-                    toggleGroupByID(menu().id)
-                    setGroupMenu(undefined)
-                  }}
-                >
-                  {i18n.t(
-                    groupCollapse.collapsedGroups().has(menu().id)
-                      ? "ui.sessionGraph.status.expandGroup"
-                      : "ui.sessionGraph.status.collapseGroup",
-                  )}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
-                  onClick={() => {
-                    groupCollapse.collapseOtherGroups()
-                    setGroupMenu(undefined)
-                  }}
-                >
-                  {i18n.t("ui.sessionGraph.status.collapseOthers")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
-                  onClick={() => {
-                    selection.select(menu().id)
-                    camera.frame([menu().id])
-                    setGroupMenu(undefined)
-                  }}
-                >
-                  {i18n.t("ui.sessionGraph.status.frame")}
-                </button>
-              </div>
-            )}
-          </Show>
+  {(menu) => (
+    <GraphGroupMenu
+      id={menu().id}
+      x={menu().x}
+      y={menu().y}
+      model={model}
+      collapsedGroups={groupCollapse.collapsedGroups()}
+      onToggleGroup={toggleGroupByID}
+      onCollapseOthers={groupCollapse.collapseOtherGroups}
+      onFrame={(id) => camera.frame([id])}
+      onClose={() => setGroupMenu(undefined)}
+    />
+  )}
+</Show>
           <GraphA11y
             model={ordered()}
             selection={selection.selection()}
@@ -1740,9 +1627,9 @@ export const GraphView = (props: GraphViewProps) => {
                 onOpenWindow={(node) => openWindow("node", node.id)}
                 onClose={() => setPopoverDismissed(true)}
                 traceKind={trace.traceKind()}
-                onTraceWhy={onTraceWhy}
-                onTraceLedHere={onTraceLedHere}
-                onTraceRelated={onTraceRelated}
+                onTraceWhy={trace.traceWhy}
+                onTraceLedHere={trace.traceLedHere}
+                onTraceRelated={trace.traceRelated}
                 onClearTrace={trace.clearTrace}
                 onCopyTraceOutline={trace.copyTraceOutline}
                 onEditNote={notes.editNote}
@@ -1762,33 +1649,8 @@ export const GraphView = (props: GraphViewProps) => {
             anchorOf={(nodeID) => windowAnchors()?.get(nodeID)}
             bounds={() => canvasSize()}
           />
-          <Show when={error()}>
-            <div
-              data-slot="graph-error"
-              class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background-base/80 px-6 text-center"
-            >
-              <span class="text-14-medium text-text-strong">{i18n.t("ui.sessionGraph.canvas.error")}</span>
-              <span class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.canvas.errorHint")}</span>
-              <Show when={props.onBack}>
-                <button
-                  type="button"
-                  class="rounded-sm border border-border-base px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
-                  onClick={() => props.onBack?.()}
-                >
-                  {i18n.t("ui.sessionGraph.toolbar.back")}
-                </button>
-              </Show>
-            </div>
-          </Show>
-          <Show when={!error() && model().nodes.length === 0}>
-            <div
-              data-slot="graph-empty"
-              class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center"
-            >
-              <span class="text-14-regular text-text-weak">{i18n.t("ui.sessionGraph.canvas.empty")}</span>
-              <span class="text-12-regular text-text-weaker">{i18n.t("ui.sessionGraph.canvas.emptyHint")}</span>
-            </div>
-          </Show>
+          <GraphError error={error()} onBack={props.onBack} />
+          <GraphEmpty model={model} error={error()} />
           <Show when={searchOpen()}>
             <GraphSearch
               model={model()}
@@ -1859,9 +1721,9 @@ export const GraphView = (props: GraphViewProps) => {
               onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
               onOpenSession={props.onOpenSession}
               traceKind={trace.traceKind()}
-              onTraceWhy={onTraceWhy}
-              onTraceLedHere={onTraceLedHere}
-              onTraceRelated={onTraceRelated}
+              onTraceWhy={trace.traceWhy}
+              onTraceLedHere={trace.traceLedHere}
+              onTraceRelated={trace.traceRelated}
               onClearTrace={trace.clearTrace}
               onCopyTraceOutline={trace.copyTraceOutline}
               onEditNote={notes.editNote}
