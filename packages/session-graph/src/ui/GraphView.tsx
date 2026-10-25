@@ -306,7 +306,14 @@ export const GraphView = (props: GraphViewProps) => {
   // C1 — notes are session-local nodes. The annotated model is the one every selector and pipeline
   // reads, so notes are searchable, exportable, and scoped by their target's turn for free.
   const [notesStore] = createStore<Annotations>({})
-  const model = createMemo(() => withAnnotations(props.model, notesStore))
+  const emptyModel: GraphViewData = {
+    root: "session",
+    nodes: [],
+    edges: [],
+    turns: [],
+    turnByMessageID: new Map(),
+  }
+  const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
   const [hovered, setHovered] = createSignal<string>()
   // B3 — edges are first-class: hover names one, click selects its source and traces from it.
   const [edgeHovered, setEdgeHovered] = createSignal<string>()
@@ -750,6 +757,19 @@ export const GraphView = (props: GraphViewProps) => {
     ].filter((part): part is string => !!part)
     return parts.length > 0 ? parts.join(" · ") : undefined
   }
+
+  // displayPositions must be declared before rendererModel which uses it
+  const displayPositions = createMemo(() => {
+    const base = geometry().positions
+    if (Object.keys(manual.positions).length === 0) return base
+
+    const positions = new Map(base)
+    for (const [id, position] of Object.entries(manual.positions)) {
+      positions.set(id, { x: position[0], y: position[1], z: position[2] })
+    }
+    return positions
+  })
+
   const renderCard = createMemo(() => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
     const now = Date.now()
@@ -834,17 +854,6 @@ export const GraphView = (props: GraphViewProps) => {
     layoutHistory.set(key, next.positions)
 
     return next
-  })
-
-  const displayPositions = createMemo(() => {
-    const base = geometry().positions
-    if (Object.keys(manual.positions).length === 0) return base
-
-    const positions = new Map(base)
-    for (const [id, position] of Object.entries(manual.positions)) {
-      positions.set(id, { x: position[0], y: position[1], z: position[2] })
-    }
-    return positions
   })
 
   const moveNodes = (nodes: readonly { id: string; position: [number, number, number] }[]) => {
