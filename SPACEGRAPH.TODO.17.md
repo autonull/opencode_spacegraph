@@ -37,6 +37,11 @@
 | **Library: Edge weight by confidence** | New | Visual encoding: explicit > structural > inferred |
 | **Library: Minimap mirror fix** | §8.9 | Consistency across renderers |
 | **Library: Publish + contract v4** | §9.1 | Upstream readiness |
+| **Accessibility hardening (new)** | — | All new windows: focus trap, ARIA, announcements |
+| **Reduced motion compliance (new)** | — | Depth fade, bundling, window transitions |
+| **RTL support for new UI (new)** | — | Failure digest, outline, compare, search filters |
+| **Keyboard shortcuts for new actions (new)** | — | `Shift+F` digest, `Shift+O` outline, `Alt+F` search filters |
+| **CI perf gates for new features (new)** | — | Failure digest <50ms, outline <30ms, search filter <20ms |
 
 ### Deferred (architectural consequences or UX unknown)
 
@@ -44,13 +49,34 @@
 |------|--------|
 | Annotation persistence (V113) | Needs app line-comment store owner |
 | Graph state persistence | Needs session storage abstraction |
-| Graph onboarding & keyboard reference (was #7) | UX copy review needed; localStorage in library is wrong layer |
-| Export: standalone HTML with interactivity (was #8) | Needs bundling strategy; static export adequate for now |
+| Graph onboarding & keyboard reference | UX copy review needed; localStorage in library is wrong layer |
+| Export: standalone HTML with interactivity | Needs bundling strategy; static export adequate for now |
 | Auto-trace "what's new since I left" (V112) | Full version needs last-visited owner; simplified failure digest ships |
 | Cross-session graphs (D4) | Needs single-session evidence first |
 | Community detection (V103) | No consumer; fights deterministic layout |
 | Executable flow edges (V117) | Separate product |
 | Multi-user presence (V119) | Collaboration owner needed |
+
+### Future opportunities (post-TODO.17)
+
+| Item | Why it matters | Trigger |
+|------|----------------|---------|
+| **Session investigation report export** | Share findings as PDF/Markdown with traces, failures, subagent summaries | Team debugging, post-mortems |
+| **Provenance chain as trace kind** | "Show full chain: prompt → tool → file → test → error" as navigable path | Deeper debugging |
+| **Session health scorecard** | Single metric: "3 errors, 2 retries, 45 min, 12 files, 87 tools" | Quick triage |
+| **Bulk operations** | "Collapse all phases", "expand all subagents", "select all files" | Long session management |
+| **Bookmarks / pinned nodes** | Pin important nodes across reloads | Recurring investigation |
+| **Annotations v2** | Threaded comments, reactions, resolution status | Code review workflow |
+| **AI-assisted analysis** | "Summarize this session", "What patterns do you see?" | Cognitive load reduction |
+| **Time-travel replay** | Scrub through session with full state at each turn | Debugging intermittent failures |
+| **Codebase overlay** | Show graph over actual filesystem (file tree + graph sync) | Navigation context |
+| **Cross-session learning** | "This error happened before in session X" | Pattern detection |
+| **Plugin/extension API** | Third-party graph extensions (custom layouts, analyzers) | Ecosystem |
+| **Settings/preferences panel** | Graph-specific: default layout, level, renderer, density | Personalization |
+| **Full keyboard navigation** | Traverse entire graph without mouse | Accessibility, power users |
+| **Command palette integration** | All graph actions discoverable via `mod+shift+p` | Discoverability |
+| **Performance profiling UI** | Built-in profiler (FPS, render time, node count, memory) | Perf debugging |
+| **Analytics/telemetry (opt-in)** | Which features used, where users struggle | Product decisions |
 
 ---
 
@@ -61,7 +87,7 @@
 | **Debugging a failure** | `why` trace, evidence edges, failure ticks | No one-gesture "show me all failures" | 7 (failure digest) |
 | **Reviewing what agent did** | Files rail, provenance, notes | No summary of subagent contributions | 8 (subagent summary) |
 | **Monitoring live session** | Running/pending statuses | No progress indicator (X/Y turns) | 9 (progress) |
-| **Understanding session arc** | Overview level, phases | No jump-to-phase, no legend counts | 6 (session outline), 12 (legend counts) |
+| **Understanding session arc** | Overview level, phases | No jump-to-phase, no legend counts | 12 (session outline), 13 (legend counts) |
 | **Finding specific activity** | Search, ranked results | Can't filter by kind/status in search | 11 (search filters) |
 | **Reading tool calls** | Inspector shows raw JSON | No pretty-printing, no expand/collapse | 13 (inspector) |
 | **Long codebase sessions** | Workspace stages, file hub weights | No "hottest file" ranking | 10 (hot-file) |
@@ -74,7 +100,7 @@
 
 ## 3. Work Plan
 
-### Host track (7 slices, ~6 days)
+### Host track (14 slices + 3 hardening, ~8.5 days)
 
 #### Slice 1 — Writes payload labels (1.5 days)
 
@@ -157,7 +183,7 @@ Renderer dropdown in "Draw" menu; `preferredRenderer` prop; FPS overlay (`graph:
 **Use case:** "Where am I?" — persistent header shows session progress.
 
 1. `session-ui/graph/selectors.ts`: Add `sessionProgress(model)` → `{ turns: number, filesTouched: number, toolsRun: number, errors: number }`
-2. `session-graph/ui/GraphStatusBar.tsx`: Show "Turn 12 · 34 files · 87 tools · 3 errors" in status bar (already shows selection info)
+2. `session-graph/ui/GraphStatusBar.tsx`: Show "Turn 12 · 34 files · 87 tools · 3 errors" in status bar
 3. `data-slot="graph-progress"` for tests
 
 **Test:** Unit: `sessionProgress` counts correct; Component: status bar shows stats
@@ -181,7 +207,7 @@ Renderer dropdown in "Draw" menu; `preferredRenderer` prop; FPS overlay (`graph:
 **Use case:** "Find all errors" or "Find file nodes" — filter search results by kind.
 
 1. `session-graph/ui/GraphSearch.tsx`: Add kind filter chips (toggleable) below search input
-2. `session-ui/graph/selectors.ts`: `rankedSearch` already accepts query; extend to accept `kinds?: Set<NodeKind>`
+2. `session-ui/graph/selectors.ts`: `rankedSearch` extend to accept `kinds?: Set<NodeKind>`
 3. `data-slot="graph-search-filter"` for tests
 
 **Test:** Unit: `rankedSearch` filters by kind; E2E: search "auth" + filter "file" → only file results
@@ -226,6 +252,66 @@ Renderer dropdown in "Draw" menu; `preferredRenderer` prop; FPS overlay (`graph:
 3. `data-slot="graph-compare-stats"` for tests
 
 **Test:** Unit: `reviewChanges` includes stats; Component: compare window shows stats table
+
+---
+
+#### Slice H1 — Accessibility hardening for all new windows (1 day)
+
+**New windows:** Failure digest, Subagent summary, Session outline, Compare stats, Search filters
+
+For each:
+1. Focus trap on open; restore focus on close
+2. ARIA: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+3. Roving tabindex for lists; `ArrowUp/Down` navigation
+4. Screen reader announcement on open (`graph:announce`)
+5. Escape closes; `Tab` cycles within dialog
+6. `data-slot` for a11y test assertions
+
+**Test:** Component: each window passes axe-core; E2E: keyboard-only navigation works
+
+---
+
+#### Slice H2 — Reduced motion + RTL + keyboard shortcuts (0.5 days)
+
+**Reduced motion:**
+1. Depth fade transitions (Slice 6): `prefers-reduced-motion` → instant opacity
+2. Edge bundling (L2): disable animation when reduced motion
+3. Window open/close (H1): instant, no transition
+
+**RTL:**
+1. Failure digest list, outline tree, compare stats table, search filter chips: logical properties
+2. `GraphToolbar` overflow already RTL-aware; extend to new windows
+
+**Keyboard shortcuts:**
+| Action | Key | Conflict |
+|--------|-----|----------|
+| Open failure digest | `Shift+F` | — |
+| Open session outline | `Shift+O` | — |
+| Toggle search filters | `Alt+F` | `f` = fit |
+| Show subagent summary | `s` on subagent node | — |
+
+**Test:** Component: shortcuts trigger correct actions; RTL snapshot tests
+
+---
+
+#### Slice H3 — CI perf gates + investigation report export (0.5 days)
+
+**Perf gates (add to `graph:scale`):**
+1. Failure digest window render < 50ms
+2. Session outline build < 30ms
+3. Search filter re-rank < 20ms
+4. Compare stats table build < 40ms
+
+**Export investigation report:**
+1. `session-graph/ui/export.ts`: Add `format: "report"` — generates Markdown with:
+   - Session metadata (duration, turns, files, errors)
+   - Failure digest list with traces
+   - Subagent contribution summaries
+   - Turn comparison tables (if any)
+   - Session outline
+2. `data-slot="graph-export-report"` for tests
+
+**Test:** E2E: export report → open in Markdown viewer → all sections present
 
 ---
 
@@ -341,10 +427,10 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | Layer | Coverage |
 |-------|----------|
 | Unit | `failures()`, `subagentContributions()`, `sessionProgress()`, `fileRelations.totalActivity`, `sessionOutline()`, `reviewChanges` stats, `diffRenderModels` round-trip, walk API laws, default scorer law, metrics correctness |
-| Component | Card `+n −m` badge; failure digest window; subagent inspector; progress bar; file rail sorting; search filters; outline window; inspector pretty I/O; legend counts; compare stats |
-| E2E | 12 rows: writes labels, undo/redo, mobile, renderer switch, perf budget, fit/gutter/depth/labels/silhouette, failure digest, search filters, outline jump, turn stats compare |
+| Component | Card `+n −m` badge; failure digest window; subagent inspector; progress bar; file rail sorting; search filters; outline window; inspector pretty I/O; legend counts; compare stats; **a11y for all windows; reduced motion; RTL; keyboard shortcuts** |
+| E2E | 18 rows: writes labels, undo/redo, mobile, renderer switch, perf budget, fit/gutter/depth/labels/silhouette, failure digest, search filters, outline jump, turn stats compare, **a11y keyboard nav, reduced motion, investigation report export** |
 | Library vitest | Walk determinism, scorer law, union conservation, patch round-trip, Barnes-Hut convergence, bundling stability |
-| Perf bench | Incremental < 10ms; force 20k < 2s; pan ≥ 55 FPS |
+| Perf bench | Incremental < 10ms; force 20k < 2s; pan ≥ 55 FPS; **new feature gates** |
 
 ---
 
@@ -360,6 +446,10 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 - [ ] Incremental patch ≡ full rebuild (round-trip law)
 - [ ] Edge confidence encoding matches legend/peek documentation
 - [ ] Published packages install in clean clone
+- [ ] All new windows: focus trap, ARIA, announcements, Escape, Tab cycle
+- [ ] Reduced motion respected everywhere (depth fade, bundling, windows)
+- [ ] RTL works for all new UI (digest, outline, compare, search filters)
+- [ ] Keyboard shortcuts don't conflict; discoverable in shortcuts reference
 
 ---
 
@@ -400,6 +490,11 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | 25 | Incremental patch < 10ms | Perf benchmark passes |
 | 26 | Force layout 20k < 2s | `graph:scale` passes |
 | 27 | Packages publish clean | `test:publish` + second host mounts |
+| 28 | New windows pass a11y | axe-core passes; keyboard nav works; announcements fire |
+| 29 | Reduced motion respected | `prefers-reduced-motion` → instant transitions everywhere |
+| 30 | RTL works on new windows | Logical properties; no hardcoded left/right |
+| 31 | Shortcuts work | `Shift+F`/`Shift+O`/`Alt+F`/`s` trigger correct actions |
+| 32 | Investigation report exports | Markdown contains failures, subagents, compare, outline |
 
 ---
 
@@ -421,6 +516,11 @@ Slice 11 (search) ───┤
 Slice 12 (outline) ──┤
 Slice 13 (inspector) ┤
 Slice 14 (turn stats)┘
+
+HARDENING (depend on their features):
+Slice H1 (a11y) ──────┐
+Slice H2 (motion/RTL) ┤ after features they harden
+Slice H3 (perf/export)┘
 
 LIBRARY TRACK:
 Slice L1 (patch) ─────┐
@@ -447,3 +547,34 @@ Slice L4 (publish) ───┘ (depends on L1-L3)
 | Contract v4 breaks consumers | Semver minor; `test:publish` gates |
 | Edge bundling clutter on sparse | Enable only when density > threshold |
 | Walk API over-generalizes | Only add what second host consumes |
+| A11y regressions in existing windows | Run axe-core on all windows in CI |
+| Reduced motion missed in new code | Lint rule: no `transition` without `prefers-reduced-motion` check |
+| RTL bugs in complex windows | Snapshot tests at 390px RTL; component test matrix |
+| Shortcut conflicts | Central registry; test matrix of all key combos |
+
+---
+
+## 11. Post-TODO.17 Vision
+
+After TODO.17, the graph becomes a **complete investigative platform** for agentic development. The next phase (TODO.18+) should tackle:
+
+| Priority | Item | Effort |
+|----------|------|--------|
+| 1 | **Investigation report export** | 1 day |
+| 2 | **Provenance chain trace kind** | 1 day |
+| 3 | **Session health scorecard** | 0.5 days |
+| 4 | **Bulk operations** | 1 day |
+| 5 | **Bookmarks / pinned nodes** | 1 day |
+| 6 | **Annotations v2** | 2 days |
+| 7 | **Settings/preferences panel** | 1 day |
+| 8 | **Full keyboard navigation** | 1 day |
+| 9 | **Command palette integration** | 0.5 days |
+| 10 | **AI-assisted analysis** | 3 days |
+| 11 | **Time-travel replay** | 3 days |
+| 12 | **Codebase overlay** | 2 days |
+| 13 | **Cross-session learning** | 2 days |
+| 14 | **Plugin/extension API** | 3 days |
+
+**Total: ~23 days** for a mature, extensible graph platform.
+
+The architecture (pure model, contract-based renderers, host-owned vocabulary) supports all of this without structural changes.
