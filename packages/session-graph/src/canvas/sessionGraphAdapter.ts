@@ -129,9 +129,8 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
    * and inferred links are dashed, and hierarchy is dropped at execution in `edgesAtLevel`.
    */
   toRenderEdge(edge: GraphEdge, _level: ZoomLevel): RenderEdge {
-    const inferred = edge.confidence === "inferred"
     const hierarchy = edge.kind === "part-of" || edge.kind === "compacts"
-    const dashed = inferred || hierarchy
+    const dashed = edge.confidence === "inferred" || hierarchy
 
     return {
       id: edge.id,
