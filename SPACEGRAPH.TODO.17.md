@@ -6,330 +6,444 @@
 
 ## 1. Scope
 
-| Item | Source | Impact |
-|------|--------|--------|
-| **Writes payload labels** | TODO.16 deferred | `+n −m` on `writes` edges in card/peek |
-| **Consumerless exports cleanup** | TODO.16 delete list | Remove `shortestPath`/`forwardChain` from public API |
-| **Self-navigating action fix** | TODO.16 delete list | `file.history`/`symbol.showCallers` → trace presets |
-| **Arrangement undo/redo (V115)** | Vault | Manual layout survives rebuilds; needs undo stack |
-| **Card micro-actions (V116)** | Vault | One safe icon per card (e.g., copy path) |
-| **Mobile graph mode** | SPACEGRAPH.md §8.7 | Desktop-gated → works on mobile |
-| **Renderer selector in toolbar** | SPACEGRAPH.md §8.11 | Switch SpaceGraph ↔ Cytoscape ↔ SVG |
-| **Empty-column exclusion in fit** | SPACEGRAPH.md §8.15 | Fit frames content, not empty space |
-| **Lane gutter as screen-fixed overlay** | SPACEGRAPH.md §8.13 | Better spatial orientation |
-| **Depth fade for DOM cards** | SPACEGRAPH.md §8.16 | Visual consistency with canvas |
-| **Edge label collision avoidance** | SPACEGRAPH.md §8.3 | Labels avoid all geometry, not just cards |
-| **Mesh selection silhouette** | SPACEGRAPH.md §8.2 | Better visual feedback on select |
-| **First paint / pan frame rate** | SPACEGRAPH.md §8.10 | Performance measurement + budget |
-| **Graph onboarding / keyboard reference** | UX gap | First-time discoverability |
-| **Export: standalone HTML with interactivity** | SPACEGRAPH.md §7.1 | Shareable artifact viewers can explore |
-| **Library: Incremental RenderModelPatch** | SPACEGRAPH.md §12 D3 | Streaming updates without full rebuild |
-| **Library: Force layout optimization** | SPACEGRAPH.md §8.19 | 9s → <1s at 20k nodes |
-| **Library: Edge bundling / curve routing** | Vault V105 | Visual clarity for dense graphs |
-| **Library: Minimap mirror fix (Cytoscape)** | SPACEGRAPH.md §8.9 | Consistent orientation across renderers |
-| **Library: Orthographic wheel zoom** | SPACEGRAPH.md §8.1 | Keep pointer-anchored zoom |
-| **Library: Activity types stopgap removal** | SPACEGRAPH.md §8.5 | Replace `types/activity.d.ts` with generated |
-| **Library: Contract version bump + publish** | SPACEGRAPH.md §9.1 | Upstream-ready npm packages |
+### Active work
 
-### Deferred (architectural consequences)
+| Item | Source | Use case served |
+|------|--------|-----------------|
+| **Writes payload labels** | TODO.16 deferred | Debug wires: see what changed without opening inspector |
+| **Consumerless exports cleanup** | TODO.16 delete list | Code health: remove footguns |
+| **Self-navigating action fix** | TODO.16 delete list | Fix bug: actions navigate to self |
+| **Arrangement undo/redo (V115)** | Vault | Spatial memory: recover from bad drags |
+| **Card micro-actions (V116)** | Vault | Quick actions: copy path without opening inspector |
+| **Mobile graph mode** | SPACEGRAPH.md §8.7 | On-the-go: review session on phone/tablet |
+| **Renderer selector + perf harness** | §8.10, §8.11 | User choice + measured budget |
+| **Visual polish (fit, gutter, depth, labels, selection)** | §8.2, 8.3, 8.13, 8.15, 8.16 | Spatial orientation, readability |
+| **Session outline / phase jump** | New | Long sessions: jump to "verify" phase, "edit" phase |
+| **Failure digest** | V112 unvaulted (simplified) | Debugging: one gesture shows all failures |
+| **Subagent contribution summary** | New | Delegation: what did each subagent actually do |
+| **Progress indicator** | New | Monitoring: X/Y turns, files touched, tests run |
+| **Hot-file ranking** | New (extends `fileRelations`) | Code review: which files dominate the session |
+| **Turn stats comparison** | New (extends `reviewChanges`) | Audit: compare two turns' activity side-by-side |
+| **Search kind/status filters** | New (extends `rankedSearch`) | Investigation: narrow search to errors, tools |
+| **Inspector: pretty tool input/output** | New | Debugging: readable JSON, truncated output expansion |
+| **Legend: node kind counts** | New (extends `GraphLegendBody`) | Orientation: what am I looking at |
+| **Library: Walk API** | TODO.16 P1 (never done) | Declarative traversal for second host |
+| **Library: Default scorer** | TODO.16 P1 | `searchBy` works without host-provided `scoreFn` |
+| **Library: Incremental RenderModelPatch** | SPACEGRAPH.md §12 D3 | Streaming performance |
+| **Library: Force layout Barnes-Hut** | §8.19 | Large graph performance |
+| **Library: Edge bundling** | Vault V105 | Dense graph readability |
+| **Library: Graph metrics** | New | Centrality, density, clustering for budget/UI |
+| **Library: Time-range filter** | New | Long sessions: show only last hour |
+| **Library: Edge weight by confidence** | New | Visual encoding: explicit > structural > inferred |
+| **Library: Minimap mirror fix** | §8.9 | Consistency across renderers |
+| **Library: Publish + contract v4** | §9.1 | Upstream readiness |
+
+### Deferred (architectural consequences or UX unknown)
 
 | Item | Reason |
 |------|--------|
-| **Annotation persistence (V113)** | Needs app line-comment store owner; session-local is fine for now |
-| **Graph state persistence** | Needs session storage abstraction; manual positions survive rebuilds already |
+| Annotation persistence (V113) | Needs app line-comment store owner |
+| Graph state persistence | Needs session storage abstraction |
+| Graph onboarding & keyboard reference (was #7) | UX copy review needed; localStorage in library is wrong layer |
+| Export: standalone HTML with interactivity (was #8) | Needs bundling strategy; static export adequate for now |
+| Auto-trace "what's new since I left" (V112) | Full version needs last-visited owner; simplified failure digest ships |
+| Cross-session graphs (D4) | Needs single-session evidence first |
+| Community detection (V103) | No consumer; fights deterministic layout |
+| Executable flow edges (V117) | Separate product |
+| Multi-user presence (V119) | Collaboration owner needed |
 
 ---
 
-## 2. Work Plan (11 slices, ~12 days)
+## 2. Use-Case Analysis (what drives each slice)
 
-### Slice 1 — Writes payload labels (1.5 days)
+| Use case | Current state | Gap | Slice |
+|----------|---------------|-----|-------|
+| **Debugging a failure** | `why` trace, evidence edges, failure ticks | No one-gesture "show me all failures" | 7 (failure digest) |
+| **Reviewing what agent did** | Files rail, provenance, notes | No summary of subagent contributions | 8 (subagent summary) |
+| **Monitoring live session** | Running/pending statuses | No progress indicator (X/Y turns) | 9 (progress) |
+| **Understanding session arc** | Overview level, phases | No jump-to-phase, no legend counts | 6 (session outline), 12 (legend counts) |
+| **Finding specific activity** | Search, ranked results | Can't filter by kind/status in search | 11 (search filters) |
+| **Reading tool calls** | Inspector shows raw JSON | No pretty-printing, no expand/collapse | 13 (inspector) |
+| **Long codebase sessions** | Workspace stages, file hub weights | No "hottest file" ranking | 10 (hot-file) |
+| **Comparing approaches** | Two-turn compare (B1) | No per-turn stats table | 14 (turn stats) |
+| **Streaming performance** | Full rebuild per update | 63ms per update at 300 nodes | L1 (patch) |
+| **Dense graph readability** | Straight edges | No bundling, cluttered crossings | L2 (bundling) |
+| **Second host / platform** | `searchBy` requires host scorer | No default scorer, no walk API | L3 (walk + scorer) |
 
-**Data flow:** Session message metadata → `diffByTurn` → `writes` edge `data` field → card/peek render
+---
+
+## 3. Work Plan
+
+### Host track (7 slices, ~6 days)
+
+#### Slice 1 — Writes payload labels (1.5 days)
+
+**Data flow:** `diffByTurn` → `writes` edge `data` → card/peek badge
+
+1. `session-builder.ts`: Attach `{ additions, deletions }` from `FileDiffInfo` to `writes` edges
+2. `model.ts`: Extend `GraphEdge.data` with optional diff stats
+3. `cardTemplate.ts`: `+n −m` badge on file cards
+4. `GraphPeek.tsx`: Diff stats in edge peek
+
+---
+
+#### Slice 2 — Cleanup & bug fixes (0.5 days)
+
+| Task | File |
+|------|------|
+| Remove `shortestPath`/`forwardChain` from public export | `session-ui/graph/index.ts` |
+| Fix `file.history`/`symbol.showCallers` self-nav | `session-ui/graph/actions.ts` |
+
+---
+
+#### Slice 3 — Arrangement undo/redo + card micro-actions (1.5 days)
+
+**V115 — Undo/redo:** `manualHistory`/`manualFuture` stacks; `z`/`Z` keys; toolbar buttons.
+**V116 — Micro-actions:** Hover-only copy icon on cards; `navigator.clipboard`.
+
+---
+
+#### Slice 4 — Mobile graph mode (1 day)
+
+Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures.
+
+---
+
+#### Slice 5 — Renderer selector + perf harness (1 day)
+
+Renderer dropdown in "Draw" menu; `preferredRenderer` prop; FPS overlay (`graph:perf`); CI gate.
+
+---
+
+#### Slice 6 — Visual polish (1.5 days)
+
+| Fix | Location |
+|-----|----------|
+| Fit excludes empty columns | `graph-camera.ts` |
+| Lane gutter screen-fixed | `GraphCanvas.tsx` |
+| Depth fade on DOM cards | `cardTemplate.ts` |
+| Edge label full collision avoidance | `spacegraph-renderer` |
+| Mesh selection silhouette | `spacegraph-renderer` |
+
+---
+
+#### Slice 7 — Failure digest (0.5 days)
+
+**Use case:** "Show me what went wrong" — one gesture lists every error/retry in session order.
+
+1. `session-ui/graph/selectors.ts`: Add `failures(model)` → `Array<{ nodeID, kind: "error"|"retry", turnID, label }>`
+2. `session-graph/ui/GraphToolbar.tsx`: Add "What failed?" to Questions menu → opens window listing failures
+3. Click failure → select node, run `why` trace, frame camera
+4. `data-slot="graph-failure-list"` for tests
+
+**Test:** Unit: `failures()` returns errors+retries in turn order; E2E: click "What failed?" → see list → click first → trace runs
+
+---
+
+#### Slice 8 — Subagent contribution summary (0.5 days)
+
+**Use case:** "What did each subagent contribute?" — one gesture shows per-subagent stats.
+
+1. `session-ui/graph/selectors.ts`: Add `subagentContributions(model)` → `Map<subagentID, { nodes: number, edges: number, filesTouched: number, toolsRun: number }>`
+2. `session-graph/ui/GraphInspector.tsx`: When inspecting a `subagent` node, show contribution stats in detail body
+3. `data-slot="graph-subagent-contrib"` for tests
+
+**Test:** Unit: `subagentContributions` counts correct on fixture; Component: inspector shows stats for subagent node
+
+---
+
+#### Slice 9 — Progress indicator (0.5 days)
+
+**Use case:** "Where am I?" — persistent header shows session progress.
+
+1. `session-ui/graph/selectors.ts`: Add `sessionProgress(model)` → `{ turns: number, filesTouched: number, toolsRun: number, errors: number }`
+2. `session-graph/ui/GraphStatusBar.tsx`: Show "Turn 12 · 34 files · 87 tools · 3 errors" in status bar (already shows selection info)
+3. `data-slot="graph-progress"` for tests
+
+**Test:** Unit: `sessionProgress` counts correct; Component: status bar shows stats
+
+---
+
+#### Slice 10 — Hot-file ranking (0.5 days)
+
+**Use case:** "Which files dominate this session?" — sort by reads+writes.
+
+1. `session-ui/graph/selectors.ts`: Extend `fileRelations` to include `totalActivity` (reads + writes)
+2. `session-graph/ui/GraphFileRail.tsx`: Sort rail by activity (descending), show count badge
+3. `data-slot="graph-file-activity"` for tests
+
+**Test:** Unit: `fileRelations.totalActivity` correct; Component: rail sorts by activity
+
+---
+
+#### Slice 11 — Search kind/status filters (0.5 days)
+
+**Use case:** "Find all errors" or "Find file nodes" — filter search results by kind.
+
+1. `session-graph/ui/GraphSearch.tsx`: Add kind filter chips (toggleable) below search input
+2. `session-ui/graph/selectors.ts`: `rankedSearch` already accepts query; extend to accept `kinds?: Set<NodeKind>`
+3. `data-slot="graph-search-filter"` for tests
+
+**Test:** Unit: `rankedSearch` filters by kind; E2E: search "auth" + filter "file" → only file results
+
+---
+
+#### Slice 12 — Session outline / phase jump (1 day)
+
+**Use case:** "Jump to the verify phase" — navigate session structure, not just chronology.
+
+1. `session-ui/graph/selectors.ts`: Add `sessionOutline(model)` → `Array<{ turnID, phases: Array<{ id, category, label }> }>`
+2. `session-graph/ui/GraphToolbar.tsx`: Add "Outline" button → opens window listing turns with their phases
+3. Click phase → select phase node, frame camera
+4. `data-slot="graph-session-outline"` for tests
+
+**Test:** Unit: `sessionOutline` returns correct structure; E2E: open outline → click "verify" phase → camera frames it
+
+---
+
+#### Slice 13 — Inspector: pretty tool I/O + legend counts (1 day)
+
+**Use case:** Reading raw JSON in inspector is painful; legend shows what's on screen.
+
+**Inspector:**
+1. `session-graph/ui/GraphDetail.tsx`: Pretty-print tool input (JSON syntax highlight), expand/collapse long output
+2. `data-slot="graph-tool-io"` for tests
+
+**Legend:**
+3. `session-graph/ui/GraphLegend.tsx`: Add node kind counts beside edge kind counts
+4. `data-slot="graph-legend-kind-count"` for tests
+
+**Test:** Component: inspector renders JSON pretty; legend shows kind counts
+
+---
+
+#### Slice 14 — Turn stats comparison (1 day)
+
+**Use case:** "Compare turn 3 vs turn 7" — side-by-side activity stats.
+
+1. `session-ui/graph/review.ts`: Extend `reviewChanges` to include per-turn stats (`filesTouched`, `toolsRun`, `errors`, `duration`)
+2. `session-graph/ui/GraphCompare.tsx`: Show stats table in compare window beside node diff
+3. `data-slot="graph-compare-stats"` for tests
+
+**Test:** Unit: `reviewChanges` includes stats; Component: compare window shows stats table
+
+---
+
+### Library track (`spacegraphjs/`, 4 slices, ~5.5 days)
+
+#### Slice L1 — Incremental RenderModelPatch (2 days)
+
+**Problem:** SPACEGRAPH.md §12 D3 — streaming updates rebuild full model (63ms at 300 nodes).
 
 **Changes:**
-1. `session-builder.ts`: When creating `writes` edges, look up `FileDiffInfo` from `diffByTurn` for that turn + file, attach `{ additions, deletions }` to edge `data`
-2. `model.ts`: Extend `GraphEdge` with optional `data?: { additions?: number; deletions?: number }`
-3. `cardTemplate.ts`: Render `+n −m` badge on file cards when `writes` edge has diff data
-4. `GraphPeek.tsx`: Show diff stats in edge peek for `writes` edges
-5. `GraphLegend.tsx`: Already lists edge kinds with counts — no change needed
-
-**Test:** Unit test `fileRelations` includes diff stats; component test card shows `+3 −1`
+1. `@spacegraphjs/adapter`: `diffRenderModels(old, new) → RenderModelPatch`
+2. `@spacegraphjs/renderer`: Add `applyPatch(patch)` to `GraphRenderer` contract
+3. `spacegraph-renderer` + `cytoscape-renderer`: Implement partial updates
+4. `GraphView.tsx`: Compute patch on streaming update → `applyPatch()`
+5. Target: 100-node incremental < 10ms
 
 ---
 
-### Slice 2 — Cleanup & bug fixes (0.5 days)
+#### Slice L2 — Force layout Barnes-Hut + edge bundling (1.5 days)
 
-| Task | File | Change |
-|------|------|--------|
-| Remove `shortestPath`/`forwardChain` from public export | `session-ui/src/graph/index.ts` | Delete lines 105, 106 |
-| Fix `file.history`/`symbol.showCallers` self-nav | `session-ui/src/graph/actions.ts` | Dispatch `graph:command` with `why`/`led-here` trace |
-| Remove dead `custom` lens option (if any) | `GraphToolbar.tsx` | Already deleted per TODO.16 |
-
----
-
-### Slice 3 — Arrangement undo/redo + card micro-actions (1.5 days)
-
-**V115 — Arrangement undo/redo:**
-- `GraphView`: `manual.positions`/`manual.sizes` already store reader drags
-- Add `manualHistory: Position[][]` + `manualFuture: Position[][]` stacks
-- On drag commit: push to history, clear future
-- Toolbar: Undo/Redo buttons (disabled when empty) + `z`/`Z` keys
-- Persist per session? Optional — session-local is fine for V1
-
-**V116 — Card micro-actions:**
-- One icon per card (top-right, 16px): "Copy path" for files, "Copy ID" for others
-- Reuse `createCardCopy` logic; `navigator.clipboard.writeText`
-- Show on hover only; `data-slot="card-action"` for tests
-
----
-
-### Slice 4 — Mobile graph mode (1 day)
-
-**Problem:** SPACEGRAPH.md §8.7 — "Mobile graph mode desktop-gated for v1; mobile reaches graph only via `graph.toggle` command."
+**Problem:** §8.19 — force layout 9.3s at 20k nodes; V105 — edges clutter in dense graphs.
 
 **Changes:**
-1. `GraphView.tsx`: Detect viewport < 768px → use map-only fallback (exists per TODO.16 §10)
-2. `GraphToolbar.tsx`: Collapse secondary controls into overflow menu (exists per RF.7)
-3. `GraphInspector.tsx`: Bottom sheet on narrow (exists per U3.8/RF.8)
-4. Add mobile-specific tests: touch pan/zoom, drawer inspector, narrow layout
-5. Verify `mod+alt+t` turn-map overlay works on mobile (focus-trapped dialog)
-
-**Test:** Component test at 390×844 viewport; all gestures work via touch
+1. `spacegraphjs/layout`: Barnes-Hut quadtree (O(n log n)); early exit on convergence
+2. `spacegraphjs/layout`: Hierarchical edge bundling option
+3. `spacegraph-renderer`: Bezier edge routing at bundle junctions
+4. Target: 20k nodes < 2s; bundled edges reduce crossings
 
 ---
 
-### Slice 5 — Renderer selector + performance measurement (1 day)
+#### Slice L3 — Walk API + default scorer + metrics (1.5 days)
 
-**Problem:** SPACEGRAPH.md §8.10, §8.11 — "Renderer selector not in app toolbar" + "First paint / pan frame rate unmeasured"
+**Problem:** TODO.16 P1 never done — `searchBy` requires host scorer; no declarative traversal; no metrics.
 
 **Changes:**
-1. `GraphToolbar.tsx`: Add renderer dropdown in "Draw" menu (uses `capabilities` from renderer registry)
-2. `GraphView.tsx`: Expose `preferredRenderer` prop; persist in session settings
-3. Add `graph:perf` command (dev-only overlay) showing FPS, frame time, node count
-4. `packages/session-graph/script/perf-bench.ts`: Automated FPS measurement during pan/zoom
-5. CI gate: fail if 60-turn pan drops below 55 FPS on reference hardware
-
-**Test:** E2E row: switch renderer → verify capabilities update; perf benchmark passes
+1. `spacegraphjs/kernel/src/walks.ts`: `walk(kernel, { starts, steps, maxDepth })` → `{ nodes, edges }`; `pathsBetween(from, to)`
+2. `spacegraphjs/src/navigation/search.ts`: Default scorer (label-prefix > name > path > body; model-order tie-break)
+3. `spacegraphjs/kernel/src/metrics.ts`: `degreeCentrality`, `graphDensity`, `clusteringCoefficient`
+4. OpenCode host: `rankedSearch` uses default scorer when no host scorer provided
+5. Second host: exercises walk API against contract fixture
 
 ---
 
-### Slice 6 — Visual polish: fit, gutter, depth fade, edge labels, selection (1.5 days)
+#### Slice L4 — Edge confidence visualization + time filter + publish (0.5 days)
 
-| Issue (SPACEGRAPH.md §8) | Fix | Location |
-|--------------------------|-----|----------|
-| #8.15 Empty-column exclusion in fit | `fitOptions`: filter nodes with `x > minContentX` | `graph-camera.ts` / `GraphView` |
-| #8.13 Lane gutter world-space → screen-fixed | `GraphCanvas`: render gutter as overlay at `x=0` screen space | `GraphCanvas.tsx` |
-| #8.16 Depth fade for DOM cards | `cardTemplate.ts`: apply `opacity: var(--depth-fade)` based on Z | `cardTemplate.ts` |
-| #8.3 Edge label collision avoidance | Extend label avoidance to all geometry (edges, bands, cards) | `spacegraph-renderer` |
-| #8.2 Mesh selection silhouette | Replace `BoxHelper` with `MeshOutlineMaterial` or custom shader | `spacegraph-renderer` |
-
----
-
-### Slice 7 — Graph onboarding & keyboard reference (0.5 days)
-
-**Problem:** First-time users don't discover gestures (`w`/`e`/`r` for traces, `[`/`]` for stepping, `/` search, `f` fit, `1/2/3` levels).
-
-**Changes:**
-1. `GraphView.tsx`: On first mount (no `graph:onboarded` in localStorage), show transient toast with 5 key gestures
-2. `GraphToolbar.tsx`: Add "Keyboard shortcuts" to overflow menu → opens modal with full reference
-3. `GraphCanvas.tsx`: Subtle hint overlay on empty canvas ("Drag to pan, wheel to zoom, click node to select")
-
-**Test:** Component test: first visit shows toast; shortcuts modal opens and lists all bindings
+| Task | Location |
+|------|----------|
+| Edge thickness/opacity by confidence (explicit > structural > inferred) | `spacegraph-renderer`, `cytoscape-renderer` |
+| Time-range filter (`filterByTime(model, from, to)`) | `spacegraphjs/kernel` |
+| Minimap mirror fix (Cytoscape) | `cytoscape-renderer` |
+| Contract v4 bump + `test:publish` + API docs | All library packages |
 
 ---
 
-### Slice 8 — Export: standalone HTML with interactivity (0.5 days)
+## 4. Technical Details
 
-**Problem:** SPACEGRAPH.md §7.1 — export produces static SVG/JSON/HTML; HTML export should be explorable.
-
-**Changes:**
-1. `export.ts`: Standalone HTML includes SpaceGraphJS renderer + `GraphController` + minimal UI (toolbar, inspector)
-2. Embed render model as inline JSON; hydrate on load
-3. Support `#graph:<nodeID>` deep link in exported file
-4. Add "Export interactive" alongside existing formats
-
-**Test:** E2E: export interactive → open in browser → pan/zoom/select works; deep link frames node
-
----
-
-### Slice 9 — Library: Incremental RenderModelPatch + streaming (2 days)
-
-**Problem:** SPACEGRAPH.md §12 D3 — "Incremental `RenderModelPatch`" for streaming updates without full rebuild.
-
-**Changes:**
-1. `@spacegraphjs/adapter`: Add `diffRenderModels(old, new) → RenderModelPatch` (nodes/edges added/removed/changed)
-2. `@spacegraphjs/renderer`: Add `applyPatch(patch: RenderModelPatch)` to `GraphRenderer` contract
-3. `spacegraph-renderer` / `cytoscape-renderer`: Implement `applyPatch` (partial DOM/WebGL updates)
-4. `GraphView.tsx`: On streaming model update, compute patch → `renderer.applyPatch()` instead of `setModel()`
-5. Benchmark: 100-node incremental update < 10ms vs 63ms full rebuild
-
-**Test:** Unit: patch round-trip equals full rebuild; Perf: incremental update latency
-
----
-
-### Slice 10 — Library: Force layout optimization + edge bundling (1.5 days)
-
-**Problem:** SPACEGRAPH.md §8.19 — "Force layout 9.3s uncapped at 20k nodes" + Vault V105 "Edge bundling / curve routing"
-
-**Changes:**
-1. `spacegraphjs/layout`: Force layout — add Barnes-Hut quadtree (O(n log n) vs O(n²)), early exit on convergence
-2. `spacegraphjs/layout`: Add edge bundling option (hierarchical edge bundling by common ancestors)
-3. `spacegraph-renderer`: Curved edge routing (bezier with control points at bundle junctions)
-4. Config: `forceLayout: { maxIterations: 300, barnesHutTheta: 0.5, edgeBundling: true }`
-
-**Test:** Perf: 20k nodes < 2s; Visual: bundled edges reduce clutter in dense regions
-
----
-
-### Slice 11 — Library: Hardening & publish (1.5 days)
-
-| Task | Location | Status |
-|------|----------|--------|
-| Fix minimap vertical mirror (Cytoscape) | `cytoscape-renderer` | §8.9 |
-| Orthographic wheel zoom keeps pointer anchor | `spacegraph-renderer` | §8.1 |
-| Replace `types/activity.d.ts` with generated declarations | `spacegraphjs/packages/*` | §8.5 |
-| Remove global `SpaceGraph.instances` dev handle | `spacegraphjs/core` | §8.4 |
-| Contract version bump (3 → 4) + `test:publish` | All library packages | §9.1 |
-| Deprecate `vue-spacegraph` | `spacegraphjs` | §8.3 |
-| Embedder devtools (node/edge inspector) | `spacegraphjs/control` | §8.3 |
-| API docs + release automation | `spacegraphjs` | §8.3 |
-
----
-
-## 3. Technical Details
-
-### 3.1 Writes edge data attachment
+### 4.1 Writes edge data
 
 ```typescript
-// session-builder.ts ~line 1398
+// session-builder.ts
 const diffInfo = diffByTurn?.get(turnID)?.find(d => d.file === path)
 this.addEdge({
-  kind: "writes",
-  source: toolID,
-  target: fileID,
-  confidence: "explicit",
-  data: diffInfo ? { additions: diffInfo.additions, deletions: diffInfo.deletions } : undefined
+  kind: "writes", source: toolID, target: fileID, confidence: "explicit",
+  data: diffInfo ? { additions: diffInfo.additions, deletions: diffInfo.deletions } : undefined,
 })
 ```
 
-### 3.2 Card template badge
+### 4.2 Failure digest selector
 
 ```typescript
-// cardTemplate.ts - in kindContent for "file"
-const writesEdges = incoming(model, node.id).filter(e => e.kind === "writes")
-const diff = writesEdges.find(e => e.data?.additions || e.data?.deletions)
-if (diff) return `+${diff.data.additions ?? 0} −${diff.data.deletions ?? 0}`
+// selectors.ts
+export function failures(model: GraphViewData): Array<{ nodeID, kind, turnID, label }> {
+  return model.nodes
+    .filter(n => n.kind === "error" || n.kind === "retry")
+    .map(n => ({ nodeID: n.id, kind: n.kind, turnID: n.turnID, label: n.label }))
+}
 ```
 
-### 3.3 Incremental RenderModelPatch (Slice 9)
+### 4.3 Subagent contributions
+
+```typescript
+// selectors.ts
+export function subagentContributions(model: GraphViewData): Map<string, Contribution> {
+  // For each subagent node: count descendants via part-of, files via writes/reads, tools
+}
+```
+
+### 4.4 Incremental RenderModelPatch
 
 ```typescript
 // @spacegraphjs/adapter
 export type RenderModelPatch = {
   nodes: { added: RenderNode[]; removed: string[]; changed: RenderNode[] }
   edges: { added: RenderEdge[]; removed: string[]; changed: RenderEdge[] }
-  viewport?: { zoom: number; center: [number, number, number] }
 }
+export function diffRenderModels(old: RenderModel, next: RenderModel): RenderModelPatch
+```
 
-export function diffRenderModels(old: RenderModel, next: RenderModel): RenderModelPatch {
-  // O(n) diff by stable ID maps
-}
+### 4.5 Walk API
+
+```typescript
+// spacegraphjs/kernel/src/walks.ts
+export function walk(kernel: Kernel, spec: {
+  starts: string[]; steps: EdgeKind[]; maxDepth?: number
+}): { nodes: string[]; edges: string[] }
+export function pathsBetween(kernel: Kernel, from: string, to: string): string[][]
 ```
 
 ---
 
-## 4. Test Strategy
+## 5. Test Strategy
 
 | Layer | Coverage |
 |-------|----------|
-| Unit | `fileRelations` includes diff stats; `diffRenderModels` round-trip; force layout O(n log n); patch apply equals full rebuild |
-| Component | Card shows `+n −m`; undo/redo restores position; mobile viewport renders map-only; renderer selector switches backends; onboarding toast; interactive export; keyboard shortcuts modal |
-| E2E | 12 new rows: writes labels, undo/redo, mobile gestures, renderer switch, perf budget, fit excludes empty, depth fade cards, onboarding, interactive export, force layout perf, patch streaming, publish verify |
+| Unit | `failures()`, `subagentContributions()`, `sessionProgress()`, `fileRelations.totalActivity`, `sessionOutline()`, `reviewChanges` stats, `diffRenderModels` round-trip, walk API laws, default scorer law, metrics correctness |
+| Component | Card `+n −m` badge; failure digest window; subagent inspector; progress bar; file rail sorting; search filters; outline window; inspector pretty I/O; legend counts; compare stats |
+| E2E | 12 rows: writes labels, undo/redo, mobile, renderer switch, perf budget, fit/gutter/depth/labels/silhouette, failure digest, search filters, outline jump, turn stats compare |
+| Library vitest | Walk determinism, scorer law, union conservation, patch round-trip, Barnes-Hut convergence, bundling stability |
+| Perf bench | Incremental < 10ms; force 20k < 2s; pan ≥ 55 FPS |
 
 ---
 
-## 5. Invariant Checklist
+## 6. Invariant Checklist
 
-- [ ] Positions never move due to writes labels (overlay only)
-- [ ] Undo/redo only affects manual positions, not derived layout
+- [ ] Positions never move due to writes labels, failure digest, or outline (overlays only)
+- [ ] Undo/redo only affects manual positions
 - [ ] No new mode vocabulary
 - [ ] Single scope pipeline unchanged
-- [ ] Mobile gestures don't conflict with browser chrome
-- [ ] Renderer switch preserves selection and camera
-- [ ] Fit never frames empty space
-- [ ] Depth fade consistent between canvas and DOM
-- [ ] Incremental patch produces identical result to full rebuild
-- [ ] Force layout converges deterministically with same seed
-- [ ] Published packages install cleanly in clean clone
+- [ ] New selectors are pure and fixture-tested
+- [ ] Walk API is deterministic (same input → same output)
+- [ ] Default scorer never contradicts host scorer when both provided
+- [ ] Incremental patch ≡ full rebuild (round-trip law)
+- [ ] Edge confidence encoding matches legend/peek documentation
+- [ ] Published packages install in clean clone
 
 ---
 
-## 6. Out of Scope (remain vaulted)
+## 7. Out of Scope (vaulted or deferred)
 
 | Item | Reason |
 |------|--------|
-| Compare-as-window | Claims delivered; verify in Slice 2 |
-| Group header fold/menu | Claims delivered; verify in Slice 2 |
-| Community grouping (V103) | No consumer |
+| Annotation persistence (V113) | App line-comment store owner needed |
+| Graph state persistence | Session storage abstraction needed |
+| Onboarding & keyboard reference | UX copy review; wrong layer for localStorage |
+| Interactive HTML export | Bundling strategy; static adequate |
+| "What's new since I left" (V112 full) | Last-visited owner; simplified failure digest ships |
+| Cross-session graphs (D4) | Single-session evidence first |
+| Community detection (V103) | No consumer; fights layout |
 | Executable flow edges (V117) | Separate product |
-| Multi-user presence (V119) | Needs collaboration owner |
-| Cross-session graphs (D4) | Needs single-session evidence first |
-| Real 3D geometry (D5) | Protocol prefers layered/depth-stack |
-| Host-neutral activity adapter (D2) | Second host not demanding |
-| Inline row host (D1) | Maintainer approval needed |
+| Multi-user presence (V119) | Collaboration owner |
+| Kernel union (P2) | Second host not demanding yet |
 
 ---
 
-## 7. Acceptance Criteria
+## 8. Acceptance Criteria
 
 | Row | Scenario | Assertion |
 |-----|----------|-----------|
-| 12 | File card shows `+3 −1` on `writes` edge | `data-slot="card-badge"` contains `+3 −1` |
-| 13 | Undo restores dragged card position | Position matches pre-drag after `z` key |
-| 14 | Mobile viewport shows map-only fallback | `data-slot="graph-view"` at 390px width has no inspector panel |
-| 15 | Renderer selector switches backend | `data-graph-renderer` changes; capabilities update |
-| 16 | Fit excludes empty columns | Camera bounds match content, not session root at x=0 |
-| 17 | Depth fade on DOM cards | `data-depth="layered"` → card opacity varies with Z |
-| 18 | Onboarding toast shows on first visit | `localStorage.graph:onboarded` set after dismiss |
-| 19 | Interactive export works standalone | Open exported HTML → pan/zoom/select works |
-| 20 | Force layout 20k nodes < 2s | `graph:scale` benchmark passes |
-| 21 | Incremental patch < 10ms for 100 nodes | Perf benchmark vs 63ms full rebuild |
-| 22 | Published packages install in clean clone | `bun run graph:setup` from fresh checkout |
-| 23 | Minimap orientation matches across renderers | SpaceGraph + Cytoscape minimap same orientation |
+| 12 | File card shows `+3 −1` | `data-slot="card-badge"` contains `+3 −1` |
+| 13 | Undo restores dragged position | Position matches pre-drag after `z` |
+| 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector |
+| 15 | Renderer selector switches | `data-graph-renderer` changes; capabilities update |
+| 16 | Fit excludes empty columns | Camera bounds match content extent |
+| 17 | Depth fade on DOM cards | `data-depth="layered"` → opacity varies with Z |
+| 18 | Failure digest lists errors | "What failed?" → `graph-failure-list` shows all errors/retries |
+| 19 | Search filters by kind | Search "auth" + "file" filter → only file nodes |
+| 20 | Outline jumps to phase | Click "verify" in outline → camera frames phase node |
+| 21 | Subagent shows contributions | Inspector on subagent → `graph-subagent-contrib` stats |
+| 22 | Turn compare shows stats | Compare window → `graph-compare-stats` table |
+| 23 | Progress shows in status bar | `graph-progress` shows "Turn N · X files · Y tools" |
+| 24 | Walk API works on fixture | Second host demo traverses fixture deterministically |
+| 25 | Incremental patch < 10ms | Perf benchmark passes |
+| 26 | Force layout 20k < 2s | `graph:scale` passes |
+| 27 | Packages publish clean | `test:publish` + second host mounts |
 
 ---
 
-## 8. Dependency Graph
+## 9. Dependency Graph
 
 ```
-Slice 1 (writes labels) ──┐
-Slice 2 (cleanup) ────────┤
-Slice 3 (undo/micro) ─────┘ (depends on Slice 2)
-Slice 4 (mobile) ─────────┐
-Slice 5 (renderer/perf) ──┤ → independent, can parallelize
-Slice 6 (visual polish) ──┤
-Slice 7 (onboarding) ─────┘
-Slice 8 (interactive export) ── independent
+HOST TRACK (can parallelize within):
+Slice 1 (writes) ────┐
+Slice 2 (cleanup) ────┤
+Slice 3 (undo/micro) ┘ (depends on 2)
+Slice 4 (mobile) ─────┐
+Slice 5 (renderer) ──┤
+Slice 6 (visual) ────┤
+Slice 7 (digest) ────┤
+Slice 8 (subagent) ──┤ all independent
+Slice 9 (progress) ──┤
+Slice 10 (hot-file) ──┤
+Slice 11 (search) ───┤
+Slice 12 (outline) ──┤
+Slice 13 (inspector) ┤
+Slice 14 (turn stats)┘
 
-Slice 9 (incremental patch) ──┐
-Slice 10 (force/bundling) ────┤ → library, can parallelize
-Slice 11 (hardening/publish) ─┘ (depends on 9, 10)
+LIBRARY TRACK:
+Slice L1 (patch) ─────┐
+Slice L2 (force/bundle)┤ independent
+Slice L3 (walk/score)─┤
+Slice L4 (publish) ───┘ (depends on L1-L3)
 ```
 
 ---
 
-## 9. Risks
+## 10. Risks
 
 | Risk | Mitigation |
 |------|------------|
-| `diffByTurn` not available in session builder | Pass through `buildGraph` input; already in `BuildGraphInput` |
-| Undo stack memory growth | Cap at 50 entries; drop oldest |
-| Card action clutter | One icon, hover-only, 16px |
-| Mobile touch conflicts with browser gestures | Use `touch-action: none` on canvas; test on iOS/Android |
-| Renderer switch loses camera state | Serialize camera before switch; restore after mount |
-| Fit excluding empty columns breaks long sessions | Only exclude columns with zero content nodes |
-| Depth fade on DOM cards hurts readability | Clamp minimum opacity at 0.3; respect reduced-motion |
-| Incremental patch diverges from full rebuild | Round-trip test: patch → apply → equals full rebuild |
-| Force layout non-determinism | Fixed seed; Barnes-Hut theta configurable |
-| Contract v4 breaks consumers | `test:publish` against second host; semver minor for additive |
-| Edge bundling hurts readability on sparse graphs | Enable only when edge density > threshold |
+| `diffByTurn` unavailable in builder | Already in `BuildGraphInput` |
+| Undo stack memory | Cap 50; drop oldest |
+| Mobile touch conflicts | `touch-action: none`; test iOS/Android |
+| Renderer switch loses camera | Serialize before, restore after |
+| Fit excludes wrong columns | Only exclude zero-content columns |
+| Depth fade hurts readability | Min opacity 0.3; reduced-motion |
+| Patch diverges from rebuild | Round-trip law test |
+| Force layout non-deterministic | Fixed seed; configurable theta |
+| Default scorer conflicts with host | Host scorer wins when provided |
+| Contract v4 breaks consumers | Semver minor; `test:publish` gates |
+| Edge bundling clutter on sparse | Enable only when density > threshold |
+| Walk API over-generalizes | Only add what second host consumes |
