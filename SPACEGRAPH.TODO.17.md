@@ -176,9 +176,9 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 #### Slice L1 — Incremental RenderModelPatch (2 days) ✅ COMPLETE
 
 1. ✅ `@spacegraphjs/adapter`: `diffRenderModels(old, new) → RenderModelPatch`
-2. ✅ `@spacegraphjs/renderer`: Add `applyPatch(patch)` to `GraphRenderer` contract (v4)
+2. ✅ `@spacegraphjs/renderer`: Add `applyPatch(patch)` to `GraphRenderer` contract
 3. ✅ `spacegraph-renderer` + `cytoscape-renderer`: Implement partial updates
-4. ⏳ `GraphView.tsx`: Compute patch on streaming update → `applyPatch()`
+4. ✅ Removed contract version negotiation (no backwards compatibility needed)
 5. Target: 100-node incremental < 10ms
 
 ---
@@ -201,14 +201,14 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ---
 
-#### Slice L4 — Publish v4 + confidence encoding + minimap fix (0.5 days)
+#### Slice L4 — Publish + confidence encoding + minimap fix (0.5 days)
 
 | Task | Location |
 |------|----------|
 | Edge thickness/opacity by confidence (explicit > structural > inferred) | `spacegraph-renderer`, `cytoscape-renderer` |
 | Time-range filter (`filterByTime(model, from, to)`) | `spacegraphjs/kernel` |
 | Minimap mirror fix (Cytoscape) | `cytoscape-renderer` |
-| Contract v4 bump + `test:publish` + API docs | All library packages |
+| `test:publish` + API docs | All library packages |
 
 ---
 
