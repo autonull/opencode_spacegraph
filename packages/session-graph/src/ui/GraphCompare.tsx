@@ -1,11 +1,12 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import type { GraphViewData } from "@opencode/session-ui/graph"
+import type { GraphViewData, TurnStats } from "@opencode/session-ui/graph"
 import { For, Show } from "solid-js"
 
 export type GraphCompareChanges = {
   added: ReadonlySet<string>
   removed: ReadonlySet<string>
   changed: ReadonlySet<string>
+  turnStats?: TurnStats[]
 }
 
 /**
@@ -21,9 +22,10 @@ export const GraphCompare = (props: { model: GraphViewData; changes: GraphCompar
   ]
   const label = (id: string) => props.model.nodes.find((node) => node.id === id)?.label ?? id
   const empty = () => props.changes.added.size + props.changes.removed.size + props.changes.changed.size === 0
+  const hasTurnStats = () => (props.changes.turnStats?.length ?? 0) > 0
 
   return (
-    <div data-slot="graph-compare-window" class="p-3">
+    <div data-slot="graph-compare-window" class="p-3 flex flex-col gap-4">
       <Show
         when={!empty()}
         fallback={<div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.compare.empty")}</div>}
@@ -48,6 +50,40 @@ export const GraphCompare = (props: { model: GraphViewData; changes: GraphCompar
             </Show>
           )}
         </For>
+      </Show>
+
+      <Show when={hasTurnStats()}>
+        <div class="border-t border-border-weaker-base pt-3">
+          <div class="text-12-medium text-text-strong mb-2">{i18n.t("ui.sessionGraph.compare.turnStats")}</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-12-regular text-text-base">
+              <thead>
+                <tr class="text-left text-text-weak border-b border-border-weaker-base">
+                  <th class="pb-1 pr-4">{i18n.t("ui.sessionGraph.compare.turn")}</th>
+                  <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.files")}</th>
+                  <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.tools")}</th>
+                  <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.errors")}</th>
+                  <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.retries")}</th>
+                  <th class="pb-1 tabular-nums">{i18n.t("ui.sessionGraph.compare.duration")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={props.changes.turnStats ?? []}>
+                  {(stat) => (
+                    <tr class="border-b border-border-weaker-base/50 last:border-0">
+                      <td class="py-1 pr-4">{i18n.t("ui.sessionGraph.compare.turnNumber", { num: stat.turnNumber })}</td>
+                      <td class="py-1 pr-4 tabular-nums">{stat.filesTouched}</td>
+                      <td class="py-1 pr-4 tabular-nums">{stat.toolsRun}</td>
+                      <td class="py-1 pr-4 tabular-nums text-text-on-critical-base">{stat.errors}</td>
+                      <td class="py-1 pr-4 tabular-nums text-text-on-warning-base">{stat.retries}</td>
+                      <td class="py-1 tabular-nums">{Math.round(stat.durationMs / 1000)}s</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </Show>
     </div>
   )

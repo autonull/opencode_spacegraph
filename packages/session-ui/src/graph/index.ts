@@ -113,12 +113,15 @@ export {
   search,
   searchText,
   sessionProgress,
+  sessionOutline,
+  subagentContributions,
   subtree,
   turnSubgraph,
   why,
   type ChangedFile,
   type Subgraph,
   type TranscriptRef,
+  type TurnStats,
 } from "./selectors"
 
 export { reviewChanges, reviewModel, type ReviewChanges } from "./review"

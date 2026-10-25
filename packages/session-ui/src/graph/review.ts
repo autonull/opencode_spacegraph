@@ -1,11 +1,13 @@
 import { diffKernels } from "@spacegraphjs/kernel"
 import type { GraphViewData } from "./model"
 import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
+import type { TurnStats } from "./selectors"
 
 export type ReviewChanges = {
   added: readonly string[]
   removed: readonly string[]
   changed: readonly string[]
+  turnStats?: TurnStats[]
 }
 
 export const reviewChanges = (before: GraphViewData, after: GraphViewData): ReviewChanges => {

@@ -4,6 +4,8 @@ import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
 import type { EdgeKind, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
+import { diffKernels } from "@spacegraphjs/kernel"
+import { graphModelToKernel } from "./view"
 
 export type Subgraph = {
   nodes: GraphNode[]
@@ -340,35 +342,6 @@ export function openInTranscript(model: GraphViewData, id: string): TranscriptRe
 }
 
 /**
- * How many activities read and wrote each file, and the aggregate diff stats. Only the graph's
- * edges know this: a file node carries its path, not the traffic on it. The card of a file says
- * it, so the reader sees who touched the file and how much it changed without leaving the map.
- */
-export function fileRelations(model: GraphViewData): Map<
-  string,
-  { reads: number; writes: number; additions: number; deletions: number }
-> {
-  const relations = new Map<string, { reads: number; writes: number; additions: number; deletions: number }>()
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "reads" && edge.kind !== "writes") continue
-
-    const current = relations.get(edge.target) ?? { reads: 0, writes: 0, additions: 0, deletions: 0 }
-
-    if (edge.kind === "reads") current.reads++
-    else {
-      current.writes++
-      if (edge.data?.additions) current.additions += edge.data.additions
-      if (edge.data?.deletions) current.deletions += edge.data.deletions
-    }
-
-    relations.set(edge.target, current)
-  }
-
-  return relations
-}
-
-/**
  * All error and retry nodes in the session, in session order with turn context.
  * Returns nodes that represent failures (errors, retries) for the failure digest window.
  */
@@ -441,6 +414,184 @@ const TURN_CHILD_PRIORITY: Partial<Record<NodeKind, number>> = {
   compaction: 9,
   notice: 10,
   reasoning: 11,
+}
+
+/**
+ * Session outline: turns with their phases, for the Unified Find panel.
+ * Returns turns in session order with their phase children.
+ */
+export function sessionOutline(model: GraphViewData): Array<{
+  turnID: string
+  turnLabel: string
+  phases: Array<{ id: string; category: string; label: string }>
+}> {
+  const turnNumbers = new Map(model.turns.map((id, index) => [id, index + 1]))
+  const turnMap = new Map(model.turns.map((id) => [id, nodeByID(model, id)]))
+  const children = childIndex(model)
+
+  return model.turns.map((turnID) => {
+    const turnNode = turnMap.get(turnID)
+    const turnLabel = turnNode?.label ?? `Turn ${turnNumbers.get(turnID)}`
+    const turnChildren = children.get(turnID) ?? []
+    const phases = turnChildren
+      .map((id) => nodeByID(model, id))
+      .filter((node): node is GraphNode => !!node && node.kind === "phase")
+      .map((phase) => ({
+        id: phase.id,
+        category: phase.data?.category as string ?? "unknown",
+        label: phase.label,
+      }))
+
+    return { turnID, turnLabel, phases }
+  })
+}
+
+/**
+ * Subagent contributions: for each subagent node, count descendant files, tools, and nodes.
+ * Used for inspector polish.
+ */
+export function subagentContributions(model: GraphViewData): Map<string, { files: number; tools: number; nodes: number }> {
+  const contributions = new Map<string, { files: number; tools: number; nodes: number }>()
+  const children = childIndex(model)
+  const nodeIndexMap = nodeIndex(model)
+
+  for (const node of model.nodes) {
+    if (node.kind !== "subagent") continue
+
+    const descendantIds = new Set<string>()
+    const queue = [...(children.get(node.id) ?? [])]
+
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      if (descendantIds.has(current)) continue
+      descendantIds.add(current)
+      for (const child of children.get(current) ?? []) queue.push(child)
+    }
+
+    let files = 0
+    let tools = 0
+    let nodes = 0
+
+    for (const id of descendantIds) {
+      const descNode = nodeIndexMap.get(id)
+      if (!descNode) continue
+      nodes++
+      if (descNode.kind === "file") files++
+      if (descNode.kind === "tool") tools++
+    }
+
+    contributions.set(node.id, { files, tools, nodes })
+  }
+
+  return contributions
+}
+
+/**
+ * File relations with totalActivity = reads + writes.
+ * Extended for inspector hot-file ranking.
+ */
+export function fileRelations(model: GraphViewData): Map<
+  string,
+  { reads: number; writes: number; additions: number; deletions: number; totalActivity: number }
+> {
+  const relations = new Map<string, { reads: number; writes: number; additions: number; deletions: number }>()
+
+  for (const edge of model.edges) {
+    if (edge.kind !== "reads" && edge.kind !== "writes") continue
+
+    const current = relations.get(edge.target) ?? { reads: 0, writes: 0, additions: 0, deletions: 0 }
+
+    if (edge.kind === "reads") current.reads++
+    else {
+      current.writes++
+      if (edge.data?.additions) current.additions += edge.data.additions
+      if (edge.data?.deletions) current.deletions += edge.data.deletions
+    }
+
+    relations.set(edge.target, current)
+  }
+
+  // Add totalActivity
+  const result = new Map<string, { reads: number; writes: number; additions: number; deletions: number; totalActivity: number }>()
+  for (const [id, rel] of relations) {
+    result.set(id, { ...rel, totalActivity: rel.reads + rel.writes })
+  }
+
+  return result
+}
+
+export type TurnStats = {
+  turnID: string
+  turnNumber: number
+  filesTouched: number
+  toolsRun: number
+  errors: number
+  retries: number
+  durationMs: number
+}
+
+/**
+ * Extended reviewChanges with per-turn stats for the Compare window.
+ */
+export function reviewChanges(before: GraphViewData, after: GraphViewData): {
+  added: readonly string[]
+  removed: readonly string[]
+  changed: readonly string[]
+  turnStats: TurnStats[]
+} {
+  const diff = diffKernels(graphModelToKernel(before), graphModelToKernel(after))
+  const baseChanges = {
+    added: diff.nodes.added.map((node) => node.id),
+    removed: diff.nodes.removed.map((node) => node.id),
+    changed: diff.nodes.changed.map((change) => change.id),
+  }
+
+  // Compute per-turn stats
+  const turnStats: TurnStats[] = []
+  const beforeTurns = new Map(before.turns.map((id, index) => [id, index]))
+  const afterTurns = new Map(after.turns.map((id, index) => [id, index]))
+  const allTurns = new Set([...before.turns, ...after.turns])
+
+  for (const turnID of allTurns) {
+    const beforeTurnEntry = beforeTurns.get(turnID)
+    const afterTurnEntry = afterTurns.get(turnID)
+    const beforeTurn = beforeTurnEntry !== undefined ? beforeTurnEntry : -1
+    const afterTurn = afterTurnEntry !== undefined ? afterTurnEntry : -1
+
+    // If turn exists in both, compute stats
+    if (beforeTurn !== -1 && afterTurn !== -1) {
+      const turnNodes = before.nodes.filter((n) => n.turnID === turnID)
+      const filesTouched = new Set<string>()
+      let toolsRun = 0
+      let errors = 0
+      let retries = 0
+      let minTime = Infinity
+      let maxTime = -Infinity
+
+      for (const node of turnNodes) {
+        if (node.kind === "file" && node.data?.path) filesTouched.add(node.data.path as string)
+        if (node.kind === "tool") toolsRun++
+        if (node.kind === "error") errors++
+        if (node.kind === "retry") retries++
+        if (node.time) {
+          minTime = Math.min(minTime, node.time)
+          maxTime = Math.max(maxTime, node.time)
+        }
+      }
+
+      turnStats.push({
+        turnID,
+        turnNumber: beforeTurn + 1,
+        filesTouched: filesTouched.size,
+        toolsRun,
+        errors,
+        retries,
+        durationMs: maxTime > minTime ? maxTime - minTime : 0,
+      })
+    }
+  }
+
+  return { ...baseChanges, turnStats }
 }
 
 /**

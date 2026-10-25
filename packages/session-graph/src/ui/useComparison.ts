@@ -1,5 +1,5 @@
 import { createSignal, createMemo } from "solid-js"
-import { scopeToTurns, reviewChanges, type GraphViewData } from "@opencode/session-ui/graph"
+import { scopeToTurns, reviewChanges, type GraphViewData, type TurnStats } from "@opencode/session-ui/graph"
 
 export type ComparisonChanges = {
   added: ReadonlySet<string>
@@ -7,6 +7,7 @@ export type ComparisonChanges = {
   changed: ReadonlySet<string>
   counts: { added: number; removed: number; changed: number }
   label: "turns" | "parked"
+  turnStats?: TurnStats[]
 }
 
 export type UseComparisonOptions = {
@@ -38,10 +39,9 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
   const comparison = createMemo(() => {
     const pair = comparedTurns()
     if (pair) {
-      const changes = reviewChanges(
-        scopeToTurns(options.model(), new Set([pair[0]])),
-        scopeToTurns(options.model(), new Set([pair[1]])),
-      )
+      const before = scopeToTurns(options.model(), new Set([pair[0]]))
+      const after = scopeToTurns(options.model(), new Set([pair[1]]))
+      const changes = reviewChanges(before, after)
       return {
         added: new Set(changes.added),
         removed: new Set(changes.removed),
@@ -51,6 +51,7 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
           removed: changes.removed.length,
           changed: changes.changed.length,
         },
+        turnStats: changes.turnStats,
         label: "turns" as const,
       }
     }
@@ -60,7 +61,8 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
     if (checkpoint === undefined || options.turnCount === undefined) return undefined
     if (checkpoint >= turns.length - 1 || checkpoint < 0) return undefined
     const parked = scopeToTurns(live, new Set(turns.slice(0, checkpoint + 1)))
-    const changes = reviewChanges(parked, scopeToTurns(live, new Set(turns)))
+    const current = scopeToTurns(live, new Set(turns))
+    const changes = reviewChanges(parked, current)
     return {
       added: new Set(changes.added),
       removed: new Set(changes.removed),
@@ -70,6 +72,7 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
         removed: changes.removed.length,
         changed: changes.changed.length,
       },
+      turnStats: changes.turnStats,
       label: "parked" as const,
     }
   })

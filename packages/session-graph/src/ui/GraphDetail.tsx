@@ -5,11 +5,13 @@ import {
   capabilitiesFromSnapshot,
   childIndex,
   filterActionsByCapabilities,
+  fileRelations,
+  subagentContributions,
   type ActionSpec,
 } from "@opencode/session-ui/graph"
 import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { For, Show, createSignal, type JSX } from "solid-js"
+import { For, Show, createSignal, createMemo, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
@@ -23,6 +25,38 @@ const STATUS_TONE: Record<GraphNode["status"], string> = {
   failed: "text-text-on-critical-base",
   interrupted: "text-text-on-warning-base",
   neutral: "text-text-weak",
+}
+
+/**
+ * JSON display with expand/collapse for long content.
+ */
+function JSONDisplay(props: { data: unknown }) {
+  const i18n = useI18n()
+  const [expanded, setExpanded] = createSignal(false)
+  const jsonString = createMemo(() => JSON.stringify(props.data, null, 2))
+  const isLong = createMemo(() => jsonString().length > 500 || jsonString().split("\n").length > 10)
+
+  return (
+    <Show when={isLong()}>
+      <div class="mt-1">
+        <button
+          type="button"
+          class="text-11-regular text-text-weak hover:text-text-base"
+          onClick={() => setExpanded(!expanded())}
+        >
+          {expanded() ? i18n.t("ui.sessionGraph.inspector.collapse") : i18n.t("ui.sessionGraph.inspector.expand")}
+        </button>
+        <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono text-text-base whitespace-pre-wrap break-words">
+          {expanded() ? jsonString() : jsonString().split("\n").slice(0, 10).join("\n") + (jsonString().split("\n").length > 10 ? "\n..." : "")}
+        </pre>
+      </div>
+      <Show when={!isLong()}>
+        <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono text-text-base">
+          {jsonString()}
+        </pre>
+      </Show>
+    </Show>
+  )
 }
 
 type Connection = { edge: GraphEdge; other: GraphNode; direction: "in" | "out" }
@@ -288,6 +322,19 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         return null
       })()}
 
+      {props.node.kind === "file" && (() => {
+        const relations = fileRelations(props.model)
+        const relation = relations.get(props.node.id)
+        if (relation && relation.totalActivity > 0) {
+          return (
+            <div class="mt-2 inline-flex items-center gap-1 rounded-sm bg-info-weaker px-2 py-0.5 text-10-medium text-info-base">
+              {i18n.t("ui.sessionGraph.inspector.activityRank", { rank: relation.totalActivity })}
+            </div>
+          )
+        }
+        return null
+      })()}
+
       {props.node.kind === "directory" && (() => {
         const node = props.node
         const children = childIndex(props.model).get(node.id) ?? []
@@ -364,6 +411,31 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         )
       })()}
 
+      {props.node.kind === "subagent" && (() => {
+        const contributions = subagentContributions(props.model)
+        const contrib = contributions.get(props.node.id)
+        if (!contrib) return null
+        return (
+          <div class="mt-3">
+            <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.subagentContributions")}</div>
+            <dl class="mt-1 flex flex-col gap-1">
+              <div class="grid grid-cols-[7rem_1fr] gap-2">
+                <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.files")}</dt>
+                <dd class="text-12-regular text-text-base">{contrib.files}</dd>
+              </div>
+              <div class="grid grid-cols-[7rem_1fr] gap-2">
+                <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.tools")}</dt>
+                <dd class="text-12-regular text-text-base">{contrib.tools}</dd>
+              </div>
+              <div class="grid grid-cols-[7rem_1fr] gap-2">
+                <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.nodes")}</dt>
+                <dd class="text-12-regular text-text-base">{contrib.nodes}</dd>
+              </div>
+            </dl>
+          </div>
+        )
+      })()}
+
       <Show when={flag(data()?.replayed)}>
         <div class="mt-2 grid grid-cols-[7rem_1fr] gap-2" data-slot="graph-inspector-field">
           <dt class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.replayed")}</dt>
@@ -395,10 +467,10 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
 
       <Show when={data()?.input !== undefined}>
         <div class="mt-3">
-          <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.input")}</div>
-          <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono text-text-base">
-            {JSON.stringify(data()?.input, null, 2)}
-          </pre>
+          <div class="flex items-center justify-between">
+            <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.input")}</div>
+            <JSONDisplay data={data()?.input} />
+          </div>
         </div>
       </Show>
 

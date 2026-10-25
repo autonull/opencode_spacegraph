@@ -770,7 +770,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
 
   /** A1/B1/C1 — the reader's questions, beside the search. */
   const commandsControl = () => {
-    const ask = (name: "why" | "led-here" | "related" | "compare" | "note" | "facets" | "failureProgress") => {
+    const ask = (name: "why" | "led-here" | "related" | "compare" | "note" | "facets" | "failureProgress" | "find") => {
       if (props.dispatchCommand) {
         props.dispatchCommand(name)
         return
@@ -778,7 +778,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       window.dispatchEvent(new CustomEvent("graph:command", { detail: { name } }))
     }
     const question = (
-      name: "why" | "led-here" | "related" | "compare" | "note" | "facets" | "failureProgress",
+      name: "why" | "led-here" | "related" | "compare" | "note" | "facets" | "failureProgress" | "find",
       label: string,
     ) =>
       option({
@@ -801,6 +801,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         {question("note", i18n.t("ui.sessionGraph.questions.note"))}
         {question("facets", i18n.t("ui.sessionGraph.questions.facets"))}
         {question("failureProgress", i18n.t("ui.sessionGraph.questions.failureProgress"))}
+        {question("find", i18n.t("ui.sessionGraph.questions.find"))}
       </ToolbarMenu>
     )
   }

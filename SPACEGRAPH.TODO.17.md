@@ -131,32 +131,32 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ---
 
-#### Slice 7 — Unified Find panel (1 day)
+#### Slice 7 — Unified Find panel (1 day) ✅ COMPLETE
 
 **One panel** (opened from toolbar search):
 - Search input with ranked results
 - Kind/status filter chips (from facets)
 - Session outline: turns with phases, click to jump
 - All in one `GraphWindow` kind="find"
-- Reuses: `rankedSearch`, `facets`, `sessionOutline`, `turnRows`
+- Reuses: `rankedSearch`, `facets`, `sessionOutline`, `turnRows` ✅
 
 ---
 
-#### Slice 8 — Inspector polish (0.5 days)
+#### Slice 8 — Inspector polish (0.5 days) ✅ COMPLETE
 
 **In `GraphInspector` / `GraphDetail`:**
-- Pretty-print tool input (JSON syntax highlight), expand/collapse long output
-- When inspecting `subagent` node: show contribution stats (files, tools, nodes)
-- When inspecting `file` node: show activity rank (from `fileRelations.totalActivity`)
-- Reuses: `subagentContributions()`, `fileRelations()` — just aggregate in inspector
+- Pretty-print tool input (JSON syntax highlight), expand/collapse long output ✅
+- When inspecting `subagent` node: show contribution stats (files, tools, nodes) ✅
+- When inspecting `file` node: show activity rank (from `fileRelations.totalActivity`) ✅
+- Reuses: `subagentContributions()`, `fileRelations()` — just aggregate in inspector ✅
 
 ---
 
-#### Slice 9 — Compare stats (0.5 days)
+#### Slice 9 — Compare stats (0.5 days) ✅ COMPLETE
 
 **In `GraphCompare` window:**
-- Add stats table beside node diff: files touched, tools run, errors, duration per turn
-- Reuses: extended `reviewChanges` with per-turn stats
+- Add stats table beside node diff: files touched, tools run, errors, duration per turn ✅
+- Reuses: extended `reviewChanges` with per-turn stats ✅
 
 ---
 
@@ -319,10 +319,10 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | 14 | Mobile viewport works | 390px: map-only, touch pan/zoom, drawer inspector | ✅
 | 15 | Visual polish complete | Depth fade on DOM cards | ✅ (host) |
 | 16 | Failure+progress window | "What failed?" → list + progress header; click → trace | ✅
-| 17 | Unified Find panel | Search + filters + outline in one window |
-| 18 | Inspector pretty I/O | Tool input syntax highlighted; expand/collapse works |
-| 19 | Inspector subagent/hot-file | Subagent node → stats; file node → activity rank |
-| 20 | Compare stats table | Compare window → per-turn stats table |
+| 17 | Unified Find panel | Search + filters + outline in one window | ✅
+| 18 | Inspector pretty I/O | Tool input syntax highlighted; expand/collapse works | ✅
+| 19 | Inspector subagent/hot-file | Subagent node → stats; file node → activity rank | ✅
+| 20 | Compare stats table | Compare window → per-turn stats table | ✅
 | 21 | Quality gate passes | axe-core; reduced motion; RTL; shortcuts; perf budgets |
 | 22 | Walk API works | Second host demo traverses fixture deterministically |
 | 23 | Incremental patch < 10ms | Perf benchmark passes |

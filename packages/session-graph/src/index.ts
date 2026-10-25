@@ -21,6 +21,7 @@ export { GraphBreadcrumbs, type GraphBreadcrumbsProps } from "./ui/GraphBreadcru
 export { GraphDiffView, type GraphDiff, type GraphDiffSource } from "./ui/GraphDiff"
 export { GraphFileRail, type GraphFileRailProps } from "./ui/GraphFileRail"
 export { GraphInspector, type GraphInspectorProps } from "./ui/GraphInspector"
+export { GraphFind, type GraphFindProps } from "./ui/GraphFind"
 export { GraphSearch, type GraphSearchProps } from "./ui/GraphSearch"
 export { GraphToolbar, type GraphToolbarProps } from "./ui/GraphToolbar"
 export { GraphView, type GraphViewProps } from "./ui/GraphView"

@@ -95,6 +95,7 @@ import { GraphPeek } from "./GraphPeek"
 import { GraphNoteComposer } from "./GraphNoteComposer"
 import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
+import { GraphFind } from "./GraphFind"
 import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
@@ -563,6 +564,7 @@ export const GraphView = (props: GraphViewProps) => {
       }
       if (name === "note") notes.openNoteComposer()
       if (name === "failureProgress") openWindow("failureProgress")
+      if (name === "find") openWindow("find")
     }
     window.addEventListener("graph:command", handleCommand)
     onCleanup(() => window.removeEventListener("graph:command", handleCommand))
@@ -1187,6 +1189,19 @@ export const GraphView = (props: GraphViewProps) => {
           />
         )
       },
+    },
+    {
+      name: "find",
+      title: () => i18n.t("ui.sessionGraph.find.title"),
+      render: () => (
+        <GraphFind
+          model={model()}
+          facets={facets()}
+          onFacetsChange={setFacets}
+          onSelect={(node) => selection.select(node.id)}
+          onClose={() => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.kind !== "find"))}
+        />
+      ),
     },
   ])
 
