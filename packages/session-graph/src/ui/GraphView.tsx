@@ -319,6 +319,8 @@ export const GraphView = (props: GraphViewProps) => {
   // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
   // committing to one.
   const [galleryOpen, setGalleryOpen] = createSignal(false)
+  // Quality Gate: initial tab for Find window (Shift+O = outline, Alt+F = filters)
+  const [findInitialTab, setFindInitialTab] = createSignal<"search" | "filters" | "outline">("search")
 
   // Hooks for modular state/logic
   const trace = useTraceOverlay({
@@ -568,6 +570,36 @@ export const GraphView = (props: GraphViewProps) => {
     }
     window.addEventListener("graph:command", handleCommand)
     onCleanup(() => window.removeEventListener("graph:command", handleCommand))
+
+    // Global keyboard shortcuts for Quality Gate
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs
+      const target = event.target as HTMLElement
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return
+
+      // Shift+F: Open Failure+Progress window
+      if (event.key === "F" && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault()
+        openWindow("failureProgress")
+        return
+      }
+      // Shift+O: Open Find panel and switch to outline tab
+      if (event.key === "O" && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault()
+        setFindInitialTab("outline")
+        openWindow("find")
+        return
+      }
+      // Alt+F: Open Find panel and switch to filters tab
+      if (event.key === "f" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault()
+        setFindInitialTab("filters")
+        openWindow("find")
+        return
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKeyDown)
+    onCleanup(() => window.removeEventListener("keydown", handleGlobalKeyDown))
   })
 
   // The canvas region's size, for the same reason: the card tier is measured in screen pixels, and
@@ -1200,6 +1232,7 @@ export const GraphView = (props: GraphViewProps) => {
           onFacetsChange={setFacets}
           onSelect={(node) => selection.select(node.id)}
           onClose={() => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.kind !== "find"))}
+          initialTab={findInitialTab()}
         />
       ),
     },

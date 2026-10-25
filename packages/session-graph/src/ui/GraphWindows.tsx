@@ -60,15 +60,60 @@ const GraphWindowItem = (props: {
 }) => {
   const i18n = useI18n()
   let element!: HTMLDivElement
+  let focusTrapCleanup: (() => void) | undefined
+
+  // Focus trap for the window - keeps focus within the window when open
+  const setupFocusTrap = (el: HTMLDivElement) => {
+    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    const getFocusableElements = () => Array.from(el.querySelectorAll<HTMLElement>(focusableSelector))
+      .filter((el) => el.offsetWidth > 0 || el.offsetHeight > 0)
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return
+      const focusable = getFocusableElements()
+      if (focusable.length === 0) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation()
+        props.onClose()
+      }
+    }
+
+    el.addEventListener("keydown", handleKeyDown)
+    el.addEventListener("keydown", handleEscape, { capture: true })
+
+    // Focus the first focusable element when window opens
+    const focusable = getFocusableElements()
+    if (focusable.length > 0) {
+      focusable[0].focus()
+    }
+
+    return () => {
+      el.removeEventListener("keydown", handleKeyDown)
+      el.removeEventListener("keydown", handleEscape, { capture: true })
+    }
+  }
 
   onMount(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      event.stopPropagation()
-      props.onClose()
-    }
-    element.addEventListener("keydown", onKeyDown, { capture: true })
-    onCleanup(() => element.removeEventListener("keydown", onKeyDown, { capture: true }))
+    focusTrapCleanup = setupFocusTrap(element)
+    onCleanup(() => focusTrapCleanup?.())
   })
 
   return (
@@ -83,7 +128,7 @@ const GraphWindowItem = (props: {
       tabindex="0"
       class="pointer-events-auto absolute flex flex-col overflow-hidden rounded-md border border-border-weaker-base bg-surface-base shadow-lg outline-none"
       style={{
-        left: `${props.placement().left}px`,
+        "inset-inline-start": `${props.placement().left}px`,
         top: `${props.placement().top}px`,
         width: `${props.window.width}px`,
         height: `${props.window.height}px`,
@@ -108,7 +153,7 @@ const GraphWindowItem = (props: {
       </div>
       <div
         data-slot="graph-window-resize"
-        class="absolute bottom-0 end-0 h-3 w-3 cursor-se-resize"
+        class="absolute bottom-0 inset-inline-end-0 h-3 w-3 cursor-se-resize"
         onPointerDown={props.onResize}
       />
     </div>
@@ -145,9 +190,14 @@ export const GraphWindows = (props: GraphWindowsProps) => {
     const handle = event.currentTarget as HTMLElement
     handle.setPointerCapture(event.pointerId)
 
+    // Detect RTL for logical property handling
+    const isRTL = document.documentElement.dir === "rtl"
+
     const move = (moveEvent: PointerEvent) => {
-      const dx = moveEvent.clientX - originX
+      let dx = moveEvent.clientX - originX
       const dy = moveEvent.clientY - originY
+      // In RTL, horizontal drag is inverted: moving right decreases inset-inline-start
+      if (isRTL) dx = -dx
       if (mode === "move") {
         const bounds = props.bounds()
         update(id, {

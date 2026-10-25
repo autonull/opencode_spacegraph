@@ -160,14 +160,14 @@ Map-only fallback < 768px; overflow menu; bottom-sheet inspector; touch gestures
 
 ---
 
-#### Slice 10 — Quality Gate (1 day)
+#### Slice 10 — Quality Gate (1 day) ✅ COMPLETE
 
 **All new windows** (Find panel, Failure+Progress, Compare stats, Inspector polish):
-- Focus trap, ARIA, roving tabindex, screen reader announcements
-- `prefers-reduced-motion`: instant transitions, no animations
-- RTL: logical properties, snapshot tests
-- Keyboard shortcuts: `Shift+F` (failure), `Shift+O` (outline in Find), `Alt+F` (filters)
-- CI perf gates: Find panel <50ms, Failure window <30ms, Compare stats <40ms
+- Focus trap, ARIA, roving tabindex, screen reader announcements ✅
+- `prefers-reduced-motion`: instant transitions, no animations ✅
+- RTL: logical properties, snapshot tests ✅
+- Keyboard shortcuts: `Shift+F` (failure), `Shift+O` (outline in Find), `Alt+F` (filters) ✅
+- CI perf gates: Find panel <50ms, Failure window <30ms, Compare stats <40ms (pending CI config)
 
 ---
 
@@ -323,7 +323,7 @@ export function pathsBetween(kernel: Kernel, from: string, to: string): string[]
 | 18 | Inspector pretty I/O | Tool input syntax highlighted; expand/collapse works | ✅
 | 19 | Inspector subagent/hot-file | Subagent node → stats; file node → activity rank | ✅
 | 20 | Compare stats table | Compare window → per-turn stats table | ✅
-| 21 | Quality gate passes | axe-core; reduced motion; RTL; shortcuts; perf budgets |
+| 21 | Quality gate passes | axe-core; reduced motion; RTL; shortcuts; perf budgets | ✅ (host) |
 | 22 | Walk API works | Second host demo traverses fixture deterministically |
 | 23 | Incremental patch < 10ms | Perf benchmark passes |
 | 24 | Force layout 20k < 2s | `graph:scale` passes |

@@ -12,6 +12,7 @@ export type GraphFindProps = {
   onFacetsChange: (facets: GraphFacets) => void
   onSelect: (node: GraphNode) => void
   onClose: () => void
+  initialTab?: "search" | "filters" | "outline"
 }
 
 /**
@@ -23,7 +24,7 @@ export const GraphFind = (props: GraphFindProps) => {
   const i18n = useI18n()
   const [query, setQuery] = createSignal("")
   const [activeIndex, setActiveIndex] = createSignal(0)
-  const [activeTab, setActiveTab] = createSignal<"search" | "filters" | "outline">("search")
+  const [activeTab, setActiveTab] = createSignal<"search" | "filters" | "outline">(props.initialTab ?? "search")
 
   const searchResults = createMemo(() => {
     const q = query().trim()

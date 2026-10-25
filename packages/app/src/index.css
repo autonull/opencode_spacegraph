@@ -143,11 +143,23 @@
     [data-slot="session-review-content"],
     [data-slot="session-side-region-presence"],
     [data-slot="session-side-region-presence"] #review-panel,
-    [data-component="terminal-panel"] {
+    [data-component="terminal-panel"],
+    [data-component="session-graph-view"],
+    [data-component="session-graph-toolbar"],
+    [data-component="session-graph-window"],
+    [data-component="session-graph-find"],
+    [data-component="session-graph-inspector"],
+    [data-slot="graph-failure-progress"],
+    [data-slot="graph-compare-window"] {
       animation: none !important;
     }
 
-    [data-slot="session-review-content"] {
+    [data-slot="session-review-content"],
+    [data-slot="graph-find"],
+    [data-slot="graph-failure-progress"],
+    [data-slot="graph-compare-window"],
+    [data-slot="graph-inspector"],
+    [data-slot="graph-window"] {
       transition: none !important;
     }
   }
