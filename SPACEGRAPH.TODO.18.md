@@ -3,7 +3,7 @@
 ## Status (2026-10-26)
 - **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui: 529)
 - **Typecheck**: ✅ All passing (session-graph, session-ui)
-- **Component tests**: ⚠️ session-graph: graph init timing issue (renderer not mounting in Storybook), session-ui passing
+- **Component tests**: ⚠️ session-graph: 53 passing, 14 failing (layout/infrastructure issues), session-ui passing
 - **E2E tests**: ⚠️ Graph module not loading in Playwright
 - **Screenshots**: ⚠️ Same E2E infrastructure issue
 - **SpaceGraphJS**: ✅ All packages build, tests pass, publish check passes
@@ -419,32 +419,114 @@ Upstream sync → Shareable delivery
 
 ## Next Immediate Steps
 
-1. **Component/E2E Test Fixes (7.1–7.2)** - Fix test infrastructure:
-   - Fix graph initialization timing in component tests (renderer now mounts, but fit/zoom timing needs stabilization)
-   - Fix Storybook state bleed between component tests
-   - Debug Graph module loading in Playwright (E2E)
-   - Target: All component and e2e tests pass reliably
+### 1. Component Test Fixes (7.1) — Priority Order
 
-2. **Root cause for component test failures (14 failing, 53 passing):**
-   - **Layout overlaps (graph-bands, graph-states)**: SpaceGraphJS layout algorithm produces overlapping cards/headers - not a timing issue, but a core layout bug
-   - **3D depth treatment (graph-3d, graph-motion)**: Headless CI lacks WebGL context for perspective camera tests
-   - **Test isolation (graph-windows, graph-toolbar, graph-equalizer)**: Storybook state bleed between tests
-   - **Cytoscape capture (graph-capture)**: Cytoscape adapter issues in test environment
-   - **Minimap (graph-minimap)**: Shared viewport infrastructure not fully working
+**A. Layout Overlaps (graph-bands, graph-states)** — Core SpaceGraphJS Bug
+- Root cause: SpaceGraphJS `laneAnchors` / `layoutGraph` places band headers and cards with overlapping bounding boxes
+- Files to investigate: `spacegraphjs/src/layout/LaneLayout.ts`, `spacegraphjs/src/plugins/layouts/BaseLayout.ts`
+- Fix: Add padding/margin to band headers so they don't overlap member cards
+- Test: `bun run test:components --project=components component-tests/graph-bands.spec.ts`
 
-### Fixed This Session
-- **GraphView renderer connection**: The `renderer` variable was declared but never assigned. Fixed by:
-  - Converting to a signal (`createSignal<GraphRenderer | undefined>()`)
-  - Passing `onRenderer={setRenderer}` to GraphCanvasRegion
-  - Updating `useGraphViewport` to use the renderer signal
-  - Fixing all call sites to use `renderer()` instead of `renderer`
-- **Zoom reactivity**: Made `zoomPercent` a memo tracking the viewport signal
-- **Capabilities propagation**: Passed capabilities signal to `useGraphViewport` for proper zoom limits
-- **Layout completion event**: Added `layoutApplied` event forwarding from SpaceGraphJS core through renderer contract to GraphCanvas
-- **TypeScript errors**: Fixed all type errors from signal conversion
+**B. 3D Depth Treatment (graph-3d, graph-motion)** — CI Infrastructure
+- Root cause: Headless CI (Playwright Chromium) lacks proper WebGL context for perspective camera
+- Workaround: Skip 3D tests in CI, or use `xvfb-run` with proper GPU acceleration
+- Files: `packages/session-graph/component-tests/graph-3d.spec.ts`, `graph-motion.spec.ts`
+- Test: `bun run test:components --project=components component-tests/graph-3d.spec.ts`
 
-### Verification
-- ✅ Unit tests: 116 passing
-- ✅ Typecheck: passing
-- ✅ Component test progress: 53 passing, 14 failing (pre-existing layout/infrastructure issues)
-- ✅ Zoom reactivity: Verified working (readout changes from 100% → 183% on zoom click)
+**C. Test Isolation / State Bleed (graph-windows, graph-toolbar, graph-equalizer, graph-detail, graph-minimap, graph-capture)**
+- Root cause: Storybook doesn't fully reset between tests; global state persists
+- Fix options:
+  1. Add `reuseBrowser: false` to Playwright config (slower but isolated)
+  2. Add explicit cleanup in `onCleanup` / test `afterEach` hooks
+  3. Use unique story IDs per test run
+- Config: `packages/session-graph/playwright.components.config.ts`
+- Test: Run failing tests in isolation vs parallel to confirm
+
+**D. Cytoscape Adapter (graph-capture)**
+- Root cause: Cytoscape renderer fails to mount/capture in test environment
+- Files: `packages/session-graph/src/canvas/renderer-registry.ts`, `spacegraphjs/packages/cytoscape-renderer`
+- Test: `bun run test:components --project=components component-tests/graph-capture.spec.ts`
+
+### 2. E2E Test Fixes (7.2)
+- Graph module not loading in Playwright (`data-graph-ready` never "true")
+- Debug lazy loading / Suspense boundary in app
+- Target: All 44 e2e/graph tests pass
+- Run: `bun run test:e2e --filter=graph` from `packages/app`
+
+### 3. Screenshot Generation (7.3)
+```bash
+bun run graph:capture --mode=compare  # Regenerate
+bun run graph:capture --mode=verify   # Assert committed set
+```
+- 31 frames across 5 layouts × 4 depths × contexts
+- Commit updated screenshots if intentional changes
+
+### 4. Performance Budget (7.4)
+```bash
+bun run graph:scale  # Must stay < 400ms for 5001 messages
+```
+
+---
+
+## Fixed This Session (Ready for Commit)
+
+### GraphView Renderer Connection (Critical Fix)
+- **Problem**: `renderer` variable declared but never assigned — `useGraphViewport` received `undefined`
+- **Fix**: 
+  1. Convert to signal: `const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()`
+  2. Pass `onRenderer={setRenderer}` to GraphCanvasRegion
+  3. Update `useGraphViewport` to accept renderer signal and capabilities
+  4. Fix all call sites: `renderer` → `renderer()`
+- **Files**: `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/useGraphViewport.ts`, `packages/session-graph/src/ui/GraphCanvasRegion.tsx`
+- **Verified**: Zoom readout changes 100% → 183% on click
+
+### Zoom Reactivity
+- **Problem**: `zoomPercent` passed as static value, not reactive
+- **Fix**: `const zoomPercent = createMemo(() => viewportTracker!.camera.zoomPercent())`
+- **File**: `packages/session-graph/src/ui/GraphView.tsx`
+
+### Layout Completion Event (New Infrastructure)
+- **Added**: `layoutApplied` event to `@spacegraphjs/renderer` contract
+- **Forwarded**: From SpaceGraph core (`layout:applied`) through `spacegraph-renderer` → `GraphCanvas` → `GraphView` harness
+- **Files**: `spacegraphjs/packages/renderer/src/index.ts`, `spacegraphjs/packages/spacegraph-renderer/src/index.ts`, `packages/session-graph/src/canvas/GraphCanvas.tsx`, `packages/session-graph/src/ui/GraphView.stories.tsx`, `packages/session-graph/src/canvas/GraphCanvas.stories.tsx`
+- **Test Updated**: `packages/session-graph/component-tests/graph-bands.spec.ts` waits for layoutApplied before measuring
+
+### TypeScript Errors Fixed
+- All signal conversion errors resolved
+- Story harness type definitions updated
+
+---
+
+## Verification Checklist for Fresh Session
+
+```bash
+# Unit tests
+cd packages/session-graph && bun test src          # → 116 pass
+cd packages/session-ui && bun test src             # → 529 pass
+
+# Typecheck
+cd packages/session-graph && bun run typecheck     # → pass
+cd packages/session-ui && bun run typecheck        # → pass
+
+# Component tests (expect 53 pass, 14 fail)
+cd packages/session-graph && bun run test:components
+
+# E2E tests (expect failures)
+cd packages/app && bun run test:e2e --filter=graph
+
+# SpaceGraphJS
+cd spacegraphjs && pnpm run build && pnpm test     # → all pass
+```
+
+---
+
+## Key Files to Resume Work
+
+| Area | Files |
+|------|-------|
+| Layout algorithm | `spacegraphjs/src/layout/LaneLayout.ts`, `spacegraphjs/src/plugins/layouts/BaseLayout.ts` |
+| Component test config | `packages/session-graph/playwright.components.config.ts`, `packages/storybook/playwright/config.ts` |
+| Renderer contract | `spacegraphjs/packages/renderer/src/index.ts` |
+| GraphCanvas events | `packages/session-graph/src/canvas/GraphCanvas.tsx` |
+| View harness | `packages/session-graph/src/ui/GraphView.stories.tsx` |
+| Failing tests | `packages/session-graph/component-tests/graph-bands.spec.ts`, `graph-3d.spec.ts`, `graph-windows.spec.ts`, etc. |
