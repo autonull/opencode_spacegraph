@@ -1,577 +1,156 @@
-# SPACEGRAPH.TODO.18.md — Definitive Closing Plan
+# SPACEGRAPH.TODO.18.md — State of record: verified state and completed work
 
-## Status (2026-10-26)
-- **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui: 529)
-- **Typecheck**: ✅ All passing (session-graph, session-ui)
-- **Component tests**: ⚠️ session-graph: 53 passing, 14 failing (layout/infrastructure issues), session-ui passing
-- **E2E tests**: ⚠️ Graph module not loading in Playwright
-- **Screenshots**: ⚠️ Same E2E infrastructure issue
-- **SpaceGraphJS**: ✅ All packages build, tests pass, publish check passes
+> **This file is not the plan.** Remaining work lives in `SPACEGRAPH.TODO.19.md`.
+> Here: what is verifiably true today, what was completed and how it was verified, and the diagnostic
+> evidence behind the open defects. Anything forward-looking in an earlier revision of this file has
+> moved to TODO.19.
 
 ---
 
-## Completed This Session
+## 1. Ground truth (re-verified 2026-10-26, clean tree)
 
-### ✅ 1. Keyboard Handling Extraction (Completed)
-- **File**: `packages/session-graph/src/ui/useGraphKeyboard.ts` (new)
-- Extracted ~100 lines of keyboard handling from GraphView.tsx
-- Separates global shortcuts (Quality Gate: `F`, `Shift+O`, `Alt+f`) from canvas-region shortcuts
-- Makes keyboard logic testable and reusable
+Branch `upstream-sync-1025`, fork tip `5c3093546c`.
 
-### ✅ 2. Adapter Simplification (Completed)
-- **File**: `packages/session-graph/src/canvas/sessionGraphAdapter.ts`
-- Removed `CytoscapeSessionAdapter` subclass (23 lines)
-- Made `cardBudget` configurable via constructor parameter
-- Both adapters now use same `SessionGraphAdapter` class with different budget configs
+| Check | Result | Command |
+|---|---|---|
+| session-graph unit | ✅ **116 pass** (398 ms, 973 assertions, 10 files) | `cd packages/session-graph && bun test src` |
+| session-ui unit | ✅ **529 pass** (1.97 s, 4,144 assertions, 47 files) | `cd packages/session-ui && bun test src` |
+| Typecheck | ✅ clean (session-graph `tsc -b`; session-ui 288 files) | per-package `bun run typecheck` |
+| Component suite | ⚠️ **53 pass / 14 fail** (2.8 min, 1 worker, no retries locally) | `cd packages/session-graph && bun run test:components` |
+| E2E critical path | ✅ **passes** — `session-graph.spec.ts:85` green in 9.6 s | `cd packages/app && bun run test:e2e -- e2e/graph/session-graph.spec.ts:85` |
+| Performance | ✅ **238.5 ms** pipeline at 5,001 msgs / 20,005 nodes / 36,673 edges — model 99.4 · layout 64.3 · render 74.8 (budget < 400 ms) | `bun run graph:scale` |
+| SpaceGraphJS tree | ✅ clean, `main` @ `6587d32`, builds + 536 vitest + 109 kernel + `test:publish` green (prior session) | `cd spacegraphjs && pnpm run build && pnpm test` |
+| Upstream divergence | upstream `dev` @ `e31647d68e`; merge-base `08ac673ab8`; **upstream +455 / fork +306**; **39 files changed on both sides** | `git fetch upstream dev; git rev-list --left-right --count upstream/dev...HEAD` |
+| App surface | **+2,009 / −42 over 30 files** in `packages/app/src`; 10 new files (1,243 added lines), 20 upstream-owned (≈766) | `git diff 08ac673ab8..HEAD --stat -- packages/app/src` |
+| Protocol/server surface | **+~900 lines** across `protocol/src/groups/graph.ts` (+39), `protocol/src/workspace-snapshot.ts` (+159), `server/src/graph/snapshot.ts` (+295), `handlers/graph.ts` (+30), regenerated client types (+130), `client/src/effect/api/api.ts` (+106) | `git diff 08ac673ab8..HEAD --stat -- packages/{protocol,server,client}` |
+| Committed captures | **45 frames** in `docs/spacegraph/screenshots/` | `ls` |
+| E2E graph specs | **106 tests** — 47 `session-graph.spec.ts`, 59 `capture.spec.ts` | `grep -c '^\s*test('` |
+| CI graph gate | `.github/workflows/graph.yml` runs `bun run graph:verify` on PRs to `dev`; it checks out `autonull/spacegraphjs7` at branch tip (not the tested SHA) | `cat .github/workflows/graph.yml` |
 
-### ✅ 3. GraphCanvasRegion Extraction (Completed)
-- **File**: `packages/session-graph/src/ui/GraphCanvasRegion.tsx` (new, ~400 lines)
-- Extracted: GraphCanvas, overlays (peek, popover, note composer, search, legend, gallery, group menu), A11y, windows, error/empty states
-- Fixed all type issues:
-  1. `noteAnchor` accessor vs value mismatch (line 314) - fixed by calling `props.noteAnchor()`
-  2. `GraphGallery` model prop - fixed by calling `props.model()`
-  3. GraphView.tsx 14 type errors - all fixed (unused imports removed, type mismatches resolved, missing props added to GraphCanvasRegionProps)
-- **Fixed `canvasRegionEl` ref bug**: Changed from incorrect `ref={props.canvasRegionEl}` to proper `ref={setCanvasRegionEl}` with internal signal, fixing ResizeObserver "parameter 1 is not of type 'Element'" error
-- Verified `bun run typecheck --filter=@opencode/session-graph` passes
-- Verified `bun test packages/session-graph/src` passes (116 tests)
+### Package versions in the sibling tree (unpublished; host consumes `workspace:*`)
 
-### ✅ 4. GraphWindowManager Extraction (Completed)
-- **File**: `packages/session-graph/src/ui/GraphWindowManager.tsx` (new, ~220 lines)
-- Extracted: GraphWindows, windowKinds (node, filesystem, legend, compare, equalizer, minimap, failureProgress, find), windowContent, window anchor logic
-- Owns: window management, z-ordering, drag/resize gestures, pinned window positioning
-- Props: windows, onWindowsChange, onOpenWindow, model, theme, layout, canvasSize, renderer, viewport, displayPositions, selection, trace, notes, edgeKinds, comparison, diffSource, link, onOpenTranscript, onOpenSession, onActionNavigate, rules, onRulesChange, findInitialTab, i18n, renderSummary, facets, onFacetsChange
-- Verified `bun run typecheck --filter=@opencode/session-graph` passes
-- Verified `bun test packages/session-graph/src` passes (116 tests)
+core `spacegraphjs 8.5.0` · `renderer 0.3.0` · `kernel 0.1.0` · `adapter 0.2.0` ·
+`spacegraph-renderer 0.3.1` · `cytoscape-renderer 0.3.0` · `svg-renderer 0.2.0`.
+
+Seven packages, not six: `packages/session-ui` depends on `@spacegraphjs/kernel`, so the published
+set must include it.
 
 ---
 
-## Remaining Work
+## 2. Completed work
 
-## 1. GraphView Breakdown Completion
+### 2.1 GraphView breakdown
 
-### 1.1 Fix GraphCanvasRegion Type Issues ✅
-- Fix `noteAnchor` type to be value not accessor ✅
-- Add missing `GraphGallery` import ✅
-- Clean up GraphView.tsx unused imports and fix remaining type errors ✅
-- Verify `bun run typecheck --filter=@opencode/session-graph` passes ✅
+| Extraction | File | Owns |
+|---|---|---|
+| State | `ui/useGraphState.ts` (325) | Basic signals/stores: level, projection, depth, layout, files, detail mode/framing, peek, follow log, facets, card facing, UI + renderer state, responsive, manual layout, model |
+| Viewport | `ui/useGraphViewport.ts` | Camera, viewport, resting, fit, content IDs, fit options, `zoomBy`, `frame`, `focus` |
+| Canvas region | `ui/GraphCanvasRegion.tsx` (370) | Canvas + overlays + A11y + windows + error/empty states |
+| Windows | `ui/GraphWindowManager.tsx` (226) | Window kinds, content, anchors, z-order, drag/resize, pinned placement |
+| Overlays | `ui/GraphOverlayManager.tsx` (231) | Peek, popover, note composer, search, legend, gallery, group menu, A11y, error/empty |
+| Selection | `ui/useGraphSelection.ts` | Library `GraphController` mirrored into signals; selection verbs |
+| Annotations | `ui/useGraphAnnotations.ts` (203) | Notes + trace overlay |
+| Keyboard | `ui/useGraphKeyboard.ts` | Global shortcuts (Quality Gate `F`, `Shift+O`, `Alt+f`) vs canvas-region shortcuts |
 
-### 1.2 Extract GraphWindowManager ✅
-- **File**: `packages/session-graph/src/ui/GraphWindowManager.tsx`
-- Owns: GraphWindows, windowKinds, windowContent, windowAnchors, openWindow ✅
-- Props: windows, onWindowsChange, onOpenWindow, model, selection, etc. ✅
+Bugs fixed during the breakdown (all verified): hook initialization order (`useGraphSelection` before its
+dependents); `viewportTracker ↔ cardScreenWidth` circular dependency via an initialised-later signal;
+temporal dead zones (`geometry`, `renderModel`, `budget`, `contentIDs`, `displayPositions`, `fitOptions`);
+`canvasRegionEl` ref callback; **renderer never connected to the viewport tracker** (zoom readout now
+reactive, 100% → 183%); static `zoomPercent`; `ResizeObserver` "parameter 1 is not of type 'Element'"
+(guards added in `spacegraphjs/src/utils/resizeObserver.ts`).
 
-### ✅ 5. GraphOverlayManager Extraction (Completed)
-- **File**: `packages/session-graph/src/ui/GraphOverlayManager.tsx` (new, ~240 lines)
-- Extracted: Peek, popover, note composer, search, legend, gallery, group menu, A11y, error/empty states
-- Owns: All floating overlays on/above the canvas
-- Props: model, selection, peek, popoverVisible, notes, trace, edgeKinds, rules, etc.
-- GraphCanvasRegion.tsx now composes GraphCanvas + GraphOverlayManager
-- Verified `bun run typecheck --filter=@opencode/session-graph` passes
-- Verified `bun test packages/session-graph/src` passes (116 tests)
+`GraphView.tsx` remains **1,674 lines** — the "thin composition ≈200 lines" sketch in the previous
+revision of this file was aspirational and is retracted.
 
-### ✅ 6. GraphViewportTracker Extraction (Completed)
-- **File**: `packages/session-graph/src/ui/useGraphViewport.ts` (new, ~110 lines)
-- Extracted: camera, viewport, resting, fit logic, contentIDs, fitOptions, zoomBy, frame, focus
-- Owns: All viewport/camera management logic
-- Props: renderer, displayPositions, contentIDs, fitOptions, cardScreenWidth, CARD_SIZE, READABLE_CARD_WIDTH
-- GraphView.tsx now uses `useGraphViewport` hook
-- Verified `bun run typecheck --filter=@opencode/session-graph` passes
-- Verified `bun test packages/session-graph/src` passes (116 tests)
+### 2.2 Toolbar breakdown
 
-### ✅ 1.5 Extract GraphStateInitializers (Completed)
-- **File**: `packages/session-graph/src/ui/useGraphState.ts` (new, ~180 lines)
-- Extracted: Basic state signals (level, projection, depth, layout, files, detailMode, detailFraming, peek, followLog, facets, cardFacing, UI state, renderer state, responsive, manual layout, model)
-- Owns: All basic createSignal/createStore declarations
-- Returns: Object with all state + setters
-- Verified `bun test packages/session-graph/src` passes (116 tests)
-- Verified `bun run typecheck --filter=@opencode/session-graph` passes
+`GraphLayersControl` (334), `GraphLayoutControl`, `GraphDrawControl`, `GraphShowControl`,
+`GraphTimeControl`, `GraphQuestionsControl`, `GraphZoomControl`, `GraphExportControl`,
+`GraphRendererStatus`; `GraphToolbar.tsx` composes them (330 lines).
 
-### ✅ 1.6 Fix GraphView Hook Initialization Order (Completed)
-- **Issue**: Hooks called in wrong order — `useGroupCollapse`, `useGraphAnnotations`, `useComparison` all depended on `selection` from `useGraphSelection`, but were called before it
-- **Fix**: Moved `useGraphSelection` (and `selection` assignment) before dependent hooks in GraphView.tsx
-- **Files**: `packages/session-graph/src/ui/GraphView.tsx`
+### 2.3 Vocabulary consolidation
 
-### ✅ 1.7 Fix Circular Dependency: viewportTracker ↔ cardScreenWidth (Completed)
-- **Issue**: `viewportTracker` needed `cardScreenWidth` for camera framing, but `cardScreenWidth` needed `viewportTracker.viewport()` for screen-width calculation
-- **Fix**: Introduced `cardScreenWidthSignal` with default `CARD_SIZE[0]`, updated after `viewportTracker` initializes; `useGraphViewport` now receives getter function
-- **Files**: `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/useGraphViewport.ts`, `packages/session-graph/src/ui/graph-camera.ts`
+Single source in `session-ui/src/graph/vocabulary.ts` (`VOCABULARY_KEYS`, `DepthMode`, kinds, statuses,
+layouts, detail modes, arrangements, sides); `session-graph/src/ui/vocabulary.ts` **removed**; 12 UI
+components import the shared keys.
 
-### ✅ 1.8 Fix Temporal Dead Zones in GraphView (Completed)
-- **Issue**: Early initialization of `viewportTracker` exposed temporal dead zones for `geometry`, `renderModel`, `budget`, `contentIDs`, `displayPositions`, `fitOptions`
-- **Fix**: 
-  1. Declared early with defaults (`let geometry`, `let renderModel`), assigned real memos later
-  2. Moved `budget` memo before `contentIDs` which uses it
-  3. Added defensive checks for `viewportTracker` in `budget` memo
-  4. Initialized `viewportTracker` earlier (after `fitOptions`), before memos that depend on it
-- **Status**: Typecheck ✅, Unit tests ✅ (116), Component tests render past initialization (graph init timing being debugged separately)
-- **Files**: `packages/session-graph/src/ui/GraphView.tsx`
+### 2.4 Adapter simplification
 
-### ✅ 1.9 Fix ResizeObserver Errors in Component Tests (Completed)
-- **Issue**: `createWidthThresholdTracker` from `spacegraphjs/utils` threw "parameter 1 is not of type 'Element'" when observing unmounted/undefined elements
-- **Fix**: 
-  1. Added `instanceof Element` guards in `spacegraphjs/src/utils/resizeObserver.ts` for all observe functions
-  2. Added defensive `if (!rootEl) return` check in GraphView.tsx before calling `widthThresholds.observe()`
-  3. Fixed `canvasRegionEl` ref in GraphCanvasRegion.tsx to use proper signal-based ref callback
-- **Files**: `spacegraphjs/src/utils/resizeObserver.ts`, `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/GraphCanvasRegion.tsx`
-- **Verified**: Unit tests pass, ResizeObserver error eliminated (graph init timing remains)
+`CytoscapeSessionAdapter` subclass removed; `cardBudget` is a constructor parameter; both renderers use
+one `SessionGraphAdapter`.
 
-### ✅ 1.6 Result: GraphView.tsx becomes thin composition (~200 lines)
-```tsx
-export const GraphView = (props) => {
-  const state = useGraphState(props)
-  const viewport = useGraphViewport(state)
-  const windows = useGraphWindows(state)
-  return (
-    <div>
-      <GraphToolbar {...state} />
-      <GraphBreadcrumbs {...state} />
-      <GraphStatusBar {...state} />
-      <GraphCompareBar {...state} />
-      <GraphScaleNotice {...state} />
-      <GraphHiddenSelection {...state} />
-      <GraphFallback {...state} />
-      <div class="flex-1 flex">
-        <Show when={state.files}> <GraphFileRail {...state} /> </Show>
-        <GraphCanvasRegion {...state} {...viewport} {...windows} />
-        <Show when={state.inspectorOpen}> <GraphInspectorGutter {...state} /> </Show>
-      </div>
-    </div>
-  )
-}
-```
+### 2.5 Library (generic) changes
+
+- `layoutApplied` event added to the `@spacegraphjs/renderer` contract and forwarded
+  `spacegraphjs` core (`layout:applied`) → `spacegraph-renderer` → `GraphCanvas` → host.
+- `Element instanceof` guards in `spacegraphjs/src/utils/resizeObserver.ts`.
+- TypeScript fixes for publishability across `adapter` (`ModelAdapter`, `build-utils`, `diff`) and
+  `kernel` (`time-filter`, `walks`).
+- `packages/storybook/package.json` wired to the `spacegraphjs` workspace packages.
 
 ---
 
-## 2. GraphToolbar Breakdown (~900 lines → sub-components) ✅
+## 3. Component-suite failures — evidence (diagnostic, not a plan)
 
-### 2.1 Extract by Control Group ✅
-- **File**: `packages/session-graph/src/ui/GraphLayersControl.tsx` — Level, Lens, Depth (LE.5/LE.14)
-- **File**: `packages/session-graph/src/ui/GraphLayoutControl.tsx` — Layout picker (LE.8/LE.9/T7)
-- **File**: `packages/session-graph/src/ui/GraphDrawControl.tsx` — Billboard, Frame Node, Files, Equalizer, Arrangement
-- **File**: `packages/session-graph/src/ui/GraphShowControl.tsx` — Detail mode, Peek, Follow Log, Minimap, Filesystem, Legend, Gallery, Turn Map, Expand
-- **File**: `packages/session-graph/src/ui/GraphTimeControl.tsx` — Turn scrubber (T18.3/T6.6)
-- **File**: `packages/session-graph/src/ui/GraphQuestionsControl.tsx` — Why, Led-here, Related, Compare, Note, Facets, Failure Progress, Find
-- **File**: `packages/session-graph/src/ui/GraphZoomControl.tsx` — Zoom In/Out/Fit
-- **File**: `packages/session-graph/src/ui/GraphExportControl.tsx` — Export menu
-- **File**: `packages/session-graph/src/ui/GraphRendererStatus.tsx` — Renderer label, Split View, Back
-- **File**: `packages/session-graph/src/ui/GraphToolbar.tsx` — Refactored to compose sub-components (~250 lines)
+14 failures were reproduced on 2026-10-26. Error contexts show **wiring regressions from the
+breakdown**, not test-isolation noise:
 
-### 2.2 Each sub-component:
-- Owns its own i18n keys ✅
-- Receives only the props it needs ✅
-- No cross-control dependencies ✅
+| Test | Evidence from the error context |
+|---|---|
+| `graph-windows.spec.ts:6` | Selection renders ("1 selected", Frame/Keep/Copy/Export/Add note), toolbar and breadcrumbs fine — the popover's **"Open in a window"** button never becomes clickable (60 s timeout) |
+| `graph-windows.spec.ts:59` | Same missing button, reached via a different path |
+| `graph-windows.spec.ts:78` | Pinned-window pan path depends on the same open action |
+| `graph-equalizer.spec.ts:6` | `graph-window` exists; `graph-equalizer-rule` **resolves to 0 elements** on 23 polls |
+| `graph-minimap.spec.ts:3` | `graph-minimap` exists; **no `circle`** in it |
+| `graph-detail.spec.ts:90` | Peek does not answer without selection |
+| `graph-view.spec.ts:13` | View-level question verbs fail; snapshot shows the view fully mounted (zoom 183%, level Overview, 1 selected) with the node reported "hidden at this level" |
+| `graph-bands.spec.ts:47` | Layout-metric overlap assertion; `layoutApplied` wait already present |
+| `graph-motion.spec.ts:70,85` | Motion timing assertions |
+| `graph-states.spec.ts:120` | Pixel visibility at zoom limits |
+| `graph-toolbar.spec.ts:38` | Exact inline-control count |
+| `graph-3d.spec.ts:72` | Card shear vs billboard |
+| `graph-capture.spec.ts:107` | Cytoscape capture |
 
-### Verification:
-- ✅ `bun run typecheck --filter=@opencode/session-graph` passes
-- ✅ `bun test packages/session-graph/src` passes (116 tests)
-
----
-
-## 3. Vocabulary Consolidation ✅
-
-### 3.1 Single Source of Truth
-- **Types**: Stay in `session-ui/src/graph/vocabulary.ts` (already the source) ✅
-- **i18n keys**: Consolidated into `VOCABULARY_KEYS` in `session-ui/src/graph/vocabulary.ts` ✅
-- **Labels**: Moved to `session-ui/src/graph/vocabulary.ts` as constants ✅
-
-### 3.2 Files Updated
-- `session-graph/src/ui/vocabulary.ts` → **Removed**, imports from session-ui ✅
-- `session-graph/src/ui/GraphShowControl.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphToolbar.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphDetail.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphPeek.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphLayersControl.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphEqualizer.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphGallery.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphLayoutControl.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphLegend.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphView.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphDrawControl.tsx` → Use shared keys ✅
-- `session-graph/src/ui/GraphFind.tsx` → Use shared keys ✅
-
-### Verification:
-- ✅ `bun run typecheck --filter=@opencode/session-graph` passes
-- ✅ `bun run typecheck --filter=@opencode/session-ui` passes
-- ✅ `bun test packages/session-graph/src` passes (116 tests)
-- ✅ `bun test packages/session-ui/src` passes (529 tests)
+**Harness facts (correct a previous assumption):** `reuseBrowser` is not an option here — the suite is
+page-based against a shared Storybook server (`packages/storybook/playwright/config.ts`:
+`fullyParallel`, `retries: 2` on CI only, `workers: 2` on CI only, `timeout: 60 s`,
+`expect.timeout: 10 s`, `reuseExistingServer: !CI`). There is no config-level isolation switch to buy
+back six tests.
 
 ---
 
-## 4. SpaceGraphJS Library Improvements ✅
+## 4. Corrections to documentation still pending
 
-### 4.1 Verify Generic Capabilities Are In Library (Not Host)
-| Capability | Status | Action |
-|------------|--------|--------|
-| Layout strategies | ✅ `spacegraphjs/layout` | Verified no host-specific code |
-| Semantic levels / zoom bands | ✅ `spacegraphjs/levels` | Verified |
-| Band computation | ✅ `spacegraphjs/adapter` | Verified |
-| Edge bundling | ✅ `spacegraphjs/adapter` | Verified |
-| Navigation (search, minimap, trail) | ✅ `spacegraphjs/navigation` | Verified |
-| View controller | ✅ `spacegraphjs/control` | Verified |
-| Accessibility | ✅ `spacegraphjs/a11y` | Verified |
-| Depth spectrum | ✅ `spacegraphjs/depth` | Verified |
-| Scoped overlay & code diff | ✅ `spacegraphjs/overlays` | Verified |
-| Static export (SVG/JSON/HTML) | ✅ `@spacegraphjs/svg-renderer` | Verified |
-| Keyboard shortcuts | ✅ `spacegraphjs/utils` | Already extracted ✓ |
+Listed so the next session does not trust stale text; each is a TODO.19 action.
 
-### 4.2 Remove Host-Specific Code from Library
-- Audit `spacegraphjs/packages/*/src` for OpenCode-specific logic ✅ **None found**
-- Move any found back to `session-graph` or `session-ui` ✅ **N/A**
-
-### 4.3 Publish SpaceGraphJS Packages
-```bash
-cd /home/me/opencode_spacegraph/spacegraphjs
-pnpm version patch  # or appropriate bump
-pnpm publish --access public  # all 6 packages in order
-```
-Then update OpenCode to consume published versions (remove sibling checkout).
-
-**Verification completed:**
-- ✅ `pnpm run build` - All packages build successfully
-- ✅ `pnpm test` - 536 tests pass
-- ✅ `pnpm test:kernel` - 109 tests pass
-- ✅ `pnpm run test:publish` - Publish check passes (contract, adapters, browser mount)
+| Document | Stale claim |
+|---|---|
+| `SPACEGRAPH.md` §3, §7.1 | "No protocol, server, or session-schema changes" — false; see §1 (≈900 lines) |
+| `SPACEGRAPH.md` §6.1 | `spacegraphjs 8.4.0`; missing `svg-renderer 0.2.0` / `spacegraph-renderer 0.3.1` |
+| `SPACEGRAPH.md` §9.1 | Four-rung ladder with old diff numbers; needs a fifth (optional) server rung |
+| `SPACEGRAPH.md` §13.1 | `bun run graph:setup` **does not exist** in root `package.json` |
+| `docs/spacegraph/README.md` | Setup section assumes the sibling checkout with no setup script |
+| `docs/spacegraph/prototype.md` | Tested-revision table (upstream `ba06ff9e0b`, library `f7cf48a`) predates 455 upstream commits and `6587d32` |
+| `rfc.md` | Referenced as prepared; **does not exist** |
 
 ---
 
-## 5. Adapter Simplification (Already Done ✓)
-- Removed `CytoscapeSessionAdapter` subclass
-- Configure `cardBudget` via constructor parameter
-- Both adapters use same `SessionGraphAdapter` class
-
----
-
-## 6. Hook Consolidation ✅
-
-### 6.1 Merge Related Hooks ✅
-| Current Hooks | Consolidated |
-|---------------|--------------|
-| `useSelectionVerbs` + selection logic | `useGraphSelection` ✅ |
-| `useNotes` + `useTraceOverlay` | `useGraphAnnotations` ✅ |
-| `useEdgeKinds` | Keep (simple) |
-| `useGroupCollapse` | Keep (simple) |
-| `useComparison` | Keep (complex) |
-| `useGraphKeyboard` | ✅ Done |
-
----
-
-## 7. Verification & Fixes (After Refactoring)
-
-### 7.1 Component Test Stability
-- Fix Storybook state bleed between tests
-- Options: `reuseBrowser: false`, proper cleanup, longer timeouts
-- Target: All 67 component tests pass reliably
-
-### 7.2 E2E Test Fixes
-- Graph module not loading in Playwright (`data-graph-ready` never "true")
-- Debug lazy loading / Suspense boundary
-- Target: All 44 e2e/graph tests pass
-
-### 7.3 Screenshot Generation
-```bash
-bun run graph:capture --mode=compare  # Regenerate
-bun run graph:capture --mode=verify   # Assert committed set
-```
-- 31 frames across 5 layouts × 4 depths × contexts
-- Commit updated screenshots if intentional changes
-
-### 7.4 Performance Budget
-```bash
-bun run graph:scale  # Must stay < 400ms for 5001 messages
-```
-
----
-
-## 8. Upstream Sync (G6)
-
-### 8.1 Merge Upstream `dev`
-- 24 commits, 7 overlapping files
-- Re-measure entry delta
-- Re-baseline docs
-- Push to fork
-
----
-
-## 9. Shareable Delivery (G7)
-
-### 9.1 Publish to npm
-- Library packages (6 packages, ordered)
-- `session-graph` branch consuming published packages
-
-### 9.2 Hosted Demo
-- GitHub Pages: contract demo + second host
-
-### 9.3 Upstream RFC
-- After T2.2 measurement (evidence task)
-- Text prepared in `rfc.md`
-
-### 9.4 Stranger's Path
-```bash
-git clone <fork> && bun run graph:setup && bun run graph:dev
-```
-
----
-
-## Priority Order (Optimized)
-
-| Phase | Work | Est. Effort |
-|-------|------|-------------|
-| **1** | Test isolation config + Layout overlap fix + Skip 3D in CI + Deprioritize Cytoscape tests | 3–5 hrs |
-| **2** | E2E Suspense fix + Screenshots + Perf | 2–3 hrs |
-| **3** | SpaceGraphJS publish + Upstream sync + Hosted demo | 2–3 hrs |
-
-**Total: ~1.5 days** (vs 6–10 original)
-
----
-
-## Dependencies (Optimized)
-
-```
-Test isolation config (15 min)
-         ↓
-Layout overlap fix (2-4 hrs) → Skip 3D in CI (5 min) → Deprioritize Cytoscape (5 min)
-         ↓
-E2E Suspense fix (1-2 hrs) → Screenshots + Perf (30 min)
-         ↓
-SpaceGraphJS publish (30 min) → Upstream sync (1-2 hrs) → Demo deploy (30 min)
-```
-
----
-
-## Notes
-
-- **Do not** run full `bun run check` during refactoring — use per-package `typecheck` + `test`
-- **Do** run `bun run typecheck --filter=@opencode/session-graph` after each extraction
-- **Do** run `bun test packages/session-graph/src` after each extraction
-- Component test flakiness is infrastructure, not logic — fix after refactoring
-- E2E failures are likely Suspense/lazy-loading timing — fix after refactoring
-
----
-
-## Files Modified This Session
-
-| File | Status |
-|------|--------|
-| `packages/session-graph/src/ui/useGraphKeyboard.ts` | ✅ Created |
-| `packages/session-graph/src/canvas/sessionGraphAdapter.ts` | ✅ Simplified |
-| `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Created (type issues fixed, ref bug fixed) |
-| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (duplicate declarations removed, types fixed, temporal dead zones fixed, ResizeObserver guards added) |
-| `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Created |
-| `packages/session-graph/src/ui/useGraphState.ts` | ✅ Created |
-| `packages/session-graph/src/ui/GraphLayersControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphLayoutControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphDrawControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphShowControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphTimeControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphQuestionsControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphZoomControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphExportControl.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphRendererStatus.tsx` | ✅ Created |
-| `packages/session-graph/src/ui/GraphToolbar.tsx` | ✅ Refactored (~250 lines, composes sub-components) |
-| `packages/session-ui/src/graph/vocabulary.ts` | ✅ Added VOCABULARY_KEYS, DepthMode |
-| `packages/session-ui/src/graph/index.ts` | ✅ Exported VOCABULARY_KEYS, DepthMode |
-| `packages/session-graph/src/ui/vocabulary.ts` | ✅ **Removed** |
-| `packages/session-graph/src/ui/GraphShowControl.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphToolbar.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphDetail.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphPeek.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphLayersControl.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphEqualizer.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphGallery.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphLayoutControl.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphLegend.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphDrawControl.tsx` | ✅ Updated to use shared keys |
-| `packages/session-graph/src/ui/GraphFind.tsx` | ✅ Updated to use shared keys |
-| `spacegraphjs/packages/adapter/src/ModelAdapter.ts` | ✅ Fixed unused imports |
-| `spacegraphjs/packages/adapter/src/build-utils.ts` | ✅ Fixed types, unused params |
-| `spacegraphjs/packages/adapter/src/diff.ts` | ✅ Fixed RenderModelPatch compatibility |
-| `spacegraphjs/packages/kernel/src/time-filter.ts` | ✅ Fixed duplicate imports |
-| `spacegraphjs/packages/kernel/src/walks.ts` | ✅ Removed duplicate EdgeID export |
-| `packages/session-graph/src/ui/useGraphSelection.ts` | ✅ Created |
-| `packages/session-graph/src/ui/useGraphAnnotations.ts` | ✅ Created |
-| `packages/session-graph/src/ui/useGraphKeyboard.ts` | ✅ Updated to use consolidated hooks |
-| `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Updated to use annotations |
-| `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Updated to use annotations |
-| `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Updated to use annotations |
-| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Updated to use consolidated hooks, fixed hook init order, fixed circular deps, fixed temporal dead zones |
-| `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Fixed renderer prop type, getter for getNodeScreenPosition |
-| `packages/session-graph/src/ui/graph-camera.ts` | ✅ (no changes needed, works with updated types) |
-| `spacegraphjs/src/utils/resizeObserver.ts` | ✅ Added Element instanceof guards |
-| `packages/storybook/package.json` | ✅ Added spacegraphjs workspace dependencies |
-
----
-
-## Next Immediate Steps (Optimized — 3 Focused Phases)
-
-### Phase 1: Component Test Stability (1 day) — Enables Reliable CI
-
-**1.1 Test Isolation Fix (Config Only — 15 min)**
-- Add `reuseBrowser: false` + `retries: 2` to `packages/session-graph/playwright.components.config.ts`
-- Single config change fixes state bleed for 6+ tests at once
-- Verify: run full suite, confirm no flakes
-
-**1.2 Layout Overlap Fix (SpaceGraphJS Core — 2-4 hrs)**
-- Root cause: `LaneLayout.ts` places band headers without vertical padding from member cards
-- Fix: Add `bandHeaderGap` constant in `LaneLayout.ts`, apply in `laneAnchors` calculation
-- Test: `bun run test:components --project=components component-tests/graph-bands.spec.ts`
-- **Also fixes**: `graph-states.spec.ts` (same root cause)
-
-**1.3 Skip 3D in CI (Config Only — 5 min)**
-- Add `@skip-browser` annotation or conditional skip in `graph-3d.spec.ts` / `graph-motion.spec.ts`
-- 3D is a progressive enhancement; 2D is the baseline
-- Test locally with GPU, skip in headless CI
-
-**1.4 Deprioritize Cytoscape Tests (Config Only — 5 min)**
-- Add `@skip-browser` or conditional skip to `graph-capture.spec.ts` Cytoscape test
-- Keep Cytoscape in story harnesses (functional, just not tested in CI)
-- SpaceGraph renderer is primary; Cytoscape is optional backend
-
-**Result**: 53 → ~61 passing (layout + isolation), 3D skipped in CI, Cytoscape tests skipped in CI
-
----
-
-### Phase 2: E2E + Screenshots + Perf (0.5 day)
-
-**2.1 E2E Debug (1-2 hrs)**
-- `data-graph-ready` never "true" = Suspense boundary timeout
-- Add `await page.waitForSelector('[data-graph-ready="true"]', { timeout: 60_000 })` before other assertions
-- Check Vite lazy loading: `GraphView` imported dynamically? Ensure SSR-compatible
-- Target: 44 e2e/graph tests pass
-
-**2.2 Screenshots + Perf (30 min)**
-```bash
-bun run graph:capture --mode=compare && bun run graph:capture --mode=verify
-bun run graph:scale  # < 400ms for 5001 messages
-```
-- Run after E2E passes; commit if intentional
-
----
-
-### Phase 3: Delivery (1 day)
-
-**3.1 SpaceGraphJS Publish (30 min)**
-```bash
-cd spacegraphjs && pnpm version patch && pnpm publish --access public
-```
-- Update OpenCode `package.json` to use published versions (remove workspace:*)
-
-**3.2 Upstream Sync (1-2 hrs)**
-- Rebase 24 commits on `origin/dev`, resolve 7 conflicts
-- Run full `bun run check` after merge
-
-**3.3 Hosted Demo (30 min)**
-- GitHub Pages: `spacegraphjs/dist-demo` + second host example
-- Add "stranger's path" README
-
----
-
-## Deprioritized (Skipped in CI, Retained in Codebase)
-
-| Item | Status | Reason |
-|------|--------|--------|
-| Cytoscape test/capture | `@skip-browser` in CI | Optional backend; SpaceGraph is primary |
-| 3D depth in CI | `@skip-browser` in CI | Progressive enhancement; test locally only |
-| Full test isolation hooks | Not needed | `reuseBrowser: false` handles it at config level |
-| Manual cleanup in stories | Not needed | Not needed with browser reuse disabled |
-
----
-
-## Optimized Priority Order
-
-| Phase | Work | Est. Effort |
-|-------|------|-------------|
-| **1** | Test isolation config + Layout overlap fix + Skip 3D + Deprioritize Cytoscape | 3-5 hrs |
-| **2** | E2E Suspense fix + Screenshots + Perf | 2-3 hrs |
-| **3** | SpaceGraphJS publish + Upstream sync + Demo | 2-3 hrs |
-
-**Total: ~1.5 days** (vs 6-10 original)
-
----
-
-## Verification Checklist (Condensed)
-
-```bash
-# Phase 1: Component tests
-cd packages/session-graph && bun run test:components  # → 61+ pass, 0 flaky
-
-# Phase 2: E2E + visual + perf
-cd packages/app && bun run test:e2e --filter=graph    # → 44 pass
-bun run graph:capture --mode=compare && bun run graph:capture --mode=verify
-bun run graph:scale  # < 400ms
-
-# Phase 3: Delivery
-cd spacegraphjs && pnpm version patch && pnpm publish --access public
-# Update OpenCode package.json deps
-# Rebase upstream, push fork
-# Deploy GitHub Pages demo
-```
-
----
-
-## Fixed This Session (Ready for Commit)
-
-### GraphView Renderer Connection (Critical Fix)
-- **Problem**: `renderer` variable declared but never assigned — `useGraphViewport` received `undefined`
-- **Fix**: 
-  1. Convert to signal: `const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()`
-  2. Pass `onRenderer={setRenderer}` to GraphCanvasRegion
-  3. Update `useGraphViewport` to accept renderer signal and capabilities
-  4. Fix all call sites: `renderer` → `renderer()`
-- **Files**: `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/useGraphViewport.ts`, `packages/session-graph/src/ui/GraphCanvasRegion.tsx`
-- **Verified**: Zoom readout changes 100% → 183% on click
-
-### Zoom Reactivity
-- **Problem**: `zoomPercent` passed as static value, not reactive
-- **Fix**: `const zoomPercent = createMemo(() => viewportTracker!.camera.zoomPercent())`
-- **File**: `packages/session-graph/src/ui/GraphView.tsx`
-
-### Layout Completion Event (New Infrastructure)
-- **Added**: `layoutApplied` event to `@spacegraphjs/renderer` contract
-- **Forwarded**: From SpaceGraph core (`layout:applied`) through `spacegraph-renderer` → `GraphCanvas` → `GraphView` harness
-- **Files**: `spacegraphjs/packages/renderer/src/index.ts`, `spacegraphjs/packages/spacegraph-renderer/src/index.ts`, `packages/session-graph/src/canvas/GraphCanvas.tsx`, `packages/session-graph/src/ui/GraphView.stories.tsx`, `packages/session-graph/src/canvas/GraphCanvas.stories.tsx`
-- **Test Updated**: `packages/session-graph/component-tests/graph-bands.spec.ts` waits for layoutApplied before measuring
-
-### TypeScript Errors Fixed
-- All signal conversion errors resolved
-- Story harness type definitions updated
-
----
-
-## Verification Checklist for Fresh Session
-
-```bash
-# Unit tests
-cd packages/session-graph && bun test src          # → 116 pass
-cd packages/session-ui && bun test src             # → 529 pass
-
-# Typecheck
-cd packages/session-graph && bun run typecheck     # → pass
-cd packages/session-ui && bun run typecheck        # → pass
-
-# Component tests (expect 53 pass, 14 fail)
-cd packages/session-graph && bun run test:components
-
-# E2E tests (expect failures)
-cd packages/app && bun run test:e2e --filter=graph
-
-# SpaceGraphJS
-cd spacegraphjs && pnpm run build && pnpm test     # → all pass
-```
-
----
-
-## Key Files for Optimized Plan
-
-| Phase | Area | Files |
-|-------|------|-------|
-| 1 | Test isolation config | `packages/session-graph/playwright.components.config.ts` |
-| 1 | Layout overlap fix | `spacegraphjs/src/layout/LaneLayout.ts` |
-| 1 | Skip 3D in CI | `packages/session-graph/component-tests/graph-3d.spec.ts`, `graph-motion.spec.ts` |
-| 1 | Deprioritize Cytoscape | `packages/session-graph/component-tests/graph-capture.spec.ts` (add skip) |
-| 2 | E2E Suspense fix | `packages/app/e2e/graph/*.spec.ts`, `packages/session-graph/src/ui/GraphView.tsx` (lazy import) |
-| 2 | Screenshots/Perf | `packages/session-graph/scripts/graph-capture.ts`, `packages/session-graph/scripts/graph-scale.ts` |
-| 3 | SpaceGraphJS publish | `spacegraphjs/package.json`, `packages/session-graph/package.json` (deps) |
-| 3 | Upstream sync | `git rebase origin/dev` |
-| 3 | Demo deploy | `spacegraphjs/dist-demo/`, GitHub Pages config |
+## 5. Repository state
+
+- Branch `upstream-sync-1025`; remotes `origin` (`autonull/opencode_spacegraph`) and
+  `upstream` (`anomalyco/opencode`).
+- Sync convention: **merge** with message `chore: sync upstream dev` (cf. `ffc6bced61`, `098e601068`,
+  `f802f5e707`). Never rebase the fork's 306 commits.
+- `spacegraphjs/` is gitignored (line 42) and wired in root `package.json` `workspaces` as **7 entries**
+  (`spacegraphjs` + `packages/{renderer,adapter,spacegraph-renderer,cytoscape-renderer,svg-renderer,kernel}`);
+  its own git repo is on `main`.
+- Graph code owns: `packages/session-ui/src/graph` (pure model), `packages/session-graph` (host UI,
+  132 files / +16,009), `packages/app/src/session/graph` (10 of the new app files),
+  `packages/gui-extensions/src/session-map` (+274), `script/{graph-dev,graph-verify,capture-graph-demo}.ts`.
+
+## 6. Environment gotcha (do not chase)
+
+`bun run check` fails in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`) because this
+checkout lives under a home directory, so `tsc`'s type-root walk-up finds a stray
+`~/node_modules/@types/node@22.10.2` that shadows the repo's `@types/node@24.12.2`. It passes on bare
+upstream in a clean worktree. The accepted fork gate is `graph:verify` plus per-package typechecks.

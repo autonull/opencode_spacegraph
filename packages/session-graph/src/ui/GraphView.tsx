@@ -22,6 +22,7 @@ import type {
   Position,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
+import { GraphActionTarget } from "./GraphActionTarget"
 import { ancestors,
   applyNodeBudget,
   byProximity,
@@ -217,8 +218,8 @@ export type GraphViewProps = {
   /** T12: the host opens a window. The view proposes its first placement; the host owns its lifetime. */
   onOpenWindow?: (window: GraphWindowState) => void
   /** T31 — action handlers from the host. */
-  onActionNavigate?: (target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void
-  onActionReveal?: (target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void
+  onActionNavigate?: (target: GraphActionTarget) => void
+  onActionReveal?: (target: GraphActionTarget) => void
   onActionCopy?: (text: string) => void
   onActionRun?: (operation: { id: string; params: Record<string, unknown> }) => void
   /**

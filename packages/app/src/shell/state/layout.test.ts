@@ -90,7 +90,7 @@ describe("layout persistence", () => {
   test("migrates the retired graph mode to independent surfaces", () => {
     const key = "local\u0000L3Byb2plY3Q/session"
     const graph = (mode: string) =>
-      decode({ sessionView: { [key]: { scroll: {}, graph: { mode } } } }).sessionView[key]?.graph
+      decode({ sessionView: { [key]: { scroll: {}, graph: { mode } as Record<string, unknown> } } }).sessionView[key]?.graph
 
     expect(graph("transcript")).toMatchObject({ map: false, sideBySide: false })
     expect(graph("graph")).toMatchObject({ map: true, sideBySide: false })

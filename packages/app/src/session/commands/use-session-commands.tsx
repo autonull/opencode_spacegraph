@@ -2,10 +2,8 @@ import { useCommand, type CommandOption } from "@/shell/commands/command"
 import { adjacentTabKey } from "@/shell/titlebar/tab-order"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { previewSelectedLines } from "@opencode/session-ui/pierre/selection-bridge"
-import { Metrics } from "@opencode/session-ui/graph"
 import { useFile, selectionFromLines, type FileSelection } from "@/workspaces/files/model"
 import { useLanguage } from "@/runtime/i18n/language"
-import { useLayout } from "@/shell/state/layout"
 import { useComposerState } from "@/composer/persistence"
 import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
@@ -13,13 +11,13 @@ import { formatServerError } from "@/runtime/server/errors"
 import { projectSettingsKey, useSettings } from "@/settings/model"
 import { showToast } from "@/shell/notifications/toast"
 import { fetchSessionExport, saveSessionExport, sessionExportFilename } from "@/session/commands/export"
-import { TURN_MAP_ACTIVE } from "@/session/graph/turn-map-overlay"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { SessionModel } from "@/session/model"
 import type { SessionRevert } from "@/session/revert"
 import { Command } from "@opencode/gui-extensions/sdk"
 import { useExtensionHost } from "@/runtime/extension/host"
 import type { Region } from "@/runtime/extension/panels"
+import { graphCommands } from "./graph-commands"
 
 type SessionCommandSource = {
   identity: SessionModel["identity"]
@@ -60,7 +58,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const data = useData()
   const settings = useSettings()
   const platform = usePlatform()
-  const layout = useLayout()
   const host = useExtensionHost()
 
   const openDialog = async <T,>(load: () => Promise<T>, show: (value: T) => void) => {
@@ -122,13 +119,11 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   }
 
   const navigateMessageByOffset = actions.navigateMessageByOffset
-  const focusInput = actions.focusInput
 
   const sessionCommand = withCategory(language.t("command.category.session"))
   const projectCommand = withCategory(language.t("command.category.project"))
   const fileCommand = withCategory(language.t("command.category.file"))
   const contextCommand = withCategory(language.t("command.category.context"))
-  const viewCommand = withCategory(language.t("command.category.view"))
   const mcpCommand = withCategory(language.t("command.category.mcp"))
   const permissionsCommand = withCategory(language.t("command.category.permissions"))
 
@@ -450,89 +445,11 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
-  const viewCmds = () => {
-    const hasSession = !!actions.session.identity.params.id
-    const enabled = graphEnabled() && hasSession
-
-    return [
-      viewCommand({
-        id: "review.toggle",
-        title: language.t("command.review.toggle"),
-        keybind: "mod+shift+r",
-        onSelect: () => actions.session.layout.view().side.toggle(),
-      }),
-      viewCommand({
-        id: "graph.toggle",
-        title: language.t("command.graph.toggle"),
-        keybind: "mod+shift+g",
-        disabled: !enabled,
-        onSelect: () => {
-          const graph = actions.session.layout.graph()
-          // T2.3: a surface switch is an interaction the protocol measures.
-          Metrics.count("mode-switch")
-          graph.setMap(!graph.map())
-        },
-      }),
-      viewCommand({
-        id: "graph.hybrid",
-        title: language.t("command.graph.hybrid"),
-        keybind: "mod+shift+h",
-        disabled: !enabled,
-        onSelect: () => {
-          const graph = actions.session.layout.graph()
-          Metrics.count("mode-switch")
-          const next = !graph.sideBySide()
-          if (next) graph.setMap(true)
-          graph.setSideBySide(next)
-        },
-      }),
-      viewCommand({
-        id: "graph.projection",
-        title: language.t("command.graph.projection"),
-        keybind: "mod+alt+g",
-        disabled: !enabled,
-        onSelect: () => {
-          const graph = actions.session.layout.graph()
-          graph.setProjection(graph.projection() === "3d" ? "2d" : "3d")
-        },
-      }),
-      viewCommand({
-        id: "graph.turnmap",
-        title: language.t("command.graph.turnmap"),
-        keybind: "mod+alt+t",
-        disabled: !enabled,
-        onSelect: () => {
-          const graph = actions.session.layout.graph()
-
-          if (graph.turnMap()) {
-            graph.setTurnMap(undefined)
-
-            return
-          }
-
-          const selected = graph.selected()
-          const turnID = selected?.startsWith("turn:") ? selected : TURN_MAP_ACTIVE
-          graph.setTurnMap(turnID)
-        },
-      }),
-      ...(shown()
-        ? [
-            viewCommand({
-              id: "fileTree.toggle",
-              title: language.t("command.fileTree.toggle"),
-              keybind: "mod+\\",
-              onSelect: () => layout.fileTree.toggle(),
-            }),
-          ]
-        : []),
-      viewCommand({
-        id: "input.focus",
-        title: language.t("command.input.focus"),
-        keybind: "ctrl+l",
-        onSelect: focusInput,
-      }),
-    ]
-  }
+  const viewCmds = () => graphCommands({
+    actions,
+    graphEnabled,
+    shown,
+  })
 
   const messageCmds = () => [
     sessionCommand({

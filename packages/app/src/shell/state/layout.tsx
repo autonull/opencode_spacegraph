@@ -4,7 +4,6 @@ import { batch, createEffect, createMemo, onCleanup, onMount, untrack, type Acce
 import { useLocation } from "@solidjs/router"
 import { createSimpleContext } from "@opencode/ui/context"
 import { makeEventListener } from "@solid-primitives/event-listener"
-import { DETAIL_MODES, GRAPH_ARRANGEMENTS, GRAPH_MODES, GRAPH_SIDES, LAYOUTS } from "@opencode/session-ui/graph/vocabulary"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { Project } from "@/runtime/server/types"
@@ -16,6 +15,7 @@ import { SessionStateKey } from "@/runtime/server/scope"
 import { createSessionKeyReader, ensureSessionKey, pruneSessionKeys } from "./helpers"
 import { requireServerKey } from "@/shell/routes/session"
 import { closeSessionTab, openSessionTab, previewSessionTab } from "./session-tabs"
+import { sessionGraphSchema, createSessionGraphState } from "@/session/graph/graph-state"
 
 const DEFAULT_SIDEBAR_WIDTH = 344
 
@@ -85,101 +85,6 @@ const sessionTabsSchema = Persistence.struct({
   all: Persistence.array(Schema.String),
   active: Persistence.optional(Schema.String),
 })
-
-const sessionGraphSchema = Persistence.migrateField(
-  Persistence.struct({
-    // The two surfaces are independent: the transcript is the baseline, the map is an optional
-    // surface beside or over it. `split` only means anything while the map is shown.
-    map: Schema.optional(Schema.Boolean),
-    sideBySide: Schema.optional(Schema.Boolean),
-    // The hybrid's geometry: how the map and the log meet, which side the map takes, and how much of
-    // the panel the map holds. Absent means the default arrangement.
-    arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
-    arrangementSide: Schema.optional(Schema.Literals(GRAPH_SIDES)),
-    split: Schema.optional(Schema.Finite),
-    // How large the log's text is beside the map. Absent means the theme's own size.
-    logTextScale: Schema.optional(Schema.Finite),
-    // The floating map pane's box, as fractions of the panel, so it survives a resize of the window.
-    pane: Persistence.optional(
-      Persistence.struct({
-        x: Schema.Finite,
-        y: Schema.Finite,
-        width: Schema.Finite,
-        height: Schema.Finite,
-      }),
-    ),
-    projection: Schema.optional(Schema.Literals(["2d", "3d"])),
-    renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
-    selected: Schema.optional(Schema.String),
-    // T17.1: the layout axis — the node-link strategies and the session's summary layouts, one list.
-    layout: Schema.optional(Schema.Literals(LAYOUTS)),
-    minimap: Schema.optional(Schema.Boolean),
-    // LE.12: the file-first lens (changed-files rail + bundled provenance), per session. Absent means off.
-    files: Schema.optional(Schema.Boolean),
-    // LE.14: the depth spectrum (flat 2D | layered | depth-stack | orbit), per session. Absent means flat.
-    depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
-    // Where a selected node's detail is shown, per session. Absent means the side panel.
-    detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
-    // T17.4: whether the camera frames the selected node, per session. Absent means off.
-    detailFraming: Schema.optional(Schema.Literals(["off", "card"] as const)),
-    // The transient peek at the node under the pointer, per session. Absent means off.
-    peek: Schema.optional(Schema.Boolean),
-    // H6.2: the turn whose hybrid turn map is open, when one is. Absent means no overlay.
-    turnMap: Schema.optional(Schema.String),
-    // T15: the equalizer's rules, per session. A rule is a predicate over a node plus an effect on
-    // the card; the preset ids live beside them.
-    rules: Persistence.optional(
-      Persistence.array(
-        Persistence.struct({
-          id: Schema.String,
-          kind: Schema.optional(Schema.String),
-          status: Schema.optional(Schema.String),
-          scale: Schema.optional(Schema.Finite),
-          hue: Schema.optional(Schema.Finite),
-          muted: Schema.optional(Schema.Boolean),
-          fadeAfter: Schema.optional(Schema.Finite),
-        }),
-      ),
-    ),
-    // T12.5: the reader's windows over the map, per session. The content is not stored — it is
-    // re-derived from the model — so a window that cannot be rehydrated is dropped, not restored
-    // empty.
-    windows: Persistence.optional(
-      Persistence.array(
-        Persistence.struct({
-          id: Schema.String,
-          kind: Schema.String,
-          nodeID: Schema.optional(Schema.String),
-          left: Schema.Finite,
-          top: Schema.Finite,
-          width: Schema.Finite,
-          height: Schema.Finite,
-          z: Schema.Finite,
-          pinned: Schema.optional(Schema.Boolean),
-        }),
-      ),
-    ),
-    // T18.1: whether the map frames the active turn from the log. Absent means off.
-    followLog: Schema.optional(Schema.Boolean),
-  }),
-  // T17.1: the past stored a representation beside the strategy. A stored ribbon or matrix becomes
-  // the layout; anything else keeps the stored strategy, because "graph" was the default family.
-  Persistence.legacy({
-    mode: Schema.optional(Schema.Literals(GRAPH_MODES)),
-    map: Schema.optional(Schema.Boolean),
-    sideBySide: Schema.optional(Schema.Boolean),
-    layout: Schema.optional(Schema.Literals(LAYOUTS)),
-    representation: Schema.optional(Schema.String),
-  }),
-  (value) => ({
-    ...value,
-    map: value.map ?? (value.mode === "graph" || value.mode === "hybrid"),
-    sideBySide: value.sideBySide ?? value.mode === "hybrid",
-    layout: value.layout ?? (value.representation === "ribbon" || value.representation === "matrix" ? value.representation : undefined),
-  }),
-)
-
-export type SessionGraphState = typeof sessionGraphSchema.Type
 
 const sessionViewSchema = Persistence.struct({
   scroll: Persistence.record(Schema.Struct({ x: Schema.Finite, y: Schema.Finite })),
@@ -624,115 +529,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       /** The map surface and its renderer/projection/selection, per session. Absent means map closed. */
       graph(sessionKey: string | Accessor<string>) {
         const key = createSessionKeyReader(sessionKey, ensureKey)
-        const state = () => store.sessionView[key()]?.graph
-
-        const write = (next: Partial<SessionGraphState>) => {
-          const session = key()
-          touch(session)
-          const current = store.sessionView[session]
-          const merged: SessionGraphState = {
-            map: current?.graph?.map ?? false,
-            sideBySide: current?.graph?.sideBySide ?? false,
-            ...current?.graph,
-            ...next,
-          }
-
-          if (!current) {
-            setStore("sessionView", session, { scroll: {}, graph: merged })
-            prune(usage.active ?? session)
-
-            return
-          }
-
-          setStore("sessionView", session, "graph", merged)
-        }
-
-        return {
-          map: createMemo(() => state()?.map ?? false),
-          sideBySide: createMemo(() => state()?.sideBySide ?? false),
-          arrangement: createMemo(() => state()?.arrangement ?? "stacked"),
-          arrangementSide: createMemo(() => state()?.arrangementSide ?? "start"),
-          split: createMemo(() => state()?.split ?? 0.5),
-          logTextScale: createMemo(() => state()?.logTextScale ?? 1),
-          pane: createMemo(() => state()?.pane),
-          projection: createMemo(() => state()?.projection ?? "2d"),
-          renderer: createMemo(() => state()?.renderer),
-          selected: createMemo(() => state()?.selected),
-          turnMap: createMemo(() => state()?.turnMap),
-          windows: createMemo(() => state()?.windows ?? []),
-          rules: createMemo(() => state()?.rules ?? []),
-          layout: createMemo(() => state()?.layout ?? "lanes"),
-          minimap: createMemo(() => state()?.minimap ?? false),
-          files: createMemo(() => state()?.files ?? false),
-          depth: createMemo(() => state()?.depth ?? "flat"),
-          detailMode: createMemo(() => state()?.detailMode ?? "panel"),
-          detailFraming: createMemo(() => state()?.detailFraming ?? "off"),
-          peek: createMemo(() => state()?.peek ?? false),
-          followLog: createMemo(() => state()?.followLog ?? false),
-          setMap(map: boolean) {
-            write({ map })
-          },
-          setSideBySide(sideBySide: boolean) {
-            write({ sideBySide })
-          },
-          setArrangement(arrangement: NonNullable<SessionGraphState["arrangement"]>) {
-            write({ arrangement })
-          },
-          setArrangementSide(arrangementSide: NonNullable<SessionGraphState["arrangementSide"]>) {
-            write({ arrangementSide })
-          },
-          setSplit(split: number) {
-            write({ split })
-          },
-          setLogTextScale(logTextScale: number) {
-            write({ logTextScale })
-          },
-          setPane(pane: NonNullable<SessionGraphState["pane"]>) {
-            write({ pane })
-          },
-          setLayout(layout: NonNullable<SessionGraphState["layout"]>) {
-            write({ layout })
-          },
-          setDepth(depth: NonNullable<SessionGraphState["depth"]>) {
-            write({ depth })
-          },
-          setDetailMode(detailMode: NonNullable<SessionGraphState["detailMode"]>) {
-            write({ detailMode })
-          },
-          setDetailFraming(detailFraming: NonNullable<SessionGraphState["detailFraming"]>) {
-            write({ detailFraming })
-          },
-          setPeek(peek: boolean) {
-            write({ peek })
-          },
-          setFollowLog(followLog: boolean) {
-            write({ followLog })
-          },
-          setMinimap(minimap: boolean) {
-            write({ minimap })
-          },
-          setFiles(files: boolean) {
-            write({ files })
-          },
-          setProjection(projection: NonNullable<SessionGraphState["projection"]>) {
-            write({ projection })
-          },
-          setRenderer(renderer: NonNullable<SessionGraphState["renderer"]>) {
-            write({ renderer })
-          },
-          setSelected(selected: string | undefined) {
-            write({ selected })
-          },
-          setTurnMap(turnMap: string | undefined) {
-            write({ turnMap })
-          },
-          setWindows(windows: NonNullable<SessionGraphState["windows"]>) {
-            write({ windows })
-          },
-          setRules(rules: NonNullable<SessionGraphState["rules"]>) {
-            write({ rules })
-          },
-        }
+        return createSessionGraphState(store, setStore, touch, prune, key)
       },
       /** Side panel tabs for any session key, mounted or not. Reads are reactive. */
       panel: {

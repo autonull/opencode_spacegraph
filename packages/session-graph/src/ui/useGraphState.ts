@@ -3,8 +3,12 @@ import { createSignal, createUniqueId } from "solid-js"
 import { createStore } from "solid-js/store"
 import type {
   DepthMode,
+  Projection,
+  RenderTheme,
 } from "@spacegraphjs/renderer"
+import type { RendererID } from "../canvas/renderer-registry"
 import type {
+  Annotations,
   DetailFraming,
   DetailMode,
   GraphFacets,
@@ -17,9 +21,9 @@ import { createGraphTheme } from "./theme"
 
 export type GraphViewProps = {
   model: GraphViewData
-  theme?: any
+  theme?: RenderTheme
   level?: ZoomLevel
-  projection?: any
+  projection?: Projection
   depth?: DepthMode
   selection?: string
   files?: boolean
@@ -38,13 +42,13 @@ export type GraphViewProps = {
 export type UseGraphStateReturn = {
   i18n: ReturnType<typeof useI18n>
   a11yInstructionsId: string
-  resolvedTheme: () => any
+  resolvedTheme: () => RenderTheme
 
   // Controlled state signals
   level: () => ZoomLevel
   setLevel: (level: ZoomLevel | ((prev: ZoomLevel) => ZoomLevel)) => void
-  projection: () => any
-  setProjection: (projection: any) => void
+  projection: () => Projection
+  setProjection: (projection: Projection) => void
   depth: () => DepthMode
   setDepth: (depth: DepthMode | ((prev: DepthMode) => DepthMode)) => void
   layout: () => Layout
@@ -93,8 +97,8 @@ export type UseGraphStateReturn = {
   capabilities: () => any
   rendererReady: () => boolean
   setRendererReady: (ready: boolean) => void
-  rendererID: () => any
-  setRendererID: (id: any) => void
+  rendererID: () => RendererID | undefined
+  setRendererID: (id: RendererID | undefined) => void
   fallback: () => boolean
   setFallback: (fallback: boolean) => void
   error: () => string | undefined
@@ -124,7 +128,7 @@ export type UseGraphStateReturn = {
   redoManual: () => void
 
   // Model
-  notesStore: any
+  notesStore: Annotations
   model: () => GraphViewData
 
   // Functions
@@ -157,7 +161,7 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
   }
 
   // Notes store
-  const [notesStore] = createStore<any>({})
+  const [notesStore] = createStore<Annotations>({})
   const emptyModel: GraphViewData = {
     root: "session",
     nodes: [],

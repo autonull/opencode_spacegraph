@@ -44,11 +44,8 @@ import { ActiveSessionComposerRegion, createActiveSessionRegion } from "./compos
 import { SessionIdentityHeader } from "./session-identity-header"
 import { SessionReviewToggle } from "./header/session-header-actions"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
-import { SessionGraphView } from "./graph/session-graph-view"
-import { SessionGraphPanel } from "./graph/session-graph-panel"
-import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
+import { SessionGraphPane } from "./graph/graph-pane"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
-import { GraphMetricsReadout } from "./graph/graph-metrics-readout"
 import { SessionRunningMenu } from "./header/session-running-menu"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
 import { createTimelineCache } from "./timeline/cache"
@@ -140,11 +137,6 @@ function SessionScreenContent(props: {
     // T2.3: the graph counts its own "return" action, so this switch is not counted twice.
     graph.setMap(false)
     revealInLog(messageID, partID)
-  }
-
-  const leaveGraph = () => {
-    Metrics.count("mode-switch")
-    graph.setMap(false)
   }
 
   // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
@@ -432,42 +424,16 @@ function SessionScreenContent(props: {
               </SessionIdentityHeader>
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
-              <SessionGraphPanel
-                map={mapVisible()}
-                sideBySide={splitVisible()}
-                graph={() => (
-                  <SessionGraphView
-                    session={session}
-                    onBack={leaveGraph}
-                    onOpenTranscript={openGraphTranscript}
-                    onReveal={splitVisible() ? revealInLog : undefined}
-                    onSplitView={
-                      splitVisible()
-                        ? undefined
-                        : () => {
-                            Metrics.count("mode-switch")
-                            graph.setMap(true)
-                            graph.setSideBySide(true)
-                          }
-                    }
-                    activeMessageID={splitVisible() ? timeline.currentMessageId() : undefined}
-                    refitKey={splitVisible() ? "split" : "map"}
-                    arrangement={graph.arrangement()}
-                    onArrangementChange={graph.setArrangement}
-                    arrangementSide={graph.arrangementSide()}
-                    onArrangementSideChange={graph.setArrangementSide}
-                  />
-                )}
+              <SessionGraphPane
+                session={session}
+                graph={graph}
+                graphEnabled={graphEnabled}
+                timeline={timeline}
+                mapVisible={mapVisible}
+                splitVisible={splitVisible}
+                screen={screen}
+                metricsEnabled={metricsEnabled}
                 transcript={timelineView()}
-                arrangement={graph.arrangement()}
-                side={graph.arrangementSide()}
-                split={graph.split()}
-                onSplit={graph.setSplit}
-                pane={graph.pane()}
-                onPane={graph.setPane}
-                logTextScale={graph.logTextScale()}
-                onLogTextScale={graph.setLogTextScale}
-                onClose={leaveGraph}
               />
             </Show>
           </Match>
@@ -669,29 +635,7 @@ function SessionScreenContent(props: {
             </div>
           </Show>
 
-          {/* The turn map is the session's own overlay (H6.2): it covers the session panel, not the
-              side region, and it only exists while the graph feature is on. The wrapper carries the
-              panel's own width so the overlay is scoped to the panel it belongs to, and it sits
-              above the floating header toggles. */}
-          <Show when={graphEnabled() && graph.turnMap()}>
-            {(turnID) => (
-              <div class="absolute inset-y-0 start-0 z-40" style={{ width: screen.panel.width() }}>
-                <SessionTurnMapOverlay
-                  session={session}
-                  turnID={turnID()}
-                  onClose={() => graph.setTurnMap(undefined)}
-                  onOpenFullGraph={(id) => {
-                    Metrics.count("expand")
-                    graph.setTurnMap(undefined)
-                    graph.setMap(true)
-                    graph.setSideBySide(false)
-                    graph.setSelected(id)
-                  }}
-                />
-              </div>
-            )}
-          </Show>
-        </div>
+          </div>
 
         <Show when={isDesktop() && (bottomDockPresence.present() || store.bottomDockCached)}>
           <div
@@ -729,10 +673,6 @@ function SessionScreenContent(props: {
               animate={bottomDockPresence.animate()}
             />
           </div>
-        </Show>
-
-        <Show when={metricsEnabled()}>
-          <GraphMetricsReadout />
         </Show>
       </div>
     </>

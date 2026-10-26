@@ -4,10 +4,6 @@ export type RendererID = "spacegraph" | "cytoscape"
 
 export type RendererFactory = () => Promise<GraphRenderer>
 
-function requireCompatible(renderer: GraphRenderer): GraphRenderer {
-  return renderer
-}
-
 /**
  * Adapters load behind dynamic `import()` so neither backend is pulled at module scope; a host that
  * only ever uses SpaceGraphJS never pays for Cytoscape, and vice versa.
@@ -19,7 +15,7 @@ const FACTORIES: Record<RendererID, RendererFactory> = {
 
 /** Constructs an adapter without mounting, so a host can inspect capabilities before it commits. */
 export function createRenderer(id: RendererID): Promise<GraphRenderer> {
-  return FACTORIES[id]().then(requireCompatible)
+  return FACTORIES[id]()
 }
 
 /** SpaceGraphJS first with Cytoscape as the 2D fallback; a Cytoscape request never falls back up. */
@@ -49,7 +45,7 @@ export async function mountRenderer(
 
   for (const [index, id] of rendererOrder(options.preferred).entries()) {
     try {
-      const renderer = requireCompatible(await (overrides[id] ?? FACTORIES[id])())
+      const renderer = await (overrides[id] ?? FACTORIES[id])()
       await renderer.mount(container, { theme: options.theme, projection: options.projection })
 
       return { id, renderer, fallback: index > 0, ...(lastError ? { error: lastError } : {}) }

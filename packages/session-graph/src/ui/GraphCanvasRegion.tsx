@@ -27,6 +27,7 @@ import { createNodeAnchor } from "./graph-anchors"
 import type { GraphDiffSource } from "./GraphDiff"
 
 
+import { GraphActionTarget } from "./GraphActionTarget"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
 
@@ -64,8 +65,8 @@ export type GraphCanvasRegionProps = {
   renderer: GraphRenderer | undefined
   setRenderer?: (renderer: GraphRenderer | undefined) => void
   setRendererReady: (ready: boolean) => void
-  rendererID: string | undefined
-  setRendererID: (id: string | undefined) => void
+  rendererID: RendererID | undefined
+  setRendererID: (id: RendererID | undefined) => void
   fallback: boolean
   setFallback: (fallback: boolean) => void
   error: string | undefined
@@ -81,8 +82,8 @@ export type GraphCanvasRegionProps = {
   link: string | undefined
   onOpenTranscript: ((id: string) => void) | undefined
   onOpenSession: ((sessionID: string) => void) | undefined
-  onActionNavigate: ((target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void) | undefined
-  onActionReveal: ((target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void) | undefined
+  onActionNavigate: ((target: GraphActionTarget) => void) | undefined
+  onActionReveal: ((target: GraphActionTarget) => void) | undefined
   onActionCopy: ((text: string) => void) | undefined
   onActionRun: ((operation: { id: string; params: Record<string, unknown> }) => void) | undefined
   onOpenWindow: ((kind: string, nodeID?: string) => void) | undefined
