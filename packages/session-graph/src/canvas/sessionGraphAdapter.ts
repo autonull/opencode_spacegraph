@@ -1,4 +1,4 @@
-import { ModelAdapter, type AdapterConfig, type AdapterPosition } from "@spacegraphjs/adapter"
+import { ModelAdapter, type AdapterConfig, type AdapterPosition, computeBandBox } from "@spacegraphjs/adapter"
 import type { NodeStatus, RenderEdge, RenderNode } from "@spacegraphjs/renderer"
 import {
   STRUCTURAL_KINDS,
@@ -159,11 +159,12 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
     visible: ReadonlySet<string>,
   ): RenderNode[] {
     const bands: RenderNode[] = []
+    const byID = this.nodeIndex(model)
 
     const emit = (node: GraphNode, ids: readonly string[]) => {
       const drawn = ids.filter((id) => visible.has(id))
       if (drawn.length === 0) return
-      const box = this.bandBox(model, drawn, positions, visible)
+      const box = computeBandBox(model, drawn, positions, visible, this.config.nodeSizeFn, this.geometry, byID)
       if (!box) return
       bands.push({
         id: `band:${node.id}`,
@@ -204,8 +205,6 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
         if (bucket) bucket.push(node)
         else byTurn.set(node.turnID, [node])
       }
-
-      const byID = this.nodeIndex(model)
 
       for (const turnID of model.turns) {
         const turn = byID.get(turnID)
