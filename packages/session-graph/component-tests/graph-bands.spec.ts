@@ -4,6 +4,12 @@ import { expect, story } from "../../storybook/playwright/story"
 // so the header has a slot of its own above them instead of landing on the first card. The canvas
 // keeps its spatial grammar only when no two boxes overlap, so this is measured, not assumed.
 
+type ViewWindow = {
+  __graphView?: {
+    onLayoutApplied: (handler: (payload: { layout: string; duration: number; timestamp: number }) => void) => () => void
+  }
+}
+
 const measure = async (page: import("@playwright/test").Page) =>
   page.evaluate(() => {
     const rect = (element: Element) => {
@@ -42,6 +48,26 @@ story("a band header names its group without covering the cards it groups", asyn
   const root = await mount("session-graph-view")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+  // Wait for layout to complete
+  await page.evaluate(() => {
+    return new Promise<void>((resolve) => {
+      const view = (window as unknown as ViewWindow).__graphView
+      if (view?.onLayoutApplied) {
+        const unsubscribe = view.onLayoutApplied(() => {
+          unsubscribe()
+          resolve()
+        })
+        // Fallback timeout
+        setTimeout(() => {
+          unsubscribe()
+          resolve()
+        }, 5000)
+      } else {
+        resolve()
+      }
+    })
+  })
 
   const report = await measure(page)
 

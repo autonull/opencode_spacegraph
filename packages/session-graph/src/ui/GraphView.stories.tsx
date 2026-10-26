@@ -132,6 +132,7 @@ type Harness = {
   selected: () => string | undefined
   /** The camera's frame, read back from the renderer (T6.18). */
   getViewport: () => { zoom: number; center: number[] } | undefined
+  onLayoutApplied: (handler: (payload: { layout: string; duration: number; timestamp: number }) => void) => () => void
 }
 
 type HarnessProps = {
@@ -187,12 +188,23 @@ const ViewHarness = (props: HarnessProps) => {
 
   // The live renderer, so a test can read the camera back (T6.18).
   let graphRenderer: GraphRenderer | undefined
+  let layoutAppliedUnsubscribe: (() => void) | undefined
+
+  const onLayoutApplied = (handler: (payload: { layout: string; duration: number; timestamp: number }) => void) => {
+    if (graphRenderer) {
+      layoutAppliedUnsubscribe = graphRenderer.on("layoutApplied", handler)
+    }
+    return () => {
+      layoutAppliedUnsubscribe?.()
+    }
+  }
 
   ;(window as unknown as { __graphView?: Harness }).__graphView = {
     select: setSelected,
     setRenderer,
     selected,
     getViewport: () => graphRenderer?.getViewport?.(),
+    onLayoutApplied,
   }
 
   const size = props.fullscreen
