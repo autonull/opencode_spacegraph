@@ -11,7 +11,7 @@ Each record documents a significant architectural decision, its context, and its
 
 **Context:** The transcript is the dependable, familiar interface. Any graph must not break existing workflows.
 
-**Decision:** The graph is an alternate, opt-in representation built entirely from existing session data. No protocol, server, or session-schema changes. The transcript keeps working if the graph package fails to load.
+**Decision:** The graph is an alternate, opt-in representation built entirely from existing session data. No protocol, server, or session-schema changes required for the core graph (rungs 1–4). An optional workspace lens (rung 5) adds a protocol/server endpoint; the `snapshot-cache` degrades gracefully when the endpoint is unavailable. The transcript keeps working if the graph package fails to load.
 
 **Consequences:**
 - Feature flag `experimental.sessionGraph` defaults to `false`

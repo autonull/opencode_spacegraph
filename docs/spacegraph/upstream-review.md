@@ -67,7 +67,7 @@ A negative result, honestly recorded, is a valid and publishable outcome. The li
 ### 3.4 Linkage
 - OpenCode consumes `spacegraphjs/*` as source workspaces (gitignored sibling repo, pinned SHA)
 - **Upstream adoption requires published packages** (T4.2) or a bundled companion package
-- No protocol, server, or session-schema changes
+- No protocol, server, or session-schema changes required for the core graph (rungs 1–4). Rung 5 (optional) adds a workspace lens via a new HTTP endpoint; the `snapshot-cache` degrades gracefully when the endpoint is unavailable.
 
 ---
 
@@ -274,11 +274,12 @@ bun run graph:capture --mode=compare
 
 4. **Are the known limitations acceptable?** See `prototype.md` §"Known limitations" (20 items, explicitly carried forward) and §"Edge cases" (the cases a real session produces that the fixture does not). The library's own limits — the mesh outline, the depth fade, the DOM card path — are declared in `spacegraphjs/docs/limitations.md`.
 
-5. **Is the hybrid ladder the right adoption path?** Four rungs (T3.7):
+5. **Is the hybrid ladder the right adoption path?** Five rungs (T3.7):
    1. `session-ui` graph model + tests (pure, no UI)
    2. `session-graph` package + canvas + inspector, feature-flagged
    3. App wiring: setting, mode branch, commands, toggle
    4. Optional extension panel / hybrid affordance
+   5. (Optional) Protocol/server workspace snapshot — adds the workspace lens via a new HTTP endpoint. The `snapshot-cache` degrades gracefully when the endpoint is unavailable, so rung 5 is truly optional. A maintainer may take rungs 1–4 and never take rung 5; the graph still works as a session-only graph.
 
 ---
 
@@ -287,7 +288,7 @@ bun run graph:capture --mode=compare
 - **Prototype write-up:** `docs/spacegraph/prototype.md`
 - **Visual review (per-image evidence):** `docs/spacegraph/visual-review.md`
 - **Design argument:** `SPACEGRAPH.md`
-- **Living plan:** `SPACEGRAPH.TODO.2.md`
+- **Living plan:** `SPACEGRAPH.TODO.19.md`
 - **Library docs:** `spacegraphjs/README.md`, `spacegraphjs/docs/host-integration.md`
 - **Demo (library contract):** `spacegraphjs/demo/contract.html` (to be deployed via GitHub Pages)
 - **Demo (second host):** `spacegraphjs/demo/second-host.html` — a framework-free consumer outside

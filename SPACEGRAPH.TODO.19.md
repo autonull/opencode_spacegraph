@@ -199,13 +199,13 @@ server without the endpoint yields a session-only graph — which is the entire 
 1. Present **five rungs**, with the protocol/server rung separate and marked **optional**:
    `session-ui/graph` model → `session-graph` host → app wiring → hybrid affordances → *server workspace snapshot (optional)*.
    Note that rung 1 already imports `@spacegraphjs/kernel`, so the published library set (§8.2) is a
-   hard prerequisite for the first rung, not only for the host.
-2. Add the §4.4 tests so the "no endpoint" path is proven, not assumed.
+   hard prerequisite for the first rung, not only for the host. ✅ **DONE**
+2. Add the §4.4 tests so the "no endpoint" path is proven, not assumed. ✅ **DONE**
 3. Correct `SPACEGRAPH.md` §3/§7.1 (no-protocol claim), §9.1 (four → five rungs, new diff numbers),
    §6.1 (package versions: core `8.5.0` not `8.4.0`; add `svg-renderer 0.2.0`,
-   `spacegraph-renderer 0.3.1`).
+   `spacegraph-renderer 0.3.1`). ✅ **DONE**
 4. In `docs/spacegraph/upstream-review.md`, state the rung-selection rule: a maintainer may take
-   rungs 1–4 and never take rung 5; the graph still works.
+   rungs 1–4 and never take rung 5; the graph still works. ✅ **DONE**
 
 **Merge-surface consequence:** the four upstream-owned protocol/client files are the only new conflict
 risk outside `packages/app`. Measure them with

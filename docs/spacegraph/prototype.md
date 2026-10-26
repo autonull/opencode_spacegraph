@@ -14,7 +14,7 @@ git log.
 > effective than linear navigation through messages.
 
 The transcript stays the dependable baseline. The graph is an alternate, opt-in representation built
-from existing session data. No protocol, server, or session-schema changes. Success is not "a graph
+from existing session data. No protocol, server, or session-schema changes required for the core graph (rungs 1–4). An optional workspace lens (rung 5) adds a protocol/server endpoint; the `snapshot-cache` degrades gracefully when the endpoint is unavailable. Success is not "a graph
 exists": it is that a user can answer questions the transcript makes expensive — why a file changed,
 which calls led to a failure, what a subagent contributed, what changed after a failing test, and
 where the agent retried or changed direction.

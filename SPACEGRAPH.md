@@ -75,7 +75,7 @@ The transcript remains ideal for following a conversation. The graph excels at e
 
 ### 2.1 The data was already there — the model just needed extracting
 
-OpenCode's session messages (`session-ui/src/timeline/projection.ts`) already carry turn boundaries, tool calls, file operations, subtasks, and outcomes. The graph model (`session-ui/src/graph/model.ts`) is a **pure, synchronous transformation** of that data — no backend changes, no new protocol. Key insight: reuse `Timeline.constructSessionMessageRows`'s `turnByMessageID` map rather than re-walking the session.
+OpenCode's session messages (`session-ui/src/timeline/projection.ts`) already carry turn boundaries, tool calls, file operations, subtasks, and outcomes. The graph model (`session-ui/src/graph/model.ts`) is a **pure, synchronous transformation** of that data — no backend changes, no new protocol required for the core graph. (An optional workspace lens adds a protocol/server endpoint; see rung 5 in §9.1.) Key insight: reuse `Timeline.constructSessionMessageRows`'s `turnByMessageID` map rather than re-walking the session.
 
 ### 2.2 Semantic levels are host policy, not library internals
 
@@ -302,12 +302,12 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `spacegraphjs` | 8.4.0 | Core: graph, events, camera, plugins, nodes, edges, vision (dynamic) |
+| `spacegraphjs` | 8.5.0 | Core: graph, events, camera, plugins, nodes, edges, vision (dynamic) |
 | `@spacegraphjs/renderer` | 0.3.0 | Contract types, `GraphRenderer`, capabilities, `FitOptions` (padding + insets) |
 | `@spacegraphjs/adapter` | 0.2.0 | Model adapter pipeline (domain → RenderModel), `diffRenderModels` |
-| `@spacegraphjs/spacegraph-renderer` | 0.3.0 | 2D ortho + 3D perspective, CSS3D HTML cards, CSS2D edge labels |
+| `@spacegraphjs/spacegraph-renderer` | 0.3.1 | 2D ortho + 3D perspective, CSS3D HTML cards, CSS2D edge labels |
 | `@spacegraphjs/cytoscape-renderer` | 0.3.0 | 2D Canvas, clipped DOM card overlay, declared 3D no-op |
-| `@spacegraphjs/svg-renderer` | 0.1.0 | Static SVG export, `InlineGraph`, serialization |
+| `@spacegraphjs/svg-renderer` | 0.2.0 | Static SVG export, `InlineGraph`, serialization |
 
 ### 6.2 Generic capabilities used by OpenCode integration
 
@@ -431,7 +431,7 @@ bun run graph:capture --mode=verify   # assert committed set
 
 ## 9. Upstream Readiness
 
-### 9.1 Four-rung contribution ladder
+### 9.1 Five-rung contribution ladder
 
 | Rung | Scope | Diff | Risk | Review question |
 |------|-------|------|------|-----------------|
@@ -439,6 +439,9 @@ bun run graph:capture --mode=verify   # assert committed set
 | 2 | `session-graph` package (canvas, UI, contract only) | +7,411 lines | Low — feature-flagged, lazy | Does the host UI work and stay isolated? |
 | 3 | App wiring (flag, settings, mode, toggle, commands) | +863/−36 in `app/src` | Low — off by default | Is the integration clean and reversible? |
 | 4 | Hybrid affordance (turn-map, side panel) | +274 in `gui-extensions` | Medium — new SDK surface | Does the hybrid add value without disruption? |
+| 5 (optional) | Protocol/server workspace snapshot | ~900 lines | Medium — new HTTP endpoint | Is the workspace lens worth the protocol cost? |
+
+**Rung-selection rule:** A maintainer may take rungs 1–4 and never take rung 5; the graph still works as a session-only graph. Rung 5 adds the workspace lens (files and symbols from the workspace that aren't in the session) via a new HTTP endpoint. The `snapshot-cache` degrades gracefully when the endpoint is unavailable, so rung 5 is truly optional.
 
 **Blocker:** Library packages must be published to npm (or bundled) before upstream can adopt. The fork currently uses source workspaces in a gitignored sibling repo.
 
