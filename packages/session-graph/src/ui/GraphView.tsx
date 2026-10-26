@@ -89,18 +89,16 @@ import "./graph-cards.css"
 import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
 import { createNodeAnchor } from "./graph-anchors"
-import { createGraphSelection } from "./graph-selection"
 import { sessionID } from "./node-data"
 import { proposeWindow } from "spacegraphjs/utils"
-import { useTraceOverlay } from "./useTraceOverlay"
 import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
-import { useNotes } from "./useNotes"
 import { useEdgeKinds } from "./useEdgeKinds"
-import { useSelectionVerbs } from "./useSelectionVerbs"
 import { useGraphKeyboard } from "./useGraphKeyboard"
 import { useGraphViewport } from "./useGraphViewport"
 import { useGraphState } from "./useGraphState"
+import { useGraphSelection } from "./useGraphSelection"
+import { useGraphAnnotations } from "./useGraphAnnotations"
 import { attachTouchGestures, createWidthThresholdTracker } from "spacegraphjs/utils"
 import type { GraphWindowState } from "./GraphWindows"
 
@@ -354,13 +352,7 @@ export const GraphView = (props: GraphViewProps) => {
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
 
   // Hooks for modular state/logic
-  const trace = useTraceOverlay({
-    model,
-    selection: () => selection.selection(),
-    onAnnounce: announce,
-  })
-
-  const notes = useNotes({
+  const annotations = useGraphAnnotations({
     model,
     selection: () => selection.selection(),
     onAnnounce: announce,
@@ -383,20 +375,15 @@ export const GraphView = (props: GraphViewProps) => {
     nodeByID: (id) => model().nodes.find((n) => n.id === id),
   })
 
-  const selectionVerbs = useSelectionVerbs({
+  const graphSelection = useGraphSelection({
     model,
-    selection: () => selection.selection(),
+    controlled: () => props.selection,
+    onSelect: (id) => props.onSelect?.(id),
     onAnnounce: announce,
   })
 
   // P8.1: the vanilla library controller owns interaction state (selection + trail).
-  const selection = createGraphSelection({
-    model: () => model(),
-    controlled: () => props.selection,
-    onSelect: (id) => props.onSelect?.(id),
-    onChange: () => setPopoverDismissed(false),
-    count: () => Metrics.count("select"),
-  })
+  const selection = graphSelection.selection
 
   // T18.3: the auto detail mode threshold
   const AUTO_DETAIL_THRESHOLD = 640
@@ -438,7 +425,7 @@ export const GraphView = (props: GraphViewProps) => {
   )
 
   const scopeBase = (source: GraphViewData) =>
-    composeScopes(source, facets(), selectionVerbs.keptIds(), groupCollapse.collapsedGroups())
+    composeScopes(source, facets(), graphSelection.keptIds(), groupCollapse.collapsedGroups())
 
   const turnScoped = createMemo(() => {
     const turns = new Set(scale().turns)
@@ -488,7 +475,7 @@ export const GraphView = (props: GraphViewProps) => {
       if (flags.compact !== undefined) setCompact(flags.compact)
     })
 
-    const handleCopyTraceOutline = () => trace.copyTraceOutline()
+    const handleCopyTraceOutline = () => annotations.copyTraceOutline()
     window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
     onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
 
@@ -496,14 +483,14 @@ export const GraphView = (props: GraphViewProps) => {
       const detail = (event as CustomEvent<{ name?: string; source?: string }>).detail
       const name = detail?.name
       if (name === "why" || name === "led-here" || name === "related") {
-        trace.startTrace(name, detail?.source)
+        annotations.startTrace(name, detail?.source)
         return
       }
       if (name === "compare") {
         compareSelectedTurns()
         return
       }
-      if (name === "note") notes.openNoteComposer()
+      if (name === "note") annotations.openNoteComposer()
       if (name === "failureProgress") openWindow("failureProgress")
       if (name === "find") openWindow("find")
     }
@@ -610,7 +597,7 @@ export const GraphView = (props: GraphViewProps) => {
   const renderCard = createMemo(() => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
     const now = Date.now()
-    const overlay = trace.traceOverlay()
+    const overlay = annotations.traceOverlay()
     return (
       props.renderCard ??
       createCardTemplate(theme(), {
@@ -872,8 +859,8 @@ export const GraphView = (props: GraphViewProps) => {
 
   // B1 — the selection verbs. frameSelection and exportSelection need camera/ordered (defined later).
   const frameSelection = () => viewportTracker.camera.frame(selection.selection())
-  const keepOnlySelection = selectionVerbs.keepOnlySelection
-  const copySelectedPaths = selectionVerbs.copySelectedPaths
+  const keepOnlySelection = graphSelection.keepOnlySelection
+  const copySelectedPaths = graphSelection.copySelectedPaths
   const exportSelection = () => {
     const ids = new Set(selection.selection())
     if (ids.size === 0) return
@@ -884,10 +871,7 @@ export const GraphView = (props: GraphViewProps) => {
       edges: model.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
     })
   }
-  const clearSelection = () => {
-    selectionVerbs.setKeptIds(null)
-    selection.select(undefined)
-  }
+  const clearSelection = graphSelection.clearSelection
 
   // The node the popover describes, and where it hangs.
   const popoverNode = createMemo(() => (effectiveDetailMode() === "popover" ? selectedNode() : undefined))
@@ -921,11 +905,11 @@ export const GraphView = (props: GraphViewProps) => {
   })
   const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport: viewportTracker.viewport })
   const noteAnchor = createNodeAnchor({
-    node: () => (notes.noteTarget() ? nodeByID(model(), notes.noteTarget()!) : undefined),
+    node: () => (annotations.noteTarget() ? nodeByID(model(), annotations.noteTarget()!) : undefined),
     renderer: () => renderer,
     viewport: viewportTracker.viewport,
   })
-  const noteTargetNode = () => (notes.noteTarget() ? nodeByID(model(), notes.noteTarget()!) : undefined)
+  const noteTargetNode = () => (annotations.noteTarget() ? nodeByID(model(), annotations.noteTarget()!) : undefined)
   const peekEdge = createMemo(() => {
     if (!peek()) return undefined
     const id = edgeHovered()
@@ -1091,8 +1075,8 @@ export const GraphView = (props: GraphViewProps) => {
       zoomBy: (delta: number) => viewportTracker.camera.zoomBy(delta as 1 | -1),
       pending: viewportTracker.camera.pending,
     },
-    trace,
-    notes,
+    annotations,
+    graphSelection,
     groupCollapse,
     openWindow,
     setFindInitialTab,
@@ -1271,7 +1255,7 @@ export const GraphView = (props: GraphViewProps) => {
         onCopyPaths={copySelectedPaths}
         onExportSubset={exportSelection}
         onClear={clearSelection}
-        onAddNote={notes.openNoteComposer}
+        onAddNote={annotations.openNoteComposer}
         compare={
           selectedTurns().length >= 2 || comparisonHook.comparedTurns()
             ? {
@@ -1387,9 +1371,8 @@ export const GraphView = (props: GraphViewProps) => {
           activeTurn={props.activeTurn}
           selection={() => selection.selection()}
           select={selection.select}
-          selectionVerbs={selectionVerbs}
-          trace={trace}
-          notes={notes}
+          graphSelection={graphSelection}
+          annotations={annotations}
           edgeKinds={edgeKinds}
           groupCollapse={groupCollapse}
           comparisonHook={comparisonHook}
@@ -1518,8 +1501,7 @@ export const GraphView = (props: GraphViewProps) => {
           viewport={viewportTracker.viewport()}
           displayPositions={displayPositions}
           selection={selection}
-          trace={trace}
-          notes={notes}
+          annotations={annotations}
           edgeKinds={edgeKinds}
           comparison={comparisonHook}
           diffSource={props.diffSource}
@@ -1574,15 +1556,15 @@ export const GraphView = (props: GraphViewProps) => {
                 onSelect={selection.select}
                 onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
                 onOpenSession={props.onOpenSession}
-                traceKind={trace.traceKind()}
-                onTraceWhy={trace.traceWhy}
-                onTraceLedHere={trace.traceLedHere}
-                onTraceRelated={trace.traceRelated}
-                onClearTrace={trace.clearTrace}
-                onCopyTraceOutline={trace.copyTraceOutline}
-                onEditNote={notes.editNote}
-                onDeleteNote={notes.deleteNote}
-                onCopyNote={notes.copyNote}
+                traceKind={annotations.traceKind()}
+                onTraceWhy={annotations.traceWhy}
+                onTraceLedHere={annotations.traceLedHere}
+                onTraceRelated={annotations.traceRelated}
+                onClearTrace={annotations.clearTrace}
+                onCopyTraceOutline={annotations.copyTraceOutline}
+                onEditNote={annotations.editNote}
+                onDeleteNote={annotations.deleteNote}
+                onCopyNote={annotations.copyNote}
               />
             </div>
           </div>
@@ -1625,15 +1607,15 @@ export const GraphView = (props: GraphViewProps) => {
               onSelect={selection.select}
               onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
               onOpenSession={props.onOpenSession}
-              traceKind={trace.traceKind()}
-              onTraceWhy={trace.traceWhy}
-              onTraceLedHere={trace.traceLedHere}
-              onTraceRelated={trace.traceRelated}
-              onClearTrace={trace.clearTrace}
-              onCopyTraceOutline={trace.copyTraceOutline}
-              onEditNote={notes.editNote}
-              onDeleteNote={notes.deleteNote}
-              onCopyNote={notes.copyNote}
+              traceKind={annotations.traceKind()}
+              onTraceWhy={annotations.traceWhy}
+              onTraceLedHere={annotations.traceLedHere}
+              onTraceRelated={annotations.traceRelated}
+              onClearTrace={annotations.clearTrace}
+              onCopyTraceOutline={annotations.copyTraceOutline}
+              onEditNote={annotations.editNote}
+              onDeleteNote={annotations.deleteNote}
+              onCopyNote={annotations.copyNote}
             />
           </div>
         </Show>

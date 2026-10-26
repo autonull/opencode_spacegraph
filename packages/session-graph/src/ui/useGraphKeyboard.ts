@@ -2,14 +2,16 @@ import { onMount, onCleanup } from "solid-js"
 import { attachKeyboardShortcuts } from "spacegraphjs/utils"
 import type { GraphViewData } from "@opencode/session-ui/graph"
 import { neighborStep } from "@opencode/session-ui/graph"
+import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
+import type { UseGraphSelectionReturn } from "./useGraphSelection"
 
 export type UseGraphKeyboardOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
   onSelect: (id: string | undefined, add?: boolean) => void
   camera: { fitContent: () => void; frameReadable: (id: string) => void; zoomBy: (delta: number) => void; pending: () => boolean }
-  trace: ReturnType<typeof import("./useTraceOverlay").useTraceOverlay>
-  notes: ReturnType<typeof import("./useNotes").useNotes>
+  annotations: UseGraphAnnotationsReturn
+  graphSelection: UseGraphSelectionReturn
   groupCollapse: ReturnType<typeof import("./useGroupCollapse").useGroupCollapse>
   openWindow: (kind: string, nodeID?: string) => void
   setFindInitialTab: (tab: "search" | "filters" | "outline") => void
@@ -28,8 +30,7 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
     selection,
     onSelect,
     camera,
-    trace,
-    notes,
+    annotations,
     groupCollapse,
     openWindow,
     setFindInitialTab,
@@ -72,7 +73,7 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
     if (selectionId) {
       if (event.key === "n") {
         event.preventDefault()
-        notes.openNoteComposer()
+        annotations.openNoteComposer()
         return
       }
       if (event.key === "Enter" && groupCollapse.selectedGroup()) {
@@ -82,25 +83,25 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
       }
       if (event.key === "w") {
         event.preventDefault()
-        trace.startTrace("why", selectionId)
+        annotations.startTrace("why", selectionId)
         return
       }
       if (event.key === "e") {
         event.preventDefault()
-        trace.startTrace("led-here", selectionId)
+        annotations.startTrace("led-here", selectionId)
         return
       }
       if (event.key === "r") {
         event.preventDefault()
-        trace.startTrace("related", selectionId)
+        annotations.startTrace("related", selectionId)
         return
       }
       if (event.key === "[" || event.key === "]") {
         event.preventDefault()
         const delta = event.key === "[" ? -1 : 1
-        const overlay = trace.traceOverlay()
+        const overlay = annotations.traceOverlay()
         if (overlay) {
-          const next = trace.stepLitNode(delta)
+          const next = annotations.stepLitNode(delta)
           if (next) onSelect(next)
         } else {
           const next = neighborStep(model(), selectionId, delta)

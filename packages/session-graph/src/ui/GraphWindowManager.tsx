@@ -24,6 +24,7 @@ import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { windowKind, type GraphWindowKind } from "./graph-windows"
 import type { RendererViewport } from "@spacegraphjs/renderer"
 import { createMemo, type JSX } from "solid-js"
+import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 
 export type GraphWindowManagerProps = {
   windows: readonly GraphWindowState[]
@@ -41,8 +42,7 @@ export type GraphWindowManagerProps = {
     selection: () => readonly string[]
     select: (id: string | undefined, add?: boolean) => void
   }
-  trace: ReturnType<typeof import("./useTraceOverlay").useTraceOverlay>
-  notes: ReturnType<typeof import("./useNotes").useNotes>
+  annotations: UseGraphAnnotationsReturn
   edgeKinds: ReturnType<typeof import("./useEdgeKinds").useEdgeKinds>
   comparison: ReturnType<typeof import("./useComparison").useComparison>
   diffSource: GraphDiffSource | undefined
@@ -60,7 +60,7 @@ export type GraphWindowManagerProps = {
 }
 
 const GraphWindowManager = (props: GraphWindowManagerProps) => {
-  const { model, selection, trace, notes, edgeKinds, comparison, i18n, renderer, viewport, displayPositions, canvasSize, layout, theme, diffSource, link, onOpenTranscript, onOpenSession, onActionNavigate, rules, onRulesChange, findInitialTab, renderSummary } = props
+  const { model, selection, annotations, edgeKinds, comparison, i18n, renderer, viewport, displayPositions, canvasSize, layout, theme, diffSource, link, onOpenTranscript, onOpenSession, onActionNavigate, rules, onRulesChange, findInitialTab, renderSummary } = props
 
   const windowKinds = createMemo<GraphWindowKind[]>(() => [
     {
@@ -83,15 +83,15 @@ const GraphWindowManager = (props: GraphWindowManagerProps) => {
             onSelect={selection.select}
             onOpenTranscript={onOpenTranscript ? onOpenTranscript : undefined}
             onOpenSession={onOpenSession}
-            traceKind={trace.traceKind()}
-            onTraceWhy={trace.traceWhy}
-            onTraceLedHere={trace.traceLedHere}
-            onTraceRelated={trace.traceRelated}
-            onClearTrace={trace.clearTrace}
-            onCopyTraceOutline={trace.copyTraceOutline}
-            onEditNote={notes.editNote}
-            onDeleteNote={notes.deleteNote}
-            onCopyNote={notes.copyNote}
+            traceKind={annotations.traceKind()}
+            onTraceWhy={annotations.traceWhy}
+            onTraceLedHere={annotations.traceLedHere}
+            onTraceRelated={annotations.traceRelated}
+            onClearTrace={annotations.clearTrace}
+            onCopyTraceOutline={annotations.copyTraceOutline}
+            onEditNote={annotations.editNote}
+            onDeleteNote={annotations.deleteNote}
+            onCopyNote={annotations.copyNote}
           />
         )
       },
@@ -169,15 +169,15 @@ const GraphWindowManager = (props: GraphWindowManagerProps) => {
       name: "failureProgress",
       title: () => i18n.t("ui.sessionGraph.failureProgress.title"),
       render: () => {
-        const overlay = trace.traceOverlay()
+        const overlay = annotations.traceOverlay()
         return (
           <GraphFailureProgress
             model={model()}
             traceOverlay={overlay ?? undefined}
             onSelect={(id: string) => selection.select(id)}
-            onTraceWhy={trace.traceWhy}
-            onTraceLedHere={trace.traceLedHere}
-            onTraceRelated={trace.traceRelated}
+            onTraceWhy={annotations.traceWhy}
+            onTraceLedHere={annotations.traceLedHere}
+            onTraceRelated={annotations.traceRelated}
             onFrame={(ids) => renderer?.focus(ids[0])}
           />
         )

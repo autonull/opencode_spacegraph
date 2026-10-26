@@ -26,6 +26,8 @@ import { GraphError } from "./GraphError"
 import { GraphEmpty } from "./GraphEmpty"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
+import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
+import type { UseGraphSelectionReturn } from "./useGraphSelection"
 
 export type GraphOverlayManagerProps = {
   // Model & theme
@@ -40,6 +42,7 @@ export type GraphOverlayManagerProps = {
   // Selection & navigation
   selection: () => readonly string[]
   select: (id: string | undefined, add?: boolean) => void
+  graphSelection: UseGraphSelectionReturn
 
   // Peek
   peekFrame: { node: GraphNode; left: number; top: number } | undefined
@@ -51,8 +54,8 @@ export type GraphOverlayManagerProps = {
   popoverPlacement: { left: number; top: number }
   setPopoverDismissed: (dismissed: boolean) => void
 
-  // Notes
-  notes: ReturnType<typeof import("./useNotes").useNotes>
+  // Annotations (notes + trace)
+  annotations: UseGraphAnnotationsReturn
   noteTargetNode: () => GraphNode | undefined
   noteAnchor: ReturnType<typeof createNodeAnchor>
 
@@ -84,9 +87,6 @@ export type GraphOverlayManagerProps = {
   // Error/Empty states
   error: string | undefined
   onBack: (() => void) | undefined
-
-  // Trace
-  trace: ReturnType<typeof import("./useTraceOverlay").useTraceOverlay>
 
   // Diff
   diffSource: GraphDiffSource | undefined
@@ -141,13 +141,13 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
           </div>
         )}
       </Show>
-      <Show when={props.notes.noteTarget()}>
+      <Show when={props.annotations.noteTarget()}>
         <GraphNoteComposer
-          targetLabel={props.noteTargetNode()?.label ?? props.notes.noteTarget() ?? ""}
-          initialValue={props.notes.editingNote() ? (props.notes as unknown as Record<string, { body: string }>)[props.notes.editingNote()!]?.body : undefined}
+          targetLabel={props.noteTargetNode()?.label ?? props.annotations.noteTarget() ?? ""}
+          initialValue={props.annotations.editingNote() ? (props.annotations.notes as unknown as Record<string, { body: string }>)[props.annotations.editingNote()!]?.body : undefined}
           anchor={props.noteAnchor()}
-          onSave={props.notes.saveNote}
-          onClose={props.notes.closeNoteComposer}
+          onSave={props.annotations.saveNote}
+          onClose={props.annotations.closeNoteComposer}
         />
       </Show>
       <Show when={props.effectiveDetailMode === "popover"}>
@@ -171,15 +171,15 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
             onClose={() => props.setPopoverDismissed(true)}
-            traceKind={props.trace.traceKind()}
-            onTraceWhy={props.trace.traceWhy}
-            onTraceLedHere={props.trace.traceLedHere}
-            onTraceRelated={props.trace.traceRelated}
-            onClearTrace={props.trace.clearTrace}
-            onCopyTraceOutline={props.trace.copyTraceOutline}
-            onEditNote={props.notes.editNote}
-            onDeleteNote={props.notes.deleteNote}
-            onCopyNote={props.notes.copyNote}
+            traceKind={props.annotations.traceKind()}
+            onTraceWhy={props.annotations.traceWhy}
+            onTraceLedHere={props.annotations.traceLedHere}
+            onTraceRelated={props.annotations.traceRelated}
+            onClearTrace={props.annotations.clearTrace}
+            onCopyTraceOutline={props.annotations.copyTraceOutline}
+            onEditNote={props.annotations.editNote}
+            onDeleteNote={props.annotations.deleteNote}
+            onCopyNote={props.annotations.copyNote}
           />
         </div>
       </Show>

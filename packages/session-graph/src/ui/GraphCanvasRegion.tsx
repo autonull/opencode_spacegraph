@@ -27,6 +27,9 @@ import { createNodeAnchor } from "./graph-anchors"
 import type { GraphDiffSource } from "./GraphDiff"
 
 
+import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
+import type { UseGraphSelectionReturn } from "./useGraphSelection"
+
 export type GraphCanvasRegionProps = {
   model: () => GraphViewData
   theme: RenderTheme
@@ -97,11 +100,10 @@ export type GraphCanvasRegionProps = {
   activeTurn: string | undefined
   selection: () => readonly string[]
   select: (id: string | undefined, add?: boolean) => void
-  trace: ReturnType<typeof import("./useTraceOverlay").useTraceOverlay>
-  notes: ReturnType<typeof import("./useNotes").useNotes>
+  annotations: UseGraphAnnotationsReturn
   edgeKinds: ReturnType<typeof import("./useEdgeKinds").useEdgeKinds>
   groupCollapse: ReturnType<typeof import("./useGroupCollapse").useGroupCollapse>
-  selectionVerbs: ReturnType<typeof import("./useSelectionVerbs").useSelectionVerbs>
+  graphSelection: UseGraphSelectionReturn
   comparisonHook: ReturnType<typeof import("./useComparison").useComparison>
   manual: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }
   setManual: (key: "positions" | "sizes", id: string, value: [number, number, number] | [number, number]) => void
@@ -261,7 +263,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
           const edge = props.model().edges.find((item) => item.id === id)
           if (!edge) return
           props.select(edge.source)
-          props.trace.startTrace("related", edge.source)
+          props.annotations.startTrace("related", edge.source)
         }}
         onGroupToggle={props.toggleGroupByID}
         onGroupMenu={(id, at) => {
@@ -302,6 +304,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         // Selection & navigation
         selection={props.selection}
         select={props.select}
+        graphSelection={props.graphSelection}
 
         // Peek
         peekFrame={props.peekFrame}
@@ -313,8 +316,8 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         popoverPlacement={props.popoverPlacement}
         setPopoverDismissed={props.setPopoverDismissed}
 
-        // Notes
-        notes={props.notes}
+        // Annotations (notes + trace)
+        annotations={props.annotations}
         noteTargetNode={props.noteTargetNode}
         noteAnchor={props.noteAnchor}
 
@@ -346,9 +349,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         // Error/Empty states
         error={props.error}
         onBack={props.onBack}
-
-        // Trace
-        trace={props.trace}
 
         // Diff
         diffSource={props.diffSource}

@@ -211,13 +211,13 @@ Then update OpenCode to consume published versions (remove sibling checkout).
 
 ---
 
-## 6. Hook Consolidation
+## 6. Hook Consolidation ✅
 
-### 6.1 Merge Related Hooks
+### 6.1 Merge Related Hooks ✅
 | Current Hooks | Consolidated |
 |---------------|--------------|
-| `useSelectionVerbs` + selection logic | `useGraphSelection` |
-| `useNotes` + `useTraceOverlay` | `useGraphAnnotations` |
+| `useSelectionVerbs` + selection logic | `useGraphSelection` ✅ |
+| `useNotes` + `useTraceOverlay` | `useGraphAnnotations` ✅ |
 | `useEdgeKinds` | Keep (simple) |
 | `useGroupCollapse` | Keep (simple) |
 | `useComparison` | Keep (complex) |
@@ -373,12 +373,19 @@ Upstream sync → Shareable delivery
 | `spacegraphjs/packages/adapter/src/diff.ts` | ✅ Fixed RenderModelPatch compatibility |
 | `spacegraphjs/packages/kernel/src/time-filter.ts` | ✅ Fixed duplicate imports |
 | `spacegraphjs/packages/kernel/src/walks.ts` | ✅ Removed duplicate EdgeID export |
+| `packages/session-graph/src/ui/useGraphSelection.ts` | ✅ Created |
+| `packages/session-graph/src/ui/useGraphAnnotations.ts` | ✅ Created |
+| `packages/session-graph/src/ui/useGraphKeyboard.ts` | ✅ Updated to use consolidated hooks |
+| `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Updated to use annotations |
+| `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Updated to use annotations |
+| `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Updated to use annotations |
+| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Updated to use consolidated hooks |
 
 ---
 
 ## Next Immediate Steps
 
-1. **Hook Consolidation (6.1)** - Merge related hooks:
-   - `useSelectionVerbs` + selection logic → `useGraphSelection`
-   - `useNotes` + `useTraceOverlay` → `useGraphAnnotations`
-   - Keep: `useEdgeKinds`, `useGroupCollapse`, `useComparison`
+1. **Component/E2E Test Fixes (7.1–7.2)** - Fix test infrastructure:
+   - Fix Storybook state bleed between component tests
+   - Debug Graph module loading in Playwright (E2E)
+   - Target: All component and e2e tests pass reliably
