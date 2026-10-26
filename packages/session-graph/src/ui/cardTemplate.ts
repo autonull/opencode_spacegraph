@@ -462,25 +462,32 @@ ${copyButton}
  * V116 — micro-actions: hover-only copy icon for cards that have copyable content.
  * Returns the text to copy for a given node kind, or undefined if none.
  */
+const COPYABLE_FIELD: Partial<Record<NodeKind, string>> = {
+  file: "path",
+  directory: "path",
+  symbol: "qualified",
+  commit: "sha",
+  branch: "name",
+  package: "name",
+  process: "command",
+  issue: "url",
+}
+
 export function copyableContent(node: GraphNode): string | undefined {
-  if (node.kind === "file") return node.data?.path as string | undefined
-  if (node.kind === "directory") return node.data?.path as string | undefined
-  if (node.kind === "symbol") return node.data?.qualified as string | undefined
-  if (node.kind === "commit") return node.data?.sha as string | undefined
-  if (node.kind === "branch") return node.data?.name as string | undefined
-  if (node.kind === "package") return node.data?.name as string | undefined
-  if (node.kind === "process") return node.data?.command as string | undefined
-  if (node.kind === "port") return String(node.data?.port ?? "")
-  if (node.kind === "issue") return node.data?.url as string | undefined
+  const field = COPYABLE_FIELD[node.kind]
+  if (field) return node.data?.[field] as string | undefined
+
   if (node.kind === "tool") {
     const input = node.data?.input
     if (typeof input === "string") return input
     if (input && typeof input === "object") {
-      // Extract path from common tool inputs
       return (input as Record<string, unknown>).path as string | undefined
     }
     return undefined
   }
+
+  if (node.kind === "port") return String(node.data?.port ?? "")
+
   return undefined
 }
 export function createBandTemplate(
