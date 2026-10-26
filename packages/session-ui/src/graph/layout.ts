@@ -204,43 +204,47 @@ export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): 
   })
 }
 
+const LANE_BY_KIND: Partial<Record<NodeKind, Lane>> = {
+  session: "prompt",
+  turn: "prompt",
+  phase: "phases",
+  file: "artifacts",
+  diff: "artifacts",
+  directory: "artifacts",
+  result: "verify",
+  reasoning: "narrative",
+  notice: "narrative",
+  compaction: "narrative",
+  note: "narrative",
+  error: "narrative",
+  retry: "narrative",
+  // T19-T26 derived kinds
+  package: "artifacts",
+  commit: "artifacts",
+  branch: "artifacts",
+  symbol: "artifacts",
+  test: "verify",
+  "test-run": "verify",
+  process: "verify",
+  port: "verify",
+  issue: "prompt",
+}
+
 function laneOf(node: GraphNode): Lane {
-  if (node.kind === "session" || node.kind === "turn") return "prompt"
-
-  if (node.kind === "phase") return "phases"
-
-  if (node.kind === "file" || node.kind === "diff" || node.kind === "directory") return "artifacts"
-
   if (node.kind === "message") {
     const role = node.data?.role
-
     if (role === "user") return "prompt"
-
     if (role === "shell") return "verify"
-
     return "narrative"
   }
 
-  if (node.kind === "result") return "verify"
-
-  if (node.kind === "reasoning" || node.kind === "notice" || node.kind === "compaction") return "narrative"
-
-  if (node.kind === "note") return "narrative"
-
-  if (node.kind === "error" || node.kind === "retry") return "narrative"
-
-  // T19-T26 derived kinds
-  if (node.kind === "package") return "artifacts"
-  if (node.kind === "commit" || node.kind === "branch") return "artifacts"
-  if (node.kind === "symbol") return "artifacts"
-  if (node.kind === "test" || node.kind === "test-run") return "verify"
-  if (node.kind === "process" || node.kind === "port") return "verify"
-  if (node.kind === "issue") return "prompt"
+  const staticLane = LANE_BY_KIND[node.kind]
+  if (staticLane) return staticLane
 
   const category = phaseCategoryOf(node)
-
-  if (category === "explore" || category === "edit" || category === "verify" || category === "delegate")
+  if (category === "explore" || category === "edit" || category === "verify" || category === "delegate") {
     return category
+  }
 
   return "artifacts"
 }
