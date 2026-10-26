@@ -24,7 +24,7 @@ where the agent retried or changed direction.
 | Repository | Revision | Notes |
 |---|---|---|
 | OpenCode (`opencode` monorepo) | `dev` synced with upstream `dev` @ `ba06ff9e0b` (merge `f802f5e707`) | Branch `dev`; the upstream sync merged 41 commits with no textual or semantic conflicts (upstream touched no `packages/app/src` or `packages/ui`). Prior fork tip was `6479486583`. |
-| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `f7cf48a` | Branch `main`; the library change history is its git log. `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2); `5abf80d` includes node extents in the fit bounds so edge cards are not clipped; `4e5f733` fixes the billboard, fit and camera-zoom behaviour; `0bb41fd` publishes the contract demo to GitHub Pages |
+| SpaceGraphJS (`spacegraphjs`, sibling repo, gitignored here) | code `9df9b92` | Branch `main`; the library change history is its git log. `9df9b92` adds `adapter` and `kernel` packages required by OpenCode; `55ded02` adds the depth spectrum (primitives, `setDepth`, contract v2); `5abf80d` includes node extents in the fit bounds so edge cards are not clipped; `4e5f733` fixes the billboard, fit and camera-zoom behaviour; `0bb41fd` publishes the contract demo to GitHub Pages |
 
 Linkage is "sibling git repo, pinned SHA, not vendored, not a submodule" (P0.2). `spacegraphjs/` is
 gitignored in the OpenCode repo; its commits are recorded here by SHA.

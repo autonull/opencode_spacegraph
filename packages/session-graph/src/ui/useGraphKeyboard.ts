@@ -1,5 +1,5 @@
 import { onMount, onCleanup } from "solid-js"
-import { attachKeyboardShortcuts } from "spacegraphjs/utils"
+import { attachKeyboardShortcuts } from "./graph-utils"
 import type { GraphViewData } from "@opencode/session-ui/graph"
 import { neighborStep } from "@opencode/session-ui/graph"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"

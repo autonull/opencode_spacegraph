@@ -21,6 +21,7 @@
     "graph:scale": "bun run --cwd packages/session-graph script/scale-bench.ts",
     "graph:verify": "bun script/graph-verify.ts",
     "graph:dev": "bun script/graph-dev.ts",
+    "graph:setup": "bun script/graph-setup.ts",
     "lint": "oxlint && ast-grep scan -c script/ast-grep/gui-extensions/sgconfig.yml && bun script/sdk-docs.ts",
     "lint:changed": "bun script/lint-changed.ts",
     "lint:effect-patterns": "ast-grep scan -c script/ast-grep/sgconfig.yml packages/util/src packages/core/src packages/server/src packages/protocol/src packages/cli/src",
@@ -50,10 +51,10 @@
       "spacegraphjs",
       "spacegraphjs/packages/renderer",
       "spacegraphjs/packages/adapter",
+      "spacegraphjs/packages/kernel",
       "spacegraphjs/packages/spacegraph-renderer",
       "spacegraphjs/packages/cytoscape-renderer",
-      "spacegraphjs/packages/svg-renderer",
-      "spacegraphjs/packages/kernel"
+      "spacegraphjs/packages/svg-renderer"
     ],
     "catalog": {
       "@effect/opentelemetry": "4.0.1",

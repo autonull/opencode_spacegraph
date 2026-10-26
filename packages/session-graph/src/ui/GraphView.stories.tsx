@@ -1,4 +1,4 @@
-import type { DepthMode, Projection, RenderTheme, GraphRenderer } from "@spacegraphjs/renderer"
+import type { DepthMode, Projection, RenderTheme } from "@spacegraphjs/renderer"
 import {
   buildFixtureGraph,
   buildFixtureMessages,
@@ -126,15 +126,6 @@ const PENDING: Partial<Record<RendererID, RendererFactory>> = {
   cytoscape: () => new Promise(() => {}),
 }
 
-type Harness = {
-  select: (id: string | undefined) => void
-  setRenderer: (id: RendererID) => void
-  selected: () => string | undefined
-  /** The camera's frame, read back from the renderer (T6.18). */
-  getViewport: () => { zoom: number; center: number[] } | undefined
-  onLayoutApplied: (handler: (payload: { layout: string; duration: number; timestamp: number }) => void) => () => void
-}
-
 type HarnessProps = {
   model?: GraphViewData
   selection?: string
@@ -168,7 +159,7 @@ type HarnessProps = {
 const INITIAL_SELECTION = "tool:prt_tool_read_1"
 
 const ViewHarness = (props: HarnessProps) => {
-  const [renderer, setRenderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
+  const [renderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
   const [level] = createSignal<ZoomLevel>(props.level ?? "execution")
   // T12: the windows over the map. The harness owns them, as the app does.
@@ -184,27 +175,6 @@ const ViewHarness = (props: HarnessProps) => {
     load: (from) => {
       if (from === "msg_user_1") setDiffLoaded(true)
     },
-  }
-
-  // The live renderer, so a test can read the camera back (T6.18).
-  let graphRenderer: GraphRenderer | undefined
-  let layoutAppliedUnsubscribe: (() => void) | undefined
-
-  const onLayoutApplied = (handler: (payload: { layout: string; duration: number; timestamp: number }) => void) => {
-    if (graphRenderer) {
-      layoutAppliedUnsubscribe = graphRenderer.on("layoutApplied", handler)
-    }
-    return () => {
-      layoutAppliedUnsubscribe?.()
-    }
-  }
-
-  ;(window as unknown as { __graphView?: Harness }).__graphView = {
-    select: setSelected,
-    setRenderer,
-    selected,
-    getViewport: () => graphRenderer?.getViewport?.(),
-    onLayoutApplied,
   }
 
   const size = props.fullscreen
@@ -245,9 +215,6 @@ const ViewHarness = (props: HarnessProps) => {
         onOpenTranscript={() => undefined}
         onOpenSession={setOpenedSession}
         onBack={() => undefined}
-        onRenderer={(r) => {
-          graphRenderer = r
-        }}
       />
     </div>
   )

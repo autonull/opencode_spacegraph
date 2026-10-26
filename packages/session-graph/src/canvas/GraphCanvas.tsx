@@ -29,8 +29,6 @@ export type GraphCanvasProps = {
   onReady?: (info: GraphCanvasReady) => void
   onError?: (error: unknown) => void
   onViewportChange?: (viewport: RendererViewport) => void
-  /** Called when a layout has been applied and settled. */
-  onLayoutApplied?: (payload: { layout: string; duration: number; timestamp: number }) => void
   onBackgroundClick?: () => void
   /** The node under the pointer, and none when the pointer leaves one. */
   onHover?: (id: string | undefined) => void
@@ -109,7 +107,6 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
           result.renderer.on("edgeClick", ({ id }) => props.onEdgeSelect?.(id)),
           result.renderer.on("nodeMoved", ({ nodes }) => props.onNodeMoved?.(nodes)),
           result.renderer.on("nodeResized", (resize) => props.onNodeResized?.(resize)),
-          result.renderer.on("layoutApplied", (payload) => props.onLayoutApplied?.(payload)),
         ]
         result.renderer.setModel(props.model)
         props.onModelApplied?.(result.renderer)
