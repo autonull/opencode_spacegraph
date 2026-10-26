@@ -4,7 +4,7 @@ import { NODE_KINDS, NODE_STATUSES, DOMAINS } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { GraphIconButton } from "./GraphIconButton"
-import { KIND_KEY, STATUS_KEY, DOMAIN_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { CATEGORY_HUE } from "./cardTemplate"
 
 export type GraphFindProps = {
@@ -273,7 +273,7 @@ export const GraphFind = (props: GraphFindProps) => {
                           onClick={() => handleSelectResult(node)}
                         >
                           <span class="shrink-0 text-12-regular text-text-weak">
-                            {i18n.t(KIND_KEY[node.kind])}
+                            {i18n.t(VOCABULARY_KEYS.kind[node.kind])}
                           </span>
                           <span class="truncate text-13-regular text-text-base">{node.label}</span>
                           <Show when={node.summary}>
@@ -328,7 +328,7 @@ export const GraphFind = (props: GraphFindProps) => {
                       onClick={() => toggleKind(kind)}
                       aria-pressed={props.facets.kinds.has(kind)}
                     >
-                      {i18n.t(KIND_KEY[kind])}
+                      {i18n.t(VOCABULARY_KEYS.kind[kind])}
                       <span class="text-text-weaker">({countLabel(kind, counts().kinds)})</span>
                     </button>
                   )}
@@ -354,7 +354,7 @@ export const GraphFind = (props: GraphFindProps) => {
                       onClick={() => toggleStatus(status)}
                       aria-pressed={props.facets.statuses.has(status)}
                     >
-                      {i18n.t(STATUS_KEY[status])}
+                      {i18n.t(VOCABULARY_KEYS.status[status])}
                       <span class="text-text-weaker">({countLabel(status, counts().statuses)})</span>
                     </button>
                   )}
@@ -381,7 +381,7 @@ export const GraphFind = (props: GraphFindProps) => {
                       aria-pressed={props.facets.domains.has(domain)}
                       disabled={domain === "session"}
                     >
-                      {i18n.t(DOMAIN_KEY[domain])}
+                      {i18n.t(VOCABULARY_KEYS.domain[domain])}
                       <span class="text-text-weaker">({countLabel(domain, counts().domains)})</span>
                     </button>
                   )}

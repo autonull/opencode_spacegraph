@@ -1,5 +1,4 @@
-import { LAYOUTS, type Layout } from "@opencode/session-ui/graph"
-import { LAYOUT_KEY } from "./vocabulary"
+import { LAYOUTS, type Layout, VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { type JSX } from "solid-js"
@@ -46,7 +45,7 @@ export const GraphLayoutControl = (props: GraphLayoutControlProps) => {
         slot="graph-toolbar-layout"
         label={i18n.t("ui.sessionGraph.toolbar.layout")}
         icon="workspace-isolated"
-        value={i18n.t(LAYOUT_KEY[props.layout ?? "lanes"])}
+        value={i18n.t(VOCABULARY_KEYS.layout[props.layout ?? "lanes"])}
         valueSlot="graph-layout-name"
       >
         {LAYOUTS.map((layout) =>
@@ -63,7 +62,7 @@ export const GraphLayoutControl = (props: GraphLayoutControlProps) => {
                 props.onLayoutChange?.(layout)
               }}
             >
-              {i18n.t(LAYOUT_KEY[layout])}
+              {i18n.t(VOCABULARY_KEYS.layout[layout])}
             </button>
           )
         )}

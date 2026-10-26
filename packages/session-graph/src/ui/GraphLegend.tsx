@@ -6,7 +6,7 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { Show, type JSX, onMount } from "solid-js"
 import { categoryAccent, kindAccent, statusAccent } from "./cardTemplate"
 import { formatAge, sourceLabel } from "./provenance"
-import { CONFIDENCE_KEY, EDGE_KEY, KIND_KEY, LANE_KEY, LAYOUT_HINT_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 
 /** How an edge of each confidence is drawn; the adapter decides the same. */
@@ -97,13 +97,13 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
 
   return (
     <div class="min-h-0 flex-1 overflow-y-auto border-t border-border-weaker-base px-3 py-2">
-      <p class="text-12-regular text-text-base">{i18n.t(LAYOUT_HINT_KEY[props.layout ?? "lanes"])}</p>
+      <p class="text-12-regular text-text-base">{i18n.t(VOCABULARY_KEYS.layoutHint[props.layout ?? "lanes"])}</p>
       <p class="mt-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.help")}</p>
 
       {section(
         i18n.t("ui.sessionGraph.legend.lanes"),
         LANES.map((lane) => (
-          <span class="truncate text-12-regular text-text-base">{i18n.t(LANE_KEY[lane])}</span>
+          <span class="truncate text-12-regular text-text-base">{i18n.t(VOCABULARY_KEYS.lane[lane])}</span>
         )),
       )}
 
@@ -112,7 +112,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
         NODE_KINDS.map((kind) => (
           <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
             {swatch(kindAccent(kind, props.rules).solid)}
-            <span class="truncate">{i18n.t(KIND_KEY[kind])}</span>
+            <span class="truncate">{i18n.t(VOCABULARY_KEYS.kind[kind])}</span>
           </span>
         )),
       )}
@@ -132,7 +132,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
         (Object.keys(CONFIDENCE_STYLE) as (keyof typeof CONFIDENCE_STYLE)[]).map((confidence) => (
           <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
             {line(CONFIDENCE_STYLE[confidence])}
-            <span class="truncate">{i18n.t(CONFIDENCE_KEY[confidence])}</span>
+            <span class="truncate">{i18n.t(VOCABULARY_KEYS.confidence[confidence])}</span>
           </span>
         )),
       )}
@@ -154,7 +154,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
               >
                 <span class="truncate">
                   {i18n.t("ui.sessionGraph.legend.edgeKindCount", {
-                    kind: i18n.t(EDGE_KEY[entry.kind as keyof typeof EDGE_KEY]),
+                    kind: i18n.t(VOCABULARY_KEYS.edge[entry.kind as keyof typeof VOCABULARY_KEYS.edge]),
                     count: String(entry.count),
                   })}
                 </span>

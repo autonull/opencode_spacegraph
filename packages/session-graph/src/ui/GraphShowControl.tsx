@@ -1,5 +1,4 @@
-import { DETAIL_MODES, type DetailMode } from "@opencode/session-ui/graph"
-import { DETAIL_MODE_KEY } from "./vocabulary"
+import { DETAIL_MODES, type DetailMode, VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
@@ -83,7 +82,7 @@ export const GraphShowControl = (props: GraphShowControlProps) => {
           </div>
           {DETAIL_MODES.map((mode) =>
             option({
-              label: i18n.t(DETAIL_MODE_KEY[mode]),
+              label: i18n.t(VOCABULARY_KEYS.detailMode[mode]),
               onClick: () => props.onDetailModeChange?.(mode),
               pressed: props.detailMode === mode,
               slot: "graph-detail-mode-option",

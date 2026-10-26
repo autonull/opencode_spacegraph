@@ -1,7 +1,7 @@
 import type { GraphEdge, GraphNode } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show } from "solid-js"
-import { EDGE_KEY, KIND_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 
 export type GraphPeekProps = {
   node?: GraphNode
@@ -30,7 +30,7 @@ export const GraphPeek = (props: GraphPeekProps) => {
             {(edge) => (
               <>
                 <span class="shrink-0 text-12-regular text-text-weaker">
-                  {i18n.t(EDGE_KEY[edge().kind])}
+                  {i18n.t(VOCABULARY_KEYS.edge[edge().kind])}
                 </span>
                 <span class="shrink-0 text-12-regular text-text-weaker">
                   {i18n.t(`ui.sessionGraph.confidence.${edge().confidence}`)}
@@ -55,7 +55,7 @@ export const GraphPeek = (props: GraphPeekProps) => {
       >
         {(node) => (
           <>
-            <span class="shrink-0 text-12-regular text-text-weaker">{i18n.t(KIND_KEY[node().kind])}</span>
+            <span class="shrink-0 text-12-regular text-text-weaker">{i18n.t(VOCABULARY_KEYS.kind[node().kind])}</span>
             <span class="truncate text-12-regular text-text-strong">{node().label}</span>
           </>
         )}

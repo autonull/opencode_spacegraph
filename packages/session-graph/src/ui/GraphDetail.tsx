@@ -13,7 +13,7 @@ import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, createMemo, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
-import { CONFIDENCE_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import { childSessionID, count, filePath, fileRange, flag, forkedFrom, parentSessionID, strings, text } from "./node-data"
 import { formatProvenance } from "./provenance"
@@ -137,9 +137,9 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
     <header class="flex items-start gap-2 border-b border-border-weaker-base px-3 py-2">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
-          <span class="text-12-regular text-text-weaker">{i18n.t(KIND_KEY[props.node.kind])}</span>
+          <span class="text-12-regular text-text-weaker">{i18n.t(VOCABULARY_KEYS.kind[props.node.kind])}</span>
           <span class={`text-12-regular ${STATUS_TONE[props.node.status]}`}>
-            {i18n.t(STATUS_KEY[props.node.status])}
+            {i18n.t(VOCABULARY_KEYS.status[props.node.status])}
           </span>
         </div>
         <h2 class="truncate text-14-medium text-text-strong" title={props.node.label}>
@@ -510,7 +510,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
                   >
                     <span class="text-12-regular text-text-weaker">{connection.edge.kind}</span>
                     <span class="min-w-0 flex-1 truncate text-12-regular text-text-base">{connection.other.label}</span>
-                    <span class="text-12-regular text-text-weaker">{i18n.t(CONFIDENCE_KEY[connection.edge.confidence])}</span>
+                    <span class="text-12-regular text-text-weaker">{i18n.t(VOCABULARY_KEYS.confidence[connection.edge.confidence])}</span>
                   </button>
                 </li>
               )}

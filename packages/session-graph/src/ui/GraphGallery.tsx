@@ -8,7 +8,7 @@ import { For, onMount } from "solid-js"
 import { buildRenderModel } from "../canvas/buildRenderModel"
 import { createCardCopy } from "./card-copy"
 import { createCardTemplate } from "./cardTemplate"
-import { LAYOUT_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 
 export type GraphGalleryProps = {
@@ -93,7 +93,7 @@ export const GraphGallery = (props: GraphGalleryProps) => {
               <span class="block h-24 w-full overflow-hidden rounded-sm bg-surface-base">
                 <span class="block h-full w-full [&>svg]:h-full [&>svg]:w-full" innerHTML={thumbnail.svg} />
               </span>
-              <span class="text-12-regular text-text-base">{i18n.t(LAYOUT_KEY[thumbnail.strategy])}</span>
+              <span class="text-12-regular text-text-base">{i18n.t(VOCABULARY_KEYS.layout[thumbnail.strategy])}</span>
             </button>
           )}
         </For>

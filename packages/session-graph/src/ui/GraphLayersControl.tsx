@@ -1,10 +1,9 @@
-import { DEPTH_MODES, supportsDepth, type DepthMode } from "@spacegraphjs/renderer"
+import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { type JSX } from "solid-js"
-import { ZOOM_LEVELS, type ZoomLevel, DOMAINS, type Domain, NODE_KINDS, type NodeKind, NODE_STATUSES, type NodeStatus, PROFILE_PRESETS, type GraphFacets, type FacetCounts, type GraphViewData } from "@opencode/session-ui/graph"
-import { DEPTH_KEY, LEVEL_KEY, DOMAIN_KEY, KIND_KEY, STATUS_KEY } from "./vocabulary"
+import { ZOOM_LEVELS, type ZoomLevel, DOMAINS, type Domain, NODE_KINDS, type NodeKind, NODE_STATUSES, type NodeStatus, PROFILE_PRESETS, type GraphFacets, type FacetCounts, type GraphViewData, type DepthMode, VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 
 export type GraphLayersControlProps = {
   level?: ZoomLevel
@@ -114,7 +113,7 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
     depthAvailable(depth)
       ? undefined
       : i18n.t("ui.sessionGraph.capability.depthUnavailable", {
-          depth: i18n.t(DEPTH_KEY[depth]),
+          depth: i18n.t(VOCABULARY_KEYS.depth[depth]),
           renderer: props.renderer ?? "",
         })
 
@@ -165,7 +164,7 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
           onChange={(value) => value && props.onLevel?.(value as ZoomLevel)}
         >
           {ZOOM_LEVELS.map((level) => (
-            <SegmentedControlItem value={level}>{i18n.t(LEVEL_KEY[level])}</SegmentedControlItem>
+            <SegmentedControlItem value={level}>{i18n.t(VOCABULARY_KEYS.level[level])}</SegmentedControlItem>
           ))}
         </SegmentedControl>
       </div>
@@ -193,7 +192,7 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
         <div class="flex flex-col">
           {DOMAINS.map((domain) =>
             option({
-              label: i18n.t(DOMAIN_KEY[domain]),
+              label: i18n.t(VOCABULARY_KEYS.domain[domain]),
               onClick: () => toggleDomain(domain),
               pressed: facets()?.domains.has(domain),
               disabled: domain === "session",
@@ -210,7 +209,7 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
                 const count = countOf(domain, counts().domains)
                 return (
                   <span data-domain={domain}>
-                    {i18n.t(DOMAIN_KEY[domain])} · {count ? `${count.kept}/${count.total}` : "0/0"}
+                    {i18n.t(VOCABULARY_KEYS.domain[domain])} · {count ? `${count.kept}/${count.total}` : "0/0"}
                   </span>
                 )
               })}
@@ -234,7 +233,7 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
         >
           {(props.depthModes ?? DEPTH_MODES).map((depth) => (
             <option value={depth} disabled={!depthAvailable(depth)} title={depthReason(depth)}>
-              {i18n.t(DEPTH_KEY[depth])}
+              {i18n.t(VOCABULARY_KEYS.depth[depth])}
             </option>
           ))}
         </select>
@@ -249,7 +248,7 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
         label={i18n.t("ui.sessionGraph.layers.title")}
         icon="outline-eye"
         align="start"
-        value={props.onLevel ? i18n.t(LEVEL_KEY[props.level ?? "execution"]) : undefined}
+        value={props.onLevel ? i18n.t(VOCABULARY_KEYS.level[props.level ?? "execution"]) : undefined}
         valueSlot="graph-layers-level-name"
       >
         {levelControl()}
@@ -285,13 +284,13 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
               </div>
               {NODE_KINDS.map((kind) =>
                 option({
-                  label: `${i18n.t(KIND_KEY[kind])} · ${countLabel(kind, props.facetCounts?.kinds ?? []) ?? "0/0"}`,
+                  label: `${i18n.t(VOCABULARY_KEYS.kind[kind])} · ${countLabel(kind, props.facetCounts?.kinds ?? []) ?? "0/0"}`,
                   onClick: () => toggleKind(kind),
                   pressed: facets()?.kinds.has(kind),
                   slot: "graph-facet-kind",
                   value: kind,
                   keepOpen: true,
-                  ariaLabel: i18n.t(KIND_KEY[kind]),
+                  ariaLabel: i18n.t(VOCABULARY_KEYS.kind[kind]),
                 }),
               )}
             </div>
@@ -301,13 +300,13 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
               </div>
               {NODE_STATUSES.map((status) =>
                 option({
-                  label: `${i18n.t(STATUS_KEY[status])} · ${countLabel(status, props.facetCounts?.statuses ?? []) ?? "0/0"}`,
+                  label: `${i18n.t(VOCABULARY_KEYS.status[status])} · ${countLabel(status, props.facetCounts?.statuses ?? []) ?? "0/0"}`,
                   onClick: () => toggleStatus(status),
                   pressed: facets()?.statuses.has(status),
                   slot: "graph-facet-status",
                   value: status,
                   keepOpen: true,
-                  ariaLabel: i18n.t(STATUS_KEY[status]),
+                  ariaLabel: i18n.t(VOCABULARY_KEYS.status[status]),
                 }),
               )}
             </div>

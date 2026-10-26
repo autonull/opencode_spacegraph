@@ -4,7 +4,7 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { Icon } from "@opencode/ui/icon"
 import { For, Show } from "solid-js"
 import { kindAccent } from "./cardTemplate"
-import { KIND_KEY, STATUS_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 
 /**
  * T15.4 — the equalizer's panel. The engine and the presets have been in the map since T15; this is
@@ -34,8 +34,8 @@ export const GraphEqualizerBody = (props: GraphEqualizerBodyProps) => {
 
   const describe = (rule: EqualizerRule) =>
     [
-      rule.kind ? i18n.t(KIND_KEY[rule.kind]) : i18n.t("ui.sessionGraph.equalizer.everyCard"),
-      rule.status ? i18n.t(STATUS_KEY[rule.status]) : undefined,
+      rule.kind ? i18n.t(VOCABULARY_KEYS.kind[rule.kind]) : i18n.t("ui.sessionGraph.equalizer.everyCard"),
+      rule.status ? i18n.t(VOCABULARY_KEYS.status[rule.status]) : undefined,
     ]
       .filter((part): part is string => !!part)
       .join(" · ")

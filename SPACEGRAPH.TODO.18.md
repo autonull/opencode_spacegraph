@@ -1,7 +1,7 @@
 # SPACEGRAPH.TODO.18.md — Definitive Closing Plan
 
 ## Status (2026-10-26)
-- **Unit tests**: ✅ 377 passing (session-graph: 116, session-ui/graph: 261)
+- **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui/graph: 529)
 - **Typecheck**: ✅ All passing (session-graph, session-ui)
 - **Component tests**: ⚠️ Flaky (Storybook state issue between runs)
 - **E2E tests**: ⚠️ Graph module not loading in Playwright
@@ -136,17 +136,33 @@ export const GraphView = (props) => {
 
 ---
 
-## 3. Vocabulary Consolidation
+## 3. Vocabulary Consolidation ✅
 
 ### 3.1 Single Source of Truth
-- **Types**: Stay in `session-ui/src/graph/vocabulary.ts` (already the source)
-- **i18n keys**: Generate from types or share single `vocabularyKeys.ts`
-- **Labels**: Move to `session-ui/src/graph/vocabulary.ts` as constants
+- **Types**: Stay in `session-ui/src/graph/vocabulary.ts` (already the source) ✅
+- **i18n keys**: Consolidated into `VOCABULARY_KEYS` in `session-ui/src/graph/vocabulary.ts` ✅
+- **Labels**: Moved to `session-ui/src/graph/vocabulary.ts` as constants ✅
 
-### 3.2 Files to Update
-- `session-graph/src/ui/vocabulary.ts` → Remove, import from session-ui
-- `session-graph/src/ui/GraphToolbar.tsx` → Use shared keys
-- `session-graph/src/ui/GraphView.tsx` → Use shared keys
+### 3.2 Files Updated
+- `session-graph/src/ui/vocabulary.ts` → **Removed**, imports from session-ui ✅
+- `session-graph/src/ui/GraphShowControl.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphToolbar.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphDetail.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphPeek.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphLayersControl.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphEqualizer.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphGallery.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphLayoutControl.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphLegend.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphView.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphDrawControl.tsx` → Use shared keys ✅
+- `session-graph/src/ui/GraphFind.tsx` → Use shared keys ✅
+
+### Verification:
+- ✅ `bun run typecheck --filter=@opencode/session-graph` passes
+- ✅ `bun run typecheck --filter=@opencode/session-ui` passes
+- ✅ `bun test packages/session-graph/src` passes (116 tests)
+- ✅ `bun test packages/session-ui/src` passes (529 tests)
 
 ---
 
@@ -265,7 +281,7 @@ git clone <fork> && bun run graph:setup && bun run graph:dev
 |-------|------|-------------|
 | **1** | Fix GraphCanvasRegion types + complete GraphView breakdown (1.1–1.6) | 1–2 days |
 | **2** | GraphToolbar breakdown (2.1–2.2) | 1–2 days |
-| **3** | Vocabulary consolidation (3.1–3.2) | 0.5 day |
+| **3** | Vocabulary consolidation (3.1–3.2) | ✅ **Done** |
 | **4** | SpaceGraphJS audit & publish (4.1–4.3) | 1–2 days |
 | **5** | Hook consolidation (6.1) | 0.5 day |
 | **6** | Component/E2E test fixes (7.1–7.2) | 1–2 days |
@@ -331,9 +347,23 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphExportControl.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/GraphRendererStatus.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/GraphToolbar.tsx` | ✅ Refactored (~250 lines, composes sub-components) |
+| `packages/session-ui/src/graph/vocabulary.ts` | ✅ Added VOCABULARY_KEYS, DepthMode |
+| `packages/session-ui/src/graph/index.ts` | ✅ Exported VOCABULARY_KEYS, DepthMode |
+| `packages/session-graph/src/ui/vocabulary.ts` | ✅ **Removed** |
+| `packages/session-graph/src/ui/GraphShowControl.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphToolbar.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphDetail.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphPeek.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphLayersControl.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphEqualizer.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphGallery.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphLayoutControl.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphLegend.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphDrawControl.tsx` | ✅ Updated to use shared keys |
+| `packages/session-graph/src/ui/GraphFind.tsx` | ✅ Updated to use shared keys |
 
 ---
 
 ## Next Immediate Steps
 
-1. Vocabulary consolidation (3.1–3.2)
+1. SpaceGraphJS audit & publish (4.1–4.3)

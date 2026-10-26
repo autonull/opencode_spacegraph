@@ -13,8 +13,8 @@ import {
   type GraphSide,
   type Layout,
   type ZoomLevel,
+  VOCABULARY_KEYS,
 } from "@opencode/session-ui/graph"
-import { DETAIL_MODE_KEY } from "./vocabulary"
 import { GraphIconButton } from "./GraphIconButton"
 import { GraphLayersControl } from "./GraphLayersControl"
 import { GraphLayoutControl } from "./GraphLayoutControl"
@@ -311,7 +311,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           slot="graph-toolbar-view"
           label={i18n.t("ui.sessionGraph.toolbar.view")}
           icon="outline-sliders"
-          value={i18n.t(DETAIL_MODE_KEY[props.detailMode ?? "panel"])}
+          value={i18n.t(VOCABULARY_KEYS.detailMode[props.detailMode ?? "panel"])}
         >
           {viewControls()}
         </ToolbarMenu>

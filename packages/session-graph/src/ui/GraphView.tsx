@@ -72,7 +72,7 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
-import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphInspector } from "./GraphInspector"
@@ -712,9 +712,9 @@ export const GraphView = (props: GraphViewProps) => {
   // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
   const viewAnnouncement = createMemo(() =>
     i18n.t("ui.sessionGraph.a11y.view", {
-      level: i18n.t(LEVEL_KEY[level()]),
-      layout: i18n.t(LAYOUT_KEY[layout()]),
-      depth: i18n.t(DEPTH_KEY[depth()]),
+      level: i18n.t(VOCABULARY_KEYS.level[level()]),
+      layout: i18n.t(VOCABULARY_KEYS.layout[layout()]),
+      depth: i18n.t(VOCABULARY_KEYS.depth[depth()]),
     }),
   )
   // T1.11: the summary layouts name their axes; the node-link graph names itself.
@@ -832,7 +832,7 @@ export const GraphView = (props: GraphViewProps) => {
           !isSummaryOrLogLayout(layout()) && layout() === "lanes"
             ? laneAnchors().map((lane) => ({
                 id: lane.name,
-                label: i18n.t(LANE_KEY[lane.name]),
+                label: i18n.t(VOCABULARY_KEYS.lane[lane.name]),
                 y: lane.y,
                 // T6.6: the gutter belongs to the drawn window, not to the session root far to the left.
                 anchorNodeId: windowAnchor(),

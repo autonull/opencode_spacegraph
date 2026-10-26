@@ -1,5 +1,4 @@
-import { GRAPH_ARRANGEMENTS, type GraphArrangement, type GraphSide } from "@opencode/session-ui/graph"
-import { SIDE_KEY, ARRANGEMENT_KEY } from "./vocabulary"
+import { GRAPH_ARRANGEMENTS, type GraphArrangement, type GraphSide, VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 
 export type GraphDrawControlProps = {
@@ -95,7 +94,7 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
           </div>
           {GRAPH_ARRANGEMENTS.map((arrangement) =>
             option({
-              label: i18n.t(ARRANGEMENT_KEY[arrangement]),
+              label: i18n.t(VOCABULARY_KEYS.arrangement[arrangement]),
               onClick: () => props.onArrangementChange?.(arrangement),
               pressed: props.arrangement === arrangement,
               slot: "graph-arrangement-option",
@@ -103,7 +102,7 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
           )}
           <Show when={props.onArrangementSideChange && props.arrangement !== "floating"}>
             {option({
-              label: i18n.t(SIDE_KEY[props.arrangementSide ?? "start"]),
+              label: i18n.t(VOCABULARY_KEYS.side[props.arrangementSide ?? "start"]),
               onClick: () =>
                 props.onArrangementSideChange?.(props.arrangementSide === "start" ? "end" : "start"),
               pressed: props.arrangementSide === "start",
