@@ -352,6 +352,16 @@ export const GraphView = (props: GraphViewProps) => {
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
 
   // Hooks for modular state/logic
+  const graphSelection = useGraphSelection({
+    model,
+    controlled: () => props.selection,
+    onSelect: (id) => props.onSelect?.(id),
+    onAnnounce: announce,
+  })
+
+  // P8.1: the vanilla library controller owns interaction state (selection + trail).
+  const selection = graphSelection.selection
+
   const annotations = useGraphAnnotations({
     model,
     selection: () => selection.selection(),
@@ -375,21 +385,38 @@ export const GraphView = (props: GraphViewProps) => {
     nodeByID: (id) => model().nodes.find((n) => n.id === id),
   })
 
-  const graphSelection = useGraphSelection({
-    model,
-    controlled: () => props.selection,
-    onSelect: (id) => props.onSelect?.(id),
-    onAnnounce: announce,
-  })
-
-  // P8.1: the vanilla library controller owns interaction state (selection + trail).
-  const selection = graphSelection.selection
-
   // T18.3: the auto detail mode threshold
   const AUTO_DETAIL_THRESHOLD = 640
   let renderer: GraphRenderer | undefined
   let rootEl!: HTMLDivElement
   let canvasRegionEl!: HTMLDivElement
+
+  // Viewport tracker dependencies - declared early, initialized later
+  let displayPositions: () => ReadonlyMap<string, Position>
+  let contentIDs: () => string[]
+  let fitOptions: () => { minScale: number; insets: undefined }
+
+  // Viewport tracker - declared early so effects can reference it, initialized later when deps are ready
+  let viewportTracker: ReturnType<typeof useGraphViewport> | undefined
+  // Card screen width signal - starts with default, updated after viewportTracker is ready
+  const [cardScreenWidthSignal, setCardScreenWidthSignal] = createSignal<number>(CARD_SIZE[0])
+
+  // Geometry - declared early with default, replaced with real memo later
+  let geometry: () => GraphLayout = () => ({
+    positions: new Map(),
+    clusters: new Map(),
+    bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+    strategy: "lanes",
+  })
+
+  // renderModel - declared early with default, replaced with real memo later
+  let renderModel: () => RenderModel = () => ({
+    nodes: [],
+    edges: [],
+    bands: [],
+    laneLabels: [],
+    axisLabels: [],
+  })
 
   // The turn a node belongs to
   const turnOf = (id: string | undefined) => {
@@ -458,6 +485,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (!turn) return
     if (lastFramedTurn() === turn) return
     if (!rendererReady()) return
+    if (!viewportTracker) return
     const current = viewportTracker.viewport()
     if (!current) return
     setLastFramedTurn(turn)
@@ -543,13 +571,8 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   const theme = () => props.theme ?? resolvedTheme()
-  // Card screen width
-  const cardScreenWidth = createMemo(() => {
-    const extent = viewportTracker.viewport()?.extent
-    const size = canvasSize()
-    if (!extent?.width || !size.width) return CARD_SIZE[0]
-    return (CARD_SIZE[0] * size.width) / extent.width
-  })
+  // Card screen width - uses signal that starts with default, updated after viewportTracker is ready
+  const cardScreenWidth = () => cardScreenWidthSignal()
   // T18.3: effective detail mode
   const effectiveDetailMode = createMemo<DetailMode>(() => {
     const mode = detailMode()
@@ -580,7 +603,7 @@ export const GraphView = (props: GraphViewProps) => {
   }
 
   // displayPositions must be declared before rendererModel which uses it
-  const displayPositions = createMemo(() => {
+  displayPositions = createMemo(() => {
     const geometryResult = geometry()
     const base = geometryResult?.positions
     if (!base) return new Map()
@@ -647,7 +670,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // T17.1 — the layout axis. A summary layout packs the level's units into the session's grammar; the
   // node-link strategies place the model in the library's geometry.
-  const geometry = createMemo((): GraphLayout => {
+  geometry = createMemo((): GraphLayout => {
     if (props.positions)
       return {
         positions: props.positions,
@@ -722,7 +745,7 @@ export const GraphView = (props: GraphViewProps) => {
   // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
   // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
   // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
-  const contentIDs = createMemo(() => {
+  contentIDs = createMemo(() => {
     const ids = renderModel()
       .nodes.filter((node) => node.kind !== "band")
       .map((node) => node.id)
@@ -733,7 +756,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
-  const fitOptions = createMemo(() => ({
+  fitOptions = createMemo(() => ({
     minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1],
     insets: undefined,
   }))
@@ -750,28 +773,18 @@ export const GraphView = (props: GraphViewProps) => {
 
   const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode() || (narrow() && inspectorSheetOpen()))
 
-  const viewportTracker = useGraphViewport({
-    renderer,
-    displayPositions,
-    contentIDs,
-    fitOptions,
-    cardScreenWidth,
-    CARD_SIZE,
-    READABLE_CARD_WIDTH,
-  })
-
   // Convert RendererViewport to the format expected by GraphCanvasRegion
   const viewport = createMemo(() => {
-    const vp = viewportTracker.viewport()
+    const vp = viewportTracker!.viewport()
     return vp ? { zoom: vp.zoom, center: Array.from(vp.center) } : undefined
   })
 
   const setViewport = (vp: { zoom: number; center: number[] } | undefined) => {
     if (!vp) {
-      viewportTracker.setViewport(undefined)
+      viewportTracker!.setViewport(undefined)
       return
     }
-    viewportTracker.setViewport({
+    viewportTracker!.setViewport({
       zoom: vp.zoom,
       center: [vp.center[0], vp.center[1], vp.center[2] ?? 0],
       extent: vp.center[2] ? undefined : undefined,
@@ -783,7 +796,7 @@ export const GraphView = (props: GraphViewProps) => {
   const budget = createMemo(() => {
     const current = drawn()
     const weighted = applyNodeBudget(current, degreeBudget(current, selection.selection()))
-    const centre = viewportTracker.resting()
+    const centre = viewportTracker!.resting()
     if (!centre) return weighted
     return byProximity(weighted, displayPositions(), centre)
   })
@@ -806,7 +819,7 @@ export const GraphView = (props: GraphViewProps) => {
     }
   }
 
-  const renderModel = createMemo(() => {
+  renderModel = createMemo(() => {
     const model = applyManualLayout(
       buildRenderModel(budget(), {
         level: level(),
@@ -858,7 +871,7 @@ export const GraphView = (props: GraphViewProps) => {
     })
 
   // B1 — the selection verbs. frameSelection and exportSelection need camera/ordered (defined later).
-  const frameSelection = () => viewportTracker.camera.frame(selection.selection())
+  const frameSelection = () => viewportTracker!.camera.frame(selection.selection())
   const keepOnlySelection = graphSelection.keepOnlySelection
   const copySelectedPaths = graphSelection.copySelectedPaths
   const exportSelection = () => {
@@ -875,7 +888,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // The node the popover describes, and where it hangs.
   const popoverNode = createMemo(() => (effectiveDetailMode() === "popover" ? selectedNode() : undefined))
-  const popoverAnchor = createNodeAnchor({ node: popoverNode, renderer: () => renderer, viewport: viewportTracker.viewport })
+  const popoverAnchor = createNodeAnchor({ node: popoverNode, renderer: () => renderer, viewport: viewportTracker!.viewport })
   // Beside the node, flipped to the other side when it would leave the canvas.
   const popoverPlacement = createMemo(() => {
     const anchor = popoverAnchor()
@@ -903,11 +916,11 @@ export const GraphView = (props: GraphViewProps) => {
     if (!id || id === selection.selection()[0]) return undefined
     return nodeByID(model(), id)
   })
-  const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport: viewportTracker.viewport })
+  const peekAnchor = createNodeAnchor({ node: peekNode, renderer: () => renderer, viewport: viewportTracker!.viewport })
   const noteAnchor = createNodeAnchor({
     node: () => (annotations.noteTarget() ? nodeByID(model(), annotations.noteTarget()!) : undefined),
     renderer: () => renderer,
-    viewport: viewportTracker.viewport,
+    viewport: viewportTracker!.viewport,
   })
   const noteTargetNode = () => (annotations.noteTarget() ? nodeByID(model(), annotations.noteTarget()!) : undefined)
   const peekEdge = createMemo(() => {
@@ -1002,7 +1015,7 @@ export const GraphView = (props: GraphViewProps) => {
     const minimum = minLevelOf(node)
     if (LEVEL_RANK[minimum] > LEVEL_RANK[level()]) setLevel(minimum)
     selection.select(node.id)
-    viewportTracker.camera.focus(node.id)
+    viewportTracker!.camera.focus(node.id)
   }
   // U3.11: clicking a breadcrumb selects it and frames its subtree, so the canvas follows the trail.
   const fitSubtree = (id: string) => {
@@ -1032,7 +1045,7 @@ export const GraphView = (props: GraphViewProps) => {
     const node = nodeByID(model(), id)
     if (!node) return
     selection.select(id, false)
-    viewportTracker.camera.focus(id)
+    viewportTracker!.camera.focus(id)
     setFramed(id)
   }
   // A permalink that changes while the graph is open frames its node too, not only on load.
@@ -1064,16 +1077,35 @@ export const GraphView = (props: GraphViewProps) => {
     openSearch()
   }
 
+  // Initialize viewport tracker early so keyboard handler can use it
+  viewportTracker = useGraphViewport({
+    renderer: () => renderer,
+    displayPositions: () => displayPositions?.() ?? new Map(),
+    contentIDs: () => contentIDs?.() ?? [],
+    fitOptions: () => fitOptions?.() ?? { minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1], insets: undefined },
+    cardScreenWidth,
+    CARD_SIZE,
+    READABLE_CARD_WIDTH,
+  })
+
+  // Update card screen width signal now that viewportTracker is ready
+  setCardScreenWidthSignal(() => {
+    const extent = viewportTracker!.viewport()?.extent
+    const size = canvasSize()
+    if (!extent?.width || !size.width) return CARD_SIZE[0]
+    return (CARD_SIZE[0] * size.width) / extent.width
+  })
+
   // Keyboard handling extracted to hook (must be after all dependencies are declared)
   const { handleRegionKeyDown } = useGraphKeyboard({
     model,
     selection: () => selection.selection(),
     onSelect: (id, add) => selection.select(id, add),
     camera: {
-      fitContent: viewportTracker.camera.fitContent,
-      frameReadable: viewportTracker.camera.frameReadable,
-      zoomBy: (delta: number) => viewportTracker.camera.zoomBy(delta as 1 | -1),
-      pending: viewportTracker.camera.pending,
+      fitContent: () => viewportTracker!.camera.fitContent(),
+      frameReadable: (id: string) => viewportTracker!.camera.frameReadable(id),
+      zoomBy: (delta: number) => viewportTracker!.camera.zoomBy(delta as 1 | -1),
+      pending: () => viewportTracker!.camera.pending(),
     },
     annotations,
     graphSelection,
@@ -1135,6 +1167,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (detailFraming() !== "card") return
     const id = selection.selection()[0]
     if (!id) return
+    if (!viewportTracker) return
     if (viewportTracker.camera.pending()) return
     // The camera is the renderer, so the framing waits for it: the first viewport report can
     // arrive before the renderer itself is handed over.
@@ -1188,12 +1221,12 @@ export const GraphView = (props: GraphViewProps) => {
         checkpoint={props.checkpoint}
         turnCount={props.turnCount}
         onCheckpoint={props.onCheckpoint}
-        onFit={viewportTracker.camera.fitContent}
-        zoomPercent={viewportTracker.camera.zoomPercent()}
-        onZoomOut={() => viewportTracker.camera.zoomBy(-1)}
-        onZoomIn={() => viewportTracker.camera.zoomBy(1)}
-        zoomOutDisabled={level() === "overview" || (viewportTracker.viewport()?.zoom ?? 0) <= viewportTracker.camera.zoomLimits().min}
-        zoomInDisabled={(viewportTracker.viewport()?.zoom ?? 0) >= viewportTracker.camera.zoomLimits().max}
+        onFit={viewportTracker!.camera.fitContent}
+        zoomPercent={viewportTracker!.camera.zoomPercent()}
+        onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
+        onZoomIn={() => viewportTracker!.camera.zoomBy(1)}
+        zoomOutDisabled={level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min}
+        zoomInDisabled={(viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max}
         onSearch={toggleSearch}
         onCopyView={copyView}
         legend={legendOpen()}
@@ -1472,12 +1505,12 @@ export const GraphView = (props: GraphViewProps) => {
           groupMenu={groupMenu()}
           toggleBillboard={toggleBillboard}
           cardFacing={cardFacing()}
-          onZoomOut={() => viewportTracker.camera.zoomBy(-1)}
-          onZoomIn={() => viewportTracker.camera.zoomBy(1)}
-          zoomPercent={viewportTracker.camera.zoomPercent()}
-          zoomOutDisabled={level() === "overview" || (viewportTracker.viewport()?.zoom ?? 0) <= viewportTracker.camera.zoomLimits().min}
-          zoomInDisabled={(viewportTracker.viewport()?.zoom ?? 0) >= viewportTracker.camera.zoomLimits().max}
-          onFit={viewportTracker.camera.fitContent}
+          onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
+          onZoomIn={() => viewportTracker!.camera.zoomBy(1)}
+          zoomPercent={viewportTracker!.camera.zoomPercent()}
+          zoomOutDisabled={level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min}
+          zoomInDisabled={(viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max}
+          onFit={viewportTracker!.camera.fitContent}
           onCopyView={copyView}
           onExport={handleExport}
           onBack={props.onBack}
@@ -1498,7 +1531,7 @@ export const GraphView = (props: GraphViewProps) => {
           setLayout={setLayout}
           canvasSize={canvasSize()}
           renderer={renderer}
-          viewport={viewportTracker.viewport()}
+          viewport={viewportTracker!.viewport()}
           displayPositions={displayPositions}
           selection={selection}
           annotations={annotations}

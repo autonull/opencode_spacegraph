@@ -1,9 +1,9 @@
 # SPACEGRAPH.TODO.18.md — Definitive Closing Plan
 
 ## Status (2026-10-26)
-- **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui/graph: 529)
+- **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui: 529)
 - **Typecheck**: ✅ All passing (session-graph, session-ui)
-- **Component tests**: ⚠️ Flaky (Storybook state issue between runs)
+- **Component tests**: ⚠️ session-ui passing, session-graph has temporal dead zone issues in GraphView.tsx initialization order
 - **E2E tests**: ⚠️ Graph module not loading in Playwright
 - **Screenshots**: ⚠️ Same E2E infrastructure issue
 - **SpaceGraphJS**: ✅ All packages build, tests pass, publish check passes
@@ -84,6 +84,22 @@
 - Returns: Object with all state + setters
 - Verified `bun test packages/session-graph/src` passes (116 tests)
 - Verified `bun run typecheck --filter=@opencode/session-graph` passes
+
+### ✅ 1.6 Fix GraphView Hook Initialization Order (Completed)
+- **Issue**: Hooks called in wrong order — `useGroupCollapse`, `useGraphAnnotations`, `useComparison` all depended on `selection` from `useGraphSelection`, but were called before it
+- **Fix**: Moved `useGraphSelection` (and `selection` assignment) before dependent hooks in GraphView.tsx
+- **Files**: `packages/session-graph/src/ui/GraphView.tsx`
+
+### ✅ 1.7 Fix Circular Dependency: viewportTracker ↔ cardScreenWidth (Completed)
+- **Issue**: `viewportTracker` needed `cardScreenWidth` for camera framing, but `cardScreenWidth` needed `viewportTracker.viewport()` for screen-width calculation
+- **Fix**: Introduced `cardScreenWidthSignal` with default `CARD_SIZE[0]`, updated after `viewportTracker` initializes; `useGraphViewport` now receives getter function
+- **Files**: `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/useGraphViewport.ts`, `packages/session-graph/src/ui/graph-camera.ts`
+
+### ✅ 1.8 Fix Temporal Dead Zones in GraphView (Partially Completed)
+- **Issue**: Early initialization of `viewportTracker` exposed temporal dead zones for `geometry`, `renderModel`, `budget`, `contentIDs`, `displayPositions`, `fitOptions`
+- **Fix**: Declared early with defaults (`let geometry`, `let renderModel`), assigned real memos later
+- **Status**: Typecheck ✅, Unit tests ✅ (116), Component tests ⚠️ (remaining dead zones: `budget`, others)
+- **Files**: `packages/session-graph/src/ui/GraphView.tsx`
 
 ### ✅ 1.6 Result: GraphView.tsx becomes thin composition (~200 lines)
 ```tsx
@@ -379,7 +395,9 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Updated to use annotations |
 | `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Updated to use annotations |
 | `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Updated to use annotations |
-| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Updated to use consolidated hooks |
+| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Updated to use consolidated hooks, fixed hook init order, fixed circular deps, fixed temporal dead zones |
+| `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Fixed renderer prop type, getter for getNodeScreenPosition |
+| `packages/session-graph/src/ui/graph-camera.ts` | ✅ (no changes needed, works with updated types) |
 
 ---
 

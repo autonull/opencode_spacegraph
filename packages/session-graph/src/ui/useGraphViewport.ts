@@ -9,7 +9,7 @@ import { createGraphCamera } from "./graph-camera"
 import { createSignal, onCleanup } from "solid-js"
 
 export type GraphViewportTrackerProps = {
-  renderer: GraphRenderer | undefined
+  renderer: () => GraphRenderer | undefined
   displayPositions: () => ReadonlyMap<string, Position>
   contentIDs: () => string[]
   fitOptions: () => { minScale: number; insets: undefined }
@@ -68,7 +68,7 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
   const [viewport, setViewport] = createSignal<RendererViewport>()
 
   const camera = createGraphCamera({
-    renderer: () => renderer,
+    renderer,
     viewport,
     capabilities: () => undefined,
     content: contentIDs,
@@ -101,6 +101,6 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
     zoomLimits: () => camera.zoomLimits(),
     frame: (ids: string[]) => camera.frame(ids),
     focus: (id: string) => camera.focus(id),
-    getNodeScreenPosition: (nodeID: string) => renderer?.getNodeScreenPosition?.(nodeID),
+    getNodeScreenPosition: (nodeID: string) => renderer()?.getNodeScreenPosition?.(nodeID),
   }
 }
