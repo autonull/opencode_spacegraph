@@ -46,22 +46,3 @@ export function proposeWindow(
 export function windowKind(kinds: readonly GraphWindowKind[], window: GraphWindowState) {
   return kinds.find((kind) => kind.name === window.kind)
 }
-
-/**
- * T12.4 — the screen position of every pinned window's node, so a pinned window rides its node
- * across a pan. A free window does not move at all.
- */
-export function pinnedAnchors(
-  windows: readonly GraphWindowState[],
-  positionOf: (nodeID: string) => { x: number; y: number } | undefined,
-): Map<string, { x: number; y: number }> {
-  const anchors = new Map<string, { x: number; y: number }>()
-
-  for (const window of windows) {
-    if (!window.nodeID || !window.pinned) continue
-    const position = positionOf(window.nodeID)
-    if (position) anchors.set(window.nodeID, position)
-  }
-
-  return anchors
-}

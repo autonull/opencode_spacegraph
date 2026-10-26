@@ -115,14 +115,18 @@ import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import { createGraphSelection } from "./graph-selection"
 import { filePath, sessionID } from "./node-data"
-import { pinnedAnchors, proposeWindow, windowKind, type GraphWindowKind } from "./graph-windows"
+import { windowKind, type GraphWindowKind } from "./graph-windows"
 import { GraphFailureProgress } from "./GraphFailureProgress"
+import { getPinnedAnchors } from "spacegraphjs/utils"
 import { useTraceOverlay } from "./useTraceOverlay"
 import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
 import { useNotes } from "./useNotes"
 import { useEdgeKinds } from "./useEdgeKinds"
 import { useSelectionVerbs } from "./useSelectionVerbs"
+import { attachTouchGestures, createWidthThresholdTracker } from "spacegraphjs/utils"
+import { attachKeyboardShortcuts } from "spacegraphjs/utils"
+import { proposeWindow } from "spacegraphjs/utils"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -543,16 +547,15 @@ export const GraphView = (props: GraphViewProps) => {
   // the split control added 28px to the end block, so the row needs 941px. With the panel's padding
   // (16px) and the app's floating header (72px) the row needs 1029px, and a narrower panel would
   // wrap and push the back control under the header.
+  const widthThresholds = createWidthThresholdTracker(
+    () => rootEl,
+    { narrow: 768, compact: 1030 }
+  )
   onMount(() => {
-    const observer = new ResizeObserver(([entry]) => {
-      const width = entry.contentRect.width
-      const nextNarrow = width > 0 && width < 768
-      const nextCompact = width > 0 && width < 1030
-      setNarrow((current) => (current === nextNarrow ? current : nextNarrow))
-      setCompact((current) => (current === nextCompact ? current : nextCompact))
+    widthThresholds.observe((flags: { narrow?: boolean; compact?: boolean }) => {
+      if (flags.narrow !== undefined) setNarrow(flags.narrow)
+      if (flags.compact !== undefined) setCompact(flags.compact)
     })
-    observer.observe(rootEl)
-    onCleanup(() => observer.disconnect())
 
     // Handle copy trace outline request from detail actions
     const handleCopyTraceOutline = () => trace.copyTraceOutline()
@@ -579,38 +582,15 @@ export const GraphView = (props: GraphViewProps) => {
     onCleanup(() => window.removeEventListener("graph:command", handleCommand))
 
     // Global keyboard shortcuts for Quality Gate
-    const handleGlobalKeyDown = (event: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs
-      const target = event.target as HTMLElement
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return
-
-      // Shift+F: Open Failure+Progress window
-      if (event.key === "F" && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        event.preventDefault()
-        openWindow("failureProgress")
-        return
-      }
-      // Shift+O: Open Find panel and switch to outline tab
-      if (event.key === "O" && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        event.preventDefault()
-        setFindInitialTab("outline")
-        openWindow("find")
-        return
-      }
-      // Alt+F: Open Find panel and switch to filters tab
-      if (event.key === "f" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-        event.preventDefault()
-        setFindInitialTab("filters")
-        openWindow("find")
-        return
-      }
-    }
-    window.addEventListener("keydown", handleGlobalKeyDown)
-    onCleanup(() => window.removeEventListener("keydown", handleGlobalKeyDown))
+    const cleanupShortcuts = attachKeyboardShortcuts([
+      { key: "F", shift: true, handler: () => openWindow("failureProgress") },
+      { key: "O", shift: true, handler: () => { setFindInitialTab("outline"); openWindow("find") } },
+      { key: "f", alt: true, handler: () => { setFindInitialTab("filters"); openWindow("find") } },
+    ])
+    onCleanup(cleanupShortcuts)
   })
 
-  // The canvas region's size, for the same reason: the card tier is measured in screen pixels, and
-  // the popover is placed inside the region it floats over.
+  // Canvas region size tracking
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
@@ -643,75 +623,15 @@ export const GraphView = (props: GraphViewProps) => {
   onCleanup(stopResize)
 
   // V117: Touch gestures for mobile — pan and pinch-to-zoom
-  let touchStart: { x: number; y: number; time: number; touches: TouchList } | undefined
-  let touchPan: { lastX: number; lastY: number; startViewport: RendererViewport } | undefined
-
-  const handleTouchStart = (event: TouchEvent) => {
-    const instance = renderer
-    if (!instance || event.touches.length === 0) return
-    const vp = instance.getViewport?.()
-    if (!vp) return
-    touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY, time: Date.now(), touches: event.touches }
-    if (event.touches.length === 2) {
-      // Pinch-to-zoom: store initial distance and viewport
-      touchPan = { lastX: 0, lastY: 0, startViewport: { ...vp } }
-    } else if (event.touches.length === 1) {
-      // Single-finger pan
-      touchPan = { lastX: event.touches[0].clientX, lastY: event.touches[0].clientY, startViewport: { ...vp } }
-    }
-  }
-
-  const handleTouchMove = (event: TouchEvent) => {
-    const instance = renderer
-    if (!instance || !touchStart || !touchPan) return
-    event.preventDefault()
-    if (event.touches.length === 2 && touchStart.touches.length === 2) {
-      // Pinch-to-zoom
-      const dx = event.touches[0].clientX - event.touches[1].clientX
-      const dy = event.touches[0].clientY - event.touches[1].clientY
-      const distance = Math.hypot(dx, dy)
-      const startDx = touchStart.touches[0].clientX - touchStart.touches[1].clientX
-      const startDy = touchStart.touches[0].clientY - touchStart.touches[1].clientY
-      const startDistance = Math.hypot(startDx, startDy)
-      const scale = distance / startDistance
-      const caps = instance.capabilities
-      const minZoom = caps.zoomRange?.min ?? 0.1
-      const maxZoom = caps.zoomRange?.max ?? 10
-      const newZoom = Math.max(minZoom, Math.min(maxZoom, touchPan.startViewport.zoom * scale))
-      const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2
-      const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2
-      instance.setViewport({ ...touchPan.startViewport, zoom: newZoom, center: [centerX, centerY, touchPan.startViewport.center[2]] })
-    } else if (event.touches.length === 1 && touchStart.touches.length === 1) {
-      // Pan
-      const deltaX = (touchPan.lastX - event.touches[0].clientX) / touchPan.startViewport.zoom
-      const deltaY = (touchPan.lastY - event.touches[0].clientY) / touchPan.startViewport.zoom
-      instance.setViewport({
-        ...touchPan.startViewport,
-        center: [touchPan.startViewport.center[0] + deltaX, touchPan.startViewport.center[1] + deltaY, touchPan.startViewport.center[2]],
-      })
-      touchPan.lastX = event.touches[0].clientX
-      touchPan.lastY = event.touches[0].clientY
-    }
-  }
-
-  const handleTouchEnd = (event: TouchEvent) => {
-    // Clear touch state when all touches end
-    if (event.touches.length === 0) {
-      touchStart = undefined
-      touchPan = undefined
-    }
-  }
-
   onMount(() => {
     const el = canvasRegionEl
-    el.addEventListener("touchstart", handleTouchStart, { passive: false })
-    el.addEventListener("touchmove", handleTouchMove, { passive: false })
-    el.addEventListener("touchend", handleTouchEnd, { passive: false })
-    onCleanup(() => {
-      el.removeEventListener("touchstart", handleTouchStart)
-      el.removeEventListener("touchmove", handleTouchMove)
-      el.removeEventListener("touchend", handleTouchEnd)
+    if (!el) return
+    const cleanup = attachTouchGestures(el, {
+      getViewport: () => renderer?.getViewport?.(),
+      setViewport: (vp: RendererViewport) => renderer?.setViewport?.(vp),
+      capabilities: renderer?.capabilities ?? { zoomRange: { min: 0.1, max: 10 } },
     })
+    onCleanup(cleanup)
   })
 
   const theme = () => props.theme ?? resolvedTheme()
@@ -1111,7 +1031,7 @@ export const GraphView = (props: GraphViewProps) => {
   // window rides the node as the reader pans. A free window does not move at all.
   const windowAnchors = createMemo(() => {
     if (!viewport()) return undefined
-    return pinnedAnchors(props.windows ?? [], (nodeID) => renderer?.getNodeScreenPosition?.(nodeID))
+    return getPinnedAnchors(props.windows ?? [], (nodeID: string) => renderer?.getNodeScreenPosition?.(nodeID))
   })
 
   // T12 — the windows over the map. The kinds are the host's; the manager knows none of them: it
