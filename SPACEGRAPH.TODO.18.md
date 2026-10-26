@@ -67,10 +67,14 @@
 - Verified `bun run typecheck --filter=@opencode/session-graph` passes
 - Verified `bun test packages/session-graph/src` passes (116 tests)
 
-### 1.4 Extract GraphViewportTracker
-- **File**: `packages/session-graph/src/ui/GraphViewportTracker.tsx`
-- Owns: camera, viewport, resting, fit logic, refitKey, contentIDs, fitOptions
-- Props: renderer, displayPositions, canvasSize, inspectorOpen, etc.
+### ✅ 6. GraphViewportTracker Extraction (Completed)
+- **File**: `packages/session-graph/src/ui/useGraphViewport.ts` (new, ~110 lines)
+- Extracted: camera, viewport, resting, fit logic, contentIDs, fitOptions, zoomBy, frame, focus
+- Owns: All viewport/camera management logic
+- Props: renderer, displayPositions, contentIDs, fitOptions, cardScreenWidth, CARD_SIZE, READABLE_CARD_WIDTH
+- GraphView.tsx now uses `useGraphViewport` hook
+- Verified `bun run typecheck --filter=@opencode/session-graph` passes
+- Verified `bun test packages/session-graph/src` passes (116 tests)
 
 ### 1.5 Extract GraphStateInitializers
 - **File**: `packages/session-graph/src/ui/GraphStateInitializers.tsx`
@@ -307,11 +311,11 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (unused imports removed, types fixed) |
 | `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Created |
 
 ---
 
 ## Next Immediate Steps
 
-1. Extract GraphViewportTracker (1.4)
-2. Extract GraphStateInitializers (1.5)
-3. Complete GraphView breakdown to thin composition (1.6)
+1. Extract GraphStateInitializers (1.5)
+2. Complete GraphView breakdown to thin composition (1.6)
