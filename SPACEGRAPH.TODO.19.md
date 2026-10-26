@@ -343,11 +343,10 @@ The evaluator runs T2.2 on `t2.2-eval`; engineering runs on the main branch. The
 |---|---|---|---|
 | **2a. Seams** | §1.3 extractions A–D; §2.1–2.4, 2.6, 2.8 code quality | After `t2.2-eval` is tagged | ✅ **COMPLETED** — extractions A-D merged, `any` types removed, `else` chains flattened, TDZ block commented |
 | **2b. Merge** | §7 upstream merge, re-verify, re-baseline docs | As soon as 2a lands | ✅ **COMPLETED** — upstream dev merged, all typechecks pass, unit tests pass |
-| **2c. Publish** | §8.1 `graph:setup`, §8.2 seven packages, §8.3 published-consumer branch | Needs 2b's base | ⏳ Pending |
+| **2c. Publish** | §8.1 `graph:setup`, §8.2 seven packages, §8.3 published-consumer branch | Needs 2b's base | 🚫 **DEFERRED INDEFINITELY** — workspace dependencies are the adoption path; publishing not required for upstream proposal |
 | **2d. Protocol split** | §5 core/workspace branch **only if** a maintainer asks for zero protocol diff; otherwise document rung 5 as optional | Decision trigger, not default work | ⏳ Pending |
 
-Exit: existing-file diff ≤300 lines · merge on `dev` green · `graph:setup` works from a clean clone ·
-seven packages published · published-consumer branch installs without the sibling.
+Exit: existing-file diff ≤300 lines · merge on `dev` green
 
 ### Wave 3 — results write-up + adoption finish (~0.5 day)
 
@@ -371,7 +370,7 @@ explicit against the older draft.
 | §4.2 permalink notice, §4.3 mobile note | P2 | Wave 3 | Neither appears in the five T2.2 tasks; the smoke checklist still flags them |
 | §5 core/workspace branch split | P1a | Wave 2d | The workspace-degrade unit test (§4.4) proves the optional path; branch surgery only on request |
 | §7 upstream merge | P4 | Wave 2b | Merging 455 commits before evaluation risks the evaluation environment; `t2.2-eval` insulates the evaluator |
-| §8 adoption | P5 | Wave 2c/3 | Not needed to run T2.2; parallelizable once evaluation starts |
+| §8 adoption | P5 | 🚫 **DEFERRED** | Workspace deps are the adoption path; publishing not required for upstream proposal |
 
 ### Cut or dropped entirely
 
@@ -387,11 +386,12 @@ explicit against the older draft.
 | Wave | Engineering effort | Blocks results? |
 |---|---|---|
 | 1 | ~1 day | **Yes** |
-| 2 | ~2.5 days, parallel with T2.2 | No |
+| 2 (merge only) | ~1 day, parallel with T2.2 | No |
 | 3 | ~0.5 day | No |
-| **Total** | **~4 days** | **1 blocking day** |
+| **Total** | **~2.5 days** | **1 blocking day** |
 
-The prior draft blocked P1–P3 (~2.5 days) before results. This version blocks ~1 day and overlaps ~2.5
+Publishing (Wave 2c) deferred indefinitely — workspace dependencies are the adoption path.
+The prior draft blocked P1–P3 (~2.5 days) before results. This version blocks ~1 day and overlaps ~1.5
 with evaluation — the same work, earlier results.
 
 ---
