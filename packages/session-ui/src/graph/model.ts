@@ -182,15 +182,19 @@ export function phaseCategoryForTool(name: string): PhaseCategory {
   return "result"
 }
 
+const STATIC_PHASE_CATEGORY: Partial<Record<NodeKind, PhaseCategory>> = {
+  subagent: "delegate",
+}
+
 /** The phase category of a node that participates in a phase (tool, subagent, or phase cluster). */
 export function phaseCategoryOf(node: GraphNode): PhaseCategory | undefined {
   if (node.kind === "phase") return Option.getOrUndefined(decodePhaseCategory(node.data?.category))
 
-  if (node.kind === "subagent") return "delegate"
+  const staticCategory = STATIC_PHASE_CATEGORY[node.kind]
+  if (staticCategory) return staticCategory
 
   if (node.kind === "tool") {
     const name = decodeString(node.data?.name)
-
     return Option.isSome(name) ? phaseCategoryForTool(name.value) : undefined
   }
 
