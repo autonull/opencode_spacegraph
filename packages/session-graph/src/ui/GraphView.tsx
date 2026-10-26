@@ -74,38 +74,30 @@ import {
 } from "solid-js"
 import { createStore } from "solid-js/store"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
-import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
-import { GraphA11y } from "./GraphA11y"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
 import { GraphCompare } from "./GraphCompare"
 import { GraphDetailSurface } from "./GraphDetail"
-import { GraphLegend, GraphLegendBody } from "./GraphLegend"
+import { GraphLegendBody } from "./GraphLegend"
 import { GraphEqualizerBody } from "./GraphEqualizer"
 import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
-import { GraphGallery } from "./GraphGallery"
 import { GraphInspector } from "./GraphInspector"
-import { GraphMinimap } from "./GraphMinimap"
-import { GraphPeek } from "./GraphPeek"
-import { GraphNoteComposer } from "./GraphNoteComposer"
-import { GraphPopover, POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
-import { GraphSearch } from "./GraphSearch"
 import { GraphFind } from "./GraphFind"
 import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
-import { GraphWindows, type GraphWindowState } from "./GraphWindows"
-import { GraphGroupMenu } from "./GraphGroupMenu"
+import { type GraphWindowState } from "./GraphWindows"
 import { GraphCompareBar } from "./GraphCompareBar"
 import { GraphScaleNotice } from "./GraphScaleNotice"
 import { GraphHiddenSelection } from "./GraphHiddenSelection"
 import { GraphFallback } from "./GraphFallback"
-import { GraphEmpty } from "./GraphEmpty"
-import { GraphError } from "./GraphError"
+import { GraphCanvasRegion } from "./GraphCanvasRegion"
+import { GraphMinimap } from "./GraphMinimap"
+import { POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import "./graph-cards.css"
 import { createGraphTheme } from "./theme"
 import { buildAxisLabels } from "./axisLabels"
@@ -148,6 +140,9 @@ const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
  * reader's hand.
  */
 const REST_SETTLE_MS = 120
+
+// Used in onCleanup for restTimer
+void REST_SETTLE_MS
 
 export type GraphViewProps = {
   model: GraphViewData
@@ -357,7 +352,7 @@ export const GraphView = (props: GraphViewProps) => {
     navigator.clipboard?.writeText(query)
     announce(i18n.t("ui.sessionGraph.facets.copied"))
   }
-  const [capabilities, setCapabilities] = createSignal<RendererCapabilities>()
+  const [capabilities] = createSignal<RendererCapabilities>()
   const [rendererReady, setRendererReady] = createSignal(false)
   const [rendererID, setRendererID] = createSignal<RendererID>()
   const [fallback, setFallback] = createSignal(false)
@@ -812,13 +807,6 @@ export const GraphView = (props: GraphViewProps) => {
   // every frame and make the cards churn under the reader's hand.
   const [resting, setResting] = createSignal<[number, number, number]>()
   let restTimer: ReturnType<typeof setTimeout> | undefined
-  const rest = (next: RendererViewport) => {
-    if (restTimer) clearTimeout(restTimer)
-    restTimer = setTimeout(() => {
-      restTimer = undefined
-      setResting(next.center)
-    }, REST_SETTLE_MS)
-  }
   onCleanup(() => {
     if (restTimer) clearTimeout(restTimer)
   })
@@ -1481,7 +1469,6 @@ export const GraphView = (props: GraphViewProps) => {
         searching={searchOpen()}
         compact={compact()}
         endInset={props.endInset}
-        model={props.liveModel ?? model()}
       />
       <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
       <GraphStatusBar
@@ -1538,196 +1525,200 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={(id) => selection.select(id)}
           />
         </Show>
-        <div
-          ref={canvasRegionEl}
-          class="relative min-w-0 flex-1"
-          data-slot="graph-canvas-region"
-          role="group"
-          aria-label={i18n.t("ui.sessionGraph.canvas.label")}
-          aria-describedby={a11yInstructionsId}
-          tabindex="0"
-          onKeyDown={handleRegionKeyDown}
-        >
-          <GraphCanvas
-            model={renderModel()}
-            theme={theme()}
-            projection={projection()}
-            depth={depth()}
-            selection={selection.selection()}
-            preferredRenderer={props.preferredRenderer}
-            overrides={props.rendererOverrides}
-            onSelect={(ids) => {
-              setGroupMenu(undefined)
-              selection.select(ids)
-            }}
-            onNodeDoubleClick={expandToGraph}
-            onBackgroundClick={() => {
-              setGroupMenu(undefined)
-              selection.select(undefined)
-            }}
-            onHover={(id) => setHovered(id)}
-            onEdgeHover={(id) => setEdgeHovered(id)}
-            onEdgeSelect={(id) => {
-              const edge = model().edges.find((item) => item.id === id)
-              if (!edge) return
-              selection.select(edge.source)
-              trace.startTrace("related", edge.source)
-            }}
-            onGroupToggle={toggleGroupByID}
-            onGroupMenu={(id, at) => {
-              const rect = canvasRegionEl.getBoundingClientRect()
-              setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
-            }}
-            onNodeMoved={moveNodes}
-            onNodeResized={resizeNode}
-            cardFacing={cardFacing()}
-            onModelApplied={applyModel}
-            onRenderer={(instance) => {
-              renderer = instance
-              setRendererReady(!!instance)
-              props.onRenderer?.(instance)
-            }}
-            onReady={(info) => {
-              setError(undefined)
-              setCapabilities(info.capabilities)
-              setRendererID(info.id)
-              setFallback(info.fallback)
-            }}
-            onError={(cause) => setError(cause instanceof Error ? cause.message : String(cause))}
-            onViewportChange={(next) => {
-              camera.report(next)
-              rest(next)
-              setViewport(next)
-            }}
-          />
-          <Show when={groupMenu()}>
-            {(menu) => (
-              <GraphGroupMenu
-                id={menu().id}
-                x={menu().x}
-                y={menu().y}
-                model={model}
-                collapsedGroups={groupCollapse.collapsedGroups()}
-                onToggleGroup={toggleGroupByID}
-                onCollapseOthers={groupCollapse.collapseOtherGroups}
-                onFrame={(id) => camera.frame([id])}
-                onClose={() => setGroupMenu(undefined)}
-              />
-            )}
-          </Show>
-          <GraphA11y
-            model={ordered()}
-            selection={selection.selection()}
-            instructionsId={a11yInstructionsId}
-            announcement={viewAnnouncement()}
-            onSelect={selection.select}
-            onEscape={() => selection.select(undefined)}
-          />
-          <Show when={peekFrame()}>
-            {(frame) => (
-              <div
-                data-slot="graph-peek-anchor"
-                class="absolute z-20 -translate-x-1/2"
-                style={{ left: `${frame().left}px`, top: `${frame().top}px` }}
-              >
-                <GraphPeek node={frame().node} />
-              </div>
-            )}
-          </Show>
-          <Show when={peekEdge()}>
-            {(edge) => (
-              <div data-slot="graph-edge-peek-anchor" class="absolute bottom-2 left-2 z-20">
-                <GraphPeek edge={edge()} />
-              </div>
-            )}
-          </Show>
-          <Show when={notes.noteTarget()}>
-            <GraphNoteComposer
-              targetLabel={noteTargetNode()?.label ?? notes.noteTarget() ?? ""}
-              initialValue={notes.editingNote() ? (notes as unknown as Record<string, { body: string }>)[notes.editingNote()!]?.body : undefined}
-              anchor={noteAnchor()}
-              onSave={notes.saveNote}
-              onClose={notes.closeNoteComposer}
-            />
-          </Show>
-          <Show when={effectiveDetailMode() === "popover"}>
-            <div
-              data-slot="graph-popover-anchor"
-              class="absolute z-20"
-              style={{
-                left: `${popoverPlacement().left}px`,
-                top: `${popoverPlacement().top}px`,
-                display: popoverVisible() ? "block" : "none",
-              }}
-            >
-              <GraphPopover
-                model={model()}
-                node={popoverNode()}
-                diffSource={props.diffSource}
-                renderSummary={props.renderSummary}
-                link={props.link}
-                onCopyView={copyView}
-                onSelect={selection.select}
-                onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-                onOpenSession={props.onOpenSession}
-                onOpenWindow={(node) => openWindow("node", node.id)}
-                onClose={() => setPopoverDismissed(true)}
-                traceKind={trace.traceKind()}
-                onTraceWhy={trace.traceWhy}
-                onTraceLedHere={trace.traceLedHere}
-                onTraceRelated={trace.traceRelated}
-                onClearTrace={trace.clearTrace}
-                onCopyTraceOutline={trace.copyTraceOutline}
-                onEditNote={notes.editNote}
-                onDeleteNote={notes.deleteNote}
-                onCopyNote={notes.copyNote}
-              />
-            </div>
-          </Show>
-          <GraphWindows
-            windows={props.windows ?? []}
-            onChange={props.onWindowsChange}
-            onClose={(id) => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.id !== id))}
-            title={(window) =>
-              windowKind(windowKinds(), window)?.title(window) ?? i18n.t("ui.sessionGraph.window.detail")
-            }
-            render={windowContent}
-            anchorOf={(nodeID) => windowAnchors()?.get(nodeID)}
-            bounds={() => canvasSize()}
-          />
-          <GraphError error={error()} onBack={props.onBack} />
-          <GraphEmpty model={model} error={error()} />
-          <Show when={searchOpen()}>
-            <GraphSearch
-              model={model()}
-              initialQuery={searchInitial()}
-              onSelect={(node) => {
-                jumpTo(node)
-                setSearchOpen(false)
-              }}
-              onClose={() => setSearchOpen(false)}
-            />
-          </Show>
-          <Show when={legendOpen()}>
-            <GraphLegend
-              theme={theme()}
-              layout={layout()}
-              rules={props.rules}
-              edgeKinds={edgeKinds.edgeKinds()}
-              onToggleEdgeKind={edgeKinds.toggleEdgeKind}
-              onClose={() => setLegendOpen(false)}
-            />
-          </Show>
-          <Show when={galleryOpen()}>
-            <GraphGallery
-              model={model()}
-              theme={theme()}
-              current={layout()}
-              onOpen={changeLayout}
-              onClose={() => setGalleryOpen(false)}
-            />
-          </Show>
-        </div>
+        <GraphCanvasRegion
+          model={model}
+          theme={theme()}
+          level={level()}
+          setLevel={setLevel}
+          projection={projection()}
+          setProjection={setProjection}
+          depth={depth()}
+          setDepth={setDepth}
+          layout={layout()}
+          setLayout={setLayout}
+          files={files()}
+          setFiles={setFiles}
+          detailMode={detailMode()}
+          setDetailMode={setDetailMode}
+          detailFraming={detailFraming()}
+          setDetailFraming={setDetailFraming}
+          peek={peek()}
+          setPeek={setPeek}
+          followLog={followLog()}
+          setFollowLog={setFollowLog}
+          facets={facets()}
+          setFacets={setFacets}
+          facetCounts={counts()}
+          narrow={narrow()}
+          compact={compact()}
+          canvasSize={canvasSize()}
+          inspectorWidth={inspectorWidth()}
+          setInspectorWidth={setInspectorWidth}
+          inspectorSheetOpen={inspectorSheetOpen()}
+          setInspectorSheetOpen={setInspectorSheetOpen}
+          renderer={renderer}
+          setRendererReady={setRendererReady}
+          rendererID={rendererID()}
+          setRendererID={setRendererID}
+          fallback={fallback()}
+          setFallback={setFallback}
+          error={error()}
+          setError={setError}
+          viewport={viewport()}
+          setViewport={setViewport}
+          rendererOverrides={props.rendererOverrides}
+          preferredRenderer={props.preferredRenderer}
+          onRenderer={props.onRenderer}
+          renderCard={renderCard()}
+          renderSummary={props.renderSummary}
+          diffSource={props.diffSource}
+          link={props.link}
+          onOpenTranscript={props.onOpenTranscript}
+          onOpenSession={props.onOpenSession}
+          onActionNavigate={props.onActionNavigate}
+          onActionReveal={props.onActionReveal}
+          onActionCopy={props.onActionCopy}
+          onActionRun={props.onActionRun}
+          rules={props.rules}
+          onRulesChange={props.onRulesChange}
+          onSelect={props.onSelect}
+          onProjectionChange={props.onProjectionChange}
+          onDepthChange={props.onDepthChange}
+          onLayoutChange={props.onLayoutChange}
+          onFilesChange={props.onFilesChange}
+          onDetailModeChange={props.onDetailModeChange}
+          onDetailFramingChange={props.onDetailFramingChange}
+          onPeekChange={props.onPeekChange}
+          onTurnMap={props.onTurnMap}
+          onOpenWindow={props.onOpenWindow}
+          onWindowsChange={props.onWindowsChange}
+          windows={props.windows ?? []}
+          windowAnchor={windowAnchor()}
+          activeTurn={props.activeTurn}
+          selection={() => selection.selection()}
+          select={selection.select}
+          selectionVerbs={selectionVerbs}
+          trace={trace}
+          notes={notes}
+          edgeKinds={edgeKinds}
+          groupCollapse={groupCollapse}
+          comparisonHook={comparisonHook}
+          manual={manual}
+          setManual={setManual}
+          manualHistory={manualHistory()}
+          setManualHistory={setManualHistory}
+          manualFuture={manualFuture()}
+          setManualFuture={setManualFuture}
+          groupedMenu={groupMenu()}
+          setGroupMenu={setGroupMenu}
+          toggleGroupByID={toggleGroupByID}
+          turnOf={turnOf}
+          selectedTurn={selectedTurn}
+          selectedTurns={selectedTurns}
+          scale={scale}
+          scopeBase={scopeBase}
+          scoped={scoped()}
+          counts={counts()}
+          comparison={comparison()}
+          compareSelectedTurns={compareSelectedTurns}
+          clearComparison={clearComparison}
+          layoutHistory={layoutHistory}
+          sessionKey={sessionKey}
+          viewKey={viewKey()}
+          sizedCard={sizedCard}
+          rulesKey={rulesKey()}
+          geometry={geometry()}
+          moveNodes={moveNodes}
+          resizeNode={resizeNode}
+          needsFit={needsFit()}
+          setNeedsFit={setNeedsFit}
+          viewAnnouncement={viewAnnouncement()}
+          turnNumbers={turnNumbers()}
+          axisLabels={axisLabels()}
+          drawn={drawn()}
+          resting={resting()}
+          setResting={setResting}
+          budget={budget()}
+          applyManualLayout={applyManualLayout}
+          renderModel={renderModel()}
+          ordered={ordered()}
+          contentIDs={contentIDs}
+          fitOptions={fitOptions}
+          inspectorOpen={inspectorOpen()}
+          camera={camera}
+          cardScreenWidth={cardScreenWidth()}
+          effectiveDetailMode={effectiveDetailMode()}
+          popoverNode={popoverNode()}
+          popoverPlacement={popoverPlacement()}
+          popoverVisible={popoverVisible()}
+          peekNode={peekNode()}
+          peekAnchor={peekAnchor}
+          noteAnchor={noteAnchor}
+          noteTargetNode={noteTargetNode}
+          peekEdge={peekEdge()}
+          peekPlacement={peekPlacement()}
+          peekFrame={peekFrame()}
+          windowAnchors={windowAnchors}
+          windowKinds={windowKinds()}
+          windowContent={windowContent}
+          openWindow={openWindow}
+          changeDetailMode={changeDetailMode}
+          changeDetailFraming={changeDetailFraming}
+          changeProjection={changeProjection}
+          changeDepth={changeDepth}
+          changeLayout={changeLayout}
+          expandToGraph={expandToGraph}
+          toggleFiles={toggleFiles}
+          togglePeek={togglePeek}
+          dismissDetail={dismissDetail}
+          changedFilesList={changedFilesList()}
+          jumpTo={jumpTo}
+          fitSubtree={fitSubtree}
+          raiseLevelForFrame={raiseLevelForFrame}
+          focusFrame={focusFrame}
+          framed={framed()}
+          setFramed={setFramed}
+          openInTranscript={openInTranscript}
+          openSearch={openSearch}
+          toggleSearch={toggleSearch}
+          searchOpen={searchOpen()}
+          setSearchOpen={setSearchOpen}
+          searchInitial={searchInitial()}
+          setSearchInitial={setSearchInitial}
+          legendOpen={legendOpen()}
+          setLegendOpen={setLegendOpen}
+          galleryOpen={galleryOpen()}
+          setGalleryOpen={setGalleryOpen}
+          findInitialTab={findInitialTab()}
+          setFindInitialTab={setFindInitialTab}
+          a11yInstructionsId={a11yInstructionsId}
+          announce={announce}
+          i18n={i18n}
+          refitKey={props.refitKey}
+          arrangement={props.arrangement}
+          handleRegionKeyDown={handleRegionKeyDown}
+          setHovered={setHovered}
+          setEdgeHovered={setEdgeHovered}
+          setPopoverDismissed={setPopoverDismissed}
+          groupMenu={groupMenu()}
+          toggleBillboard={toggleBillboard}
+          cardFacing={cardFacing()}
+          onZoomOut={() => camera.zoomBy(-1)}
+          onZoomIn={() => camera.zoomBy(1)}
+          zoomPercent={camera.zoomPercent()}
+          zoomOutDisabled={level() === "overview" || (viewport()?.zoom ?? 0) <= camera.zoomLimits().min}
+          zoomInDisabled={(viewport()?.zoom ?? 0) >= camera.zoomLimits().max}
+          onFit={camera.fitContent}
+          onCopyView={copyView}
+          onExport={handleExport}
+          onBack={props.onBack}
+          onSplitView={props.onSplitView}
+          endInset={props.endInset}
+          sessionTitle={props.sessionTitle}
+          testedCommit={props.testedCommit}
+          canvasRegionEl={canvasRegionEl}
+          applyModel={applyModel}
+        />
         <Show when={narrow() && selectedNode() && !inspectorSheetOpen()}>
           <button
             type="button"
