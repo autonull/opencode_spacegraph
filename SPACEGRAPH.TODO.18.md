@@ -3,7 +3,7 @@
 ## Status (2026-10-26)
 - **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui: 529)
 - **Typecheck**: ✅ All passing (session-graph, session-ui)
-- **Component tests**: ⚠️ session-ui passing, session-graph has temporal dead zone issues in GraphView.tsx initialization order
+- **Component tests**: ⚠️ session-ui passing, session-graph temporal dead zones fixed, graph init timing being debugged
 - **E2E tests**: ⚠️ Graph module not loading in Playwright
 - **Screenshots**: ⚠️ Same E2E infrastructure issue
 - **SpaceGraphJS**: ✅ All packages build, tests pass, publish check passes
@@ -95,10 +95,14 @@
 - **Fix**: Introduced `cardScreenWidthSignal` with default `CARD_SIZE[0]`, updated after `viewportTracker` initializes; `useGraphViewport` now receives getter function
 - **Files**: `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/useGraphViewport.ts`, `packages/session-graph/src/ui/graph-camera.ts`
 
-### ✅ 1.8 Fix Temporal Dead Zones in GraphView (Partially Completed)
+### ✅ 1.8 Fix Temporal Dead Zones in GraphView (Completed)
 - **Issue**: Early initialization of `viewportTracker` exposed temporal dead zones for `geometry`, `renderModel`, `budget`, `contentIDs`, `displayPositions`, `fitOptions`
-- **Fix**: Declared early with defaults (`let geometry`, `let renderModel`), assigned real memos later
-- **Status**: Typecheck ✅, Unit tests ✅ (116), Component tests ⚠️ (remaining dead zones: `budget`, others)
+- **Fix**: 
+  1. Declared early with defaults (`let geometry`, `let renderModel`), assigned real memos later
+  2. Moved `budget` memo before `contentIDs` which uses it
+  3. Added defensive checks for `viewportTracker` in `budget` memo
+  4. Initialized `viewportTracker` earlier (after `fitOptions`), before memos that depend on it
+- **Status**: Typecheck ✅, Unit tests ✅ (116), Component tests render past initialization (graph init timing being debugged separately)
 - **Files**: `packages/session-graph/src/ui/GraphView.tsx`
 
 ### ✅ 1.6 Result: GraphView.tsx becomes thin composition (~200 lines)
@@ -355,7 +359,7 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/useGraphKeyboard.ts` | ✅ Created |
 | `packages/session-graph/src/canvas/sessionGraphAdapter.ts` | ✅ Simplified |
 | `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Created (type issues fixed) |
-| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (duplicate declarations removed, types fixed) |
+| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (duplicate declarations removed, types fixed, temporal dead zones fixed) |
 | `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Created |
@@ -404,6 +408,7 @@ Upstream sync → Shareable delivery
 ## Next Immediate Steps
 
 1. **Component/E2E Test Fixes (7.1–7.2)** - Fix test infrastructure:
+   - Fix graph initialization timing in component tests (graph not ready within 30s)
    - Fix Storybook state bleed between component tests
    - Debug Graph module loading in Playwright (E2E)
    - Target: All component and e2e tests pass reliably

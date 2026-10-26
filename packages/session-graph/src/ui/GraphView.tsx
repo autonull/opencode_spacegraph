@@ -740,6 +740,18 @@ export const GraphView = (props: GraphViewProps) => {
     return { ...current, nodes: current.nodes.filter((node) => units.has(node.id)) }
   })
 
+  // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
+  // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
+  // Must be defined before contentIDs which uses it.
+  const budget = createMemo(() => {
+    const current = drawn()
+    const weighted = applyNodeBudget(current, degreeBudget(current, selection.selection()))
+    if (!viewportTracker) return weighted
+    const centre = viewportTracker.resting()
+    if (!centre) return weighted
+    return byProximity(weighted, displayPositions(), centre)
+  })
+
   // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
   // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
   // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
@@ -760,6 +772,25 @@ export const GraphView = (props: GraphViewProps) => {
     minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1],
     insets: undefined,
   }))
+
+  // Initialize viewport tracker early so memos below can use it
+  viewportTracker = useGraphViewport({
+    renderer: () => renderer,
+    displayPositions: () => displayPositions?.() ?? new Map(),
+    contentIDs: () => contentIDs?.() ?? [],
+    fitOptions: () => fitOptions?.() ?? { minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1], insets: undefined },
+    cardScreenWidth,
+    CARD_SIZE,
+    READABLE_CARD_WIDTH,
+  })
+
+  // Update card screen width signal now that viewportTracker is ready
+  setCardScreenWidthSignal(() => {
+    const extent = viewportTracker!.viewport()?.extent
+    const size = canvasSize()
+    if (!extent?.width || !size.width) return CARD_SIZE[0]
+    return (CARD_SIZE[0] * size.width) / extent.width
+  })
 
   // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
   // budget follows the camera, and a budget that changed on every frame would rebuild the map on
@@ -790,16 +821,6 @@ export const GraphView = (props: GraphViewProps) => {
       extent: vp.center[2] ? undefined : undefined,
     })
   }
-
-  // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
-  // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
-  const budget = createMemo(() => {
-    const current = drawn()
-    const weighted = applyNodeBudget(current, degreeBudget(current, selection.selection()))
-    const centre = viewportTracker!.resting()
-    if (!centre) return weighted
-    return byProximity(weighted, displayPositions(), centre)
-  })
 
   const applyManualLayout = (model: RenderModel): RenderModel => {
     if (Object.keys(manual.sizes).length === 0 && Object.keys(manual.positions).length === 0) return model
@@ -1076,17 +1097,6 @@ export const GraphView = (props: GraphViewProps) => {
     }
     openSearch()
   }
-
-  // Initialize viewport tracker early so keyboard handler can use it
-  viewportTracker = useGraphViewport({
-    renderer: () => renderer,
-    displayPositions: () => displayPositions?.() ?? new Map(),
-    contentIDs: () => contentIDs?.() ?? [],
-    fitOptions: () => fitOptions?.() ?? { minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1], insets: undefined },
-    cardScreenWidth,
-    CARD_SIZE,
-    READABLE_CARD_WIDTH,
-  })
 
   // Update card screen width signal now that viewportTracker is ready
   setCardScreenWidthSignal(() => {
