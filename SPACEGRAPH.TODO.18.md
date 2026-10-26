@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.18.md — Definitive Closing Plan
 
-## Status (2026-10-25)
+## Status (2026-10-26)
 - **Unit tests**: ✅ 377 passing (session-graph: 116, session-ui/graph: 261)
 - **Typecheck**: ✅ All passing (session-graph, session-ui)
 - **Component tests**: ⚠️ Flaky (Storybook state issue between runs)
@@ -33,22 +33,30 @@
 - Verified `bun run typecheck --filter=@opencode/session-graph` passes
 - Verified `bun test packages/session-graph/src` passes (116 tests)
 
+### ✅ 4. GraphWindowManager Extraction (Completed)
+- **File**: `packages/session-graph/src/ui/GraphWindowManager.tsx` (new, ~220 lines)
+- Extracted: GraphWindows, windowKinds (node, filesystem, legend, compare, equalizer, minimap, failureProgress, find), windowContent, window anchor logic
+- Owns: window management, z-ordering, drag/resize gestures, pinned window positioning
+- Props: windows, onWindowsChange, onOpenWindow, model, theme, layout, canvasSize, renderer, viewport, displayPositions, selection, trace, notes, edgeKinds, comparison, diffSource, link, onOpenTranscript, onOpenSession, onActionNavigate, rules, onRulesChange, findInitialTab, i18n, renderSummary, facets, onFacetsChange
+- Verified `bun run typecheck --filter=@opencode/session-graph` passes
+- Verified `bun test packages/session-graph/src` passes (116 tests)
+
 ---
 
 ## Remaining Work
 
 ## 1. GraphView Breakdown Completion
 
-### 1.1 Fix GraphCanvasRegion Type Issues
-- Fix `noteAnchor` type to be value not accessor
-- Add missing `GraphGallery` import
-- Clean up GraphView.tsx unused imports and fix remaining type errors
-- Verify `bun run typecheck --filter=@opencode/session-graph` passes
+### 1.1 Fix GraphCanvasRegion Type Issues ✅
+- Fix `noteAnchor` type to be value not accessor ✅
+- Add missing `GraphGallery` import ✅
+- Clean up GraphView.tsx unused imports and fix remaining type errors ✅
+- Verify `bun run typecheck --filter=@opencode/session-graph` passes ✅
 
-### 1.2 Extract GraphWindowManager  
+### 1.2 Extract GraphWindowManager ✅
 - **File**: `packages/session-graph/src/ui/GraphWindowManager.tsx`
-- Owns: GraphWindows, windowKinds, windowContent, windowAnchors, openWindow
-- Props: windows, onWindowsChange, onOpenWindow, model, selection, etc.
+- Owns: GraphWindows, windowKinds, windowContent, windowAnchors, openWindow ✅
+- Props: windows, onWindowsChange, onOpenWindow, model, selection, etc. ✅
 
 ### 1.3 Extract GraphOverlayManager
 - **File**: `packages/session-graph/src/ui/GraphOverlayManager.tsx`
@@ -293,13 +301,13 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/canvas/sessionGraphAdapter.ts` | ✅ Simplified |
 | `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Created (type issues fixed) |
 | `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (unused imports removed, types fixed) |
+| `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
 
 ---
 
 ## Next Immediate Steps
 
-1. Extract GraphWindowManager (1.2)
-2. Extract GraphOverlayManager (1.3)
-3. Extract GraphViewportTracker (1.4)
-4. Extract GraphStateInitializers (1.5)
-5. Complete GraphView breakdown to thin composition (1.6)
+1. Extract GraphOverlayManager (1.3)
+2. Extract GraphViewportTracker (1.4)
+3. Extract GraphStateInitializers (1.5)
+4. Complete GraphView breakdown to thin composition (1.6)

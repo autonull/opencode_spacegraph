@@ -78,25 +78,18 @@ import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
-import { GraphCompare } from "./GraphCompare"
-import { GraphDetailSurface } from "./GraphDetail"
-import { GraphLegendBody } from "./GraphLegend"
-import { GraphEqualizerBody } from "./GraphEqualizer"
 import { LANE_KEY, LEVEL_KEY, LAYOUT_KEY, DEPTH_KEY } from "./vocabulary"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphInspector } from "./GraphInspector"
-import { GraphFind } from "./GraphFind"
 import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
-import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
-import { type GraphWindowState } from "./GraphWindows"
 import { GraphCompareBar } from "./GraphCompareBar"
 import { GraphScaleNotice } from "./GraphScaleNotice"
 import { GraphHiddenSelection } from "./GraphHiddenSelection"
 import { GraphFallback } from "./GraphFallback"
 import { GraphCanvasRegion } from "./GraphCanvasRegion"
-import { GraphMinimap } from "./GraphMinimap"
+import { GraphWindowManager } from "./GraphWindowManager"
 import { POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import "./graph-cards.css"
 import { createGraphTheme } from "./theme"
@@ -105,10 +98,8 @@ import { exportGraph, type ExportFormat } from "./export"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import { createGraphSelection } from "./graph-selection"
-import { filePath, sessionID } from "./node-data"
-import { windowKind, type GraphWindowKind } from "./graph-windows"
-import { GraphFailureProgress } from "./GraphFailureProgress"
-import { getPinnedAnchors } from "spacegraphjs/utils"
+import { sessionID } from "./node-data"
+import { proposeWindow } from "spacegraphjs/utils"
 import { useTraceOverlay } from "./useTraceOverlay"
 import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
@@ -117,7 +108,7 @@ import { useEdgeKinds } from "./useEdgeKinds"
 import { useSelectionVerbs } from "./useSelectionVerbs"
 import { useGraphKeyboard } from "./useGraphKeyboard"
 import { attachTouchGestures, createWidthThresholdTracker } from "spacegraphjs/utils"
-import { proposeWindow } from "spacegraphjs/utils"
+import type { GraphWindowState } from "./GraphWindows"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -869,10 +860,6 @@ export const GraphView = (props: GraphViewProps) => {
       : { ...model, edges: model.edges.filter((edge) => !hidden.has(edge.kind)) }
   })
 
-  // Edge kinds for the legend - use the hook
-  const edgeKindsMemo = edgeKinds.edgeKinds
-  const toggleEdgeKind = edgeKinds.toggleEdgeKind
-
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
   // same whoever opens it. Both read the render model in the session's own order.
   const ordered = createMemo(() => {
@@ -1011,158 +998,6 @@ export const GraphView = (props: GraphViewProps) => {
 
   // T12.4 — a pinned window follows its node: the anchor is read on every viewport change, so the
   // window rides the node as the reader pans. A free window does not move at all.
-  const windowAnchors = createMemo(() => {
-    if (!viewport()) return undefined
-    return getPinnedAnchors(props.windows ?? [], (nodeID: string) => renderer?.getNodeScreenPosition?.(nodeID))
-  })
-
-  // T12 — the windows over the map. The kinds are the host's; the manager knows none of them: it
-  // moves, resizes and stacks them.
-  const windowKinds = createMemo<GraphWindowKind[]>(() => [
-    {
-      name: "node",
-      title: (window) => {
-        const node = window.nodeID ? nodeByID(model(), window.nodeID) : undefined
-        return node?.label ?? i18n.t("ui.sessionGraph.window.detail")
-      },
-      render: (window) => {
-        const node = window.nodeID ? nodeByID(model(), window.nodeID) : undefined
-        if (!node)
-          return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
-        return (
-          <GraphDetailSurface
-            model={model()}
-            node={node}
-            diffSource={props.diffSource}
-            renderSummary={props.renderSummary}
-            link={props.link}
-            onSelect={selection.select}
-            onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-            onOpenSession={props.onOpenSession}
-            traceKind={trace.traceKind()}
-            onTraceWhy={trace.traceWhy}
-            onTraceLedHere={trace.traceLedHere}
-            onTraceRelated={trace.traceRelated}
-            onClearTrace={trace.clearTrace}
-            onCopyTraceOutline={trace.copyTraceOutline}
-            onEditNote={notes.editNote}
-            onDeleteNote={notes.deleteNote}
-            onCopyNote={notes.copyNote}
-          />
-        )
-      },
-    },
-    {
-      name: "filesystem",
-      title: () => i18n.t("ui.sessionGraph.filesystem.title"),
-      render: (window) => (
-        <GraphFilesystemWindow
-          model={model()}
-          workspaceRoot={model().workspaceRoot ?? model().root}
-          onSelect={selection.select}
-          onOpen={(file) => props.onActionNavigate?.({ file: filePath(file) })}
-          selection={selection.selection()[0]}
-        />
-      ),
-    },
-    {
-      name: "legend",
-      title: () => i18n.t("ui.sessionGraph.legend.label"),
-      render: () => (
-        <GraphLegendBody
-          theme={theme()}
-          layout={layout()}
-          rules={props.rules}
-          edgeKinds={edgeKindsMemo()}
-          onToggleEdgeKind={toggleEdgeKind}
-        />
-      ),
-    },
-    {
-      name: "compare",
-      title: () => i18n.t("ui.sessionGraph.compare.title"),
-      render: () => {
-        const changes = comparison()
-        if (!changes)
-          return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.missing")}</div>
-        return <GraphCompare model={model()} changes={changes} />
-      },
-    },
-    {
-      name: "equalizer",
-      title: () => i18n.t("ui.sessionGraph.equalizer.title"),
-      render: () => (
-        <GraphEqualizerBody
-          rules={props.rules ?? []}
-          onChange={(rules) => props.onRulesChange?.(rules)}
-        />
-      ),
-    },
-    {
-      name: "minimap",
-      title: () => i18n.t("ui.sessionGraph.minimap.label"),
-      render: () => (
-        <GraphMinimap
-          model={model()}
-          positions={displayPositions()}
-          theme={theme()}
-          viewport={viewport()}
-          onPan={(center: [number, number]) => {
-            const current = viewport()
-            if (!current) return
-            renderer?.setViewport({ zoom: current.zoom, center: [center[0], center[1], 0] })
-          }}
-        />
-      ),
-    },
-    {
-      name: "failureProgress",
-      title: () => i18n.t("ui.sessionGraph.failureProgress.title"),
-      render: () => {
-        const overlay = trace.traceOverlay()
-        return (
-          <GraphFailureProgress
-            model={model()}
-            traceOverlay={overlay ?? undefined}
-            onSelect={selection.select}
-            onTraceWhy={trace.traceWhy}
-            onTraceLedHere={trace.traceLedHere}
-            onTraceRelated={trace.traceRelated}
-            onFrame={(ids) => renderer?.focus(ids[0])}
-          />
-        )
-      },
-    },
-    {
-      name: "find",
-      title: () => i18n.t("ui.sessionGraph.find.title"),
-      render: () => (
-        <GraphFind
-          model={model()}
-          facets={facets()}
-          onFacetsChange={setFacets}
-          onSelect={(node) => selection.select(node.id)}
-          onClose={() => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.kind !== "find"))}
-          initialTab={findInitialTab()}
-        />
-      ),
-    },
-  ])
-
-  const windowContent = (window: GraphWindowState) => {
-    const kind = windowKind(windowKinds(), window)
-    if (!kind)
-      return <div class="px-3 py-2 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.window.unknown")}</div>
-    return kind.render(window)
-  }
-
-  // T12 — the view proposes a window's first placement: the canvas is what a window lives in, so
-  // the view knows how much room there is. The host persists what the reader does with it.
-  const openWindow = (kind: string, nodeID?: string) => {
-    const window = proposeWindow(kind, nodeID, { canvas: canvasSize(), windows: props.windows ?? [] })
-    props.onOpenWindow?.(window)
-    return window
-  }
 
   const changeDetailMode = (next: DetailMode) => {
     setDetailMode(next)
@@ -1209,6 +1044,13 @@ export const GraphView = (props: GraphViewProps) => {
       props.onPeekChange?.(!open)
       return !open
     })
+  }
+  // T12 — the view proposes a window's first placement: the canvas is what a window lives in, so
+  // the view knows how much room there is. The host persists what the reader does with it.
+  const openWindow = (kind: string, nodeID?: string) => {
+    const window = proposeWindow(kind, nodeID, { canvas: canvasSize(), windows: props.windows ?? [] })
+    props.onOpenWindow?.(window)
+    return window
   }
   // Escape closes the popover and keeps the selection; a second Escape clears it. A panel is not
   // dismissed by Escape — it is the map's own surface, and clearing the selection closes it.
@@ -1590,9 +1432,6 @@ export const GraphView = (props: GraphViewProps) => {
           onDetailFramingChange={props.onDetailFramingChange}
           onPeekChange={props.onPeekChange}
           onTurnMap={props.onTurnMap}
-          onOpenWindow={props.onOpenWindow}
-          onWindowsChange={props.onWindowsChange}
-          windows={props.windows ?? []}
           windowAnchor={windowAnchor()}
           activeTurn={props.activeTurn}
           selection={() => selection.selection()}
@@ -1658,10 +1497,6 @@ export const GraphView = (props: GraphViewProps) => {
           peekEdge={peekEdge()}
           peekPlacement={peekPlacement()}
           peekFrame={peekFrame()}
-          windowAnchors={windowAnchors}
-          windowKinds={windowKinds()}
-          windowContent={windowContent}
-          openWindow={openWindow}
           changeDetailMode={changeDetailMode}
           changeDetailFraming={changeDetailFraming}
           changeProjection={changeProjection}
@@ -1718,6 +1553,36 @@ export const GraphView = (props: GraphViewProps) => {
           testedCommit={props.testedCommit}
           canvasRegionEl={canvasRegionEl}
           applyModel={applyModel}
+        />
+        <GraphWindowManager
+          windows={props.windows ?? []}
+          onWindowsChange={props.onWindowsChange ?? (() => {})}
+          onOpenWindow={props.onOpenWindow ?? (() => {})}
+          model={model}
+          theme={theme()}
+          layout={layout()}
+          setLayout={setLayout}
+          canvasSize={canvasSize()}
+          renderer={renderer}
+          viewport={viewport()}
+          displayPositions={displayPositions}
+          selection={selection}
+          trace={trace}
+          notes={notes}
+          edgeKinds={edgeKinds}
+          comparison={comparisonHook}
+          diffSource={props.diffSource}
+          link={props.link}
+          onOpenTranscript={props.onOpenTranscript}
+          onOpenSession={props.onOpenSession}
+          onActionNavigate={props.onActionNavigate}
+          rules={props.rules ?? []}
+          onRulesChange={props.onRulesChange}
+          findInitialTab={findInitialTab()}
+          i18n={i18n}
+          renderSummary={props.renderSummary}
+          facets={facets()}
+          onFacetsChange={setFacets}
         />
         <Show when={narrow() && selectedNode() && !inspectorSheetOpen()}>
           <button

@@ -28,12 +28,10 @@ import { GraphNoteComposer } from "./GraphNoteComposer"
 import { GraphPeek } from "./GraphPeek"
 import { GraphPopover } from "./GraphPopover"
 import { GraphSearch } from "./GraphSearch"
-import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { GraphGroupMenu } from "./GraphGroupMenu"
 import { GraphGallery } from "./GraphGallery"
 import { GraphError } from "./GraphError"
 import { GraphEmpty } from "./GraphEmpty"
-import { windowKind, type GraphWindowKind } from "./graph-windows"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 
@@ -104,9 +102,6 @@ export type GraphCanvasRegionProps = {
   onDetailFramingChange: ((framing: DetailFraming) => void) | undefined
   onPeekChange: ((peek: boolean) => void) | undefined
   onTurnMap: ((turnID: string) => void) | undefined
-  onOpenWindow: ((window: GraphWindowState) => void) | undefined
-  onWindowsChange: ((windows: GraphWindowState[]) => void) | undefined
-  windows: readonly GraphWindowState[]
   windowAnchor: string | undefined
   activeTurn: string | undefined
   selection: () => readonly string[]
@@ -123,7 +118,6 @@ export type GraphCanvasRegionProps = {
   setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
   toggleGroupByID: (id: string) => void
   selectedTurn: () => string | undefined
-  openWindow: (kind: string, nodeID?: string) => GraphWindowState
   changeDetailMode: (next: DetailMode) => void
   changeDetailFraming: (next: DetailFraming) => void
   changeProjection: (next: Projection) => void
@@ -192,9 +186,6 @@ export type GraphCanvasRegionProps = {
   popoverPlacement: { left: number; top: number }
   popoverVisible: GraphNode | undefined
   popoverNode: GraphNode | undefined
-  windowKinds: GraphWindowKind[]
-  windowContent: (window: GraphWindowState) => JSX.Element
-  windowAnchors: () => Map<string, { x: number; y: number }> | undefined
   moveNodes: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
   resizeNode: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
   applyModel: (instance: GraphRenderer) => void
@@ -377,7 +368,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
             onSelect={props.select}
             onOpenTranscript={props.onOpenTranscript ? props.openInTranscript : undefined}
             onOpenSession={props.onOpenSession}
-            onOpenWindow={(node) => props.openWindow("node", node.id)}
             onClose={() => props.setPopoverDismissed(true)}
             traceKind={props.trace.traceKind()}
             onTraceWhy={props.trace.traceWhy}
@@ -391,17 +381,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
           />
         </div>
       </Show>
-      <GraphWindows
-        windows={props.windows}
-        onChange={props.onWindowsChange}
-        onClose={(id) => props.onWindowsChange?.((props.windows ?? []).filter((w) => w.id !== id))}
-        title={(window) =>
-          windowKind(props.windowKinds, window)?.title(window) ?? props.i18n.t("ui.sessionGraph.window.detail")
-        }
-        render={props.windowContent}
-        anchorOf={(nodeID): { x: number; y: number } | undefined => props.windowAnchors()?.get(nodeID)}
-        bounds={() => props.canvasSize}
-      />
       <GraphError error={props.error} onBack={props.onBack} />
       <GraphEmpty model={props.model} error={props.error} />
       <Show when={props.searchOpen}>
