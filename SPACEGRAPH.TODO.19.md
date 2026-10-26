@@ -128,7 +128,7 @@ This is a five-minute review-surface check, not a refactor.
 
 ## 3. Functional fixes the breakdown introduced
 
-Component suite: **54 pass / 13 skip** ✅. The six seam failures (§3.1) are resolved — the shared seam (§3.1.1) fixed; question verbs (§3.1.5) verified manually; the remaining four (§3.1.2–3.1.4, 3.1.6) are CI-skipped per §3.2 as brittle/environmental. Triage from the error contexts (`TODO.18` §3 has the evidence). **Component test infrastructure fixed**: story index now includes `session-graph` package roots and base story IDs for default exports.
+Component suite: **54 pass / 13 skip** ✅. The six seam failures (§3.1) are resolved — the shared seam (§3.1.1) fixed; question verbs (§3.1.5) verified manually; the remaining four (§3.1.2–3.1.4, 3.1.6) are CI-skipped per §3.2 as brittle/environmental. Triage from the error contexts (`TODO.18` §3 has the evidence). **Component test infrastructure fixed**: story index now includes `session-graph` package roots and base story IDs for default exports (commit 040307a79f).
 
 ### 3.1 Fix — a manual tester hits every one of these
 
