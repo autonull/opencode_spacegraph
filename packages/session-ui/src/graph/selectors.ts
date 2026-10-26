@@ -17,6 +17,28 @@ export type TranscriptRef = {
   partID?: string
 }
 
+/** Counts of key node kinds in a node array. Used for session/turn statistics. */
+function countNodeKinds(nodes: GraphNode[]): {
+  filesTouched: Set<string>
+  toolsRun: number
+  errors: number
+  retries: number
+} {
+  const filesTouched = new Set<string>()
+  let toolsRun = 0
+  let errors = 0
+  let retries = 0
+
+  for (const node of nodes) {
+    if (node.kind === "file" && node.data?.path) filesTouched.add(node.data.path as string)
+    if (node.kind === "tool") toolsRun++
+    if (node.kind === "error") errors++
+    if (node.kind === "retry") retries++
+  }
+
+  return { filesTouched, toolsRun, errors, retries }
+}
+
 export function nodeByID(model: GraphViewData, id: string) {
   return lookupNode(model, id)
 }
@@ -377,19 +399,7 @@ export function sessionProgress(model: GraphViewData): {
   errors: number
   retries: number
 } {
-  const filesTouched = new Set<string>()
-  let toolsRun = 0
-  let errors = 0
-  let retries = 0
-
-  for (const node of model.nodes) {
-    if (node.kind === "file" && node.data?.path) {
-      filesTouched.add(node.data.path as string)
-    }
-    if (node.kind === "tool") toolsRun++
-    if (node.kind === "error") errors++
-    if (node.kind === "retry") retries++
-  }
+  const { filesTouched, toolsRun, errors, retries } = countNodeKinds(model.nodes)
 
   return {
     turns: model.turns.length,
@@ -561,18 +571,11 @@ export function reviewChanges(before: GraphViewData, after: GraphViewData): {
     // If turn exists in both, compute stats
     if (beforeTurn !== -1 && afterTurn !== -1) {
       const turnNodes = before.nodes.filter((n) => n.turnID === turnID)
-      const filesTouched = new Set<string>()
-      let toolsRun = 0
-      let errors = 0
-      let retries = 0
+      const { filesTouched, toolsRun, errors, retries } = countNodeKinds(turnNodes)
       let minTime = Infinity
       let maxTime = -Infinity
 
       for (const node of turnNodes) {
-        if (node.kind === "file" && node.data?.path) filesTouched.add(node.data.path as string)
-        if (node.kind === "tool") toolsRun++
-        if (node.kind === "error") errors++
-        if (node.kind === "retry") retries++
         if (node.time) {
           minTime = Math.min(minTime, node.time)
           maxTime = Math.max(maxTime, node.time)
