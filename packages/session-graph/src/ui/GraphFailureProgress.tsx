@@ -58,11 +58,11 @@ export const GraphFailureProgress = (props: GraphFailureProgressProps) => {
           </div>
           <div class="flex items-center gap-2 mt-1 text-11-regular text-text-weaker">
             <span class="flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-red-500" />
+              <span class="w-2 h-2 rounded-full" style={{ "background-color": "var(--v2-state-bg-danger)" }} />
               {i18n.t("ui.sessionGraph.failureProgress.errors", { count: progress.errors })}
             </span>
             <span class="flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-orange-500" />
+              <span class="w-2 h-2 rounded-full" style={{ "background-color": "var(--v2-state-bg-warning)" }} />
               {i18n.t("ui.sessionGraph.failureProgress.retries", { count: progress.retries })}
             </span>
           </div>
@@ -98,7 +98,7 @@ export const GraphFailureProgress = (props: GraphFailureProgressProps) => {
                     <span
                       class="flex items-center gap-1 text-12-medium"
                       style={{
-                        color: item.node.kind === "error" ? "var(--color-error)" : "var(--color-warning)",
+                        color: item.node.kind === "error" ? "var(--v2-state-fg-danger)" : "var(--v2-state-fg-warning)",
                       }}
                     >
                       {item.node.kind === "error" ? (

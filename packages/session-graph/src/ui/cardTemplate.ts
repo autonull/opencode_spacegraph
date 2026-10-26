@@ -55,7 +55,7 @@ const GLYPH: Record<NodeKind, string> = {
 const GLYPH_GROUP = "M3 13.5V4.5M6 12.5V3.5M9 11.5V2.5M12 10.5V1.5"
 
 /** The accent a phase category carries. Every category has one, so the legend cannot drift. */
-const CATEGORY_HUE: Record<PhaseCategory, number> = {
+export const CATEGORY_HUE: Record<PhaseCategory, number> = {
   explore: 210,
   edit: 145,
   verify: 38,

@@ -77,13 +77,13 @@ export type SessionGraphAdapterConfig = AdapterConfig<GraphNode, GraphEdge, Zoom
 export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, ZoomLevel, GraphViewData> {
   constructor(config: SessionGraphAdapterConfig = {}) {
     super({
-      cardBudget: (level) => domBudget(level),
-      nodeFilter: (model, level) => nodesAtLevel(model, level),
-      edgeFilter: (model, level, focus) => edgesAtLevel(model, level, focus),
-      isClusterExpanded: (level) => isClusterExpanded(level),
-      neighbors: (model, id) => neighbors(model, id).nodes.map((node) => node.id),
+      cardBudget: (level: ZoomLevel) => domBudget(level),
+      nodeFilter: (model: GraphViewData, level: ZoomLevel) => nodesAtLevel(model, level),
+      edgeFilter: (model: GraphViewData, level: ZoomLevel, focus: string | undefined) => edgesAtLevel(model, level, focus),
+      isClusterExpanded: (level: ZoomLevel) => isClusterExpanded(level),
+      neighbors: (model: GraphViewData, id: string) => neighbors(model, id).nodes.map((node) => node.id),
       // T1.17: the box each node occupies, so a band is sized around the cards it groups.
-      nodeSizeFn: (node) => nodeSize(node),
+      nodeSizeFn: (node: GraphNode) => nodeSize(node),
       // The group header is its own strip above the members; the sides and foot are breathing room.
       geometry: { bandPadding: { top: 40, right: 20, bottom: 20, left: 20 } },
       ...config,
@@ -166,7 +166,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
     const emit = (node: GraphNode, ids: readonly string[]) => {
       const drawn = ids.filter((id) => visible.has(id))
       if (drawn.length === 0) return
-      const box = computeBandBox(model, drawn, positions, visible, this.config.nodeSizeFn, this.geometry, byID)
+      const box = computeBandBox(model, drawn, positions, visible, this.config.nodeSizeFn, this.geometry, byID as Map<string, GraphNode>)
       if (!box) return
       bands.push({
         id: `band:${node.id}`,

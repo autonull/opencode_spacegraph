@@ -1,10 +1,11 @@
-import type { GraphViewData, GraphNode, GraphFacets, NodeKind, NodeStatus, Domain } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode, GraphFacets, NodeKind, NodeStatus, Domain, PhaseCategory } from "@opencode/session-ui/graph"
 import { rankedSearch, sessionOutline, facetCounts } from "@opencode/session-ui/graph"
 import { NODE_KINDS, NODE_STATUSES, DOMAINS } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { GraphIconButton } from "./GraphIconButton"
 import { KIND_KEY, STATUS_KEY, DOMAIN_KEY } from "./vocabulary"
+import { CATEGORY_HUE } from "./cardTemplate"
 
 export type GraphFindProps = {
   model: GraphViewData
@@ -443,16 +444,7 @@ export const GraphFind = (props: GraphFindProps) => {
                                 <span
                                   class="shrink-0 w-2 h-2 rounded-full"
                                   style={{
-                                    "background-color":
-                                      phase.category === "explore"
-                                        ? "var(--color-info)"
-                                        : phase.category === "edit"
-                                        ? "var(--color-warning)"
-                                        : phase.category === "verify"
-                                        ? "var(--color-success)"
-                                        : phase.category === "delegate"
-                                        ? "var(--color-purple)"
-                                        : "var(--color-text-weak)",
+                                    "background-color": `hsl(${CATEGORY_HUE[phase.category as PhaseCategory] ?? 0} 70% 55%)`,
                                   }}
                                 />
                                 <span class="truncate text-12-regular text-text-base">{phase.label}</span>
