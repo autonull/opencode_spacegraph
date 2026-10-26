@@ -76,7 +76,7 @@ export type SessionGraphAdapterConfig = AdapterConfig<GraphNode, GraphEdge, Zoom
  */
 export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, ZoomLevel, GraphViewData> {
   constructor(config: SessionGraphAdapterConfig = {}) {
-    super({
+    const baseConfig = {
       cardBudget: (level: ZoomLevel) => domBudget(level),
       nodeFilter: (model: GraphViewData, level: ZoomLevel) => nodesAtLevel(model, level),
       edgeFilter: (model: GraphViewData, level: ZoomLevel, focus: string | undefined) => edgesAtLevel(model, level, focus),
@@ -86,8 +86,8 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       nodeSizeFn: (node: GraphNode) => nodeSize(node),
       // The group header is its own strip above the members; the sides and foot are breathing room.
       geometry: { bandPadding: { top: 40, right: 20, bottom: 20, left: 20 } },
-      ...config,
-    })
+    }
+    super({ ...baseConfig, ...config })
   }
 
   nodeShape(node: GraphNode): Shape {
@@ -262,23 +262,10 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
  */
 export const CYTOSCAPE_DOM_NODES = 20
 
-/**
- * The Cytoscape policy: the same session vocabulary, with the DOM card budget capped at what the
- * renderer declares it can draw. The model then never promises more cards than the canvas shows.
- *
- * It is not live yet: the render model is the camera's frame of reference, so it must be built
- * *before* the renderer mounts. The host has no renderer switch (the app always asks for the
- * SpaceGraph renderer), so the adapter is selected when it does. Switching it per mounted renderer
- * was tried and reverted — the model changed after the fit, and the Cytoscape frames drifted.
- */
-export class CytoscapeSessionAdapter extends SessionGraphAdapter {
-  constructor() {
-    super({ cardBudget: (level) => Math.min(domBudget(level), CYTOSCAPE_DOM_NODES) })
-  }
-}
-
 /** The default adapter: the SpaceGraph renderer draws every card the level's budget allows. */
 export const sessionGraphAdapter = new SessionGraphAdapter()
 
 /** The Cytoscape adapter: the same model, with the renderer's DOM cap applied to the card budget. */
-export const cytoscapeSessionAdapter = new CytoscapeSessionAdapter()
+export const cytoscapeSessionAdapter = new SessionGraphAdapter({
+  cardBudget: (level) => Math.min(domBudget(level), CYTOSCAPE_DOM_NODES),
+})

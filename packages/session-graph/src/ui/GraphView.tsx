@@ -49,7 +49,6 @@ import { ancestors,
   LEVEL_RANK,
   Metrics,
   minLevelOf,
-  neighborStep,
   nodeByID,
   nodeIndex,
   nodeSize,
@@ -124,8 +123,8 @@ import { useGroupCollapse } from "./useGroupCollapse"
 import { useNotes } from "./useNotes"
 import { useEdgeKinds } from "./useEdgeKinds"
 import { useSelectionVerbs } from "./useSelectionVerbs"
+import { useGraphKeyboard } from "./useGraphKeyboard"
 import { attachTouchGestures, createWidthThresholdTracker } from "spacegraphjs/utils"
-import { attachKeyboardShortcuts } from "spacegraphjs/utils"
 import { proposeWindow } from "spacegraphjs/utils"
 
 /**
@@ -580,14 +579,6 @@ export const GraphView = (props: GraphViewProps) => {
     }
     window.addEventListener("graph:command", handleCommand)
     onCleanup(() => window.removeEventListener("graph:command", handleCommand))
-
-    // Global keyboard shortcuts for Quality Gate
-    const cleanupShortcuts = attachKeyboardShortcuts([
-      { key: "F", shift: true, handler: () => openWindow("failureProgress") },
-      { key: "O", shift: true, handler: () => { setFindInitialTab("outline"); openWindow("find") } },
-      { key: "f", alt: true, handler: () => { setFindInitialTab("filters"); openWindow("find") } },
-    ])
-    onCleanup(cleanupShortcuts)
   })
 
   // Canvas region size tracking
@@ -1287,9 +1278,6 @@ export const GraphView = (props: GraphViewProps) => {
     focusFrame(renderer)
   })
 
-  // A11y live region announcement helper.
-  // (defined earlier at line 294)
-
   // T2.3: returning to the transcript is an interaction.
   const openInTranscript = (id: string) => {
     Metrics.count("return")
@@ -1311,106 +1299,30 @@ export const GraphView = (props: GraphViewProps) => {
     openSearch()
   }
 
-  // RF.10: a small keyboard map on the canvas region (`/` search, `f` fit, `1/2/3` levels). Keys that
-  // originate inside the a11y list or a form control are left to their owner.
-  const onRegionKeyDown = (event: KeyboardEvent) => {
-    const target = event.target as HTMLElement | null
-
-    if (target?.closest("[data-slot='graph-a11y'], input, textarea, [contenteditable]")) return
-
-    if (event.key === "Escape") {
-      event.preventDefault()
-      if (groupMenu()) {
-        setGroupMenu(undefined)
-        return
-      }
-      dismissDetail()
-
-      return
-    }
-
-    // Trace keyboard shortcuts (A1): w=Why, e=Led-here, r=Related, [/]=step lit nodes
-    const selectionId = selection.selection()[0]
-    if (selectionId) {
-      if (event.key === "n") {
-        event.preventDefault()
-        notes.openNoteComposer()
-        return
-      }
-      if (event.key === "Enter" && groupCollapse.selectedGroup()) {
-        event.preventDefault()
-        groupCollapse.toggleGroup()
-        return
-      }
-      if (event.key === "w") {
-        event.preventDefault()
-        trace.startTrace("why", selectionId)
-        return
-      }
-      if (event.key === "e") {
-        event.preventDefault()
-        trace.startTrace("led-here", selectionId)
-        return
-      }
-      if (event.key === "r") {
-        event.preventDefault()
-        trace.startTrace("related", selectionId)
-        return
-      }
-      if (event.key === "[" || event.key === "]") {
-        event.preventDefault()
-        const delta = event.key === "[" ? -1 : 1
-        const overlay = trace.traceOverlay()
-        if (overlay) {
-          const next = trace.stepLitNode(delta)
-          if (next) selection.select(next)
-        } else {
-          const next = neighborStep(model(), selectionId, delta)
-          if (next) selection.select(next)
-        }
-        return
-      }
-    }
-
-    if (event.key === "/") {
-      event.preventDefault()
-      openSearch()
-
-      return
-    }
-
-    if (event.key === "g") {
-      event.preventDefault()
-      openSearch("g ")
-
-      return
-    }
-
-    if (event.key === "f") {
-      event.preventDefault()
-      camera.fitContent()
-
-      return
-    }
-
-    if (event.key === "1" || event.key === "2" || event.key === "3") {
-      const level = { "1": "overview", "2": "execution", "3": "detail" }[event.key] as ZoomLevel
-      event.preventDefault()
-      setLevel(level)
-      return
-    }
-
-    // V115: Undo/redo for manual positions (z / Z)
-    if ((event.key === "z" || event.key === "Z") && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault()
-      if (event.shiftKey || event.key === "Z") {
-        redoManual()
-      } else {
-        undoManual()
-      }
-      return
-    }
-  }
+  // Keyboard handling extracted to hook (must be after all dependencies are declared)
+  const { handleRegionKeyDown } = useGraphKeyboard({
+    model,
+    selection: () => selection.selection(),
+    onSelect: (id, add) => selection.select(id, add),
+    camera: {
+      fitContent: camera.fitContent,
+      frameReadable: camera.frameReadable,
+      zoomBy: (delta: number) => camera.zoomBy(delta as 1 | -1),
+      pending: camera.pending,
+    },
+    trace,
+    notes,
+    groupCollapse,
+    openWindow,
+    setFindInitialTab,
+    openSearch,
+    setLevel,
+    setGroupMenu,
+    groupMenu,
+    dismissDetail,
+    undoManual,
+    redoManual,
+  })
 
   // The host owns the controlled values; the view keeps its own copy so an uncontrolled view still
   // works. A prop the host leaves undefined never overwrites what the reader chose.
@@ -1634,7 +1546,7 @@ export const GraphView = (props: GraphViewProps) => {
           aria-label={i18n.t("ui.sessionGraph.canvas.label")}
           aria-describedby={a11yInstructionsId}
           tabindex="0"
-          onKeyDown={onRegionKeyDown}
+          onKeyDown={handleRegionKeyDown}
         >
           <GraphCanvas
             model={renderModel()}
@@ -1689,20 +1601,20 @@ export const GraphView = (props: GraphViewProps) => {
             }}
           />
           <Show when={groupMenu()}>
-  {(menu) => (
-    <GraphGroupMenu
-      id={menu().id}
-      x={menu().x}
-      y={menu().y}
-      model={model}
-      collapsedGroups={groupCollapse.collapsedGroups()}
-      onToggleGroup={toggleGroupByID}
-      onCollapseOthers={groupCollapse.collapseOtherGroups}
-      onFrame={(id) => camera.frame([id])}
-      onClose={() => setGroupMenu(undefined)}
-    />
-  )}
-</Show>
+            {(menu) => (
+              <GraphGroupMenu
+                id={menu().id}
+                x={menu().x}
+                y={menu().y}
+                model={model}
+                collapsedGroups={groupCollapse.collapsedGroups()}
+                onToggleGroup={toggleGroupByID}
+                onCollapseOthers={groupCollapse.collapseOtherGroups}
+                onFrame={(id) => camera.frame([id])}
+                onClose={() => setGroupMenu(undefined)}
+              />
+            )}
+          </Show>
           <GraphA11y
             model={ordered()}
             selection={selection.selection()}
