@@ -389,7 +389,7 @@ export const GraphView = (props: GraphViewProps) => {
   const AUTO_DETAIL_THRESHOLD = 640
   let renderer: GraphRenderer | undefined
   let rootEl!: HTMLDivElement
-  let canvasRegionEl!: HTMLDivElement
+  let canvasRegionEl: HTMLDivElement | undefined
 
   // Viewport tracker dependencies - declared early, initialized later
   let displayPositions: () => ReadonlyMap<string, Position>
@@ -498,6 +498,7 @@ export const GraphView = (props: GraphViewProps) => {
     { narrow: 768, compact: 1030 }
   )
   onMount(() => {
+    if (!rootEl) return
     widthThresholds.observe((flags: { narrow?: boolean; compact?: boolean }) => {
       if (flags.narrow !== undefined) setNarrow(flags.narrow)
       if (flags.compact !== undefined) setCompact(flags.compact)
@@ -528,6 +529,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // Canvas region size tracking
   onMount(() => {
+    if (!canvasRegionEl) return
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
       setCanvasSize((current) => (current.width === width && current.height === height ? current : { width, height }))
@@ -1528,7 +1530,7 @@ export const GraphView = (props: GraphViewProps) => {
           endInset={props.endInset}
           sessionTitle={props.sessionTitle}
           testedCommit={props.testedCommit}
-          canvasRegionEl={canvasRegionEl}
+          canvasRegionRef={(el) => { canvasRegionEl = el }}
           applyModel={applyModel}
         />
         <GraphWindowManager

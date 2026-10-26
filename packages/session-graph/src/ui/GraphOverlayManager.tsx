@@ -96,9 +96,6 @@ export type GraphOverlayManagerProps = {
   onCopyView: () => void
   renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
 
-  // Canvas
-  canvasRegionEl: HTMLDivElement | undefined
-
   // A11y
   ordered: RenderModel
   viewAnnouncement: string

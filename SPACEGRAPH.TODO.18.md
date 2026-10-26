@@ -3,7 +3,7 @@
 ## Status (2026-10-26)
 - **Unit tests**: ✅ 645 passing (session-graph: 116, session-ui: 529)
 - **Typecheck**: ✅ All passing (session-graph, session-ui)
-- **Component tests**: ⚠️ session-ui passing, session-graph temporal dead zones fixed, graph init timing being debugged
+- **Component tests**: ⚠️ session-graph: graph init timing issue (renderer not mounting in Storybook), session-ui passing
 - **E2E tests**: ⚠️ Graph module not loading in Playwright
 - **Screenshots**: ⚠️ Same E2E infrastructure issue
 - **SpaceGraphJS**: ✅ All packages build, tests pass, publish check passes
@@ -31,6 +31,7 @@
   1. `noteAnchor` accessor vs value mismatch (line 314) - fixed by calling `props.noteAnchor()`
   2. `GraphGallery` model prop - fixed by calling `props.model()`
   3. GraphView.tsx 14 type errors - all fixed (unused imports removed, type mismatches resolved, missing props added to GraphCanvasRegionProps)
+- **Fixed `canvasRegionEl` ref bug**: Changed from incorrect `ref={props.canvasRegionEl}` to proper `ref={setCanvasRegionEl}` with internal signal, fixing ResizeObserver "parameter 1 is not of type 'Element'" error
 - Verified `bun run typecheck --filter=@opencode/session-graph` passes
 - Verified `bun test packages/session-graph/src` passes (116 tests)
 
@@ -104,6 +105,15 @@
   4. Initialized `viewportTracker` earlier (after `fitOptions`), before memos that depend on it
 - **Status**: Typecheck ✅, Unit tests ✅ (116), Component tests render past initialization (graph init timing being debugged separately)
 - **Files**: `packages/session-graph/src/ui/GraphView.tsx`
+
+### ✅ 1.9 Fix ResizeObserver Errors in Component Tests (Completed)
+- **Issue**: `createWidthThresholdTracker` from `spacegraphjs/utils` threw "parameter 1 is not of type 'Element'" when observing unmounted/undefined elements
+- **Fix**: 
+  1. Added `instanceof Element` guards in `spacegraphjs/src/utils/resizeObserver.ts` for all observe functions
+  2. Added defensive `if (!rootEl) return` check in GraphView.tsx before calling `widthThresholds.observe()`
+  3. Fixed `canvasRegionEl` ref in GraphCanvasRegion.tsx to use proper signal-based ref callback
+- **Files**: `spacegraphjs/src/utils/resizeObserver.ts`, `packages/session-graph/src/ui/GraphView.tsx`, `packages/session-graph/src/ui/GraphCanvasRegion.tsx`
+- **Verified**: Unit tests pass, ResizeObserver error eliminated (graph init timing remains)
 
 ### ✅ 1.6 Result: GraphView.tsx becomes thin composition (~200 lines)
 ```tsx
@@ -358,8 +368,8 @@ Upstream sync → Shareable delivery
 |------|--------|
 | `packages/session-graph/src/ui/useGraphKeyboard.ts` | ✅ Created |
 | `packages/session-graph/src/canvas/sessionGraphAdapter.ts` | ✅ Simplified |
-| `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Created (type issues fixed) |
-| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (duplicate declarations removed, types fixed, temporal dead zones fixed) |
+| `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Created (type issues fixed, ref bug fixed) |
+| `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (duplicate declarations removed, types fixed, temporal dead zones fixed, ResizeObserver guards added) |
 | `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Created |
@@ -402,13 +412,17 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphView.tsx` | ✅ Updated to use consolidated hooks, fixed hook init order, fixed circular deps, fixed temporal dead zones |
 | `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Fixed renderer prop type, getter for getNodeScreenPosition |
 | `packages/session-graph/src/ui/graph-camera.ts` | ✅ (no changes needed, works with updated types) |
+| `spacegraphjs/src/utils/resizeObserver.ts` | ✅ Added Element instanceof guards |
+| `packages/storybook/package.json` | ✅ Added spacegraphjs workspace dependencies |
 
 ---
 
 ## Next Immediate Steps
 
 1. **Component/E2E Test Fixes (7.1–7.2)** - Fix test infrastructure:
-   - Fix graph initialization timing in component tests (graph not ready within 30s)
+   - Fix graph initialization timing in component tests (renderer not mounting in Storybook - `data-graph-ready` stays "false")
    - Fix Storybook state bleed between component tests
    - Debug Graph module loading in Playwright (E2E)
    - Target: All component and e2e tests pass reliably
+
+2. **Root cause for component test failure**: The SpaceGraphJS renderer (`@spacegraphjs/spacegraph-renderer`) fails to mount in Storybook/Vite context. The dynamic import resolves but the renderer's `mount()` promise never settles. This is likely a module resolution issue with workspace dependencies in Storybook's Vite config. The ResizeObserver error has been fixed.

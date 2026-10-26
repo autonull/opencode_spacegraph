@@ -17,7 +17,7 @@ import type {
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { type JSX } from "solid-js"
+import { createSignal, type JSX } from "solid-js"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { CardTemplate } from "../canvas/buildRenderModel"
@@ -163,7 +163,7 @@ export type GraphCanvasRegionProps = {
   endInset: string | undefined
   sessionTitle: string | undefined
   testedCommit: string | undefined
-  canvasRegionEl: HTMLDivElement | undefined
+  canvasRegionRef: (el: HTMLDivElement | undefined) => void
 
   // Computed values from GraphView
   renderModel: RenderModel
@@ -228,10 +228,11 @@ export type GraphCanvasRegionProps = {
  */
 export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   const i18n = props.i18n
+  const [canvasRegionEl, setCanvasRegionEl] = createSignal<HTMLDivElement | undefined>()
 
   return (
     <div
-      ref={props.canvasRegionEl}
+      ref={setCanvasRegionEl}
       class="relative min-w-0 flex-1"
       data-slot="graph-canvas-region"
       role="group"
@@ -267,7 +268,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         }}
         onGroupToggle={props.toggleGroupByID}
         onGroupMenu={(id, at) => {
-          const rect = props.canvasRegionEl?.getBoundingClientRect()
+          const rect = canvasRegionEl()?.getBoundingClientRect()
           if (rect) props.setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
         }}
         onNodeMoved={props.moveNodes}
@@ -357,9 +358,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         onOpenSession={props.onOpenSession}
         onCopyView={props.onCopyView}
         renderSummary={props.renderSummary}
-
-        // Canvas
-        canvasRegionEl={props.canvasRegionEl}
 
         // A11y
         ordered={props.ordered}
