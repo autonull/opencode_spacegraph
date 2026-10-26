@@ -1406,6 +1406,7 @@ export const GraphView = (props: GraphViewProps) => {
           onActionReveal={props.onActionReveal}
           onActionCopy={props.onActionCopy}
           onActionRun={props.onActionRun}
+          onOpenWindow={openWindow}
           rules={props.rules}
           onRulesChange={props.onRulesChange}
           onSelect={props.onSelect}

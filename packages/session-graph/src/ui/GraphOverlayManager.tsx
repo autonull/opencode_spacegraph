@@ -93,6 +93,7 @@ export type GraphOverlayManagerProps = {
   link: string | undefined
   onOpenTranscript: ((id: string) => void) | undefined
   onOpenSession: ((sessionID: string) => void) | undefined
+  onOpenWindow: ((kind: string, nodeID?: string) => void) | undefined
   onCopyView: () => void
   renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
 
@@ -167,6 +168,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
             onSelect={props.select}
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
+            onOpenWindow={props.onOpenWindow ? (node) => props.onOpenWindow!("node", node.id) : undefined}
             onClose={() => props.setPopoverDismissed(true)}
             traceKind={props.annotations.traceKind()}
             onTraceWhy={props.annotations.traceWhy}

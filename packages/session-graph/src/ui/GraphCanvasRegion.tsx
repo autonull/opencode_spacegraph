@@ -85,6 +85,7 @@ export type GraphCanvasRegionProps = {
   onActionReveal: ((target: { node?: string; file?: string; range?: any; url?: string; text?: string }) => void) | undefined
   onActionCopy: ((text: string) => void) | undefined
   onActionRun: ((operation: { id: string; params: Record<string, unknown> }) => void) | undefined
+  onOpenWindow: ((kind: string, nodeID?: string) => void) | undefined
   rules: EqualizerRuleSet | undefined
   onRulesChange: ((rules: EqualizerRule[]) => void) | undefined
   onSelect: ((id: string | undefined) => void) | undefined
@@ -356,6 +357,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         link={props.link}
         onOpenTranscript={props.onOpenTranscript}
         onOpenSession={props.onOpenSession}
+        onOpenWindow={props.onOpenWindow}
         onCopyView={props.onCopyView}
         renderSummary={props.renderSummary}
 

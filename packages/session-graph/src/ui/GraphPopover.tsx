@@ -11,6 +11,7 @@ export const POPOVER_GAP = 16
 export type GraphPopoverProps = Omit<GraphDetailProps, "node"> & {
   node?: GraphNode
   onClose?: () => void
+  onOpenWindow?: GraphDetailProps["onOpenWindow"]
   traceKind?: GraphDetailProps["traceKind"]
   onTraceWhy?: GraphDetailProps["onTraceWhy"]
   onTraceLedHere?: GraphDetailProps["onTraceLedHere"]
