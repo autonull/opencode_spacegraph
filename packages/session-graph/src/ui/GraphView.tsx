@@ -2,21 +2,18 @@ import type {
   DepthMode,
   GraphRenderer,
   Projection,
-  RendererCapabilities,
   RendererViewport,
   RenderTheme,
   RenderModel,
 } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
 import type {
-  Annotations,
   DetailFraming,
   DetailMode,
   DetailTier,
   EqualizerRule,
   EqualizerRuleSet,
   GraphArrangement,
-  GraphFacets,
   GraphLayout,
   GraphViewData,
   GraphNode,
@@ -60,19 +57,16 @@ import { ancestors,
   summaryUnits,
   turnRows,
 } from "@opencode/session-ui/graph"
-import { useI18n } from "@opencode/ui/context/i18n"
 import {
   createEffect,
   createMemo,
   createSignal,
-  createUniqueId,
   onCleanup,
   onMount,
   Show,
   untrack,
   type JSX,
 } from "solid-js"
-import { createStore } from "solid-js/store"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
@@ -92,7 +86,6 @@ import { GraphCanvasRegion } from "./GraphCanvasRegion"
 import { GraphWindowManager } from "./GraphWindowManager"
 import { POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import "./graph-cards.css"
-import { createGraphTheme } from "./theme"
 import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
 import { createNodeAnchor } from "./graph-anchors"
@@ -284,7 +277,6 @@ export const GraphView = (props: GraphViewProps) => {
     setFacets,
 
     cardFacing,
-    setCardFacing,
     toggleBillboard,
 
     searchOpen,
@@ -338,10 +330,18 @@ export const GraphView = (props: GraphViewProps) => {
     redoManual,
 
     notesStore,
-    model: stateModel,
 
     announce,
   } = state
+
+  // Group menu state (for context menu on groups)
+  const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
+
+  // Copy view URL with current query parameters
+  const copyView = () => {
+    const query = facetsToQuery(facets())
+    props.onCopyView?.(query)
+  }
 
   // Model memo
   const emptyModel: GraphViewData = {
@@ -576,204 +576,6 @@ export const GraphView = (props: GraphViewProps) => {
     setTier(detailTier(width, current))
   })
   // T11.3 — file card details
-  const copy = createCardCopy(i18n)
-  const relations = createMemo(() => fileRelations(model()))
-  const relatedDetail = (node: GraphNode) => {
-    if (node.kind !== "file") return undefined
-    const relation = relations().get(node.id)
-    if (!relation) return undefined
-    const parts = [
-      relation.reads > 0 ? copy.reads(relation.reads) : undefined,
-      relation.writes > 0 ? copy.writes(relation.writes) : undefined,
-      relation.additions > 0 || relation.deletions > 0
-        ? copy.diff(relation.additions, relation.deletions)
-        : undefined,
-    ].filter((part): part is string => !!part)
-    return parts.length > 0 ? parts.join(" · ") : undefined
-  }
-
-  // displayPositions must be declared before rendererModel which uses it
-  const comparisonHook = useComparison({
-    model,
-    liveModel: () => props.liveModel ?? model(),
-    checkpoint: props.checkpoint,
-    turnCount: props.turnCount,
-    selection: () => selection.selection(),
-    nodeByID: (id) => nodeByID(model(), id),
-  })
-
-  const groupCollapse = useGroupCollapse({
-    model,
-    selection: () => selection.selection(),
-    nodeByID: (id) => model().nodes.find((n) => n.id === id),
-  })
-
-  const selectionVerbs = useSelectionVerbs({
-    model,
-    selection: () => selection.selection(),
-    onAnnounce: announce,
-  })
-
-  const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
-
-  const scopeBase = (source: GraphViewData) =>
-    composeScopes(source, facets(), selectionVerbs.keptIds(), groupCollapse.collapsedGroups())
-
-  const turnScoped = createMemo(() => {
-    const turns = new Set(scale().turns)
-    for (const turn of comparisonHook.comparedTurns() ?? []) turns.add(turn)
-    return scopeToTurns(model(), turns)
-  })
-
-  const scoped = createMemo(() => scopeBase(turnScoped()))
-
-  const counts = createMemo(() => facetCounts(turnScoped(), facets()))
-
-  const comparison = comparisonHook.comparison
-
-  const compareSelectedTurns = comparisonHook.compareSelectedTurns
-  const clearComparison = comparisonHook.clearComparison
-
-  // GraphCanvas needs this for group toggle via context menu
-  const toggleGroupByID = groupCollapse.toggleGroupByID
-
-  // T6.6: the first turn of the drawn window. The lane gutter and the camera frame follow it, so a
-  // capped map is a readable window instead of an empty stretch of the session.
-  const windowAnchor = createMemo(() => {
-    if (scale().hidden === 0) return undefined
-
-    return [...scale().turns][0]
-  })
-
-  // T18.1: when followLog is enabled and the active turn changes, frame it.
-  // The camera only moves when the reader asked for it (followLog is on), and only when the
-  // active turn actually changes — not on every render.
-  const [lastFramedTurn, setLastFramedTurn] = createSignal<string>()
-  createEffect(() => {
-    if (!followLog()) return
-    const turn = props.activeTurn
-    if (!turn) return
-    if (lastFramedTurn() === turn) return
-    if (!rendererReady()) return
-    const current = viewportTracker.viewport()
-    if (!current) return
-    setLastFramedTurn(turn)
-    viewportTracker.camera.frameReadable(turn)
-  })
-
-  // U3.8/RF.8: below 768px the inspector becomes a bottom sheet instead of squeezing the canvas.
-  // RF.7: below the width the toolbar's own row needs, the secondary controls collapse into an
-  // overflow menu. T14.1 measured that row: the inline controls and the end block take 913px, and
-  // the split control added 28px to the end block, so the row needs 941px. With the panel's padding
-  // (16px) and the app's floating header (72px) the row needs 1029px, and a narrower panel would
-  // wrap and push the back control under the header.
-  const widthThresholds = createWidthThresholdTracker(
-    () => rootEl,
-    { narrow: 768, compact: 1030 }
-  )
-  onMount(() => {
-    widthThresholds.observe((flags: { narrow?: boolean; compact?: boolean }) => {
-      if (flags.narrow !== undefined) setNarrow(flags.narrow)
-      if (flags.compact !== undefined) setCompact(flags.compact)
-    })
-
-    // Handle copy trace outline request from detail actions
-    const handleCopyTraceOutline = () => trace.copyTraceOutline()
-    window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
-    onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
-
-    // A1/B1/C1 — the command palette asks the same questions as the keys.
-    const handleCommand = (event: Event) => {
-      const detail = (event as CustomEvent<{ name?: string; source?: string }>).detail
-      const name = detail?.name
-      if (name === "why" || name === "led-here" || name === "related") {
-        trace.startTrace(name, detail?.source)
-        return
-      }
-      if (name === "compare") {
-        compareSelectedTurns()
-        return
-      }
-      if (name === "note") notes.openNoteComposer()
-      if (name === "failureProgress") openWindow("failureProgress")
-      if (name === "find") openWindow("find")
-    }
-    window.addEventListener("graph:command", handleCommand)
-    onCleanup(() => window.removeEventListener("graph:command", handleCommand))
-  })
-
-  // Canvas region size tracking
-  onMount(() => {
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect
-      setCanvasSize((current) => (current.width === width && current.height === height ? current : { width, height }))
-    })
-    observer.observe(canvasRegionEl)
-    onCleanup(() => observer.disconnect())
-  })
-
-  let resizeMove: ((event: PointerEvent) => void) | undefined
-  let resizeEnd: (() => void) | undefined
-  const stopResize = () => {
-    if (resizeMove) window.removeEventListener("pointermove", resizeMove)
-    if (resizeEnd) window.removeEventListener("pointerup", resizeEnd)
-    resizeMove = undefined
-    resizeEnd = undefined
-  }
-  const startResize = (event: PointerEvent) => {
-    event.preventDefault()
-    const startX = event.clientX
-    const startWidth = inspectorWidth()
-    resizeMove = (moveEvent) => {
-      const max = Math.max(240, rootEl.clientWidth * 0.6)
-      setInspectorWidth(Math.min(max, Math.max(220, startWidth - (moveEvent.clientX - startX))))
-    }
-    resizeEnd = stopResize
-    window.addEventListener("pointermove", resizeMove)
-    window.addEventListener("pointerup", resizeEnd)
-  }
-  onCleanup(stopResize)
-
-  // V117: Touch gestures for mobile — pan and pinch-to-zoom
-  onMount(() => {
-    const el = canvasRegionEl
-    if (!el) return
-    const cleanup = attachTouchGestures(el, {
-      getViewport: () => renderer?.getViewport?.(),
-      setViewport: (vp: RendererViewport) => renderer?.setViewport?.(vp),
-      capabilities: renderer?.capabilities ?? { zoomRange: { min: 0.1, max: 10 } },
-    })
-    onCleanup(cleanup)
-  })
-
-  const theme = () => props.theme ?? resolvedTheme()
-  // The width of an activity card on the screen, in pixels: the card's world width times how many
-  // pixels one world unit covers in the current frame. This is the legibility the reader actually
-  // has, so it is what decides how much a card says.
-  const cardScreenWidth = createMemo(() => {
-    const extent = viewportTracker.viewport()?.extent
-    const size = canvasSize()
-    if (!extent?.width || !size.width) return CARD_SIZE[0]
-    return (CARD_SIZE[0] * size.width) / extent.width
-  })
-  // T18.3: the effective detail mode when "auto" is selected — the detail lives in the panel
-  // when the map is wide enough, and in a window when it is narrow. The threshold follows the
-  // toolbar's compact measurement (the map's own width, not the panel's).
-  const effectiveDetailMode = createMemo<DetailMode>(() => {
-    const mode = detailMode()
-    if (mode !== "auto") return mode
-    return canvasSize().width >= AUTO_DETAIL_THRESHOLD ? "panel" : "window"
-  })
-  const [tier, setTier] = createSignal<DetailTier>("mid")
-  createEffect(() => {
-    const width = cardScreenWidth()
-    // The tier is read as well as written: the hysteresis needs a second pass to settle, and a card
-    // that stops changing size would otherwise stay one tier behind the reader.
-    const current = tier()
-    setTier(detailTier(width, current))
-  })
-  // T11.3 — a file's card says who read it, who wrote it, and how much it changed: facts only the
-  // graph's edges know.
   const copy = createCardCopy(i18n)
   const relations = createMemo(() => fileRelations(model()))
   const relatedDetail = (node: GraphNode) => {

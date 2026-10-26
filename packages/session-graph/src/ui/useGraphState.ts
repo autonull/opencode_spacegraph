@@ -1,9 +1,12 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createSignal, createStore, createUniqueId } from "solid-js"
+import { createSignal, createUniqueId } from "solid-js"
+import { createStore } from "solid-js/store"
+import type {
+  DepthMode,
+} from "@spacegraphjs/renderer"
 import type {
   DetailFraming,
   DetailMode,
-  DepthMode,
   GraphFacets,
   GraphViewData,
   Layout,
@@ -29,6 +32,7 @@ export type GraphViewProps = {
   turnCount?: number
   liveModel?: GraphViewData
   onSelect?: (id: string | undefined) => void
+  layout?: Layout
 }
 
 export type UseGraphStateReturn = {
@@ -38,46 +42,46 @@ export type UseGraphStateReturn = {
 
   // Controlled state signals
   level: () => ZoomLevel
-  setLevel: (level: ZoomLevel) => void
+  setLevel: (level: ZoomLevel | ((prev: ZoomLevel) => ZoomLevel)) => void
   projection: () => any
   setProjection: (projection: any) => void
   depth: () => DepthMode
-  setDepth: (depth: DepthMode) => void
+  setDepth: (depth: DepthMode | ((prev: DepthMode) => DepthMode)) => void
   layout: () => Layout
-  setLayout: (layout: Layout) => void
+  setLayout: (layout: Layout | ((prev: Layout) => Layout)) => void
   files: () => boolean
-  setFiles: (files: boolean) => void
+  setFiles: (files: boolean | ((prev: boolean) => boolean)) => void
   detailMode: () => DetailMode
-  setDetailMode: (mode: DetailMode) => void
+  setDetailMode: (mode: DetailMode | ((prev: DetailMode) => DetailMode)) => void
   detailFraming: () => DetailFraming
-  setDetailFraming: (framing: DetailFraming) => void
+  setDetailFraming: (framing: DetailFraming | ((prev: DetailFraming) => DetailFraming)) => void
   peek: () => boolean
-  setPeek: (peek: boolean) => void
+  setPeek: (peek: boolean | ((prev: boolean) => boolean)) => void
   followLog: () => boolean
-  setFollowLog: (followLog: boolean) => void
+  setFollowLog: (followLog: boolean | ((prev: boolean) => boolean)) => void
   facets: () => GraphFacets
-  setFacets: (facets: GraphFacets) => void
+  setFacets: (facets: GraphFacets | ((prev: GraphFacets) => GraphFacets)) => void
 
   // Card facing
   cardFacing: () => "plane" | "camera"
-  setCardFacing: (facing: "plane" | "camera") => void
+  setCardFacing: (facing: "plane" | "camera" | ((prev: "plane" | "camera") => "plane" | "camera")) => void
   toggleBillboard: () => void
 
   // UI state signals
   searchOpen: () => boolean
-  setSearchOpen: (open: boolean) => void
+  setSearchOpen: (open: boolean | ((prev: boolean) => boolean)) => void
   searchInitial: () => string
   setSearchInitial: (initial: string) => void
   legendOpen: () => boolean
-  setLegendOpen: (open: boolean) => void
+  setLegendOpen: (open: boolean | ((prev: boolean) => boolean)) => void
   galleryOpen: () => boolean
-  setGalleryOpen: (open: boolean) => void
+  setGalleryOpen: (open: boolean | ((prev: boolean) => boolean)) => void
   findInitialTab: () => "search" | "filters" | "outline"
   setFindInitialTab: (tab: "search" | "filters" | "outline") => void
 
   // Popover
   popoverDismissed: () => boolean
-  setPopoverDismissed: (dismissed: boolean) => void
+  setPopoverDismissed: (dismissed: boolean | ((prev: boolean) => boolean)) => void
 
   // Hover
   hovered: () => string | undefined
@@ -98,19 +102,19 @@ export type UseGraphStateReturn = {
 
   // Responsive
   narrow: () => boolean
-  setNarrow: (narrow: boolean) => void
+  setNarrow: (narrow: boolean | ((prev: boolean) => boolean)) => void
   compact: () => boolean
-  setCompact: (compact: boolean) => void
+  setCompact: (compact: boolean | ((prev: boolean) => boolean)) => void
   inspectorWidth: () => number
-  setInspectorWidth: (width: number) => void
+  setInspectorWidth: (width: number | ((prev: number) => number)) => void
   inspectorSheetOpen: () => boolean
-  setInspectorSheetOpen: (open: boolean) => void
+  setInspectorSheetOpen: (open: boolean | ((prev: boolean) => boolean)) => void
   canvasSize: () => { width: number; height: number }
-  setCanvasSize: (size: { width: number; height: number }) => void
+  setCanvasSize: (size: { width: number; height: number } | ((prev: { width: number; height: number }) => { width: number; height: number })) => void
 
   // Manual layout
   manual: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }
-  setManual: (key: "positions" | "sizes", id: string, value: [number, number, number] | [number, number]) => void
+  setManual: (key: "positions" | "sizes", idOrValue: string | Record<string, [number, number, number]> | Record<string, [number, number]>, value?: [number, number, number] | [number, number]) => void
   manualHistory: () => { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
   setManualHistory: (history: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
   manualFuture: () => { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
