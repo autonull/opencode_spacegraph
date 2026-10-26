@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // The detail surface is a choice, not a stage: a reader picks where a selected node's detail
 // appears, and the map must stay the map in every case. The popover and the card are the two new

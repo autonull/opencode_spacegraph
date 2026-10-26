@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T12: a window is a durable surface over the map. It opens beside the node's detail, it moves and
 // resizes under the reader's hand, and the map does not move when it does.

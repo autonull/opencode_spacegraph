@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T14: the toolbar is organised by axis. Four things are inline — what is shown, where the camera
 // is — and everything else is one click away.

@@ -98,6 +98,7 @@ describe("settings schema", () => {
         newIcons: false,
         newModelPicker: false,
         mobileTitlebarPosition: "top",
+        terminalPlacement: "side",
         followUpBehavior: "steer",
       },
       experimental: {

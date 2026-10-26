@@ -108,6 +108,7 @@
       "@typescript/native": "npm:typescript@7.1.0-beta",
       "zod": "4.1.8",
       "remeda": "2.26.0",
+      "remend": "1.4.0",
       "sst": "4.13.1",
       "shiki": "4.4.3",
       "solid-list": "0.3.0",

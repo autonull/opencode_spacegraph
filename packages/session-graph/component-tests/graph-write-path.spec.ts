@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 story("the status bar names the verbs that act on the held set", async ({ mount }) => {
   const root = await mount("session-graph-status-bar--verbs")

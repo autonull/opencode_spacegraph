@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T7.5 — the layout gallery: the same model in every layout, side by side, so the reader compares
 // the options instead of committing to one.

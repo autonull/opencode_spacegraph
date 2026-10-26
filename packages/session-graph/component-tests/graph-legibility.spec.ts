@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T1.18 — the hierarchy outline and the file lens cannot show the whole session at a readable size,
 // so the fit keeps a legible minimum scale and the reader pans the rest.

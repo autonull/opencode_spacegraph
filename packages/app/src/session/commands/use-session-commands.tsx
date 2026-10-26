@@ -17,6 +17,7 @@ import { usePlatform } from "@/runtime/platform/platform"
 import type { SessionModel } from "@/session/model"
 import type { SessionRevert } from "@/session/revert"
 import { useExtensionClaims, useExtensionScoped } from "@/runtime/extension/commands"
+import type { Region } from "@/runtime/extension/panels"
 import { sideTabShortcuts } from "@/runtime/extension/closed-tabs"
 import { graphCommands } from "./graph-commands"
 
@@ -145,6 +146,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const projectCommand = withCategory(language.t("command.category.project"))
   const fileCommand = withCategory(language.t("command.category.file"))
   const contextCommand = withCategory(language.t("command.category.context"))
+  const viewCommand = withCategory(language.t("command.category.view"))
   const mcpCommand = withCategory(language.t("command.category.mcp"))
   const permissionsCommand = withCategory(language.t("command.category.permissions"))
 
@@ -508,7 +510,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
-const viewCmds = () => [
+  const viewCmds = () => [
     viewCommand({
       id: "review.toggle",
       title: language.t("command.review.toggle"),
@@ -537,9 +539,11 @@ const viewCmds = () => [
       id: "input.focus",
       title: language.t("command.input.focus"),
       keybind: "ctrl+l",
-      onSelect: focusInput,
+      onSelect: actions.focusInput,
     }),
   ]
+
+  const messageCmds = () => [
     sessionCommand({
       id: "message.previous",
       title: language.t("command.message.previous"),

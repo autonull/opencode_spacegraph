@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T6.7 — the renderers inject host card markup with `innerHTML`, so the escaping in the render model
 // is the only barrier between a tool output that contains markup and the page. This story proves it

@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // The Cytoscape half of the Phase 5 capture (V5.4). The app has no renderer switch, so the second
 // backend is captured through its Storybook story over the same canonical fixture. Writes only when

@@ -1,5 +1,5 @@
 import type { Locator } from "@playwright/test"
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 async function openLayers(root: Locator) {
   const menu = root.locator('[data-slot="graph-toolbar-layers"]')

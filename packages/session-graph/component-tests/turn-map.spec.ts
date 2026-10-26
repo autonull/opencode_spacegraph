@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // H6.2/H6.4/H6.6: the hybrid surface a host mounts over the transcript. Each story renders the real
 // component over the canonical fixture, so the assertions read production DOM, not a copy.

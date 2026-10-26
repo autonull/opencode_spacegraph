@@ -23,6 +23,8 @@ export type BackgroundActivity = Settings["general"]["backgroundActivity"]
 
 export type TimelineWidth = Settings["general"]["timelineWidth"]
 
+export type TerminalPlacement = Settings["general"]["terminalPlacement"]
+
 export type TabLayout = Settings["appearance"]["tabLayout"]
 
 export type ReduceMotion = Settings["appearance"]["reduceMotion"]
@@ -136,6 +138,7 @@ const generalSchema = Persistence.struct({
   mobileTitlebarPosition: Schema.Literals(["top", "bottom"]),
   // Owned by the review extension, which copies it out once; kept so settings rewrites cannot drop it first.
   mobileDiffWrap: Persistence.optional(Schema.Boolean),
+  terminalPlacement: Schema.Literals(["side", "bottom", "tab"]),
   followUpBehavior: Schema.Literals(["queue", "steer"]),
 })
 
@@ -308,6 +311,7 @@ export const defaultSettings: Settings = {
     newIcons: false,
     newModelPicker: false,
     mobileTitlebarPosition: "top",
+    terminalPlacement: "side",
     followUpBehavior: "steer",
   },
   experimental: {
@@ -345,6 +349,14 @@ type SettingsContext = {
     setShowCustomAgents: (value: boolean) => void
     showTurnDiffs: () => boolean
     setShowTurnDiffs: (value: boolean) => void
+    backgroundActivity: () => BackgroundActivity
+    setBackgroundActivity: (value: BackgroundActivity) => void
+    timelineWidth: () => TimelineWidth
+    setTimelineWidth: (value: TimelineWidth) => void
+    newIcons: () => boolean
+    setNewIcons: (value: boolean) => void
+    newModelPicker: () => boolean
+    setNewModelPicker: (value: boolean) => void
     mobileTitlebarPosition: () => "top" | "bottom"
     setMobileTitlebarPosition: (value: "top" | "bottom") => void
     terminalPlacement: () => TerminalPlacement
@@ -371,6 +383,10 @@ type SettingsContext = {
     setTerminalFont: (value: string) => void
     tabLayout: () => TabLayout
     setTabLayout: (value: TabLayout) => void
+    sidebarOpen: () => boolean
+    setSidebarOpen: (value: boolean) => void
+    reduceMotion: () => ReduceMotion
+    setReduceMotion: (value: ReduceMotion) => void
   }
   keybinds: {
     get: (action: string) => string | undefined
@@ -413,6 +429,8 @@ type SettingsContext = {
     setErrorsEnabled: (value: boolean) => void
     errors: () => string
     setErrors: (value: string) => void
+    interfaceEnabled: () => boolean
+    setInterfaceEnabled: (value: boolean) => void
   }
 }
 
@@ -478,6 +496,10 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         setTimelineDetail(value: TimelineDetail) {
           setStore("general", "timelineDetail", structuredClone(unwrap(value)))
         },
+        showFileTree: withFallback(() => store.general?.showFileTree, true),
+        setShowFileTree(value: boolean) {
+          setStore("general", "showFileTree", value)
+        },
         showCustomAgents,
         setShowCustomAgents(value: boolean) {
           setStore("general", "showCustomAgents", value)
@@ -512,6 +534,10 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         setMobileTitlebarPosition(value: "top" | "bottom") {
           setStore("general", "mobileTitlebarPosition", value)
         },
+        terminalPlacement: withFallback(() => store.general?.terminalPlacement, "side"),
+        setTerminalPlacement(value: TerminalPlacement) {
+          setStore("general", "terminalPlacement", value)
+        },
         followUpBehavior: withFallback(() => store.general?.followUpBehavior, defaultSettings.general.followUpBehavior),
         setFollowUpBehavior(value: FollowUpBehavior) {
           setStore("general", "followUpBehavior", value)
@@ -527,6 +553,7 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         },
       } satisfies { sessionGraph: () => boolean; setSessionGraph: (value: boolean) => void },
       visibility: {
+        fileTree: withFallback(() => store.general?.showFileTree, true),
         customAgents: showCustomAgents,
       },
       appearance: {

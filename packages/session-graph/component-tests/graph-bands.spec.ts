@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T1.17 — a band names the group it summarises. The band box is padded around the cards it groups,
 // so the header has a slot of its own above them instead of landing on the first card. The canvas

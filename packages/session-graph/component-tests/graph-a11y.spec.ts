@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test"
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 type A11yWindow = {
   __graphA11y?: {

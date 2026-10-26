@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // U3.16/U3.17: the states a host must handle beyond the happy path. Each story mounts the real
 // GraphView over the canonical fixture, so the assertions read production DOM, not a copy.

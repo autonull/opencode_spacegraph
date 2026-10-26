@@ -72,8 +72,9 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
   )
 
   // T30.3 — provenance sources section
-  const provenanceSources = props.snapshot?.asOf
-    ? Object.entries(props.snapshot.asOf).map(([source, asOf]) => (
+  const snapshotAsOf = props.snapshot?.asOf
+  const provenanceSources = snapshotAsOf
+    ? Object.entries(snapshotAsOf).map(([source, asOf]) => (
         <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
           {swatch(props.theme.accent)}
           <span class="truncate">

@@ -180,6 +180,7 @@ Each item is a bounded change; none adds a settings surface.
 | 4.5 | **Live sessions**: fixture is proven; a real live session with 60+ turns and a subagent is not | Verify with `bun run dev:live` on a real session; fix anything that breaks | manual | ⏳ Pending |
 | 4.6 | **Shortcut discovery**: `mod+alt+t`, `mod+shift+g`, `mod+shift+h` are invisible | Confirm all graph commands are reachable from the palette with their keybinds shown | `graph-commands.ts` | ✅ **DONE** — all commands in palette with keybinds |
 | 4.7 | **Labels tell the truth**: toolbar renderer label, level labels, depth labels | Cross-check each against current behavior after the refactors (the DepthMode/Lens naming changed) | `session-graph/src/ui/Graph*Control.tsx` | ⏳ Pending (cross-check needed) |
+| 4.8 | **Upstream merge conflicts resolved** | All merge conflicts from upstream dev resolved; typechecks clean across app, session-graph, session-ui | multiple files | ✅ **DONE** |
 
 ---
 
@@ -341,7 +342,7 @@ The evaluator runs T2.2 on `t2.2-eval`; engineering runs on the main branch. The
 | Track | Work | Trigger | Status |
 |---|---|---|---|
 | **2a. Seams** | §1.3 extractions A–D; §2.1–2.4, 2.6, 2.8 code quality | After `t2.2-eval` is tagged | ✅ **COMPLETED** — extractions A-D merged, `any` types removed, `else` chains flattened, TDZ block commented |
-| **2b. Merge** | §7 upstream merge, re-verify, re-baseline docs | As soon as 2a lands | ⏳ Pending |
+| **2b. Merge** | §7 upstream merge, re-verify, re-baseline docs | As soon as 2a lands | ✅ **COMPLETED** — upstream dev merged, all typechecks pass, unit tests pass |
 | **2c. Publish** | §8.1 `graph:setup`, §8.2 seven packages, §8.3 published-consumer branch | Needs 2b's base | ⏳ Pending |
 | **2d. Protocol split** | §5 core/workspace branch **only if** a maintainer asks for zero protocol diff; otherwise document rung 5 as optional | Decision trigger, not default work | ⏳ Pending |
 

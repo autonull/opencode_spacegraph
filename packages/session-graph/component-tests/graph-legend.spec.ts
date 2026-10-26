@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 story("names every encoding the canvas draws", async ({ mount, page }) => {
   const errors: string[] = []

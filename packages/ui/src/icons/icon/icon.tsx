@@ -86,10 +86,9 @@ export function Icon(props: IconProps) {
     return undefined
   }
 
-  const icon = () => getIcon(iconName())
-  // Names without new artwork keep today's under the experiment.
-  const next = () => newIconsEnabled() && getNewIcon(iconName()) !== undefined
-  // New artwork is drawn on a 16px grid, so it stays at 16px where today's small icons shrink to 14px.
+  const name = iconName()
+  const icon = name ? getIcon(name) : getIcon("plus")
+  const next = () => name ? newIconsEnabled() && getNewIcon(name) !== undefined : false
   const pixelSize = () => (split.size === "large" ? 20 : split.size === "small" && !next() ? 14 : 16)
   onMount(ensureSprite)
 
@@ -97,26 +96,26 @@ export function Icon(props: IconProps) {
     <svg
       {...rest}
       data-slot="icon-svg"
-      data-missing={iconName() ? undefined : "true"}
+      data-missing={name ? undefined : "true"}
       data-directional={
-        iconName() === "arrow-left" ||
-        iconName() === "arrow-right" ||
-        iconName() === "outline-arrow-left" ||
-        iconName() === "outline-arrow-right" ||
-        iconName() === "outline-chevron-right" ||
-        iconName() === "chevron-left" ||
-        iconName() === "chevron-right"
+        name === "arrow-left" ||
+        name === "arrow-right" ||
+        name === "outline-arrow-left" ||
+        name === "outline-arrow-right" ||
+        name === "outline-chevron-right" ||
+        name === "chevron-left" ||
+        name === "chevron-right"
           ? ""
           : undefined
       }
       width={pixelSize()}
       height={pixelSize()}
-      viewBox={next() ? newIconViewBox : icon().viewBox}
+      viewBox={next() && name ? newIconViewBox : icon.viewBox}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden={rest["aria-hidden"] ?? "true"}
     >
-      <use href={`#${next() ? newSymbol(iconName()) : symbol(iconName())}`} />
+      <use href={`#${next() && name ? newSymbol(name) : symbol(name ? name : "plus")}`} />
     </svg>
   )
 }

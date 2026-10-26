@@ -2,7 +2,6 @@ import { type CommandOption } from "@/shell/commands/command"
 import { Metrics } from "@opencode/session-ui/graph"
 import { TURN_MAP_ACTIVE } from "@/session/graph/turn-map-overlay"
 import { useLanguage } from "@/runtime/i18n/language"
-import { useLayout } from "@/shell/state/layout"
 import type { SessionCommandContext } from "./use-session-commands"
 
 const withCategory = (category: string) => {
@@ -20,9 +19,8 @@ type GraphCommandsProps = {
 
 export function graphCommands(props: GraphCommandsProps): CommandOption[] {
   const language = useLanguage()
-  const layout = useLayout()
 
-  const { actions, graphEnabled, shown } = props
+  const { actions, graphEnabled } = props
   const hasSession = !!actions.session.identity.params.id
   const enabled = graphEnabled() && hasSession
 
@@ -88,16 +86,6 @@ export function graphCommands(props: GraphCommandsProps): CommandOption[] {
         graph.setTurnMap(turnID)
       },
     }),
-    ...(shown()
-      ? [
-          viewCommand({
-            id: "fileTree.toggle",
-            title: language.t("command.fileTree.toggle"),
-            keybind: "mod+\\",
-            onSelect: () => layout.fileTree.toggle(),
-          }),
-        ]
-      : []),
     viewCommand({
       id: "input.focus",
       title: language.t("command.input.focus"),

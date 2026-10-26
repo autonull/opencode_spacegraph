@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T6.18 — the reader may have asked for less motion. The camera then reaches the node at once
 // instead of gliding to it, and the difference is observable: the node's card sits at the centre of

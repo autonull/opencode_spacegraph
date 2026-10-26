@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T14.3 — the minimap is now a window, not an overlay over the canvas. The frame no longer
 // needs to keep content clear of it. The window floats over the map and can be moved/resized.

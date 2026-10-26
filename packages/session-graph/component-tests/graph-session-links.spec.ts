@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T6.5 — the graph names the other sessions a node points at, and the reader can open them.
 

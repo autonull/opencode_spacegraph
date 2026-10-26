@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T6.6: a long session is drawn as its recent tail, and the view says how much of the session it
 // left out. A capped view must never be a silent one, and it must still be a readable map.

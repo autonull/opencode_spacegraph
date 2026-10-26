@@ -28,8 +28,8 @@
     "@playwright/test": "catalog:",
     "@tsconfig/node22": "catalog:",
     "@types/bun": "catalog:",
-    "@typescript/native": "catalog:",
     "@types/three": "0.186.0",
+    "@typescript/native": "catalog:",
     "three": "0.186.1",
     "vite": "catalog:",
     "vite-plugin-solid": "catalog:"

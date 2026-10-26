@@ -1,4 +1,4 @@
-import { expect, story } from "../../storybook/playwright/story"
+import { expect, story } from "../../stories/playwright/story"
 
 // T15.4: the equalizer's engine has been in the map since T15, and the panel is the way in. The
 // presets are the product: a reader should not have to write rules to get value.

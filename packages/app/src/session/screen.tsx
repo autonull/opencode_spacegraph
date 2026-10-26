@@ -17,7 +17,6 @@ import { createStore } from "solid-js/store"
 import { useLocation } from "@solidjs/router"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
 import {
-  Slot,
   type BackgroundTask,
   type MountedSession,
   type SessionScreen,
@@ -57,8 +56,6 @@ import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-ac
 import { SessionGraphToggle } from "./header/session-graph-toggle"
 import { SessionGraphPane } from "./graph/graph-pane"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
-import { SessionRunningMenu } from "./header/session-running-menu"
-import { createAnimatedPresence } from "@/runtime/animated-presence"
 import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity } from "@/shell/panel-motion"
 
@@ -143,14 +140,14 @@ function SessionScreenContent(props: {
   // the panel alone even when a split was requested.
   const mapVisible = createMemo(() => graphEnabled() && graph.map())
   const splitVisible = createMemo(() => mapVisible() && graph.sideBySide() && isDesktop())
-  const location = useLocation()
+  const routerLocation = useLocation()
 
   // T3.5: a graph permalink opens the map, so a shared link lands on the node it names. The map
   // visibility is read untracked, so closing the map does not pull it back, and the flag is part of
   // the sources, so a link opened before the settings load still opens the map.
   createEffect(
     on(
-      () => [location.hash, graphEnabled()] as const,
+      () => [routerLocation.hash, graphEnabled()] as const,
       ([hash, enabled]) => {
         if (!enabled) return
 
@@ -176,7 +173,7 @@ function SessionScreenContent(props: {
   }
 
   // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
-  const metricsEnabled = createMemo(() => new URLSearchParams(location.search).has("graphMetrics"))
+  const metricsEnabled = createMemo(() => new URLSearchParams(routerLocation.search).has("graphMetrics"))
 
   // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
   props.bindTranscript({

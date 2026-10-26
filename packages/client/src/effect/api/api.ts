@@ -2487,6 +2487,7 @@ export type ServerGraphWorkspaceOperation<E = never> = (
 export interface ServerGraphApi<E = never> {
   readonly workspace: ServerGraphWorkspaceOperation<E>
 }
+
 export type DebugHeapDumpInput = { readonly directory?: string | undefined }
 export type DebugHeapDumpOutput = {
   readonly path: string
