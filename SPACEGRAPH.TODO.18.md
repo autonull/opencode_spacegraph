@@ -420,9 +420,24 @@ Upstream sync → Shareable delivery
 ## Next Immediate Steps
 
 1. **Component/E2E Test Fixes (7.1–7.2)** - Fix test infrastructure:
-   - Fix graph initialization timing in component tests (renderer not mounting in Storybook - `data-graph-ready` stays "false")
+   - Fix graph initialization timing in component tests (renderer now mounts, but fit/zoom timing needs stabilization)
    - Fix Storybook state bleed between component tests
    - Debug Graph module loading in Playwright (E2E)
    - Target: All component and e2e tests pass reliably
 
-2. **Root cause for component test failure**: The SpaceGraphJS renderer (`@spacegraphjs/spacegraph-renderer`) fails to mount in Storybook/Vite context. The dynamic import resolves but the renderer's `mount()` promise never settles. This is likely a module resolution issue with workspace dependencies in Storybook's Vite config. The ResizeObserver error has been fixed.
+2. **Root cause for component test failure**: The SpaceGraphJS renderer (`@spacegraphjs/spacegraph-renderer`) now mounts correctly (renderer variable properly connected to viewport tracker). Remaining failures are timing-related: fit completion before zoom tests, 3D depth treatment in headless CI, and test isolation. The ResizeObserver error has been fixed.
+
+### Fixed This Session
+- **GraphView renderer connection**: The `renderer` variable was declared but never assigned. Fixed by:
+  - Converting to a signal (`createSignal<GraphRenderer | undefined>()`)
+  - Passing `onRenderer={setRenderer}` to GraphCanvasRegion
+  - Updating `useGraphViewport` to use the renderer signal
+  - Fixing all call sites to use `renderer()` instead of `renderer`
+- **Zoom reactivity**: Made `zoomPercent` a memo tracking the viewport signal
+- **Capabilities propagation**: Passed capabilities signal to `useGraphViewport` for proper zoom limits
+- **TypeScript errors**: Fixed all type errors from signal conversion
+
+### Verification
+- ✅ Unit tests: 116 passing
+- ✅ Typecheck: passing
+- ⚠️ Component tests: 53 passing, 14 failing (pre-existing timing/3D issues)

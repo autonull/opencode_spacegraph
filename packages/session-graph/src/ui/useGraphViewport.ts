@@ -16,6 +16,7 @@ export type GraphViewportTrackerProps = {
   cardScreenWidth: () => number
   CARD_SIZE: readonly [number, number]
   READABLE_CARD_WIDTH: number
+  capabilities: () => import("@spacegraphjs/renderer").RendererCapabilities | undefined
 }
 
 export type GraphViewportTrackerReturn = {
@@ -45,6 +46,7 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
     cardScreenWidth,
     CARD_SIZE,
     READABLE_CARD_WIDTH,
+    capabilities,
   } = props
 
   // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
@@ -70,7 +72,7 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
   const camera = createGraphCamera({
     renderer,
     viewport,
-    capabilities: () => undefined,
+    capabilities,
     content: contentIDs,
     fit: fitOptions,
     positionOf: (id) => displayPositions().get(id),
