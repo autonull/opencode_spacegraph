@@ -104,6 +104,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
 
   /** Renderer-facing affordance data only; detail content is read back from the model via selectors. */
   nodeData(node: GraphNode, level: ZoomLevel, dimmed: boolean): Record<string, unknown> {
+    const isPhase = node.kind === "phase"
     return {
       turnID: node.turnID,
       messageID: node.messageID,
@@ -118,9 +119,10 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       forkedFrom: node.data?.forkedFrom,
       forkBoundary: node.data?.forkBoundary,
       parentSessionID: node.data?.parentSessionID,
-      category: node.kind === "phase" ? node.data?.category : undefined,
-      count: node.kind === "phase" ? clusterCount(node) : undefined,
-      expanded: node.kind === "phase" ? isClusterExpanded(level) : undefined,
+      // Phase-specific fields
+      category: isPhase ? node.data?.category : undefined,
+      count: isPhase ? clusterCount(node) : undefined,
+      expanded: isPhase ? isClusterExpanded(level) : undefined,
     }
   }
 
