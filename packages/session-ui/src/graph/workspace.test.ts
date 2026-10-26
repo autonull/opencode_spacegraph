@@ -313,3 +313,61 @@ describe("T21.1 — diff-hunk symbols from turn diffs", () => {
     expect(symbols[0]?.data?.origin).toBe("hunk")
   })
 })
+
+describe("T29.4 — the model works without a snapshot (session-only graph)", () => {
+  test("session-only graph has no workspace lens", () => {
+    const sessionOnly = buildGraph({
+      messages: buildFixtureMessages(),
+      status: { type: "idle" },
+      // No snapshot provided - simulates server without /api/server/graph endpoint
+    })
+
+    // No workspace root when no snapshot
+    expect(sessionOnly.workspaceRoot).toBeUndefined()
+    expect(sessionOnly.snapshot).toBeUndefined()
+
+    // Only session kinds present (no derived kinds from snapshot)
+    const kinds = new Set(sessionOnly.nodes.map((node) => node.kind))
+    expect(kinds.has("session")).toBe(true)
+    expect(kinds.has("turn")).toBe(true)
+    expect(kinds.has("tool")).toBe(true)
+    expect(kinds.has("file")).toBe(true)
+
+    // Derived kinds should NOT be present
+    expect(kinds.has("directory")).toBe(false)
+    expect(kinds.has("package")).toBe(false)
+    expect(kinds.has("commit")).toBe(false)
+    expect(kinds.has("branch")).toBe(false)
+    expect(kinds.has("symbol")).toBe(false)
+    expect(kinds.has("process")).toBe(false)
+    expect(kinds.has("port")).toBe(false)
+    expect(kinds.has("issue")).toBe(false)
+
+    // Session nodes and edges should still work
+    expect(sessionOnly.nodes.length).toBeGreaterThan(0)
+    expect(sessionOnly.edges.length).toBeGreaterThan(0)
+    expect(sessionOnly.turns.length).toBeGreaterThan(0)
+  })
+
+  test("session-only graph and snapshot graph share the same session nodes", () => {
+    const sessionOnly = buildGraph({
+      messages: buildFixtureMessages(),
+      status: { type: "idle" },
+    })
+
+    const withSnapshot = buildGraph({
+      messages: buildFixtureMessages(),
+      status: { type: "idle" },
+      snapshot: buildFixtureSnapshot(),
+    })
+
+    // All session-only nodes should be present in the snapshot graph with same IDs and content
+    const sessionNodeIds = new Set(sessionOnly.nodes.map((n) => n.id))
+    for (const node of withSnapshot.nodes) {
+      if (sessionNodeIds.has(node.id)) {
+        const sessionNode = sessionOnly.nodes.find((n) => n.id === node.id)!
+        expect(node).toEqual(sessionNode)
+      }
+    }
+  })
+})
