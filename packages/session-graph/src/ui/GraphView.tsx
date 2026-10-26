@@ -680,14 +680,17 @@ export const GraphView = (props: GraphViewProps) => {
 
   // displayPositions must be declared before rendererModel which uses it
   const displayPositions = createMemo(() => {
-    const base = geometry().positions
-    if (Object.keys(manual.positions).length === 0) return base
+    const geometryResult = geometry()
+    const base = geometryResult?.positions
+    if (!base) return new Map()
+    const positions = manual.positions ?? {}
+    if (Object.keys(positions).length === 0) return base
 
-    const positions = new Map(base)
-    for (const [id, position] of Object.entries(manual.positions)) {
-      positions.set(id, { x: position[0], y: position[1], z: position[2] })
+    const result = new Map(base)
+    for (const [id, position] of Object.entries(positions)) {
+      result.set(id, { x: position[0], y: position[1], z: position[2] })
     }
-    return positions
+    return result
   })
 
   const renderCard = createMemo(() => {
