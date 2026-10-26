@@ -425,7 +425,8 @@ export class GraphBuilder {
     const counts = new Map<string, { fileCount: number; touchedCount: number }>()
     for (const file of this.fileNodes.keys()) {
       const touched = this.touchedFiles.has(file)
-      for (const directory of parentPaths(file)) {
+      const parts = normalizePath(file).split("/")
+      for (const directory of parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))) {
         const count = counts.get(directory) ?? { fileCount: 0, touchedCount: 0 }
         count.fileCount += 1
         if (touched) count.touchedCount += 1
@@ -433,7 +434,7 @@ export class GraphBuilder {
       }
     }
 
-    const directories = [...counts.keys()].sort((a, b) => depth(a) - depth(b) || a.localeCompare(b))
+    const directories = [...counts.keys()].sort((a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b))
     for (const directory of directories) {
       const count = counts.get(directory)!
       this.addNode({
@@ -449,12 +450,16 @@ export class GraphBuilder {
     }
 
     for (const [file, id] of this.fileNodes) {
-      const parent = parentPath(file)
+      const normalized = normalizePath(file)
+      const slash = normalized.lastIndexOf("/")
+      const parent = slash === -1 ? "" : normalized.slice(0, slash)
       if (parent) this.partOf(id, directoryNodeID(parent), "structural")
     }
 
     for (const directory of directories) {
-      const parent = parentPath(directory)
+      const normalized = normalizePath(directory)
+      const slash = normalized.lastIndexOf("/")
+      const parent = slash === -1 ? "" : normalized.slice(0, slash)
       if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
     }
   }
@@ -1164,8 +1169,12 @@ export class GraphBuilder {
   }
 
   private appendTool(tool: SessionMessageAssistantTool, message: SessionMessageAssistant, turnID: string) {
-    const status = toolStatus(tool)
-    const category = toolCategory(tool)
+    const status = tool.state.status === "streaming" || tool.state.status === "running"
+      ? "running"
+      : currentToolFailed(tool)
+        ? "failed"
+        : "success"
+    const category = timelineCategory(tool) ?? (SUBAGENT_TOOLS.has(tool.name) ? "subagents" : "tools")
 
     if (SUBAGENT_TOOLS.has(tool.name)) {
       const { metadata, input } = toolFacts(tool)
@@ -1229,7 +1238,7 @@ export class GraphBuilder {
         {
           id: resultID,
           kind: "result",
-          label: toolResultLabel(status),
+          label: status === "failed" ? "failed" : status === "running" ? "running" : "ok",
           summary: output ? truncate(output, 400) : error,
           status,
           turnID,
@@ -1414,42 +1423,15 @@ export class GraphBuilder {
     if (tool.name === "edit" || tool.name === "write") {
       const path = stringField(input, "path")
 
-      if (path) {
-        const diff = this.diffForFile(turnID, path)
-        this.addEdge({
-          kind: "writes",
-          source: toolID,
-          target: this.recordFile(turnID, path),
-          confidence: "explicit",
-          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
-        })
-      }
+      if (path) this.addWritesEdge(toolID, turnID, path)
 
-      for (const file of metadataFilePaths(metadata)) {
-        const diff = this.diffForFile(turnID, file)
-        this.addEdge({
-          kind: "writes",
-          source: toolID,
-          target: this.recordFile(turnID, file),
-          confidence: "explicit",
-          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
-        })
-      }
+      for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
 
       return
     }
 
     if (tool.name === "patch" || tool.name === "apply_patch") {
-      for (const file of metadataFilePaths(metadata)) {
-        const diff = this.diffForFile(turnID, file)
-        this.addEdge({
-          kind: "writes",
-          source: toolID,
-          target: this.recordFile(turnID, file),
-          confidence: "explicit",
-          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
-        })
-      }
+      for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
 
       return
     }
@@ -1457,24 +1439,22 @@ export class GraphBuilder {
     if (SEARCH_TOOLS.has(tool.name)) {
       const scope = stringField(input, "path")
 
-      if (scope)
-        this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
+      if (scope) this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
 
       return
     }
   }
-}
 
-function toolCategory(tool: SessionMessageAssistantTool) {
-  return timelineCategory(tool) ?? (SUBAGENT_TOOLS.has(tool.name) ? "subagents" : "tools")
-}
-
-function toolStatus(tool: SessionMessageAssistantTool): NodeStatus {
-  if (tool.state.status === "streaming" || tool.state.status === "running") return "running"
-
-  if (currentToolFailed(tool)) return "failed"
-
-  return "success"
+  private addWritesEdge(toolID: string, turnID: string, path: string) {
+    const diff = this.diffForFile(turnID, path)
+    this.addEdge({
+      kind: "writes",
+      source: toolID,
+      target: this.recordFile(turnID, path),
+      confidence: "explicit",
+      data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+    })
+  }
 }
 
 function toolFacts(tool: SessionMessageAssistantTool) {
@@ -1549,14 +1529,6 @@ function compactionReplays(message: Extract<SessionMessageInfo, { type: "compact
   return message.native !== undefined && "messages" in message.native
 }
 
-function toolResultLabel(status: NodeStatus) {
-  if (status === "failed") return "failed"
-
-  if (status === "running") return "running"
-
-  return "ok"
-}
-
 function noticeLabel(message: GraphNotice) {
   if (message.type === "synthetic") return truncate(message.description ?? message.text)
 
@@ -1577,21 +1549,6 @@ function isInterrupted(error: SessionMessageAssistant["error"]) {
 
 function isNotice(message: SessionMessageInfo): message is GraphNotice {
   return !ACTIVITY_MESSAGE_TYPES.some((type) => type === message.type)
-}
-
-function parentPath(file: string) {
-  const normalized = normalizePath(file)
-  const slash = normalized.lastIndexOf("/")
-  return slash === -1 ? "" : normalized.slice(0, slash)
-}
-
-function parentPaths(file: string) {
-  const parts = normalizePath(file).split("/")
-  return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))
-}
-
-function depth(directory: string) {
-  return directory.split("/").length
 }
 
 /**
