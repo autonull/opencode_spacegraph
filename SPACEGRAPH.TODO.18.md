@@ -58,10 +58,14 @@
 - Owns: GraphWindows, windowKinds, windowContent, windowAnchors, openWindow ✅
 - Props: windows, onWindowsChange, onOpenWindow, model, selection, etc. ✅
 
-### 1.3 Extract GraphOverlayManager
-- **File**: `packages/session-graph/src/ui/GraphOverlayManager.tsx`
-- Owns: Peek, popover, note composer, search, legend, gallery, group menu
-- Props: model, selection, peek, popoverVisible, notes, trace, etc.
+### ✅ 5. GraphOverlayManager Extraction (Completed)
+- **File**: `packages/session-graph/src/ui/GraphOverlayManager.tsx` (new, ~240 lines)
+- Extracted: Peek, popover, note composer, search, legend, gallery, group menu, A11y, error/empty states
+- Owns: All floating overlays on/above the canvas
+- Props: model, selection, peek, popoverVisible, notes, trace, edgeKinds, rules, etc.
+- GraphCanvasRegion.tsx now composes GraphCanvas + GraphOverlayManager
+- Verified `bun run typecheck --filter=@opencode/session-graph` passes
+- Verified `bun test packages/session-graph/src` passes (116 tests)
 
 ### 1.4 Extract GraphViewportTracker
 - **File**: `packages/session-graph/src/ui/GraphViewportTracker.tsx`
@@ -302,12 +306,12 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphCanvasRegion.tsx` | ✅ Created (type issues fixed) |
 | `packages/session-graph/src/ui/GraphView.tsx` | ✅ Refactored (unused imports removed, types fixed) |
 | `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
 
 ---
 
 ## Next Immediate Steps
 
-1. Extract GraphOverlayManager (1.3)
-2. Extract GraphViewportTracker (1.4)
-3. Extract GraphStateInitializers (1.5)
-4. Complete GraphView breakdown to thin composition (1.6)
+1. Extract GraphViewportTracker (1.4)
+2. Extract GraphStateInitializers (1.5)
+3. Complete GraphView breakdown to thin composition (1.6)

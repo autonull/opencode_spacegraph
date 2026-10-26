@@ -17,23 +17,14 @@ import type {
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { Show, type JSX } from "solid-js"
+import { type JSX } from "solid-js"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { CardTemplate } from "../canvas/buildRenderModel"
-import { GraphA11y } from "./GraphA11y"
-import { GraphLegend } from "./GraphLegend"
-import type { GraphDiffSource } from "./GraphDiff"
-import { GraphNoteComposer } from "./GraphNoteComposer"
-import { GraphPeek } from "./GraphPeek"
-import { GraphPopover } from "./GraphPopover"
-import { GraphSearch } from "./GraphSearch"
-import { GraphGroupMenu } from "./GraphGroupMenu"
-import { GraphGallery } from "./GraphGallery"
-import { GraphError } from "./GraphError"
-import { GraphEmpty } from "./GraphEmpty"
+import { GraphOverlayManager } from "./GraphOverlayManager"
 import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
+import type { GraphDiffSource } from "./GraphDiff"
 
 
 export type GraphCanvasRegionProps = {
@@ -298,121 +289,85 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
           props.setViewport(next)
         }}
       />
-      <Show when={props.groupMenu}>
-        {(menu) => (
-          <GraphGroupMenu
-            id={menu().id}
-            x={menu().x}
-            y={menu().y}
-            model={props.model}
-            collapsedGroups={props.groupCollapse.collapsedGroups()}
-            onToggleGroup={props.toggleGroupByID}
-            onCollapseOthers={props.groupCollapse.collapseOtherGroups}
-            onFrame={(id) => props.camera.frame([id])}
-            onClose={() => props.setGroupMenu(undefined)}
-          />
-        )}
-      </Show>
-      <GraphA11y
-        model={props.ordered}
-        selection={props.selection()}
-        instructionsId={props.a11yInstructionsId}
-        announcement={props.viewAnnouncement}
-        onSelect={props.select}
-        onEscape={() => props.select(undefined)}
+      <GraphOverlayManager
+        // Model & theme
+        model={props.model}
+        theme={props.theme}
+        projection={props.projection}
+        depth={props.depth}
+        detailMode={props.detailMode}
+        effectiveDetailMode={props.effectiveDetailMode}
+        layout={props.layout}
+
+        // Selection & navigation
+        selection={props.selection}
+        select={props.select}
+
+        // Peek
+        peekFrame={props.peekFrame}
+        peekEdge={props.peekEdge}
+
+        // Popover
+        popoverVisible={props.popoverVisible}
+        popoverNode={props.popoverNode}
+        popoverPlacement={props.popoverPlacement}
+        setPopoverDismissed={props.setPopoverDismissed}
+
+        // Notes
+        notes={props.notes}
+        noteTargetNode={props.noteTargetNode}
+        noteAnchor={props.noteAnchor}
+
+        // Search
+        searchOpen={props.searchOpen}
+        searchInitial={props.searchInitial}
+        setSearchOpen={props.setSearchOpen}
+        jumpTo={props.jumpTo}
+
+        // Legend
+        legendOpen={props.legendOpen}
+        setLegendOpen={props.setLegendOpen}
+        edgeKinds={props.edgeKinds}
+        rules={props.rules}
+
+        // Gallery
+        galleryOpen={props.galleryOpen}
+        setGalleryOpen={props.setGalleryOpen}
+        changeLayout={props.changeLayout}
+
+        // Group menu
+        groupMenu={props.groupMenu}
+        setGroupMenu={props.setGroupMenu}
+        groupCollapse={props.groupCollapse}
+        camera={props.camera}
+        toggleGroupByID={props.toggleGroupByID}
+        modelForGroupMenu={props.model}
+
+        // Error/Empty states
+        error={props.error}
+        onBack={props.onBack}
+
+        // Trace
+        trace={props.trace}
+
+        // Diff
+        diffSource={props.diffSource}
+        link={props.link}
+        onOpenTranscript={props.onOpenTranscript}
+        onOpenSession={props.onOpenSession}
+        onCopyView={props.onCopyView}
+        renderSummary={props.renderSummary}
+
+        // Canvas
+        canvasRegionEl={props.canvasRegionEl}
+
+        // A11y
+        ordered={props.ordered}
+        viewAnnouncement={props.viewAnnouncement}
+        a11yInstructionsId={props.a11yInstructionsId}
+        announce={props.announce}
+        i18n={props.i18n}
       />
-      <Show when={props.peekFrame}>
-        {(frame) => (
-          <div
-            data-slot="graph-peek-anchor"
-            class="absolute z-20 -translate-x-1/2"
-            style={{ left: `${frame().left}px`, top: `${frame().top}px` }}
-          >
-            <GraphPeek node={frame().node} />
-          </div>
-        )}
-      </Show>
-      <Show when={props.peekEdge}>
-        {(edge) => (
-          <div data-slot="graph-edge-peek-anchor" class="absolute bottom-2 left-2 z-20">
-            <GraphPeek edge={edge()} />
-          </div>
-        )}
-      </Show>
-      <Show when={props.notes.noteTarget()}>
-        <GraphNoteComposer
-          targetLabel={props.noteTargetNode()?.label ?? props.notes.noteTarget() ?? ""}
-          initialValue={props.notes.editingNote() ? (props.notes as unknown as Record<string, { body: string }>)[props.notes.editingNote()!]?.body : undefined}
-          anchor={props.noteAnchor()}
-          onSave={props.notes.saveNote}
-          onClose={props.notes.closeNoteComposer}
-        />
-      </Show>
-      <Show when={props.effectiveDetailMode === "popover"}>
-        <div
-          data-slot="graph-popover-anchor"
-          class="absolute z-20"
-          style={{
-            left: `${props.popoverPlacement.left}px`,
-            top: `${props.popoverPlacement.top}px`,
-            display: props.popoverVisible ? "block" : "none",
-          }}
-        >
-          <GraphPopover
-            model={props.model()}
-            node={props.popoverNode}
-            diffSource={props.diffSource}
-            renderSummary={props.renderSummary}
-            link={props.link}
-            onCopyView={props.onCopyView}
-            onSelect={props.select}
-            onOpenTranscript={props.onOpenTranscript ? props.openInTranscript : undefined}
-            onOpenSession={props.onOpenSession}
-            onClose={() => props.setPopoverDismissed(true)}
-            traceKind={props.trace.traceKind()}
-            onTraceWhy={props.trace.traceWhy}
-            onTraceLedHere={props.trace.traceLedHere}
-            onTraceRelated={props.trace.traceRelated}
-            onClearTrace={props.trace.clearTrace}
-            onCopyTraceOutline={props.trace.copyTraceOutline}
-            onEditNote={props.notes.editNote}
-            onDeleteNote={props.notes.deleteNote}
-            onCopyNote={props.notes.copyNote}
-          />
-        </div>
-      </Show>
-      <GraphError error={props.error} onBack={props.onBack} />
-      <GraphEmpty model={props.model} error={props.error} />
-      <Show when={props.searchOpen}>
-        <GraphSearch
-          model={props.model()}
-          initialQuery={props.searchInitial}
-          onSelect={(node) => {
-            props.jumpTo(node)
-            props.setSearchOpen(false)
-          }}
-          onClose={() => props.setSearchOpen(false)}
-        />
-      </Show>
-      <Show when={props.legendOpen}>
-        <GraphLegend
-          theme={props.theme}
-          layout={props.layout}
-          rules={props.rules}
-          edgeKinds={props.edgeKinds.edgeKinds()}
-          onToggleEdgeKind={props.edgeKinds.toggleEdgeKind}
-          onClose={() => props.setLegendOpen(false)}
-        />
-      </Show>
-      <Show when={props.galleryOpen}>
-        <GraphGallery
-          model={props.model()}
-          theme={props.theme}
-          current={props.layout}
-          onOpen={props.changeLayout}
-          onClose={() => props.setGalleryOpen(false)}
-        />
-      </Show>
     </div>
   )
 }
