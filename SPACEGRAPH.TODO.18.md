@@ -111,23 +111,28 @@ export const GraphView = (props) => {
 
 ---
 
-## 2. GraphToolbar Breakdown (~900 lines → sub-components)
+## 2. GraphToolbar Breakdown (~900 lines → sub-components) ✅
 
-### 2.1 Extract by Control Group
-- `GraphLayersControl` — Level, Lens, Depth (LE.5/LE.14)
-- `GraphLayoutControl` — Layout picker (LE.8/LE.9/T7)
-- `GraphDrawControl` — Billboard, Frame Node, Files, Equalizer, Arrangement
-- `GraphShowControl` — Detail mode, Peek, Follow Log, Minimap, Filesystem, Legend, Gallery, Turn Map, Expand
-- `GraphTimeControl` — Turn scrubber (T18.3/T6.6)
-- `GraphQuestionsControl` — Why, Led-here, Related, Compare, Note, Facets, Failure Progress, Find
-- `GraphZoomControl` — Zoom In/Out/Fit
-- `GraphExportControl` — Export menu
-- `GraphRendererStatus` — Renderer label, Split View, Back
+### 2.1 Extract by Control Group ✅
+- **File**: `packages/session-graph/src/ui/GraphLayersControl.tsx` — Level, Lens, Depth (LE.5/LE.14)
+- **File**: `packages/session-graph/src/ui/GraphLayoutControl.tsx` — Layout picker (LE.8/LE.9/T7)
+- **File**: `packages/session-graph/src/ui/GraphDrawControl.tsx` — Billboard, Frame Node, Files, Equalizer, Arrangement
+- **File**: `packages/session-graph/src/ui/GraphShowControl.tsx` — Detail mode, Peek, Follow Log, Minimap, Filesystem, Legend, Gallery, Turn Map, Expand
+- **File**: `packages/session-graph/src/ui/GraphTimeControl.tsx` — Turn scrubber (T18.3/T6.6)
+- **File**: `packages/session-graph/src/ui/GraphQuestionsControl.tsx` — Why, Led-here, Related, Compare, Note, Facets, Failure Progress, Find
+- **File**: `packages/session-graph/src/ui/GraphZoomControl.tsx` — Zoom In/Out/Fit
+- **File**: `packages/session-graph/src/ui/GraphExportControl.tsx` — Export menu
+- **File**: `packages/session-graph/src/ui/GraphRendererStatus.tsx` — Renderer label, Split View, Back
+- **File**: `packages/session-graph/src/ui/GraphToolbar.tsx` — Refactored to compose sub-components (~250 lines)
 
 ### 2.2 Each sub-component:
-- Owns its own i18n keys
-- Receives only the props it needs
-- No cross-control dependencies
+- Owns its own i18n keys ✅
+- Receives only the props it needs ✅
+- No cross-control dependencies ✅
+
+### Verification:
+- ✅ `bun run typecheck --filter=@opencode/session-graph` passes
+- ✅ `bun test packages/session-graph/src` passes (116 tests)
 
 ---
 
@@ -316,10 +321,19 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Created |
 | `packages/session-graph/src/ui/useGraphState.ts` | ✅ Created |
+| `packages/session-graph/src/ui/GraphLayersControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphLayoutControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphDrawControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphShowControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphTimeControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphQuestionsControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphZoomControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphExportControl.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphRendererStatus.tsx` | ✅ Created |
+| `packages/session-graph/src/ui/GraphToolbar.tsx` | ✅ Refactored (~250 lines, composes sub-components) |
 
 ---
 
 ## Next Immediate Steps
 
-1. GraphToolbar breakdown (2.1–2.2)
-2. Vocabulary consolidation (3.1–3.2)
+1. Vocabulary consolidation (3.1–3.2)
