@@ -107,6 +107,7 @@ import { useEdgeKinds } from "./useEdgeKinds"
 import { useSelectionVerbs } from "./useSelectionVerbs"
 import { useGraphKeyboard } from "./useGraphKeyboard"
 import { useGraphViewport } from "./useGraphViewport"
+import { useGraphState } from "./useGraphState"
 import { attachTouchGestures, createWidthThresholdTracker } from "spacegraphjs/utils"
 import type { GraphWindowState } from "./GraphWindows"
 
@@ -254,37 +255,95 @@ export type GraphViewProps = {
  * rendering. Detail always renders in the DOM inspector, never only on the canvas.
  */
 export const GraphView = (props: GraphViewProps) => {
-  const i18n = useI18n()
-  const a11yInstructionsId = createUniqueId()
-  const resolvedTheme = createGraphTheme()
-  const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
-  const [projection, setProjection] = createSignal<Projection>(props.projection ?? "2d")
-  const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
-  const [cardFacing, setCardFacing] = createSignal<"plane" | "camera">("plane")
-  const toggleBillboard = () => setCardFacing((current) => (current === "camera" ? "plane" : "camera"))
-  const [layout, setLayout] = createSignal<Layout>(props.layout ?? "lanes")
-  const [files, setFiles] = createSignal<boolean>(props.files ?? false)
-  // Where a selected node's detail is shown. The panel is the default: the popover and the card are
-  // alternatives a reader can pick, and the map still works with the detail off.
-  const [detailMode, setDetailMode] = createSignal<DetailMode>(props.detailMode ?? "panel")
-  const [detailFraming, setDetailFraming] = createSignal<DetailFraming>(props.detailFraming ?? "off")
-  // The transient look at the node under the pointer; it never changes the selection.
-  const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
-  // T18.1: whether the map follows the active turn from the log.
-  const [followLog, setFollowLog] = createSignal<boolean>(props.followLog ?? false)
-  // A2 — the question the map answers. Text, kind/status chips, and the domain lens compose into
-  // one scope; a permalink's `q=` is the same state in its shareable form.
-  const [facets, setFacets] = createSignal<GraphFacets>(facetsFromQuery(props.facetQuery ?? ""))
+  const state = useGraphState(props)
 
-  // Announce to screen readers via the live region
-  const announce = (message: string) => {
-    const region = document.getElementById(a11yInstructionsId)
-    if (region) region.textContent = message
-  }
+  const {
+    i18n,
+    a11yInstructionsId,
+    resolvedTheme,
 
-  // C1 — notes are session-local nodes. The annotated model is the one every selector and pipeline
-  // reads, so notes are searchable, exportable, and scoped by their target's turn for free.
-  const [notesStore] = createStore<Annotations>({})
+    level,
+    setLevel,
+    projection,
+    setProjection,
+    depth,
+    setDepth,
+    layout,
+    setLayout,
+    files,
+    setFiles,
+    detailMode,
+    setDetailMode,
+    detailFraming,
+    setDetailFraming,
+    peek,
+    setPeek,
+    followLog,
+    setFollowLog,
+    facets,
+    setFacets,
+
+    cardFacing,
+    setCardFacing,
+    toggleBillboard,
+
+    searchOpen,
+    setSearchOpen,
+    searchInitial,
+    setSearchInitial,
+    legendOpen,
+    setLegendOpen,
+    galleryOpen,
+    setGalleryOpen,
+    findInitialTab,
+    setFindInitialTab,
+
+    popoverDismissed,
+    setPopoverDismissed,
+
+    hovered,
+    setHovered,
+    edgeHovered,
+    setEdgeHovered,
+
+    capabilities,
+    rendererReady,
+    setRendererReady,
+    rendererID,
+    setRendererID,
+    fallback,
+    setFallback,
+    error,
+    setError,
+
+    narrow,
+    setNarrow,
+    compact,
+    setCompact,
+    inspectorWidth,
+    setInspectorWidth,
+    inspectorSheetOpen,
+    setInspectorSheetOpen,
+    canvasSize,
+    setCanvasSize,
+
+    manual,
+    setManual,
+    manualHistory,
+    setManualHistory,
+    manualFuture,
+    setManualFuture,
+    pushHistory,
+    undoManual,
+    redoManual,
+
+    notesStore,
+    model: stateModel,
+
+    announce,
+  } = state
+
+  // Model memo
   const emptyModel: GraphViewData = {
     root: "session",
     nodes: [],
@@ -293,20 +352,6 @@ export const GraphView = (props: GraphViewProps) => {
     turnByMessageID: new Map(),
   }
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
-  const [hovered, setHovered] = createSignal<string>()
-  // B3 — edges are first-class: hover names one, click selects its source and traces from it.
-  const [edgeHovered, setEdgeHovered] = createSignal<string>()
-  // The popover is dismissed by Escape but the selection stays; a second Escape clears it.
-  const [popoverDismissed, setPopoverDismissed] = createSignal(false)
-  const [searchOpen, setSearchOpen] = createSignal(false)
-  const [searchInitial, setSearchInitial] = createSignal("")
-  // T6.8: the legend names the encoding, so a first-time reader can decode the map without a briefing.
-  const [legendOpen, setLegendOpen] = createSignal(false)
-  // T7.5: the layout gallery — the same model in every layout, so the reader compares instead of
-  // committing to one.
-  const [galleryOpen, setGalleryOpen] = createSignal(false)
-  // Quality Gate: initial tab for Find window (Shift+O = outline, Alt+F = filters)
-  const [findInitialTab, setFindInitialTab] = createSignal<"search" | "filters" | "outline">("search")
 
   // Hooks for modular state/logic
   const trace = useTraceOverlay({
@@ -323,96 +368,28 @@ export const GraphView = (props: GraphViewProps) => {
 
   const edgeKinds = useEdgeKinds({ model })
 
-  // A2 — the question is an artifact too: its `q=` grammar is the shareable form.
-  const copyView = () => {
-    const query = facetsToQuery(facets())
-    if (props.onCopyView) {
-      props.onCopyView(query)
-      return
-    }
-    navigator.clipboard?.writeText(query)
-    announce(i18n.t("ui.sessionGraph.facets.copied"))
-  }
-  const [capabilities] = createSignal<RendererCapabilities>()
-  const [rendererReady, setRendererReady] = createSignal(false)
-  const [rendererID, setRendererID] = createSignal<RendererID>()
-  const [fallback, setFallback] = createSignal(false)
-  const [error, setError] = createSignal<string>()
-  const [narrow, setNarrow] = createSignal(false)
-  const [compact, setCompact] = createSignal(false)
-  const [inspectorWidth, setInspectorWidth] = createSignal(288)
-  // V117: bottom-sheet inspector for narrow/mobile
-  const [inspectorSheetOpen, setInspectorSheetOpen] = createSignal(false)
-  const [canvasSize, setCanvasSize] = createSignal({ width: 0, height: 0 })
-  // Manual layout is a reader's act, not a model fact: a dragged position or resized group is kept
-  // beside the derived layout so the next stream append cannot snap it back.
-  const [manual, setManual] = createStore<{
-    positions: Record<string, [number, number, number]>
-    sizes: Record<string, [number, number]>
-  }>({ positions: {}, sizes: {} })
-
-  // V115: undo/redo for manual positions
-  const [manualHistory, setManualHistory] = createSignal<{ positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]>([])
-  const [manualFuture, setManualFuture] = createSignal<{ positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]>([])
-
-  const MAX_HISTORY = 50
-
-  const captureManualState = () => ({
-    positions: { ...manual.positions },
-    sizes: { ...manual.sizes },
+  const comparisonHook = useComparison({
+    model,
+    liveModel: () => props.liveModel ?? model(),
+    checkpoint: props.checkpoint,
+    turnCount: props.turnCount,
+    selection: () => selection.selection(),
+    nodeByID: (id) => nodeByID(model(), id),
   })
 
-  const pushHistory = () => {
-    const state = captureManualState()
-    // Only push if there are actual changes
-    if (Object.keys(state.positions).length > 0 || Object.keys(state.sizes).length > 0) {
-      setManualHistory((prev) => [...prev.slice(-MAX_HISTORY + 1), state])
-      setManualFuture([])
-    }
-  }
+  const groupCollapse = useGroupCollapse({
+    model,
+    selection: () => selection.selection(),
+    nodeByID: (id) => model().nodes.find((n) => n.id === id),
+  })
 
-  const undoManual = () => {
-    setManualHistory((prev) => {
-      if (prev.length === 0) return prev
-      const last = prev[prev.length - 1]
-      setManualFuture((fut) => [captureManualState(), ...fut.slice(-MAX_HISTORY + 1)])
-      setManual("positions", last.positions)
-      setManual("sizes", last.sizes)
-      return prev.slice(0, -1)
-    })
-  }
+  const selectionVerbs = useSelectionVerbs({
+    model,
+    selection: () => selection.selection(),
+    onAnnounce: announce,
+  })
 
-  const redoManual = () => {
-    setManualFuture((fut) => {
-      if (fut.length === 0) return fut
-      const next = fut[0]
-      setManualHistory((prev) => [...prev.slice(-MAX_HISTORY + 1), captureManualState()])
-      setManual("positions", next.positions)
-      setManual("sizes", next.sizes)
-      return fut.slice(1)
-    })
-  }
-  // T18.3: the auto detail mode threshold — when the map is narrower than this, the detail
-  // lives in a window instead of the panel. The toolbar's compact threshold is 1030px for the
-  // whole panel; the map itself is narrower, so the threshold is proportionally smaller.
-  const AUTO_DETAIL_THRESHOLD = 640
-  let renderer: GraphRenderer | undefined
-  let rootEl!: HTMLDivElement
-  let canvasRegionEl!: HTMLDivElement
-
-  // The turn a node belongs to: a turn node owns itself, anything else inherits from its ancestry.
-  const turnOf = (id: string | undefined) => {
-    if (!id) return undefined
-    const node = nodeByID(model(), id)
-
-    if (!node) return undefined
-    if (node.kind === "turn") return node.id
-
-    return ancestors(model(), id).find((ancestor) => ancestor.kind === "turn")?.id
-  }
-
-  // P8.1: the vanilla library controller owns interaction state (selection + trail). The view feeds
-  // it the model, mirrors its snapshot into signals, and keeps the DOM/renderer in sync.
+  // P8.1: the vanilla library controller owns interaction state (selection + trail).
   const selection = createGraphSelection({
     model: () => model(),
     controlled: () => props.selection,
@@ -420,6 +397,22 @@ export const GraphView = (props: GraphViewProps) => {
     onChange: () => setPopoverDismissed(false),
     count: () => Metrics.count("select"),
   })
+
+  // T18.3: the auto detail mode threshold
+  const AUTO_DETAIL_THRESHOLD = 640
+  let renderer: GraphRenderer | undefined
+  let rootEl!: HTMLDivElement
+  let canvasRegionEl!: HTMLDivElement
+
+  // The turn a node belongs to
+  const turnOf = (id: string | undefined) => {
+    if (!id) return undefined
+    const node = nodeByID(model(), id)
+    if (!node) return undefined
+    if (node.kind === "turn") return node.id
+    return ancestors(model(), id).find((ancestor) => ancestor.kind === "turn")?.id
+  }
+
   // T17.4: when detailMode is "window" (or "auto" resolving to window), open a window for the selected node's detail.
   createEffect(() => {
     if (effectiveDetailMode() !== "window") return
@@ -434,9 +427,7 @@ export const GraphView = (props: GraphViewProps) => {
       .map((id) => nodeByID(model(), id))
       .filter((node): node is GraphNode => node?.kind === "turn")
 
-  // T6.6: a long session is drawn as its recent tail. The window is declared — the view says how
-  // much of the session it shows — and it keeps the turn the reader is looking at.
-  // T18.1: when followLog is enabled, also keep the active turn from the log in the drawn window.
+  // T6.6: a long session is drawn as its recent tail.
   const scale = createMemo(() =>
     scaleWindow(
       model(),
@@ -446,7 +437,162 @@ export const GraphView = (props: GraphViewProps) => {
     ),
   )
 
-  // Hooks for comparison and group collapse
+  const scopeBase = (source: GraphViewData) =>
+    composeScopes(source, facets(), selectionVerbs.keptIds(), groupCollapse.collapsedGroups())
+
+  const turnScoped = createMemo(() => {
+    const turns = new Set(scale().turns)
+    for (const turn of comparisonHook.comparedTurns() ?? []) turns.add(turn)
+    return scopeToTurns(model(), turns)
+  })
+
+  const scoped = createMemo(() => scopeBase(turnScoped()))
+
+  const counts = createMemo(() => facetCounts(turnScoped(), facets()))
+
+  const comparison = comparisonHook.comparison
+
+  const compareSelectedTurns = comparisonHook.compareSelectedTurns
+  const clearComparison = comparisonHook.clearComparison
+
+  const toggleGroupByID = groupCollapse.toggleGroupByID
+
+  // T6.6: the first turn of the drawn window
+  const windowAnchor = createMemo(() => {
+    if (scale().hidden === 0) return undefined
+    return [...scale().turns][0]
+  })
+
+  // T18.1: when followLog is enabled and the active turn changes, frame it.
+  const [lastFramedTurn, setLastFramedTurn] = createSignal<string>()
+  createEffect(() => {
+    if (!followLog()) return
+    const turn = props.activeTurn
+    if (!turn) return
+    if (lastFramedTurn() === turn) return
+    if (!rendererReady()) return
+    const current = viewportTracker.viewport()
+    if (!current) return
+    setLastFramedTurn(turn)
+    viewportTracker.camera.frameReadable(turn)
+  })
+
+  // Width thresholds
+  const widthThresholds = createWidthThresholdTracker(
+    () => rootEl,
+    { narrow: 768, compact: 1030 }
+  )
+  onMount(() => {
+    widthThresholds.observe((flags: { narrow?: boolean; compact?: boolean }) => {
+      if (flags.narrow !== undefined) setNarrow(flags.narrow)
+      if (flags.compact !== undefined) setCompact(flags.compact)
+    })
+
+    const handleCopyTraceOutline = () => trace.copyTraceOutline()
+    window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
+    onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
+
+    const handleCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ name?: string; source?: string }>).detail
+      const name = detail?.name
+      if (name === "why" || name === "led-here" || name === "related") {
+        trace.startTrace(name, detail?.source)
+        return
+      }
+      if (name === "compare") {
+        compareSelectedTurns()
+        return
+      }
+      if (name === "note") notes.openNoteComposer()
+      if (name === "failureProgress") openWindow("failureProgress")
+      if (name === "find") openWindow("find")
+    }
+    window.addEventListener("graph:command", handleCommand)
+    onCleanup(() => window.removeEventListener("graph:command", handleCommand))
+  })
+
+  // Canvas region size tracking
+  onMount(() => {
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setCanvasSize((current) => (current.width === width && current.height === height ? current : { width, height }))
+    })
+    observer.observe(canvasRegionEl)
+    onCleanup(() => observer.disconnect())
+  })
+
+  let resizeMove: ((event: PointerEvent) => void) | undefined
+  let resizeEnd: (() => void) | undefined
+  const stopResize = () => {
+    if (resizeMove) window.removeEventListener("pointermove", resizeMove)
+    if (resizeEnd) window.removeEventListener("pointerup", resizeEnd)
+    resizeMove = undefined
+    resizeEnd = undefined
+  }
+  const startResize = (event: PointerEvent) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = inspectorWidth()
+    resizeMove = (moveEvent) => {
+      const max = Math.max(240, rootEl.clientWidth * 0.6)
+      setInspectorWidth(Math.min(max, Math.max(220, startWidth - (moveEvent.clientX - startX))))
+    }
+    resizeEnd = stopResize
+    window.addEventListener("pointermove", resizeMove)
+    window.addEventListener("pointerup", resizeEnd)
+  }
+  onCleanup(stopResize)
+
+  // V117: Touch gestures for mobile
+  onMount(() => {
+    const el = canvasRegionEl
+    if (!el) return
+    const cleanup = attachTouchGestures(el, {
+      getViewport: () => renderer?.getViewport?.(),
+      setViewport: (vp: RendererViewport) => renderer?.setViewport?.(vp),
+      capabilities: renderer?.capabilities ?? { zoomRange: { min: 0.1, max: 10 } },
+    })
+    onCleanup(cleanup)
+  })
+
+  const theme = () => props.theme ?? resolvedTheme()
+  // Card screen width
+  const cardScreenWidth = createMemo(() => {
+    const extent = viewportTracker.viewport()?.extent
+    const size = canvasSize()
+    if (!extent?.width || !size.width) return CARD_SIZE[0]
+    return (CARD_SIZE[0] * size.width) / extent.width
+  })
+  // T18.3: effective detail mode
+  const effectiveDetailMode = createMemo<DetailMode>(() => {
+    const mode = detailMode()
+    if (mode !== "auto") return mode
+    return canvasSize().width >= AUTO_DETAIL_THRESHOLD ? "panel" : "window"
+  })
+  const [tier, setTier] = createSignal<DetailTier>("mid")
+  createEffect(() => {
+    const width = cardScreenWidth()
+    const current = tier()
+    setTier(detailTier(width, current))
+  })
+  // T11.3 — file card details
+  const copy = createCardCopy(i18n)
+  const relations = createMemo(() => fileRelations(model()))
+  const relatedDetail = (node: GraphNode) => {
+    if (node.kind !== "file") return undefined
+    const relation = relations().get(node.id)
+    if (!relation) return undefined
+    const parts = [
+      relation.reads > 0 ? copy.reads(relation.reads) : undefined,
+      relation.writes > 0 ? copy.writes(relation.writes) : undefined,
+      relation.additions > 0 || relation.deletions > 0
+        ? copy.diff(relation.additions, relation.deletions)
+        : undefined,
+    ].filter((part): part is string => !!part)
+    return parts.length > 0 ? parts.join(" · ") : undefined
+  }
+
+  // displayPositions must be declared before rendererModel which uses it
   const comparisonHook = useComparison({
     model,
     liveModel: () => props.liveModel ?? model(),

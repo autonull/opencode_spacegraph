@@ -76,10 +76,13 @@
 - Verified `bun run typecheck --filter=@opencode/session-graph` passes
 - Verified `bun test packages/session-graph/src` passes (116 tests)
 
-### 1.5 Extract GraphStateInitializers
-- **File**: `packages/session-graph/src/ui/GraphStateInitializers.tsx`
-- Owns: All createSignal/createMemo for level, projection, depth, layout, files, detailMode, etc.
+### 🟡 1.5 Extract GraphStateInitializers (In Progress)
+- **File**: `packages/session-graph/src/ui/useGraphState.ts` (new, ~180 lines)
+- Extracted: Basic state signals (level, projection, depth, layout, files, detailMode, detailFraming, peek, followLog, facets, cardFacing, UI state, renderer state, responsive, manual layout, model)
+- Owns: All basic createSignal/createStore declarations
 - Returns: Object with all state + setters
+- Verified `bun test packages/session-graph/src` passes (116 tests)
+- Typecheck has remaining issues: duplicate declarations in GraphView.tsx need cleanup
 
 ### 1.6 Result: GraphView.tsx becomes thin composition (~200 lines)
 ```tsx
@@ -312,10 +315,11 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphWindowManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/GraphOverlayManager.tsx` | ✅ Created |
 | `packages/session-graph/src/ui/useGraphViewport.ts` | ✅ Created |
+| `packages/session-graph/src/ui/useGraphState.ts` | 🟡 Created (basic signals, needs cleanup) |
 
 ---
 
 ## Next Immediate Steps
 
-1. Extract GraphStateInitializers (1.5)
+1. Clean up duplicate declarations in GraphView.tsx (from useGraphState extraction)
 2. Complete GraphView breakdown to thin composition (1.6)
