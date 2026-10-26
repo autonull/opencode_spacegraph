@@ -1,3 +1,5 @@
+import { createEffect, createSignal, on } from "solid-js"
+import { createEventListener } from "@solid-primitives/event-listener"
 import { useCommand, type CommandOption } from "@/shell/commands/command"
 import { adjacentTabKey } from "@/shell/titlebar/tab-order"
 import { useDialog } from "@opencode/ui/context/dialog"
@@ -14,9 +16,8 @@ import { fetchSessionExport, saveSessionExport, sessionExportFilename } from "@/
 import { usePlatform } from "@/runtime/platform/platform"
 import type { SessionModel } from "@/session/model"
 import type { SessionRevert } from "@/session/revert"
-import { Command } from "@opencode/gui-extensions/sdk"
-import { useExtensionHost } from "@/runtime/extension/host"
-import type { Region } from "@/runtime/extension/panels"
+import { useExtensionClaims, useExtensionScoped } from "@/runtime/extension/commands"
+import { sideTabShortcuts } from "@/runtime/extension/closed-tabs"
 import { graphCommands } from "./graph-commands"
 
 type SessionCommandSource = {
@@ -58,7 +59,8 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const data = useData()
   const settings = useSettings()
   const platform = usePlatform()
-  const host = useExtensionHost()
+  const extensionScoped = useExtensionScoped()
+  const extensionClaims = useExtensionClaims()
 
   const openDialog = async <T,>(load: () => Promise<T>, show: (value: T) => void) => {
     const owner = actions.session.ownership.capture()
@@ -81,12 +83,31 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     return entry && !entry.tab.pinned ? entry.key : undefined
   }
 
+  const inSide = actions.region.focus
+  // ⌘T and ⌘W inside the side region open and close its tabs, unless the focused panel binds the key itself there.
+  const sideKey = (event: KeyboardEvent) => inSide(event) && !extensionClaims(event)
+  // ⌘W on the side panel's last tab closes the panel and moves focus out of it, where one press too many would close
+  // the session tab. Until the user moves on, by clicking, focusing, another key, or another session, ⌘W closes nothing.
+  // The close moves focus synchronously, before this is set, so its own focusin does not clear it.
+  const [emptied, setEmptied] = createSignal(false)
+  const resetEmptied = () => setEmptied(false)
+  createEventListener(document, ["pointerdown", "focusin"], resetEmptied, { capture: true })
+  createEventListener(window, "blur", resetEmptied)
+  createEventListener(
+    document,
+    "keydown",
+    (event) => {
+      if (["Meta", "Control", "Shift", "Alt"].includes(event.key)) return
+      if (!command.matches("file.close", event)) resetEmptied()
+    },
+    { capture: true },
+  )
+  createEffect(
+    on(() => [actions.session.layout.tabKey(), actions.session.layout.view().side.opened()], resetEmptied, {
+      defer: true,
+    }),
+  )
   const cycleSideTabs = () => actions.session.layout.view().side.opened() && actions.region.keys().length > 1
-
-  // Focus inside an extension command's scope belongs to that extension, which binds its own shortcuts there.
-  const extensionScoped = (target: EventTarget | null) =>
-    target instanceof Element &&
-    host.items(Command).some((item) => !!item.value.scope && !!target.closest(item.value.scope))
 
   const sideFocused = (target: EventTarget | null) => {
     const element =
@@ -207,17 +228,29 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     )
   }
 
+  // In the pane holding focus; the region itself, or a key a native page handed over, means the selected tab's pane.
+  const focusedPane = () => {
+    const pane = document.activeElement?.closest("[data-pane-content]")?.getAttribute("data-pane-content")
+
+    return pane === "side" || pane === "split" ? pane : undefined
+  }
+
   const closeTab = () => {
+    if (actions.region.closeNewTab(focusedPane())) return
     const tab = closableTab()
 
     if (tab) actions.region.close(tab)
   }
 
+  const openSideTab = () => actions.region.openNewTab(focusedPane())
+
   const selectAdjacentSideTab = (offset: -1 | 1) => {
     const key = adjacentTabKey(actions.region.keys(), actions.region.active(), offset)
 
-    if (!key) return
+    if (key) selectSideTab(key)
+  }
 
+  const selectSideTab = (key: string) => {
     actions.region.select(key)
 
     const panel = document.getElementById("review-panel")
@@ -323,7 +356,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     sessionCommand({
       id: "session.new",
       title: language.t("command.session.new"),
-      keybind: "mod+shift+s",
       slash: "new",
       onSelect: (source) => command.trigger("tab.new", source),
     }),
@@ -385,6 +417,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const fileCmds = () => {
     const tab = closableTab()
     const cycle = cycleSideTabs()
+    const side = actions.session.layout.view().side.opened()
 
     return [
       fileCommand({
@@ -395,15 +428,37 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         slash: "open",
         onSelect: openFile,
       }),
-      tab &&
+      fileCommand({
+        id: "file.close",
+        title: language.t("command.tab.close"),
+        keybind: "mod+w",
+        follows: "tab.close",
+        hidden: !tab,
+        when: (event) => (side ? sideKey(event) : emptied()),
+        onSelect: (source) => {
+          if (!side) return
+          closeTab()
+          setEmptied(source === "keybind" && !actions.session.layout.view().side.opened())
+        },
+      }),
+      side &&
         fileCommand({
-          id: "file.close",
-          title: language.t("command.tab.close"),
-          keybind: "mod+w",
-          follows: "tab.close",
-          when: (event) => !extensionScoped(event.target),
-          onSelect: closeTab,
+          id: "file.tab.new",
+          title: "",
+          keybind: settings.keybinds.get("tab.new") ?? "mod+t",
+          hidden: true,
+          when: sideKey,
+          onSelect: openSideTab,
         }),
+      // As in a browser: in the side panel, ⌘⇧T reopens a side tab rather than a session tab.
+      fileCommand({
+        id: "file.tab.reopen",
+        title: "",
+        keybind: settings.keybinds.get("tab.reopenClosed") ?? "mod+shift+t",
+        hidden: true,
+        when: inSide,
+        onSelect: () => actions.region.reopen(),
+      }),
       cycle &&
         fileCommand({
           id: "file.tab.prev",
@@ -422,6 +477,14 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
           when: (event) => sideFocused(event.target),
           onSelect: () => selectAdjacentSideTab(1),
         }),
+      ...(actions.session.layout.view().side.opened()
+        ? sideTabShortcuts({
+            keys: actions.region.keys,
+            active: actions.region.active,
+            select: selectSideTab,
+            when: inSide,
+          }).map(fileCommand)
+        : []),
     ].filter((v) => !!v)
   }
 
@@ -445,13 +508,38 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
-  const viewCmds = () => graphCommands({
-    actions,
-    graphEnabled,
-    shown,
-  })
-
-  const messageCmds = () => [
+const viewCmds = () => [
+    viewCommand({
+      id: "review.toggle",
+      title: language.t("command.review.toggle"),
+      keybind: "mod+shift+r",
+      onSelect: actions.region.toggle,
+    }),
+    ...(actions.region.pane("bottom").keys().length > 0
+      ? [
+          viewCommand({
+            id: "bottom.toggle",
+            title: language.t("command.bottom.toggle"),
+            keybind: "mod+j",
+            onSelect: () => {
+              const bottom = actions.session.layout.view().bottom
+              bottom.setOpened(!bottom.opened())
+            },
+          }),
+        ]
+      : []),
+    ...graphCommands({
+      actions,
+      graphEnabled,
+      shown,
+    }),
+    viewCommand({
+      id: "input.focus",
+      title: language.t("command.input.focus"),
+      keybind: "ctrl+l",
+      onSelect: focusInput,
+    }),
+  ]
     sessionCommand({
       id: "message.previous",
       title: language.t("command.message.previous"),

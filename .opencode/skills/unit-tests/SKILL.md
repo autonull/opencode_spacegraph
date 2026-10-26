@@ -13,7 +13,7 @@ Read these first; this skill does not repeat them:
 - `packages/app/AGENTS.md` Tests (`packages/desktop` and `packages/gui-extensions` follow it): one owner per contract, and no production seams for tests.
 - `packages/ai/AGENTS.md`: cassettes. The `effect` skill: `it.effect` and `it.live`.
 
-Sibling skills: `tui-tests` (OpenTUI renderer tests in tui and cli), `app-e2e-tests` (Playwright in `packages/app/e2e`), `component-tests` (Storybook Playwright). This skill owns cli subprocess and service tests.
+Sibling skills: `tui-tests` (OpenTUI renderer tests in tui and cli), `app-e2e-tests` (Playwright in `packages/app/e2e`), `component-tests` (Playwright on stories, `packages/stories`). This skill owns cli subprocess and service tests.
 
 ## Know the budget
 
@@ -81,7 +81,7 @@ To avoid adding more:
   - Do not write per-file `git init` plus `git config` copies. server still has two (`packages/server/test/vcs.test.ts:215-218`, `packages/server/test/worktree.test.ts:131-133`); server already imports core fixtures such as `tmpdir`.
   - Use `-c user.name=… -c user.email=…` only for commits the test makes itself (`npm.test.ts:53`). Repos where production code commits later (snapshot, worktree, vcs) need repo-local identity.
   - Keep identity repo-local. The unit job's "Configure git identity" step sets a global identity, but core's `script/test.ts` and cli's `isolatedEnv` replace HOME, so it is invisible there and visible to server and tui. That HOME isolation keeps core's missing-identity coverage: do not depend on CI's identity, and do not add a global gitconfig in core.
-- **Independent children** start together (`Promise.all`, `packages/ai/test/exports.test.ts:63`). `packages/app/test-browser/playwright-config.test.ts` runs sequential `Bun.spawnSync` (3.5s on Windows, 1.4s on Linux); `packages/desktop/scripts/windows-installer.test.ts` makes 6 sequential cold `pwsh` starts for ACL reads, which one `pwsh` call could batch.
+- **Independent children** start together (`Promise.all`, `packages/ai/test/exports.test.ts:63`). `packages/app/test-browser/playwright-config.test.ts` runs sequential `Bun.spawnSync` (3.5s on Windows, 1.4s on Linux); `packages/desktop/script/windows-installer.test.ts` makes 6 sequential cold `pwsh` starts for ACL reads, which one `pwsh` call could batch.
 - **Size contention and thresholds to the claim.** `flock.test.ts:46` starts 16 bun workers; use only as many as still exceed the 4 CI vCPUs. A hard-coded threshold forces huge fixtures: `packages/core/test/git.test.ts:354` writes 2,100 files to cross `looseObjectLimit = 2048` (`packages/core/src/git.ts:50`), 2.7s locally and slower on Windows. Make the threshold an option with the production default, cross a small value in the test, and assert the default once.
 
 ## Windows-only failures

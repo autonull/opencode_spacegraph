@@ -179,6 +179,7 @@ const Group = HttpApiGroup.make("mock")
     }),
   )
   .add(HttpApiEndpoint.get("websearchProviders", "/api/websearch/provider", { success: Json }))
+  .add(HttpApiEndpoint.get("usageLimits", "/api/experimental/usage/limits", { success: Json }))
   .add(
     HttpApiEndpoint.get("graph.workspace", "/api/graph/workspace", {
       query: Schema.Struct({
@@ -242,6 +243,8 @@ const Group = HttpApiGroup.make("mock")
       error: Unsupported,
     }),
   )
+  .add(HttpApiEndpoint.post("fsWatch", "/api/experimental/fs/watch", { success: NoContent }))
+  .add(HttpApiEndpoint.delete("fsUnwatch", "/api/experimental/fs/watch", { success: NoContent }))
   .add(HttpApiEndpoint.get("shell", "/api/shell", { success: Json }))
   .add(
     HttpApiEndpoint.get("shellOutput", "/api/shell/:id/output", {

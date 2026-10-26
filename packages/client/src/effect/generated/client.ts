@@ -205,6 +205,7 @@ import type {
   SkillListOutput,
   RpcCallInput,
   RpcCallOutput,
+  EventSubscribeInput,
   EventSubscribeOutput,
   PtyListInput,
   PtyListOutput,
@@ -863,7 +864,9 @@ const adaptGroupMessage = (raw: RawClient["server.message"]) => ({ list: Endpoin
 
 const EndpointModelList = (raw: RawClient["server.model"]) => (input?: ModelListInput) =>
   preserveEffect<ModelListOutput>()(
-    raw["model.list"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
+    raw["model.list"]({ query: { location: input?.["location"], types: input?.["types"] } }).pipe(
+      Effect.mapError(mapClientError),
+    ),
   )
 
 const EndpointModelDefault = (raw: RawClient["server.model"]) => (input?: ModelDefaultInput) =>
@@ -1328,10 +1331,10 @@ const EndpointRpcCall = (raw: RawClient["server.rpc"]) => (input: RpcCallInput) 
 
 const adaptGroupRpc = (raw: RawClient["server.rpc"]) => ({ call: EndpointRpcCall(raw) })
 
-const EndpointEventSubscribe = (raw: RawClient["server.event"]) => () =>
+const EndpointEventSubscribe = (raw: RawClient["server.event"]) => (input?: EventSubscribeInput) =>
   preserveStream<EventSubscribeOutput>()(
     Stream.unwrap(
-      raw["event.subscribe"]({}).pipe(
+      raw["event.subscribe"]({ query: { types: input?.["types"] } }).pipe(
         Effect.mapError(mapClientError),
         Effect.map((stream) => stream.pipe(Stream.mapError(mapClientError))),
       ),
@@ -1629,7 +1632,13 @@ const EndpointVcsBranchList = (raw: RawClient["server.vcs"]) => (input?: VcsBran
 const EndpointVcsDiff = (raw: RawClient["server.vcs"]) => (input: VcsDiffInput) =>
   preserveEffect<VcsDiffOutput>()(
     raw["vcs.diff"]({
-      query: { location: input["location"], mode: input["mode"], base: input["base"], context: input["context"] },
+      query: {
+        location: input["location"],
+        mode: input["mode"],
+        base: input["base"],
+        context: input["context"],
+        untracked: input["untracked"],
+      },
     }).pipe(Effect.mapError(mapClientError)),
   )
 

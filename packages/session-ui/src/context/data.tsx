@@ -68,6 +68,8 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
     data: Data
     directory: string
     sessionID?: string
+    /** Whether message meta names the agent; the app follows its Show agent setting. Defaults to true. */
+    agents?: boolean
     shellRunning?: (id: string) => boolean
     shellOutput?: (input: ShellOutputInput) => Promise<ShellOutputOutput>
     turnDiff?: TurnDiffSource
@@ -86,6 +88,9 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
       },
       get sessionID() {
         return props.sessionID
+      },
+      get agents() {
+        return props.agents ?? true
       },
       get backgroundCompaction() {
         return props.backgroundCompaction === true
