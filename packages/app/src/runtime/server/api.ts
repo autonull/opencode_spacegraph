@@ -1,4 +1,4 @@
-import { OpenCode, type OpenCodeClient } from "@opencode/client/promise"
+import { OpenCode } from "@opencode/client/promise"
 import type { ServerConnection } from "@/runtime/server/registry"
 import { decode64 } from "@/runtime/persistence/base64"
 import type { ServerGraphWorkspaceInput, WorkspaceSnapshot } from "@opencode/client/promise"
@@ -20,28 +20,6 @@ export function authFromToken(token: string | null) {
   }
 }
 
-// Extended server API with graph workspace endpoint
-export interface ServerGraphApi {
-  workspace: (input?: ServerGraphWorkspaceInput) => Promise<WorkspaceSnapshot>
-}
-
-// The base server object from the generated client
-type BaseServer = {
-  info: (requestOptions?: OpenCode.RequestOptions) => Promise<any>
-  pair: (requestOptions?: OpenCode.RequestOptions) => Promise<any>
-  connect: (input: any, requestOptions?: OpenCode.RequestOptions) => Promise<any>
-}
-
-// Extended server object with graph
-export interface ExtendedServer extends BaseServer {
-  graph: ServerGraphApi
-}
-
-// Extended client API
-export interface ServerApi extends OpenCodeClient {
-  server: ExtendedServer
-}
-
 /**
  * The server's ranged read of one file, for media elements. They cannot send the Authorization header, and a credential
  * never goes in a DOM URL, so a server that needs a password has none: its media downloads through the API instead.
@@ -57,6 +35,18 @@ export function fileStreamUrl(server: ServerConnection.HttpBase, input: { path: 
   url.searchParams.set("location[directory]", input.directory)
 
   return url.href
+}
+
+type RawClient = ReturnType<typeof OpenCode.make>
+
+type ServerWithGraph = RawClient["server"] & {
+  graph: {
+    workspace: (input?: ServerGraphWorkspaceInput) => Promise<WorkspaceSnapshot>
+  }
+}
+
+export type ServerApi = Omit<RawClient, "server"> & {
+  server: ServerWithGraph
 }
 
 export function createApiForServer(input: {
@@ -75,7 +65,6 @@ export function createApiForServer(input: {
       : undefined,
   })
 
-  // Add the graph workspace endpoint to the server object
   const graphWorkspace = async (input?: ServerGraphWorkspaceInput): Promise<WorkspaceSnapshot> => {
     const result = await raw["server.graph"].workspace(input)
     return result.data
@@ -89,5 +78,5 @@ export function createApiForServer(input: {
         workspace: graphWorkspace,
       },
     },
-  } as ServerApi
+  } satisfies ServerApi
 }
