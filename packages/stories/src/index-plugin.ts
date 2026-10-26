@@ -29,11 +29,19 @@ export function storyIndex(roots: string[]): Plugin {
 
         if (!kind) return []
 
-        return [...source.matchAll(/^export const (\w+)/gm)].map((match) => [
-          `${sanitize(kind)}--${sanitize(startCase(match[1]!))}`,
+        const namedExports = [...source.matchAll(/^export const (\w+)/gm)].map((match) => [
+          `${sanitize(kind)}--${sanitize(startCase(match[1]))}`,
           index,
           match[1],
         ])
+
+        // Also add the base ID (without export name) as an alias for the first export (usually "Default")
+        // so tests can mount stories by just the base ID like "session-graph-adapter"
+        const baseEntry = namedExports.length > 0
+          ? [[sanitize(kind), index, namedExports[0][2]]]
+          : []
+
+        return [...baseEntry, ...namedExports]
       })
 
       return [

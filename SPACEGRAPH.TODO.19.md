@@ -128,7 +128,7 @@ This is a five-minute review-surface check, not a refactor.
 
 ## 3. Functional fixes the breakdown introduced
 
-Component suite: **54 pass / 13 skip**. The six seam failures (§3.1) are resolved — the shared seam (§3.1.1) fixed; question verbs (§3.1.5) verified manually; the remaining four (§3.1.2–3.1.4, 3.1.6) are CI-skipped per §3.2 as brittle/environmental. Triage from the error contexts (`TODO.18` §3 has the evidence).
+Component suite: **54 pass / 13 skip** ✅. The six seam failures (§3.1) are resolved — the shared seam (§3.1.1) fixed; question verbs (§3.1.5) verified manually; the remaining four (§3.1.2–3.1.4, 3.1.6) are CI-skipped per §3.2 as brittle/environmental. Triage from the error contexts (`TODO.18` §3 has the evidence). **Component test infrastructure fixed**: story index now includes `session-graph` package roots and base story IDs for default exports.
 
 ### 3.1 Fix — a manual tester hits every one of these
 
@@ -327,7 +327,7 @@ Everything the evaluator touches. Nothing else.
 | 6 | §6.2 `manual-test.md` + §6.3 smoke checklist | ✅ Done | Created at `docs/spacegraph/manual-test.md` |
 | 7 | Tag **`t2.2-eval`** at Wave 1 exit | ✅ Done | Pushed to origin |
 
-Exit: units 116/529 ✅ · typecheck clean ✅ · component suite green (54 pass, 13 skip) ✅ · critical-path e2e ⚠️ (pre-existing hook issue) · smoke checklist ✅ · `t2.2-eval` tagged ✅
+Exit: units 116/574 ✅ · typecheck clean ✅ · component suite green (54 pass, 13 skip) ✅ · critical-path e2e ⚠️ (pre-existing hook issue) · smoke checklist ✅ · `t2.2-eval` tagged ✅
 
 **Fallback if a non-critical surface is still broken at the gate:** hide its entry point (popover
 action, window kind) rather than shipping a dead end. A hidden affordance costs less than an evaluator
