@@ -316,7 +316,7 @@ git clone <fork> && bun run graph:setup && bun run graph:dev
 
 | Phase | Work | Est. Effort |
 |-------|------|-------------|
-| **1** | Test isolation config + Layout overlap fix + Skip 3D in CI + Drop Cytoscape tests | 3–5 hrs |
+| **1** | Test isolation config + Layout overlap fix + Skip 3D in CI + Deprioritize Cytoscape tests | 3–5 hrs |
 | **2** | E2E Suspense fix + Screenshots + Perf | 2–3 hrs |
 | **3** | SpaceGraphJS publish + Upstream sync + Hosted demo | 2–3 hrs |
 
@@ -329,7 +329,7 @@ git clone <fork> && bun run graph:setup && bun run graph:dev
 ```
 Test isolation config (15 min)
          ↓
-Layout overlap fix (2-4 hrs) → Skip 3D in CI (5 min) → Drop Cytoscape (10 min)
+Layout overlap fix (2-4 hrs) → Skip 3D in CI (5 min) → Deprioritize Cytoscape (5 min)
          ↓
 E2E Suspense fix (1-2 hrs) → Screenshots + Perf (30 min)
          ↓
@@ -423,12 +423,12 @@ SpaceGraphJS publish (30 min) → Upstream sync (1-2 hrs) → Demo deploy (30 mi
 - 3D is a progressive enhancement; 2D is the baseline
 - Test locally with GPU, skip in headless CI
 
-**1.4 Drop Cytoscape from Test Suite (Delete — 10 min)**
-- Remove `graph-capture.spec.ts` Cytoscape test (optional backend)
-- Remove Cytoscape from story harnesses
-- SpaceGraph renderer is primary; Cytoscape is legacy fallback
+**1.4 Deprioritize Cytoscape Tests (Config Only — 5 min)**
+- Add `@skip-browser` or conditional skip to `graph-capture.spec.ts` Cytoscape test
+- Keep Cytoscape in story harnesses (functional, just not tested in CI)
+- SpaceGraph renderer is primary; Cytoscape is optional backend
 
-**Result**: 53 → ~61 passing (layout + isolation), 3D skipped, Cytoscape dropped
+**Result**: 53 → ~61 passing (layout + isolation), 3D skipped in CI, Cytoscape tests skipped in CI
 
 ---
 
@@ -467,14 +467,14 @@ cd spacegraphjs && pnpm version patch && pnpm publish --access public
 
 ---
 
-## Deprioritized (Explicitly Dropped)
+## Deprioritized (Skipped in CI, Retained in Codebase)
 
-| Item | Reason |
-|------|--------|
-| Cytoscape test/capture | Optional backend; SpaceGraph is primary |
-| 3D depth in CI | Progressive enhancement; test locally only |
-| Full test isolation hooks | `reuseBrowser: false` handles it at config level |
-| Manual cleanup in stories | Not needed with browser reuse disabled |
+| Item | Status | Reason |
+|------|--------|--------|
+| Cytoscape test/capture | `@skip-browser` in CI | Optional backend; SpaceGraph is primary |
+| 3D depth in CI | `@skip-browser` in CI | Progressive enhancement; test locally only |
+| Full test isolation hooks | Not needed | `reuseBrowser: false` handles it at config level |
+| Manual cleanup in stories | Not needed | Not needed with browser reuse disabled |
 
 ---
 
@@ -482,7 +482,7 @@ cd spacegraphjs && pnpm version patch && pnpm publish --access public
 
 | Phase | Work | Est. Effort |
 |-------|------|-------------|
-| **1** | Test isolation config + Layout overlap fix + Skip 3D + Drop Cytoscape | 3-5 hrs |
+| **1** | Test isolation config + Layout overlap fix + Skip 3D + Deprioritize Cytoscape | 3-5 hrs |
 | **2** | E2E Suspense fix + Screenshots + Perf | 2-3 hrs |
 | **3** | SpaceGraphJS publish + Upstream sync + Demo | 2-3 hrs |
 
@@ -569,7 +569,7 @@ cd spacegraphjs && pnpm run build && pnpm test     # → all pass
 | 1 | Test isolation config | `packages/session-graph/playwright.components.config.ts` |
 | 1 | Layout overlap fix | `spacegraphjs/src/layout/LaneLayout.ts` |
 | 1 | Skip 3D in CI | `packages/session-graph/component-tests/graph-3d.spec.ts`, `graph-motion.spec.ts` |
-| 1 | Drop Cytoscape | `packages/session-graph/component-tests/graph-capture.spec.ts`, `packages/session-graph/src/canvas/renderer-registry.ts` |
+| 1 | Deprioritize Cytoscape | `packages/session-graph/component-tests/graph-capture.spec.ts` (add skip) |
 | 2 | E2E Suspense fix | `packages/app/e2e/graph/*.spec.ts`, `packages/session-graph/src/ui/GraphView.tsx` (lazy import) |
 | 2 | Screenshots/Perf | `packages/session-graph/scripts/graph-capture.ts`, `packages/session-graph/scripts/graph-scale.ts` |
 | 3 | SpaceGraphJS publish | `spacegraphjs/package.json`, `packages/session-graph/package.json` (deps) |
