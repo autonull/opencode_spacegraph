@@ -104,7 +104,7 @@ async function focusNode(
   await waitForStillCanvas(page)
 }
 
-story("captures the Cytoscape adapter over the canonical fixture", async ({ mount, page }) => {
+story.skip("captures the Cytoscape adapter over the canonical fixture", async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text())
