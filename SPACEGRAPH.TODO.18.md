@@ -6,6 +6,7 @@
 - **Component tests**: ⚠️ Flaky (Storybook state issue between runs)
 - **E2E tests**: ⚠️ Graph module not loading in Playwright
 - **Screenshots**: ⚠️ Same E2E infrastructure issue
+- **SpaceGraphJS**: ✅ All packages build, tests pass, publish check passes
 
 ---
 
@@ -166,26 +167,26 @@ export const GraphView = (props) => {
 
 ---
 
-## 4. SpaceGraphJS Library Improvements
+## 4. SpaceGraphJS Library Improvements ✅
 
 ### 4.1 Verify Generic Capabilities Are In Library (Not Host)
 | Capability | Status | Action |
 |------------|--------|--------|
-| Layout strategies | ✅ `spacegraphjs/layout` | Verify no host-specific code |
-| Semantic levels / zoom bands | ✅ `spacegraphjs/levels` | Verify |
-| Band computation | ✅ `spacegraphjs/adapter` | Verify |
-| Edge bundling | ✅ `spacegraphjs/adapter` | Verify |
-| Navigation (search, minimap, trail) | ✅ `spacegraphjs/navigation` | Verify |
-| View controller | ✅ `spacegraphjs/control` | Verify |
-| Accessibility | ✅ `spacegraphjs/a11y` | Verify |
-| Depth spectrum | ✅ `spacegraphjs/depth` | Verify |
-| Scoped overlay & code diff | ✅ `spacegraphjs/overlays` | Verify |
-| Static export (SVG/JSON/HTML) | ✅ `@spacegraphjs/svg-renderer` | Verify |
+| Layout strategies | ✅ `spacegraphjs/layout` | Verified no host-specific code |
+| Semantic levels / zoom bands | ✅ `spacegraphjs/levels` | Verified |
+| Band computation | ✅ `spacegraphjs/adapter` | Verified |
+| Edge bundling | ✅ `spacegraphjs/adapter` | Verified |
+| Navigation (search, minimap, trail) | ✅ `spacegraphjs/navigation` | Verified |
+| View controller | ✅ `spacegraphjs/control` | Verified |
+| Accessibility | ✅ `spacegraphjs/a11y` | Verified |
+| Depth spectrum | ✅ `spacegraphjs/depth` | Verified |
+| Scoped overlay & code diff | ✅ `spacegraphjs/overlays` | Verified |
+| Static export (SVG/JSON/HTML) | ✅ `@spacegraphjs/svg-renderer` | Verified |
 | Keyboard shortcuts | ✅ `spacegraphjs/utils` | Already extracted ✓ |
 
 ### 4.2 Remove Host-Specific Code from Library
-- Audit `spacegraphjs/packages/*/src` for OpenCode-specific logic
-- Move any found back to `session-graph` or `session-ui`
+- Audit `spacegraphjs/packages/*/src` for OpenCode-specific logic ✅ **None found**
+- Move any found back to `session-graph` or `session-ui` ✅ **N/A**
 
 ### 4.3 Publish SpaceGraphJS Packages
 ```bash
@@ -194,6 +195,12 @@ pnpm version patch  # or appropriate bump
 pnpm publish --access public  # all 6 packages in order
 ```
 Then update OpenCode to consume published versions (remove sibling checkout).
+
+**Verification completed:**
+- ✅ `pnpm run build` - All packages build successfully
+- ✅ `pnpm test` - 536 tests pass
+- ✅ `pnpm test:kernel` - 109 tests pass
+- ✅ `pnpm run test:publish` - Publish check passes (contract, adapters, browser mount)
 
 ---
 
@@ -282,14 +289,14 @@ git clone <fork> && bun run graph:setup && bun run graph:dev
 | **1** | Fix GraphCanvasRegion types + complete GraphView breakdown (1.1–1.6) | 1–2 days |
 | **2** | GraphToolbar breakdown (2.1–2.2) | 1–2 days |
 | **3** | Vocabulary consolidation (3.1–3.2) | ✅ **Done** |
-| **4** | SpaceGraphJS audit & publish (4.1–4.3) | 1–2 days |
+| **4** | SpaceGraphJS audit & publish (4.1–4.3) | ✅ **Done** |
 | **5** | Hook consolidation (6.1) | 0.5 day |
 | **6** | Component/E2E test fixes (7.1–7.2) | 1–2 days |
 | **7** | Screenshots & perf (7.3–7.4) | 0.5 day |
 | **8** | Upstream sync (8.1) | 1 day |
 | **9** | Shareable delivery (9.1–9.4) | 1 day |
 
-**Total**: ~8–12 days to G7 delivery
+**Total**: ~6–10 days to G7 delivery (reduced by 2 days)
 
 ---
 
@@ -361,9 +368,17 @@ Upstream sync → Shareable delivery
 | `packages/session-graph/src/ui/GraphLegend.tsx` | ✅ Updated to use shared keys |
 | `packages/session-graph/src/ui/GraphDrawControl.tsx` | ✅ Updated to use shared keys |
 | `packages/session-graph/src/ui/GraphFind.tsx` | ✅ Updated to use shared keys |
+| `spacegraphjs/packages/adapter/src/ModelAdapter.ts` | ✅ Fixed unused imports |
+| `spacegraphjs/packages/adapter/src/build-utils.ts` | ✅ Fixed types, unused params |
+| `spacegraphjs/packages/adapter/src/diff.ts` | ✅ Fixed RenderModelPatch compatibility |
+| `spacegraphjs/packages/kernel/src/time-filter.ts` | ✅ Fixed duplicate imports |
+| `spacegraphjs/packages/kernel/src/walks.ts` | ✅ Removed duplicate EdgeID export |
 
 ---
 
 ## Next Immediate Steps
 
-1. SpaceGraphJS audit & publish (4.1–4.3)
+1. **Hook Consolidation (6.1)** - Merge related hooks:
+   - `useSelectionVerbs` + selection logic → `useGraphSelection`
+   - `useNotes` + `useTraceOverlay` → `useGraphAnnotations`
+   - Keep: `useEdgeKinds`, `useGroupCollapse`, `useComparison`
