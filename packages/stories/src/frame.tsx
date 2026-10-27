@@ -46,7 +46,7 @@ function Frame() {
         const draw = entry.render ?? meta.render
         const parameters = { ...meta.parameters, ...entry.parameters }
         const override = parameters.themes?.themeOverride
-        const fullscreen = parameters.layout === "fullscreen"
+        const fullscreen = parameters.layout === "fullscreen" || globals.layout === "fullscreen"
 
         if (!fullscreen) document.body.style.padding = "1rem"
 

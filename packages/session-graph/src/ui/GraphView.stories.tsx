@@ -290,7 +290,7 @@ export const NoSelection = {
 }
 
 export const Detail = {
-  render: () => <ViewHarness level="detail" selection="result:prt_tool_shell_2" />,
+  render: () => <ViewHarness level="detail" selection="tool:prt_tool_read_1" />,
 }
 
 /** A turn's diff node: the changed files load on demand through the host diff source (RF.8). */
