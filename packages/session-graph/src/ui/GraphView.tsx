@@ -191,6 +191,8 @@ export type GraphViewProps = {
   link?: string
   /** Exposes the live renderer so a host can drive the camera (T6.18/T6.19). */
   onRenderer?: (renderer: GraphRenderer | undefined) => void
+  /** Fires when the renderer has been mounted with its id. */
+  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onDepthChange?: (depth: DepthMode) => void
@@ -1338,7 +1340,10 @@ export const GraphView = (props: GraphViewProps) => {
     
     // Renderer
     onRenderer: props.onRenderer,
-    onRendererMounted: props.onRenderer,
+    onRendererMounted: (renderer: GraphRenderer, id: RendererID) => {
+      props.onRenderer?.(renderer)
+      props.onRendererMounted?.(renderer, id)
+    },
     onError: setError,
   }
 

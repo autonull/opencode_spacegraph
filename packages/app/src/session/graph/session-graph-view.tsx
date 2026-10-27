@@ -234,7 +234,7 @@ export function SessionGraphView(props: {
           liveModel={fullModel()}
           onCheckpoint={setCheckpoint}
           depth={graph.depth()}
-          preferredRenderer={graph.renderer()}
+          preferredRenderer={() => graph.renderer() ?? "spacegraph"}
           selection={graph.selected()}
           layout={graph.layout()}
           files={graph.files()}

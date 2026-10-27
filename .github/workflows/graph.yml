@@ -22,6 +22,7 @@ jobs:
               with:
                   repository: autonull/spacegraphjs7
                   path: spacegraphjs
+                  ref: 9df9b92
 
             - name: Setup Bun
               uses: oven-sh/setup-bun@v2

@@ -182,6 +182,8 @@ export type CardCopy = {
   /** The header toggle's action on a group card. */
   collapseGroup: () => string
   expandGroup: () => string
+  /** The copy button label. */
+  copyButton: () => string
 }
 
 export type CardTemplateOptions = {
@@ -474,7 +476,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     // V116: hover-only copy icon for cards with copyable content
     const copyText = copyableContent(node)
     const copyButton = copyText
-      ? `<button type="button" class="card-copy-btn" aria-label="Copy" data-copy-text="${escapeHtml(copyText)}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;opacity:0;transition:opacity 0.15s;margin-left:auto;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
+      ? `<button type="button" class="card-copy-btn" aria-label="${escapeHtml(options.copy.copyButton())}" data-copy-text="${escapeHtml(copyText)}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;opacity:0;transition:opacity 0.15s;margin-left:auto;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
       : ""
 
     // One emphasis resolver: computes the single emphasis level and style

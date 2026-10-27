@@ -489,12 +489,7 @@ const HOSTILE_MODEL: GraphViewData = {
 }
 
 const HostileHarness = () => {
-  const [renderer, _setRenderer] = createSignal<RendererID>("spacegraph")
-
-  // Debug: log renderer changes
-  createEffect(() => {
-    console.log('[HostileHarness] renderer changed to:', renderer())
-  })
+  const [renderer] = createSignal<RendererID>("spacegraph")
 
   return (
     <ViewHarness model={HOSTILE_MODEL} selection="tool:hostile" level="execution" preferredRenderer={renderer} />

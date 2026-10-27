@@ -55,6 +55,9 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
   { label: "SVG renderer", cwd: join(spacegraphjs, "packages/svg-renderer"), cmd: ["bun", "test"] },
   { label: "session-graph unit tests", cwd: join(root, "packages/session-graph"), cmd: ["bun", "test", "src"] },
   { label: "session-graph component contract", cwd: join(root, "packages/session-graph"), cmd: ["bun", "run", "test:components"] },
+  { label: "session-ui graph unit tests", cwd: join(root, "packages/session-ui"), cmd: ["bun", "test", "src/graph"] },
+  { label: "app e2e graph", cwd: join(root, "packages/app"), cmd: ["bun", "exec", "playwright", "test", "e2e/graph/session-graph.spec.ts"] },
+  { label: "app e2e side panels", cwd: join(root, "packages/app"), cmd: ["bun", "exec", "playwright", "test", "e2e/regression/side-panels.spec.ts"] },
   { label: "graph capture (verify)", cwd: root, cmd: ["bun", "run", "graph:capture", "--mode=verify"] },
   {
     label: "published packages (a clean consumer outside the monorepo)",

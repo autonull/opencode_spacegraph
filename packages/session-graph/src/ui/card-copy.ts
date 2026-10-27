@@ -21,5 +21,6 @@ export function createCardCopy(i18n: UiI18n): CardCopy {
     },
     collapseGroup: () => i18n.t("ui.sessionGraph.status.collapseGroup"),
     expandGroup: () => i18n.t("ui.sessionGraph.status.expandGroup"),
+    copyButton: () => i18n.t("ui.sessionGraph.card.copyButton"),
   }
 }

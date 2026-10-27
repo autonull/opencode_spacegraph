@@ -14,7 +14,6 @@ type Harness = {
   ready?: GraphCanvasReady
   groupToggle?: string
   groupMenu?: { id: string; x: number; y: number }
-  onLayoutApplied: (handler: (payload: { layout: string; duration: number; timestamp: number }) => void) => () => void
 }
 
 const CanvasHarness = () => {
@@ -23,10 +22,6 @@ const CanvasHarness = () => {
   const harness: Harness = {
     setRenderer: (id) => setRenderer(id),
     setSelection: (ids) => setSelection(ids),
-    onLayoutApplied: (handler) => {
-      let unsubscribe: (() => void) | undefined
-      return () => unsubscribe?.()
-    },
   }
 
   ;(window as unknown as { __sessionGraphCanvas?: Harness }).__sessionGraphCanvas = harness

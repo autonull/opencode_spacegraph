@@ -18,6 +18,7 @@ const copy: CardCopy = {
   },
   collapseGroup: () => "Collapse group",
   expandGroup: () => "Expand group",
+  copyButton: () => "Copy",
 }
 
 const node = (partial: Partial<GraphNode> & Pick<GraphNode, "id" | "kind" | "label" | "status">): GraphNode =>

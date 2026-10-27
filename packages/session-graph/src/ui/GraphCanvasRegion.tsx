@@ -3,6 +3,7 @@ import type {
   RenderTheme,
   RenderModel,
   RendererViewport,
+  GraphRenderer,
 } from "@spacegraphjs/renderer"
 import type {
   DetailMode,
@@ -52,8 +53,8 @@ export type GraphCanvasRegionProps = {
   onNodeResized: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
   cardFacing: () => "plane" | "camera"
   applyModel: (instance: any) => void
-  onRenderer?: (renderer: any | undefined) => void
-  onRendererMounted?: (renderer: any, id: RendererID) => void
+  onRenderer?: (renderer: GraphRenderer | undefined) => void
+  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
   preferredRenderer?: () => RendererID
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   

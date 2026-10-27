@@ -17,8 +17,6 @@ export type UseGraphSelectionReturn = {
   keepOnlySelection: () => void
   clearSelection: () => void
   copySelectedPaths: () => void
-  frameSelection: () => void
-  exportSelection: (ordered: { nodes: { id: string }[]; edges: { source: string; target: string }[] }) => void
 }
 
 export function useGraphSelection(options: UseGraphSelectionOptions): UseGraphSelectionReturn {
@@ -56,16 +54,6 @@ export function useGraphSelection(options: UseGraphSelectionOptions): UseGraphSe
     selection.select(undefined)
   }
 
-  const frameSelection = () => {
-    const ids = selection.selection()
-    if (ids.length === 0) return
-  }
-
-  const exportSelection = (ordered: { nodes: { id: string }[]; edges: { source: string; target: string }[] }) => {
-    const ids = new Set(selection.selection())
-    if (ids.size === 0) return
-  }
-
   return {
     selection,
     keptIds,
@@ -73,7 +61,5 @@ export function useGraphSelection(options: UseGraphSelectionOptions): UseGraphSe
     keepOnlySelection,
     clearSelection,
     copySelectedPaths,
-    frameSelection,
-    exportSelection,
   }
 }
