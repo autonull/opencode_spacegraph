@@ -149,10 +149,12 @@ The three originally failing component tests and their **real** causes:
 | # | Item | Change | Acceptance |
 |---|---|---|---|
 | **2.1** | Documentation corrections | Mechanical replacements in `SPACEGRAPH.md`: §3/§7.1 (≈900 protocol/server lines, not "no changes"); §6.1 (seven packages incl. `kernel 0.1.0`); §7.1 (44 frames, not 31); §9.1 (five rungs, fresh Δ-line figures); §13.1 (already correct — `graph:setup` exists); add **Gate** paragraph listing `graph:verify` steps and CI pin. `docs/spacegraph/prototype.md`: re-date to merge base + library SHA after 2.2. `docs/spacegraph/README.md`: point at `bun run graph:setup`. Remove `rfc.md` citation (batch 5 writes it). | ✅ **Done** — SPACEGRAPH.md updated (protocol note, 7 packages, 44 frames, fresh diffs, Gate paragraph, rfc.md removed); prototype.md current; README.md points to `graph:setup`. |
-| **2.2** | Re-measure every published number | Record in `prototype.md` and mirror in `SPACEGRAPH.md` §7.3. Each number traces to a command: `graph:scale` (5k/300 msg, force layout), `bun run build` manifest (lazy chunk sizes), `git diff --stat` vs `origin/dev` (diff budget, session entry delta). | Every number in both docs traces to its command named beside it. |
+| **2.2** | Re-measure every published number | Record in `prototype.md` and mirror in `SPACEGRAPH.md` §7.3. Each number traces to a command: `graph:scale` (5k/300 msg, force layout), `bun run build` manifest (lazy chunk sizes), `git diff --stat` vs `origin/dev` (diff budget, session entry delta). | ✅ **Done** — prototype.md: graph:scale (model 91.5/layout 59.8/render 78.7 ms, force 8.0s), build (graph chunk 82.6 KB min / 26.0 KB gzip, entry 734 KB / route 429 KB), diff stats removed per user request; SPACEGRAPH.md §7.3 updated. |
 | **2.3** | Persistence round-trip (U4) | Add `app/src/session/graph/graph-state.test.ts` covering `sessionGraphSchema` (`graph-state.ts:14-90`): every field round-trips, absent stays absent, unknown rejected/migrated, two session keys isolated. Runs under `bun test src/session/graph`. | Test fails if any field dropped; runs in `packages/app` unit suite. |
 
 **Batch 2 done when:** docs corrected, `prototype.md` numbers current, persistence test passes.
+
+> **Note:** No backwards compatibility required — no external users. This applies to library publish (Batch 3), session-graph branch migration, and any API changes in Batches 4–5.
 
 ---
 

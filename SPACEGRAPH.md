@@ -421,11 +421,12 @@ The canonical verification gate is `bun run graph:verify`. It runs:
 | Metric | Budget | Measured |
 |--------|--------|----------|
 | Model build (300 msg / 1201 nodes) | < 50 ms | ~27 ms |
-| Full pipeline (5,001 msg / 20,005 nodes) | < 400 ms | 55 + 42 + 63 = 160 ms |
-| Force layout (same stream) | — | 9.3 s uncapped; 0.2 s over 60-turn window |
+| Full pipeline (5,001 msg / 20,005 nodes) | < 400 ms | 91.5 + 59.8 + 78.7 = 230 ms |
+| Force layout (same stream) | — | 8.0 s uncapped; 0.2 s over 60-turn window |
 | Lazy SpaceGraphJS chunk (gzip) | < 400 KB | 282 KB (incl. `three`) |
 | Lazy Cytoscape chunk (gzip) | < 250 KB | 138 KB |
-| Session entry delta (gzip) | No regression | +0.3 kB (noise) |
+| Session-graph UI chunk (gzip) | — | 26.0 KB |
+| Session entry delta (gzip) | No regression | +68 kB route / +79 kB entry (lazy graph 26 kB) |
 
 ---
 
@@ -472,21 +473,23 @@ The canonical verification gate is `bun run graph:verify`. It runs:
 
 **Blocker:** Library packages must be published to npm (or bundled) before upstream can adopt. The fork currently uses source workspaces in a gitignored sibling repo.
 
-### 9.2 Diff budget (re-audited 2026-10-27)
+### 9.2 Upstream contribution areas
 
-| Area | Δ lines | Verdict |
-|------|---------|---------|
-| `packages/app/src` (16 files) | +689 / −36 | Setting, mode branch, commands, toggle, per-session state, scroll restore. No graph semantics outside `session/graph/*.tsx`. |
-| `packages/app` dev-only demo | +149 / −18 | Excluded from upstream diff. |
-| `packages/session-ui/src/graph/` (13 files) | +3,487 | New pure model package. |
-| `packages/session-graph/` (57 files) | +5,660 | New host package; imports the renderer contract only. |
-| `packages/gui-extensions/src/session-map/` | +274 | Side panel, mounted as a built-in extension. |
+| Area | Scope |
+|------|-------|
+| `packages/app/src/session/graph` | Graph pane, settings, state, view — no graph semantics outside `session/graph/*.tsx`. |
+| `packages/app/src/session/header/session-graph-toggle.tsx` | Toolbar toggle. |
+| `packages/app/src/shell/screen.tsx` | Mode branch. |
+| `packages/app` dev-only demo | `bun run graph:dev`; excluded from upstream diff. |
+| `packages/session-ui/src/graph/` | Pure model package: model, layout, selectors, vocabulary, session-builder, workspace test. |
+| `packages/session-graph/` | Host package: canvas, toolbar, inspector, breadcrumbs, search, minimap, a11y; imports renderer contract only. |
+| `packages/gui-extensions/src/session-map/` | Side panel, mounted as a built-in extension. |
 
 Per-file justification in `docs/spacegraph/upstream-review.md` §5.
 
 ### 9.3 Review packet
 
-- `docs/spacegraph/upstream-review.md` — problem, hypothesis, measured results, diff budget, flag/rollback, bundle, a11y, security, ownership, review commands, 12 review questions
+- `docs/spacegraph/upstream-review.md` — problem, hypothesis, measured results, contribution areas, flag/rollback, bundle, a11y, security, ownership, review commands, 12 review questions
 - `docs/spacegraph/decisions.md` — 20 ADRs (naming, representation, depth, file lens, flag, contract bumps, etc.)
 - `docs/spacegraph/security.md` — sanitization contract, CSP expectations, deliberate non-goals
 - `docs/spacegraph/demos.md` — three demo surfaces, which to open

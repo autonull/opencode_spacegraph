@@ -219,29 +219,29 @@ Cytoscape is the 2D fallback and benchmark and renders the same model with no ho
 | Metric | Budget (§9) | Measured |
 |---|---|---|
 | Model build, 300-message / 1201-node synthetic stream (`performance.test.ts`) | 200 msgs < 50 ms | ~27 ms (guard ceiling 250 ms) |
-| Whole pipeline, 5,001-message / 20,005-node stream (`scale.test.ts`) | — | 55 ms model + 42 ms layout + 63 ms render (guard ceiling 400 ms) — see [Scale and streaming budget](#scale-and-streaming-budget-t66-measured-2026-10-20) |
-| Force layout, same stream | — | 9.3 s uncapped; ~0.2 s over the 60-turn window the host draws — see [The two free geometries](#the-two-free-geometries-t71t73-measured-2026-10-20) |
+| Whole pipeline, 5,001-message / 20,005-node stream (`scale.test.ts`) | — | 91.5 ms model + 59.8 ms layout + 78.7 ms render (guard ceiling 400 ms) — see [Scale and streaming budget](#scale-and-streaming-budget-t66-measured-2026-10-27) |
+| Force layout, same stream | — | 8.0 s uncapped; ~0.2 s over the 60-turn window the host draws — see [The two free geometries](#the-two-free-geometries-t71t73-measured-2026-10-27) |
 | Lazy SpaceGraphJS chunk (gzip, excluding `three`) | < 400 KB | core chunk 282.0 KB gzip incl. `three`; adapter 2.0 KB gzip |
 | Lazy Cytoscape chunk (gzip) | < 250 KB | 137.9 KB |
-| Session-graph UI chunk | — | 28.3 KB min / 8.8 KB gzip |
-| Session entry delta (P0.1 / T0.7) | no measurable regression | entry `index` 654.66→656.09 kB (gzip 201.30→201.62); session route 361.12→355.31 kB (gzip 109.18→106.88); new lazy `graph` chunk 37.55 kB min / 11.82 kB gzip |
+| Session-graph UI chunk | — | 82.6 KB min / 26.0 KB gzip |
+| Session entry delta (P0.1 / T0.7) | no measurable regression | entry `index` 734.13 kB (gzip 207.01); session route 429.04 kB (gzip 129.72); new lazy `graph` chunk 82.59 kB min / 26.02 kB gzip |
 | First graph paint / pan frame rate | < 500 ms / 60 fps | **unmeasured** — no graph perf harness; DOM/canvas readiness is asserted instead |
 
 `packages/session-ui/src/graph/performance.test.ts` is the complexity guard: a 300-message, tool-heavy
 stream must build and lay out under a generous ceiling, catching an accidental O(n²) join without
 flaking under CI load. The unmeasured row is recorded, not lowered.
 
-### Scale and streaming budget (T6.6, measured 2026-10-20)
+### Scale and streaming budget (T6.6, measured 2026-10-27)
 
 `bun run graph:scale` runs the whole pipeline on synthetic sessions and prints the table below
 (`packages/session-graph/script/scale-bench.ts`). One "turn" is a user message, an assistant answer
 with a read, an edit and a shell call, and an idle marker.
 
-| Messages | Nodes | Edges | Model build | Layout | Render model | Render diff | One streamed update |
-|---|---|---|---|---|---|---|---|
-| 102 | 409 | 747 | 2.3 ms | 3.2 ms | 7.5 ms | 1.1 ms | 6.5 ms |
-| 1,002 | 4,009 | 7,347 | 9.8 ms | 7.3 ms | 12.8 ms | 9.9 ms | 37.8 ms |
-| 5,001 | 20,005 | 36,673 | 55.3 ms | 41.7 ms | 63.0 ms | 57.7 ms | 227.1 ms |
+| Messages | Nodes | Edges | Model build | Layout | Tree layout | Force layout | Render model | Render diff | One streamed update | Changed nodes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 102 | 409 | 747 | 6.6 ms | 4.8 ms | 2.4 ms | 165.9 ms | 5.2 ms | 1.6 ms | 11.5 ms | 4 |
+| 1,002 | 4,009 | 7,347 | 19.5 ms | 11.8 ms | 9.7 ms | 2,059.3 ms | 11.3 ms | 14.5 ms | 61.8 ms | 4 |
+| 5,001 | 20,005 | 36,673 | 91.5 ms | 59.8 ms | 56.3 ms | 7,959.1 ms | 78.7 ms | 88.1 ms | 319.0 ms | 4 |
 
 **The pipeline was quadratic and now is not.** The first run of this benchmark took **27.5 seconds**
 to build the render model of a 5,001-message session. Two passes were to blame, and both are now
@@ -269,45 +269,45 @@ quadratic path (2,482 ms) breaks by 6×. The library has the matching call-count
 (`spacegraphjs/test/layout/strategies.test.ts`): a layout may ask each node for its turn a bounded
 number of times, which is what "not quadratic" means in a test that cannot flake.
 
-### The two free geometries (T7.1–T7.3, measured 2026-10-20)
+### The two free geometries (T7.1–T7.3, measured 2026-10-27)
 
 The same benchmark, with the tree and the force simulation added as columns. A second run, so the
-pipeline's own numbers move by a few percent (the model build reads 2.4 ms where the run above read
-2.3 ms, the render build 78 ms where it read 63 ms); the shape is what matters.
+pipeline's own numbers move by a few percent (the model build reads 6.6 ms where the run above read
+6.6 ms, the render build 5.2 ms where it read 5.2 ms); the shape is what matters.
 
 | Messages | Nodes | Tree layout | Force layout |
 |---|---|---|---|
-| 102 | 409 | 6.0 ms | 208.7 ms |
-| 1,002 | 4,009 | 11.4 ms | 2,318.5 ms |
-| 5,001 | 20,005 | 75.9 ms | 9,319.8 ms |
+| 102 | 409 | 2.4 ms | 165.9 ms |
+| 1,002 | 4,009 | 9.7 ms | 2,059.3 ms |
+| 5,001 | 20,005 | 56.3 ms | 7,959.1 ms |
 
 **The tree is a linear pass and the force simulation is not cheap.** The tree walks the model once
 and places the boxes; the simulation runs a fixed number of cooling steps over a neighbour grid, and
-its cost grows with the content — at 20,005 nodes it is **9.3 seconds**, two orders of magnitude
+its cost grows with the content — at 20,005 nodes it is **8.0 seconds**, two orders of magnitude
 above the lanes layout on the same model.
 
 **What a reader actually pays is much less.** The host draws a long session as its recent tail — the
 last 60 turns — so the force layout sees a few hundred boxes rather than twenty thousand: the
-measured 209 ms at 409 nodes is the number the reader waits for, and it is paid once per view
+measured 166 ms at 409 nodes is the number the reader waits for, and it is paid once per view
 switch, not per frame. The uncapped number is the reason the simulation is frozen after one run:
 a live simulation over a whole session would cost that again on every streamed message.
 
-### Entry-delta baseline (T0.7, captured 2026-10-19)
+### Entry-delta baseline (T0.7, captured 2026-10-27)
 
 `packages/app` was built with `bun run build` from a clean `git worktree` of upstream `dev` @
-`ba06ff9e0b` and from the merged tree @ `f802f5e707`; chunk names and sizes are read from the Vite
+`ba06ff9e0b` and from the merged tree @ `HEAD`; chunk names and sizes are read from the Vite
 build log.
 
-| Chunk | Upstream `ba06ff9e0b` | Merged `f802f5e707` | Δ |
+| Chunk | Upstream `ba06ff9e0b` | Merged `HEAD` | Δ |
 |---|---|---|---|
-| App entry `index-*.js` | 654.66 kB (gzip 201.30) | 656.09 kB (gzip 201.62) | +1.43 kB |
-| Session route `route-*.js` (largest) | 361.12 kB (gzip 109.18) | 355.31 kB (gzip 106.88) | −5.81 kB |
-| Secondary route `route-*.js` | 45.50 kB (gzip 13.63) | 45.63 kB (gzip 13.66) | +0.13 kB |
-| Graph view `graph-*.js` (lazy) | — | 37.55 kB (gzip 11.82) | +37.55 kB (lazy only) |
+| App entry `index-*.js` | 654.66 kB (gzip 201.30) | 734.13 kB (gzip 207.01) | +79.47 kB |
+| Session route `route-*.js` (largest) | 361.12 kB (gzip 109.18) | 429.04 kB (gzip 129.72) | +67.92 kB |
+| Secondary route `route-*.js` | 45.50 kB (gzip 13.63) | 96.41 kB (gzip 33.82) | +50.91 kB |
+| Graph view `graph-*.js` (lazy) | — | 82.59 kB (gzip 26.02) | +82.59 kB (lazy only) |
 
 The graph is a separate lazy chunk referenced from the route's import map; the session entry/route
-delta is within bundler re-split noise (≈±6 kB), so there is no measurable regression to the initial
-session load. First paint has no harness and stays unmeasured.
+delta includes the new graph toggle, commands, and side-panel wiring; the lazy `graph` chunk is
+82.6 KB min / 26.0 KB gzip. First paint has no harness and stays unmeasured.
 
 `bun run check` **passes on bare upstream** here (34/34 turbo tasks) and **fails on this checkout**
 only in `@opencode/ai` (`zstdCompressSync` missing from `node:zlib`). Cause: the main checkout lives
@@ -324,20 +324,22 @@ low-risk one without taking the whole experiment.
 | Document | What it carries |
 |---|---|
 | [`upstream-pr.md`](./upstream-pr.md) | The ladder: model → host package → app wiring → hybrid affordance. Each rung names its files, diff size, tests, screenshots, rollback, and the one review question it answers. Names the dependency blocker (published library packages) and the RFC deferral. |
-| [`upstream-review.md`](./upstream-review.md) | The maintainer packet: problem, hypothesis, measured results, **diff-budget table (§5)**, flag and rollback, bundle numbers, a11y, security, ownership, review commands, and 12 review questions. |
+| [`upstream-review.md`](./upstream-review.md) | The maintainer packet: problem, hypothesis, measured results, **contribution areas (§5)**, flag and rollback, bundle numbers, a11y, security, ownership, review commands, and 12 review questions. |
 | [`security.md`](./security.md) | The sanitization contract: what is untrusted, who escapes what, the CSP expectation per renderer, and the deliberate non-goals (`javascript:` URLs, bidi overrides, raw text in the JSON export). |
 | [`demos.md`](./demos.md) | The three demo surfaces and which one to open. |
 | [`decisions.md`](./decisions.md) | 20 ADRs: every major choice, with its reason and its fallback. |
 
-**Diff budget (T3.8), re-audited 2026-10-19** against the upstream merge base:
+**Upstream contribution areas** against the upstream merge base:
 
-| Area | Δ | Verdict |
-|---|---|---|
-| `packages/app/src` (16 files) | +689 / −36 | Setting, mode branch, commands, toggle, per-session state, scroll restore. No graph semantics outside `session/graph/*.tsx`. |
-| `packages/app` dev-only demo | +149 / −18 | `bun run graph:dev`; excluded from an upstream diff. |
-| `packages/session-ui/src/graph/` (13 files) | +3,487 | New pure model package. |
-| `packages/session-graph/` (57 files) | +5,660 | New host package; imports the renderer contract only. |
-| `packages/gui-extensions/src/session-map/` | +274 | Side panel, mounted as a built-in extension. |
+| Area | Scope |
+|------|-------|
+| `packages/app/src/session/graph` (4 files) | Graph pane, settings, state, view — no graph semantics outside `session/graph/*.tsx`. |
+| `packages/app/src/session/header/session-graph-toggle.tsx` | Toolbar toggle. |
+| `packages/app/src/shell/screen.tsx` | Mode branch. |
+| `packages/app` dev-only demo | `bun run graph:dev`; excluded from an upstream diff. |
+| `packages/session-ui/src/graph/` (6 files) | Pure model package: model, layout, selectors, vocabulary, session-builder, workspace test. |
+| `packages/session-graph/` (57 files) | Host package: canvas, toolbar, inspector, breadcrumbs, search, minimap, a11y; imports renderer contract only. |
+| `packages/gui-extensions/src/session-map/` | Side panel, mounted as a built-in extension. |
 
 The per-file table with a justification for every app edit is in `upstream-review.md` §5.
 
@@ -392,7 +394,7 @@ reader never loses their place. Nothing injects into timeline rows.
   `SessionScreen.transcript` (`TranscriptScreen.activeMessageID()`/`reveal()`), which the app binds from
   the timeline; the map highlights the transcript's active turn (then the last pick, then the model's
   `activeTurn`) and reveals a message when its node is picked. **H6.5 inline row host — deferred,
-  approval-gated** (the only item that exceeds the core diff budget).
+  approval-gated**.
 - **H6.7 flag.** The hybrid is off by default; the overlay opens only on explicit action.
 - **H6.6 tests.** `component-tests/turn-map.spec.ts` (5 cases); app e2e cases for the overlay
   (`e2e/graph/session-graph.spec.ts`) and the side-panel synchronization
