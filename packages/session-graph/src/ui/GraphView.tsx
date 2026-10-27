@@ -75,6 +75,7 @@ import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
+import type { GraphCanvasRegionContext } from "./GraphCanvasRegion"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphInspector } from "./GraphInspector"
 import { GraphStatusBar } from "./GraphStatusBar"
@@ -387,7 +388,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // T18.3: the auto detail mode threshold
   const AUTO_DETAIL_THRESHOLD = 640
-  const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
+  const [renderer] = createSignal<GraphRenderer | undefined>()
   let rootEl!: HTMLDivElement
   let canvasRegionEl: HTMLDivElement | undefined
 
@@ -1216,6 +1217,171 @@ export const GraphView = (props: GraphViewProps) => {
     viewportTracker.camera.request(() => instance.fit(untrack(contentIDs), untrack(fitOptions)))
   })
 
+  // Build context object for GraphCanvasRegion (replaces 225 lines of props)
+  const ctx: GraphCanvasRegionContext = {
+    model,
+    theme,
+    level,
+    setLevel,
+    projection,
+    setProjection,
+    depth,
+    setDepth,
+    layout,
+    setLayout,
+    files,
+    setFiles,
+    detailMode,
+    setDetailMode,
+    detailFraming,
+    setDetailFraming,
+    peek,
+    setPeek,
+    followLog,
+    setFollowLog,
+    facets,
+    setFacets,
+    renderer: renderer(),
+    setRenderer: (r: GraphRenderer | undefined) => { /* noop - set via onRenderer */ },
+    rendererID: rendererID(),
+    setRendererID,
+    rendererReady: rendererReady(),
+    setRendererReady,
+    fallback,
+    setFallback,
+    error,
+    setError,
+    viewport: viewport(),
+    setViewport,
+    rendererOverrides: props.rendererOverrides,
+    preferredRenderer: props.preferredRenderer,
+    onRenderer: props.onRenderer,
+    renderCard: renderCard(),
+    renderSummary: props.renderSummary,
+    diffSource: props.diffSource,
+    link: props.link,
+    onOpenTranscript: props.onOpenTranscript,
+    onOpenSession: props.onOpenSession,
+    onActionNavigate: props.onActionNavigate,
+    onActionReveal: props.onActionReveal,
+    onActionCopy: props.onActionCopy,
+    onActionRun: props.onActionRun,
+    onOpenWindow: openWindow,
+    rules: props.rules,
+    onRulesChange: props.onRulesChange,
+    onSelect: props.onSelect,
+    onProjectionChange: props.onProjectionChange,
+    onDepthChange: props.onDepthChange,
+    onLayoutChange: props.onLayoutChange,
+    onFilesChange: props.onFilesChange,
+    onDetailModeChange: props.onDetailModeChange,
+    onDetailFramingChange: props.onDetailFramingChange,
+    onPeekChange: props.onPeekChange,
+    onTurnMap: props.onTurnMap,
+    windowAnchor: windowAnchor(),
+    activeTurn: props.activeTurn,
+    selection: () => selection.selection(),
+    select: selection.select,
+    graphSelection,
+    annotations,
+    edgeKinds,
+    groupCollapse,
+    comparisonHook,
+    manual,
+    setManual,
+    manualHistory,
+    setManualHistory,
+    manualFuture,
+    setManualFuture,
+    pushHistory,
+    undoManual,
+    redoManual,
+    camera: viewportTracker.camera,
+    viewportTracker,
+    peekFrame: peekFrame(),
+    peekEdge: peekEdge(),
+    noteTargetNode,
+    noteAnchor,
+    effectiveDetailMode: effectiveDetailMode(),
+    popoverPlacement: popoverPlacement(),
+    popoverVisible: popoverVisible(),
+    popoverNode: popoverNode(),
+    setPopoverDismissed,
+    groupMenu: groupMenu(),
+    setGroupMenu,
+    toggleGroupByID,
+    selectedTurn,
+    toggleBillboard,
+    cardFacing: () => cardFacing(),
+    renderModel: renderModel(),
+    ordered: ordered(),
+    displayPositions,
+    geometry: geometry(),
+    layoutHistory,
+    sessionKey,
+    viewKey: viewKey(),
+    sizedCard,
+    rulesKey: rulesKey(),
+    setNeedsFit,
+    turnNumbers: turnNumbers(),
+    axisLabels: axisLabels(),
+    drawn: drawn(),
+    resting: viewportTracker.resting(),
+    setResting: viewportTracker.setResting,
+    budget: budget(),
+    applyManualLayout,
+    contentIDs,
+    fitOptions,
+    inspectorOpen: inspectorOpen(),
+    cardScreenWidth: cardScreenWidth(),
+    peekNode: peekNode(),
+    peekAnchor,
+    peekPlacement: peekPlacement(),
+    changedFilesList: changedFilesList(),
+    fitSubtree,
+    viewAnnouncement: viewAnnouncement(),
+    moveNodes,
+    resizeNode,
+    applyModel,
+    selectedTurns,
+    scale,
+    viewportTrackerRef: { current: viewportTracker },
+    cardScreenWidthSignal: { get: cardScreenWidth, set: (v: number) => {} },
+    handleRegionKeyDown,
+    setHovered,
+    setEdgeHovered,
+    a11yInstructionsId,
+    announce,
+    i18n,
+    refitKey: props.refitKey,
+    arrangement: props.arrangement,
+    onZoomOut: () => viewportTracker.camera.zoomBy(-1),
+    onZoomIn: () => viewportTracker.camera.zoomBy(1),
+    zoomPercent: viewportTracker.camera.zoomPercent(),
+    zoomOutDisabled: level() === "overview" || (viewportTracker.viewport()?.zoom ?? 0) <= viewportTracker.camera.zoomLimits().min,
+    zoomInDisabled: (viewportTracker.viewport()?.zoom ?? 0) >= viewportTracker.camera.zoomLimits().max,
+    onFit: viewportTracker.camera.fitContent,
+    onCopyView: copyView,
+    onExport: handleExport,
+    onBack: props.onBack,
+    onSplitView: props.onSplitView,
+    endInset: props.endInset,
+    sessionTitle: props.sessionTitle,
+    testedCommit: props.testedCommit,
+    canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
+    expandToGraph,
+    searchOpen: searchOpen(),
+    searchInitial,
+    setSearchOpen,
+    legendOpen: legendOpen(),
+    setLegendOpen,
+    galleryOpen: galleryOpen(),
+    setGalleryOpen,
+    changeLayout,
+    jumpTo,
+    needsFit: needsFit(),
+  }
+
   return (
     <div
       ref={rootEl}
@@ -1351,194 +1517,7 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={(id) => selection.select(id)}
           />
         </Show>
-        <GraphCanvasRegion
-          model={model}
-          theme={theme()}
-          level={level()}
-          setLevel={setLevel}
-          projection={projection()}
-          setProjection={setProjection}
-          depth={depth()}
-          setDepth={setDepth}
-          layout={layout()}
-          setLayout={setLayout}
-          files={files()}
-          setFiles={setFiles}
-          detailMode={detailMode()}
-          setDetailMode={setDetailMode}
-          detailFraming={detailFraming()}
-          setDetailFraming={setDetailFraming}
-          peek={peek()}
-          setPeek={setPeek}
-          followLog={followLog()}
-          setFollowLog={setFollowLog}
-          facets={facets()}
-          setFacets={setFacets}
-          facetCounts={counts()}
-          narrow={narrow()}
-          compact={compact()}
-          canvasSize={canvasSize()}
-          inspectorWidth={inspectorWidth()}
-          setInspectorWidth={setInspectorWidth}
-          inspectorSheetOpen={inspectorSheetOpen()}
-          setInspectorSheetOpen={setInspectorSheetOpen}
-          renderer={renderer()}
-          setRenderer={setRenderer}
-          setRendererReady={setRendererReady}
-          rendererID={rendererID()}
-          setRendererID={setRendererID}
-          fallback={fallback()}
-          setFallback={setFallback}
-          error={error()}
-          setError={setError}
-          viewport={viewport()}
-          setViewport={setViewport}
-          rendererOverrides={props.rendererOverrides}
-          preferredRenderer={props.preferredRenderer}
-          onRenderer={props.onRenderer}
-          renderCard={renderCard()}
-          renderSummary={props.renderSummary}
-          diffSource={props.diffSource}
-          link={props.link}
-          onOpenTranscript={props.onOpenTranscript}
-          onOpenSession={props.onOpenSession}
-          onActionNavigate={props.onActionNavigate}
-          onActionReveal={props.onActionReveal}
-          onActionCopy={props.onActionCopy}
-          onActionRun={props.onActionRun}
-          onOpenWindow={openWindow}
-          rules={props.rules}
-          onRulesChange={props.onRulesChange}
-          onSelect={props.onSelect}
-          onProjectionChange={props.onProjectionChange}
-          onDepthChange={props.onDepthChange}
-          onLayoutChange={props.onLayoutChange}
-          onFilesChange={props.onFilesChange}
-          onDetailModeChange={props.onDetailModeChange}
-          onDetailFramingChange={props.onDetailFramingChange}
-          onPeekChange={props.onPeekChange}
-          onTurnMap={props.onTurnMap}
-          windowAnchor={windowAnchor()}
-          activeTurn={props.activeTurn}
-          selection={() => selection.selection()}
-          select={selection.select}
-          graphSelection={graphSelection}
-          annotations={annotations}
-          edgeKinds={edgeKinds}
-          groupCollapse={groupCollapse}
-          comparisonHook={comparisonHook}
-          manual={manual}
-          setManual={setManual}
-          manualHistory={manualHistory()}
-          setManualHistory={setManualHistory}
-          manualFuture={manualFuture()}
-          setManualFuture={setManualFuture}
-          groupedMenu={groupMenu()}
-          setGroupMenu={setGroupMenu}
-          toggleGroupByID={toggleGroupByID}
-          turnOf={turnOf}
-          selectedTurn={selectedTurn}
-          selectedTurns={selectedTurns}
-          scale={scale}
-          scopeBase={scopeBase}
-          scoped={scoped()}
-          counts={counts()}
-          comparison={comparison()}
-          compareSelectedTurns={compareSelectedTurns}
-          clearComparison={clearComparison}
-          layoutHistory={layoutHistory}
-          sessionKey={sessionKey}
-          viewKey={viewKey()}
-          sizedCard={sizedCard}
-          rulesKey={rulesKey()}
-          geometry={geometry()}
-          moveNodes={moveNodes}
-          resizeNode={resizeNode}
-          needsFit={needsFit()}
-          setNeedsFit={setNeedsFit}
-          viewAnnouncement={viewAnnouncement()}
-          turnNumbers={turnNumbers()}
-          axisLabels={axisLabels()}
-          drawn={drawn()}
-          resting={viewportTracker.resting()}
-          setResting={viewportTracker.setResting}
-          budget={budget()}
-          applyManualLayout={applyManualLayout}
-          renderModel={renderModel()}
-          ordered={ordered()}
-          contentIDs={contentIDs}
-          fitOptions={fitOptions}
-          inspectorOpen={inspectorOpen()}
-          camera={viewportTracker.camera}
-          cardScreenWidth={cardScreenWidth()}
-          effectiveDetailMode={effectiveDetailMode()}
-          popoverNode={popoverNode()}
-          popoverPlacement={popoverPlacement()}
-          popoverVisible={popoverVisible()}
-          peekNode={peekNode()}
-          peekAnchor={peekAnchor}
-          noteAnchor={noteAnchor}
-          noteTargetNode={noteTargetNode}
-          peekEdge={peekEdge()}
-          peekPlacement={peekPlacement()}
-          peekFrame={peekFrame()}
-          changeDetailMode={changeDetailMode}
-          changeDetailFraming={changeDetailFraming}
-          changeProjection={changeProjection}
-          changeDepth={changeDepth}
-          changeLayout={changeLayout}
-          expandToGraph={expandToGraph}
-          toggleFiles={toggleFiles}
-          togglePeek={togglePeek}
-          dismissDetail={dismissDetail}
-          changedFilesList={changedFilesList()}
-          jumpTo={jumpTo}
-          fitSubtree={fitSubtree}
-          raiseLevelForFrame={raiseLevelForFrame}
-          focusFrame={focusFrame}
-          framed={framed()}
-          setFramed={setFramed}
-          openInTranscript={openInTranscript}
-          openSearch={openSearch}
-          toggleSearch={toggleSearch}
-          searchOpen={searchOpen()}
-          setSearchOpen={setSearchOpen}
-          searchInitial={searchInitial()}
-          setSearchInitial={setSearchInitial}
-          legendOpen={legendOpen()}
-          setLegendOpen={setLegendOpen}
-          galleryOpen={galleryOpen()}
-          setGalleryOpen={setGalleryOpen}
-          findInitialTab={findInitialTab()}
-          setFindInitialTab={setFindInitialTab}
-          a11yInstructionsId={a11yInstructionsId}
-          announce={announce}
-          i18n={i18n}
-          refitKey={props.refitKey}
-          arrangement={props.arrangement}
-          handleRegionKeyDown={handleRegionKeyDown}
-          setHovered={setHovered}
-          setEdgeHovered={setEdgeHovered}
-          setPopoverDismissed={setPopoverDismissed}
-          groupMenu={groupMenu()}
-          toggleBillboard={toggleBillboard}
-          cardFacing={cardFacing()}
-          onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
-          onZoomIn={() => viewportTracker!.camera.zoomBy(1)}
-          zoomPercent={viewportTracker!.camera.zoomPercent()}
-          zoomOutDisabled={level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min}
-          zoomInDisabled={(viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max}
-          onFit={viewportTracker!.camera.fitContent}
-          onCopyView={copyView}
-          onExport={handleExport}
-          onBack={props.onBack}
-          onSplitView={props.onSplitView}
-          endInset={props.endInset}
-          sessionTitle={props.sessionTitle}
-          testedCommit={props.testedCommit}
-          canvasRegionRef={(el) => { canvasRegionEl = el }}
-          applyModel={applyModel}
-        />
+        <GraphCanvasRegion ctx={ctx} />
         <GraphWindowManager
           windows={props.windows ?? []}
           onWindowsChange={props.onWindowsChange ?? (() => {})}

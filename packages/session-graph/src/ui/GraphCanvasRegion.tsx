@@ -22,54 +22,47 @@ import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { CardTemplate } from "../canvas/buildRenderModel"
 import { GraphOverlayManager } from "./GraphOverlayManager"
-import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import type { GraphDiffSource } from "./GraphDiff"
-
-
 import { GraphActionTarget } from "./GraphActionTarget"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
+import type { UseComparisonReturn } from "./useComparison"
+import type { UseGroupCollapseReturn } from "./useGroupCollapse"
+import type { UseEdgeKindsReturn } from "./useEdgeKinds"
+import type { GraphViewportTrackerReturn } from "./useGraphViewport"
 
-export type GraphCanvasRegionProps = {
+export type GraphCanvasRegionContext = {
   model: () => GraphViewData
-  theme: RenderTheme
-  level: ZoomLevel
+  theme: () => RenderTheme
+  level: () => ZoomLevel
   setLevel: (level: ZoomLevel) => void
-  projection: Projection
+  projection: () => Projection
   setProjection: (projection: Projection) => void
-  depth: "flat" | "layered" | "depth-stack" | "orbit"
+  depth: () => "flat" | "layered" | "depth-stack" | "orbit"
   setDepth: (depth: "flat" | "layered" | "depth-stack" | "orbit") => void
-  layout: Layout
+  layout: () => Layout
   setLayout: (layout: Layout) => void
-  files: boolean
+  files: () => boolean
   setFiles: (files: boolean) => void
-  detailMode: DetailMode
+  detailMode: () => DetailMode
   setDetailMode: (mode: DetailMode) => void
-  detailFraming: DetailFraming
+  detailFraming: () => DetailFraming
   setDetailFraming: (framing: DetailFraming) => void
-  peek: boolean
+  peek: () => boolean
   setPeek: (peek: boolean) => void
-  followLog: boolean
+  followLog: () => boolean
   setFollowLog: (followLog: boolean) => void
-  facets: ReturnType<typeof import("@opencode/session-ui/graph").facetsFromQuery>
-  setFacets: (facets: ReturnType<typeof import("@opencode/session-ui/graph").facetsFromQuery>) => void
-  facetCounts: ReturnType<typeof import("@opencode/session-ui/graph").facetCounts>
-  narrow: boolean
-  compact: boolean
-  canvasSize: { width: number; height: number }
-  inspectorWidth: number
-  setInspectorWidth: (width: number) => void
-  inspectorSheetOpen: boolean
-  setInspectorSheetOpen: (open: boolean) => void
+  facets: () => any
+  setFacets: (facets: any) => void
   renderer: GraphRenderer | undefined
   setRenderer?: (renderer: GraphRenderer | undefined) => void
   setRendererReady: (ready: boolean) => void
   rendererID: RendererID | undefined
   setRendererID: (id: RendererID | undefined) => void
-  fallback: boolean
+  fallback: () => boolean
   setFallback: (fallback: boolean) => void
-  error: string | undefined
+  error: () => string | undefined
   setError: (error: string | undefined) => void
   viewport: { zoom: number; center: number[] } | undefined
   setViewport: (vp: { zoom: number; center: number[] } | undefined) => void
@@ -103,76 +96,20 @@ export type GraphCanvasRegionProps = {
   selection: () => readonly string[]
   select: (id: string | undefined, add?: boolean) => void
   annotations: UseGraphAnnotationsReturn
-  edgeKinds: ReturnType<typeof import("./useEdgeKinds").useEdgeKinds>
-  groupCollapse: ReturnType<typeof import("./useGroupCollapse").useGroupCollapse>
-  graphSelection: UseGraphSelectionReturn
-  comparisonHook: ReturnType<typeof import("./useComparison").useComparison>
+  edgeKinds: UseEdgeKindsReturn
+  groupCollapse: UseGroupCollapseReturn
+  comparisonHook: UseComparisonReturn
   manual: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }
-  setManual: (key: "positions" | "sizes", id: string, value: [number, number, number] | [number, number]) => void
-  groupedMenu: { id: string; x: number; y: number } | undefined
-  setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
-  toggleGroupByID: (id: string) => void
-  selectedTurn: () => string | undefined
-  changeDetailMode: (next: DetailMode) => void
-  changeDetailFraming: (next: DetailFraming) => void
-  changeProjection: (next: Projection) => void
-  changeDepth: (next: "flat" | "layered" | "depth-stack" | "orbit") => void
-  changeLayout: (next: Layout) => void
-  expandToGraph: (id: string) => void
-  toggleFiles: () => void
-  togglePeek: () => void
-  dismissDetail: () => void
-  jumpTo: (node: GraphNode) => void
-  raiseLevelForFrame: () => boolean
-  focusFrame: (instance: GraphRenderer | undefined) => void
-  framed: string | undefined
-  setFramed: (id: string) => void
-  openInTranscript: (id: string) => void
-  openSearch: (initial?: string) => void
-  toggleSearch: () => void
-  searchOpen: boolean
-  setSearchOpen: (open: boolean) => void
-  searchInitial: string
-  setSearchInitial: (initial: string) => void
-  legendOpen: boolean
-  setLegendOpen: (open: boolean) => void
-  galleryOpen: boolean
-  setGalleryOpen: (open: boolean) => void
-  findInitialTab: "search" | "filters" | "outline"
-  setFindInitialTab: (tab: "search" | "filters" | "outline") => void
-  a11yInstructionsId: string
-  announce: (message: string) => void
-  i18n: ReturnType<typeof useI18n>
-  refitKey: string | undefined
-  arrangement: GraphArrangement | undefined
-  handleRegionKeyDown: (event: KeyboardEvent) => void
-  setHovered: (id: string | undefined) => void
-  setEdgeHovered: (id: string | undefined) => void
-  setPopoverDismissed: (dismissed: boolean) => void
-  groupMenu: { id: string; x: number; y: number } | undefined
-  toggleBillboard: () => void
-  cardFacing: "plane" | "camera"
-  onZoomOut: () => void
-  onZoomIn: () => void
-  zoomPercent: number
-  zoomOutDisabled: boolean
-  zoomInDisabled: boolean
-  onFit: () => void
-  onCopyView: () => void
-  onExport: (format: "svg" | "json" | "html", model: RenderModel) => void
-  onBack: (() => void) | undefined
-  onSplitView: (() => void) | undefined
-  endInset: string | undefined
-  sessionTitle: string | undefined
-  testedCommit: string | undefined
-  canvasRegionRef: (el: HTMLDivElement | undefined) => void
-
-  // Computed values from GraphView
-  renderModel: RenderModel
-  camera: ReturnType<typeof createGraphCamera>
-  setResting: (center: { zoom: number; center: number[] }) => void
-  ordered: RenderModel
-  viewAnnouncement: string
+  setManual: (key: "positions" | "sizes", idOrValue: string | Record<string, [number, number, number]> | Record<string, [number, number]>, value?: [number, number, number] | [number, number]) => void
+  manualHistory: () => { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
+  setManualHistory: (history: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
+  manualFuture: () => { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
+  setManualFuture: (future: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
+  pushHistory: () => void
+  undoManual: () => void
+  redoManual: () => void
+  camera: GraphViewportTrackerReturn["camera"]
+  viewportTracker: GraphViewportTrackerReturn
   peekFrame: { node: GraphNode; left: number; top: number } | undefined
   peekEdge: GraphEdge | undefined
   noteTargetNode: () => GraphNode | undefined
@@ -181,37 +118,30 @@ export type GraphCanvasRegionProps = {
   popoverPlacement: { left: number; top: number }
   popoverVisible: GraphNode | undefined
   popoverNode: GraphNode | undefined
-  moveNodes: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
-  resizeNode: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
-  applyModel: (instance: GraphRenderer) => void
-
-  // Additional computed values from GraphView
-  manualHistory: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
-  setManualHistory: (history: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
-  manualFuture: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
-  setManualFuture: (future: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
-  selectedTurns: () => GraphNode[]
-  scale: () => ReturnType<typeof import("@opencode/session-ui/graph").scaleWindow>
-  scopeBase: (source: GraphViewData) => GraphViewData
-  turnOf: (id: string | undefined) => string | undefined
-  scoped: GraphViewData
-  counts: ReturnType<typeof import("@opencode/session-ui/graph").facetCounts>
-  comparison: import("./useComparison").ComparisonChanges | undefined
-  compareSelectedTurns: () => void
-  clearComparison: () => void
-  layoutHistory: Map<string, ReadonlyMap<string, import("@opencode/session-ui/graph").Position>>
+  setPopoverDismissed: (dismissed: boolean) => void
+  groupMenu: { id: string; x: number; y: number } | undefined
+  setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
+  toggleGroupByID: (id: string) => void
+  selectedTurn: () => string | undefined
+  toggleBillboard: () => void
+  cardFacing: () => "plane" | "camera"
+  renderModel: RenderModel
+  ordered: RenderModel
+  displayPositions: () => ReadonlyMap<string, { x: number; y: number; z: number }>
+  geometry: any
+  layoutHistory: Map<string, ReadonlyMap<string, { x: number; y: number; z: number }>>
   sessionKey: () => string
   viewKey: string
   sizedCard: (node: GraphNode) => readonly [number, number]
   rulesKey: string
-  geometry: import("@opencode/session-ui/graph").GraphLayout
   needsFit: boolean
   setNeedsFit: (needsFit: boolean) => void
   turnNumbers: Map<string, number>
-  axisLabels: ReturnType<typeof import("./axisLabels").buildAxisLabels>
+  axisLabels: any
   drawn: GraphViewData
   resting: [number, number, number] | undefined
-  budget: ReturnType<typeof import("@opencode/session-ui/graph").applyNodeBudget>
+  setResting: (center: { zoom: number; center: number[] }) => void
+  budget: any
   applyManualLayout: (model: RenderModel) => RenderModel
   contentIDs: () => string[]
   fitOptions: () => { minScale: number; insets: undefined }
@@ -220,8 +150,54 @@ export type GraphCanvasRegionProps = {
   peekNode: GraphNode | undefined
   peekAnchor: ReturnType<typeof createNodeAnchor>
   peekPlacement: { left: number; top: number } | undefined
-  changedFilesList: ReturnType<typeof import("@opencode/session-ui/graph").changedFiles>
+  changedFilesList: any
   fitSubtree: (id: string) => void
+  viewAnnouncement: string
+  moveNodes: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
+  resizeNode: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
+  applyModel: (instance: GraphRenderer) => void
+  selectedTurns: () => any[]
+  scale: () => any
+  viewportTrackerRef: { current: GraphViewportTrackerReturn | undefined }
+  cardScreenWidthSignal: { get: () => number; set: (v: number) => void }
+  a11yInstructionsId: string
+  handleRegionKeyDown: (event: KeyboardEvent) => void
+  expandToGraph: (id: string) => void
+  setHovered: (id: string | undefined) => void
+  setEdgeHovered: (id: string | undefined) => void
+  graphSelection: UseGraphSelectionReturn
+  searchOpen: boolean
+  searchInitial: () => string | undefined
+  setSearchOpen: (open: boolean) => void
+  jumpTo: (node: GraphNode) => void
+  legendOpen: boolean
+  setLegendOpen: (open: boolean) => void
+  galleryOpen: boolean
+  setGalleryOpen: (open: boolean) => void
+  changeLayout: (layout: Layout) => void
+  onBack: (() => void) | undefined
+  onCopyView: () => void
+  announce: (message: string) => void
+  i18n: ReturnType<typeof useI18n>
+  refitKey: string | undefined
+  arrangement: GraphArrangement | undefined
+  rendererReady: boolean
+  onSplitView: (() => void) | undefined
+  endInset: string | undefined
+  sessionTitle: string | undefined
+  testedCommit: string | undefined
+  canvasRegionRef: (el: HTMLDivElement | undefined) => void
+  onExport: (format: "svg" | "json" | "html", model: RenderModel) => void
+  onZoomOut: () => void
+  onZoomIn: () => void
+  zoomPercent: number
+  zoomOutDisabled: boolean
+  zoomInDisabled: boolean
+  onFit: () => void
+}
+
+export type GraphCanvasRegionProps = {
+  ctx: GraphCanvasRegionContext
 }
 
 /**
@@ -229,7 +205,8 @@ export type GraphCanvasRegionProps = {
  * that live on or above the canvas.
  */
 export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
-  const i18n = props.i18n
+  const ctx = props.ctx
+  const i18n = useI18n()
   const [canvasRegionEl, setCanvasRegionEl] = createSignal<HTMLDivElement | undefined>()
 
   return (
@@ -239,135 +216,135 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
       data-slot="graph-canvas-region"
       role="group"
       aria-label={i18n.t("ui.sessionGraph.canvas.label")}
-      aria-describedby={props.a11yInstructionsId}
+      aria-describedby={ctx.a11yInstructionsId}
       tabindex="0"
-      onKeyDown={props.handleRegionKeyDown}
+      onKeyDown={ctx.handleRegionKeyDown}
     >
       <GraphCanvas
-        model={props.renderModel}
-        theme={props.theme}
-        projection={props.projection}
-        depth={props.depth}
-        selection={props.selection()}
-        preferredRenderer={props.preferredRenderer}
-        overrides={props.rendererOverrides}
+        model={ctx.renderModel}
+        theme={ctx.theme()}
+        projection={ctx.projection()}
+        depth={ctx.depth()}
+        selection={ctx.selection()}
+        preferredRenderer={ctx.preferredRenderer}
+        overrides={ctx.rendererOverrides}
         onSelect={(ids) => {
-          props.setGroupMenu(undefined)
-          if (ids.length > 0) props.select(ids[0])
+          ctx.setGroupMenu(undefined)
+          if (ids.length > 0) ctx.select(ids[0])
         }}
-        onNodeDoubleClick={props.expandToGraph}
+        onNodeDoubleClick={ctx.expandToGraph}
         onBackgroundClick={() => {
-          props.setGroupMenu(undefined)
-          props.select(undefined)
+          ctx.setGroupMenu(undefined)
+          ctx.select(undefined)
         }}
-        onHover={props.setHovered}
-        onEdgeHover={props.setEdgeHovered}
+        onHover={ctx.setHovered}
+        onEdgeHover={ctx.setEdgeHovered}
         onEdgeSelect={(id) => {
-          const edge = props.model().edges.find((item) => item.id === id)
+          const edge = ctx.model().edges.find((item) => item.id === id)
           if (!edge) return
-          props.select(edge.source)
-          props.annotations.startTrace("related", edge.source)
+          ctx.select(edge.source)
+          ctx.annotations.startTrace("related", edge.source)
         }}
-        onGroupToggle={props.toggleGroupByID}
+        onGroupToggle={ctx.toggleGroupByID}
         onGroupMenu={(id, at) => {
           const rect = canvasRegionEl()?.getBoundingClientRect()
-          if (rect) props.setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
+          if (rect) ctx.setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
         }}
-        onNodeMoved={props.moveNodes}
-        onNodeResized={props.resizeNode}
-        cardFacing={props.cardFacing}
-        onModelApplied={props.applyModel}
+        onNodeMoved={ctx.moveNodes}
+        onNodeResized={ctx.resizeNode}
+        cardFacing={ctx.cardFacing()}
+        onModelApplied={ctx.applyModel}
         onRenderer={(instance) => {
-          props.setRenderer?.(instance)
-          props.setRendererReady(!!instance)
-          props.onRenderer?.(instance)
+          ctx.setRenderer?.(instance)
+          ctx.setRendererReady(!!instance)
+          ctx.onRenderer?.(instance)
         }}
         onReady={(info) => {
-          props.setError(undefined)
-          props.setRendererID(info.id)
-          props.setFallback(info.fallback)
+          ctx.setError(undefined)
+          ctx.setRendererID(info.id)
+          ctx.setFallback(info.fallback)
         }}
-        onError={(cause) => props.setError(cause instanceof Error ? cause.message : String(cause))}
+        onError={(cause) => ctx.setError(cause instanceof Error ? cause.message : String(cause))}
         onViewportChange={(next) => {
-          props.camera.report(next)
-          props.setResting(next)
-          props.setViewport(next)
+          ctx.camera.report(next)
+          ctx.setResting(next)
+          ctx.setViewport(next)
         }}
       />
       <GraphOverlayManager
         // Model & theme
-        model={props.model}
-        theme={props.theme}
-        projection={props.projection}
-        depth={props.depth}
-        detailMode={props.detailMode}
-        effectiveDetailMode={props.effectiveDetailMode}
-        layout={props.layout}
+        model={ctx.model}
+        theme={ctx.theme()}
+        projection={ctx.projection()}
+        depth={ctx.depth()}
+        detailMode={ctx.detailMode()}
+        effectiveDetailMode={ctx.effectiveDetailMode}
+        layout={ctx.layout()}
 
         // Selection & navigation
-        selection={props.selection}
-        select={props.select}
-        graphSelection={props.graphSelection}
+        selection={ctx.selection}
+        select={ctx.select}
+        graphSelection={ctx.graphSelection}
 
         // Peek
-        peekFrame={props.peekFrame}
-        peekEdge={props.peekEdge}
+        peekFrame={ctx.peekFrame}
+        peekEdge={ctx.peekEdge}
 
         // Popover
-        popoverVisible={props.popoverVisible}
-        popoverNode={props.popoverNode}
-        popoverPlacement={props.popoverPlacement}
-        setPopoverDismissed={props.setPopoverDismissed}
+        popoverVisible={ctx.popoverVisible}
+        popoverNode={ctx.popoverNode}
+        popoverPlacement={ctx.popoverPlacement}
+        setPopoverDismissed={ctx.setPopoverDismissed}
 
         // Annotations (notes + trace)
-        annotations={props.annotations}
-        noteTargetNode={props.noteTargetNode}
-        noteAnchor={props.noteAnchor}
+        annotations={ctx.annotations}
+        noteTargetNode={ctx.noteTargetNode}
+        noteAnchor={ctx.noteAnchor}
 
         // Search
-        searchOpen={props.searchOpen}
-        searchInitial={props.searchInitial}
-        setSearchOpen={props.setSearchOpen}
-        jumpTo={props.jumpTo}
+        searchOpen={ctx.searchOpen}
+        searchInitial={ctx.searchInitial() ?? ""}
+        setSearchOpen={ctx.setSearchOpen}
+        jumpTo={ctx.jumpTo}
 
         // Legend
-        legendOpen={props.legendOpen}
-        setLegendOpen={props.setLegendOpen}
-        edgeKinds={props.edgeKinds}
-        rules={props.rules}
+        legendOpen={ctx.legendOpen}
+        setLegendOpen={ctx.setLegendOpen}
+        edgeKinds={ctx.edgeKinds}
+        rules={ctx.rules}
 
         // Gallery
-        galleryOpen={props.galleryOpen}
-        setGalleryOpen={props.setGalleryOpen}
-        changeLayout={props.changeLayout}
+        galleryOpen={ctx.galleryOpen}
+        setGalleryOpen={ctx.setGalleryOpen}
+        changeLayout={ctx.changeLayout}
 
         // Group menu
-        groupMenu={props.groupMenu}
-        setGroupMenu={props.setGroupMenu}
-        groupCollapse={props.groupCollapse}
-        camera={props.camera}
-        toggleGroupByID={props.toggleGroupByID}
-        modelForGroupMenu={props.model}
+        groupMenu={ctx.groupMenu}
+        setGroupMenu={ctx.setGroupMenu}
+        groupCollapse={ctx.groupCollapse}
+        camera={ctx.camera}
+        toggleGroupByID={ctx.toggleGroupByID}
+        modelForGroupMenu={ctx.model}
 
         // Error/Empty states
-        error={props.error}
-        onBack={props.onBack}
+        error={ctx.error() ?? ""}
+        onBack={ctx.onBack}
 
         // Diff
-        diffSource={props.diffSource}
-        link={props.link}
-        onOpenTranscript={props.onOpenTranscript}
-        onOpenSession={props.onOpenSession}
-        onOpenWindow={props.onOpenWindow}
-        onCopyView={props.onCopyView}
-        renderSummary={props.renderSummary}
+        diffSource={ctx.diffSource}
+        link={ctx.link}
+        onOpenTranscript={ctx.onOpenTranscript}
+        onOpenSession={ctx.onOpenSession}
+        onOpenWindow={ctx.onOpenWindow}
+        onCopyView={ctx.onCopyView}
+        renderSummary={ctx.renderSummary}
 
         // A11y
-        ordered={props.ordered}
-        viewAnnouncement={props.viewAnnouncement}
-        a11yInstructionsId={props.a11yInstructionsId}
-        announce={props.announce}
-        i18n={props.i18n}
+        ordered={ctx.ordered}
+        viewAnnouncement={ctx.viewAnnouncement}
+        a11yInstructionsId={ctx.a11yInstructionsId}
+        announce={ctx.announce}
+        i18n={ctx.i18n}
       />
     </div>
   )
