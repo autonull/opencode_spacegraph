@@ -53,6 +53,7 @@ export type GraphCanvasRegionProps = {
   cardFacing: () => "plane" | "camera"
   applyModel: (instance: any) => void
   onRenderer?: (renderer: any | undefined) => void
+  onRendererMounted?: (renderer: any, id: RendererID) => void
   preferredRenderer?: RendererID
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   
@@ -105,6 +106,7 @@ export type GraphCanvasRegionProps = {
   
   // Error/Empty states
   error: () => string | undefined
+  onError: (error: string | undefined) => void
   onBack: (() => void) | undefined
   
   // Diff
@@ -183,8 +185,9 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         onRenderer={(instance) => {
           props.onRenderer?.(instance)
         }}
+        onRendererMounted={props.onRendererMounted}
         onViewportChange={props.onViewportChange}
-        onError={props.error}
+        onError={props.onError}
       />
       <GraphOverlayManager
         // Model & theme

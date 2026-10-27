@@ -5,7 +5,7 @@ import type {
   RendererViewport,
   RenderTheme,
 } from "@spacegraphjs/renderer"
-import { createEffect, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js"
+import { createEffect, createRenderEffect, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js"
 import { mountRenderer, type MountedRenderer, type RendererFactory, type RendererID } from "../canvas/renderer-registry"
 
 export type GraphCanvasWrapperProps = {
@@ -29,8 +29,9 @@ export type GraphCanvasWrapperProps = {
   onNodeResized?: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
   onModelApplied?: (renderer: GraphRenderer) => void
   onRenderer?: (renderer: GraphRenderer | undefined) => void
+  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
   onViewportChange?: (viewport: RendererViewport) => void
-  onError?: (error: unknown) => void
+  onError?: (error: string | undefined) => void
 }
 
 const groupIDOf = (target: EventTarget | null) => {
@@ -45,6 +46,8 @@ export const GraphCanvasWrapper = (props: GraphCanvasWrapperProps): JSX.Element 
   let unsubscribers: (() => void)[] = []
   let generation = 0
   const [ready, setReady] = createSignal(false)
+  // Track the previous preferredRenderer using a ref
+  let prevPreferredRenderer: RendererID = props.preferredRenderer ?? "spacegraph"
 
   const depth = () => props.depth ?? (props.projection === "3d" ? "orbit" : "flat")
   const cardFacing = () => props.cardFacing ?? "plane"
@@ -98,12 +101,14 @@ export const GraphCanvasWrapper = (props: GraphCanvasWrapperProps): JSX.Element 
         host.dataset.graphReady = "true"
         setReady(true)
         props.onRenderer?.(result.renderer)
+        props.onRendererMounted?.(result.renderer, result.id)
       })
       .catch((error: unknown) => {
         if (current !== generation) return
         host.dataset.graphReady = "false"
-        host.dataset.graphError = error instanceof Error ? error.message : String(error)
-        props.onError?.(error)
+        const message = error instanceof Error ? error.message : String(error)
+        host.dataset.graphError = message
+        props.onError?.(message)
       })
   }
 
@@ -131,15 +136,18 @@ export const GraphCanvasWrapper = (props: GraphCanvasWrapperProps): JSX.Element 
       host.removeEventListener("contextmenu", onContextMenu, true)
     })
     start(props.preferredRenderer ?? "spacegraph")
+    prevPreferredRenderer = props.preferredRenderer ?? "spacegraph"
   })
 
-  createEffect((previous: RendererID | undefined) => {
+  // Watch for preferredRenderer changes and trigger renderer switch
+  createRenderEffect(() => {
     const next = props.preferredRenderer ?? "spacegraph"
 
-    if (previous !== undefined && previous !== next) start(next)
-
-    return next
-  }, undefined)
+    if (prevPreferredRenderer !== next) {
+      prevPreferredRenderer = next
+      start(next)
+    }
+  })
 
   createEffect(() => {
     const model = props.model

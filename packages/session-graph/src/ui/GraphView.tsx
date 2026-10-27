@@ -301,6 +301,7 @@ export const GraphView = (props: GraphViewProps) => {
     rendererID,
     fallback,
     error,
+    setError,
 
     narrow,
     setNarrow,
@@ -1316,6 +1317,8 @@ export const GraphView = (props: GraphViewProps) => {
     
     // Renderer
     onRenderer: props.onRenderer,
+    onRendererMounted: props.onRenderer,
+    onError: setError,
   }
 
   return (
