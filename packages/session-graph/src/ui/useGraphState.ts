@@ -95,6 +95,55 @@ interface GraphState {
   notesStore: Annotations
 }
 
+const initialState: GraphState = {
+  level: "execution",
+  projection: "2d",
+  depth: "flat",
+  layout: "lanes",
+  files: false,
+  detailMode: "panel",
+  detailFraming: "off",
+  peek: false,
+  followLog: false,
+  facets: { query: "", kinds: new Set(), statuses: new Set(), domains: new Set(["session"]) },
+  cardFacing: "plane",
+  searchOpen: false,
+  searchInitial: "",
+  legendOpen: false,
+  galleryOpen: false,
+  findInitialTab: "search",
+  popoverDismissed: false,
+  hovered: undefined,
+  edgeHovered: undefined,
+  capabilities: undefined,
+  rendererReady: false,
+  rendererID: undefined,
+  fallback: false,
+  error: undefined,
+  narrow: false,
+  compact: false,
+  inspectorWidth: 288,
+  inspectorSheetOpen: false,
+  canvasSize: { width: 0, height: 0 },
+  manual: { positions: {}, sizes: {} },
+  manualHistory: [],
+  manualFuture: [],
+  notesStore: {},
+}
+
+const MAX_HISTORY = 50
+
+const stateKeys = [
+  "level", "projection", "depth", "layout", "files", "detailMode", "detailFraming",
+  "peek", "followLog", "facets", "cardFacing", "searchOpen", "searchInitial",
+  "legendOpen", "galleryOpen", "findInitialTab", "popoverDismissed",
+  "hovered", "edgeHovered", "capabilities", "rendererReady", "rendererID",
+  "fallback", "error", "narrow", "compact", "inspectorWidth",
+  "inspectorSheetOpen", "canvasSize", "manualHistory", "manualFuture"
+] as const satisfies (keyof GraphState)[]
+
+type StateKey = typeof stateKeys[number]
+
 export type UseGraphStateReturn = {
   i18n: ReturnType<typeof useI18n>
   a11yInstructionsId: string
@@ -191,44 +240,6 @@ export type UseGraphStateReturn = {
   announce: (message: string) => void
 }
 
-const initialState: GraphState = {
-  level: "execution",
-  projection: "2d",
-  depth: "flat",
-  layout: "lanes",
-  files: false,
-  detailMode: "panel",
-  detailFraming: "off",
-  peek: false,
-  followLog: false,
-  facets: { query: "", kinds: new Set(), statuses: new Set(), domains: new Set(["session"]) },
-  cardFacing: "plane",
-  searchOpen: false,
-  searchInitial: "",
-  legendOpen: false,
-  galleryOpen: false,
-  findInitialTab: "search",
-  popoverDismissed: false,
-  hovered: undefined,
-  edgeHovered: undefined,
-  capabilities: undefined,
-  rendererReady: false,
-  rendererID: undefined,
-  fallback: false,
-  error: undefined,
-  narrow: false,
-  compact: false,
-  inspectorWidth: 288,
-  inspectorSheetOpen: false,
-  canvasSize: { width: 0, height: 0 },
-  manual: { positions: {}, sizes: {} },
-  manualHistory: [],
-  manualFuture: [],
-  notesStore: {},
-}
-
-const MAX_HISTORY = 50
-
 export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
   const i18n = useI18n()
   const a11yInstructionsId = createUniqueId()
@@ -263,12 +274,17 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
   }
   const model = () => (props.model ? { ...props.model, annotations: state.notesStore } : emptyModel)
 
-  // Helper to set state with function support
+  // Generic setter with function support
   const set = <K extends keyof GraphState>(key: K, value: GraphState[K] | ((prev: GraphState[K]) => GraphState[K])) => {
-    if (typeof value === "function") {
-      setState(key, value as (prev: GraphState[K]) => GraphState[K])
-    } else {
-      setState(key, value)
+    setState(key, value as any)
+  }
+
+  // Create getter/setter pairs for all simple state keys
+  const accessors = {} as Record<StateKey, { get: () => any; set: (v: any) => void }>
+  for (const key of stateKeys) {
+    accessors[key] = {
+      get: () => state[key],
+      set: (v: any) => set(key, v),
     }
   }
 
@@ -334,84 +350,84 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     resolvedTheme,
 
     // Controlled state
-    level: () => state.level,
-    setLevel: (v) => set("level", v),
-    projection: () => state.projection,
-    setProjection: (v) => set("projection", v),
-    depth: () => state.depth,
-    setDepth: (v) => set("depth", v),
-    layout: () => state.layout,
-    setLayout: (v) => set("layout", v),
-    files: () => state.files,
-    setFiles: (v) => set("files", v),
-    detailMode: () => state.detailMode,
-    setDetailMode: (v) => set("detailMode", v),
-    detailFraming: () => state.detailFraming,
-    setDetailFraming: (v) => set("detailFraming", v),
-    peek: () => state.peek,
-    setPeek: (v) => set("peek", v),
-    followLog: () => state.followLog,
-    setFollowLog: (v) => set("followLog", v),
-    facets: () => state.facets,
-    setFacets: (v) => set("facets", v),
+    level: accessors.level.get,
+    setLevel: accessors.level.set,
+    projection: accessors.projection.get,
+    setProjection: accessors.projection.set,
+    depth: accessors.depth.get,
+    setDepth: accessors.depth.set,
+    layout: accessors.layout.get,
+    setLayout: accessors.layout.set,
+    files: accessors.files.get,
+    setFiles: accessors.files.set,
+    detailMode: accessors.detailMode.get,
+    setDetailMode: accessors.detailMode.set,
+    detailFraming: accessors.detailFraming.get,
+    setDetailFraming: accessors.detailFraming.set,
+    peek: accessors.peek.get,
+    setPeek: accessors.peek.set,
+    followLog: accessors.followLog.get,
+    setFollowLog: accessors.followLog.set,
+    facets: accessors.facets.get,
+    setFacets: accessors.facets.set,
 
     // Card facing
-    cardFacing: () => state.cardFacing,
-    setCardFacing: (v) => set("cardFacing", v),
-    toggleBillboard: () => set("cardFacing", (c) => (c === "camera" ? "plane" : "camera")),
+    cardFacing: accessors.cardFacing.get,
+    setCardFacing: accessors.cardFacing.set,
+    toggleBillboard: () => set("cardFacing", (c: "plane" | "camera") => c === "camera" ? "plane" : "camera"),
 
     // UI state
-    searchOpen: () => state.searchOpen,
-    setSearchOpen: (v) => set("searchOpen", v),
-    searchInitial: () => state.searchInitial,
-    setSearchInitial: (v) => set("searchInitial", v),
-    legendOpen: () => state.legendOpen,
-    setLegendOpen: (v) => set("legendOpen", v),
-    galleryOpen: () => state.galleryOpen,
-    setGalleryOpen: (v) => set("galleryOpen", v),
-    findInitialTab: () => state.findInitialTab,
-    setFindInitialTab: (v) => set("findInitialTab", v),
+    searchOpen: accessors.searchOpen.get,
+    setSearchOpen: accessors.searchOpen.set,
+    searchInitial: accessors.searchInitial.get,
+    setSearchInitial: accessors.searchInitial.set,
+    legendOpen: accessors.legendOpen.get,
+    setLegendOpen: accessors.legendOpen.set,
+    galleryOpen: accessors.galleryOpen.get,
+    setGalleryOpen: accessors.galleryOpen.set,
+    findInitialTab: accessors.findInitialTab.get,
+    setFindInitialTab: accessors.findInitialTab.set,
 
     // Popover
-    popoverDismissed: () => state.popoverDismissed,
-    setPopoverDismissed: (v) => set("popoverDismissed", v),
+    popoverDismissed: accessors.popoverDismissed.get,
+    setPopoverDismissed: accessors.popoverDismissed.set,
 
     // Hover
-    hovered: () => state.hovered,
-    setHovered: (v) => set("hovered", v),
-    edgeHovered: () => state.edgeHovered,
-    setEdgeHovered: (v) => set("edgeHovered", v),
+    hovered: accessors.hovered.get,
+    setHovered: accessors.hovered.set,
+    edgeHovered: accessors.edgeHovered.get,
+    setEdgeHovered: accessors.edgeHovered.set,
 
     // Renderer state
-    capabilities: () => state.capabilities,
-    rendererReady: () => state.rendererReady,
-    setRendererReady: (v) => set("rendererReady", v),
-    rendererID: () => state.rendererID,
-    setRendererID: (v) => set("rendererID", v),
-    fallback: () => state.fallback,
-    setFallback: (v) => set("fallback", v),
-    error: () => state.error,
-    setError: (v) => set("error", v),
+    capabilities: accessors.capabilities.get,
+    rendererReady: accessors.rendererReady.get,
+    setRendererReady: accessors.rendererReady.set,
+    rendererID: accessors.rendererID.get,
+    setRendererID: accessors.rendererID.set,
+    fallback: accessors.fallback.get,
+    setFallback: accessors.fallback.set,
+    error: accessors.error.get,
+    setError: accessors.error.set,
 
     // Responsive
-    narrow: () => state.narrow,
-    setNarrow: (v) => set("narrow", v),
-    compact: () => state.compact,
-    setCompact: (v) => set("compact", v),
-    inspectorWidth: () => state.inspectorWidth,
-    setInspectorWidth: (v) => set("inspectorWidth", v),
-    inspectorSheetOpen: () => state.inspectorSheetOpen,
-    setInspectorSheetOpen: (v) => set("inspectorSheetOpen", v),
-    canvasSize: () => state.canvasSize,
-    setCanvasSize: (v) => set("canvasSize", v),
+    narrow: accessors.narrow.get,
+    setNarrow: accessors.narrow.set,
+    compact: accessors.compact.get,
+    setCompact: accessors.compact.set,
+    inspectorWidth: accessors.inspectorWidth.get,
+    setInspectorWidth: accessors.inspectorWidth.set,
+    inspectorSheetOpen: accessors.inspectorSheetOpen.get,
+    setInspectorSheetOpen: accessors.inspectorSheetOpen.set,
+    canvasSize: accessors.canvasSize.get,
+    setCanvasSize: accessors.canvasSize.set,
 
     // Manual layout
     manual: state.manual,
     setManual,
-    manualHistory: () => state.manualHistory,
-    setManualHistory: (v) => set("manualHistory", v),
-    manualFuture: () => state.manualFuture,
-    setManualFuture: (v) => set("manualFuture", v),
+    manualHistory: accessors.manualHistory.get,
+    setManualHistory: accessors.manualHistory.set,
+    manualFuture: accessors.manualFuture.get,
+    setManualFuture: accessors.manualFuture.set,
     pushHistory,
     undoManual,
     redoManual,
