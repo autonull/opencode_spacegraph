@@ -15,7 +15,7 @@ export type GraphCanvasWrapperProps = {
   depth?: "flat" | "layered" | "depth-stack" | "orbit"
   cardFacing?: "plane" | "camera"
   selection?: readonly string[]
-  preferredRenderer?: RendererID
+  preferredRenderer?: () => RendererID
   overrides?: Partial<Record<RendererID, RendererFactory>>
   onSelect?: (ids: readonly string[]) => void
   onNodeDoubleClick?: (id: string) => void
@@ -47,7 +47,8 @@ export const GraphCanvasWrapper = (props: GraphCanvasWrapperProps): JSX.Element 
   let generation = 0
   const [ready, setReady] = createSignal(false)
   // Track the previous preferredRenderer using a ref
-  let prevPreferredRenderer: RendererID = props.preferredRenderer ?? "spacegraph"
+  const getPreferredRenderer = () => props.preferredRenderer?.() ?? "spacegraph"
+  let prevPreferredRenderer: RendererID = getPreferredRenderer()
 
   const depth = () => props.depth ?? (props.projection === "3d" ? "orbit" : "flat")
   const cardFacing = () => props.cardFacing ?? "plane"
@@ -135,13 +136,13 @@ export const GraphCanvasWrapper = (props: GraphCanvasWrapperProps): JSX.Element 
       host.removeEventListener("click", onClick, true)
       host.removeEventListener("contextmenu", onContextMenu, true)
     })
-    start(props.preferredRenderer ?? "spacegraph")
-    prevPreferredRenderer = props.preferredRenderer ?? "spacegraph"
+    start(getPreferredRenderer())
+    prevPreferredRenderer = getPreferredRenderer()
   })
 
   // Watch for preferredRenderer changes and trigger renderer switch
   createRenderEffect(() => {
-    const next = props.preferredRenderer ?? "spacegraph"
+    const next = getPreferredRenderer()
 
     if (prevPreferredRenderer !== next) {
       prevPreferredRenderer = next

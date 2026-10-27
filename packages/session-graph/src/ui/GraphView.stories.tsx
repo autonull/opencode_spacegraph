@@ -202,7 +202,7 @@ const ViewHarness = (props: HarnessProps) => {
           if (windows().some((open) => open.id === window.id)) return
           setWindows([...windows(), window])
         }}
-        preferredRenderer={renderer()}
+        preferredRenderer={renderer}
         rendererOverrides={props.overrides}
         theme={props.theme}
         diffSource={diffSource}

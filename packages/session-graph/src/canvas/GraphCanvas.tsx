@@ -20,7 +20,7 @@ export type GraphCanvasProps = {
   depth?: DepthMode
   cardFacing?: "plane" | "camera"
   selection?: readonly string[]
-  preferredRenderer?: RendererID
+  preferredRenderer?: () => RendererID
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
   overrides?: Partial<Record<RendererID, RendererFactory>>
   onSelect?: (ids: readonly string[]) => void
@@ -162,11 +162,13 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
       host.removeEventListener("click", onClick, true)
       host.removeEventListener("contextmenu", onContextMenu, true)
     })
-    start(props.preferredRenderer ?? "spacegraph")
+    start(props.preferredRenderer?.() ?? "spacegraph")
   })
 
+  const getPreferredRenderer = () => props.preferredRenderer?.() ?? "spacegraph"
+
   createEffect((previous: RendererID | undefined) => {
-    const next = props.preferredRenderer ?? "spacegraph"
+    const next = getPreferredRenderer()
 
     if (previous !== undefined && previous !== next) start(next)
 

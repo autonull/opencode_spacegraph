@@ -33,7 +33,7 @@ const OverlayHarness = (props: { theme?: RenderTheme; limit?: number; renderer?:
           turnID={TURN}
           theme={props.theme ?? resolveGraphTheme()}
           limit={props.limit}
-          preferredRenderer={props.renderer}
+          preferredRenderer={() => props.renderer ?? "spacegraph"}
           onClose={() => setOpen(false)}
           onOpenFullGraph={(turnID) => setOpenedFull(turnID)}
         />

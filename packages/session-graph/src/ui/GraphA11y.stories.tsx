@@ -18,7 +18,7 @@ const A11yHarness = () => {
 
   return (
     <div style={{ width: "1100px", height: "640px", display: "flex" }}>
-      <GraphView model={graph} preferredRenderer={renderer()} onSelect={setSelected} onBack={() => undefined} />
+      <GraphView model={graph} preferredRenderer={renderer} onSelect={setSelected} onBack={() => undefined} />
     </div>
   )
 }

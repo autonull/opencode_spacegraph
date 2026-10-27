@@ -38,7 +38,7 @@ const CanvasHarness = () => {
         theme={DARK_THEME}
         projection="2d"
         selection={selection()}
-        preferredRenderer={renderer()}
+        preferredRenderer={renderer}
         onReady={(info) => {
           harness.ready = info
         }}

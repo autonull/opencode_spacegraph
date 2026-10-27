@@ -19,7 +19,7 @@ export type TurnMapOverlayProps = {
   theme?: RenderTheme
   /** Maximum nodes shown, including the turn itself (§H6.2: seven). */
   limit?: number
-  preferredRenderer?: RendererID
+  preferredRenderer?: () => RendererID
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   renderCard?: CardTemplate
   onSelect?: (id: string | undefined) => void

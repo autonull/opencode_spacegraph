@@ -127,7 +127,7 @@ export type GraphViewProps = {
   depth?: DepthMode
   /** Controlled selection: when set, the graph mirrors it and reports changes through `onSelect`. */
   selection?: string
-  preferredRenderer?: RendererID
+  preferredRenderer?: () => RendererID
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   positions?: ReadonlyMap<string, Position>
