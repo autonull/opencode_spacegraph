@@ -70,7 +70,7 @@ interface GraphState {
   edgeHovered: string | undefined
 
   // Renderer state
-  capabilities: any
+  capabilities: import("@spacegraphjs/renderer").RendererCapabilities | undefined
   rendererReady: boolean
   rendererID: RendererID | undefined
   fallback: boolean
@@ -199,7 +199,8 @@ export type UseGraphStateReturn = {
   setEdgeHovered: (id: string | undefined) => void
 
   // Renderer state
-  capabilities: () => any
+  capabilities: () => import("@spacegraphjs/renderer").RendererCapabilities | undefined
+  setCapabilities: (capabilities: import("@spacegraphjs/renderer").RendererCapabilities | undefined) => void
   rendererReady: () => boolean
   setRendererReady: (ready: boolean) => void
   rendererID: () => RendererID | undefined
@@ -400,6 +401,7 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
 
     // Renderer state
     capabilities: accessors.capabilities.get,
+    setCapabilities: accessors.capabilities.set,
     rendererReady: accessors.rendererReady.get,
     setRendererReady: accessors.rendererReady.set,
     rendererID: accessors.rendererID.get,

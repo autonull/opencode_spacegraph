@@ -12,6 +12,9 @@ import type {
 import { equalizerFade, equalizerMatch, isClusterExpanded, phaseCategoryOf } from "@opencode/session-ui/graph"
 import { escapeHtml, type BandTemplate, type CardTemplate } from "../canvas/buildRenderModel"
 import { text } from "./node-data"
+
+/** Safe escapeHtml that handles undefined/null. */
+const safeEscapeHtml = (value: string | undefined) => escapeHtml(value ?? "")
 import type { TraceOverlay } from "./overlay"
 import { formatAge, sourceLabel } from "./provenance"
 
@@ -395,16 +398,16 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const content = tier === "closest" ? kindContent(node, fact, options.copy) : undefined
     const summary =
       tier !== "far" && !content && node.summary
-        ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.summary)}</span>`
+        ? `<span style="color:${theme.textMuted};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeEscapeHtml(node.summary)}</span>`
         : ""
     const contentRow = content
-      ? `<span style="color:${theme.textMuted};font-size:10px;white-space:pre-line;overflow:hidden">${escapeHtml(
+      ? `<span style="color:${theme.textMuted};font-size:10px;white-space:pre-line;overflow:hidden">${safeEscapeHtml(
           content.split("\n").slice(0, 2).join("\n"),
         )}</span>`
       : ""
     const detailRow =
       fact && !content
-        ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(fact)}</span>`
+        ? `<span style="color:${theme.textMuted};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeEscapeHtml(fact)}</span>`
         : ""
     // T15: an age rule fades the card. It never moves the map — the fade is the card's own voice.
     const fade = options.now === undefined ? 1 : equalizerFade(options.rules ?? [], node, options.now)
@@ -436,7 +439,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
             ? formatAge(options.now - asOf)
             : undefined
           const label = age ? `${sourceLabel(source)}, ${age}` : sourceLabel(source)
-          return `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;color:${theme.textMuted};padding:1px 4px;border-radius:3px;background:${theme.surfaceMuted}">${escapeHtml(label)}</span>`
+          return `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;color:${theme.textMuted};padding:1px 4px;border-radius:3px;background:${theme.surfaceMuted}">${safeEscapeHtml(label)}</span>`
         })()
       : ""
 
@@ -444,12 +447,12 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const isGroupNode = isPhase
     const groupBg = isGroupNode ? `background:linear-gradient(180deg,${soft}00,${theme.surface});` : `background:${theme.surface};`
     const groupGlyph = isGroupNode ? GLYPH_GROUP : GLYPH[node.kind]
-    const groupDataAttr = memberCount > 0 ? ` data-group-members="${escapeHtml(memberCount.toString())}"` : ""
+    const groupDataAttr = memberCount > 0 ? ` data-group-members="${safeEscapeHtml(memberCount.toString())}"` : ""
     // At execution level and below, the group header folds the group. The chevron points the way the
     // members will go, and the header is the only part of a group card that carries the action.
     const collapsed = isGroupNode && options.collapsedGroups?.has(node.id) === true
     const groupToggle = isGroupNode && level !== "overview"
-      ? `<button type="button" data-group-toggle="${collapsed ? "expand" : "collapse"}" aria-label="${escapeHtml(collapsed ? options.copy.expandGroup() : options.copy.collapseGroup())}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${collapsed ? -90 : 0}deg)"><path d="M5 6l3 3 3-3"/></svg></button>`
+      ? `<button type="button" data-group-toggle="${collapsed ? "expand" : "collapse"}" aria-label="${safeEscapeHtml(collapsed ? options.copy?.expandGroup?.() : options.copy?.collapseGroup?.())}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${collapsed ? -90 : 0}deg)"><path d="M5 6l3 3 3-3"/></svg></button>`
       : ""
 
     // Trace overlay: lit/dim classification for focus+context highlighting
@@ -476,7 +479,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     // V116: hover-only copy icon for cards with copyable content
     const copyText = copyableContent(node)
     const copyButton = copyText
-      ? `<button type="button" class="card-copy-btn" aria-label="${escapeHtml(options.copy.copyButton())}" data-copy-text="${escapeHtml(copyText)}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;opacity:0;transition:opacity 0.15s;margin-left:auto;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
+      ? `<button type="button" class="card-copy-btn" aria-label="${safeEscapeHtml(options.copy?.copyButton?.())}" data-copy-text="${safeEscapeHtml(copyText)}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;opacity:0;transition:opacity 0.15s;margin-left:auto;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
       : ""
 
     // One emphasis resolver: computes the single emphasis level and style
@@ -495,7 +498,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" data-emphasis="${emphasisLevel}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${emphasisStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
-<span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>
+<span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${safeEscapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>
 ${summary}
 ${contentRow}
 ${detailRow}
@@ -547,11 +550,11 @@ export function createBandTemplate(
 ): BandTemplate {
   return (node: GraphNode, count: number, _bounds) => {
     const { solid, soft } = accentOf(node, rules)
-    const label = escapeHtml(node.label.replace(/\s+/g, " ").trim().slice(0, 48))
+    const label = safeEscapeHtml((node.label ?? "").replace(/\s+/g, " ").trim().slice(0, 48))
     const collapsed = options?.collapsedGroups?.has(node.id) === true
     const copy = options?.copy
     const toggle = copy
-      ? `<button type="button" data-group-toggle="${collapsed ? "expand" : "collapse"}" aria-label="${escapeHtml(collapsed ? copy.expandGroup() : copy.collapseGroup())}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;pointer-events:auto"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${collapsed ? -90 : 0}deg)"><path d="M5 6l3 3 3-3"/></svg></button>`
+      ? `<button type="button" data-group-toggle="${collapsed ? "expand" : "collapse"}" aria-label="${safeEscapeHtml(collapsed ? copy.expandGroup?.() : copy.collapseGroup?.())}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;pointer-events:auto"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${collapsed ? -90 : 0}deg)"><path d="M5 6l3 3 3-3"/></svg></button>`
       : ""
 
     return `<div data-band="${node.kind}" data-group-members="${count}" data-collapsed="${collapsed}" style="width:100%;height:100%;box-sizing:border-box;border:1px solid ${solid};border-radius:16px;background:${soft};pointer-events:auto;position:relative;overflow:hidden;cursor:grab;font-family:${theme.fontFamily}">

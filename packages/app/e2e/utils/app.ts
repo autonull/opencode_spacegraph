@@ -158,7 +158,7 @@ export function session(
 
   return {
     slug: input.id,
-    title: input.id,
+    title: input.title ?? input.id,
     version: "dev",
     time: { created, updated: created },
     ...rest,

@@ -15,11 +15,12 @@ import type {
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createMemo, createSignal, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, type JSX } from "solid-js"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphOverlayManager } from "./GraphOverlayManager"
 import { createNodeAnchor } from "./graph-anchors"
+import { attachTouchGestures } from "./graph-utils"
 import type { GraphDiffSource } from "./GraphDiff"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGroupCollapseReturn } from "./useGroupCollapse"
@@ -142,10 +143,24 @@ export type GraphCanvasRegionProps = {
 export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   const i18n = useI18n()
   const [canvasRegionEl, setCanvasRegionEl] = createSignal<HTMLDivElement | undefined>()
+  const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
 
   // Subscribe to projection/depth getters so this component re-renders when they change
   const projection = createMemo(() => props.projection())
   const depth = createMemo(() => props.depth())
+
+  // V117: Touch gestures for mobile - set up when renderer and canvas are available
+  createEffect(() => {
+    const r = renderer()
+    const el = canvasRegionEl()
+    if (!r || !el) return
+    const cleanup = attachTouchGestures(el, {
+      getViewport: () => r.getViewport?.(),
+      setViewport: (vp: RendererViewport) => r.setViewport?.(vp),
+      capabilities: r.capabilities ?? { zoomRange: { min: 0.1, max: 10 } },
+    })
+    onCleanup(cleanup)
+  })
 
   return (
     <div
@@ -190,7 +205,10 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         onRenderer={(instance) => {
           props.onRenderer?.(instance)
         }}
-        onRendererMounted={props.onRendererMounted}
+        onRendererMounted={(renderer: GraphRenderer, id: RendererID) => {
+          setRenderer(renderer)
+          props.onRendererMounted?.(renderer, id)
+        }}
         onViewportChange={props.onViewportChange}
         onError={props.onError}
       />

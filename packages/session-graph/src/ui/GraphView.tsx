@@ -2,7 +2,6 @@ import type {
   DepthMode,
   GraphRenderer,
   Projection,
-  RendererViewport,
   RenderTheme,
   RenderModel,
 } from "@spacegraphjs/renderer"
@@ -93,7 +92,7 @@ import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
 import { createNodeAnchor } from "./graph-anchors"
 import { sessionID } from "./node-data"
-import { proposeWindow, attachTouchGestures, createWidthThresholdTracker } from "./graph-utils"
+import { proposeWindow, createWidthThresholdTracker } from "./graph-utils"
 import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
 import { useEdgeKinds } from "./useEdgeKinds"
@@ -319,6 +318,7 @@ export const GraphView = (props: GraphViewProps) => {
     setEdgeHovered,
 
     capabilities,
+    setCapabilities,
     rendererReady,
     rendererID,
     setRendererID,
@@ -419,12 +419,15 @@ export const GraphView = (props: GraphViewProps) => {
   const groupCollapse = useGroupCollapse({
     model,
     selection: () => selection.selection(),
-    nodeByID: (id) => model().nodes.find((n) => n.id === id),
+    nodeByID: (id) => {
+      const m = model()
+      return m?.nodes?.find((n) => n.id === id)
+    },
   })
 
   // T18.3: the auto detail mode threshold
   const AUTO_DETAIL_THRESHOLD = 640
-  const [renderer] = createSignal<GraphRenderer | undefined>()
+  const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
   let rootEl!: HTMLDivElement
   let canvasRegionEl: HTMLDivElement | undefined
 
@@ -502,7 +505,10 @@ export const GraphView = (props: GraphViewProps) => {
     return scopeToTurns(model(), turns)
   })
 
-  const scoped = createMemo(() => scopeBase(turnScoped()))
+  const scoped = createMemo(() => {
+    const result = scopeBase(turnScoped())
+    return result ?? { nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
+  })
 
   const counts = createMemo(() => facetCounts(turnScoped(), facets()))
 
@@ -601,18 +607,6 @@ export const GraphView = (props: GraphViewProps) => {
     window.addEventListener("pointerup", resizeEnd)
   }
   onCleanup(stopResize)
-
-  // V117: Touch gestures for mobile
-  onMount(() => {
-    const el = canvasRegionEl
-    if (!el) return
-    const cleanup = attachTouchGestures(el, {
-      getViewport: () => renderer()?.getViewport?.(),
-      setViewport: (vp: RendererViewport) => renderer()?.setViewport?.(vp),
-      capabilities: renderer()?.capabilities ?? { zoomRange: { min: 0.1, max: 10 } },
-    })
-    onCleanup(cleanup)
-  })
 
   const theme = () => props.theme ?? resolvedTheme()
   // T18.3: effective detail mode
@@ -801,7 +795,10 @@ export const GraphView = (props: GraphViewProps) => {
     const current = scoped()
     if (!isSummaryOrLogLayout(layout())) return current
     const units = summaryUnits(current, level())
-    return { ...current, nodes: current.nodes.filter((node) => units.has(node.id)) }
+    return { 
+      ...current, 
+      nodes: current.nodes?.filter((node) => units.has(node.id)) ?? [] 
+    }
   })
 
   // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
@@ -822,12 +819,13 @@ export const GraphView = (props: GraphViewProps) => {
   // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
   // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
   contentIDs = createMemo(() => {
-    const ids = renderModel()
-      .nodes.filter((node) => node.kind !== "band")
-      .map((node) => node.id)
+    const rm = renderModel()
+    const ids = rm?.nodes?.filter((node) => node.kind !== "band").map((node) => node.id) ?? []
 
     const budgeted = budget()
-    return budgeted.nodes.length < drawn().nodes.length ? ids.filter((id) => id !== model().root) : ids
+    const d = drawn()
+    const m = model()
+    return budgeted?.nodes?.length < d?.nodes?.length ? ids.filter((id) => id !== m?.root) : ids
   })
 
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
@@ -897,8 +895,9 @@ export const GraphView = (props: GraphViewProps) => {
   }
 
   renderModel = createMemo(() => {
+    const budgeted = budget() ?? { nodes: [], edges: [], bands: [], laneLabels: [], axisLabels: [] }
     const model = applyManualLayout(
-      buildRenderModel(budget(), {
+      buildRenderModel(budgeted, {
         level: level(),
         positions: displayPositions(),
         bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
@@ -928,7 +927,7 @@ export const GraphView = (props: GraphViewProps) => {
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
   // same whoever opens it. Both read the render model in the session's own order.
   const ordered = createMemo(() => {
-    const model = renderModel()
+    const model = renderModel() ?? { nodes: [], edges: [], bands: [], laneLabels: [], axisLabels: [] }
     const order = sessionOrder(drawn())
     return {
       ...model,
@@ -1002,7 +1001,8 @@ export const GraphView = (props: GraphViewProps) => {
   const peekEdge = createMemo(() => {
     if (!peek()) return undefined
     const id = edgeHovered()
-    return id ? model().edges.find((edge) => edge.id === id) : undefined
+    const m = model()
+    return id ? m?.edges?.find((edge) => edge.id === id) : undefined
   })
   // Above the node's own box, so the peek never covers what it is about.
   const peekPlacement = createMemo(() => {
@@ -1377,8 +1377,12 @@ export const GraphView = (props: GraphViewProps) => {
     viewportTracker,
     
     // Renderer
-    onRenderer: props.onRenderer,
+    onRenderer: (r: GraphRenderer | undefined) => {
+      setRenderer(r)
+      props.onRenderer?.(r)
+    },
     onRendererMounted: (renderer: GraphRenderer, id: RendererID) => {
+      setCapabilities(renderer.capabilities)
       props.onRenderer?.(renderer)
       props.onRendererMounted?.(renderer, id)
     },

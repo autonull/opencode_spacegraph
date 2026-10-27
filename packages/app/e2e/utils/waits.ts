@@ -16,7 +16,8 @@ export async function expectSessionTitle(page: Page, title: string) {
     return
   }
 
-  await expectAppVisible(page.getByRole("heading", { name: title }))
+  // Session title is in the tab strip as a link with data-slot="tab-link"
+  await expectAppVisible(page.locator('[data-slot="tab-link"]').getByText(title, { exact: true }))
 }
 
 export async function expectSessionReady(page: Page, input: { server: string; sessionID: string; title: string }) {
