@@ -17,12 +17,15 @@ type Harness = {
 const OverlayHarness = (props: { theme?: RenderTheme; limit?: number; renderer?: "spacegraph" | "cytoscape" }) => {
   const [open, setOpen] = createSignal(true)
   const [openedFull, setOpenedFull] = createSignal<string>()
-  ;(window as unknown as { __turnMap?: Harness }).__turnMap = {
+  const turnMapHarness = {
     open: () => setOpen(true),
     close: () => setOpen(false),
     opened: open,
     openedFull,
   }
+  ;(window as unknown as { __turnMap?: Harness }).__turnMap = turnMapHarness
+  // Keep alias for backward compatibility
+  ;(window as unknown as { __graph?: typeof turnMapHarness }).__graph = turnMapHarness
 
   return (
     <div style={{ position: "relative", width: "1100px", height: "640px" }}>

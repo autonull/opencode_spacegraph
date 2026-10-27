@@ -25,6 +25,11 @@ const CanvasHarness = () => {
   }
 
   ;(window as unknown as { __sessionGraphCanvas?: Harness }).__sessionGraphCanvas = harness
+  // Keep alias for backward compatibility
+  ;(window as unknown as { __graph?: { setRenderer: (id: RendererID) => void; setSelection: (ids: string[]) => void } }).__graph = {
+    setRenderer: harness.setRenderer,
+    setSelection: harness.setSelection,
+  }
 
   return (
     <div style={{ width: "960px", height: "600px", border: "1px solid var(--v2-border, #333)", overflow: "hidden" }}>

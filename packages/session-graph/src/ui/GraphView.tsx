@@ -193,6 +193,24 @@ export type GraphViewProps = {
   onRenderer?: (renderer: GraphRenderer | undefined) => void
   /** Fires when the renderer has been mounted with its id. */
   onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
+  /** Test harness for component tests — getters only. */
+  testHarness?: {
+    selected: () => string | undefined
+    select: (id: string | undefined) => void
+    setRenderer: (id: RendererID) => void
+    searchOpen: () => boolean
+    setSearchOpen: (open: boolean) => void
+    legendOpen: () => boolean
+    setLegendOpen: (open: boolean) => void
+    galleryOpen: () => boolean
+    setGalleryOpen: (open: boolean) => void
+    groupMenu: () => { id: string; x: number; y: number } | undefined
+    setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
+    detailMode: () => DetailMode
+    setDetailMode: (mode: DetailMode) => void
+    level: () => ZoomLevel
+    setLevel: (level: ZoomLevel) => void
+  }
   onSelect?: (id: string | undefined) => void
   onProjectionChange?: (projection: Projection) => void
   onDepthChange?: (depth: DepthMode) => void
@@ -303,6 +321,7 @@ export const GraphView = (props: GraphViewProps) => {
     capabilities,
     rendererReady,
     rendererID,
+    setRendererID,
     fallback,
     error,
     setError,
@@ -333,6 +352,25 @@ export const GraphView = (props: GraphViewProps) => {
 
   // Group menu state (for context menu on groups)
   const [groupMenu, setGroupMenu] = createSignal<{ id: string; x: number; y: number }>()
+
+  // Test harness for component tests
+  if (props.testHarness) {
+    props.testHarness.selected = () => selection.selection()[0]
+    props.testHarness.select = (id: string | undefined) => selection.select(id)
+    props.testHarness.setRenderer = (id: RendererID) => setRendererID(id)
+    props.testHarness.searchOpen = searchOpen
+    props.testHarness.setSearchOpen = setSearchOpen
+    props.testHarness.legendOpen = legendOpen
+    props.testHarness.setLegendOpen = setLegendOpen
+    props.testHarness.galleryOpen = galleryOpen
+    props.testHarness.setGalleryOpen = setGalleryOpen
+    props.testHarness.groupMenu = groupMenu
+    props.testHarness.setGroupMenu = setGroupMenu
+    props.testHarness.detailMode = detailMode
+    props.testHarness.setDetailMode = setDetailMode
+    props.testHarness.level = level
+    props.testHarness.setLevel = setLevel
+  }
 
   // Copy view URL with current query parameters
   const copyView = () => {

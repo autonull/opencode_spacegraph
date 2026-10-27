@@ -188,14 +188,32 @@ const ViewHarness = (props: HarnessProps) => {
     },
   }
 
-  // Test harness for component tests
-  const graphViewHarness = {
+  // Unified test harness for component tests
+  const testHarness = {
     selected: () => selected(),
     select: (id: string | undefined) => setSelected(id),
     setRenderer: (id: RendererID) => setRenderer(id),
+    searchOpen: () => false,
+    setSearchOpen: () => {},
+    legendOpen: () => false,
+    setLegendOpen: () => {},
+    galleryOpen: () => false,
+    setGalleryOpen: () => {},
+    groupMenu: () => undefined,
+    setGroupMenu: () => {},
+    detailMode: () => "panel" as DetailMode,
+    setDetailMode: () => {},
+    level: () => level(),
+    setLevel: () => {},
   }
-  // Expose harness on window for component tests
-  ;(window as unknown as { __graphView?: typeof graphViewHarness }).__graphView = graphViewHarness
+  // Expose unified harness on window for component tests
+  ;(window as unknown as { __graph?: typeof testHarness }).__graph = testHarness
+  // Keep aliases for backward compatibility during migration
+  ;(window as unknown as { __graphView?: { selected: () => string | undefined; select: (id: string | undefined) => void; setRenderer: (id: RendererID) => void } }).__graphView = {
+    selected: testHarness.selected,
+    select: testHarness.select,
+    setRenderer: testHarness.setRenderer,
+  }
 
   const size = props.fullscreen
     ? { width: "100vw", height: "100vh" }
@@ -235,6 +253,7 @@ const ViewHarness = (props: HarnessProps) => {
         onOpenTranscript={() => undefined}
         onOpenSession={setOpenedSession}
         onBack={() => undefined}
+        testHarness={testHarness}
       />
     </div>
   )
