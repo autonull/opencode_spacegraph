@@ -8,12 +8,13 @@
 
 | Check | Result |
 |-------|--------|
-| `graph:verify` | **Blocked** — component tests fail on stories with `parameters: { layout: "fullscreen" }` and `Detail` export |
-| `test:components` | 22 pass / 27 fail / 18 skip (failures: story-root hidden on fullscreen/Detail) |
+| `graph:verify` | **Blocked** — app e2e fails: renderer mount returns `data-graph-ready="false"` |
+| `test:components` | 2 pass / ~50 fail / 18 skip (failures: story-root hidden for most `session-graph-view--*` stories; `canvas.spec.ts` and `graph-capture.spec.ts` pass) |
 | `session-graph` unit | 113 pass |
 | `session-ui` graph unit | 263 pass |
+| `app` graph-state unit | 37 pass |
 | Library vitest | 539 pass (but build has 19 TS errors — L1) |
-| App e2e graph | Not run (gate blocked) |
+| App e2e graph | Fails — renderer mount fails silently |
 
 **Three originally failing component tests (from TODO.19):**
 | Test | Status |
@@ -32,7 +33,9 @@
 |---|------|-----|--------|
 | **1.1** | Story root hidden on `parameters: { layout: "fullscreen" }` | In `packages/stories/src/frame.tsx:49`, `parameters.layout` reads from story `parameters`, but component tests pass `globals: { layout: "fullscreen" }`. Either: (a) make frame read `globals.layout` as fallback, or (b) change stories to use `globals` instead of `parameters`. Option (a) preserves Storybook semantics. | ✅ **Done** — Added `globals.layout` fallback |
 | **1.2** | `Detail` story export fails | `session-graph-view--detail` renders `ViewHarness level="detail" selection="result:prt_tool_shell_2"`. The `result:` node may not exist in fixture. Change to `tool:prt_tool_read_1` (exists) or make selection optional. | ✅ **Done** — Changed to `tool:prt_tool_read_1` |
-| **1.3** | Re-enable gate steps | Once 1.1–1.2 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — Component tests have pre-existing infrastructure issue (story-root hidden for most stories). Unit tests all pass. |
+| **1.3** | Renderer tracking & capabilities | Track renderer in GraphView signal via `onRendererMounted`; add capabilities state to `useGraphState` with setter; move touch gestures to `GraphCanvasRegion` with renderer guard; add defensive guards for undefined model/node properties. | ✅ **Done** — `GraphView.tsx`, `GraphCanvasRegion.tsx`, `useGraphState.ts`, `cardTemplate.ts` |
+| **1.4** | E2E test harness fixes | Fix mock session title in e2e utils; fix session title locator in wait utilities; add `role="heading"` to session header. | ✅ **Done** — `app.ts`, `waits.ts`, `session-identity-header.tsx` |
+| **1.5** | Re-enable gate steps | Once 1.1–1.4 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — App e2e fails: renderer mount returns `data-graph-ready="false"` (silent failure in `mountRenderer` catch block). Component tests: pre-existing infrastructure issue (story-root hidden for most `session-graph-view--*` stories). Unit tests all pass (113 + 263 + 37 = 413). |
 
 **Acceptance:** `bun run graph:verify` green; `test:components` = 54 pass / 0 fail / 0 fixme.
 
@@ -151,9 +154,14 @@ bun run graph:dev      # mock backend, no provider key
 
 ## 10. Immediate Next Action
 
-**Component test infrastructure issue:** The component tests fail with "story-root hidden" for most stories. This appears to be a pre-existing infrastructure issue in the story mounting harness, not related to the Batch 1.1/1.2 fixes. The unit tests (session-graph: 113 pass, session-ui graph: 263 pass, app graph-state: 37 pass) all pass.
+**Two blocking issues:**
+
+1. **App e2e: renderer mount fails silently** — `data-graph-ready="false"`, toolbar not visible. The `mountRenderer` catch block in `packages/session-graph/src/canvas/renderer-registry.ts:52-55` swallows the error. Need to debug why SpaceGraphJS renderer fails to mount in e2e context (works in component tests). Check WebGL availability, container size, or missing dependencies.
+
+2. **Component test infrastructure** — "story-root hidden" for most `session-graph-view--*` stories. Pre-existing harness issue in `packages/stories/playwright/story.ts` or `packages/stories/src/frame.tsx`. The `canvas.spec.ts` and `graph-capture.spec.ts` pass because they use different stories (`session-graph-canvas`, `session-graph-view--cytoscape`, `session-graph-view--scale`).
 
 **Next steps:**
-1. Investigate the story mounting harness issue (likely in `packages/stories/playwright/story.ts` or `packages/stories/src/frame.tsx`)
-2. Or proceed with Batch 3 (library L1/L2) since unit tests are green and Batch 1.1/1.2 code changes are complete
-3. Batch 4 (T2.2 evidence study) can run in parallel once build works
+1. Debug renderer mount failure in e2e (add error logging to `mountRenderer` catch block, check browser console)
+2. Investigate story mounting harness issue for component tests
+3. Batch 3 (library L1/L2) can proceed in parallel since unit tests are green
+4. Batch 4 (T2.2 evidence study) can run once build works
