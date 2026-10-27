@@ -21,19 +21,18 @@ server, or session-schema change. The transcript keeps working if the graph fail
 
 ## Setup
 
-Prerequisites: Bun, the sibling `spacegraphjs` checkout (gitignored here), and a Playwright Chromium.
+Prerequisites: Bun and a Playwright Chromium. The `graph:setup` script clones the pinned SpaceGraphJS library and installs everything.
 
 ```bash
-bun install                      # links the spacegraphjs workspace packages
+bun run graph:setup              # clones spacegraphjs at pinned SHA, installs both trees
 ```
-
-The library toolchain (for the `spacegraphjs` repo only) is `cd spacegraphjs && pnpm install
---ignore-scripts --filter spacegraphjs`; do not run a full `pnpm install` there (it pulls the
-`n8n-bridge` workspace and the native `canvas` build).
 
 ## Reproduce
 
 ```bash
+# One-time setup (clones pinned SpaceGraphJS + installs deps)
+bun run graph:setup
+
 # Screenshots (writes docs/spacegraph/screenshots/); --mode=verify asserts without overwriting
 bun run graph:capture --mode=compare
 
@@ -41,7 +40,7 @@ bun run graph:capture --mode=compare
 bun run graph:verify
 
 # The app, with the graph behind the header toggle (desktop) or the graph.toggle command
-bun run dev
+bun run graph:dev
 ```
 
 The non-OpenCode reference host (no OpenCode import) runs from the library repo:

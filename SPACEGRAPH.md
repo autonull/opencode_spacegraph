@@ -75,7 +75,7 @@ The transcript remains ideal for following a conversation. The graph excels at e
 
 ### 2.1 The data was already there — the model just needed extracting
 
-OpenCode's session messages (`session-ui/src/timeline/projection.ts`) already carry turn boundaries, tool calls, file operations, subtasks, and outcomes. The graph model (`session-ui/src/graph/model.ts`) is a **pure, synchronous transformation** of that data — no backend changes, no new protocol required for the core graph. (An optional workspace lens adds a protocol/server endpoint; see rung 5 in §9.1.) Key insight: reuse `Timeline.constructSessionMessageRows`'s `turnByMessageID` map rather than re-walking the session.
+OpenCode's session messages (`session-ui/src/timeline/projection.ts`) already carry turn boundaries, tool calls, file operations, subtasks, and outcomes. The graph model (`session-ui/src/graph/model.ts`) is a **pure, synchronous transformation** of that data — no backend changes, no new protocol required for the core graph (rungs 1–4). An optional workspace lens (rung 5) adds a protocol/server endpoint (~900 lines); the `snapshot-cache` degrades gracefully when the endpoint is unavailable. Key insight: reuse `Timeline.constructSessionMessageRows`'s `turnByMessageID` map rather than re-walking the session.
 
 ### 2.2 Semantic levels are host policy, not library internals
 
@@ -305,6 +305,7 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 | `spacegraphjs` | 8.5.0 | Core: graph, events, camera, plugins, nodes, edges, vision (dynamic) |
 | `@spacegraphjs/renderer` | 0.3.0 | Contract types, `GraphRenderer`, capabilities, `FitOptions` (padding + insets) |
 | `@spacegraphjs/adapter` | 0.2.0 | Model adapter pipeline (domain → RenderModel), `diffRenderModels` |
+| `@spacegraphjs/kernel` | 0.1.0 | Layout strategies, zoom bands, navigation primitives, a11y, overlays, depth |
 | `@spacegraphjs/spacegraph-renderer` | 0.3.1 | 2D ortho + 3D perspective, CSS3D HTML cards, CSS2D edge labels |
 | `@spacegraphjs/cytoscape-renderer` | 0.3.0 | 2D Canvas, clipped DOM card overlay, declared 3D no-op |
 | `@spacegraphjs/svg-renderer` | 0.2.0 | Static SVG export, `InlineGraph`, serialization |
@@ -340,7 +341,7 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 | Export (SVG/JSON/standalone HTML) | ✅ Complete | Contract demo, component test |
 | Security/escaping suite | ✅ Complete | 13 unit + browser tests, sanitization contract |
 | Performance budget (linear pipeline, 60-turn window) | ✅ Measured | `graph:scale` benchmark, guard tests |
-| Capture matrix (31 frames, 5 layouts × 4 depths × contexts) | ✅ Committed | `graph:capture --mode=verify` asserts set |
+| Capture matrix (44 frames, 5 layouts × 4 depths × contexts) | ✅ Committed | `graph:capture --mode=verify` asserts set |
 | Library published + clean consumer proof | ✅ Done | `test:publish` packs → external `node_modules` → mounts both adapters |
 | Second host (framework-free, plain TS) | ✅ Running | `spacegraphjs/demo/second-host/` |
 | Direct mouse interaction (pan, zoom, pick, frame, drag) | ✅ Complete | Library unit + Playwright e2e; app e2e in `e2e/graph/` |
@@ -389,6 +390,32 @@ bun run graph:capture --mode=compare  # regenerate + inspect
 bun run graph:capture --mode=verify   # assert committed set
 ```
 
+### 7.2a The Gate (`graph:verify`)
+
+The canonical verification gate is `bun run graph:verify`. It runs:
+
+1. **Library build** — `spacegraphjs` builds all 7 packages (types + dist)
+2. **Contract conformance** — shared renderer contract suite against both adapters (Vitest)
+3. **Package boundaries** — no core → contract/Cytoscape imports (Vitest)
+4. **View controller + framework bindings** — React/Solid bindings (Vitest)
+5. **Overlay core** — scope, focus, diff (Vitest)
+6. **Navigation core** — search, minimap (Vitest)
+7. **Second host** — framework-free host outside OpenCode (Vitest)
+8. **Contract package** — `@spacegraphjs/renderer` unit tests (bun)
+9. **Model adapter** — `@spacegraphjs/adapter` tests (Vitest)
+10. **SpaceGraph adapter** — `@spacegraphjs/spacegraph-renderer` tests (bun)
+11. **Cytoscape adapter** — `@spacegraphjs/cytoscape-renderer` tests (bun)
+12. **SVG renderer** — `@spacegraphjs/svg-renderer` tests (bun)
+13. **session-graph unit tests** — `packages/session-graph` `bun test src`
+14. **session-ui graph unit tests** — `packages/session-ui` `bun test src/graph` (263 tests)
+15. **session-graph component contract** — `bun run test:components` (Storybook-backed Playwright)
+16. **App e2e graph** — `packages/app` `playwright test e2e/graph/session-graph.spec.ts`
+17. **App e2e side panels** — `packages/app` `playwright test e2e/regression/side-panels.spec.ts`
+18. **Graph capture (verify)** — `bun run graph:capture --mode=verify`
+19. **Published packages** — clean consumer check (`test:publish`)
+
+**CI pin:** The GitHub Actions workflow (`.github/workflows/graph.yml`) checks out the SpaceGraphJS library at pinned commit `9df9b92` (shared with `script/graph-setup.ts:16`). This ensures reproducible builds.
+
 ### 7.3 Performance numbers (measured, not estimated)
 
 | Metric | Budget | Measured |
@@ -435,9 +462,9 @@ bun run graph:capture --mode=verify   # assert committed set
 
 | Rung | Scope | Diff | Risk | Review question |
 |------|-------|------|------|-----------------|
-| 1 | `session-ui/graph` (pure model + tests) | +6,126 lines | None — no UI, no deps | Is the model correct and reusable? |
-| 2 | `session-graph` package (canvas, UI, contract only) | +7,411 lines | Low — feature-flagged, lazy | Does the host UI work and stay isolated? |
-| 3 | App wiring (flag, settings, mode, toggle, commands) | +863/−36 in `app/src` | Low — off by default | Is the integration clean and reversible? |
+| 1 | `session-ui/graph` (pure model + tests) | +3,487 lines | None — no UI, no deps | Is the model correct and reusable? |
+| 2 | `session-graph` package (canvas, UI, contract only) | +5,660 lines | Low — feature-flagged, lazy | Does the host UI work and stay isolated? |
+| 3 | App wiring (flag, settings, mode, toggle, commands) | +689/−36 in `app/src` | Low — off by default | Is the integration clean and reversible? |
 | 4 | Hybrid affordance (turn-map, side panel) | +274 in `gui-extensions` | Medium — new SDK surface | Does the hybrid add value without disruption? |
 | 5 (optional) | Protocol/server workspace snapshot | ~900 lines | Medium — new HTTP endpoint | Is the workspace lens worth the protocol cost? |
 
@@ -445,15 +472,15 @@ bun run graph:capture --mode=verify   # assert committed set
 
 **Blocker:** Library packages must be published to npm (or bundled) before upstream can adopt. The fork currently uses source workspaces in a gitignored sibling repo.
 
-### 9.2 Diff budget (re-audited 2026-10-20)
+### 9.2 Diff budget (re-audited 2026-10-27)
 
 | Area | Δ lines | Verdict |
 |------|---------|---------|
-| `packages/app/src` (19 files) | +863 / −36 | Setting, mode, commands, toggle, scroll, permalinks, metrics. No graph semantics outside `session/graph/*.tsx`. |
+| `packages/app/src` (16 files) | +689 / −36 | Setting, mode branch, commands, toggle, per-session state, scroll restore. No graph semantics outside `session/graph/*.tsx`. |
 | `packages/app` dev-only demo | +149 / −18 | Excluded from upstream diff. |
-| `session-ui/src/graph` (13 files) | +6,126 | New pure model package. |
-| `packages/session-graph` (57 files) | +7,411 | New host package; imports contract only. |
-| `gui-extensions/session-map` | +274 | Side panel, built-in extension. |
+| `packages/session-ui/src/graph/` (13 files) | +3,487 | New pure model package. |
+| `packages/session-graph/` (57 files) | +5,660 | New host package; imports the renderer contract only. |
+| `packages/gui-extensions/src/session-map/` | +274 | Side panel, mounted as a built-in extension. |
 
 Per-file justification in `docs/spacegraph/upstream-review.md` §5.
 
@@ -517,7 +544,7 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 - **T10.1** Publish library to npm (version bump, `test:publish`, ordered upload)
 - **T10.2** Cut `session-graph` branch consuming published packages (no sibling checkout)
 - **T10.3** Hosted demo on GitHub Pages (contract demo + second host)
-- **T10.4** Upstream RFC (after T2.2 measurement; text prepared in `rfc.md`)
+- **T10.4** Upstream RFC (after T2.2 measurement)
 - **T10.5** Fork landing page (banner), one compelling screenshot, release note, honest limitations
 - **T10.6** Shared state branch + tag
 - **T10.7** Stranger's path: `git clone <fork> && bun run graph:setup && bun run graph:dev`
