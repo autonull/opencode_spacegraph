@@ -263,6 +263,50 @@ function diffFiles(node: GraphNode): string | undefined {
 }
 
 /**
+ * Computes the emphasis level for a card based on all active overlays.
+ * Precedence (highest to lowest): diff.removed → trace.dim → focus.dim → diff.changed/added → selected/active → depth fade.
+ * Returns { style: string, emphasis: string } where emphasis is the data-emphasis value.
+ */
+function emphasis(
+  node: GraphNode,
+  options: CardTemplateOptions,
+  combinedFade: number,
+  trace: TraceOverlay | undefined,
+  diffKind: string | undefined,
+  isLitNode: boolean,
+  isAnswerNode: boolean,
+  selected: boolean,
+  active: boolean,
+): { style: string; emphasis: string } {
+  // diff.removed - highest priority
+  if (diffKind === "removed") {
+    return { style: "opacity:0.45;", emphasis: "dim" }
+  }
+  // trace.dim - node is not in answer or context
+  if (trace && !isLitNode) {
+    return { style: "opacity:0.35;", emphasis: "dim" }
+  }
+  // focus.dim - will be implemented in batch 1.3 (focus dimming)
+  // For now, check if node is in focus neighborhood (selected + 1-hop neighbors)
+  // This is a placeholder - the actual focus logic will be added in batch 1.3
+  // diff.changed/added
+  if (diffKind === "changed" || diffKind === "added") {
+    return { style: "", emphasis: "changed" }
+  }
+  // selected/active
+  if (selected || active) {
+    return { style: "", emphasis: selected ? "selected" : "active" }
+  }
+  // depth fade (combinedFade includes equalizer fade * depth fade)
+  // Skip at overview level (tier "far") where depth fade is not meaningful
+  if (combinedFade !== 1 && options.tier !== "far") {
+    return { style: `opacity:${combinedFade};`, emphasis: "depth" }
+  }
+  // No emphasis
+  return { style: "", emphasis: "none" }
+}
+
+/**
  * T17.5 — the kind's *content*: the payload, in the card's own lines. The closest card carries the
  * content in place of the summary and the fact: the box is fixed, so two lines of a smaller
  * payload line say more than one line of a summary and one line of a fact.
@@ -413,7 +457,6 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const traceAttrs = trace
       ? ` data-trace="${isAnswerNode ? "answer" : isLitNode ? "context" : "dim"}"`
       : ""
-    const traceStyle = trace && !isLitNode ? "opacity:0.35;" : ""
 
     // Diff overlay: added, changed, and removed ghosts classify the card; positions never move.
     const diff = options.diff
@@ -427,14 +470,6 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
             : undefined
       : undefined
     const diffAttrs = diffKind ? ` data-diff="${diffKind}"` : ""
-    const diffStyle =
-      diffKind === "removed"
-        ? "opacity:0.45;"
-        : diffKind === "added"
-          ? `box-shadow:inset 0 0 0 2px ${theme.success};`
-          : diffKind === "changed"
-            ? `box-shadow:inset 0 0 0 2px ${theme.warning};`
-            : ""
 
     // V116: hover-only copy icon for cards with copyable content
     const copyText = copyableContent(node)
@@ -442,7 +477,20 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       ? `<button type="button" class="card-copy-btn" aria-label="Copy" data-copy-text="${escapeHtml(copyText)}" style="flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:${theme.textMuted};cursor:pointer;opacity:0;transition:opacity 0.15s;margin-left:auto;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${combinedFade === 1 ? "" : `opacity:${combinedFade};`}${traceStyle}${diffStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    // One emphasis resolver: computes the single emphasis level and style
+    const { style: emphasisStyle, emphasis: emphasisLevel } = emphasis(
+      node,
+      options,
+      combinedFade,
+      trace,
+      diffKind,
+      isLitNode,
+      isAnswerNode,
+      selected,
+      active,
+    )
+
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" data-emphasis="${emphasisLevel}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${emphasisStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>

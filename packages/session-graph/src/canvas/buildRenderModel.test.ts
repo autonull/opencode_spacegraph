@@ -236,48 +236,6 @@ test("a band encloses the cards it groups, so its header has a slot of its own (
   }
 })
 
-test("execution focus dims cards outside the selected neighborhood (RF.10)", () => {
-  const focus = "tool:prt_tool_write_1"
-  const built = buildRenderModel(model, {
-    level: "execution",
-    positions,
-    bands: true,
-    focus,
-  })
-  const focused = built.nodes.find((node) => node.id === focus)!
-
-  expect(focused.data?.dimmed).toBe(false)
-  expect(focused.html).not.toContain("opacity:.3")
-
-  const dimmed = built.nodes.filter((node) => node.data?.dimmed === true && node.html !== undefined)
-
-  expect(dimmed.length).toBeGreaterThan(0)
-  expect(dimmed.every((node) => node.html!.includes("opacity:.3"))).toBe(true)
-})
-
-test("without a focus nothing is dimmed", () => {
-  expect(at("execution").nodes.some((node) => node.data?.dimmed === true)).toBe(false)
-})
-
-test("execution focus dims demoted vector nodes through node opacity, not markup (RF.10)", () => {
-  const built = buildRenderModel(model, {
-    level: "execution",
-    positions,
-    bands: true,
-    focus: "tool:prt_tool_write_1",
-    cardBudget: 1,
-  })
-
-  // Cards fade through markup; the activity nodes demoted past the budget have no html, so they carry
-  // the opacity for the renderer to apply to the vector node itself. Bands are never dimmed.
-  const fadedVectors = built.nodes.filter(
-    (node) => node.data?.dimmed === true && node.html === undefined,
-  )
-
-  expect(fadedVectors.length).toBeGreaterThan(0)
-  expect(fadedVectors.every((node) => node.data?.opacity === 0.3)).toBe(true)
-})
-
 test("provenance bundling rebases file edges onto their turn spine (LE.13)", () => {
   const plain = at("execution")
   const bundled = buildRenderModel(model, { level: "execution", positions, bundle: true })

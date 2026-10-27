@@ -57,6 +57,8 @@ import { ancestors,
   subtree,
   summaryUnits,
   turnRows,
+  incoming,
+  outgoing,
 } from "@opencode/session-ui/graph"
 import {
   createEffect,
@@ -621,17 +623,39 @@ export const GraphView = (props: GraphViewProps) => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
     const now = Date.now()
     const overlay = annotations.traceOverlay()
+
+    // Focus dimming: at execution level, compute 1-hop neighborhood of selected node.
+    // Explicit trace (why/led-here/related) takes precedence over focus.
+    const selectedId = selection.selection()[0]
+    const focusOverlay = level() === "execution" && selectedId
+      ? (() => {
+          const answerIds = new Set<string>([selectedId])
+          const contextIds = new Set<string>()
+          for (const edge of incoming(model(), selectedId)) contextIds.add(edge.source)
+          for (const edge of outgoing(model(), selectedId)) contextIds.add(edge.target)
+          return {
+            answerIds: answerIds as ReadonlySet<string>,
+            contextIds: contextIds as ReadonlySet<string>,
+            answerEdgeIds: new Set<string>() as ReadonlySet<string>,
+            visibleEdgeIds: new Set<string>() as ReadonlySet<string>,
+          }
+        })()
+      : null
+
+    // Merge traces: explicit trace wins over focus
+    const mergedTrace = overlay ?? focusOverlay ?? undefined
+
     return (
       props.renderCard ??
       createCardTemplate(theme(), {
         tier: tier(),
-        selected: selection.selection()[0],
+        selected: selectedId,
         active: props.activeTurn,
         related: relatedDetail,
         rules: props.rules,
         now,
         copy,
-        trace: overlay ?? undefined,
+        trace: mergedTrace,
         diff: comparison(),
         collapsedGroups: groupCollapse.collapsedGroups(),
         positions: displayPositions(),
@@ -805,10 +829,12 @@ export const GraphView = (props: GraphViewProps) => {
       viewportTracker!.setViewport(undefined)
       return
     }
+    const current = viewportTracker!.viewport()
     viewportTracker!.setViewport({
       zoom: vp.zoom,
       center: [vp.center[0], vp.center[1], vp.center[2] ?? 0],
-      extent: vp.center[2] ? undefined : undefined,
+      extent: current?.extent,
+      band: current?.band,
     })
   }
 
@@ -838,7 +864,6 @@ export const GraphView = (props: GraphViewProps) => {
         bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
         edges: !isSummaryOrLogLayout(layout()),
         bundle: !isSummaryOrLogLayout(layout()) && files(),
-        focus: !isSummaryOrLogLayout(layout()) && level() === "execution" ? selection.selection()[0] : undefined,
         laneLabels:
           !isSummaryOrLogLayout(layout()) && layout() === "lanes"
             ? laneAnchors().map((lane) => ({
@@ -1193,13 +1218,15 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // Build context object for GraphCanvasRegion (replaces 225 lines of props)
+  const projectionSignal = createMemo(() => projection())
+  const depthSignal = createMemo(() => depth())
   const canvasRegionProps = {
     // Core rendering
     model,
     theme,
     renderModel: renderModel(),
-    projection,
-    depth,
+    projection: projectionSignal,
+    depth: depthSignal,
     layout,
     level,
     

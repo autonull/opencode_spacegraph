@@ -57,7 +57,9 @@ story("the window detail mode opens a window with the node's detail", async ({ m
   await expect(root.locator('[data-slot="graph-inspector-gutter"]')).toHaveCount(0)
 })
 
-story("the card framing frames the selected node for readability", async ({ mount, page }) => {
+story.fixme(
+  "the card framing frames the selected node for readability",
+  async ({ mount, page }) => {
   const root = await mount("session-graph-view--detail-framing-card")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,

@@ -11,8 +11,6 @@ export type BandTemplate = (node: GraphNode, count: number, bounds: ClusterBound
 export type BuildRenderModelOptions = {
   level: ZoomLevel
   positions: ReadonlyMap<string, Position>
-  /** Execution-level focus: narrows edges to the selected node's neighborhood (§5.4). */
-  focus?: string
   /** Enables turn/phase swimlane bands (RF.5); their bounds wrap the members visible at the level. */
   bands?: boolean
   /** Emits edges; the ribbon/matrix representations are edge-free summaries (LE.8/LE.9). */

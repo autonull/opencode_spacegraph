@@ -14,8 +14,8 @@ import type {
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createSignal, type JSX } from "solid-js"
-import { GraphCanvasWrapper } from "./GraphCanvasWrapper"
+import { createMemo, createSignal, type JSX } from "solid-js"
+import { GraphCanvas } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphOverlayManager } from "./GraphOverlayManager"
 import { createNodeAnchor } from "./graph-anchors"
@@ -142,6 +142,10 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   const i18n = useI18n()
   const [canvasRegionEl, setCanvasRegionEl] = createSignal<HTMLDivElement | undefined>()
 
+  // Subscribe to projection/depth getters so this component re-renders when they change
+  const projection = createMemo(() => props.projection())
+  const depth = createMemo(() => props.depth())
+
   return (
     <div
       ref={setCanvasRegionEl}
@@ -153,11 +157,11 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
       tabindex="0"
       onKeyDown={props.handleRegionKeyDown}
     >
-      <GraphCanvasWrapper
+      <GraphCanvas
         model={props.renderModel}
         theme={props.theme()}
-        projection={props.projection()}
-        depth={props.depth()}
+        projection={projection()}
+        depth={depth()}
         cardFacing={props.cardFacing()}
         selection={props.selection()}
         preferredRenderer={props.preferredRenderer}

@@ -7,7 +7,7 @@ import type {
   RendererViewport,
   RenderTheme,
 } from "@spacegraphjs/renderer"
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createRenderEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { mountRenderer, type MountedRenderer, type RendererFactory, type RendererID } from "./renderer-registry"
 
 export type GraphCanvasReady = { id: RendererID; capabilities: RendererCapabilities; fallback: boolean }
@@ -15,9 +15,9 @@ export type GraphCanvasReady = { id: RendererID; capabilities: RendererCapabilit
 export type GraphCanvasProps = {
   model: RenderModel
   theme: RenderTheme
-  projection?: Projection
+  projection?: Projection | (() => Projection)
   /** LE.14: depth treatment applied after mount; unsupported modes are the host's to gate. */
-  depth?: DepthMode
+  depth?: DepthMode | (() => DepthMode)
   cardFacing?: "plane" | "camera"
   selection?: readonly string[]
   preferredRenderer?: () => RendererID
@@ -26,10 +26,10 @@ export type GraphCanvasProps = {
   onSelect?: (ids: readonly string[]) => void
   /** LE.8/LE.9: a double-click expands a ribbon/matrix segment into the node-link graph. */
   onNodeDoubleClick?: (id: string) => void
-  onReady?: (info: GraphCanvasReady) => void
-  onError?: (error: unknown) => void
-  onViewportChange?: (viewport: RendererViewport) => void
   onBackgroundClick?: () => void
+  onReady?: (info: GraphCanvasReady) => void
+  onError?: (error: string | undefined) => void
+  onViewportChange?: (viewport: RendererViewport) => void
   /** The node under the pointer, and none when the pointer leaves one. */
   onHover?: (id: string | undefined) => void
   /** B3: the edge under the pointer, and none when it leaves. */
@@ -51,6 +51,14 @@ export type GraphCanvasProps = {
   onModelApplied?: (renderer: GraphRenderer) => void
   /** Exposes the live renderer so a host can call `fit`/`focus`; `undefined` after teardown. */
   onRenderer?: (renderer: GraphRenderer | undefined) => void
+  /** Fires when the renderer has been mounted with its id. */
+  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
+}
+
+const groupIDOf = (target: EventTarget | null) => {
+  if (!(target instanceof Element)) return undefined
+  const id = target.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId
+  return id?.startsWith("band:") ? id.slice("band:".length) : id
 }
 
 /**
@@ -64,10 +72,12 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   let unsubscribers: (() => void)[] = []
   let generation = 0
   const [ready, setReady] = createSignal(false)
-  // Depth defaults to the projection's coarse treatment; the adapter derives it at mount, so an unset
-  // depth is not a conflict (LE.14).
-  const depth = () => props.depth ?? (props.projection === "3d" ? "orbit" : "flat")
-  // The cards lie in the content plane unless the host asks for the billboard (T1.19).
+  // Track the previous preferredRenderer using a ref
+  const getPreferredRenderer = () => props.preferredRenderer?.() ?? "spacegraph"
+  let prevPreferredRenderer: RendererID = getPreferredRenderer()
+
+  const getProjection = () => typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
+  const getDepth = () => typeof props.depth === "function" ? props.depth() : (props.depth ?? (getProjection() === "3d" ? "orbit" : "flat"))
   const cardFacing = () => props.cardFacing ?? "plane"
 
   const teardown = () => {
@@ -83,9 +93,8 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     const current = ++generation
     teardown()
 
-    mountRenderer(host, { theme: props.theme, projection: props.projection ?? "2d", preferred: id }, props.overrides ?? {})
+    mountRenderer(host, { theme: props.theme, projection: getProjection(), preferred: id }, props.overrides ?? {})
       .then((result) => {
-        // A newer mount or an unmount superseded this one; drop the late result instead of leaking it.
         if (current !== generation) {
           result.renderer.dispose()
           return
@@ -111,34 +120,27 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         result.renderer.setModel(props.model)
         props.onModelApplied?.(result.renderer)
         result.renderer.setSelection(props.selection ?? [])
-        result.renderer.setDepth(depth())
+        result.renderer.setDepth(getDepth())
         result.renderer.setCardFacing?.(cardFacing())
         host.dataset.graphRenderer = result.id
-        host.dataset.graphProjection = props.projection ?? "2d"
-        host.dataset.graphDepth = depth()
+        host.dataset.graphProjection = getProjection()
+        host.dataset.graphDepth = getDepth()
         host.dataset.graphCardFacing = cardFacing()
         host.dataset.graphReady = "true"
         setReady(true)
         props.onRenderer?.(result.renderer)
+        props.onRendererMounted?.(result.renderer, result.id)
         props.onReady?.({ id: result.id, capabilities: result.renderer.capabilities, fallback: result.fallback })
       })
       .catch((error: unknown) => {
         if (current !== generation) return
         host.dataset.graphReady = "false"
-        host.dataset.graphError = error instanceof Error ? error.message : String(error)
-        props.onError?.(error)
+        const message = error instanceof Error ? error.message : String(error)
+        host.dataset.graphError = message
+        props.onError?.(message)
       })
   }
 
-  // The renderer owns card markup, so a control inside a card is a DOM event the host handles
-  // before the adapter turns the same click into a selection.
-  // A band is the group node's wrapper; its id names the band, while the host folds the group it
-  // carries, so the prefix comes off at the boundary.
-  const groupIDOf = (target: EventTarget | null) => {
-    if (!(target instanceof Element)) return undefined
-    const id = target.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId
-    return id?.startsWith("band:") ? id.slice("band:".length) : id
-  }
   const onClick = (event: MouseEvent) => {
     if (!(event.target instanceof Element) || !event.target.closest("[data-group-toggle]")) return
     const id = groupIDOf(event.target)
@@ -162,22 +164,21 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
       host.removeEventListener("click", onClick, true)
       host.removeEventListener("contextmenu", onContextMenu, true)
     })
-    start(props.preferredRenderer?.() ?? "spacegraph")
+    start(getPreferredRenderer())
+    prevPreferredRenderer = getPreferredRenderer()
   })
 
-  const getPreferredRenderer = () => props.preferredRenderer?.() ?? "spacegraph"
-
-  createEffect((previous: RendererID | undefined) => {
+  // Watch for preferredRenderer changes and trigger renderer switch
+  createRenderEffect(() => {
     const next = getPreferredRenderer()
 
-    if (previous !== undefined && previous !== next) start(next)
-
-    return next
-  }, undefined)
+    if (prevPreferredRenderer !== next) {
+      prevPreferredRenderer = next
+      start(next)
+    }
+  })
 
   createEffect(() => {
-    // Read the props before the optional chain: `mounted?.x(props.y)` never evaluates `props.y` while
-    // the mount is pending, so the effect would not track the prop and later updates would be dropped.
     const model = props.model
 
     if (!mounted) return
@@ -195,14 +196,15 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     mounted?.renderer.setTheme(theme)
   })
   createEffect(() => {
-    const projection = props.projection
+    const projection = typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
 
     if (!mounted || !projection) return
     mounted.renderer.setProjection(projection)
     host.dataset.graphProjection = projection
   })
   createEffect(() => {
-    const value = depth()
+    const projection = typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
+    const value = typeof props.depth === "function" ? props.depth() : (props.depth ?? (projection === "3d" ? "orbit" : "flat"))
 
     if (!mounted) return
     mounted.renderer.setDepth(value)
