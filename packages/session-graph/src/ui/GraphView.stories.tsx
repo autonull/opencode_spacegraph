@@ -12,7 +12,7 @@ import {
   type Layout,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
-import { createSignal } from "solid-js"
+import { createEffect, createSignal } from "solid-js"
 import { DARK_THEME } from "../fixtures"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
@@ -142,6 +142,7 @@ type HarnessProps = {
   /** The transient peek at the node under the pointer. */
   peek?: boolean
   renderer?: RendererID
+  preferredRenderer?: () => RendererID
   overrides?: Partial<Record<RendererID, RendererFactory>>
   theme?: RenderTheme
   width?: string
@@ -159,7 +160,17 @@ type HarnessProps = {
 const INITIAL_SELECTION = "tool:prt_tool_read_1"
 
 const ViewHarness = (props: HarnessProps) => {
-  const [renderer] = createSignal<RendererID>(props.renderer ?? "spacegraph")
+  // Support both signal getter and direct value for preferredRenderer
+  const rendererSignal = createSignal<RendererID>(
+    typeof props.preferredRenderer === "function" ? props.preferredRenderer() : (props.renderer ?? "spacegraph")
+  )
+  const [renderer, setRenderer] = rendererSignal
+  // If preferredRenderer is a getter (signal), sync it
+  if (typeof props.preferredRenderer === "function") {
+    createEffect(() => {
+      setRenderer(props.preferredRenderer!())
+    })
+  }
   const [selected, setSelected] = createSignal<string | undefined>(props.selection)
   const [level] = createSignal<ZoomLevel>(props.level ?? "execution")
   // T12: the windows over the map. The harness owns them, as the app does.
@@ -468,6 +479,29 @@ const HOSTILE_MODEL: GraphViewData = {
   turnByMessageID: new Map(),
 }
 
+type ViewHarness = {
+  setRenderer: (id: "spacegraph" | "cytoscape") => void
+}
+
+const HostileHarness = () => {
+  const [renderer, setRenderer] = createSignal<RendererID>("spacegraph")
+  ;(window as unknown as { __graphView?: ViewHarness }).__graphView = { 
+    setRenderer: (id: RendererID) => {
+      console.log('[HostileHarness] setRenderer called with:', id)
+      setRenderer(id)
+    }
+  }
+
+  // Debug: log renderer changes
+  createEffect(() => {
+    console.log('[HostileHarness] renderer changed to:', renderer())
+  })
+
+  return (
+    <ViewHarness model={HOSTILE_MODEL} selection="tool:hostile" level="execution" preferredRenderer={renderer} />
+  )
+}
+
 export const Hostile = {
-  render: () => <ViewHarness model={HOSTILE_MODEL} selection="tool:hostile" level="execution" />,
+  render: () => <HostileHarness />,
 }
