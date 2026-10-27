@@ -1,7 +1,6 @@
 import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
-import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { onCleanup, onMount, Show, type JSX } from "solid-js"
+import { onCleanup, onMount, Show } from "solid-js"
 import "./graph-toolbar.css"
 import {
   type DetailFraming,
@@ -25,6 +24,7 @@ import { GraphQuestionsControl } from "./GraphQuestionsControl"
 import { GraphZoomControl } from "./GraphZoomControl"
 import { GraphExportControl } from "./GraphExportControl"
 import { GraphRendererStatus } from "./GraphRendererStatus"
+import { ToolbarMenu } from "./ToolbarMenu"
 
 export type GraphToolbarProps = {
   capabilities?: RendererCapabilities
@@ -130,41 +130,6 @@ export type GraphToolbarProps = {
   /** T27.1: the model to derive domain presence from. */
   model?: GraphViewData
 }
-
-/**
- * T14.2 — a dropdown in the toolbar. The *icon* is the affordance and the label names the current
- * value, so a reader sees what the axis is set to without opening it. A menu with no value to name
- * is the icon alone, and opens without a chevron.
- */
-const ToolbarMenu = (props: {
-  slot: string
-  label: string
-  icon: string
-  value?: string
-  /** The slot the current value carries, so a test can read what the axis is set to. */
-  valueSlot?: string
-  /** A menu at the start of the row anchors its popover to its start so it stays on screen. */
-  align?: "start" | "end"
-  children: JSX.Element
-}) => (
-  <details class="relative" data-slot={props.slot}>
-    <summary
-      class="flex h-6 cursor-pointer list-none items-center gap-1 rounded-sm px-1 text-12-regular text-text-base hover:bg-surface-base-hover [&::-webkit-details-marker]:hidden"
-      aria-label={props.label}
-      title={props.label}
-    >
-      <Icon name={props.icon} size="small" />
-      {props.value ? <span data-slot={props.valueSlot ?? `${props.slot}-value`}>{props.value}</span> : null}
-      {props.value ? <Icon name="outline-chevron-down" size="small" /> : null}
-    </summary>
-    <div
-      class="absolute z-30 mt-1 flex min-w-[180px] flex-col items-start gap-2 rounded-sm border border-border-weaker-base bg-surface-base p-2 shadow-md"
-      classList={{ "start-0": props.align === "start", "end-0": props.align !== "start" }}
-    >
-      {props.children}
-    </div>
-  </details>
-)
 
 /**
  * Graph toolbar (U3.9). It owns no graph state; it renders the semantic level, projection, and the
