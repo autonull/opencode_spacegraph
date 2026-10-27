@@ -1,6 +1,6 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createSignal, createUniqueId } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createUniqueId } from "solid-js"
+import { createStore, produce } from "solid-js/store"
 import type {
   DepthMode,
   Projection,
@@ -39,12 +39,68 @@ export type GraphViewProps = {
   layout?: Layout
 }
 
+interface GraphState {
+  // Controlled state
+  level: ZoomLevel
+  projection: Projection
+  depth: DepthMode
+  layout: Layout
+  files: boolean
+  detailMode: DetailMode
+  detailFraming: DetailFraming
+  peek: boolean
+  followLog: boolean
+  facets: GraphFacets
+
+  // Card facing
+  cardFacing: "plane" | "camera"
+
+  // UI state
+  searchOpen: boolean
+  searchInitial: string
+  legendOpen: boolean
+  galleryOpen: boolean
+  findInitialTab: "search" | "filters" | "outline"
+
+  // Popover
+  popoverDismissed: boolean
+
+  // Hover
+  hovered: string | undefined
+  edgeHovered: string | undefined
+
+  // Renderer state
+  capabilities: any
+  rendererReady: boolean
+  rendererID: RendererID | undefined
+  fallback: boolean
+  error: string | undefined
+
+  // Responsive
+  narrow: boolean
+  compact: boolean
+  inspectorWidth: number
+  inspectorSheetOpen: boolean
+  canvasSize: { width: number; height: number }
+
+  // Manual layout
+  manual: {
+    positions: Record<string, [number, number, number]>
+    sizes: Record<string, [number, number]>
+  }
+  manualHistory: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
+  manualFuture: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
+
+  // Model
+  notesStore: Annotations
+}
+
 export type UseGraphStateReturn = {
   i18n: ReturnType<typeof useI18n>
   a11yInstructionsId: string
   resolvedTheme: () => RenderTheme
 
-  // Controlled state signals
+  // Controlled state (accessors)
   level: () => ZoomLevel
   setLevel: (level: ZoomLevel | ((prev: ZoomLevel) => ZoomLevel)) => void
   projection: () => Projection
@@ -71,7 +127,7 @@ export type UseGraphStateReturn = {
   setCardFacing: (facing: "plane" | "camera" | ((prev: "plane" | "camera") => "plane" | "camera")) => void
   toggleBillboard: () => void
 
-  // UI state signals
+  // UI state
   searchOpen: () => boolean
   setSearchOpen: (open: boolean | ((prev: boolean) => boolean)) => void
   searchInitial: () => string
@@ -117,12 +173,12 @@ export type UseGraphStateReturn = {
   setCanvasSize: (size: { width: number; height: number } | ((prev: { width: number; height: number }) => { width: number; height: number })) => void
 
   // Manual layout
-  manual: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }
+  manual: GraphState["manual"]
   setManual: (key: "positions" | "sizes", idOrValue: string | Record<string, [number, number, number]> | Record<string, [number, number]>, value?: [number, number, number] | [number, number]) => void
-  manualHistory: () => { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
-  setManualHistory: (history: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
-  manualFuture: () => { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
-  setManualFuture: (future: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]) => void
+  manualHistory: () => GraphState["manualHistory"]
+  setManualHistory: (history: GraphState["manualHistory"]) => void
+  manualFuture: () => GraphState["manualFuture"]
+  setManualFuture: (future: GraphState["manualFuture"]) => void
   pushHistory: () => void
   undoManual: () => void
   redoManual: () => void
@@ -135,24 +191,62 @@ export type UseGraphStateReturn = {
   announce: (message: string) => void
 }
 
+const initialState: GraphState = {
+  level: "execution",
+  projection: "2d",
+  depth: "flat",
+  layout: "lanes",
+  files: false,
+  detailMode: "panel",
+  detailFraming: "off",
+  peek: false,
+  followLog: false,
+  facets: { query: "", kinds: new Set(), statuses: new Set(), domains: new Set(["session"]) },
+  cardFacing: "plane",
+  searchOpen: false,
+  searchInitial: "",
+  legendOpen: false,
+  galleryOpen: false,
+  findInitialTab: "search",
+  popoverDismissed: false,
+  hovered: undefined,
+  edgeHovered: undefined,
+  capabilities: undefined,
+  rendererReady: false,
+  rendererID: undefined,
+  fallback: false,
+  error: undefined,
+  narrow: false,
+  compact: false,
+  inspectorWidth: 288,
+  inspectorSheetOpen: false,
+  canvasSize: { width: 0, height: 0 },
+  manual: { positions: {}, sizes: {} },
+  manualHistory: [],
+  manualFuture: [],
+  notesStore: {},
+}
+
+const MAX_HISTORY = 50
+
 export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
   const i18n = useI18n()
   const a11yInstructionsId = createUniqueId()
   const resolvedTheme = createGraphTheme()
 
-  // Controlled state signals
-  const [level, setLevel] = createSignal<ZoomLevel>(props.level ?? "execution")
-  const [projection, setProjection] = createSignal(props.projection ?? "2d")
-  const [depth, setDepth] = createSignal<DepthMode>(props.depth ?? "flat")
-  const [cardFacing, setCardFacing] = createSignal<"plane" | "camera">("plane")
-  const toggleBillboard = () => setCardFacing((current) => (current === "camera" ? "plane" : "camera"))
-  const [layout, setLayout] = createSignal<Layout>(props.layout ?? "lanes")
-  const [files, setFiles] = createSignal<boolean>(props.files ?? false)
-  const [detailMode, setDetailMode] = createSignal<DetailMode>(props.detailMode ?? "panel")
-  const [detailFraming, setDetailFraming] = createSignal<DetailFraming>(props.detailFraming ?? "off")
-  const [peek, setPeek] = createSignal<boolean>(props.peek ?? false)
-  const [followLog, setFollowLog] = createSignal<boolean>(props.followLog ?? false)
-  const [facets, setFacets] = createSignal<GraphFacets>(facetsFromQuery(props.facetQuery ?? ""))
+  const [state, setState] = createStore<GraphState>({
+    ...initialState,
+    level: props.level ?? "execution",
+    projection: props.projection ?? "2d",
+    depth: props.depth ?? "flat",
+    layout: props.layout ?? "lanes",
+    files: props.files ?? false,
+    detailMode: props.detailMode ?? "panel",
+    detailFraming: props.detailFraming ?? "off",
+    peek: props.peek ?? false,
+    followLog: props.followLog ?? false,
+    facets: facetsFromQuery(props.facetQuery ?? ""),
+  })
 
   // Announce to screen readers via the live region
   const announce = (message: string) => {
@@ -160,8 +254,6 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     if (region) region.textContent = message
   }
 
-  // Notes store
-  const [notesStore] = createStore<Annotations>({})
   const emptyModel: GraphViewData = {
     root: "session",
     nodes: [],
@@ -169,77 +261,71 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     turns: [],
     turnByMessageID: new Map(),
   }
-  const model = () => (props.model ? { ...props.model, annotations: notesStore } : emptyModel)
+  const model = () => (props.model ? { ...props.model, annotations: state.notesStore } : emptyModel)
 
-  // Hover state
-  const [hovered, setHovered] = createSignal<string>()
-  const [edgeHovered, setEdgeHovered] = createSignal<string>()
-  const [popoverDismissed, setPopoverDismissed] = createSignal(false)
-
-  // UI state
-  const [searchOpen, setSearchOpen] = createSignal(false)
-  const [searchInitial, setSearchInitial] = createSignal("")
-  const [legendOpen, setLegendOpen] = createSignal(false)
-  const [galleryOpen, setGalleryOpen] = createSignal(false)
-  const [findInitialTab, setFindInitialTab] = createSignal<"search" | "filters" | "outline">("search")
-
-  // Renderer state
-  const [capabilities] = createSignal<any>()
-  const [rendererReady, setRendererReady] = createSignal(false)
-  const [rendererID, setRendererID] = createSignal<any>()
-  const [fallback, setFallback] = createSignal(false)
-  const [error, setError] = createSignal<string>()
-
-  // Responsive
-  const [narrow, setNarrow] = createSignal(false)
-  const [compact, setCompact] = createSignal(false)
-  const [inspectorWidth, setInspectorWidth] = createSignal(288)
-  const [inspectorSheetOpen, setInspectorSheetOpen] = createSignal(false)
-  const [canvasSize, setCanvasSize] = createSignal({ width: 0, height: 0 })
-
-  // Manual layout
-  const [manual, setManual] = createStore<{
-    positions: Record<string, [number, number, number]>
-    sizes: Record<string, [number, number]>
-  }>({ positions: {}, sizes: {} })
-  const [manualHistory, setManualHistory] = createSignal<{ positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]>([])
-  const [manualFuture, setManualFuture] = createSignal<{ positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]>([])
-
-  const MAX_HISTORY = 50
+  // Helper to set state with function support
+  const set = <K extends keyof GraphState>(key: K, value: GraphState[K] | ((prev: GraphState[K]) => GraphState[K])) => {
+    if (typeof value === "function") {
+      setState(key, value as (prev: GraphState[K]) => GraphState[K])
+    } else {
+      setState(key, value)
+    }
+  }
 
   const captureManualState = () => ({
-    positions: { ...manual.positions },
-    sizes: { ...manual.sizes },
+    positions: { ...state.manual.positions },
+    sizes: { ...state.manual.sizes },
   })
 
   const pushHistory = () => {
-    const state = captureManualState()
-    if (Object.keys(state.positions).length > 0 || Object.keys(state.sizes).length > 0) {
-      setManualHistory((prev) => [...prev.slice(-MAX_HISTORY + 1), state])
-      setManualFuture([])
+    const captured = captureManualState()
+    if (Object.keys(captured.positions).length > 0 || Object.keys(captured.sizes).length > 0) {
+      setState("manualHistory", produce((history) => {
+        history.push(captured)
+        if (history.length > MAX_HISTORY) history.shift()
+      }))
+      setState("manualFuture", [])
     }
   }
 
   const undoManual = () => {
-    setManualHistory((prev) => {
-      if (prev.length === 0) return prev
-      const last = prev[prev.length - 1]
-      setManualFuture((fut) => [captureManualState(), ...fut.slice(-MAX_HISTORY + 1)])
-      setManual("positions", last.positions)
-      setManual("sizes", last.sizes)
-      return prev.slice(0, -1)
-    })
+    setState("manualHistory", produce((history) => {
+      if (history.length === 0) return
+      const last = history[history.length - 1]
+      setState("manualFuture", produce((fut) => {
+        fut.unshift(captureManualState())
+        if (fut.length > MAX_HISTORY) fut.pop()
+      }))
+      setState("manual", "positions", last.positions)
+      setState("manual", "sizes", last.sizes)
+      history.pop()
+    }))
   }
 
   const redoManual = () => {
-    setManualFuture((fut) => {
-      if (fut.length === 0) return fut
+    setState("manualFuture", produce((fut) => {
+      if (fut.length === 0) return
       const next = fut[0]
-      setManualHistory((prev) => [...prev.slice(-MAX_HISTORY + 1), captureManualState()])
-      setManual("positions", next.positions)
-      setManual("sizes", next.sizes)
-      return fut.slice(1)
-    })
+      setState("manualHistory", produce((history) => {
+        history.push(captureManualState())
+        if (history.length > MAX_HISTORY) history.shift()
+      }))
+      setState("manual", "positions", next.positions)
+      setState("manual", "sizes", next.sizes)
+      fut.shift()
+    }))
+  }
+
+  const setManual = (
+    key: "positions" | "sizes",
+    idOrValue: string | Record<string, [number, number, number]> | Record<string, [number, number]>,
+    value?: [number, number, number] | [number, number]
+  ) => {
+    if (typeof idOrValue === "string") {
+      setState("manual", key, idOrValue, value as any)
+    } else {
+      setState("manual", key, idOrValue)
+    }
   }
 
   return {
@@ -247,84 +333,94 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     a11yInstructionsId,
     resolvedTheme,
 
-    level,
-    setLevel,
-    projection,
-    setProjection,
-    depth,
-    setDepth,
-    layout,
-    setLayout,
-    files,
-    setFiles,
-    detailMode,
-    setDetailMode,
-    detailFraming,
-    setDetailFraming,
-    peek,
-    setPeek,
-    followLog,
-    setFollowLog,
-    facets,
-    setFacets,
+    // Controlled state
+    level: () => state.level,
+    setLevel: (v) => set("level", v),
+    projection: () => state.projection,
+    setProjection: (v) => set("projection", v),
+    depth: () => state.depth,
+    setDepth: (v) => set("depth", v),
+    layout: () => state.layout,
+    setLayout: (v) => set("layout", v),
+    files: () => state.files,
+    setFiles: (v) => set("files", v),
+    detailMode: () => state.detailMode,
+    setDetailMode: (v) => set("detailMode", v),
+    detailFraming: () => state.detailFraming,
+    setDetailFraming: (v) => set("detailFraming", v),
+    peek: () => state.peek,
+    setPeek: (v) => set("peek", v),
+    followLog: () => state.followLog,
+    setFollowLog: (v) => set("followLog", v),
+    facets: () => state.facets,
+    setFacets: (v) => set("facets", v),
 
-    cardFacing,
-    setCardFacing,
-    toggleBillboard,
+    // Card facing
+    cardFacing: () => state.cardFacing,
+    setCardFacing: (v) => set("cardFacing", v),
+    toggleBillboard: () => set("cardFacing", (c) => (c === "camera" ? "plane" : "camera")),
 
-    searchOpen,
-    setSearchOpen,
-    searchInitial,
-    setSearchInitial,
-    legendOpen,
-    setLegendOpen,
-    galleryOpen,
-    setGalleryOpen,
-    findInitialTab,
-    setFindInitialTab,
+    // UI state
+    searchOpen: () => state.searchOpen,
+    setSearchOpen: (v) => set("searchOpen", v),
+    searchInitial: () => state.searchInitial,
+    setSearchInitial: (v) => set("searchInitial", v),
+    legendOpen: () => state.legendOpen,
+    setLegendOpen: (v) => set("legendOpen", v),
+    galleryOpen: () => state.galleryOpen,
+    setGalleryOpen: (v) => set("galleryOpen", v),
+    findInitialTab: () => state.findInitialTab,
+    setFindInitialTab: (v) => set("findInitialTab", v),
 
-    popoverDismissed,
-    setPopoverDismissed,
+    // Popover
+    popoverDismissed: () => state.popoverDismissed,
+    setPopoverDismissed: (v) => set("popoverDismissed", v),
 
-    hovered,
-    setHovered,
-    edgeHovered,
-    setEdgeHovered,
+    // Hover
+    hovered: () => state.hovered,
+    setHovered: (v) => set("hovered", v),
+    edgeHovered: () => state.edgeHovered,
+    setEdgeHovered: (v) => set("edgeHovered", v),
 
-    capabilities,
-    rendererReady,
-    setRendererReady,
-    rendererID,
-    setRendererID,
-    fallback,
-    setFallback,
-    error,
-    setError,
+    // Renderer state
+    capabilities: () => state.capabilities,
+    rendererReady: () => state.rendererReady,
+    setRendererReady: (v) => set("rendererReady", v),
+    rendererID: () => state.rendererID,
+    setRendererID: (v) => set("rendererID", v),
+    fallback: () => state.fallback,
+    setFallback: (v) => set("fallback", v),
+    error: () => state.error,
+    setError: (v) => set("error", v),
 
-    narrow,
-    setNarrow,
-    compact,
-    setCompact,
-    inspectorWidth,
-    setInspectorWidth,
-    inspectorSheetOpen,
-    setInspectorSheetOpen,
-    canvasSize,
-    setCanvasSize,
+    // Responsive
+    narrow: () => state.narrow,
+    setNarrow: (v) => set("narrow", v),
+    compact: () => state.compact,
+    setCompact: (v) => set("compact", v),
+    inspectorWidth: () => state.inspectorWidth,
+    setInspectorWidth: (v) => set("inspectorWidth", v),
+    inspectorSheetOpen: () => state.inspectorSheetOpen,
+    setInspectorSheetOpen: (v) => set("inspectorSheetOpen", v),
+    canvasSize: () => state.canvasSize,
+    setCanvasSize: (v) => set("canvasSize", v),
 
-    manual,
+    // Manual layout
+    manual: state.manual,
     setManual,
-    manualHistory,
-    setManualHistory,
-    manualFuture,
-    setManualFuture,
+    manualHistory: () => state.manualHistory,
+    setManualHistory: (v) => set("manualHistory", v),
+    manualFuture: () => state.manualFuture,
+    setManualFuture: (v) => set("manualFuture", v),
     pushHistory,
     undoManual,
     redoManual,
 
-    notesStore,
+    // Model
+    notesStore: state.notesStore,
     model,
 
+    // Functions
     announce,
   }
 }

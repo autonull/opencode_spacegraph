@@ -108,14 +108,14 @@ import type { GraphWindowState } from "./GraphWindows"
  * inspector) is panned instead of shrunk to text too small to read. Half size keeps the card's 13px
  * label at 6.5px, the size the lane views are read at.
  */
-const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
+export const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
 
 /**
  * T11.2 (A) — the width the camera aims for when it frames the selected card: the closest tier's
  * threshold with a margin, so the card lands inside the tier rather than on its edge. The card mode
  * is the detail on the node, so the node's card is the one that says the most.
  */
-const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
+export const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
 
 export type GraphViewProps = {
   model: GraphViewData
