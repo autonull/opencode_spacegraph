@@ -1097,3 +1097,60 @@ test("resizes a group from its handle", async ({ page }) => {
 
   expect(errors).toEqual([])
 })
+
+test("graph.hybrid (mod+shift+h) toggles hybrid and preserves transcript scroll", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // Scroll the transcript down
+  const log = page.locator('[data-slot="session-graph-panel-log"]')
+  const transcript = log.locator('[data-slot="timeline"]')
+  await transcript.evaluate((el) => { el.scrollTop = 500 })
+  const scrollBefore = await transcript.evaluate((el) => el.scrollTop)
+  expect(scrollBefore).toBeGreaterThan(0)
+
+  // Toggle hybrid with mod+shift+h
+  await page.keyboard.press("Meta+Shift+h")
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+
+  // Verify transcript scroll position is preserved
+  const scrollAfter = await transcript.evaluate((el) => el.scrollTop)
+  expect(scrollAfter).toBe(scrollBefore)
+
+  // Toggle back with mod+shift+h
+  await page.keyboard.press("Meta+Shift+h")
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeHidden()
+
+  // Verify transcript scroll position is still preserved
+  const scrollAfterClose = await transcript.evaluate((el) => el.scrollTop)
+  expect(scrollAfterClose).toBe(scrollBefore)
+
+  expect(errors).toEqual([])
+})
+
+test("log text-size slider changes scale and survives reload (persists as logTextScale)", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  // Open hybrid to access the text size slider
+  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+
+  const slider = page.locator('[data-slot="session-graph-panel-log"] input[type="range"][aria-label="Log text size"]')
+  await expect(slider).toBeVisible()
+
+  // Change the text size
+  await slider.fill("1.5")
+  await expect(page.locator('[data-slot="session-graph-panel-log"] .text-right')).toContainText("150%")
+
+  // Reload the page
+  await page.reload()
+  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible({ timeout: 30_000 })
+
+  // Verify the text size persisted
+  await expect(slider).toBeVisible()
+  await expect(slider).toHaveValue("1.5")
+  await expect(page.locator('[data-slot="session-graph-panel-log"] .text-right')).toContainText("150%")
+
+  expect(errors).toEqual([])
+})
