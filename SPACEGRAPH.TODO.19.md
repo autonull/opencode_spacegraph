@@ -124,9 +124,21 @@ The three originally failing component tests and their **real** causes:
 | **1.7** | Localize copy label (A7) | `cardTemplate.ts:442`: `aria-label="Copy"` → key via `options.copy` builder (like `expandGroup`/`collapseGroup`). English source string only. | ✅ **Done** — `CardCopy` extended with `copyButton()`; `card-copy.ts` updated; tests pass. |
 | **1.8** | Close the gate (G1–G4) | `script/graph-verify.ts`: add three steps — `packages/session-ui` → `bun test src/graph`; `packages/app` → `playwright test e2e/graph/session-graph.spec.ts`; `packages/app` → `playwright test e2e/regression/side-panels.spec.ts`. `.github/workflows/graph.yml:20-24`: add `ref: 9df9b92` to library checkout (share constant with `graph-setup.ts:16`). | ✅ **Done** — gate updated; CI pins library SHA. |
 | **1.9** | Two uncovered user paths (U1, U2) | Add to existing `app/e2e/graph/session-graph.spec.ts` (one e2e run): `graph.hybrid` (`mod+shift+h`) toggles hybrid and preserves transcript scroll; log text-size slider changes scale and survives reload (persists as `logTextScale`). | ✅ **Done** — Added tests for hybrid toggle preserving scroll and log text-size slider persistence. |
-| **1.10** | New captures (focus dimming + 6 new states) | Run `graph:capture --mode=compare` in the same pipeline: focus dimming, search open, legend open, gallery open, group menu open, error state, loading state. | `--mode=verify` green; no duplicates in zoom/pan matrix (SHA check). |
+| **1.10** | New captures (focus dimming + 6 new states) | Run `graph:capture --mode=compare` in the same pipeline: focus dimming, search open, legend open, gallery open, group menu open, error state, loading state. | ⏳ Pending — capture command has build issues in dev environment; will run in CI pipeline. |
 
 **Batch 1 done when:** `graph:verify` green (incl. session-ui + app e2e + side-panels), `test:components` 54/0, new captures verified.
+
+**Current Batch 1 status (as of commit):**
+- ✅ 1.1 Canvas dedup (verified single GraphCanvas)
+- ✅ 1.2 One emphasis resolver (cardTemplate.ts)
+- ⚠️ 1.3 Focus implemented; tests `fixme` (library L4)
+- ⚠️ 1.4 Card framing extent preserved; test `fixme` (library issue)
+- ✅ 1.5 Dead surface removed (A5, A6, A8)
+- ✅ 1.6 Test harness consolidated (unified `window.__graph`)
+- ✅ 1.7 Copy label localized (CardCopy.copyButton)
+- ✅ 1.8 Gate closed (G1-G4)
+- ✅ 1.9 Two e2e paths added (hybrid toggle scroll, text-size persist)
+- ⏳ 1.10 New captures pending CI
 
 ---
 
