@@ -75,7 +75,6 @@ import { createBandTemplate, createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
-import type { GraphCanvasRegionContext } from "./GraphCanvasRegion"
 import { GraphFileRail } from "./GraphFileRail"
 import { GraphInspector } from "./GraphInspector"
 import { GraphStatusBar } from "./GraphStatusBar"
@@ -299,13 +298,9 @@ export const GraphView = (props: GraphViewProps) => {
 
     capabilities,
     rendererReady,
-    setRendererReady,
     rendererID,
-    setRendererID,
     fallback,
-    setFallback,
     error,
-    setError,
 
     narrow,
     setNarrow,
@@ -321,9 +316,7 @@ export const GraphView = (props: GraphViewProps) => {
     manual,
     setManual,
     manualHistory,
-    setManualHistory,
     manualFuture,
-    setManualFuture,
     pushHistory,
     undoManual,
     redoManual,
@@ -789,12 +782,13 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // Update card screen width signal now that viewportTracker is ready
-  setCardScreenWidthSignal(() => {
+  const updateCardScreenWidth = () => {
     const extent = viewportTracker!.viewport()?.extent
     const size = canvasSize()
     if (!extent?.width || !size.width) return CARD_SIZE[0]
     return (CARD_SIZE[0] * size.width) / extent.width
-  })
+  }
+  setCardScreenWidthSignal(updateCardScreenWidth)
 
   // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
   // budget follows the camera, and a budget that changed on every frame would rebuild the map on
@@ -807,12 +801,6 @@ export const GraphView = (props: GraphViewProps) => {
   }
 
   const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode() || (narrow() && inspectorSheetOpen()))
-
-  // Convert RendererViewport to the format expected by GraphCanvasRegion
-  const viewport = createMemo(() => {
-    const vp = viewportTracker!.viewport()
-    return vp ? { zoom: vp.zoom, center: Array.from(vp.center) } : undefined
-  })
 
   // Reactive zoom percent for toolbar
   const zoomPercent = createMemo(() => viewportTracker!.camera.zoomPercent())
@@ -1105,14 +1093,6 @@ export const GraphView = (props: GraphViewProps) => {
     openSearch()
   }
 
-  // Update card screen width signal now that viewportTracker is ready
-  setCardScreenWidthSignal(() => {
-    const extent = viewportTracker!.viewport()?.extent
-    const size = canvasSize()
-    if (!extent?.width || !size.width) return CARD_SIZE[0]
-    return (CARD_SIZE[0] * size.width) / extent.width
-  })
-
   // Keyboard handling extracted to hook (must be after all dependencies are declared)
   const { handleRegionKeyDown } = useGraphKeyboard({
     model,
@@ -1218,168 +1198,124 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // Build context object for GraphCanvasRegion (replaces 225 lines of props)
-  const ctx: GraphCanvasRegionContext = {
+  const canvasRegionProps = {
+    // Core rendering
     model,
     theme,
-    level,
-    setLevel,
+    renderModel: renderModel(),
     projection,
-    setProjection,
     depth,
-    setDepth,
     layout,
-    setLayout,
-    files,
-    setFiles,
-    detailMode,
-    setDetailMode,
-    detailFraming,
-    setDetailFraming,
-    peek,
-    setPeek,
-    followLog,
-    setFollowLog,
-    facets,
-    setFacets,
-    renderer: renderer(),
-    setRenderer: (r: GraphRenderer | undefined) => { /* noop - set via onRenderer */ },
-    rendererID: rendererID(),
-    setRendererID,
-    rendererReady: rendererReady(),
-    setRendererReady,
-    fallback,
-    setFallback,
-    error,
-    setError,
-    viewport: viewport(),
-    setViewport,
-    rendererOverrides: props.rendererOverrides,
+    level,
+    
+    // Selection & navigation
+    selection: () => selection.selection(),
+    select: selection.select,
+    onNodeDoubleClick: expandToGraph,
+    onBackgroundClick: () => selection.select(undefined),
+    onHover: setHovered,
+    onEdgeHover: setEdgeHovered,
+    onEdgeSelect: (id: string) => {
+      const edge = model().edges.find((item) => item.id === id)
+      if (!edge) return
+      selection.select(edge.source)
+      annotations.startTrace("related", edge.source)
+    },
+    onGroupToggle: toggleGroupByID,
+    onGroupMenu: (id: string, at: { x: number; y: number }) => {
+      const rect = canvasRegionEl?.getBoundingClientRect()
+      if (rect) setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
+    },
+    
+    // Layout interactions
+    onNodeMoved: moveNodes,
+    onNodeResized: resizeNode,
+    cardFacing: () => cardFacing(),
+    applyModel,
     preferredRenderer: props.preferredRenderer,
-    onRenderer: props.onRenderer,
-    renderCard: renderCard(),
-    renderSummary: props.renderSummary,
+    rendererOverrides: props.rendererOverrides,
+    
+    // Detail mode
+    detailMode,
+    effectiveDetailMode: effectiveDetailMode(),
+    files,
+    
+    // Peek
+    peekFrame: peekFrame(),
+    peekEdge: peekEdge(),
+    
+    // Popover
+    popoverVisible: popoverVisible(),
+    popoverNode: popoverNode(),
+    popoverPlacement: popoverPlacement(),
+    setPopoverDismissed,
+    
+    // Annotations (notes + trace)
+    annotations,
+    noteTargetNode,
+    noteAnchor,
+    
+    // Search
+    searchOpen: searchOpen(),
+    searchInitial,
+    setSearchOpen,
+    jumpTo,
+    
+    // Legend
+    legendOpen: legendOpen(),
+    setLegendOpen,
+    edgeKinds,
+    rules: props.rules,
+    
+    // Gallery
+    galleryOpen: galleryOpen(),
+    setGalleryOpen,
+    changeLayout,
+    
+    // Group menu
+    groupMenu: groupMenu(),
+    setGroupMenu,
+    groupCollapse,
+    camera: viewportTracker.camera,
+    toggleGroupByID,
+    modelForGroupMenu: model,
+    graphSelection,
+    handleRegionKeyDown,
+    
+    // Error/Empty states
+    error,
+    onBack: props.onBack,
+    
+    // Diff
     diffSource: props.diffSource,
     link: props.link,
     onOpenTranscript: props.onOpenTranscript,
     onOpenSession: props.onOpenSession,
-    onActionNavigate: props.onActionNavigate,
-    onActionReveal: props.onActionReveal,
-    onActionCopy: props.onActionCopy,
-    onActionRun: props.onActionRun,
     onOpenWindow: openWindow,
-    rules: props.rules,
-    onRulesChange: props.onRulesChange,
-    onSelect: props.onSelect,
-    onProjectionChange: props.onProjectionChange,
-    onDepthChange: props.onDepthChange,
-    onLayoutChange: props.onLayoutChange,
-    onFilesChange: props.onFilesChange,
-    onDetailModeChange: props.onDetailModeChange,
-    onDetailFramingChange: props.onDetailFramingChange,
-    onPeekChange: props.onPeekChange,
-    onTurnMap: props.onTurnMap,
-    windowAnchor: windowAnchor(),
-    activeTurn: props.activeTurn,
-    selection: () => selection.selection(),
-    select: selection.select,
-    graphSelection,
-    annotations,
-    edgeKinds,
-    groupCollapse,
-    comparisonHook,
-    manual,
-    setManual,
-    manualHistory,
-    setManualHistory,
-    manualFuture,
-    setManualFuture,
-    pushHistory,
-    undoManual,
-    redoManual,
-    camera: viewportTracker.camera,
-    viewportTracker,
-    peekFrame: peekFrame(),
-    peekEdge: peekEdge(),
-    noteTargetNode,
-    noteAnchor,
-    effectiveDetailMode: effectiveDetailMode(),
-    popoverPlacement: popoverPlacement(),
-    popoverVisible: popoverVisible(),
-    popoverNode: popoverNode(),
-    setPopoverDismissed,
-    groupMenu: groupMenu(),
-    setGroupMenu,
-    toggleGroupByID,
-    selectedTurn,
-    toggleBillboard,
-    cardFacing: () => cardFacing(),
-    renderModel: renderModel(),
+    onCopyView: copyView,
+    renderSummary: props.renderSummary,
+    
+    // A11y
     ordered: ordered(),
-    displayPositions,
-    geometry: geometry(),
-    layoutHistory,
-    sessionKey,
-    viewKey: viewKey(),
-    sizedCard,
-    rulesKey: rulesKey(),
-    setNeedsFit,
-    turnNumbers: turnNumbers(),
-    axisLabels: axisLabels(),
-    drawn: drawn(),
-    resting: viewportTracker.resting(),
-    setResting: viewportTracker.setResting,
-    budget: budget(),
-    applyManualLayout,
-    contentIDs,
-    fitOptions,
-    inspectorOpen: inspectorOpen(),
-    cardScreenWidth: cardScreenWidth(),
-    peekNode: peekNode(),
-    peekAnchor,
-    peekPlacement: peekPlacement(),
-    changedFilesList: changedFilesList(),
-    fitSubtree,
     viewAnnouncement: viewAnnouncement(),
-    moveNodes,
-    resizeNode,
-    applyModel,
-    selectedTurns,
-    scale,
-    viewportTrackerRef: { current: viewportTracker },
-    cardScreenWidthSignal: { get: cardScreenWidth, set: (v: number) => {} },
-    handleRegionKeyDown,
-    setHovered,
-    setEdgeHovered,
     a11yInstructionsId,
     announce,
     i18n,
-    refitKey: props.refitKey,
-    arrangement: props.arrangement,
-    onZoomOut: () => viewportTracker.camera.zoomBy(-1),
-    onZoomIn: () => viewportTracker.camera.zoomBy(1),
-    zoomPercent: viewportTracker.camera.zoomPercent(),
-    zoomOutDisabled: level() === "overview" || (viewportTracker.viewport()?.zoom ?? 0) <= viewportTracker.camera.zoomLimits().min,
-    zoomInDisabled: (viewportTracker.viewport()?.zoom ?? 0) >= viewportTracker.camera.zoomLimits().max,
-    onFit: viewportTracker.camera.fitContent,
-    onCopyView: copyView,
-    onExport: handleExport,
-    onBack: props.onBack,
-    onSplitView: props.onSplitView,
-    endInset: props.endInset,
-    sessionTitle: props.sessionTitle,
-    testedCommit: props.testedCommit,
+    
+    // Canvas ref
     canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
-    expandToGraph,
-    searchOpen: searchOpen(),
-    searchInitial,
-    setSearchOpen,
-    legendOpen: legendOpen(),
-    setLegendOpen,
-    galleryOpen: galleryOpen(),
-    setGalleryOpen,
-    changeLayout,
-    jumpTo,
-    needsFit: needsFit(),
+    
+    // Viewport
+    onViewportChange: (next: any) => {
+      viewportTracker.camera.report(next)
+      viewportTracker.setResting(next)
+      setViewport(next)
+    },
+    setViewport,
+    viewportTracker,
+    
+    // Renderer
+    onRenderer: props.onRenderer,
   }
 
   return (
@@ -1517,7 +1453,7 @@ export const GraphView = (props: GraphViewProps) => {
             onSelect={(id) => selection.select(id)}
           />
         </Show>
-        <GraphCanvasRegion ctx={ctx} />
+        <GraphCanvasRegion {...canvasRegionProps} />
         <GraphWindowManager
           windows={props.windows ?? []}
           onWindowsChange={props.onWindowsChange ?? (() => {})}
