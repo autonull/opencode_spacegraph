@@ -60,24 +60,24 @@ export type GraphOverlayManagerProps = {
   noteAnchor: ReturnType<typeof createNodeAnchor>
 
   // Search
-  searchOpen: boolean
+  searchOpen: () => boolean
   searchInitial: string
   setSearchOpen: (open: boolean) => void
   jumpTo: (node: GraphNode) => void
 
   // Legend
-  legendOpen: boolean
+  legendOpen: () => boolean
   setLegendOpen: (open: boolean) => void
   edgeKinds: ReturnType<typeof import("./useEdgeKinds").useEdgeKinds>
   rules: EqualizerRuleSet | undefined
 
   // Gallery
-  galleryOpen: boolean
+  galleryOpen: () => boolean
   setGalleryOpen: (open: boolean) => void
   changeLayout: (next: Layout) => void
 
   // Group menu
-  groupMenu: { id: string; x: number; y: number } | undefined
+  groupMenu: () => { id: string; x: number; y: number } | undefined
   setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
   groupCollapse: ReturnType<typeof import("./useGroupCollapse").useGroupCollapse>
   camera: ReturnType<typeof createGraphCamera>
@@ -184,7 +184,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
       </Show>
       <GraphError error={props.error} onBack={props.onBack} />
       <GraphEmpty model={props.model} error={props.error} />
-      <Show when={props.searchOpen}>
+      <Show when={props.searchOpen()}>
         <GraphSearch
           model={props.model()}
           initialQuery={props.searchInitial}
@@ -195,7 +195,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
           onClose={() => props.setSearchOpen(false)}
         />
       </Show>
-      <Show when={props.legendOpen}>
+      <Show when={props.legendOpen()}>
         <GraphLegend
           theme={props.theme}
           layout={props.layout}
@@ -205,7 +205,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
           onClose={() => props.setLegendOpen(false)}
         />
       </Show>
-      <Show when={props.galleryOpen}>
+      <Show when={props.galleryOpen()}>
         <GraphGallery
           model={props.model()}
           theme={props.theme}
@@ -214,7 +214,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
           onClose={() => props.setGalleryOpen(false)}
         />
       </Show>
-      <Show when={props.groupMenu}>
+      <Show when={props.groupMenu()}>
         {(menu) => (
           <GraphGroupMenu
             id={menu().id}

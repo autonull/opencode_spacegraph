@@ -393,8 +393,13 @@ export const GraphView = (props: GraphViewProps) => {
 
   // Viewport tracker - declared early so effects can reference it, initialized later when deps are ready
   let viewportTracker: ReturnType<typeof useGraphViewport> | undefined
-  // Card screen width signal - starts with default, updated after viewportTracker is ready
-  const [cardScreenWidthSignal, setCardScreenWidthSignal] = createSignal<number>(CARD_SIZE[0])
+  // Card screen width memo - reacts to viewport changes
+  const cardScreenWidth = createMemo(() => {
+    const extent = viewportTracker?.viewport()?.extent
+    const size = canvasSize()
+    if (!extent?.width || !size.width) return CARD_SIZE[0]
+    return (CARD_SIZE[0] * size.width) / extent.width
+  })
 
   // Geometry - declared early with default, replaced with real memo later
   let geometry: () => GraphLayout = () => ({
@@ -568,8 +573,6 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   const theme = () => props.theme ?? resolvedTheme()
-  // Card screen width - uses signal that starts with default, updated after viewportTracker is ready
-  const cardScreenWidth = () => cardScreenWidthSignal()
   // T18.3: effective detail mode
   const effectiveDetailMode = createMemo<DetailMode>(() => {
     const mode = detailMode()
@@ -781,15 +784,6 @@ export const GraphView = (props: GraphViewProps) => {
     READABLE_CARD_WIDTH,
     capabilities: () => capabilities(),
   })
-
-  // Update card screen width signal now that viewportTracker is ready
-  const updateCardScreenWidth = () => {
-    const extent = viewportTracker!.viewport()?.extent
-    const size = canvasSize()
-    if (!extent?.width || !size.width) return CARD_SIZE[0]
-    return (CARD_SIZE[0] * size.width) / extent.width
-  }
-  setCardScreenWidthSignal(updateCardScreenWidth)
 
   // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
   // budget follows the camera, and a budget that changed on every frame would rebuild the map on
@@ -1257,24 +1251,24 @@ export const GraphView = (props: GraphViewProps) => {
     noteAnchor,
     
     // Search
-    searchOpen: searchOpen(),
+    searchOpen: searchOpen,
     searchInitial,
     setSearchOpen,
     jumpTo,
     
     // Legend
-    legendOpen: legendOpen(),
+    legendOpen: legendOpen,
     setLegendOpen,
     edgeKinds,
     rules: props.rules,
     
     // Gallery
-    galleryOpen: galleryOpen(),
+    galleryOpen: galleryOpen,
     setGalleryOpen,
     changeLayout,
     
     // Group menu
-    groupMenu: groupMenu(),
+    groupMenu: groupMenu,
     setGroupMenu,
     groupCollapse,
     camera: viewportTracker.camera,

@@ -78,24 +78,24 @@ export type GraphCanvasRegionProps = {
   noteAnchor: ReturnType<typeof createNodeAnchor>
   
   // Search
-  searchOpen: boolean
+  searchOpen: () => boolean
   searchInitial: () => string | undefined
   setSearchOpen: (open: boolean) => void
   jumpTo: (node: GraphNode) => void
   
   // Legend
-  legendOpen: boolean
+  legendOpen: () => boolean
   setLegendOpen: (open: boolean) => void
   edgeKinds: UseEdgeKindsReturn
   rules: EqualizerRuleSet | undefined
   
   // Gallery
-  galleryOpen: boolean
+  galleryOpen: () => boolean
   setGalleryOpen: (open: boolean) => void
   changeLayout: (layout: Layout) => void
   
   // Group menu
-  groupMenu: { id: string; x: number; y: number } | undefined
+  groupMenu: () => { id: string; x: number; y: number } | undefined
   setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
   groupCollapse: UseGroupCollapseReturn
   camera: GraphViewportTrackerReturn["camera"]

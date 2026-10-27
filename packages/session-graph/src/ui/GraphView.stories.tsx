@@ -188,6 +188,15 @@ const ViewHarness = (props: HarnessProps) => {
     },
   }
 
+  // Test harness for component tests
+  const graphViewHarness = {
+    selected: () => selected(),
+    select: (id: string | undefined) => setSelected(id),
+    setRenderer: (id: RendererID) => setRenderer(id),
+  }
+  // Expose harness on window for component tests
+  ;(window as unknown as { __graphView?: typeof graphViewHarness }).__graphView = graphViewHarness
+
   const size = props.fullscreen
     ? { width: "100vw", height: "100vh" }
     : { width: props.width ?? "1100px", height: props.height ?? "640px" }
@@ -479,18 +488,8 @@ const HOSTILE_MODEL: GraphViewData = {
   turnByMessageID: new Map(),
 }
 
-type ViewHarness = {
-  setRenderer: (id: "spacegraph" | "cytoscape") => void
-}
-
 const HostileHarness = () => {
-  const [renderer, setRenderer] = createSignal<RendererID>("spacegraph")
-  ;(window as unknown as { __graphView?: ViewHarness }).__graphView = { 
-    setRenderer: (id: RendererID) => {
-      console.log('[HostileHarness] setRenderer called with:', id)
-      setRenderer(id)
-    }
-  }
+  const [renderer, _setRenderer] = createSignal<RendererID>("spacegraph")
 
   // Debug: log renderer changes
   createEffect(() => {
