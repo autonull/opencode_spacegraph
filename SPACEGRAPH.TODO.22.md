@@ -73,7 +73,17 @@
                                     │
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 4 T2.2 EVIDENCE (go/no-go)                                                  │
+│ 4 FEATURE COMPLETION TRACK (parallel)                                       │
+│   □ TUI renderer (OpenTUI)                                                   │
+│   □ Cross-session graph (SessionStore contract)                              │
+│   □ Real 3D / depth / DOF (protocol validation)                              │
+│   □ External distribution (@spacegraphjs/session-model + Vite preset)        │
+│   □ Inline row host (generic timeline slot)                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 5 T2.2 EVIDENCE (DEFERRED — run at MVP-complete)                            │
 │   n ≥ 5, counterbalanced, canonical fixture, five tasks                     │
 │   Stop rule: if graph doesn't beat transcript, STOP feature work            │
 │   Docs truthfulness: SPACEGRAPH.md §3, §6.1, §7.1, §9.1 match plugin build  │
@@ -89,9 +99,9 @@
 | Workspace lens RPC (2.9) | **Drop** | `snapshot-cache` degrades gracefully; no profiling demand |
 | Header slot on `SessionSurface` | **Drop** | Toolbar lives in `GraphView`/`FullMap`, not host |
 | `SPACEGRAPH.md` §7.3 update | **Defer** | Post-cutover; traceability already in git |
-| External `@spacegraphjs/session-model` package | **Post-T2.2** | Distribution concern only; built-in works today |
-| TUI renderer | **Post-T2.2** | Adds OpenTUI, second renderer, second test matrix |
-| Real 3D / depth / cross-session | **Post-T2.2** | Only if T2.2 validates |
+| External `@spacegraphjs/session-model` package | **Post-MVP** | Distribution concern only; built-in works today |
+| TUI renderer | **Post-MVP** | Adds OpenTUI, second renderer, second test matrix |
+| Real 3D / depth / cross-session | **Post-MVP** | Only if T2.2 validates |
 
 ---
 
@@ -194,16 +204,32 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 | 5 | Capture matrix passes (visual parity) | 2.10 |
 | 6 | Old app graph code deleted; plugin gate green | 3A |
 | 7 | Protocol/server graph code deleted; `generate` runs; re-baselined | 3B |
-| 8 | T2.2 executed on built-in plugin; `rfc.md` + stop-rule | 4 |
+| 8 | T2.2 executed on built-in plugin; `rfc.md` + stop-rule | 4 (deferred) |
 
 ---
 
 ## 📋 IMMEDIATE NEXT ACTIONS
 
 1. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion)
-2. **Batch 4**: Run T2.2 study on built-in plugin
-3. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle (may need longer timeout or animation handling)
-4. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI — consider `--disable-animation` flag or wait longer
+2. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
+3. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle
+4. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI
+
+---
+
+## 🎯 CAPABILITY GAPS (Post-MVP Feature Track)
+
+| Capability | Status | Blockers | Effort |
+|------------|--------|----------|--------|
+| **TUI renderer** | Deferred | OpenTUI integration, second test matrix | Medium |
+| **Cross-session graph** | Deferred | SessionStore contract, multi-session fixture | Medium |
+| **Real 3D / depth / DOF** | Deferred | Protocol prefers `layered`/`depth-stack` validation | Medium |
+| **External plugin distribution** | Deferred | `@spacegraphjs/session-model` extraction, Vite preset | Medium |
+| **Workspace lens RPC** | Dropped | `snapshot-cache` degrades gracefully | — |
+| **Inline row host** | Deferred | Maintainer approval for generic timeline slot | Low |
+| **Host-neutral activity adapter** | Deferred | Real second host needs it | Low |
+
+**T2.2 (evidence study) → DEFERRED** — Run when feature set is stable and MVP-complete. The stop rule still governs: if evidence is negative, feature work stops.
 
 ---
 
@@ -215,8 +241,8 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 | D2 | **Two seams only** | `SessionSurface` (with layering) + `TranscriptSurface` protocol. No separate `overlays` API. |
 | D3 | **No Contract in v1** | Side panel is in the same plugin; imports model directly. Contract only for external consumers. |
 | D4 | **Workspace lens = optional RPC** | `snapshot-cache` already degrades gracefully. Add RPC only if profiling shows it's needed. |
-| D5 | **TUI deferred** | Adds OpenTUI, second renderer, second test matrix. Post-T2.2 only. |
-| D6 | **External package deferred** | Distribution concern. Built-in is the product. |
+| D5 | **TUI deferred** | Adds OpenTUI, second renderer, second test matrix. Post-MVP only. |
+| D6 | **External package deferred** | Distribution concern. Built-in is the product. Post-MVP. |
 | D7 | **Permalinks = plugin-owned hash** | `ctx.router` is read-only; plugin reads `location.hash` and calls `ctx.surfaces.select`. No app changes. |
 | D8 | **Fork = 2 registration lines + 2 seams** | That's it. When seams land upstream, delete the registration. |
 
@@ -235,7 +261,7 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 
 ---
 
-## 📝 NOTES FOR POST-T2.2 (If Positive)
+## 📝 NOTES FOR POST-MVP (If T2.2 Positive)
 
 | Track | Items |
 |-------|-------|
