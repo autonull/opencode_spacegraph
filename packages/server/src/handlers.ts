@@ -29,7 +29,6 @@ import { CredentialHandler } from "./handlers/credential"
 import { ProjectHandler } from "./handlers/project"
 import { WorktreeHandler } from "./handlers/worktree"
 import { VcsHandler } from "./handlers/vcs"
-import { GraphHandler } from "./handlers/graph"
 import { EventFeed } from "./event-feed"
 import { MigrationHandler } from "./handlers/migration"
 import { ConfigHandler } from "./handlers/config"
@@ -66,6 +65,5 @@ export const handlers = Layer.mergeAll(
   ReferenceHandler,
   WorktreeHandler,
   VcsHandler,
-  GraphHandler,
   ConfigHandler,
 )

@@ -1,7 +1,6 @@
 import { OpenCode } from "@opencode/client/promise"
 import type { ServerConnection } from "@/runtime/server/registry"
 import { decode64 } from "@/runtime/persistence/base64"
-import type { ServerGraphWorkspaceInput, WorkspaceSnapshot } from "@opencode/client/promise"
 
 export function authTokenFromCredentials(input: { password: string }) {
   return btoa(`opencode:${input.password}`)
@@ -39,15 +38,7 @@ export function fileStreamUrl(server: ServerConnection.HttpBase, input: { path: 
 
 type RawClient = ReturnType<typeof OpenCode.make>
 
-type ServerWithGraph = RawClient["server"] & {
-  graph: {
-    workspace: (input?: ServerGraphWorkspaceInput) => Promise<WorkspaceSnapshot>
-  }
-}
-
-export type ServerApi = Omit<RawClient, "server"> & {
-  server: ServerWithGraph
-}
+export type ServerApi = RawClient
 
 export function createApiForServer(input: {
   server: ServerConnection.HttpBase
@@ -65,18 +56,5 @@ export function createApiForServer(input: {
       : undefined,
   })
 
-  const graphWorkspace = async (input?: ServerGraphWorkspaceInput): Promise<WorkspaceSnapshot> => {
-    const result = await raw["server.graph"].workspace(input)
-    return result.data
-  }
-
-  return {
-    ...raw,
-    server: {
-      ...raw.server,
-      graph: {
-        workspace: graphWorkspace,
-      },
-    },
-  } satisfies ServerApi
+  return raw
 }

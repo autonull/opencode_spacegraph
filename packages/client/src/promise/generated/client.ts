@@ -275,8 +275,6 @@ import type {
   VcsBranchListOutput,
   VcsDiffInput,
   VcsDiffOutput,
-  ServerGraphWorkspaceInput,
-  ServerGraphWorkspaceOutput,
   DebugHeapDumpInput,
   DebugHeapDumpOutput,
   DebugLocationListOutput,
@@ -2315,20 +2313,6 @@ export function make(options: ClientOptions) {
             },
             successStatus: 200,
             declaredStatuses: [400, 401, 404, 503],
-            empty: false,
-          },
-          requestOptions,
-        ),
-    },
-    "server.graph": {
-      workspace: (input?: ServerGraphWorkspaceInput, requestOptions?: RequestOptions) =>
-        request<ServerGraphWorkspaceOutput>(
-          {
-            method: "GET",
-            path: `/api/graph/workspace`,
-            query: { location: input?.["location"], scope: input?.["scope"], paths: input?.["paths"] },
-            successStatus: 200,
-            declaredStatuses: [400, 401, 404],
             empty: false,
           },
           requestOptions,

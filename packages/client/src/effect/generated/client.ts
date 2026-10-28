@@ -275,8 +275,6 @@ import type {
   VcsBranchListOutput,
   VcsDiffInput,
   VcsDiffOutput,
-  ServerGraphWorkspaceInput,
-  ServerGraphWorkspaceOutput,
   DebugHeapDumpInput,
   DebugHeapDumpOutput,
   DebugLocationListOutput,
@@ -1696,15 +1694,6 @@ const adaptGroupVcs = (raw: RawClient["server.vcs"]) => ({
   diff: EndpointVcsDiff(raw),
 })
 
-const EndpointServerGraphWorkspace = (raw: RawClient["server.graph"]) => (input?: ServerGraphWorkspaceInput) =>
-  preserveEffect<ServerGraphWorkspaceOutput>()(
-    raw["graph.workspace"]({
-      query: { location: input?.["location"], scope: input?.["scope"], paths: input?.["paths"] },
-    }).pipe(Effect.mapError(mapClientError)),
-  )
-
-const adaptGroupServerGraph = (raw: RawClient["server.graph"]) => ({ workspace: EndpointServerGraphWorkspace(raw) })
-
 const EndpointDebugHeapDump = (raw: RawClient["server.debug"]) => (input?: DebugHeapDumpInput) =>
   preserveEffect<DebugHeapDumpOutput>()(
     raw["debug.heapDump"]({ query: { directory: input?.["directory"] } }).pipe(Effect.mapError(mapClientError)),
@@ -1800,7 +1789,6 @@ const adaptClient = (raw: RawClient) => ({
   reference: adaptGroupReference(raw["server.reference"]),
   worktree: adaptGroupWorktree(raw["server.worktree"]),
   vcs: adaptGroupVcs(raw["server.vcs"]),
-  "server.graph": adaptGroupServerGraph(raw["server.graph"]),
   debug: adaptGroupDebug(raw["server.debug"]),
   migration: adaptGroupMigration(raw["server.migration"]),
   websearch: adaptGroupWebsearch(raw["server.websearch"]),
