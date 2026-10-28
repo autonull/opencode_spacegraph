@@ -58,7 +58,7 @@
 | **2.7 Commands** | ✅ complete | Has map/hybrid/transcript, level, layout, arrangement, side, turn-map, permalink, export (svg/json/html), search; keybinds for all commands |
 | **2.8 Export** | ✅ complete | Commands for SVG/JSON/HTML export via `model.export()` using `@opencode/session-graph`'s `exportGraph` |
 | **2.9 Workspace lens** | ⏭️ optional | Deferred, not blocking parity |
-| **2.10 Tests** | 🔶 partial | Built-in activation, real-host map/hybrid render pass; **missing**: arrangement scroll test per arrangement, stories, capture matrix |
+| **2.10 Tests** | 🔶 in progress | Built-in activation, real-host map/hybrid render pass; arrangement scroll test added (`spacegraph-arrangement-scroll.spec.ts`), stories added (`spacegraph.stories.tsx`); **missing**: capture matrix |
 | **Inspector.tsx** | ✅ done | Node detail inspector for side panel |
 | **Windows.tsx** | ✅ done | Window manager for graph (saved viewports) |
 
