@@ -11,7 +11,9 @@ import {
 } from "@opencode/session-ui/graph/vocabulary"
 
 type SessionKeyReader = () => string
-type SessionViewStore = { sessionView: Record<string, { graph?: SessionGraphState }> }
+type SessionViewStore = {
+  sessionView: Record<string, { scroll: Record<string, { x: number; y: number }>; graph?: SessionGraphState }>
+}
 
 export const sessionGraphSchema = Persistence.migrateField(
   Persistence.struct({
@@ -176,7 +178,7 @@ export function createSessionGraphState(
     }
 
     if (!current) {
-      setStore("sessionView", session, { graph: merged })
+      setStore("sessionView", session, { scroll: {}, graph: merged })
       prune(session)
 
       return

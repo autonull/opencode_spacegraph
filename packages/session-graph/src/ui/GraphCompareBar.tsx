@@ -10,10 +10,9 @@ export type GraphCompareBarProps = {
 
 export const GraphCompareBar = (props: GraphCompareBarProps) => {
   const i18n = useI18n()
-  const { diff } = props
 
   return (
-    <Show when={diff}>
+    <Show when={props.diff}>
       {(d) => (
         <div
           data-slot="graph-compare-bar"

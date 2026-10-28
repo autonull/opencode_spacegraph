@@ -1,6 +1,6 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo } from "solid-js"
-import { createStore, produce } from "solid-js/store"
+import { produce, type SetStoreFunction } from "solid-js/store"
 import { nodeByID, breadcrumbs, type GraphViewData, type GraphNode, type Annotations } from "@opencode/session-ui/graph"
 import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
 import { noteData } from "./node-data"
@@ -9,6 +9,8 @@ export type UseGraphAnnotationsOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
   onAnnounce: (message: string) => void
+  notes: Annotations
+  setNotes: SetStoreFunction<Annotations>
 }
 
 export type UseGraphAnnotationsReturn = {
@@ -40,7 +42,8 @@ export type UseGraphAnnotationsReturn = {
 
 export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGraphAnnotationsReturn {
   const i18n = useI18n()
-  const [notes, setNotes] = createStore<Annotations>({})
+  const notes = options.notes
+  const setNotes = options.setNotes
   const [noteTarget, setNoteTarget] = createSignal<string>()
   const [editingNote, setEditingNote] = createSignal<string>()
 

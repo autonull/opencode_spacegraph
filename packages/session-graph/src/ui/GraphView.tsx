@@ -30,6 +30,7 @@ import { ancestors,
   composeScopes,
   degreeBudget,
   withAnnotations,
+  type Annotations,
   DETAIL_TIER_WIDTH,
   detailTier,
   equalizerScale,
@@ -69,6 +70,7 @@ import {
   untrack,
   type JSX,
 } from "solid-js"
+import { createStore } from "solid-js/store"
 import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
@@ -345,8 +347,6 @@ export const GraphView = (props: GraphViewProps) => {
     undoManual,
     redoManual,
 
-    notesStore,
-
     announce,
   } = state
 
@@ -386,6 +386,7 @@ export const GraphView = (props: GraphViewProps) => {
     turns: [],
     turnByMessageID: new Map(),
   }
+  const [notesStore, setNotesStore] = createStore<Annotations>({})
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
 
   // Hooks for modular state/logic
@@ -403,6 +404,8 @@ export const GraphView = (props: GraphViewProps) => {
     model,
     selection: () => selection.selection(),
     onAnnounce: announce,
+    notes: notesStore,
+    setNotes: setNotesStore,
   })
 
   const edgeKinds = useEdgeKinds({ model })
@@ -410,8 +413,8 @@ export const GraphView = (props: GraphViewProps) => {
   const comparisonHook = useComparison({
     model,
     liveModel: () => props.liveModel ?? model(),
-    checkpoint: props.checkpoint,
-    turnCount: props.turnCount,
+    checkpoint: () => props.checkpoint,
+    turnCount: () => props.turnCount,
     selection: () => selection.selection(),
     nodeByID: (id) => nodeByID(model(), id),
   })
@@ -638,64 +641,6 @@ export const GraphView = (props: GraphViewProps) => {
     return parts.length > 0 ? parts.join(" · ") : undefined
   }
 
-  // displayPositions must be declared before rendererModel which uses it
-  displayPositions = createMemo(() => {
-    const geometryResult = geometry()
-    const base = geometryResult?.positions
-    if (!base) return new Map()
-    const positions = manual.positions ?? {}
-    if (Object.keys(positions).length === 0) return base
-
-    const result = new Map(base)
-    for (const [id, position] of Object.entries(positions)) {
-      result.set(id, { x: position[0], y: position[1], z: position[2] })
-    }
-    return result
-  })
-
-  const renderCard = createMemo(() => {
-    // The age rules fade a card against the clock, so the cards are rebuilt with the model.
-    const now = Date.now()
-    const overlay = annotations.traceOverlay()
-
-    // Focus dimming: at execution level, compute 1-hop neighborhood of selected node.
-    // Explicit trace (why/led-here/related) takes precedence over focus.
-    const selectedId = selection.selection()[0]
-    const focusOverlay = level() === "execution" && selectedId
-      ? (() => {
-          const answerIds = new Set<string>([selectedId])
-          const contextIds = new Set<string>()
-          for (const edge of incoming(model(), selectedId)) contextIds.add(edge.source)
-          for (const edge of outgoing(model(), selectedId)) contextIds.add(edge.target)
-          return {
-            answerIds: answerIds as ReadonlySet<string>,
-            contextIds: contextIds as ReadonlySet<string>,
-            answerEdgeIds: new Set<string>() as ReadonlySet<string>,
-            visibleEdgeIds: new Set<string>() as ReadonlySet<string>,
-          }
-        })()
-      : null
-
-    // Merge traces: explicit trace wins over focus
-    const mergedTrace = overlay ?? focusOverlay ?? undefined
-
-    return (
-      props.renderCard ??
-      createCardTemplate(theme(), {
-        tier: tier(),
-        selected: selectedId,
-        active: props.activeTurn,
-        related: relatedDetail,
-        rules: props.rules,
-        now,
-        copy,
-        trace: mergedTrace,
-        diff: comparison(),
-        collapsedGroups: groupCollapse.collapsedGroups(),
-        positions: displayPositions(),
-      })
-    )
-  })
   const renderBand = createMemo(() =>
     createBandTemplate(theme(), undefined, { copy, collapsedGroups: groupCollapse.collapsedGroups() }),
   )
@@ -761,6 +706,65 @@ export const GraphView = (props: GraphViewProps) => {
     return next
   })
 
+  displayPositions = () => {
+    const base = geometry()?.positions
+    if (!base) return new Map<string, Position>()
+    const positions = manual.positions ?? {}
+    if (Object.keys(positions).length === 0) return base
+
+    const result = new Map(base)
+    for (const [id, position] of Object.entries(positions)) {
+      result.set(id, { x: position[0], y: position[1], z: position[2] })
+    }
+    return result
+  }
+
+  const renderCard = createMemo(() => {
+    // The age rules fade a card against the clock, so the cards are rebuilt with the model.
+    const now = Date.now()
+    const overlay = annotations.traceOverlay()
+
+    // Focus dimming: at execution level, compute 1-hop neighborhood of selected node.
+    // Explicit trace (why/led-here/related) takes precedence over focus.
+    const selectedId = selection.selection()[0]
+    const focusOverlay = level() === "execution" && selectedId
+      ? (() => {
+          const answerIds = new Set<string>([selectedId])
+          const contextIds = new Set<string>()
+          for (const edge of incoming(model(), selectedId)) contextIds.add(edge.source)
+          for (const edge of outgoing(model(), selectedId)) contextIds.add(edge.target)
+          return {
+            answerIds: answerIds as ReadonlySet<string>,
+            contextIds: contextIds as ReadonlySet<string>,
+            answerEdgeIds: new Set<string>() as ReadonlySet<string>,
+            visibleEdgeIds: new Set<string>() as ReadonlySet<string>,
+          }
+        })()
+      : null
+
+    // Merge traces: explicit trace wins over focus
+    const mergedTrace = overlay ?? focusOverlay ?? undefined
+
+    return (
+      props.renderCard ??
+      createCardTemplate(theme(), {
+        tier: tier(),
+        selected: selectedId,
+        active: props.activeTurn,
+        related: relatedDetail,
+        get rules() {
+      return props.rules
+    },
+        now,
+        copy,
+        trace: mergedTrace,
+        diff: comparison(),
+        collapsedGroups: groupCollapse.collapsedGroups(),
+        positions: displayPositions(),
+      })
+    )
+  })
+
   const moveNodes = (nodes: readonly { id: string; position: [number, number, number] }[]) => {
     // Capture state before first move in a drag sequence
     const hasChanges = nodes.some((n) => manual.positions[n.id] && manual.positions[n.id] !== n.position)
@@ -801,33 +805,6 @@ export const GraphView = (props: GraphViewProps) => {
     }
   })
 
-  // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
-  // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
-  // Must be defined before contentIDs which uses it.
-  const budget = createMemo(() => {
-    const current = drawn()
-    const weighted = applyNodeBudget(current, degreeBudget(current, selection.selection()))
-    if (!viewportTracker) return weighted
-    const centre = viewportTracker.resting()
-    if (!centre) return weighted
-    return byProximity(weighted, displayPositions(), centre)
-  })
-
-  // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
-  // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
-  // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
-  // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
-  // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
-  contentIDs = createMemo(() => {
-    const rm = renderModel()
-    const ids = rm?.nodes?.filter((node) => node.kind !== "band").map((node) => node.id) ?? []
-
-    const budgeted = budget()
-    const d = drawn()
-    const m = model()
-    return budgeted?.nodes?.length < d?.nodes?.length ? ids.filter((id) => id !== m?.root) : ids
-  })
-
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
   fitOptions = createMemo(() => ({
@@ -845,6 +822,15 @@ export const GraphView = (props: GraphViewProps) => {
     CARD_SIZE,
     READABLE_CARD_WIDTH,
     capabilities: () => capabilities(),
+  })
+
+  // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
+  // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
+  const budget = createMemo(() => {
+    const current = drawn()
+    const centre = viewportTracker?.resting()
+    const ordered = centre ? byProximity(current, displayPositions(), centre) : current
+    return applyNodeBudget(ordered, degreeBudget(current, selection.selection()))
   })
 
   // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
@@ -868,9 +854,19 @@ export const GraphView = (props: GraphViewProps) => {
       return
     }
     const current = viewportTracker!.viewport()
+    const center = [vp.center[0], vp.center[1], vp.center[2] ?? 0] as const
+    if (
+      current &&
+      current.zoom === vp.zoom &&
+      current.center[0] === center[0] &&
+      current.center[1] === center[1] &&
+      (current.center[2] ?? 0) === center[2]
+    ) {
+      return
+    }
     viewportTracker!.setViewport({
       zoom: vp.zoom,
-      center: [vp.center[0], vp.center[1], vp.center[2] ?? 0],
+      center: [...center],
       extent: current?.extent,
       band: current?.band,
     })
@@ -922,6 +918,21 @@ export const GraphView = (props: GraphViewProps) => {
     return hidden.size === 0
       ? model
       : { ...model, edges: model.edges.filter((edge) => !hidden.has(edge.kind)) }
+  })
+
+  // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
+  // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
+  // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
+  // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
+  // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
+  contentIDs = createMemo(() => {
+    const rm = renderModel()
+    const ids = rm?.nodes?.filter((node) => node.kind !== "band").map((node) => node.id) ?? []
+
+    const budgeted = budget()
+    const d = drawn()
+    const m = model()
+    return budgeted?.nodes?.length < d?.nodes?.length ? ids.filter((id) => id !== m?.root) : ids
   })
 
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
@@ -1264,7 +1275,9 @@ export const GraphView = (props: GraphViewProps) => {
     // Core rendering
     model,
     theme,
-    renderModel: renderModel(),
+    get renderModel() {
+      return renderModel()
+    },
     projection: projectionSignal,
     depth: depthSignal,
     layout,
@@ -1299,17 +1312,29 @@ export const GraphView = (props: GraphViewProps) => {
     
     // Detail mode
     detailMode,
-    effectiveDetailMode: effectiveDetailMode(),
+    get effectiveDetailMode() {
+      return effectiveDetailMode()
+    },
     files,
     
     // Peek
-    peekFrame: peekFrame(),
-    peekEdge: peekEdge(),
+    get peekFrame() {
+      return peekFrame()
+    },
+    get peekEdge() {
+      return peekEdge()
+    },
     
     // Popover
-    popoverVisible: popoverVisible(),
-    popoverNode: popoverNode(),
-    popoverPlacement: popoverPlacement(),
+    get popoverVisible() {
+      return popoverVisible()
+    },
+    get popoverNode() {
+      return popoverNode()
+    },
+    get popoverPlacement() {
+      return popoverPlacement()
+    },
     setPopoverDismissed,
     
     // Annotations (notes + trace)
@@ -1327,7 +1352,9 @@ export const GraphView = (props: GraphViewProps) => {
     legendOpen: legendOpen,
     setLegendOpen,
     edgeKinds,
-    rules: props.rules,
+    get rules() {
+      return props.rules
+    },
     
     // Gallery
     galleryOpen: galleryOpen,
@@ -1358,8 +1385,12 @@ export const GraphView = (props: GraphViewProps) => {
     renderSummary: props.renderSummary,
     
     // A11y
-    ordered: ordered(),
-    viewAnnouncement: viewAnnouncement(),
+    get ordered() {
+      return ordered()
+    },
+    get viewAnnouncement() {
+      return viewAnnouncement()
+    },
     a11yInstructionsId,
     announce,
     i18n,
@@ -1410,6 +1441,7 @@ export const GraphView = (props: GraphViewProps) => {
         checkpoint={props.checkpoint}
         turnCount={props.turnCount}
         onCheckpoint={props.onCheckpoint}
+        model={props.liveModel ?? model()}
         onFit={viewportTracker!.camera.fitContent}
         zoomPercent={zoomPercent()}
         onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
@@ -1500,7 +1532,10 @@ export const GraphView = (props: GraphViewProps) => {
       <GraphCompareBar
         diff={comparison()}
         onOpenWindow={() => openWindow("compare")}
-        onClear={clearComparison}
+        onClear={() => {
+          clearComparison()
+          props.onCheckpoint?.(props.turnCount === undefined ? 0 : props.turnCount - 1)
+        }}
       />
       <GraphScaleNotice
         model={model}

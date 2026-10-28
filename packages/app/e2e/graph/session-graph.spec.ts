@@ -198,6 +198,7 @@ test("selects a node from search and inspects it in the DOM panel", async ({ pag
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
 
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("token.ts")
@@ -385,6 +386,7 @@ test("adds a note to the selected node and finds it by search", async ({ page })
   const note = page.locator(`${canvasHost} [data-node-id^="note:"]`)
   await expect(note).toHaveCount(1)
 
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("Investigate token refresh")
@@ -441,6 +443,7 @@ test("renders an assistant message as Markdown in the inspector", async ({ page 
   await openGraph(page, graphFixture())
 
   // Search reaches the assistant text node by its summary, then renders it through the shared Markdown.
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("inspect the failing")
@@ -463,6 +466,7 @@ test("appends a node from a live event without losing the selection", async ({ p
   await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("token.ts")
@@ -643,6 +647,7 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
 
   // The oldest turn's answer, picked in the map.
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("Fix the authentication test failures")
@@ -777,6 +782,7 @@ test("counts interactions for the usability protocol when the counter is on", as
   await expect(readout).toContainText("1 interaction")
 
   // So is opening the search.
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   await expect(readout).toContainText("2 interactions")
 
@@ -894,6 +900,7 @@ test("names the session a fork came from and opens it", async ({ page }) => {
   })
 
   // The root node carries the attribution, so the inspector can name where this session came from.
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("Session")
@@ -1140,8 +1147,8 @@ test("log text-size slider changes scale and survives reload (persists as logTex
   await expect(slider).toBeVisible()
 
   // Change the text size
-  await slider.fill("1.5")
-  await expect(page.locator('[data-slot="session-graph-panel-log"] .text-right')).toContainText("150%")
+  await slider.fill("1.4")
+  await expect(page.locator('[data-slot="session-graph-panel-log"] .text-right')).toContainText("140%")
 
   // Reload the page
   await page.reload()
@@ -1149,8 +1156,8 @@ test("log text-size slider changes scale and survives reload (persists as logTex
 
   // Verify the text size persisted
   await expect(slider).toBeVisible()
-  await expect(slider).toHaveValue("1.5")
-  await expect(page.locator('[data-slot="session-graph-panel-log"] .text-right')).toContainText("150%")
+  await expect(slider).toHaveValue("1.4")
+  await expect(page.locator('[data-slot="session-graph-panel-log"] .text-right')).toContainText("140%")
 
   expect(errors).toEqual([])
 })

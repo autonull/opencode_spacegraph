@@ -13,8 +13,8 @@ export type ComparisonChanges = {
 export type UseComparisonOptions = {
   model: () => GraphViewData
   liveModel: () => GraphViewData
-  checkpoint: number | undefined
-  turnCount: number | undefined
+  checkpoint: () => number | undefined
+  turnCount: () => number | undefined
   selection: () => readonly string[]
   nodeByID: (id: string) => { kind: string; id: string } | undefined
 }
@@ -55,10 +55,10 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
         label: "turns" as const,
       }
     }
-    const checkpoint = options.checkpoint
+    const checkpoint = options.checkpoint()
     const live = options.liveModel()
     const turns = live.turns
-    if (checkpoint === undefined || options.turnCount === undefined) return undefined
+    if (checkpoint === undefined || options.turnCount() === undefined) return undefined
     if (checkpoint >= turns.length - 1 || checkpoint < 0) return undefined
     const parked = scopeToTurns(live, new Set(turns.slice(0, checkpoint + 1)))
     const current = scopeToTurns(live, new Set(turns))

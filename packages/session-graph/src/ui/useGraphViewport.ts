@@ -54,6 +54,7 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
   // every frame and make the cards churn under the reader's hand.
   const [resting, setRestingSignal] = createSignal<[number, number, number]>()
   let restTimer: ReturnType<typeof setTimeout> | undefined
+  let pendingCenter: [number, number, number] | undefined
   onCleanup(() => {
     if (restTimer) clearTimeout(restTimer)
   })
@@ -82,10 +83,13 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
   })
 
   const setResting = (center: { zoom: number; center: number[] }) => {
+    const next: [number, number, number] = [center.center[0], center.center[1], center.center[2] ?? center.zoom]
+    if (pendingCenter && pendingCenter[0] === next[0] && pendingCenter[1] === next[1] && pendingCenter[2] === next[2]) return
+    pendingCenter = next
     if (restTimer) clearTimeout(restTimer)
     restTimer = setTimeout(() => {
       restTimer = undefined
-      setRestingSignal([center.center[0], center.center[1], center.center[2] ?? center.zoom])
+      setRestingSignal(next)
     }, REST_SETTLE_MS)
   }
 

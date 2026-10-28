@@ -279,6 +279,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
           value={i18n.t(VOCABULARY_KEYS.detailMode[props.detailMode ?? "panel"])}
         >
           {viewControls()}
+          {commandControls()}
         </ToolbarMenu>
       </Show>
 

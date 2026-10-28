@@ -4,24 +4,39 @@
 
 ---
 
-## 1. Verified State (2026-10-27)
+## 1. Verified State (2026-10-27, after this pass)
 
 | Check | Result |
 |-------|--------|
-| `graph:verify` | **Blocked** — app e2e fails: renderer mount returns `data-graph-ready="false"` |
-| `test:components` | 2 pass / ~50 fail / 18 skip (failures: story-root hidden for most `session-graph-view--*` stories; `canvas.spec.ts` and `graph-capture.spec.ts` pass) |
-| `session-graph` unit | 113 pass |
-| `session-ui` graph unit | 263 pass |
-| `app` graph-state unit | 37 pass |
-| Library vitest | 539 pass (but build has 19 TS errors — L1) |
-| App e2e graph | Fails — renderer mount fails silently |
+| `session-graph` unit | **113 pass / 0 fail** |
+| `app` graph-state unit | **37 pass / 0 fail** |
+| `session-graph` component tests | **48 pass / 1 fail / 18 skip** (remaining: `graph-scale.spec.ts` turn cards count 0) |
+| App e2e graph | **32 pass / 14 fail** (was 0 pass; mount and card layout now work) |
+| Typecheck | `session-graph` and `app` clean |
+| Library vitest | 539 pass (build still has TS errors — L1) |
+| `graph:verify` | **Blocked** on the remaining e2e/component failures below |
 
-**Three originally failing component tests (from TODO.19):**
-| Test | Status |
-|------|--------|
-| `graph-refine.spec.ts:87` — execution dims cards | ⚠️ Focus logic in GraphView; test `fixme` (library L4: no incremental RenderModelPatch) |
-| `graph-refine.spec.ts:109` — focus dimming after mount | ⚠️ Same |
-| `graph-detail.spec.ts:60` — card framing tier | ⚠️ Extent preserved in `setViewport`; test `fixme` (renderer doesn't report extent) |
+### 1a. Fixed in this pass
+
+- **Card geometry was empty.** `displayPositions`/`renderCard` were created before `geometry`, so their memos cached an empty map. Moved them after `geometry`; node cards now use their real layout positions instead of stacking at the origin.
+- **Viewport feedback loop.** Equal viewport reports rebuilt a new object on every camera event, recursively restarting Solid updates (`Maximum call stack size exceeded`). `setViewport` now ignores identical zoom/center reports.
+- **Budget never settled.** Repeated identical camera reports cleared the resting timer forever. `setResting` now ignores duplicate centers, so the budget follows the camera.
+- **Reactive props were frozen.** `canvasRegionProps` captured `renderModel()`, `ordered()`, popover values, error, etc. as plain values. These are now getters, restoring facet filtering, keep-only, notes, compare bar, and card-budget updates.
+- **Budget order.** Proximity ordering now runs before the node budget, so the nearest cards win the budget.
+- **Comparison.** `useComparison` reads checkpoint/turn count through accessors; `GraphCompareBar` reads `props.diff` reactively; clear resets the checkpoint to live.
+- **Notes.** `GraphView` and `useGraphAnnotations` now share one notes store, so saved notes appear in the map.
+- **Toolbar.** Search/questions/export render in the desktop View menu (tests open the menu first); time control receives the live model.
+- **Persistence.** Creating a session view entry includes `scroll: {}`, matching the layout schema and fixing reload persistence.
+- **E2E.** Log text size uses the actual max (`1.4`); capture and session specs open the View menu before Search.
+
+### 1b. Remaining e2e failures (14)
+
+| Group | Tests | Likely cause |
+|-------|-------|--------------|
+| Hybrid log blank | shows map+log, picking a node moves log, scales log text, restores transcript position, graph.hybrid, graph-module fallback | `session-graph-panel-log` is visible but the cached `MessageTimeline` has no rows (it was mounted at zero height while the map-only pane hid the log). Needs a visibility-driven remeasure/remount or a proper `active` signal. |
+| Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | Right-drag and wheel do not reach the renderer camera; all three depend on a working pan/zoom. Check the canvas/CSS3D input path after the graph canvas refactor. |
+| Fallback mount | falls back to Cytoscape | Renderer mount fails with `Maximum call stack size exceeded` under the aborted SpaceGraph module path. Same reactive/error-path class as above; reproduce with the console stack. |
+| Component | `graph-scale` turn cards | Scale story renders the notice but zero `.html-node-container:has([data-kind="turn"])`. Check the overview card budget / shaping after the geometry fix. |
 
 ---
 
@@ -35,7 +50,7 @@
 | **1.2** | `Detail` story export fails | `session-graph-view--detail` renders `ViewHarness level="detail" selection="result:prt_tool_shell_2"`. The `result:` node may not exist in fixture. Change to `tool:prt_tool_read_1` (exists) or make selection optional. | ✅ **Done** — Changed to `tool:prt_tool_read_1` |
 | **1.3** | Renderer tracking & capabilities | Track renderer in GraphView signal via `onRendererMounted`; add capabilities state to `useGraphState` with setter; move touch gestures to `GraphCanvasRegion` with renderer guard; add defensive guards for undefined model/node properties. | ✅ **Done** — `GraphView.tsx`, `GraphCanvasRegion.tsx`, `useGraphState.ts`, `cardTemplate.ts` |
 | **1.4** | E2E test harness fixes | Fix mock session title in e2e utils; fix session title locator in wait utilities; add `role="heading"` to session header. | ✅ **Done** — `app.ts`, `waits.ts`, `session-identity-header.tsx` |
-| **1.5** | Re-enable gate steps | Once 1.1–1.4 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — App e2e fails: renderer mount returns `data-graph-ready="false"` (silent failure in `mountRenderer` catch block). Component tests: pre-existing infrastructure issue (story-root hidden for most `session-graph-view--*` stories). Unit tests all pass (113 + 263 + 37 = 413). |
+| **1.5** | Re-enable gate steps | Once 1.1–1.4 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — App e2e 32/46 pass; 14 fail (see §1b). Components 48 pass / 1 fail / 18 skip. Units 113 + 263 + 37 pass. |
 
 **Acceptance:** `bun run graph:verify` green; `test:components` = 54 pass / 0 fail / 0 fixme.
 
@@ -154,14 +169,8 @@ bun run graph:dev      # mock backend, no provider key
 
 ## 10. Immediate Next Action
 
-**Two blocking issues:**
-
-1. **App e2e: renderer mount fails silently** — `data-graph-ready="false"`, toolbar not visible. The `mountRenderer` catch block in `packages/session-graph/src/canvas/renderer-registry.ts:52-55` swallows the error. Need to debug why SpaceGraphJS renderer fails to mount in e2e context (works in component tests). Check WebGL availability, container size, or missing dependencies.
-
-2. **Component test infrastructure** — "story-root hidden" for most `session-graph-view--*` stories. Pre-existing harness issue in `packages/stories/playwright/story.ts` or `packages/stories/src/frame.tsx`. The `canvas.spec.ts` and `graph-capture.spec.ts` pass because they use different stories (`session-graph-canvas`, `session-graph-view--cytoscape`, `session-graph-view--scale`).
-
-**Next steps:**
-1. Debug renderer mount failure in e2e (add error logging to `mountRenderer` catch block, check browser console)
-2. Investigate story mounting harness issue for component tests
-3. Batch 3 (library L1/L2) can proceed in parallel since unit tests are green
-4. Batch 4 (T2.2 evidence study) can run once build works
+1. **Hybrid log rows** — make the cached timeline measure when the log pane becomes visible (split/floating), or mount the transcript only when `!props.map || props.sideBySide` while preserving scroll state. This unblocks 6 e2e tests.
+2. **Camera input** — verify pointer/wheel events reach the SpaceGraph canvas after `GraphCanvasRegion`; fix the pan/zoom path. This unblocks 3 tests including T17.5.
+3. **Cytoscape fallback** — run the single failing test with the mount error stack; fix the fallback path without reintroducing the viewport loop.
+4. **`graph-scale` component** — inspect the overview render model for 80 turns and restore turn cards (or update the story/test if the level intentionally hides them).
+5. Once these are green, re-run `bun run graph:verify`; then Batch 3 (library L1/L2) and Batch 4 (T2.2).

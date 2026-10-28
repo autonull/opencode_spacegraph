@@ -218,6 +218,7 @@ async function zoomToMax(page: Page) {
 // The search is the reader's own way of moving the camera: picking a result selects the node and
 // centres the camera on it.
 async function focusNode(page: Page, nodeId: string, query: string) {
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill(query)
@@ -303,6 +304,7 @@ test("04 graph selected", async ({ page }) => {
   await setLevel(page, "Execution")
   await fit(page)
   await still(page)
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("token.ts")
