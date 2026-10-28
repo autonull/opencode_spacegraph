@@ -28,24 +28,28 @@
 - `packages/app/src/session/screen.tsx`: session body now renders through `SessionSurfaceHost`; the old graph pane remains the host default during migration.
 - Tests: `packages/app/src/runtime/plugin/surfaces.test.ts`; host integration row in `packages/app/component-tests/plugin-host.spec.ts`.
 
-### Remaining before Batch 2
+### Batch 1 carry-over
 
-1. **Selection persistence**: deliberately deferred to 2.6, where surface/arrangement/camera move into `Store.session`. Until then the per-session map in `surfaces.ts` is in-memory.
-2. **Fixture surface story**: the component test `mountSessionSurface` now covers mount, switch and restore with the real host; a duplicate Storybook story is not required.
-3. **Layer focus contract**: decide and test focus/Escape behavior for `SessionLayer` alongside `TurnMapLayer` in 2.4.
+1. **Selection persistence**: plugin-chosen surfaces persist in `Store.session`; selection made outside the spacegraph commands (the host's in-memory map) still does not persist. Revisit if a generic surface picker lands.
+2. **Fixture surface story**: `mountSessionSurface` covers mount, switch and scroll restore with the real host.
+3. **Layer focus contract**: `TurnMapLayer` implements focus trap and Escape; add coverage with the arrangement test harness.
 
 ### Clarified next actions
 
-- Batch 2.1 is done: `spacegraph` is a built-in plugin with Map and Hybrid surfaces plus Surface/Transcript commands.
-- Batch 2.2 next: add depth/camera and a visible toolbar to `packages/gui-plugins/src/spacegraph/graph-canvas.tsx`.
-- Batch 2.3 next: add a component test that cycles all three arrangements and asserts transcript scroll survives.
-- Batch 2.3 next: add a component test that cycles all three arrangements and asserts transcript scroll survives.
-- Batch 2.2 next: depth projection (`flat`/`layered`/`depth-stack`/`orbit`) over the existing layout.
+- Batch 2.2 next: depth projection (`flat`/`layered`/`depth-stack`/`orbit`). The current map is 2D SVG; depth needs the `spacegraphjs` canvas renderer (`DepthCues` owns projection/orbit/fade). Treat it as a renderer swap.
+- Batch 2.3 next: arrangement scroll test needs a gui-plugins component-test harness; app component tests cannot statically import gui-plugins sources without breaking the app TS project boundary.
 - Batch 2.8 next: node framing after a permalink reveal.
 - Batch 2.10 next: arrangement scroll test and capture matrix.
-- Keep the old graph pane as `SessionSurfaceHost.default` until 2.2/3.1; do not delete `packages/app/src/session/graph/*` yet.
-- When 2.2 lands, the plugin's MapSurface must receive the same `transcript` element and hide it with `visibility`/position, never `display: none`.
-- `SessionLayer` ids are currently scoped to their surface only; the host renders them inline above the surface body.
+- Keep the old graph pane as `SessionSurfaceHost.default` until 3.1; do not delete `packages/app/src/session/graph/*` yet.
+- The plugin's MapSurface receives the same `transcript` element and hides it with `visibility`/position, never `display: none`.
+- `SessionLayer` ids are scoped to their surface only; the host renders them inline above the surface body.
+
+### Batch 2 current state (2026-10-28)
+
+- `spacegraph` is a real built-in plugin with map, hybrid, turn-map layer, side panel, settings, camera, permalinks and JSON/SVG/HTML export.
+- The built-in activation matrix (`plugin-graph.spec.ts`) passes with `spacegraph` included.
+- The map is intentionally 2D SVG today. Depth modes and the camera treatment from `spacegraphjs` are not wired; doing so means replacing `graph-canvas.tsx` with the library renderer.
+- Arrangement scroll preservation is reliable because `HybridSurface` keeps one DOM tree and only changes classes; it needs a dedicated test at the gui-plugins boundary.
 
 ---
 
