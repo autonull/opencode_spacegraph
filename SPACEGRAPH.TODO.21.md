@@ -38,7 +38,7 @@
 
 - Batch 2.2 next: depth projection (`flat`/`layered`/`depth-stack`/`orbit`). The current map is 2D SVG; depth needs the `spacegraphjs` canvas renderer (`DepthCues` owns projection/orbit/fade). Treat it as a renderer swap.
 - Batch 2.3 next: arrangement scroll test needs a gui-plugins component-test harness; app component tests cannot statically import gui-plugins sources without breaking the app TS project boundary.
-- Batch 2.10 next: arrangement scroll test and capture matrix.
+- Batch 2.10 next: arrangement scroll test and capture matrix (model unit coverage landed).
 - Keep the old graph pane as `SessionSurfaceHost.default` until 3.1; do not delete `packages/app/src/session/graph/*` yet.
 - The plugin's MapSurface receives the same `transcript` element and hides it with `visibility`/position, never `display: none`.
 - `SessionLayer` ids are scoped to their surface only; the host renders them inline above the surface body.
@@ -265,7 +265,7 @@ opencode-spacegraph/
 | **2.7** | 🔶 Commands | Commands for map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, JSON export; side panel `MenuItem`; visible level/layout toolbar; settings page. Search/header slot/keybinds remain |
 | **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; permalink copies URL; JSON/SVG/HTML export via `ctx.system.save` |
 | **2.9** | Workspace lens (optional) | Server part provides `WorkspaceSnapshot` RPC; GUI calls `ctx.client.rpc`; graceful absence |
-| **2.10** | 🔶 Tests | Built-in activation test already covers `spacegraph`; arrangement scroll test, stories, capture matrix remain |
+| **2.10** | 🔶 Tests | Built-in activation test and `model.test.ts` (defaults, cycling, surface persistence, camera clamp) pass; arrangement scroll test, stories, capture matrix remain |
 
 ### 2.1a Built-in Registration (2 lines)
 
