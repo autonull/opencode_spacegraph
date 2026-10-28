@@ -30,13 +30,13 @@
 - **E2E assertions that assumed the broken scroll view.** Scroll to the session start before finding `msg_user_1`; measure the text-scale contract on the log content surface; use the real `.scroll-view__viewport` in the hybrid keyboard test and `Control+Shift+h` on Linux.
 - Earlier in this pass: card geometry ordering, viewport feedback, resting budget, reactive `canvasRegionProps` getters, comparison/notes stores, toolbar menus, scroll persistence, and the hybrid log re-measure.
 
-### 1b. Remaining failures (3)
+### 1b. Remaining failures (3) — with fresh-session execution notes
 
 | Group | Tests | Cause / next step |
 |-------|-------|-------------------|
-| Hybrid scroll preservation | `graph.hybrid (mod+shift+h) ...` | Entering map-only resets the log's `scrollTop` to 0 and it does not come back on return. The log is still mounted/measured, so something remounts or re-initialises the timeline (check the `transcript(logActive)` child and the cache view identity). The same scroll is preserved by the toolbar split path, so compare the two toggles. |
-| Flaky under parallel workers | `picking a node in the map moves the log to it`, `restores the transcript position after leaving the graph` | Both pass with `--workers=1` and fail intermittently with workers=3. Suspect virtualizer measurement under concurrent page load rather than product logic. Re-run with `--workers=1` before treating either as broken; then stabilise the wait on the visible row rather than a fixed scroll offset. |
-| Component | `graph-scale` turn cards | The overview story still renders the notice with zero `.html-node-container:has([data-kind="turn"])`. Decide whether overview intentionally hides turn cards (then update story/test) or restore the capped turn cards. |
+| **1. Hybrid scroll preservation** | `graph.hybrid (mod+shift+h) ...` | **Symptom:** map-only toggle resets `scrollTop` to 0 and it never returns on hybrid re-entry. Toolbar split toggle preserves it. <br>**Clues to trace:** <br>• `SessionGraphPanel` log pane is always mounted (`invisible absolute` when map-only) so virtualizer stays measured — `logActive = !map \|\| sideBySide` is `true` in both states. <br>• `createTimelineCache` in `screen.tsx:326` keys on `sessionKey` (workspace+session), not on `logActive` or `splitVisible`. The view identity is stable. <br>• `MessageTimeline` receives `active={combinedActive()}` where `combinedActive = active()` (conversation visibility). That doesn't change across the toggle. <br>• **Difference:** toolbar split toggles `graph.setSideBySide(true)`; keyboard `graph.hybrid` toggles `graph.setSideBySide(!graph.sideBySide())` *and* may call `graph.setMap(true)` when entering. Check `graphCommands.ts:55-57` — `setMap(true)` could re-enter the timeline cache or remount `SessionGraphView`. <br>• The log content wrapper (`data-slot="session-graph-panel-log-content"`) is a new `<div>`; ensure it's not recreated (the panel never unmounts, only the `Show when={map}` for the map surface). <br>**Action:** Add `console.error` in `MessageTimeline` mount/unmount and `SessionGraphView` mount to see what remounts on keyboard toggle vs toolbar toggle. Compare the two code paths in `graph-commands.ts` (`graph.hybrid` vs `onSplitView` from toolbar). |
+| **2. Flaky under parallel workers** | `picking a node in the map moves the log to it`, `restores transcript position after leaving graph` | **Both pass with `--workers=1`**. Fail intermittently with `workers=3` (CI default). <br>**Likely cause:** Virtualizer needs time to measure rows after the transcript becomes visible, and concurrent page loads starve the main thread. The tests wait on fixed scroll offsets (`scrollTop === before`) rather than waiting for the *visible row* to match. <br>**Fix pattern:** Replace `expect(scrollTop).toBe(before)` with `await expect.poll(() => visibleRowId()).toBe(targetId)` where `visibleRowId` finds the first `[data-timeline-row]` in viewport (or `getBoundingClientRect()` against the scroller). <br>**Files:** `e2e/graph/session-graph.spec.ts` lines ~794 (restore), ~642 (pick node moves log). <br>**Repro:** `bun exec playwright test e2e/graph/session-graph.spec.ts -g "picking a node|restores the transcript" --workers=3 --retries=0 --reporter=line` |
+| **3. `graph-scale` component** | `graph-scale.spec.ts` turn cards count 0 | **Story:** `session-graph-view--scale` uses `model={SCALE_MODEL} level="overview" fullscreen`. <br>**Test expectation:** `host.locator('.html-node-container:has([data-kind="turn"])').count() > 0` and `≤ 60`. <br>**Actual:** Zero turn cards rendered at overview. <br>**Check:** Overview level uses `layoutGraph(..., { level: "overview" })` in `GraphGallery` — does it filter out turn nodes? Or the card budget/shaping at overview omits turns intentionally? <br>**Action:** <br>1. Run the story standalone: `OPENCODE_STORY=session-graph-view--scale bun run dev:live` and inspect rendered nodes. <br>2. Check `packages/session-graph/src/ui/GraphGallery.tsx` `layoutGraph` call — does overview strategy include turns? <br>3. Check `packages/session-ui/src/graph/selectors.ts` `isVisibleAt(node, level)` — turns may be hidden at overview. <br>4. If intentional, update the test/story to match (e.g., assert `count === 0` and notice is visible). If not, restore turn cards in overview budget. |
 
 ---
 
@@ -163,13 +163,140 @@ cd spacegraphjs && bun run test:publish
 # Development
 bun run graph:setup    # clone library at pinned SHA, install both trees
 bun run graph:dev      # mock backend, no provider key
+
+# Debug remaining issues (fresh session)
+# Hybrid scroll preservation
+cd packages/app && bun exec playwright test e2e/graph/session-graph.spec.ts -g "graph.hybrid" --workers=1 --reporter=line
+
+# Flaky scroll tests under workers=3
+for i in {1..5}; do
+  cd packages/app && bun exec playwright test e2e/graph/session-graph.spec.ts -g "picking a node|restores the transcript" --workers=3 --retries=0 --reporter=line
+done
+
+# graph-scale component
+OPENCODE_STORY=session-graph-view--scale bun run dev:live
+cd packages/session-graph && bun run test:components --grep "capped window"
+
+# Full gate
+bun run graph:verify
 ```
 
 ---
 
-## 10. Immediate Next Action
+## 10. Immediate Next Action — fresh-session execution plan
 
-1. **Hybrid scroll preservation** — the log's `scrollTop` resets when the map takes the panel alone and does not return in hybrid. The log pane is mounted and measured (no `display:none`), so trace what remounts the timeline on `sideBySide` false (`transcript(logActive)` identity, `createTimelineCache` key, `MessageTimeline` active/remount). Compare with the toolbar split toggle, which does preserve position.
-2. **Stabilise the two flaky scroll tests** under parallel workers — reproduce with `--workers=3`, then wait on the visible row/scroll state instead of a fixed offset.
-3. **`graph-scale` component** — decide whether the overview level intentionally hides turn cards; either restore the capped turn cards or update the story/test and record why.
-4. Once these are green, re-run `bun run graph:verify`; then Batch 3 (library L1/L2) and Batch 4 (T2.2).
+### 10.1 Hybrid scroll preservation (highest priority, unblocks gate)
+
+**Timebox:** 2–4h focused debug.
+
+**Step 1 — Reproduce and confirm**
+```bash
+cd packages/app
+bun exec playwright test e2e/graph/session-graph.spec.ts -g "graph.hybrid" --workers=1 --reporter=line
+```
+Should fail: `Expected: 326 Received: 0` (scroll position lost).
+
+**Step 2 — Add trace logging to see what remounts**
+```ts
+// packages/app/src/session/timeline/message-timeline.tsx (or wherever MessageTimeline lives)
+// add at top of component:
+console.error("MT_MOUNT", active(), session.identity.sessionID())
+onCleanup(() => console.error("MT_UNMOUNT", active()))
+
+// packages/session-graph/src/ui/GraphView.tsx
+// in component body:
+console.error("GV_MOUNT", level(), sideBySide(), map())
+```
+
+**Step 3 — Run with toolbar split vs keyboard toggle**
+```bash
+# toolbar path (preserves): click split button in toolbar
+# keyboard path (loses): Control+Shift+h
+```
+Compare logs — which mounts/unmounts? Look for `MT_UNMOUNT` on keyboard path.
+
+**Step 4 — Code path diff**
+- Toolbar: `onSplitView={() => { graph.setMap(true); graph.setSideBySide(true) }}` (screen.tsx:483)
+- Keyboard: `graph.hybrid` command (graph-commands.ts:52-58) → `setMap(true); setSideBySide(!sideBySide())`
+
+Key difference: keyboard path calls `setMap(true)` when entering hybrid. That may change `mapVisible()` which the `SessionGraphPanel` uses for its `Show when={mapVisible()}` gate (graph-pane.tsx:50). But the panel is now unconditional — check if `SessionGraphView` inside remounts.
+
+**Step 5 — Fix candidates**
+- If `SessionGraphView` remounts on `map` change: the `transcript` child remounts → virtualizer resets.
+- Ensure `transcript` identity is stable: the `SessionGraphPanel` always renders `<SessionGraphView ... />` with same `transcript` factory; only `map` prop changes. If `SessionGraphView` reads `map` and branches, it may remount.
+- Check `SessionGraphView` props for any `key` or conditional that changes with `map`.
+
+**Step 6 — Verify fix**
+```bash
+bun exec playwright test e2e/graph/session-graph.spec.ts -g "graph.hybrid" --workers=1
+```
+
+---
+
+### 10.2 Stabilise flaky scroll tests (parallel-safe)
+
+**Timebox:** 1–2h.
+
+**Files:** `packages/app/e2e/graph/session-graph.spec.ts`
+- `picking a node in the map moves the log to it` (~line 642)
+- `restores the transcript position after leaving the graph` (~line 794)
+
+**Current pattern (flaky):**
+```ts
+await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBe(before)
+```
+
+**New pattern (robust):**
+```ts
+// Wait for the specific row to be visible/in-viewport
+const targetRow = page.locator('[data-timeline-row="UserMessage"][data-message-id="msg_user_1"]')
+await expect(targetRow).toBeInViewport()
+// Or for restore test: wait for the same row that was at viewport top before
+```
+
+**Repro loop:**
+```bash
+for i in {1..5}; do
+  bun exec playwright test e2e/graph/session-graph.spec.ts -g "picking a node|restores the transcript" --workers=3 --retries=0 --reporter=line
+done
+```
+
+---
+
+### 10.3 `graph-scale` turn cards (component gate)
+
+**Timebox:** 30–60 min.
+
+**Run story standalone:**
+```bash
+OPENCODE_STORY=session-graph-view--scale bun run dev:live
+# (from packages/session-graph or repo root with worktree)
+```
+Inspect: do turn cards appear in the canvas at overview? Open DevTools, check `.html-node-container[data-kind="turn"]`.
+
+**Code to check:**
+- `packages/session-graph/src/ui/GraphGallery.tsx:41` — `layoutGraph(..., { level: "overview" })`
+- `packages/session-ui/src/graph/selectors.ts` — `isVisibleAt(node, "overview")`
+- `packages/session-graph/src/ui/useGraphState.ts` — card budget at overview level
+
+**Decision:**
+- If turns *should* show at overview: fix budget/shaping.
+- If turns *intentionally hidden* at overview: update test to `expect(count).toBe(0)` and keep notice assertion.
+
+**Run component test:**
+```bash
+cd packages/session-graph && bun run test:components --grep "capped window"
+```
+
+---
+
+### 10.4 Gate closure
+
+Once all three above are green:
+```bash
+# Full gate
+bun run graph:verify
+
+# Then proceed to Batch 3 (library L1/L2, publish, branch)
+# cd spacegraphjs && pnpm run build:lib && pnpm run build:packages
+```
