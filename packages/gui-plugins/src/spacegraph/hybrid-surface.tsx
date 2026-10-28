@@ -15,12 +15,16 @@ export function HybridSurface(props: {
   const floating = createMemo(() => arrangement() === "floating")
   const stacked = createMemo(() => arrangement() === "stacked")
 
-  const root = createMemo(() => (stacked() ? "relative flex size-full min-h-0 flex-col" : "relative flex size-full min-h-0"))
+  const root = createMemo(() =>
+    stacked() ? "relative flex size-full min-h-0 flex-col" : "relative flex size-full min-h-0",
+  )
+
   const transcript = createMemo(() => {
     if (floating()) return "size-full"
 
     return stacked() ? "min-h-0 flex-1" : "min-h-0 min-w-0 flex-1"
   })
+
   const map = createMemo(() => {
     if (floating()) return `absolute top-4 bottom-4 w-2/5 overflow-hidden rounded-lg border border-v2-border-border-base bg-v2-background-bg-base shadow-lg ${side() === "start" ? "left-4" : "right-4"}`
 

@@ -1,5 +1,7 @@
 export default {
   "surface.map": "Map",
+  "panel.title": "Session map",
+  "menu.open": "Open session map",
   "surface.hybrid": "Hybrid",
   "command.group": "View",
   "command.map": "Show session map",
@@ -9,5 +11,10 @@ export default {
   "command.layout": "Cycle map layout",
   "command.arrangement": "Cycle hybrid arrangement",
   "command.side": "Swap map side",
+  "command.turnMap": "Toggle turn map",
+  "turnMap.title": "This turn",
+  "turnMap.open": "Open full map",
+  "turnMap.close": "Close turn map",
+  "turnMap.empty": "No turn to show yet",
   "empty": "Nothing to map yet",
 }

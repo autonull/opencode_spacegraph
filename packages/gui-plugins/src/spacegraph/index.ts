@@ -9,6 +9,8 @@ const State = Schema.Struct({
   layout: Schema.optional(Schema.Literals(LAYOUT_STRATEGIES)),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
+  turnMap: Schema.optional(Schema.Boolean),
+  surface: Schema.optional(Schema.String),
 })
 
 export default Plugin.define({

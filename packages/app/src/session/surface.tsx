@@ -21,12 +21,14 @@ export function SessionSurfaceHost(props: {
 }) {
   const host = usePluginHost()
   const language = useLanguage()
+
   const surfaces = createMemo(() =>
     orderedSessionSurfaces(
       host.items(SessionSurface).map((item) => item.value),
       language.t("session.surface.transcript"),
     ),
   )
+
   const surface = createMemo(() => resolveSessionSurface(surfaces(), sessionSurfaceID(props.session)))
   const custom = createMemo(() => (surface().id === transcriptSurfaceID ? undefined : surface()))
   const transcript = createMemo(() => props.transcript(() => true))

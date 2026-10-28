@@ -1,16 +1,54 @@
-import { Command, SessionSurface, type Plugin } from "@opencode/plugin/gui"
+import { lazy, onCleanup, Suspense } from "solid-js"
+import {
+  Command,
+  createKeyed,
+  MenuItem,
+  Panel,
+  SessionSurface,
+  type PanelTab,
+  type Plugin,
+} from "@opencode/plugin/gui"
+import { onIdle } from "@opencode/plugin/gui/builtin"
 import type definition from "./index"
 import { createSpacegraph } from "./model"
 import { MapSurface } from "./map-surface"
 import { HybridSurface } from "./hybrid-surface"
+import { TurnMapLayer } from "./turn-map-layer"
 
 const setup: Plugin.Setup<typeof definition> = (ctx) => {
+  const SpacegraphPanel = lazy(() => import("./panel"))
+  onCleanup(onIdle(() => void SpacegraphPanel.preload()))
+
   const model = createSpacegraph(ctx)
+
+  const tab: PanelTab = {
+    id: "map",
+    get title() {
+      return ctx.t("panel.title")
+    },
+    draggable: false,
+    closable: "compact",
+  }
+
   const select = (id: string) => {
     const session = ctx.sessions.current()
 
-    if (session) ctx.surfaces.select(id, session)
+    if (session) model.select(session, id)
   }
+
+  createKeyed(
+    () => {
+      const session = ctx.sessions.current()
+
+      return session ? `${session.key}\u0000${model.surface(session) ?? ""}` : undefined
+    },
+    () => {
+      const session = ctx.sessions.current()
+      const surface = session ? model.surface(session) : undefined
+
+      if (session && surface) ctx.surfaces.select(surface, session)
+    },
+  )
 
   ctx.add(SessionSurface, {
     id: `${ctx.id}.map`,
@@ -19,6 +57,14 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     render: ({ session, screen, transcript }) => (
       <MapSurface model={model} session={session} screen={screen} transcript={transcript} />
     ),
+    layers: [
+      {
+        id: "turn-map",
+        render: ({ session, screen, surface }) => (
+          <TurnMapLayer model={model} session={session} screen={screen} surface={surface} />
+        ),
+      },
+    ],
   })
 
   ctx.add(SessionSurface, {
@@ -52,6 +98,40 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     }
   })
 
+
+  ctx.add(MenuItem, {
+    menu: "session.panel",
+    id: "open",
+    get title() {
+      return ctx.t("menu.open")
+    },
+    icon: "branch-out",
+    order: 31,
+    run() {
+      const session = ctx.sessions.current()
+
+      if (session) ctx.layout.open(`${ctx.id}:map`, session, { tab: "select" })
+    },
+  })
+
+  ctx.add(Panel, {
+    id: "map",
+    region: "side",
+    mobile: {
+      get title() {
+        return ctx.t("panel.title")
+      },
+      order: 51,
+      kind: "menu",
+      icon: "branch-out",
+    },
+    list: (input) => (input.open.includes("map") ? [tab] : []),
+    render: (input) => (
+      <Suspense>
+        <SpacegraphPanel model={model} session={input.session} screen={input.screen} />
+      </Suspense>
+    ),
+  })
 
   ctx.add(Command, (): Command | undefined => {
     const session = ctx.sessions.current()
@@ -102,6 +182,27 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       title: ctx.t("command.side"),
       group: ctx.t("command.group"),
       run: () => model.toggleSide(session),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "turn-map",
+      title: ctx.t("command.turnMap"),
+      group: ctx.t("command.group"),
+      run: () => {
+        const opening = !model.turnMap(session)
+
+        model.toggleTurnMap(session)
+
+        if (opening && ctx.surfaces.current(session) !== `${ctx.id}.map`) {
+          ctx.surfaces.select(`${ctx.id}.map`, session)
+        }
+      },
     }
   })
 

@@ -31,6 +31,26 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     layout: (session: MountedSession): LayoutStrategy => store(session).value?.layout ?? "lanes",
     arrangement: (session: MountedSession): GraphArrangement => store(session).value?.arrangement ?? "side",
     side: (session: MountedSession): GraphSide => store(session).value?.side ?? "end",
+    surface: (session: MountedSession) => store(session).value?.surface,
+    select: (session: MountedSession, id: string) => {
+      store(session).update((draft) => {
+        draft.surface = id
+      })
+      ctx.surfaces.select(id, session)
+    },
+    turnMap: (session: MountedSession) => store(session).value?.turnMap ?? false,
+    toggleTurnMap: (session: MountedSession) => {
+      const next = !store(session).value?.turnMap
+
+      store(session).update((draft) => {
+        draft.turnMap = next
+      })
+    },
+    closeTurnMap: (session: MountedSession) => {
+      store(session).update((draft) => {
+        draft.turnMap = false
+      })
+    },
     cycleLevel: (session: MountedSession) => {
       const level = next(ZOOM_LEVELS, store(session).value?.level ?? "overview")
 
