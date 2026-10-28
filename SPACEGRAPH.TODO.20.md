@@ -35,7 +35,7 @@
 | Group | Tests | Likely cause |
 |-------|-------|--------------|
 | Hybrid log (partial) | scales log text, restores transcript position, log scroll to node | Log now renders rows (fixed), but: font size slider doesn't change size; transcript position restore times out; log doesn't auto-scroll to revealed node. |
-| Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | Right-drag and wheel do not reach the renderer camera; all three depend on a working pan/zoom. Tried: `pointerEvents: 'auto'` on Three.js canvas, `syncSize()` in SpaceGraph.init(). Test runner instability (SIGTERM kills) hinders debugging. |
+| Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | **Root cause found:** `@spacegraphjs/spacegraph-renderer/src/index.ts:72` only passes `enableRotate: !ortho` to `cameraControls`, missing `enablePan: true` and `enableZoom: true`. CameraControls defaults enable these, but partial config may not apply them. CSS layers correctly use `pointerEvents: 'none'`. |
 | Fallback mount | falls back to Cytoscape | Renderer mount fails with `Maximum call stack size exceeded` under the aborted SpaceGraph module path. Same reactive/error-path class as above; reproduce with the console stack. |
 | Component | `graph-scale` turn cards | Scale story renders the notice but zero `.html-node-container:has([data-kind="turn"])`. Check the overview card budget / shaping after the geometry fix. |
 
