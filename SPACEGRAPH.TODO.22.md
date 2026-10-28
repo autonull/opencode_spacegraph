@@ -13,7 +13,7 @@
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
 | **2.10 — capture matrix** | 🔶 core tests pass | Core tests 01-05 pass (log, graph overview, execution, selected, return to log). Full 44-frame matrix needs longer timeout to complete; core visual parity validated. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
-| **3B — delete protocol/server graph code** | ⏳ pending | After 3A verified. Run `bun run generate`. |
+| **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
 | **4 — T2.2 evidence** | ⏳ pending | Stop rule unchanged. Runs on built-in plugin. |
 
 ---
@@ -56,16 +56,18 @@
                                     │
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 3B DELETE PROTOCOL/SERVER GRAPH CODE                                        │
-│   packages/protocol/src/groups/graph.ts                                     │
-│   packages/protocol/src/workspace-snapshot.ts                               │
-│   packages/protocol/test/workspace-snapshot.test.ts                         │
-│   packages/server/src/graph/snapshot.ts                                     │
-│   packages/server/src/graph/workspace.test.ts                               │
-│   packages/server/src/handlers/graph.ts                                     │
+│ 3B DELETE PROTOCOL/SERVER GRAPH CODE (DONE)                                 │
+│   ✅ packages/protocol/src/groups/graph.ts                                   │
+│   ✅ packages/protocol/src/workspace-snapshot.ts                             │
+│   ✅ packages/protocol/test/workspace-snapshot.test.ts                       │
+│   ✅ packages/server/src/graph/snapshot.ts                                   │
+│   ✅ packages/server/src/graph/workspace.test.ts                             │
+│   ✅ packages/server/src/handlers/graph.ts                                   │
 │                                                                              │
-│   Then: `bun run generate` from packages/client                             │
-│   Re-baseline: entry delta, plugin bundle, lazy chunks, first paint         │
+│   ✅ Removed GraphGroup from protocol, GraphHandler from server              │
+│   ✅ Removed graphWorkspace from app runtime/server/api.ts                   │
+│   ✅ Ran `bun run generate` from packages/client                             │
+│   ✅ Re-baseline: entry delta, plugin bundle, lazy chunks, first paint       │
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
