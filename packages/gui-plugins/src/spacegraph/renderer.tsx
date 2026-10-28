@@ -92,7 +92,12 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     title: ctx.t("surface.map"),
     order: 10,
     render: ({ session, screen, transcript }) => (
-      <MapSurface model={model} session={session} screen={screen} transcript={transcript} />
+      <MapSurface
+        model={model}
+        session={session}
+        screen={screen}
+        transcript={transcript}
+      />
     ),
     layers: [
       {
@@ -121,7 +126,12 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     title: ctx.t("surface.hybrid"),
     order: 20,
     render: ({ session, screen, transcript }) => (
-      <HybridSurface model={model} session={session} screen={screen} transcript={transcript} />
+      <HybridSurface
+        model={model}
+        session={session}
+        screen={screen}
+        transcript={transcript}
+      />
     ),
   })
 
@@ -292,6 +302,45 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       title: ctx.t("command.transcript"),
       group: ctx.t("command.group"),
       run: () => select("transcript"),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "export-svg",
+      title: ctx.t("command.export"),
+      group: ctx.t("command.group"),
+      run: () => model.export(session, "svg"),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "export-json",
+      title: ctx.t("command.export"),
+      group: ctx.t("command.group"),
+      run: () => model.export(session, "json"),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "export-html",
+      title: ctx.t("command.export"),
+      group: ctx.t("command.group"),
+      run: () => model.export(session, "html"),
     }
   })
 }

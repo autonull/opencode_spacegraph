@@ -4,12 +4,15 @@ import {
   GRAPH_SIDES,
   LAYOUT_STRATEGIES,
   ZOOM_LEVELS,
+  type DepthMode,
   type GraphArrangement,
   type GraphSide,
   type LayoutStrategy,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import type definition from "./index"
+import { buildGraph, layoutGraph } from "@opencode/session-ui/graph"
+import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 
 function next<T>(values: readonly T[], current: T) {
   const index = values.indexOf(current)
@@ -30,8 +33,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     },
     level: (session: MountedSession): ZoomLevel => store(session).value?.level ?? prefs.value.level ?? "overview",
     layout: (session: MountedSession): LayoutStrategy => store(session).value?.layout ?? prefs.value.layout ?? "lanes",
-    depth: (session: MountedSession) => store(session).value?.depth ?? "flat",
-    setDepth: (session: MountedSession, depth: "flat" | "layered" | "depth-stack" | "orbit") => {
+    depth: (session: MountedSession): DepthMode => store(session).value?.depth ?? prefs.value.depth ?? "flat",
+    setDepth: (session: MountedSession, depth: DepthMode) => {
       store(session).update((draft) => {
         draft.depth = depth
       })
@@ -101,6 +104,21 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       store(session).update((draft) => {
         draft.side = side
       })
+    },
+    export: (session: MountedSession, format: "svg" | "json" | "html") => {
+      const status: { type: "busy" | "idle" } =
+        session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
+      const graph = buildGraph({ messages: session.server.data.session.message.list(session.id), status })
+      const level = store(session).value?.level ?? prefs.value.level ?? "overview"
+      const layoutStrategy = store(session).value?.layout ?? prefs.value.layout ?? "lanes"
+      const layout = layoutGraph(graph, { strategy: layoutStrategy })
+      const renderModel = buildRenderModel(graph, {
+        level,
+        positions: layout.positions,
+      })
+      const sessionTitle = session.server.data.session.get(session.id)?.title ?? "OpenCode Session"
+      const testedCommit = "unknown"
+      exportGraph(format, renderModel, { theme: DEFAULT_THEME, sessionTitle, testedCommit })
     },
   }
 }

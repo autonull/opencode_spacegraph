@@ -13,7 +13,7 @@
 | **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
-| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed on the full `@opencode/session-graph` renderer: depth modes, layouts, camera, toolbar, permalinks, export, settings, persistence. Remaining: arrangement tests, capture matrix, cutover. |
+| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.4, 2.6, 2.8 landed: map, hybrid (3 arrangements), turn-map layer, basic side panel, settings (level/layout/depth/arrangement/side), commands (map/hybrid/transcript/level/layout/arrangement/side/turn-map/permalink/export). Remaining: 2.5 (side panel polish + Inspector/Windows), 2.7 (search/keybinds), 2.10 (arrangement scroll test, stories, capture matrix). |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
@@ -44,10 +44,23 @@
 
 ### Batch 2 current state (2026-10-28)
 
-- `spacegraph` is a real built-in plugin with map, hybrid, turn-map layer, side panel, settings, camera, permalinks and JSON/SVG/HTML export.
+- `spacegraph` is a real built-in plugin with map, hybrid, turn-map layer, side panel (basic), settings, camera, permalinks.
 - The built-in activation matrix (`plugin-graph.spec.ts`) passes with `spacegraph` included.
 - The map now renders through `@opencode/session-graph`'s `GraphView`; depth, layouts, camera, search and export are owned by that renderer.
 - Arrangement scroll preservation is reliable because `HybridSurface` keeps one DOM tree and only changes classes; a real-host render test covers both built-in surfaces, but arrangement cycling still needs coverage.
+
+### Batch 2 remaining work (2026-10-28)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **2.5 SidePanel** | 🔶 partial | Current `panel.tsx` renders `FullMap` but missing: active-turn highlight, reveal-to-transcript, compact parity polish, `Inspector.tsx`/`Windows.tsx` not implemented |
+| **2.6 Settings** | ✅ complete | `settings.tsx` covers level, layout, depth, arrangement, side; all persisted to `Store.global` |
+| **2.7 Commands** | 🔶 partial | Has map/hybrid/transcript, level, layout, arrangement, side, turn-map, permalink, export (svg/json/html); **missing**: search, header slot, keybinds |
+| **2.8 Export** | ✅ complete | Commands for SVG/JSON/HTML export via `model.export()` using `@opencode/session-graph`'s `exportGraph` |
+| **2.9 Workspace lens** | ⏭️ optional | Deferred, not blocking parity |
+| **2.10 Tests** | 🔶 partial | Built-in activation, real-host map/hybrid render pass; **missing**: arrangement scroll test per arrangement, stories, capture matrix |
+| **Inspector.tsx** | ❌ missing | Node detail inspector for side panel |
+| **Windows.tsx** | ❌ missing | Window manager for graph (saved viewports) |
 
 ---
 
@@ -259,12 +272,12 @@ opencode-spacegraph/
 | **2.2** | ✅ MapSurface | Full `GraphView`: levels, layouts, depth modes, camera, toolbar, hidden transcript |
 | **2.3** | 🔶 HybridSurface | `stacked`/`side`/`floating` landed in one DOM tree so the transcript never moves; side start/end. Needs explicit scroll test per arrangement |
 | **2.4** | ✅ TurnMapLayer | Layer on the map surface, capped `turnSubgraph`, focus trap, Escape, "Open full map"; command switches to map |
-| **2.5** | 🔶 SidePanel | `Panel` region side + mobile with full `GraphCanvas`, active-turn highlight, reveal; compact parity polish remains |
-| **2.6** | 🔶 Settings + persistence | `Store.session` persists surface, level, layout, arrangement, side, depth, turn map, focused node; `Store.global` settings page edits defaults; camera/log scale remain renderer-local |
-| **2.7** | 🔶 Commands | Commands for map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, JSON export; side panel `MenuItem`; visible level/layout toolbar; settings page. Search/header slot/keybinds remain |
-| **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; `GraphView` owns export (JSON/SVG/HTML) and copy-view through its toolbar |
+| **2.5** | 🔶 SidePanel | `Panel` region side + mobile with `FullMap`. **Missing**: active-turn highlight, reveal-to-transcript, compact parity polish; `Inspector.tsx`/`Windows.tsx` not implemented |
+| **2.6** | ✅ Settings + persistence | `Store.session` persists surface, level, layout, arrangement, side, depth, turn map, focused node; `Store.global` settings page edits defaults for level, layout, depth, arrangement, side |
+| **2.7** | 🔶 Commands | Has: map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, **export (svg/json/html)**. **Missing**: search, header slot, keybinds |
+| **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; **plugin has export commands** (svg/json/html via `model.export()`) |
 | **2.9** | Workspace lens (optional) | Server part provides `WorkspaceSnapshot` RPC; GUI calls `ctx.client.rpc`; graceful absence |
-| **2.10** | 🔶 Tests | Built-in activation, real-host map/hybrid render, and `model.test.ts` pass; arrangement scroll test, stories, capture matrix remain |
+| **2.10** | 🔶 Tests | Built-in activation, real-host map/hybrid render, and `model.test.ts` pass; **missing**: arrangement scroll test per arrangement, stories, capture matrix |
 
 ### 2.1a Built-in Registration (2 lines)
 

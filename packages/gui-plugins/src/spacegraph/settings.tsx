@@ -3,6 +3,7 @@ import {
   GRAPH_SIDES,
   LAYOUT_STRATEGIES,
   ZOOM_LEVELS,
+  type DepthMode,
   type GraphArrangement,
   type GraphSide,
   type LayoutStrategy,
@@ -10,6 +11,8 @@ import {
 } from "@opencode/session-ui/graph"
 import { usePlugin } from "@opencode/plugin/gui"
 import type definition from "./index"
+
+const DEPTH_MODES = ["flat", "layered", "depth-stack", "orbit"] as const
 
 function next<T>(values: readonly T[], current: T) {
   return values[(values.indexOf(current) + 1) % values.length] ?? current
@@ -21,6 +24,7 @@ export default function SpacegraphSettings() {
 
   const level = () => prefs.value.level ?? "overview"
   const layout = () => prefs.value.layout ?? "lanes"
+  const depth = () => prefs.value.depth ?? "flat"
   const arrangement = () => prefs.value.arrangement ?? "side"
   const side = () => prefs.value.side ?? "end"
 
@@ -47,6 +51,19 @@ export default function SpacegraphSettings() {
         return ctx.t("layout.tree")
       case "force":
         return ctx.t("layout.force")
+    }
+  }
+
+  const depthLabel = (value: DepthMode) => {
+    switch (value) {
+      case "flat":
+        return ctx.t("depth.flat")
+      case "layered":
+        return ctx.t("depth.layered")
+      case "depth-stack":
+        return ctx.t("depth.depthStack")
+      case "orbit":
+        return ctx.t("depth.orbit")
     }
   }
 
@@ -88,6 +105,15 @@ export default function SpacegraphSettings() {
         act={() =>
           prefs.update((draft) => {
             draft.layout = next(LAYOUT_STRATEGIES, layout())
+          })
+        }
+      />
+      <Row
+        label={ctx.t("settings.depth")}
+        value={() => depthLabel(depth())}
+        act={() =>
+          prefs.update((draft) => {
+            draft.depth = next(DEPTH_MODES, depth())
           })
         }
       />

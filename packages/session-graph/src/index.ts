@@ -65,3 +65,5 @@ export {
 } from "./ui/TurnMapOverlay"
 export { buildTurnRenderModel, turnGraphModel } from "./ui/turnMap"
 export { createGraphTheme, graphThemeFromTokens, resolveGraphTheme } from "./ui/theme"
+export { exportGraph, type ExportFormat, type ExportOptions } from "./ui/export"
+export { DEFAULT_THEME } from "@spacegraphjs/renderer"

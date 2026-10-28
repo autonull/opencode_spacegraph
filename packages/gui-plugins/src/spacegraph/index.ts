@@ -3,10 +3,12 @@ import { Plugin, Store } from "@opencode/plugin/gui"
 import { GRAPH_ARRANGEMENTS, GRAPH_SIDES, LAYOUT_STRATEGIES, ZOOM_LEVELS } from "@opencode/session-ui/graph"
 import en from "./i18n/en"
 
+const DEPTH_MODES = ["flat", "layered", "depth-stack", "orbit"] as const
+
 const Prefs = Schema.Struct({
   level: Schema.optional(Schema.Literals(ZOOM_LEVELS)),
   layout: Schema.optional(Schema.Literals(LAYOUT_STRATEGIES)),
-  depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
+  depth: Schema.optional(Schema.Literals(DEPTH_MODES)),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
 })
