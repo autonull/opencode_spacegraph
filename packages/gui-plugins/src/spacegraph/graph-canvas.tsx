@@ -2,7 +2,7 @@ import { For, Show, createMemo, type Accessor } from "solid-js"
 import { buildGraph, layoutGraph, nodeSize, nodesAtLevel, turnNodeID } from "@opencode/session-ui/graph"
 import type { GraphNode, GraphViewData, LayoutStrategy, ZoomLevel } from "@opencode/session-ui/graph"
 import type { SessionStatus } from "@opencode/client/promise"
-import { usePlugin } from "@opencode/plugin/gui"
+import { createKeyed, usePlugin } from "@opencode/plugin/gui"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 
@@ -92,6 +92,30 @@ export function GraphCanvas(props: {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
   }
+
+  createKeyed(
+    () => {
+      const id = props.model.focused(props.session)
+      const canvas = geometry()
+
+      if (!id || !canvas.boxes.length) return undefined
+
+      return `${id}\u0000${canvas.boxes.length}`
+    },
+    (key) => {
+      const id = key.slice(0, key.lastIndexOf("\u0000"))
+      const canvas = geometry()
+      const box = canvas.boxes.find((candidate) => candidate.node.id === id)
+
+      if (!box) return
+
+      props.model.setCamera(props.session, {
+        zoom: 2,
+        x: box.x - (canvas.left + canvas.width / 2),
+        y: box.y - (canvas.top + canvas.height / 2),
+      })
+    },
+  )
 
   const activeID = createMemo(() => {
     const value = graph()

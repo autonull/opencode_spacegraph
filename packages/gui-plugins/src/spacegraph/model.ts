@@ -38,6 +38,13 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       x: store(session).value?.panX ?? 0,
       y: store(session).value?.panY ?? 0,
     }),
+    setCamera: (session: MountedSession, camera: { zoom: number; x: number; y: number }) => {
+      store(session).update((draft) => {
+        draft.zoom = camera.zoom
+        draft.panX = camera.x
+        draft.panY = camera.y
+      })
+    },
     zoomBy: (session: MountedSession, factor: number) => {
       const zoom = Math.min(4, Math.max(0.25, (store(session).value?.zoom ?? 1) * factor))
 

@@ -13,7 +13,7 @@
 | **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
-| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed: settings, persistence, toolbar, camera, layout-qualified permalinks, JSON/SVG/HTML export. Remaining: depth projection, arrangement tests, capture matrix. |
+| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed: settings, persistence, toolbar, camera, layout-qualified permalinks with framing, JSON/SVG/HTML export. Remaining: depth projection, arrangement tests, capture matrix. |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
@@ -38,7 +38,6 @@
 
 - Batch 2.2 next: depth projection (`flat`/`layered`/`depth-stack`/`orbit`). The current map is 2D SVG; depth needs the `spacegraphjs` canvas renderer (`DepthCues` owns projection/orbit/fade). Treat it as a renderer swap.
 - Batch 2.3 next: arrangement scroll test needs a gui-plugins component-test harness; app component tests cannot statically import gui-plugins sources without breaking the app TS project boundary.
-- Batch 2.8 next: node framing after a permalink reveal.
 - Batch 2.10 next: arrangement scroll test and capture matrix.
 - Keep the old graph pane as `SessionSurfaceHost.default` until 3.1; do not delete `packages/app/src/session/graph/*` yet.
 - The plugin's MapSurface receives the same `transcript` element and hides it with `visibility`/position, never `display: none`.
@@ -264,7 +263,7 @@ opencode-spacegraph/
 | **2.5** | 🔶 SidePanel | `Panel` region side + mobile with full `GraphCanvas`, active-turn highlight, reveal; compact parity polish remains |
 | **2.6** | 🔶 Settings + persistence | `Store.session` persists surface, level, layout, arrangement, side, turn map, focused node; `Store.global` settings page edits defaults; camera/log scale remain |
 | **2.7** | 🔶 Commands | Commands for map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, JSON export; side panel `MenuItem`; visible level/layout toolbar; settings page. Search/header slot/keybinds remain |
-| **2.8** | 🔶 Permalinks + Export | `#graph:<layout>:<node>` cold-load selects layout + map and focuses node; permalink copies URL; JSON/SVG/HTML export via `ctx.system.save`. Node framing remains |
+| **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; permalink copies URL; JSON/SVG/HTML export via `ctx.system.save` |
 | **2.9** | Workspace lens (optional) | Server part provides `WorkspaceSnapshot` RPC; GUI calls `ctx.client.rpc`; graceful absence |
 | **2.10** | 🔶 Tests | Built-in activation test already covers `spacegraph`; arrangement scroll test, stories, capture matrix remain |
 
