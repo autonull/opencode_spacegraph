@@ -12,7 +12,7 @@
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
 | **2.10 — capture matrix** | 🔶 core tests pass | Core tests 01-05 pass (log, graph overview, execution, selected, return to log). Full 44-frame matrix needs longer timeout to complete; core visual parity validated. |
-| **3A — delete app/graph code** | ⏳ pending | Feature-flagged behind `settings.experimental.sessionGraph`. Low risk, reversible. |
+| **3A — delete app/graph code** | 🔶 in progress | **No backwards compatibility needed.** Removed feature flag, sync effects, and conditional rendering in `screen.tsx`. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. Remaining: delete old files. |
 | **3B — delete protocol/server graph code** | ⏳ pending | After 3A verified. Run `bun run generate`. |
 | **4 — T2.2 evidence** | ⏳ pending | Stop rule unchanged. Runs on built-in plugin. |
 
@@ -35,7 +35,7 @@
                                     │
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 3A DELETE APP/GRAPH CODE (feature-flagged)                                  │
+│ 3A DELETE APP/GRAPH CODE (NO feature flag — direct cutover)                 │
 │   packages/app/src/session/graph/*                                           │
 │   ├── graph-metrics-readout.tsx      ├── graph-pane.tsx                     │
 │   ├── graph-permalink.test.ts        ├── graph-permalink.ts                 │
@@ -49,8 +49,9 @@
 │   packages/app/src/shell/state/layout.tsx  ← graph field in layoutSchema    │
 │   packages/app/src/session/graph/* stories                                   │
 │                                                                              │
-│   Toggle: `settings.experimental.sessionGraph` (default false)              │
-│   After: plugin surfaces are the ONLY graph implementation                  │
+│   DONE: Removed `settings.experimental.sessionGraph`, sync effects, and     │
+│   conditional rendering in `screen.tsx`. Plugin surfaces are the ONLY graph │
+│   implementation.                                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼

@@ -14,13 +14,11 @@ import {
   type Accessor,
 } from "solid-js"
 import { createStore } from "solid-js/store"
-import { useLocation } from "@solidjs/router"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
 import type { BackgroundTask, MountedSession, SessionScreen, TranscriptScreen } from "@opencode/plugin/gui"
 import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings } from "@/settings/model"
-import { Metrics } from "@opencode/session-ui/graph"
 import type { SessionModel } from "@/session/model"
 import { SESSION_PANEL_WIDTH_MIN } from "@/session/session-panel-width"
 import { SessionPanelFrame } from "@/session/session-frame"
@@ -49,12 +47,9 @@ import { SessionHeaderDrag, windowDragEnabled } from "./header/drag-area"
 import { usePlatform } from "@/runtime/platform/platform"
 import { useServer } from "@/runtime/server/current"
 import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
-import { SessionGraphToggle } from "./header/session-graph-toggle"
-import { SessionGraphPane } from "./graph/graph-pane"
 import { SessionSurfaceHost } from "./surface"
-import { graphPermalinkFromHash } from "./graph/graph-permalink"
 import { createTimelineCache } from "./timeline/cache"
-import { selectSessionSurface, sessionSurfaceID } from "@/runtime/plugin/surfaces"
+import { selectSessionSurface } from "@/runtime/plugin/surfaces"
 import { createPanelMotion, holdLandingWidth, panelOpacity } from "@/shell/panel-motion"
 
 export function SessionScreenView(props: { session: SessionModel }) {
@@ -131,66 +126,7 @@ function SessionScreenContent(props: {
 
   const timeline = createSessionTimelineInteraction(session)
 
-  const graph = session.layout.graph()
-  const graphEnabled = () => settings.experimental.sessionGraph()
   const view = props.view
-  const routerLocation = useLocation()
-
-  // The transcript is the baseline surface. The map is an independent surface, and `split` asks it to
-  // share the panel with the transcript. A narrow screen has room for one surface, so the map takes
-  // the panel alone even when a split was requested.
-  const mapVisible = createMemo(() => graphEnabled() && graph.map())
-  const splitVisible = createMemo(() => mapVisible() && graph.sideBySide() && isDesktop())
-
-  // When the experimental plugin is enabled, sync the old graph state to the plugin surfaces.
-  // The plugin surfaces are: "spacegraph.map", "spacegraph.hybrid", "transcript"
-  // Map old graph.map() + graph.sideBySide() -> spacegraph.hybrid
-  // Map old graph.map() + !graph.sideBySide() -> spacegraph.map
-  // Map !graph.map() -> transcript
-  createEffect(() => {
-    if (!graphEnabled()) return
-
-    const sessionRef = view()
-    if (!sessionRef) return
-
-    const currentSurface = sessionSurfaceID(sessionRef)
-    const isPluginSurface = currentSurface.startsWith("spacegraph.")
-
-    // Only sync if the current surface is not already a plugin surface (avoid fighting with plugin commands)
-    if (isPluginSurface) return
-
-    let targetSurface: string
-    if (graph.map()) {
-      targetSurface = graph.sideBySide() ? "spacegraph.hybrid" : "spacegraph.map"
-    } else {
-      targetSurface = "transcript"
-    }
-
-    if (currentSurface !== targetSurface) {
-      selectSessionSurface(targetSurface, sessionRef)
-    }
-  })
-
-  // T3.5: a graph permalink opens the map, so a shared link lands on the node it names. The map
-  // visibility is read untracked, so closing the map does not pull it back, and the flag is part of
-  // the sources, so a link opened before the settings load still opens the map.
-  createEffect(
-    on(
-      () => [routerLocation.hash, graphEnabled()] as const,
-      ([hash, enabled]) => {
-        if (!enabled) return
-
-        if (!graphPermalinkFromHash(hash)) return
-
-        const sessionRef = view()
-        if (!sessionRef) return
-
-        if (untrack(graph.map)) return
-
-        selectSessionSurface("spacegraph.map", sessionRef)
-      },
-    ),
-  )
 
   // The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
   // asked a question of the map and the log answers it in place.
@@ -199,18 +135,10 @@ function SessionScreenContent(props: {
   }
 
   const openGraphTranscript = (messageID: string, partID?: string) => {
-    // T2.3: the graph counts its own "return" action, so this switch is not counted twice.
-    if (graphEnabled()) {
-      const sessionRef = view()
-      if (sessionRef) selectSessionSurface("transcript", sessionRef)
-    } else {
-      graph.setMap(false)
-    }
+    const sessionRef = view()
+    if (sessionRef) selectSessionSurface("transcript", sessionRef)
     revealInLog(messageID, partID)
   }
-
-  // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
-  const metricsEnabled = createMemo(() => new URLSearchParams(routerLocation.search).has("graphMetrics"))
 
   // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
   props.bindTranscript({
@@ -444,12 +372,8 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={attachment.mobile.select}
-          graphActive={mapVisible()}
-          onGraphToggle={graphEnabled() ? () => {
-            if (mobileView() !== "session") attachment.mobile.select("session")
-            Metrics.count("mode-switch")
-            graph.setMap(!graph.map())
-          } : undefined}
+          graphActive={false}
+          onGraphToggle={undefined}
         />
       )}
     </Show>
@@ -535,25 +459,7 @@ function SessionScreenContent(props: {
                 session={props.view()}
                 screen={props.screen}
                 transcript={timelineView}
-                default={() =>
-                  graphEnabled() ? (
-                    // Plugin surfaces handle the session body; no default needed
-                    // Return empty fragment since plugin surface will be used
-                    <></>
-                  ) : (
-                    <SessionGraphPane
-                      session={session}
-                      graph={graph}
-                      graphEnabled={graphEnabled}
-                      timeline={timeline}
-                      mapVisible={mapVisible}
-                      splitVisible={splitVisible}
-                      screen={screen}
-                      metricsEnabled={metricsEnabled}
-                      transcript={timelineView}
-                    />
-                  )
-                }
+                default={() => <> </>}
               />
             </Show>
           </Match>
@@ -593,9 +499,6 @@ function SessionScreenContent(props: {
               onPointerDown={hideTimelineScrollbar}
               onClick={hideTimelineScrollbar}
             >
-              <Show when={!graphEnabled()}>
-                <SessionGraphToggle />
-              </Show>
               <SessionReviewToggle
                 onToggle={region.toggle}
                 glyph={(fill) => {
