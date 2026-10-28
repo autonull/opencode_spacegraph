@@ -64,6 +64,32 @@ export function GraphCanvas(props: {
     props.screen.transcript.reveal(opener)
   }
 
+  const levelLabel = () => {
+    switch (props.level()) {
+      case "overview":
+        return ctx.t("level.overview")
+      case "execution":
+        return ctx.t("level.execution")
+      case "detail":
+        return ctx.t("level.detail")
+    }
+  }
+
+  const layoutLabel = () => {
+    switch (props.layout()) {
+      case "lanes":
+        return ctx.t("layout.lanes")
+      case "timeline":
+        return ctx.t("layout.timeline")
+      case "hierarchy":
+        return ctx.t("layout.hierarchy")
+      case "tree":
+        return ctx.t("layout.tree")
+      case "force":
+        return ctx.t("layout.force")
+    }
+  }
+
   const label = (node: GraphNode) => {
     const count = node.clusterOf?.length ?? 0
     const text = node.derived && count > 0 ? `${node.label} · ${count}` : node.label
@@ -73,6 +99,24 @@ export function GraphCanvas(props: {
 
   return (
     <div class="relative size-full overflow-hidden bg-v2-background-bg-base" data-slot="spacegraph-map">
+      <div class="absolute right-2 top-2 z-10 flex gap-1">
+        <button
+          type="button"
+          class="rounded-md border border-v2-border-border-base bg-v2-background-bg-base px-2 py-1 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
+          aria-label={ctx.t("command.level")}
+          onClick={() => props.model.cycleLevel(props.session)}
+        >
+          {levelLabel()}
+        </button>
+        <button
+          type="button"
+          class="rounded-md border border-v2-border-border-base bg-v2-background-bg-base px-2 py-1 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
+          aria-label={ctx.t("command.layout")}
+          onClick={() => props.model.cycleLayout(props.session)}
+        >
+          {layoutLabel()}
+        </button>
+      </div>
       <Show
         when={geometry().boxes.length > 0}
         fallback={

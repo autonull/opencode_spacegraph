@@ -1,4 +1,4 @@
-import { lazy, onCleanup, Suspense } from "solid-js"
+import { createSignal, lazy, onCleanup, onMount, Suspense } from "solid-js"
 import {
   Command,
   createKeyed,
@@ -36,17 +36,39 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     if (session) model.select(session, id)
   }
 
+  const [hash, setHash] = createSignal(location.hash)
+  onMount(() => {
+    const update = () => setHash(location.hash)
+
+    window.addEventListener("hashchange", update)
+    onCleanup(() => window.removeEventListener("hashchange", update))
+  })
+
+  const linked = () => (hash().startsWith("#graph:") ? hash().slice("#graph:".length) : undefined)
+
   createKeyed(
     () => {
       const session = ctx.sessions.current()
 
-      return session ? `${session.key}\u0000${model.surface(session) ?? ""}` : undefined
+      return session ? `${session.key}\u0000${model.surface(session) ?? ""}\u0000${hash()}` : undefined
     },
     () => {
       const session = ctx.sessions.current()
-      const surface = session ? model.surface(session) : undefined
 
-      if (session && surface) ctx.surfaces.select(surface, session)
+      if (!session) return
+
+      const node = linked()
+
+      if (node) {
+        model.focus(session, node)
+        ctx.surfaces.select(`${ctx.id}.map`, session)
+
+        return
+      }
+
+      const surface = model.surface(session)
+
+      if (surface) ctx.surfaces.select(surface, session)
     },
   )
 
@@ -131,6 +153,52 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         <SpacegraphPanel model={model} session={input.session} screen={input.screen} />
       </Suspense>
     ),
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+    const node = session ? model.focused(session) : undefined
+
+    if (!session || !node) return undefined
+
+    return {
+      id: "permalink",
+      title: ctx.t("command.permalink"),
+      group: ctx.t("command.group"),
+      run: () => {
+        location.hash = `graph:${node}`
+        void ctx.system.copy(location.href)
+      },
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "export",
+      title: ctx.t("command.export"),
+      group: ctx.t("command.group"),
+      run: async () => {
+        const { buildGraph } = await import("@opencode/session-ui/graph")
+
+        const status =
+          session.server.data.session.status(session.id) === "running" ? { type: "busy" as const } : { type: "idle" as const }
+
+        const graph = buildGraph({ messages: session.server.data.session.message.list(session.id), status })
+
+        await ctx.system.save({
+          name: `spacegraph-${session.id}.json`,
+          content: JSON.stringify(
+            { root: graph.root, nodes: graph.nodes, edges: graph.edges, turns: graph.turns },
+            null,
+            2,
+          ),
+        })
+      },
+    }
   })
 
   ctx.add(Command, (): Command | undefined => {
