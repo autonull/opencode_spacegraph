@@ -11,7 +11,7 @@
 | `session-graph` unit | **113 pass / 0 fail** |
 | `app` graph-state unit | **37 pass / 0 fail** |
 | `session-graph` component tests | **48 pass / 1 fail / 18 skip** (remaining: `graph-scale.spec.ts` turn cards count 0) |
-| App e2e graph | **~35 pass / 10 fail** (was 0 pass; mount and card layout now work; hybrid log renders) |
+| App e2e graph | **~35 pass / 10 fail** (was 0 pass; mount and card layout now work; hybrid log renders rows) |
 | Typecheck | `session-graph` and `app` clean |
 | Library vitest | 539 pass (build still has TS errors — L1) |
 | `graph:verify` | **Blocked** on the remaining e2e/component failures below |
@@ -35,7 +35,7 @@
 | Group | Tests | Likely cause |
 |-------|-------|--------------|
 | Hybrid log (partial) | scales log text, restores transcript position, log scroll to node | Log now renders rows (fixed), but: font size slider doesn't change size; transcript position restore times out; log doesn't auto-scroll to revealed node. |
-| Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | Right-drag and wheel do not reach the renderer camera; all three depend on a working pan/zoom. Check the canvas/CSS3D input path after the graph canvas refactor. |
+| Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | Right-drag and wheel do not reach the renderer camera; all three depend on a working pan/zoom. Tried: `pointerEvents: 'auto'` on Three.js canvas, `syncSize()` in SpaceGraph.init(). Test runner instability (SIGTERM kills) hinders debugging. |
 | Fallback mount | falls back to Cytoscape | Renderer mount fails with `Maximum call stack size exceeded` under the aborted SpaceGraph module path. Same reactive/error-path class as above; reproduce with the console stack. |
 | Component | `graph-scale` turn cards | Scale story renders the notice but zero `.html-node-container:has([data-kind="turn"])`. Check the overview card budget / shaping after the geometry fix. |
 
