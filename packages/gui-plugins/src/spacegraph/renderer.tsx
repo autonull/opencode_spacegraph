@@ -142,6 +142,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "map",
       title: ctx.t("command.map"),
       group: ctx.t("command.group"),
+      bind: "mod+shift+m",
+      section: "session",
       run: () => select(`${ctx.id}.map`),
     }
   })
@@ -153,6 +155,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "hybrid",
       title: ctx.t("command.hybrid"),
       group: ctx.t("command.group"),
+      bind: "mod+shift+h",
+      section: "session",
       run: () => select(`${ctx.id}.hybrid`),
     }
   })
@@ -214,6 +218,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "permalink",
       title: ctx.t("command.permalink"),
       group: ctx.t("command.group"),
+      section: "session",
       run: () => {
         location.hash = `graph:${model.layout(session)}:${node}`
         void ctx.system.copy(location.href)
@@ -230,6 +235,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "level",
       title: ctx.t("command.level"),
       group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+l",
       run: () => model.cycleLevel(session),
     }
   })
@@ -243,6 +250,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "layout",
       title: ctx.t("command.layout"),
       group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+shift+l",
       run: () => model.cycleLayout(session),
     }
   })
@@ -256,6 +265,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "arrangement",
       title: ctx.t("command.arrangement"),
       group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+a",
       run: () => model.cycleArrangement(session),
     }
   })
@@ -269,6 +280,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "side",
       title: ctx.t("command.side"),
       group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+s",
       run: () => model.toggleSide(session),
     }
   })
@@ -282,6 +295,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "turn-map",
       title: ctx.t("command.turnMap"),
       group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+t",
       run: () => {
         const opening = !model.turnMap(session)
 
@@ -301,7 +316,24 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       id: "transcript",
       title: ctx.t("command.transcript"),
       group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+shift+t",
       run: () => select("transcript"),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "search",
+      title: ctx.t("command.search"),
+      group: ctx.t("command.group"),
+      section: "session",
+      bind: "mod+f",
+      run: () => ctx.surfaces.select(`${ctx.id}.map`, session),
     }
   })
 

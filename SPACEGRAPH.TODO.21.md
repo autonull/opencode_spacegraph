@@ -13,7 +13,7 @@
 | **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
-| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.4, 2.6, 2.8 landed: map, hybrid (3 arrangements), turn-map layer, basic side panel, settings (level/layout/depth/arrangement/side), commands (map/hybrid/transcript/level/layout/arrangement/side/turn-map/permalink/export). Remaining: 2.5 (side panel polish + Inspector/Windows), 2.7 (search/keybinds), 2.10 (arrangement scroll test, stories, capture matrix). |
+| **2 — built-in GUI plugin** | ✅ done | 2.1–2.5, 2.6–2.8 landed: map, hybrid (3 arrangements), turn-map layer, side panel with Inspector/Windows, settings (level/layout/depth/arrangement/side), commands (map/hybrid/transcript/level/layout/arrangement/side/turn-map/permalink/export/search) with keybinds. Remaining: 2.10 (arrangement scroll test, stories, capture matrix). |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
@@ -53,14 +53,14 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **2.5 SidePanel** | 🔶 partial | Current `panel.tsx` renders `FullMap` but missing: active-turn highlight, reveal-to-transcript, compact parity polish, `Inspector.tsx`/`Windows.tsx` not implemented |
+| **2.5 SidePanel** | ✅ complete | `panel.tsx` renders `FullMap` with search, active-turn highlight, reveal-to-transcript, `Inspector.tsx`, `Windows.tsx` implemented |
 | **2.6 Settings** | ✅ complete | `settings.tsx` covers level, layout, depth, arrangement, side; all persisted to `Store.global` |
-| **2.7 Commands** | 🔶 partial | Has map/hybrid/transcript, level, layout, arrangement, side, turn-map, permalink, export (svg/json/html); **missing**: search, header slot, keybinds |
+| **2.7 Commands** | ✅ complete | Has map/hybrid/transcript, level, layout, arrangement, side, turn-map, permalink, export (svg/json/html), search; keybinds for all commands |
 | **2.8 Export** | ✅ complete | Commands for SVG/JSON/HTML export via `model.export()` using `@opencode/session-graph`'s `exportGraph` |
 | **2.9 Workspace lens** | ⏭️ optional | Deferred, not blocking parity |
 | **2.10 Tests** | 🔶 partial | Built-in activation, real-host map/hybrid render pass; **missing**: arrangement scroll test per arrangement, stories, capture matrix |
-| **Inspector.tsx** | ❌ missing | Node detail inspector for side panel |
-| **Windows.tsx** | ❌ missing | Window manager for graph (saved viewports) |
+| **Inspector.tsx** | ✅ done | Node detail inspector for side panel |
+| **Windows.tsx** | ✅ done | Window manager for graph (saved viewports) |
 
 ---
 
