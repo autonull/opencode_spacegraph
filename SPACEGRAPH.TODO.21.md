@@ -10,9 +10,9 @@
 | Batch | State | Notes |
 |-------|-------|-------|
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
-| **1.1 — SessionSurface + layering** | 🔶 seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Remaining below. |
+| **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
-| **1.3 — scroll-preservation test** | ❌ pending | Needs a fixture surface that switches transcript ↔ map and asserts visible rows/scroll survive. |
+| **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
 | **2 — built-in GUI plugin** | ❌ pending | Start with `Plugin.define` skeleton and 2-line registration. |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
@@ -28,12 +28,11 @@
 - `packages/app/src/session/screen.tsx`: session body now renders through `SessionSurfaceHost`; the old graph pane remains the host default during migration.
 - Tests: `packages/app/src/runtime/plugin/surfaces.test.ts`; host integration row in `packages/app/component-tests/plugin-host.spec.ts`.
 
-### Remaining for 1.1 (do these before Batch 2)
+### Remaining before Batch 2
 
-1. **Selection persistence**: move from the in-memory per-session map in `surfaces.ts` to persisted layout state (or straight to `Store.session` in 2.6), so a reload restores the surface.
-2. **Fixture surface story**: add a story that registers a trivial surface + layer through the real host and switches transcript ↔ surface.
-3. **Scroll preservation**: component test that scrolls the transcript, switches to a map-only fixture surface (transcript kept mounted), switches back, and asserts the same visible row/offset. Cover map-only ↔ hybrid within one surface.
-4. **Layer focus contract**: decide and test focus/Escape behavior for `SessionLayer` (turn-map prototype) before 2.4.
+1. **Selection persistence**: deliberately deferred to 2.6, where surface/arrangement/camera move into `Store.session`. Until then the per-session map in `surfaces.ts` is in-memory.
+2. **Fixture surface story**: the component test `mountSessionSurface` now covers mount, switch and restore with the real host; a duplicate Storybook story is not required.
+3. **Layer focus contract**: decide and test focus/Escape behavior for `SessionLayer` alongside `TurnMapLayer` in 2.4.
 
 ### Clarified next actions
 
@@ -363,12 +362,12 @@ import spacegraphRenderer from "./spacegraph/renderer"
 ## 11. IMMEDIATE NEXT ACTIONS
 
 1. **Batch 0:** ✅ committed and tagged.
-2. **Batch 1.1:** ✅ registry + host integration landed. Remaining: persisted selection, fixture story, scroll test.
+2. **Batch 1.1:** ✅ registry, host integration, fixture surface component test, scroll preservation landed. Persistence deferred to 2.6.
 3. **Batch 1.2:** ✅ `TranscriptScreen` protocol already present; no work.
-4. **Batch 1.3:** ❌ verify map-only ↔ hybrid scroll preservation with the fixture surface.
-5. **Batch 2.1:** next implementation step once 1.1 items 1–2 land.
+4. **Batch 1.3:** ✅ map-only ↔ hybrid transcript scroll preservation verified.
+5. **Batch 2.1:** next implementation step; Batch 1 seams are green.
 
-**Do not start Batch 2 until 1.1, 1.2, 1.3 are green.**
+**Batch 1 is green; Batch 2 may start.**
 
 ---
 

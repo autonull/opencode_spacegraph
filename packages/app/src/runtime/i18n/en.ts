@@ -590,6 +590,7 @@ export const dict = {
   "session.graph.error": "Couldn't open the graph view",
   "session.graph.error.description": "The graph failed to load. The transcript is unaffected.",
   "session.graph.back": "Back to transcript",
+  "session.surface.transcript": "Transcript",
   "session.graph.hybrid.pane.title": "Session graph",
   "session.graph.hybrid.pane.close": "Close the graph",
   "session.graph.hybrid.textSize": "Text size",

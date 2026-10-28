@@ -299,15 +299,16 @@ function createHost(input: HostInput) {
 
   const dialog = useDialog()
 
+  const sessionSurfaces = () => orderedSessionSurfaces(list(SessionSurface), language.t("session.surface.transcript"))
+
   const factories = {
     ...input.apis,
     links: () => links,
     surfaces: () => ({
-      list: () => orderedSessionSurfaces(list(SessionSurface)),
-      current: (session) =>
-        resolveSessionSurface(orderedSessionSurfaces(list(SessionSurface)), sessionSurfaceID(session)).id,
+      list: sessionSurfaces,
+      current: (session) => resolveSessionSurface(sessionSurfaces(), sessionSurfaceID(session)).id,
       select: (id, session) => {
-        if (!orderedSessionSurfaces(list(SessionSurface)).some((surface) => surface.id === id)) return
+        if (!sessionSurfaces().some((surface) => surface.id === id)) return
 
         selectSessionSurface(id, session)
       },

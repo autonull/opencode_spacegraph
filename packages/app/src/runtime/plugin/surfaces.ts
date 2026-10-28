@@ -4,10 +4,8 @@ import type { SessionRef, SessionSurface } from "@opencode/plugin/gui"
 /** The host's own surface: the session body the app renders without a plugin surface. */
 export const transcriptSurfaceID = "transcript"
 
-export const defaultSessionSurface: SessionSurface = {
-  id: transcriptSurfaceID,
-  title: "Transcript",
-  render: (input) => input.transcript,
+export function defaultSessionSurface(title: string): SessionSurface {
+  return { id: transcriptSurfaceID, title, render: (input) => input.transcript }
 }
 
 const [selected, setSelected] = createSignal<Readonly<Record<string, string>>>({})
@@ -22,9 +20,9 @@ export function selectSessionSurface(id: string, session: SessionRef) {
 }
 
 /** The host's transcript and the contributed surfaces, in display order. Contributed `transcript` entries are ignored. */
-export function orderedSessionSurfaces(items: readonly SessionSurface[]) {
+export function orderedSessionSurfaces(items: readonly SessionSurface[], transcriptTitle: string) {
   return [
-    defaultSessionSurface,
+    defaultSessionSurface(transcriptTitle),
     ...items
       .filter((item) => item.id !== transcriptSurfaceID)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -33,5 +31,5 @@ export function orderedSessionSurfaces(items: readonly SessionSurface[]) {
 
 /** The surface with `id`, or the host's transcript when it is gone. */
 export function resolveSessionSurface(surfaces: readonly SessionSurface[], id: string) {
-  return surfaces.find((surface) => surface.id === id) ?? defaultSessionSurface
+  return surfaces.find((surface) => surface.id === id) ?? surfaces[0]
 }

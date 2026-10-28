@@ -3,8 +3,10 @@ import { DialogProvider } from "@opencode/ui/context/dialog"
 import { Toast } from "@opencode/ui/toast"
 import {
   Panel,
+  SessionSurface,
   type Appearance,
   type App,
+  type Context,
   type Keybinds,
   type MountedSession,
   type Router,
@@ -42,6 +44,7 @@ import { pluginEnabled, type Entry } from "@opencode/plugin/gui/host"
 import { createRegion, RegionContent } from "../src/runtime/plugin/panels"
 import { createClosedTabs } from "../src/runtime/plugin/closed-tabs"
 import { PluginSlot } from "../src/runtime/plugin/render"
+import { SessionSurfaceHost } from "../src/session/surface"
 import { persistedHandle } from "../src/runtime/plugin/stores"
 import { LanguageProvider } from "../src/runtime/i18n/language"
 import { ExtensionPlugins } from "../src/runtime/plugin/extension-plugins"
@@ -551,6 +554,114 @@ export function mountSessionRegion(input: {
     /** The session each composer attachment reached, in order. */
     attached,
     status: (id: string) => hosts[0]?.state.status[id],
+    unmount: () => {
+      dispose()
+      container.remove()
+    },
+  }
+}
+
+/** Mounts the real host and the session surface host with a scrollable transcript and two fixture surfaces. */
+export function mountSessionSurface() {
+  const container = document.createElement("div")
+  container.style.height = "200px"
+  document.body.appendChild(container)
+  const hosts: PluginHost[] = []
+  let context: Context | undefined
+  let mounts = 0
+  const value = { key: "surface\na", id: "a" }
+  // SAFETY: the surface host passes the session through; the test's surfaces read nothing from it.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+  const session = value as unknown as MountedSession
+  // SAFETY: as above; the test's surfaces read nothing from the screen.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+  const screen = {} as unknown as SessionScreen
+
+  function Transcript() {
+    mounts++
+
+    return (
+      <div data-testid="transcript" style={{ height: "100%", "overflow-y": "auto" }}>
+        <div style={{ height: "2000px" }}>Transcript</div>
+      </div>
+    )
+  }
+
+  const definition: Entry = {
+    id: "surface-fixture",
+    windowEntry: async () => ({
+      default: (ctx: Context) => {
+        context = ctx
+        ctx.add(SessionSurface, {
+          id: "map",
+          title: "Map",
+          order: 1,
+          render: ({ transcript }) => (
+            <>
+              <div data-testid="map">Map</div>
+              <div style={{ position: "absolute", inset: "0", visibility: "hidden" }}>{transcript}</div>
+            </>
+          ),
+        })
+        ctx.add(SessionSurface, {
+          id: "hybrid",
+          title: "Hybrid",
+          order: 2,
+          render: ({ transcript }) => (
+            <div style={{ display: "flex", height: "100%" }}>
+              <div data-testid="map">Map</div>
+              <div style={{ "min-width": "0", flex: "1" }}>{transcript}</div>
+            </div>
+          ),
+        })
+      },
+    }),
+  }
+
+  function Mounted() {
+    const host = usePluginHost()
+    hosts.push(host)
+    const transcript = createMemo(() => <Transcript />)
+
+    return (
+      <div style={{ position: "relative", height: "100%" }}>
+        <SessionSurfaceHost
+          session={session}
+          screen={screen}
+          transcript={() => transcript()}
+          default={() => (
+            <div data-testid="default" style={{ height: "100%" }}>
+              {transcript()}
+            </div>
+          )}
+        />
+      </div>
+    )
+  }
+
+  const dispose = render(
+    () => (
+      <LanguageProvider locale="en">
+        <PlatformProvider value={web}>
+          <DialogProvider>
+            <RealHost definitions={[definition]} captured={{}}>
+              <Mounted />
+            </RealHost>
+          </DialogProvider>
+        </PlatformProvider>
+      </LanguageProvider>
+    ),
+    container,
+  )
+
+  return {
+    container,
+    select: (id: string) => context?.surfaces.select(id, session),
+    current: () => context?.surfaces.current(session),
+    scroll: () => container.querySelector<HTMLElement>('[data-testid="transcript"]')?.scrollTop ?? -1,
+    mounts: () => mounts,
+    ready: () => hosts[0]?.ready() ?? false,
+    status: () => hosts[0]?.state.status["surface-fixture"],
     unmount: () => {
       dispose()
       container.remove()

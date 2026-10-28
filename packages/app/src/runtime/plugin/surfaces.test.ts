@@ -19,20 +19,22 @@ const surface = (id: string, order?: number): SessionSurface => ({
 
 describe("session surfaces", () => {
   test("lists the host transcript first, then contributions by order", () => {
-    const surfaces = orderedSessionSurfaces([surface("map", 2), surface("hybrid", 1)])
+    const surfaces = orderedSessionSurfaces([surface("map", 2), surface("hybrid", 1)], "Transcript")
 
     expect(surfaces.map((item) => item.id)).toEqual(["transcript", "hybrid", "map"])
   })
 
   test("ignores a contributed surface that claims the host id", () => {
-    expect(orderedSessionSurfaces([surface("transcript"), surface("map")]).map((item) => item.id)).toEqual([
+    expect(orderedSessionSurfaces([surface("transcript"), surface("map")], "Transcript").map((item) => item.id)).toEqual([
       "transcript",
       "map",
     ])
   })
 
   test("falls back to the transcript when the selected surface is gone", () => {
-    expect(resolveSessionSurface([defaultSessionSurface], "missing")).toBe(defaultSessionSurface)
+    const transcript = defaultSessionSurface("Transcript")
+
+    expect(resolveSessionSurface([transcript], "missing")).toBe(transcript)
   })
 
   test("keeps the selection per session", () => {

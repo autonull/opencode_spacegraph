@@ -1565,3 +1565,36 @@ story("session surfaces include the host transcript and follow a per-session sel
 
   expect(result).toEqual({ before: ["transcript", "map"], after: "map", other: "transcript", unknown: "map" })
 })
+
+story("a surface keeps the transcript mounted and scrolled while surfaces switch", async ({ page }) => {
+  const result = await page.evaluate(async (fixture) => {
+    const { mountSessionSurface, until } = await import(fixture)
+    const surface = mountSessionSurface()
+
+    try {
+      await until(() => surface.ready())
+      const transcript = surface.container.querySelector('[data-testid="transcript"]')
+      transcript.scrollTop = 240
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+
+      const reads: Array<{ surface: string | undefined; mounts: number; scroll: number }> = []
+      for (const id of ["map", "hybrid", "transcript"]) {
+        surface.select(id)
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        reads.push({ surface: surface.current(), mounts: surface.mounts(), scroll: surface.scroll() })
+      }
+
+      return { reads, map: !!surface.container.querySelector('[data-testid="map"]') }
+    } finally {
+      surface.unmount()
+    }
+  }, fixture)
+
+  expect(result.map).toBe(false)
+  expect(result.reads).toEqual([
+    { surface: "map", mounts: 1, scroll: 240 },
+    { surface: "hybrid", mounts: 1, scroll: 240 },
+    { surface: "transcript", mounts: 1, scroll: 240 },
+  ])
+})
