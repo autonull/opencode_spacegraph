@@ -14,7 +14,7 @@
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
 | **2 — built-in GUI plugin** | ✅ done | 2.1–2.5, 2.6–2.8 landed: map, hybrid (3 arrangements), turn-map layer, side panel with Inspector/Windows, settings (level/layout/depth/arrangement/side), commands (map/hybrid/transcript/level/layout/arrangement/side/turn-map/permalink/export/search) with keybinds. Remaining: 2.10 (arrangement scroll test, stories, capture matrix). |
-| **3 — cutover** | ❌ pending | Blocked on 2 parity. |
+| **3 — cutover** | 🔶 in progress | Experimental flag `settings.experimental.sessionGraph` bridges old/new. Sync effect maps `graph.map()`/`graph.sideBySide()` to plugin surfaces. Old `SessionGraphPane` and `SessionGraphToggle` conditionally rendered only when plugin disabled. Remaining: delete old graph code, protocol/server graph code, run generate, re-baseline. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
 ### Landed for 1.1
