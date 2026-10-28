@@ -25,7 +25,6 @@ import {
   type SessionTabs,
   type SessionTabState,
 } from "./session-tabs"
-import { sessionGraphSchema, createSessionGraphState } from "@/session/graph/graph-state"
 
 const DEFAULT_SIDEBAR_WIDTH = 344
 
@@ -132,8 +131,6 @@ const sessionViewSchema = Persistence.struct({
   reviewFile: Schema.optional(Schema.String),
   pendingMessage: Schema.optional(Schema.String),
   pendingMessageAt: Schema.optional(Schema.Finite),
-  // The map surface and its renderer/projection/selection, per session. Absent means map closed.
-  graph: Persistence.optional(sessionGraphSchema),
 })
 
 export const layoutSchema = Persistence.struct({
@@ -587,11 +584,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
             resize: regions.setSessionWidth,
           },
         }
-      },
-      /** The map surface and its renderer/projection/selection, per session. Absent means map closed. */
-      graph(sessionKey: string | Accessor<string>) {
-        const key = createSessionKeyReader(sessionKey, ensureKey)
-        return createSessionGraphState(store, setStore, touch, prune, key)
       },
       /** Side panel tabs for any session key, mounted or not. Reads are reactive. */
       panel: {

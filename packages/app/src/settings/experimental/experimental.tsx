@@ -4,7 +4,6 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { SettingsList } from "@/settings/list"
 import { useSettings } from "@/settings/model"
 import { SettingsRow } from "@/settings/row"
-import { SettingsGraphExperimental } from "@/session/graph/graph-settings"
 import "@/settings/settings.css"
 
 export const experimentalSettingsAvailable = true
@@ -52,9 +51,6 @@ export const SettingsExperimental: Component = () => {
               </div>
             </SettingsRow>
           </SettingsList>
-        </div>
-        <div class="settings-section">
-          <SettingsGraphExperimental />
         </div>
       </div>
     </>

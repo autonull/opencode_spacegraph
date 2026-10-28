@@ -2,7 +2,6 @@ import type { SessionMessageUser } from "@opencode/client/promise"
 import { useLocation, useNavigate } from "@solidjs/router"
 import { createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { messageIdFromHash } from "./message-id-from-hash"
-import { graphPermalinkFromHash } from "./graph/graph-permalink"
 
 export const useSessionHashScroll = (input: {
   sessionKey: () => string
@@ -128,10 +127,6 @@ export const useSessionHashScroll = (input: {
 
       return
     }
-
-    // T3.5: a graph permalink belongs to the graph surface; the transcript leaves it alone, so it
-    // keeps the position it restores instead of jumping to the bottom.
-    if (graphPermalinkFromHash(hash)) return
 
     const messageId = messageIdFromHash(hash)
 

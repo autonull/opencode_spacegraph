@@ -115,7 +115,6 @@ export function useSessionModel() {
     layout: {
       tabs: layout.tabs,
       view: layout.view,
-      graph: layout.graph,
       tabKey: layout.tabKey,
       sessionKey: layout.sessionKey,
     },

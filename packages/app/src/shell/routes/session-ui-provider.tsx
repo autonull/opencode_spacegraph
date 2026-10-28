@@ -14,7 +14,6 @@ import { readLocalImage } from "@/runtime/server/image"
 import { useLanguage } from "@/runtime/i18n/language"
 import { showToast } from "@/shell/notifications/toast"
 import { createTurnDiffCache } from "@/session/timeline/turn-diffs"
-import { createSnapshotCache } from "@/session/graph/snapshot-cache"
 import { useSettings } from "@/settings/model"
 
 export function SessionUIProvider(
@@ -112,9 +111,6 @@ export function SessionUIProvider(
     return tabs.state(tab, "turnDiffs", createTurnDiffCache)
   }
 
-  // Workspace snapshot lives in the tab's in-memory state, debounced and scoped to the session.
-  const snapshotCache = createSnapshotCache(serverSDK, directory, () => params.id)
-
   const sessionUIData = createMemo(() => ({
     provider: providers.ready()
       ? { all: providers.all(), default: providers.default(), connected: providers.connected().map((item) => item.id) }
@@ -144,10 +140,6 @@ export function SessionUIProvider(
           get: (input) => turnDiffs()?.get(input),
           load: (input) => turnDiffs()?.load(input, () => serverSDK.api.session.diff(input)),
           getAllLoaded: () => turnDiffs()?.getAllLoaded() ?? new Map(),
-        }}
-        snapshot={{
-          get: (scope, paths) => snapshotCache.get(scope, paths),
-          load: (scope, paths) => snapshotCache.load(scope, paths),
         }}
         onNavigateToSession={navigateToSession}
         onSessionHref={href}

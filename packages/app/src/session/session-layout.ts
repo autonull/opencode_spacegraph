@@ -57,6 +57,5 @@ export const useSessionLayout = () => {
     }),
     tabs: createMemo(() => layout.tabs(sessionKey)),
     view: createMemo(() => layout.view(sessionKey, regions)),
-    graph: createMemo(() => layout.graph(sessionKey)),
   }
 }

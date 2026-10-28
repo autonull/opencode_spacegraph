@@ -19,7 +19,6 @@ import type { SessionRevert } from "@/session/revert"
 import { usePluginClaims, usePluginScoped } from "@/runtime/plugin/commands"
 import type { Region } from "@/runtime/plugin/panels"
 import { sideTabShortcuts } from "@/runtime/plugin/closed-tabs"
-import { graphCommands } from "./graph-commands"
 
 type SessionCommandSource = {
   identity: SessionModel["identity"]
@@ -68,9 +67,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     const value = await load()
     owner.run(() => show(value))
   }
-
-  const shown = settings.visibility.fileTree
-  const graphEnabled = settings.experimental.sessionGraph
 
   // The file the selected side tab shows; other tabs have no line selection.
   const activeFile = () => actions.region.selected()?.tab.file
@@ -531,11 +527,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
           }),
         ]
       : []),
-    ...graphCommands({
-      actions,
-      graphEnabled,
-      shown,
-    }),
     viewCommand({
       id: "input.focus",
       title: language.t("command.input.focus"),
