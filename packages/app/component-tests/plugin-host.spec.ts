@@ -22,6 +22,9 @@ type Scope = { owner?: Owner | null; end: () => void; ctx?: Context }
 /** The context the session-routing case keeps from inside its plugin. */
 type Kept = { ctx?: Context }
 
+/** Surface ids and selections a plugin reported through `ctx.surfaces`. */
+type SurfaceObservation = { before?: string[]; after?: string; unknown?: string; other?: string }
+
 /** What the asking case keeps from inside its plugin: its dialogs, the end of its scope, and that scope's prompt. */
 type Asked = { dialogs?: Dialogs; end?: () => void; prompt?: Promise<string | undefined> }
 
@@ -1524,7 +1527,8 @@ story("composer pills show per session, open their rows, and fail only their own
 story("session surfaces include the host transcript and follow a per-session selection", async ({ page }) => {
   const result = await page.evaluate(async (fixture) => {
     const { mountPlugins, until, SessionSurface } = await import(fixture)
-    const observed: { before?: string[]; after?: string; unknown?: string; other?: string } = {}
+    const observed: SurfaceObservation = {}
+
     const host = mountPlugins({
       definitions: [
         {
@@ -1578,6 +1582,7 @@ story("a surface keeps the transcript mounted and scrolled while surfaces switch
       await new Promise((resolve) => requestAnimationFrame(resolve))
 
       const reads: Array<{ surface: string | undefined; mounts: number; scroll: number }> = []
+
       for (const id of ["map", "hybrid", "transcript"]) {
         surface.select(id)
         await new Promise((resolve) => requestAnimationFrame(resolve))
@@ -1603,6 +1608,7 @@ story("built-in spacegraph surfaces mount through the real host", async ({ page 
   const errors: string[] = []
   page.on("pageerror", (error) => errors.push(error.message))
   const builtins = sourceURL(new URL("../../gui-plugins/src/renderer.ts", import.meta.url))
+
   const result = await page.evaluate(
     async ({ fixture, builtins }) => {
       const { mountBuiltInSurface, until } = await import(fixture)
