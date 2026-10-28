@@ -15,6 +15,8 @@ import details from "./details"
 import detailsRenderer from "./details/renderer"
 import sessionMap from "./session-map"
 import sessionMapRenderer from "./session-map/renderer"
+import spacegraph from "./spacegraph"
+import spacegraphRenderer from "./spacegraph/renderer"
 import browser from "./browser"
 import browserRenderer from "./browser/renderer"
 import pairing from "./pairing"
@@ -45,6 +47,7 @@ export const builtins = compose({
   review: { ...review, windowEntry: eager(reviewRenderer) },
   details: { ...details, windowEntry: eager(detailsRenderer) },
   "session-map": { ...sessionMap, windowEntry: eager(sessionMapRenderer) },
+  spacegraph: { ...spacegraph, windowEntry: eager(spacegraphRenderer) },
   browser: { ...browser, windowEntry: eager(browserRenderer) },
   pairing: { ...pairing, windowEntry: eager(pairingRenderer) },
   updater: { ...updater, windowEntry: eager(updaterRenderer) },

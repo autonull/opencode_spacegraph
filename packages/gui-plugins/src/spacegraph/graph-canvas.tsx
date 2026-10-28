@@ -1,0 +1,124 @@
+import { For, Show, createMemo } from "solid-js"
+import { buildGraph, layoutGraph, nodeSize, nodesAtLevel, turnNodeID } from "@opencode/session-ui/graph"
+import type { GraphNode, GraphViewData } from "@opencode/session-ui/graph"
+import type { SessionStatus } from "@opencode/client/promise"
+import { usePlugin } from "@opencode/plugin/gui"
+import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
+import type { SpacegraphModel } from "./model"
+
+const PAD = 32
+
+const TURN_PREFIX = "turn:"
+
+export function GraphCanvas(props: {
+  model: SpacegraphModel
+  session: MountedSession
+  screen: SessionScreen
+}) {
+  const ctx = usePlugin()
+
+  const graph = createMemo<GraphViewData>(() => {
+    const status: SessionStatus =
+      props.session.server.data.session.status(props.session.id) === "running" ? { type: "busy" } : { type: "idle" }
+
+    return buildGraph({ messages: props.session.server.data.session.message.list(props.session.id), status })
+  })
+
+  const geometry = createMemo(() => {
+    const value = graph()
+    const positions = layoutGraph(value).positions
+
+    const boxes = nodesAtLevel(value, "overview").flatMap((node) => {
+      const position = positions.get(node.id)
+
+      if (!position) return []
+      const [w, h] = nodeSize(node)
+
+      return [{ node, x: position.x, y: position.y, w, h, left: position.x - w / 2, top: position.y - h / 2 }]
+    })
+
+    const left = Math.min(...boxes.map((box) => box.left), 0)
+    const top = Math.min(...boxes.map((box) => box.top), 0)
+    const right = Math.max(...boxes.map((box) => box.left + box.w), 0)
+    const bottom = Math.max(...boxes.map((box) => box.top + box.h), 0)
+
+    return { boxes, viewBox: `${left - PAD} ${top - PAD} ${right - left + PAD * 2} ${bottom - top + PAD * 2}` }
+  })
+
+  const activeID = createMemo(() => {
+    const value = graph()
+    const messageID = props.screen.transcript.activeMessageID()
+    const owner = messageID ? value.turnByMessageID.get(messageID) : undefined
+
+    return (owner ? turnNodeID(owner) : undefined) ?? props.model.focused(props.session) ?? value.activeTurn
+  })
+
+  const reveal = (node: GraphNode) => {
+    const opener =
+      node.messageID ?? (node.turnID?.startsWith(TURN_PREFIX) ? node.turnID.slice(TURN_PREFIX.length) : undefined)
+
+    if (!opener) return
+    props.model.focus(props.session, node.id)
+    props.screen.transcript.reveal(opener)
+  }
+
+  const label = (node: GraphNode) => {
+    const count = node.clusterOf?.length ?? 0
+    const text = node.derived && count > 0 ? `${node.label} · ${count}` : node.label
+
+    return text.length > 22 ? `${text.slice(0, 21)}…` : text
+  }
+
+  return (
+    <div class="relative size-full overflow-hidden bg-v2-background-bg-base" data-slot="spacegraph-map">
+      <Show
+        when={geometry().boxes.length > 0}
+        fallback={
+          <div class="flex size-full items-center justify-center px-6 text-center text-13-regular text-text-weak">
+            {ctx.t("empty")}
+          </div>
+        }
+      >
+        <svg
+          class="size-full"
+          viewBox={geometry().viewBox}
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label={ctx.t("surface.map")}
+        >
+          <For each={geometry().boxes}>
+            {(box) => (
+              <g
+                class="cursor-pointer"
+                data-slot="spacegraph-node"
+                data-node-id={box.node.id}
+                onClick={() => reveal(box.node)}
+              >
+                <rect
+                  x={box.left}
+                  y={box.top}
+                  width={box.w}
+                  height={box.h}
+                  rx={8}
+                  fill={box.node.derived ? "var(--v2-background-bg-deep)" : "var(--v2-background-bg-base)"}
+                  stroke={box.node.id === activeID() ? "var(--v2-text-text-base)" : "var(--v2-border-border-base)"}
+                  stroke-width={box.node.id === activeID() ? 2 : 1}
+                />
+                <text
+                  x={box.x}
+                  y={box.y}
+                  text-anchor="middle"
+                  dy="0.32em"
+                  font-size="11"
+                  fill={box.node.id === activeID() ? "var(--v2-text-text-base)" : "var(--text-weak)"}
+                >
+                  {label(box.node)}
+                </text>
+              </g>
+            )}
+          </For>
+        </svg>
+      </Show>
+    </div>
+  )
+}
