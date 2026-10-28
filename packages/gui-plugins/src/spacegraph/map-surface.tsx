@@ -11,7 +11,13 @@ export function MapSurface(props: {
 }) {
   return (
     <div class="relative size-full min-h-0" data-slot="spacegraph-surface-map">
-      <GraphCanvas model={props.model} session={props.session} screen={props.screen} />
+      <GraphCanvas
+        model={props.model}
+        session={props.session}
+        screen={props.screen}
+        level={() => props.model.level(props.session)}
+        layout={() => props.model.layout(props.session)}
+      />
       <div class="invisible absolute inset-0">{props.transcript}</div>
     </div>
   )

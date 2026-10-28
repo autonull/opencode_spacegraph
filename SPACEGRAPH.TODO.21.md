@@ -13,7 +13,7 @@
 | **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
-| **2 — built-in GUI plugin** | 🔶 started | 2.1 skeleton + registration landed; 2.2 has a summary-map surface, full parity remaining. |
+| **2 — built-in GUI plugin** | 🔶 in progress | 2.1 done; 2.2 has levels/layout strategies; 2.3 has all three arrangements. Camera/depth, turn layer, side panel, settings, commands polish remain. |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
@@ -37,7 +37,9 @@
 ### Clarified next actions
 
 - Batch 2.1 is done: `spacegraph` is a built-in plugin with Map and Hybrid surfaces plus Surface/Transcript commands.
-- Batch 2.2 next: add level switching, layouts, depth/camera, and parity controls to `packages/gui-plugins/src/spacegraph/graph-canvas.tsx`.
+- Batch 2.2 next: add depth/camera and a visible toolbar to `packages/gui-plugins/src/spacegraph/graph-canvas.tsx`.
+- Batch 2.3 next: add a component test that cycles all three arrangements and asserts transcript scroll survives.
+- Batch 2.4 next: `TurnMapLayer` on the map surface.
 - Keep the old graph pane as `SessionSurfaceHost.default` until 2.2/3.1; do not delete `packages/app/src/session/graph/*` yet.
 - When 2.2 lands, the plugin's MapSurface must receive the same `transcript` element and hide it with `visibility`/position, never `display: none`.
 - `SessionLayer` ids are currently scoped to their surface only; the host renders them inline above the surface body.
@@ -249,8 +251,8 @@ opencode-spacegraph/
 | # | Item | Acceptance |
 |---|------|------------|
 | **2.1** | ✅ Skeleton + built-in reg | `packages/gui-plugins/src/spacegraph/{index,renderer}.tsx`; id `spacegraph` reserved in `gui-plugins/{main,renderer}.ts` |
-| **2.2** | 🔶 MapSurface | Basic overview SVG map landed (`graph-canvas.tsx`, `map-surface.tsx`) with hidden transcript; levels/layouts/depth/camera parity remains |
-| **2.3** | HybridSurface | `stacked`/`side`/`floating`; transcript scroll preserved on every switch; floating is surface-internal |
+| **2.2** | 🔶 MapSurface | Overview/execution/detail levels, five layout strategies, hidden transcript landed; depth/camera/full toolbar remain |
+| **2.3** | 🔶 HybridSurface | `stacked`/`side`/`floating` landed in one DOM tree so the transcript never moves; side start/end. Needs explicit scroll test per arrangement |
 | **2.4** | TurnMapLayer | `ctx.surfaces.current` layer; capped subgraph; "Open full map"; focus trap; Escape |
 | **2.5** | SidePanel | `Panel` region side + mobile; imports `@opencode/session-ui/graph` directly; highlight active turn; reveal |
 | **2.6** | Settings + persistence | `SettingsPage` + `Store.session`: surface, arrangement, side, level, layout, depth, camera, focused node, log text scale |

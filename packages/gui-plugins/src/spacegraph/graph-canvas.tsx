@@ -1,6 +1,6 @@
-import { For, Show, createMemo } from "solid-js"
+import { For, Show, createMemo, type Accessor } from "solid-js"
 import { buildGraph, layoutGraph, nodeSize, nodesAtLevel, turnNodeID } from "@opencode/session-ui/graph"
-import type { GraphNode, GraphViewData } from "@opencode/session-ui/graph"
+import type { GraphNode, GraphViewData, LayoutStrategy, ZoomLevel } from "@opencode/session-ui/graph"
 import type { SessionStatus } from "@opencode/client/promise"
 import { usePlugin } from "@opencode/plugin/gui"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
@@ -14,6 +14,8 @@ export function GraphCanvas(props: {
   model: SpacegraphModel
   session: MountedSession
   screen: SessionScreen
+  level: Accessor<ZoomLevel>
+  layout: Accessor<LayoutStrategy>
 }) {
   const ctx = usePlugin()
 
@@ -26,9 +28,9 @@ export function GraphCanvas(props: {
 
   const geometry = createMemo(() => {
     const value = graph()
-    const positions = layoutGraph(value).positions
+    const positions = layoutGraph(value, { level: props.level(), strategy: props.layout() }).positions
 
-    const boxes = nodesAtLevel(value, "overview").flatMap((node) => {
+    const boxes = nodesAtLevel(value, props.level()).flatMap((node) => {
       const position = positions.get(node.id)
 
       if (!position) return []

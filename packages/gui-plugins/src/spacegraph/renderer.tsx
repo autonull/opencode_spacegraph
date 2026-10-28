@@ -52,6 +52,59 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     }
   })
 
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "level",
+      title: ctx.t("command.level"),
+      group: ctx.t("command.group"),
+      run: () => model.cycleLevel(session),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "layout",
+      title: ctx.t("command.layout"),
+      group: ctx.t("command.group"),
+      run: () => model.cycleLayout(session),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "arrangement",
+      title: ctx.t("command.arrangement"),
+      group: ctx.t("command.group"),
+      run: () => model.cycleArrangement(session),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "side",
+      title: ctx.t("command.side"),
+      group: ctx.t("command.group"),
+      run: () => model.toggleSide(session),
+    }
+  })
+
   ctx.add(Command, (): Command | undefined => {
     if (!ctx.sessions.current()) return undefined
 
