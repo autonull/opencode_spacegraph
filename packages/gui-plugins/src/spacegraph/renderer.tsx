@@ -5,6 +5,7 @@ import {
   MenuItem,
   Panel,
   SessionSurface,
+  SettingsPage,
   type PanelTab,
   type Plugin,
 } from "@opencode/plugin/gui"
@@ -17,6 +18,7 @@ import { TurnMapLayer } from "./turn-map-layer"
 
 const setup: Plugin.Setup<typeof definition> = (ctx) => {
   const SpacegraphPanel = lazy(() => import("./panel"))
+  const SpacegraphSettings = lazy(() => import("./settings"))
   onCleanup(onIdle(() => void SpacegraphPanel.preload()))
 
   const model = createSpacegraph(ctx)
@@ -120,6 +122,18 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     }
   })
 
+
+  ctx.add(SettingsPage, {
+    id: `${ctx.id}.map`,
+    title: ctx.t("settings.title"),
+    icon: "branch-out",
+    entries: [{ id: "map", title: ctx.t("settings.title"), description: ctx.t("settings.description") }],
+    render: () => (
+      <Suspense>
+        <SpacegraphSettings />
+      </Suspense>
+    ),
+  })
 
   ctx.add(MenuItem, {
     menu: "session.panel",

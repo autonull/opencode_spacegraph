@@ -19,6 +19,7 @@ function next<T>(values: readonly T[], current: T) {
 
 export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const store = (session: MountedSession) => ctx.stores.session(session)
+  const prefs = ctx.stores.prefs
 
   return {
     focused: (session: MountedSession) => store(session).value?.focused,
@@ -27,10 +28,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.focused = id
       })
     },
-    level: (session: MountedSession): ZoomLevel => store(session).value?.level ?? "overview",
-    layout: (session: MountedSession): LayoutStrategy => store(session).value?.layout ?? "lanes",
-    arrangement: (session: MountedSession): GraphArrangement => store(session).value?.arrangement ?? "side",
-    side: (session: MountedSession): GraphSide => store(session).value?.side ?? "end",
+    level: (session: MountedSession): ZoomLevel => store(session).value?.level ?? prefs.value.level ?? "overview",
+    layout: (session: MountedSession): LayoutStrategy => store(session).value?.layout ?? prefs.value.layout ?? "lanes",
+    arrangement: (session: MountedSession): GraphArrangement =>
+      store(session).value?.arrangement ?? prefs.value.arrangement ?? "side",
+    side: (session: MountedSession): GraphSide => store(session).value?.side ?? prefs.value.side ?? "end",
     surface: (session: MountedSession) => store(session).value?.surface,
     select: (session: MountedSession, id: string) => {
       store(session).update((draft) => {
