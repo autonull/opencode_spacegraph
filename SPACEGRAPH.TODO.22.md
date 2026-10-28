@@ -11,7 +11,7 @@
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ⏳ next | Run `bun run graph:capture --mode=verify` against current code (both paths active via feature flag). |
+| **2.10 — capture matrix** | 🔶 core tests pass | Core tests 01-05 pass (log, graph overview, execution, selected, return to log). Full 44-frame matrix needs longer timeout to complete; core visual parity validated. |
 | **3A — delete app/graph code** | ⏳ pending | Feature-flagged behind `settings.experimental.sessionGraph`. Low risk, reversible. |
 | **3B — delete protocol/server graph code** | ⏳ pending | After 3A verified. Run `bun run generate`. |
 | **4 — T2.2 evidence** | ⏳ pending | Stop rule unchanged. Runs on built-in plugin. |

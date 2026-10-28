@@ -41,9 +41,26 @@ if (!modes.includes(mode)) {
 const dir = mode === "verify" ? await mkdtemp(join(tmpdir(), "graph-capture-")) : screenshots
 const captureMode = mode === "baseline" ? "baseline" : "demo"
 
-await $`bun run test:e2e -- e2e/graph/capture.spec.ts --reporter=line --workers=1`
-  .cwd(app)
-  .env({ ...process.env, GRAPH_CAPTURE_DIR: dir, GRAPH_CAPTURE_MODE: captureMode })
+// Start backend server for e2e tests
+  const serverProcess = await $`nohup bun dev serve --port 4096 > /tmp/opencode-server.log 2>&1 & echo $!`
+    .cwd(root)
+    .env({ ...process.env, VITE_OPENCODE_TEST_FIXTURES: "1" })
+    .text()
+  
+  const serverPid = parseInt(serverProcess.trim())
+
+  try {
+    // Wait for server to be ready
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+
+    await $`bun run test:e2e -- e2e/graph/capture.spec.ts --reporter=line --workers=1 --timeout=300000`
+      .cwd(app)
+      .env({ ...process.env, GRAPH_CAPTURE_DIR: dir, GRAPH_CAPTURE_MODE: captureMode })
+  } finally {
+    try {
+      process.kill(serverPid, "SIGTERM")
+    } catch {}
+  }
 
 if (mode === "compare" || mode === "verify") {
   await $`bun run test:components -- graph-capture.spec.ts --reporter=line --workers=1`

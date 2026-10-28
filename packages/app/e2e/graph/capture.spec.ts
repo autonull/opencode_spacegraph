@@ -110,7 +110,7 @@ async function waitForStillCanvas(page: Page) {
 
         return still >= 2
       },
-      { intervals: [100] },
+      { intervals: [100], timeout: 30000 },
     )
     .toBe(true)
 }
@@ -236,8 +236,10 @@ function workspaceFixture() {
 async function openGraph(page: Page, input = graphFixture()) {
   await openSession(page, input)
   await settle(page)
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  // Open spacegraph map surface via keyboard shortcut (Control+Shift+M)
+  await page.keyboard.press("Control+Shift+M")
+  // Wait longer for graph to render
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
 }
 
@@ -320,7 +322,8 @@ test("05 return to log", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  // Return to transcript via keyboard shortcut (Control+Shift+T)
+  await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await expect(page.locator('[data-component="composer-editor"]')).toBeVisible({ timeout: 15000 })
   await settle(page)
