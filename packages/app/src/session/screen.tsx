@@ -333,9 +333,13 @@ function SessionScreenContent(props: {
         return view.id === source.identity.sessionID() ? view : previous
       }, untrack(props.view))
 
+      // Combine the cache's active (conversation visibility + session match) with splitVisible
+      // (hybrid log pane visibility) so the virtualizer re-measures when the log pane becomes visible.
+      const combinedActive = createMemo(() => active() && splitVisible())
+
       return (
         <MessageTimeline
-          active={active()}
+          active={combinedActive()}
           hideHeader={!isDesktop()}
           registerHeaderGap={registerHeaderGap}
           session={source}
@@ -364,7 +368,7 @@ function SessionScreenContent(props: {
           reveal={timeline.view.reveal}
           setScrollToEnd={timeline.view.setScrollToEnd}
           search={
-            <Show when={active()}>
+            <Show when={combinedActive()}>
               <TimelineSearchBar controller={timelineSearch} />
             </Show>
           }
@@ -483,7 +487,7 @@ function SessionScreenContent(props: {
                 splitVisible={splitVisible}
                 screen={screen}
                 metricsEnabled={metricsEnabled}
-                transcript={timelineView()}
+                transcript={timelineView}
               />
             </Show>
           </Match>

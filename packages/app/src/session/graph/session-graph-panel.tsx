@@ -1,7 +1,7 @@
 import { Icon } from "@opencode/ui/icon"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
 import type { GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
-import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js"
+import { createMemo, createSignal, onCleanup, onMount, Show, type Accessor, type JSX } from "solid-js"
 import { useLanguage } from "@/runtime/i18n/language"
 import "./graph-panel.css"
 
@@ -52,8 +52,8 @@ export type SessionGraphPanelProps = {
    * actually on, so a reader who never opens it never pays for it.
    */
   graph: () => JSX.Element
-  /** The log pane. */
-  transcript: JSX.Element
+  /** The log pane, as a factory receiving the log pane's active state. */
+  transcript: (logActive: Accessor<boolean>) => JSX.Element
   arrangement: GraphArrangement
   side: GraphSide
   /** The share of the split axis the map holds, as a fraction. */
@@ -87,6 +87,10 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
   const floating = () => props.sideBySide && props.arrangement === "floating"
   const beside = () => props.sideBySide && props.arrangement === "side"
   const mapFirst = () => props.side === "start"
+
+  // The log pane is active when sideBySide is true (hybrid mode). This drives the transcript's
+  // virtualizer so it measures correctly when the pane becomes visible.
+  const logActive = createMemo(() => props.sideBySide)
 
   // T18.4: focus management — F6 cycles focus between the log pane, the divider, and the map pane.
   const focusOrder = createMemo(() => {
@@ -277,7 +281,7 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
               </span>
             </div>
           </Show>
-          <div class="min-h-0 flex-1">{props.transcript}</div>
+          <div class="min-h-0 flex-1">{props.transcript(logActive)}</div>
       </div>
       <Show when={props.sideBySide && !floating()}>
         <div

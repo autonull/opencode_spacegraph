@@ -1,4 +1,4 @@
-import { Show, type JSX } from "solid-js"
+import { Show, type Accessor, type JSX } from "solid-js"
 import { SessionGraphPanel } from "./session-graph-panel"
 import { SessionGraphView } from "./session-graph-view"
 import { SessionTurnMapOverlay } from "./turn-map-overlay"
@@ -15,7 +15,7 @@ export type SessionGraphPaneProps = {
   splitVisible: () => boolean
   screen: ReturnType<typeof import("../screen-layout").createSessionScreenLayout>
   metricsEnabled: () => boolean
-  transcript: JSX.Element
+  transcript: (logActive: Accessor<boolean>) => JSX.Element
 }
 
 export function SessionGraphPane(props: SessionGraphPaneProps) {

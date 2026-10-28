@@ -11,7 +11,7 @@
 | `session-graph` unit | **113 pass / 0 fail** |
 | `app` graph-state unit | **37 pass / 0 fail** |
 | `session-graph` component tests | **48 pass / 1 fail / 18 skip** (remaining: `graph-scale.spec.ts` turn cards count 0) |
-| App e2e graph | **32 pass / 14 fail** (was 0 pass; mount and card layout now work) |
+| App e2e graph | **~35 pass / 10 fail** (was 0 pass; mount and card layout now work; hybrid log renders) |
 | Typecheck | `session-graph` and `app` clean |
 | Library vitest | 539 pass (build still has TS errors — L1) |
 | `graph:verify` | **Blocked** on the remaining e2e/component failures below |
@@ -28,12 +28,13 @@
 - **Toolbar.** Search/questions/export render in the desktop View menu (tests open the menu first); time control receives the live model.
 - **Persistence.** Creating a session view entry includes `scroll: {}`, matching the layout schema and fixing reload persistence.
 - **E2E.** Log text size uses the actual max (`1.4`); capture and session specs open the View menu before Search.
+- **Hybrid log blank.** The cached `MessageTimeline` now receives a combined `active` signal that includes the log pane visibility (`splitVisible`). This makes the virtualizer re-measure when the log pane becomes visible in hybrid mode, fixing the blank log in "shows map+log", "picking a node moves log", and related tests.
 
-### 1b. Remaining e2e failures (14)
+### 1b. Remaining e2e failures (10)
 
 | Group | Tests | Likely cause |
 |-------|-------|--------------|
-| Hybrid log blank | shows map+log, picking a node moves log, scales log text, restores transcript position, graph.hybrid, graph-module fallback | `session-graph-panel-log` is visible but the cached `MessageTimeline` has no rows (it was mounted at zero height while the map-only pane hid the log). Needs a visibility-driven remeasure/remount or a proper `active` signal. |
+| Hybrid log (partial) | scales log text, restores transcript position, log scroll to node | Log now renders rows (fixed), but: font size slider doesn't change size; transcript position restore times out; log doesn't auto-scroll to revealed node. |
 | Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | Right-drag and wheel do not reach the renderer camera; all three depend on a working pan/zoom. Check the canvas/CSS3D input path after the graph canvas refactor. |
 | Fallback mount | falls back to Cytoscape | Renderer mount fails with `Maximum call stack size exceeded` under the aborted SpaceGraph module path. Same reactive/error-path class as above; reproduce with the console stack. |
 | Component | `graph-scale` turn cards | Scale story renders the notice but zero `.html-node-container:has([data-kind="turn"])`. Check the overview card budget / shaping after the geometry fix. |
@@ -169,8 +170,8 @@ bun run graph:dev      # mock backend, no provider key
 
 ## 10. Immediate Next Action
 
-1. **Hybrid log rows** — make the cached timeline measure when the log pane becomes visible (split/floating), or mount the transcript only when `!props.map || props.sideBySide` while preserving scroll state. This unblocks 6 e2e tests.
-2. **Camera input** — verify pointer/wheel events reach the SpaceGraph canvas after `GraphCanvasRegion`; fix the pan/zoom path. This unblocks 3 tests including T17.5.
-3. **Cytoscape fallback** — run the single failing test with the mount error stack; fix the fallback path without reintroducing the viewport loop.
-4. **`graph-scale` component** — inspect the overview render model for 80 turns and restore turn cards (or update the story/test if the level intentionally hides them).
+1. **Camera input** — verify pointer/wheel events reach the SpaceGraph canvas after `GraphCanvasRegion`; fix the pan/zoom path. This unblocks 3 tests including T17.5.
+2. **Cytoscape fallback** — run the single failing test with the mount error stack; fix the fallback path without reintroducing the viewport loop.
+3. **`graph-scale` component** — inspect the overview render model for 80 turns and restore turn cards (or update the story/test if the level intentionally hides them).
+4. **Hybrid log polish** — font size slider doesn't change size in hybrid; log doesn't auto-scroll to revealed node; transcript position restore times out.
 5. Once these are green, re-run `bun run graph:verify`; then Batch 3 (library L1/L2) and Batch 4 (T2.2).
