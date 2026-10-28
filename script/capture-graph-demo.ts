@@ -41,8 +41,8 @@ if (!modes.includes(mode)) {
 const dir = mode === "verify" ? await mkdtemp(join(tmpdir(), "graph-capture-")) : screenshots
 const captureMode = mode === "baseline" ? "baseline" : "demo"
 
-// Start backend server for e2e tests
-  const serverProcess = await $`nohup bun dev serve --port 4096 > /tmp/opencode-server.log 2>&1 & echo $!`
+// Start backend server for e2e tests - use setsid to create new session, fully independent
+  const serverProcess = await $`bash -c "setsid nohup bun dev serve --port 4096 > /tmp/opencode-server.log 2>&1 & disown; echo $!"`
     .cwd(root)
     .env({ ...process.env, VITE_OPENCODE_TEST_FIXTURES: "1" })
     .text()
@@ -58,7 +58,7 @@ const captureMode = mode === "baseline" ? "baseline" : "demo"
       .env({ ...process.env, GRAPH_CAPTURE_DIR: dir, GRAPH_CAPTURE_MODE: captureMode })
   } finally {
     try {
-      process.kill(serverPid, "SIGTERM")
+      process.kill(-serverPid, "SIGTERM")  // Kill the process group
     } catch {}
   }
 
