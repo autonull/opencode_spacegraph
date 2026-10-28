@@ -325,6 +325,7 @@ export const GraphView = (props: GraphViewProps) => {
     rendererID,
     setRendererID,
     fallback,
+    setFallback,
     error,
     setError,
 
@@ -1265,7 +1266,12 @@ export const GraphView = (props: GraphViewProps) => {
     props.arrangement
     const instance = renderer()
     if (!instance) return
-    viewportTracker.camera.request(() => instance.fit(untrack(contentIDs), untrack(fitOptions)))
+    // The fit reports a viewport synchronously, which the camera and the host's zoom readout track.
+    // Fitting inside the effect's tracking scope would subscribe this effect to its own result and
+    // refit forever; the structural inputs above are the only things that may request a frame.
+    untrack(() =>
+      viewportTracker.camera.request(() => instance.fit(untrack(contentIDs), untrack(fitOptions))),
+    )
   })
 
   // Build context object for GraphCanvasRegion (replaces 225 lines of props)
@@ -1417,6 +1423,7 @@ export const GraphView = (props: GraphViewProps) => {
       props.onRenderer?.(renderer)
       props.onRendererMounted?.(renderer, id)
     },
+    onReady: (info: { fallback: boolean }) => setFallback(info.fallback),
     onError: setError,
   }
 

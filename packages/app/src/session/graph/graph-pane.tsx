@@ -47,45 +47,43 @@ export function SessionGraphPane(props: SessionGraphPaneProps) {
 
   return (
     <>
-      <Show when={mapVisible()}>
-        <SessionGraphPanel
-          map={mapVisible()}
-          sideBySide={splitVisible()}
-          graph={() => (
-            <SessionGraphView
-              session={session}
-              onBack={leaveGraph}
-              onOpenTranscript={openGraphTranscript}
-              onReveal={splitVisible() ? revealInLog : undefined}
-              onSplitView={
-                splitVisible()
-                  ? undefined
-                  : () => {
-                      Metrics.count("mode-switch")
-                      graph.setMap(true)
-                      graph.setSideBySide(true)
-                    }
-              }
-              activeMessageID={splitVisible() ? timeline.currentMessageId() : undefined}
-              refitKey={splitVisible() ? "split" : "map"}
-              arrangement={graph.arrangement()}
-              onArrangementChange={graph.setArrangement}
-              arrangementSide={graph.arrangementSide()}
-              onArrangementSideChange={graph.setArrangementSide}
-            />
-          )}
-          transcript={transcript}
-          arrangement={graph.arrangement()}
-          side={graph.arrangementSide()}
-          split={graph.split()}
-          onSplit={graph.setSplit}
-          pane={graph.pane()}
-          onPane={graph.setPane}
-          logTextScale={graph.logTextScale()}
-          onLogTextScale={graph.setLogTextScale}
-          onClose={leaveGraph}
-        />
-      </Show>
+      <SessionGraphPanel
+        map={mapVisible()}
+        sideBySide={splitVisible()}
+        graph={() => (
+          <SessionGraphView
+            session={session}
+            onBack={leaveGraph}
+            onOpenTranscript={openGraphTranscript}
+            onReveal={splitVisible() ? revealInLog : undefined}
+            onSplitView={
+              splitVisible()
+                ? undefined
+                : () => {
+                    Metrics.count("mode-switch")
+                    graph.setMap(true)
+                    graph.setSideBySide(true)
+                  }
+            }
+            activeMessageID={splitVisible() ? timeline.currentMessageId() : undefined}
+            refitKey={splitVisible() ? "split" : "map"}
+            arrangement={graph.arrangement()}
+            onArrangementChange={graph.setArrangement}
+            arrangementSide={graph.arrangementSide()}
+            onArrangementSideChange={graph.setArrangementSide}
+          />
+        )}
+        transcript={transcript}
+        arrangement={graph.arrangement()}
+        side={graph.arrangementSide()}
+        split={graph.split()}
+        onSplit={graph.setSplit}
+        pane={graph.pane()}
+        onPane={graph.setPane}
+        logTextScale={graph.logTextScale()}
+        onLogTextScale={graph.setLogTextScale}
+        onClose={leaveGraph}
+      />
       <Show when={graphEnabled() && graph.turnMap()}>
         {(turnID) => (
           <div class="absolute inset-y-0 start-0 z-40" style={{ width: screen.panel.width() }}>

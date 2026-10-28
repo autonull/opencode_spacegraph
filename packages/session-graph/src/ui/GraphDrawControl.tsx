@@ -24,12 +24,14 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
     onClick: () => void
     pressed?: boolean
     slot?: string
+    value?: string
     keepOpen?: boolean
     ariaLabel?: string
   }) => (
     <button
       type="button"
       data-slot={input.slot}
+      data-value={input.value}
       class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
       aria-pressed={input.pressed}
       aria-label={input.ariaLabel ?? input.label}
@@ -98,6 +100,7 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
               onClick: () => props.onArrangementChange?.(arrangement),
               pressed: props.arrangement === arrangement,
               slot: "graph-arrangement-option",
+              value: arrangement,
             }),
           )}
           <Show when={props.onArrangementSideChange && props.arrangement !== "floating"}>

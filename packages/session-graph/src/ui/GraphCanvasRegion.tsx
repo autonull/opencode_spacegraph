@@ -16,7 +16,7 @@ import type {
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, onCleanup, type JSX } from "solid-js"
-import { GraphCanvas } from "../canvas/GraphCanvas"
+import { GraphCanvas, type GraphCanvasReady } from "../canvas/GraphCanvas"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphOverlayManager } from "./GraphOverlayManager"
 import { createNodeAnchor } from "./graph-anchors"
@@ -56,6 +56,7 @@ export type GraphCanvasRegionProps = {
   applyModel: (instance: any) => void
   onRenderer?: (renderer: GraphRenderer | undefined) => void
   onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
+  onReady?: (info: GraphCanvasReady) => void
   preferredRenderer?: () => RendererID
   rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
   
@@ -209,6 +210,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
           setRenderer(renderer)
           props.onRendererMounted?.(renderer, id)
         }}
+        onReady={props.onReady}
         onViewportChange={props.onViewportChange}
         onError={props.onError}
       />

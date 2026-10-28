@@ -333,9 +333,9 @@ function SessionScreenContent(props: {
         return view.id === source.identity.sessionID() ? view : previous
       }, untrack(props.view))
 
-      // Combine the cache's active (conversation visibility + session match) with splitVisible
-      // (hybrid log pane visibility) so the virtualizer re-measures when the log pane becomes visible.
-      const combinedActive = createMemo(() => active() && splitVisible())
+      // The log pane stays mounted and measured while the map takes the panel alone, so its
+      // virtualizer never remeasures from zero and keeps the reader's scroll position.
+      const combinedActive = createMemo(() => active())
 
       return (
         <MessageTimeline

@@ -4,40 +4,39 @@
 
 ---
 
-## 1. Verified State (2026-10-27, after this pass)
+## 1. Verified State (2026-10-28, after this pass)
 
 | Check | Result |
 |-------|--------|
-| `session-graph` unit | **113 pass / 0 fail** |
-| `app` graph-state unit | **37 pass / 0 fail** |
+| `session-graph` unit | 113 pass / 0 fail (last run; no source change to the model since) |
+| `app` graph-state unit | 37 pass / 0 fail (last run) |
 | `session-graph` component tests | **48 pass / 1 fail / 18 skip** (remaining: `graph-scale.spec.ts` turn cards count 0) |
-| App e2e graph | **~35 pass / 10 fail** (was 0 pass; mount and card layout now work; hybrid log renders rows) |
+| App e2e graph (`session-graph.spec.ts`) | **43–44 pass / 1–3 fail** out of 46; camera, split, fallback, transcript and text-scale tests now pass |
 | Typecheck | `session-graph` and `app` clean |
 | Library vitest | 539 pass (build still has TS errors — L1) |
-| `graph:verify` | **Blocked** on the remaining e2e/component failures below |
+| `graph:verify` | **Blocked** on the remaining e2e/component failures in §1b |
 
-### 1a. Fixed in this pass
+### 1a. Fixed in this pass (2026-10-28)
 
-- **Card geometry was empty.** `displayPositions`/`renderCard` were created before `geometry`, so their memos cached an empty map. Moved them after `geometry`; node cards now use their real layout positions instead of stacking at the origin.
-- **Viewport feedback loop.** Equal viewport reports rebuilt a new object on every camera event, recursively restarting Solid updates (`Maximum call stack size exceeded`). `setViewport` now ignores identical zoom/center reports.
-- **Budget never settled.** Repeated identical camera reports cleared the resting timer forever. `setResting` now ignores duplicate centers, so the budget follows the camera.
-- **Reactive props were frozen.** `canvasRegionProps` captured `renderModel()`, `ordered()`, popover values, error, etc. as plain values. These are now getters, restoring facet filtering, keep-only, notes, compare bar, and card-budget updates.
-- **Budget order.** Proximity ordering now runs before the node budget, so the nearest cards win the budget.
-- **Comparison.** `useComparison` reads checkpoint/turn count through accessors; `GraphCompareBar` reads `props.diff` reactively; clear resets the checkpoint to live.
-- **Notes.** `GraphView` and `useGraphAnnotations` now share one notes store, so saved notes appear in the map.
-- **Toolbar.** Search/questions/export render in the desktop View menu (tests open the menu first); time control receives the live model.
-- **Persistence.** Creating a session view entry includes `scroll: {}`, matching the layout schema and fixing reload persistence.
-- **E2E.** Log text size uses the actual max (`1.4`); capture and session specs open the View menu before Search.
-- **Hybrid log blank.** The cached `MessageTimeline` now receives a combined `active` signal that includes the log pane visibility (`splitVisible`). This makes the virtualizer re-measure when the log pane becomes visible in hybrid mode, fixing the blank log in "shows map+log", "picking a node moves log", and related tests.
+- **Self-triggering refit loop (root cause of the camera failures).** The `refitKey`/`arrangement` effect called `camera.request(...)`, and the synchronous fit reports flowed through `setViewport`/`camera.report`, reading signals inside the effect's tracking scope. The effect therefore refit on every viewport report: the camera never rested, the zoom readout always said 100%, pans/wheel zooms were undone, and the aborted-adapter path recursed. The fit is now inside `untrack`.
+- **Camera e2e coordinates.** The pan and budget tests started their right-drag at the pane's bottom-right, which the floating composer overlays, so the map never received the gesture. They now drag from the canvas centre (right-button pan relays through cards).
+- **Fallback banner never appeared.** `GraphFallback` read `props.fallback` in the component body and returned early, so it was not reactive. It now uses `<Show when={props.fallback && !props.error}>`; `GraphCanvasRegion` forwards `onReady.info.fallback` and `GraphView` calls `setFallback`.
+- **Arrangement menu lost `data-value`.** `GraphDrawControl` now writes `data-value` on its options; the hybrid arrangement test can select side/floating again.
+- **Transcript disappeared in map-only mode.** The `graph-pane` refactor gated the whole `SessionGraphPanel` on `mapVisible()`, so turning the map off removed the only transcript host. The panel is rendered unconditionally; `map` only controls the map surface.
+- **Timeline virtualizer did not follow log visibility.** `combinedActive` is no longer `active() && splitVisible()` (which blanked the transcript when the map was off). It now follows the conversation while the log stays mounted and measured.
+- **Log pane hidden with `display:none`.** It is positioned absolutely and made `invisible pointer-events-none` while the map takes the panel alone, keeping the virtualizer measured.
+- **ScrollView styles missing.** The app imported only `@opencode/ui/styles/tailwind` + `tokens`; the base `.scroll-view` rules (display:flex, overflow) were never loaded, so the timeline was not scrollable. Added a `./styles/components/*` UI export and imported `scroll-view.css` in `packages/app/src/index.css`. Transcript position restore now works.
+- **Log text scale was a no-op.** The scale variables were derived from `--text-size-*` names the app does not define. The log content wrapper now sets `font-size: calc(13px * var(--text-scale))`.
+- **E2E assertions that assumed the broken scroll view.** Scroll to the session start before finding `msg_user_1`; measure the text-scale contract on the log content surface; use the real `.scroll-view__viewport` in the hybrid keyboard test and `Control+Shift+h` on Linux.
+- Earlier in this pass: card geometry ordering, viewport feedback, resting budget, reactive `canvasRegionProps` getters, comparison/notes stores, toolbar menus, scroll persistence, and the hybrid log re-measure.
 
-### 1b. Remaining e2e failures (10)
+### 1b. Remaining failures (3)
 
-| Group | Tests | Likely cause |
-|-------|-------|--------------|
-| Hybrid log (partial) | scales log text, restores transcript position, log scroll to node | Log now renders rows (fixed), but: font size slider doesn't change size; transcript position restore times out; log doesn't auto-scroll to revealed node. |
-| Camera input | pans with right mouse, zooms with wheel, card budget follows camera (T17.5) | **Root cause found:** `@spacegraphjs/spacegraph-renderer/src/index.ts:72` only passes `enableRotate: !ortho` to `cameraControls`, missing `enablePan: true` and `enableZoom: true`. CameraControls defaults enable these, but partial config may not apply them. CSS layers correctly use `pointerEvents: 'none'`. |
-| Fallback mount | falls back to Cytoscape | Renderer mount fails with `Maximum call stack size exceeded` under the aborted SpaceGraph module path. Same reactive/error-path class as above; reproduce with the console stack. |
-| Component | `graph-scale` turn cards | Scale story renders the notice but zero `.html-node-container:has([data-kind="turn"])`. Check the overview card budget / shaping after the geometry fix. |
+| Group | Tests | Cause / next step |
+|-------|-------|-------------------|
+| Hybrid scroll preservation | `graph.hybrid (mod+shift+h) ...` | Entering map-only resets the log's `scrollTop` to 0 and it does not come back on return. The log is still mounted/measured, so something remounts or re-initialises the timeline (check the `transcript(logActive)` child and the cache view identity). The same scroll is preserved by the toolbar split path, so compare the two toggles. |
+| Flaky under parallel workers | `picking a node in the map moves the log to it`, `restores the transcript position after leaving the graph` | Both pass with `--workers=1` and fail intermittently with workers=3. Suspect virtualizer measurement under concurrent page load rather than product logic. Re-run with `--workers=1` before treating either as broken; then stabilise the wait on the visible row rather than a fixed scroll offset. |
+| Component | `graph-scale` turn cards | The overview story still renders the notice with zero `.html-node-container:has([data-kind="turn"])`. Decide whether overview intentionally hides turn cards (then update story/test) or restore the capped turn cards. |
 
 ---
 
@@ -51,7 +50,7 @@
 | **1.2** | `Detail` story export fails | `session-graph-view--detail` renders `ViewHarness level="detail" selection="result:prt_tool_shell_2"`. The `result:` node may not exist in fixture. Change to `tool:prt_tool_read_1` (exists) or make selection optional. | ✅ **Done** — Changed to `tool:prt_tool_read_1` |
 | **1.3** | Renderer tracking & capabilities | Track renderer in GraphView signal via `onRendererMounted`; add capabilities state to `useGraphState` with setter; move touch gestures to `GraphCanvasRegion` with renderer guard; add defensive guards for undefined model/node properties. | ✅ **Done** — `GraphView.tsx`, `GraphCanvasRegion.tsx`, `useGraphState.ts`, `cardTemplate.ts` |
 | **1.4** | E2E test harness fixes | Fix mock session title in e2e utils; fix session title locator in wait utilities; add `role="heading"` to session header. | ✅ **Done** — `app.ts`, `waits.ts`, `session-identity-header.tsx` |
-| **1.5** | Re-enable gate steps | Once 1.1–1.4 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — App e2e 32/46 pass; 14 fail (see §1b). Components 48 pass / 1 fail / 18 skip. Units 113 + 263 + 37 pass. |
+| **1.5** | Re-enable gate steps | Once 1.1–1.4 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — App e2e 43–44/46 pass (3 in §1b). Components 48 pass / 1 fail / 18 skip. Units 113 + 263 + 37 pass. |
 
 **Acceptance:** `bun run graph:verify` green; `test:components` = 54 pass / 0 fail / 0 fixme.
 
@@ -170,8 +169,7 @@ bun run graph:dev      # mock backend, no provider key
 
 ## 10. Immediate Next Action
 
-1. **Camera input** — verify pointer/wheel events reach the SpaceGraph canvas after `GraphCanvasRegion`; fix the pan/zoom path. This unblocks 3 tests including T17.5.
-2. **Cytoscape fallback** — run the single failing test with the mount error stack; fix the fallback path without reintroducing the viewport loop.
-3. **`graph-scale` component** — inspect the overview render model for 80 turns and restore turn cards (or update the story/test if the level intentionally hides them).
-4. **Hybrid log polish** — font size slider doesn't change size in hybrid; log doesn't auto-scroll to revealed node; transcript position restore times out.
-5. Once these are green, re-run `bun run graph:verify`; then Batch 3 (library L1/L2) and Batch 4 (T2.2).
+1. **Hybrid scroll preservation** — the log's `scrollTop` resets when the map takes the panel alone and does not return in hybrid. The log pane is mounted and measured (no `display:none`), so trace what remounts the timeline on `sideBySide` false (`transcript(logActive)` identity, `createTimelineCache` key, `MessageTimeline` active/remount). Compare with the toolbar split toggle, which does preserve position.
+2. **Stabilise the two flaky scroll tests** under parallel workers — reproduce with `--workers=3`, then wait on the visible row/scroll state instead of a fixed offset.
+3. **`graph-scale` component** — decide whether the overview level intentionally hides turn cards; either restore the capped turn cards or update the story/test and record why.
+4. Once these are green, re-run `bun run graph:verify`; then Batch 3 (library L1/L2) and Batch 4 (T2.2).

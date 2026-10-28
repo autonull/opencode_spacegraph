@@ -584,11 +584,14 @@ test("shows the map and the log together, and the reader chooses how they meet",
   await expect(hybrid).toHaveAttribute("data-arrangement", "stacked")
   await expect(page.locator('[data-slot="session-graph-panel-map"]')).toBeVisible()
   await expect(page.locator('[data-slot="session-graph-panel-log"]')).toBeVisible()
-  // The log is still the log, and the map is still the map.
+  // The log is still the log, and the map is still the map. The log opens at live, so scroll to the
+  // session's start to see the first prompt.
+  const log = page.locator('[data-slot="session-graph-panel-log"]')
+  await log.locator(".scroll-view__viewport").evaluate((element) => {
+    element.scrollTop = 0
+  })
   await expect(
-    page.locator(
-      '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
-    ),
+    log.locator('[data-timeline-row="UserMessage"][data-message-id="msg_user_1"]'),
   ).toBeVisible()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
@@ -673,15 +676,14 @@ test("scales the log's text from the split, without leaving the map", async ({ p
   const slider = page.locator('[data-slot="session-graph-panel-log-scale"] input[type="range"]')
   await expect(slider).toBeVisible()
 
-  const message = page
-    .locator('[data-slot="session-graph-panel-log"]')
-    .getByText("Fix the authentication test failures.")
-  const before = await message.evaluate((element) => getComputedStyle(element).fontSize)
+  // The log's content owns the transcript's inherited size, so it is the surface the slider scales.
+  const content = page.locator('[data-slot="session-graph-panel-log-content"]')
+  const before = await content.evaluate((element) => getComputedStyle(element).fontSize)
 
   await slider.fill("1.3")
 
   await expect
-    .poll(() => message.evaluate((element) => getComputedStyle(element).fontSize))
+    .poll(() => content.evaluate((element) => getComputedStyle(element).fontSize))
     .not.toBe(before)
 
   expect(errors).toEqual([])
@@ -882,7 +884,9 @@ test("falls back to the transcript when the graph module fails to load", async (
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
   await expect(page.locator(canvasHost)).toHaveCount(0)
   // The transcript is an independent surface: it renders and accepts input without the graph module.
-  await expect(page.locator('[data-slot="session-graph-panel-log"] [data-timeline-row]').first()).toBeVisible()
+  await expect(
+    page.locator('[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"]').first(),
+  ).toBeVisible()
 })
 
 test("names the session a fork came from and opens it", async ({ page }) => {
@@ -925,10 +929,11 @@ test("pans the view with the right mouse button", async ({ page }) => {
   const before = await card.boundingBox()
   const host = (await page.locator(canvasHost).boundingBox())!
 
-  // The right button belongs to the camera: the view follows the cursor.
-  await page.mouse.move(host.x + host.width - 40, host.y + host.height - 40)
+  // The right button belongs to the camera: the view follows the cursor. Drag from the middle of
+  // the canvas; the composer overlays the pane's bottom edge, so its corner is not the map.
+  await page.mouse.move(host.x + host.width / 2, host.y + host.height / 2)
   await page.mouse.down({ button: "right" })
-  await page.mouse.move(host.x + host.width - 140, host.y + host.height - 140, { steps: 10 })
+  await page.mouse.move(host.x + host.width / 2 - 100, host.y + host.height / 2 - 100, { steps: 10 })
   await page.mouse.up({ button: "right" })
 
   await expect
@@ -959,9 +964,9 @@ test("the card budget follows the camera (T17.5)", async ({ page }) => {
 
   // The camera moves: the budget follows it, and the cards move with it.
   const host = (await page.locator(canvasHost).boundingBox())!
-  await page.mouse.move(host.x + host.width - 40, host.y + host.height - 40)
+  await page.mouse.move(host.x + host.width / 2, host.y + host.height / 2)
   await page.mouse.down({ button: "right" })
-  await page.mouse.move(host.x + host.width - 460, host.y + host.height - 260, { steps: 10 })
+  await page.mouse.move(host.x + host.width / 2 - 420, host.y + host.height / 2 - 240, { steps: 10 })
   await page.mouse.up({ button: "right" })
 
   await expect.poll(cards).not.toEqual(before)
@@ -1109,28 +1114,27 @@ test("graph.hybrid (mod+shift+h) toggles hybrid and preserves transcript scroll"
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
 
-  // Scroll the transcript down
+  // Enter the hybrid so the log is on screen, then scroll it down.
   const log = page.locator('[data-slot="session-graph-panel-log"]')
-  const transcript = log.locator('[data-slot="timeline"]')
-  await transcript.evaluate((el) => { el.scrollTop = 500 })
-  const scrollBefore = await transcript.evaluate((el) => el.scrollTop)
+  await page.keyboard.press("Control+Shift+h")
+  await expect(log).toBeVisible()
+
+  const transcript = page.locator(".scroll-view__viewport", { has: page.locator("[data-timeline-row]") })
+  await transcript.evaluate((el) => {
+    el.scrollTop = 500
+  })
+  const scrollBefore = await transcript.evaluate((el) => Math.round(el.scrollTop))
   expect(scrollBefore).toBeGreaterThan(0)
 
-  // Toggle hybrid with mod+shift+h
-  await page.keyboard.press("Meta+Shift+h")
-  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+  // Leave the hybrid: the map takes the panel alone, and the log's position is not lost.
+  await page.keyboard.press("Control+Shift+h")
+  await expect(log).toBeHidden()
+  await expect.poll(() => transcript.evaluate((el) => Math.round(el.scrollTop))).toBe(scrollBefore)
 
-  // Verify transcript scroll position is preserved
-  const scrollAfter = await transcript.evaluate((el) => el.scrollTop)
-  expect(scrollAfter).toBe(scrollBefore)
-
-  // Toggle back with mod+shift+h
-  await page.keyboard.press("Meta+Shift+h")
-  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeHidden()
-
-  // Verify transcript scroll position is still preserved
-  const scrollAfterClose = await transcript.evaluate((el) => el.scrollTop)
-  expect(scrollAfterClose).toBe(scrollBefore)
+  // Return to the hybrid with mod+shift+h; the log is where the reader left it.
+  await page.keyboard.press("Control+Shift+h")
+  await expect(log).toBeVisible()
+  await expect.poll(() => transcript.evaluate((el) => Math.round(el.scrollTop))).toBe(scrollBefore)
 
   expect(errors).toEqual([])
 })

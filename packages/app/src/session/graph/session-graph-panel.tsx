@@ -88,9 +88,10 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
   const beside = () => props.sideBySide && props.arrangement === "side"
   const mapFirst = () => props.side === "start"
 
-  // The log pane is active when sideBySide is true (hybrid mode). This drives the transcript's
-  // virtualizer so it measures correctly when the pane becomes visible.
-  const logActive = createMemo(() => props.sideBySide)
+  // The log pane is active whenever it is on screen: alone in transcript mode, or beside the map in
+  // the hybrid. This drives the transcript's virtualizer so it measures correctly when the pane
+  // becomes visible.
+  const logActive = createMemo(() => !props.map || props.sideBySide)
 
   // T18.4: focus management — F6 cycles focus between the log pane, the divider, and the map pane.
   const focusOrder = createMemo(() => {
@@ -251,7 +252,9 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
         class="min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         classList={{
           flex: !props.map || props.sideBySide,
-          hidden: props.map && !props.sideBySide,
+          // The map alone hides the log without unmounting it: display:none would reset its scroll
+          // position, so the reader would lose their place every time they looked at the map.
+          "invisible pointer-events-none absolute inset-0": props.map && !props.sideBySide,
         }}
         style={{ order: props.sideBySide && mapFirst() ? 2 : 0, "--text-scale": props.logTextScale }}
         tabIndex={0}
@@ -281,7 +284,9 @@ export function SessionGraphPanel(props: SessionGraphPanelProps) {
               </span>
             </div>
           </Show>
-          <div class="min-h-0 flex-1">{props.transcript(logActive)}</div>
+          <div data-slot="session-graph-panel-log-content" class="min-h-0 flex-1">
+            {props.transcript(logActive)}
+          </div>
       </div>
       <Show when={props.sideBySide && !floating()}>
         <div
