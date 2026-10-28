@@ -26,6 +26,7 @@ export default {
   "command.permalink": "Copy map permalink",
   "command.export": "Export map JSON",
   "command.exportSvg": "Export map SVG",
+  "command.exportHtml": "Export map HTML",
   "camera.zoomIn": "Zoom in",
   "camera.zoomOut": "Zoom out",
   "camera.reset": "Reset view",

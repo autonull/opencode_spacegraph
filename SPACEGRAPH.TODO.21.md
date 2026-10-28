@@ -13,7 +13,7 @@
 | **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
-| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed: settings, persistence, toolbar, camera, permalinks, JSON/SVG export. Remaining: depth projection, layout-qualified framing, arrangement tests, HTML export. |
+| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed: settings, persistence, toolbar, camera, layout-qualified permalinks, JSON/SVG/HTML export. Remaining: depth projection, arrangement tests, capture matrix. |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
@@ -41,7 +41,8 @@
 - Batch 2.3 next: add a component test that cycles all three arrangements and asserts transcript scroll survives.
 - Batch 2.3 next: add a component test that cycles all three arrangements and asserts transcript scroll survives.
 - Batch 2.2 next: depth projection (`flat`/`layered`/`depth-stack`/`orbit`) over the existing layout.
-- Batch 2.8 next: layout-qualified permalinks, node framing, and HTML export.
+- Batch 2.8 next: node framing after a permalink reveal.
+- Batch 2.10 next: arrangement scroll test and capture matrix.
 - Keep the old graph pane as `SessionSurfaceHost.default` until 2.2/3.1; do not delete `packages/app/src/session/graph/*` yet.
 - When 2.2 lands, the plugin's MapSurface must receive the same `transcript` element and hide it with `visibility`/position, never `display: none`.
 - `SessionLayer` ids are currently scoped to their surface only; the host renders them inline above the surface body.
@@ -259,9 +260,9 @@ opencode-spacegraph/
 | **2.5** | 🔶 SidePanel | `Panel` region side + mobile with full `GraphCanvas`, active-turn highlight, reveal; compact parity polish remains |
 | **2.6** | 🔶 Settings + persistence | `Store.session` persists surface, level, layout, arrangement, side, turn map, focused node; `Store.global` settings page edits defaults; camera/log scale remain |
 | **2.7** | 🔶 Commands | Commands for map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, JSON export; side panel `MenuItem`; visible level/layout toolbar; settings page. Search/header slot/keybinds remain |
-| **2.8** | 🔶 Permalinks + Export | `#graph:<node>` cold-load selects map + focuses node; current-node permalink copies URL; JSON and SVG export via `ctx.system.save`. Layout-qualified hashes, framing, HTML remain |
+| **2.8** | 🔶 Permalinks + Export | `#graph:<layout>:<node>` cold-load selects layout + map and focuses node; permalink copies URL; JSON/SVG/HTML export via `ctx.system.save`. Node framing remains |
 | **2.9** | Workspace lens (optional) | Server part provides `WorkspaceSnapshot` RPC; GUI calls `ctx.client.rpc`; graceful absence |
-| **2.10** | Tests/stories/perf | Unit + component stories + app e2e; capture matrix; lazy renderer bundle; parity checklist |
+| **2.10** | 🔶 Tests | Built-in activation test already covers `spacegraph`; arrangement scroll test, stories, capture matrix remain |
 
 ### 2.1a Built-in Registration (2 lines)
 

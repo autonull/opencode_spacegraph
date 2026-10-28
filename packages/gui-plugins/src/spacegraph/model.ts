@@ -85,6 +85,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.level = level
       })
     },
+    setLayout: (session: MountedSession, layout: LayoutStrategy) => {
+      store(session).update((draft) => {
+        draft.layout = layout
+      })
+    },
     cycleLayout: (session: MountedSession) => {
       const layout = next(LAYOUT_STRATEGIES, store(session).value?.layout ?? "lanes")
 

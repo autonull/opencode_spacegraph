@@ -10,6 +10,7 @@ import {
   type Plugin,
 } from "@opencode/plugin/gui"
 import { onIdle } from "@opencode/plugin/gui/builtin"
+import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type definition from "./index"
 import { createSpacegraph } from "./model"
 import { MapSurface } from "./map-surface"
@@ -46,7 +47,18 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     onCleanup(() => window.removeEventListener("hashchange", update))
   })
 
-  const linked = () => (hash().startsWith("#graph:") ? hash().slice("#graph:".length) : undefined)
+  const linked = () => {
+    const value = hash().startsWith("#graph:") ? hash().slice("#graph:".length) : undefined
+
+    if (!value) return undefined
+
+    const [head, ...rest] = value.split(":")
+    const layout = LAYOUT_STRATEGIES.find((candidate) => candidate === head)
+
+    if (rest.length && layout) return { layout, node: rest.join(":") }
+
+    return { node: value }
+  }
 
   createKeyed(
     () => {
@@ -59,10 +71,11 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
 
       if (!session) return
 
-      const node = linked()
+      const link = linked()
 
-      if (node) {
-        model.focus(session, node)
+      if (link) {
+        if (link.layout) model.setLayout(session, link.layout)
+        model.focus(session, link.node)
         ctx.surfaces.select(`${ctx.id}.map`, session)
 
         return
@@ -180,7 +193,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       title: ctx.t("command.permalink"),
       group: ctx.t("command.group"),
       run: () => {
-        location.hash = `graph:${node}`
+        location.hash = `graph:${model.layout(session)}:${node}`
         void ctx.system.copy(location.href)
       },
     }
@@ -244,6 +257,32 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
           name: `spacegraph-${session.id}.svg`,
           content: new XMLSerializer().serializeToString(clone),
         })
+      },
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "export-html",
+      title: ctx.t("command.exportHtml"),
+      group: ctx.t("command.group"),
+      run: async () => {
+        ctx.surfaces.select(`${ctx.id}.map`, session)
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+
+        const svg = document.querySelector('[data-slot="spacegraph-map"] svg')
+
+        if (!(svg instanceof SVGSVGElement)) return
+
+        const markup = new XMLSerializer().serializeToString(svg)
+        const content = `<!doctype html><html><head><meta charset="utf-8"><title>Spacegraph</title><style>body{margin:0;background:#111;color:#eee}svg{display:block;width:100vw;height:100vh}</style></head><body>${markup}</body></html>`
+
+        await ctx.system.save({ name: `spacegraph-${session.id}.html`, content })
       },
     }
   })
