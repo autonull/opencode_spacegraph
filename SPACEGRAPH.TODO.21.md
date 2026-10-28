@@ -13,7 +13,7 @@
 | **1.1 — SessionSurface + layering** | ✅ seam landed | Registry, `ctx.surfaces` API, host rendering, per-session selection, host default, unit + host component test. Selection persistence deliberately deferred to 2.6. |
 | **1.2 — TranscriptSurface protocol** | ✅ already present | `TranscriptScreen.activeMessageID/reveal` in `packages/plugin/src/gui/host-apis.ts`; host binds it in `packages/app/src/runtime/plugin/mounted-session.ts` and `packages/app/src/session/screen.tsx`. No bridge work remains. |
 | **1.3 — scroll-preservation test** | ✅ done | `mountSessionSurface` fixture + component test switches transcript → map → hybrid → transcript; transcript mounts once and scroll restores. Host now restores reported scroll positions after a surface switch. |
-| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed: settings, persistence, toolbar, camera, layout-qualified permalinks with framing, JSON/SVG/HTML export. Remaining: depth projection, arrangement tests, capture matrix. |
+| **2 — built-in GUI plugin** | 🔶 in progress | 2.1–2.8 landed on the full `@opencode/session-graph` renderer: depth modes, layouts, camera, toolbar, permalinks, export, settings, persistence. Remaining: arrangement tests, capture matrix, cutover. |
 | **3 — cutover** | ❌ pending | Blocked on 2 parity. |
 | **4 — T2.2** | ❌ pending | Blocked on 3. |
 
@@ -36,7 +36,6 @@
 
 ### Clarified next actions
 
-- Batch 2.2 next: depth projection (`flat`/`layered`/`depth-stack`/`orbit`). The current map is 2D SVG; depth needs the `spacegraphjs` canvas renderer (`DepthCues` owns projection/orbit/fade). Treat it as a renderer swap.
 - Batch 2.3 next: arrangement scroll test needs a gui-plugins component-test harness; app component tests cannot statically import gui-plugins sources without breaking the app TS project boundary.
 - Batch 2.10 next: arrangement scroll test and capture matrix (model unit coverage landed).
 - Keep the old graph pane as `SessionSurfaceHost.default` until 3.1; do not delete `packages/app/src/session/graph/*` yet.
@@ -47,7 +46,7 @@
 
 - `spacegraph` is a real built-in plugin with map, hybrid, turn-map layer, side panel, settings, camera, permalinks and JSON/SVG/HTML export.
 - The built-in activation matrix (`plugin-graph.spec.ts`) passes with `spacegraph` included.
-- The map is intentionally 2D SVG today. Depth modes and the camera treatment from `spacegraphjs` are not wired; doing so means replacing `graph-canvas.tsx` with the library renderer.
+- The map now renders through `@opencode/session-graph`'s `GraphView`; depth, layouts, camera, search and export are owned by that renderer.
 - Arrangement scroll preservation is reliable because `HybridSurface` keeps one DOM tree and only changes classes; it needs a dedicated test at the gui-plugins boundary.
 
 ---
@@ -257,13 +256,13 @@ opencode-spacegraph/
 | # | Item | Acceptance |
 |---|------|------------|
 | **2.1** | ✅ Skeleton + built-in reg | `packages/gui-plugins/src/spacegraph/{index,renderer}.tsx`; id `spacegraph` reserved in `gui-plugins/{main,renderer}.ts` |
-| **2.2** | 🔶 MapSurface | Overview/execution/detail levels, five layout strategies, hidden transcript, zoom/pan/reset camera and toolbar landed; depth projection remains |
+| **2.2** | ✅ MapSurface | Full `GraphView`: levels, layouts, depth modes, camera, toolbar, hidden transcript |
 | **2.3** | 🔶 HybridSurface | `stacked`/`side`/`floating` landed in one DOM tree so the transcript never moves; side start/end. Needs explicit scroll test per arrangement |
 | **2.4** | ✅ TurnMapLayer | Layer on the map surface, capped `turnSubgraph`, focus trap, Escape, "Open full map"; command switches to map |
 | **2.5** | 🔶 SidePanel | `Panel` region side + mobile with full `GraphCanvas`, active-turn highlight, reveal; compact parity polish remains |
-| **2.6** | 🔶 Settings + persistence | `Store.session` persists surface, level, layout, arrangement, side, turn map, focused node; `Store.global` settings page edits defaults; camera/log scale remain |
+| **2.6** | 🔶 Settings + persistence | `Store.session` persists surface, level, layout, arrangement, side, depth, turn map, focused node; `Store.global` settings page edits defaults; camera/log scale remain renderer-local |
 | **2.7** | 🔶 Commands | Commands for map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, JSON export; side panel `MenuItem`; visible level/layout toolbar; settings page. Search/header slot/keybinds remain |
-| **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; permalink copies URL; JSON/SVG/HTML export via `ctx.system.save` |
+| **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; `GraphView` owns export (JSON/SVG/HTML) and copy-view through its toolbar |
 | **2.9** | Workspace lens (optional) | Server part provides `WorkspaceSnapshot` RPC; GUI calls `ctx.client.rpc`; graceful absence |
 | **2.10** | 🔶 Tests | Built-in activation test and `model.test.ts` (defaults, cycling, surface persistence, camera clamp) pass; arrangement scroll test, stories, capture matrix remain |
 

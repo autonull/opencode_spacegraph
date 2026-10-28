@@ -2,7 +2,7 @@ import { createMemo } from "solid-js"
 import type { JSX } from "solid-js"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
-import { GraphCanvas } from "./graph-canvas"
+import { FullMap } from "./full-map"
 
 export function HybridSurface(props: {
   model: SpacegraphModel
@@ -37,13 +37,7 @@ export function HybridSurface(props: {
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
       <div class={transcript()}>{props.transcript}</div>
       <div class={map()}>
-        <GraphCanvas
-          model={props.model}
-          session={props.session}
-          screen={props.screen}
-          level={() => props.model.level(props.session)}
-          layout={() => props.model.layout(props.session)}
-        />
+        <FullMap model={props.model} session={props.session} screen={props.screen} />
       </div>
     </div>
   )

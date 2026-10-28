@@ -6,6 +6,7 @@ import en from "./i18n/en"
 const Prefs = Schema.Struct({
   level: Schema.optional(Schema.Literals(ZOOM_LEVELS)),
   layout: Schema.optional(Schema.Literals(LAYOUT_STRATEGIES)),
+  depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
 })
@@ -14,13 +15,11 @@ const State = Schema.Struct({
   focused: Schema.optional(Schema.String),
   level: Schema.optional(Schema.Literals(ZOOM_LEVELS)),
   layout: Schema.optional(Schema.Literals(LAYOUT_STRATEGIES)),
+  depth: Schema.optional(Schema.Literals(["flat", "layered", "depth-stack", "orbit"])),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
-  zoom: Schema.optional(Schema.Finite),
-  panX: Schema.optional(Schema.Finite),
-  panY: Schema.optional(Schema.Finite),
 })
 
 export default Plugin.define({

@@ -1,6 +1,6 @@
 import { usePlugin, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
-import { GraphCanvas } from "./graph-canvas"
+import { FullMap } from "./full-map"
 
 export default function SpacegraphPanel(props: {
   model: SpacegraphModel
@@ -15,13 +15,7 @@ export default function SpacegraphPanel(props: {
         {ctx.t("panel.title")}
       </div>
       <div class="min-h-0 flex-1">
-        <GraphCanvas
-          model={props.model}
-          session={props.session}
-          screen={props.screen}
-          level={() => props.model.level(props.session)}
-          layout={() => props.model.layout(props.session)}
-        />
+        <FullMap model={props.model} session={props.session} screen={props.screen} />
       </div>
     </div>
   )

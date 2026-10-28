@@ -24,9 +24,6 @@ type Stored = {
   layout?: "lanes" | "timeline" | "hierarchy" | "tree" | "force"
   arrangement?: "stacked" | "side" | "floating"
   side?: "start" | "end"
-  zoom?: number
-  panX?: number
-  panY?: number
   turnMap?: boolean
 }
 
@@ -77,17 +74,5 @@ describe("spacegraph model", () => {
 
     expect(stored.value.surface).toBe("spacegraph.hybrid")
     expect(selected).toEqual(["spacegraph.hybrid"])
-  })
-
-  test("clamps the camera zoom", () => {
-    const { model } = setup()
-
-    model.zoomBy(session, 100)
-    expect(model.camera(session).zoom).toBe(4)
-    model.zoomBy(session, 0.0001)
-    expect(model.camera(session).zoom).toBe(0.25)
-
-    model.resetCamera(session)
-    expect(model.camera(session)).toEqual({ zoom: 1, x: 0, y: 0 })
   })
 })
