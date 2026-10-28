@@ -33,6 +33,31 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     arrangement: (session: MountedSession): GraphArrangement =>
       store(session).value?.arrangement ?? prefs.value.arrangement ?? "side",
     side: (session: MountedSession): GraphSide => store(session).value?.side ?? prefs.value.side ?? "end",
+    camera: (session: MountedSession) => ({
+      zoom: store(session).value?.zoom ?? 1,
+      x: store(session).value?.panX ?? 0,
+      y: store(session).value?.panY ?? 0,
+    }),
+    zoomBy: (session: MountedSession, factor: number) => {
+      const zoom = Math.min(4, Math.max(0.25, (store(session).value?.zoom ?? 1) * factor))
+
+      store(session).update((draft) => {
+        draft.zoom = zoom
+      })
+    },
+    panBy: (session: MountedSession, x: number, y: number) => {
+      store(session).update((draft) => {
+        draft.panX = (draft.panX ?? 0) + x
+        draft.panY = (draft.panY ?? 0) + y
+      })
+    },
+    resetCamera: (session: MountedSession) => {
+      store(session).update((draft) => {
+        draft.zoom = 1
+        draft.panX = 0
+        draft.panY = 0
+      })
+    },
     surface: (session: MountedSession) => store(session).value?.surface,
     select: (session: MountedSession, id: string) => {
       store(session).update((draft) => {

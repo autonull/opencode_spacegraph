@@ -18,6 +18,9 @@ const State = Schema.Struct({
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
+  zoom: Schema.optional(Schema.Finite),
+  panX: Schema.optional(Schema.Finite),
+  panY: Schema.optional(Schema.Finite),
 })
 
 export default Plugin.define({

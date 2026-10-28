@@ -44,8 +44,54 @@ export function GraphCanvas(props: {
     const right = Math.max(...boxes.map((box) => box.left + box.w), 0)
     const bottom = Math.max(...boxes.map((box) => box.top + box.h), 0)
 
-    return { boxes, viewBox: `${left - PAD} ${top - PAD} ${right - left + PAD * 2} ${bottom - top + PAD * 2}` }
+    return {
+      boxes,
+      left: left - PAD,
+      top: top - PAD,
+      width: right - left + PAD * 2,
+      height: bottom - top + PAD * 2,
+    }
   })
+
+  const viewBox = createMemo(() => {
+    const canvas = geometry()
+    const camera = props.model.camera(props.session)
+    const width = canvas.width / camera.zoom
+    const height = canvas.height / camera.zoom
+
+    return `${canvas.left + (canvas.width - width) / 2 + camera.x} ${canvas.top + (canvas.height - height) / 2 + camera.y} ${width} ${height}`
+  })
+
+  let drag: { x: number; y: number } | undefined
+
+  const pointerdown = (event: PointerEvent) => {
+    if (event.button !== 0) return
+    drag = { x: event.clientX, y: event.clientY }
+    event.currentTarget instanceof Element && event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const pointermove = (event: PointerEvent) => {
+    if (!drag) return
+
+    const target = event.currentTarget
+
+    if (!(target instanceof Element)) return
+
+    const canvas = geometry()
+    const camera = props.model.camera(props.session)
+    const scale = canvas.width / camera.zoom / Math.max(1, target.clientWidth)
+
+    props.model.panBy(props.session, -(event.clientX - drag.x) * scale, -(event.clientY - drag.y) * scale)
+    drag = { x: event.clientX, y: event.clientY }
+  }
+
+  const pointerup = (event: PointerEvent) => {
+    drag = undefined
+
+    if (event.currentTarget instanceof Element && event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
 
   const activeID = createMemo(() => {
     const value = graph()
@@ -117,6 +163,32 @@ export function GraphCanvas(props: {
           {layoutLabel()}
         </button>
       </div>
+      <div class="absolute bottom-2 left-2 z-10 flex gap-1">
+        <button
+          type="button"
+          class="rounded-md border border-v2-border-border-base bg-v2-background-bg-base px-2 py-1 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
+          aria-label={ctx.t("camera.zoomOut")}
+          onClick={() => props.model.zoomBy(props.session, 0.8)}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          class="rounded-md border border-v2-border-border-base bg-v2-background-bg-base px-2 py-1 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
+          aria-label={ctx.t("camera.zoomIn")}
+          onClick={() => props.model.zoomBy(props.session, 1.25)}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          class="rounded-md border border-v2-border-border-base bg-v2-background-bg-base px-2 py-1 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
+          aria-label={ctx.t("camera.reset")}
+          onClick={() => props.model.resetCamera(props.session)}
+        >
+          ⟲
+        </button>
+      </div>
       <Show
         when={geometry().boxes.length > 0}
         fallback={
@@ -126,11 +198,15 @@ export function GraphCanvas(props: {
         }
       >
         <svg
-          class="size-full"
-          viewBox={geometry().viewBox}
+          class="size-full cursor-grab active:cursor-grabbing"
+          viewBox={viewBox()}
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label={ctx.t("surface.map")}
+          onPointerDown={pointerdown}
+          onPointerMove={pointermove}
+          onPointerUp={pointerup}
+          onPointerCancel={pointerup}
         >
           <For each={geometry().boxes}>
             {(box) => (

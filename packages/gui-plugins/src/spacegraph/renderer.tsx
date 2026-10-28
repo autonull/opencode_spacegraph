@@ -221,6 +221,39 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     if (!session) return undefined
 
     return {
+      id: "export-svg",
+      title: ctx.t("command.exportSvg"),
+      group: ctx.t("command.group"),
+      run: async () => {
+        ctx.surfaces.select(`${ctx.id}.map`, session)
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+
+        const svg = document.querySelector('[data-slot="spacegraph-map"] svg')
+
+        if (!(svg instanceof SVGSVGElement)) return
+
+        const clone = svg.cloneNode(true)
+
+        if (!(clone instanceof SVGSVGElement)) return
+        clone.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+        clone.setAttribute("width", "1200")
+        clone.setAttribute("height", "800")
+
+        await ctx.system.save({
+          name: `spacegraph-${session.id}.svg`,
+          content: new XMLSerializer().serializeToString(clone),
+        })
+      },
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
       id: "level",
       title: ctx.t("command.level"),
       group: ctx.t("command.group"),
