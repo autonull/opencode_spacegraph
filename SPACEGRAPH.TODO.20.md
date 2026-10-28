@@ -4,6 +4,60 @@
 
 ---
 
+## ⚡ CRITICAL PATH SUMMARY (read this first)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ BATCH 1 — GATE CLOSURE (THIS REPO) — BLOCKS EVERYTHING ELSE                 │
+│   1.5 Hybrid scroll preservation      ← START HERE (2–4h)                   │
+│   1.6 Flaky scroll tests (workers=3)  ← 1–2h after 1.5                      │
+│   1.7 graph-scale turn cards          ← 30–60m, independent                 │
+│   1.8 graph:verify green              ← auto when 1.5–1.7 pass              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PARALLEL AFTER BATCH 1 GREEN                                                 │
+│                                                                             │
+│   BATCH 3 (LIBRARY REPO)          BATCH 4 (STUDY)                           │
+│   3.1 L1 type-clean (2h)          ─────────► T2.2 study (2–3 days)         │
+│   3.2 L2 test consolidation (1h)  ◄── needs working build only             │
+│   3.3 Publish 7 packages (1h)                                                             │
+│   3.4 session-graph branch (2h)                                                            │
+│   3.5 CI pin library SHA (30m)                                                            │
+│   3.6 Renderer seam cleanup (1h)                                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ BATCH 5 — SHIP (after Batch 3 + 4)                                          │
+│   5.1 Hosted demo (1h)      5.4 Upstream PR (2h)                            │
+│   5.2 Landing page (2h)     5.5 DoD gate coverage (30m)                     │
+│   5.3 Demo video (1h)       5.6 DoD test:publish (30m)                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+TOTAL ESTIMATED TIME AFTER BATCH 1: ~2 days calendar (parallel) + ~1 day ship
+```
+
+---
+
+## 0. QUICK START FOR FRESH SESSION
+
+```bash
+# 1. Reproduce the blocker
+cd packages/app && bun exec playwright test e2e/graph/session-graph.spec.ts -g "graph.hybrid" --workers=1
+
+# 2. Add mount tracing (see §10.1)
+#    → packages/app/src/session/timeline/message-timeline.tsx
+#    → packages/session-graph/src/ui/GraphView.tsx
+
+# 3. Compare toolbar split vs keyboard toggle code paths
+#    → packages/app/src/session/commands/graph-commands.ts:52-58
+#    → packages/app/src/session/screen.tsx:483
+```
+
+---
+
 ## 1. Verified State (2026-10-28, after this pass)
 
 | Check | Result |
@@ -42,7 +96,7 @@
 
 ## 2. Batch 1 — Fix Component Tests + Gate Closure (one PR, one pipeline)
 
-**Must complete before any other batch.**
+**Must complete before any other batch. This is the single critical path.**
 
 | # | Item | Fix | Status |
 |---|------|-----|--------|
@@ -50,7 +104,10 @@
 | **1.2** | `Detail` story export fails | `session-graph-view--detail` renders `ViewHarness level="detail" selection="result:prt_tool_shell_2"`. The `result:` node may not exist in fixture. Change to `tool:prt_tool_read_1` (exists) or make selection optional. | ✅ **Done** — Changed to `tool:prt_tool_read_1` |
 | **1.3** | Renderer tracking & capabilities | Track renderer in GraphView signal via `onRendererMounted`; add capabilities state to `useGraphState` with setter; move touch gestures to `GraphCanvasRegion` with renderer guard; add defensive guards for undefined model/node properties. | ✅ **Done** — `GraphView.tsx`, `GraphCanvasRegion.tsx`, `useGraphState.ts`, `cardTemplate.ts` |
 | **1.4** | E2E test harness fixes | Fix mock session title in e2e utils; fix session title locator in wait utilities; add `role="heading"` to session header. | ✅ **Done** — `app.ts`, `waits.ts`, `session-identity-header.tsx` |
-| **1.5** | Re-enable gate steps | Once 1.1–1.4 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **Blocked** — App e2e 43–44/46 pass (3 in §1b). Components 48 pass / 1 fail / 18 skip. Units 113 + 263 + 37 pass. |
+| **1.5** | **CRITICAL: Hybrid scroll preservation** | Map-only toggle resets `scrollTop` to 0 and it never returns on hybrid re-entry. Toolbar split toggle preserves it. **Trace:** `SessionGraphPanel` log pane always mounted (`invisible absolute` when map-only), `logActive = !map \|\| sideBySide` true in both states. **Difference:** keyboard `graph.hybrid` calls `setMap(true)` + `setSideBySide(!sideBySide())`; toolbar split calls `setMap(true); setSideBySide(true)`. Check if `SessionGraphView` remounts on `map` change, remounting `transcript` child → virtualizer reset. Add mount logs in `MessageTimeline` and `GraphView` to confirm. | 🔴 **Blocking gate** — §10.1 |
+| **1.6** | **Flaky scroll tests under workers=3** | `picking a node in the map moves the log to it`, `restores the transcript position after leaving the graph` pass with `--workers=1`, fail intermittently with `workers=3`. **Cause:** tests wait on fixed `scrollTop` offsets rather than visible row state. **Fix:** replace `expect(scrollTop).toBe(before)` with `await expect.poll(() => visibleRowId()).toBe(targetId)` where `visibleRowId` finds first `[data-timeline-row]` in viewport. | 🟡 **Stabilize** — §10.2 |
+| **1.7** | **`graph-scale` component turn cards** | Overview story renders notice but zero `.html-node-container:has([data-kind="turn"])`. **Decision needed:** does overview intentionally hide turns? Check `GraphGallery.tsx:41` `layoutGraph({level:"overview"})` and `isVisibleAt(node, "overview")` in `selectors.ts`. If intentional → update test to `expect(count).toBe(0)`. If bug → restore capped turn cards in overview budget. | 🟡 **Decide & fix** — §10.3 |
+| **1.8** | Re-enable gate steps | Once 1.5–1.7 pass, `graph:verify` runs: library build, contract conformance, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check — all green. | ⏳ **After 1.5–1.7** |
 
 **Acceptance:** `bun run graph:verify` green; `test:components` = 54 pass / 0 fail / 0 fixme.
 
@@ -58,7 +115,7 @@
 
 ## 3. Batch 2 — Persistence Test (one commit, one pipeline)
 
-*Independent of Batch 1 code; runs after Batch 1 green.*
+*Independent of Batch 1 code; runs after Batch 1 green. **DONE**.*
 
 | # | Item | Change | Status |
 |---|------|--------|--------|
@@ -70,41 +127,46 @@
 
 ## 4. Batch 3 — Library L1/L2 + Publish + session-graph Branch (library repo, then this repo)
 
-*Depends on Batch 1 green (L1 unblocks publish). Work happens in `spacegraphjs` sibling repo.*
+*Runs in parallel with Batch 4 after Batch 1 green. Work happens in `spacegraphjs` sibling repo.*
 
-| # | Item | Change |
-|---|------|--------|
-| **3.1** | L1: library build type-clean | `bvh.ts` — declare `three-mesh-bvh` augmentations once in version-agnostic `declare module` + cast through `unknown`; `SceneNode.ts` — read augmented geometry type; `kernel/index.ts` — resolve duplicate `EdgeID` re-export; `kernel/time-filter.ts` — split import (`import { Kernel }` for value, `import type { Node, Edge }` where used); `kernel/walks.ts` — drop unused `Edge`. |
-| **3.2** | L2: consolidate library test file | Remove two empty tests (`:1331,:1335`). Merge duplicate `PhysicsPlugin`/`ErgonomicsPlugin` `describe`s; delete `Layout Engines` cases covered by `GridLayout`/`CircularLayout`/`HierarchicalLayout` blocks. |
-| **3.3** | Publish 7 packages, leaf first | Order: `@spacegraphjs/renderer` 0.3.0 → `@spacegraphjs/kernel` 0.1.0 → `@spacegraphjs/adapter` 0.2.0 → `@spacegraphjs/spacegraph-renderer` 0.3.1 → `@spacegraphjs/cytoscape-renderer` 0.3.0 → `@spacegraphjs/svg-renderer` 0.2.0 → `spacegraphjs` 8.5.0. All `CONTRACT_VERSION = 3`. |
-| **3.4** | `session-graph` branch consumes published | Branch from `dev`. Swap seven `workspace:*` for published versions. Remove seven `spacegraphjs` entries from root `workspaces` and `.gitignore`. Verify: clean clone → `bun install && bun run graph:verify` passes; `bun run graph:dev` serves. |
+| # | Item | Change | Owner | Timebox |
+|---|------|--------|-------|---------|
+| **3.1** | L1: library build type-clean | `bvh.ts` — declare `three-mesh-bvh` augmentations once in version-agnostic `declare module` + cast through `unknown`; `SceneNode.ts` — read augmented geometry type; `kernel/index.ts` — resolve duplicate `EdgeID` re-export; `kernel/time-filter.ts` — split import (`import { Kernel }` for value, `import type { Node, Edge }` where used); `kernel/walks.ts` — drop unused `Edge`. | Library | 2h |
+| **3.2** | L2: consolidate library test file | Remove two empty tests (`:1331,:1335`). Merge duplicate `PhysicsPlugin`/`ErgonomicsPlugin` `describe`s; delete `Layout Engines` cases covered by `GridLayout`/`CircularLayout`/`HierarchicalLayout` blocks. | Library | 1h |
+| **3.3** | Publish 7 packages, leaf first | Order: `@spacegraphjs/renderer` 0.3.0 → `@spacegraphjs/kernel` 0.1.0 → `@spacegraphjs/adapter` 0.2.0 → `@spacegraphjs/spacegraph-renderer` 0.3.1 → `@spacegraphjs/cytoscape-renderer` 0.3.0 → `@spacegraphjs/svg-renderer` 0.2.0 → `spacegraphjs` 8.5.0. All `CONTRACT_VERSION = 3`. | Library | 1h |
+| **3.4** | `session-graph` branch consumes published | Branch from `dev`. Swap seven `workspace:*` for published versions. Remove seven `spacegraphjs` entries from root `workspaces` and `.gitignore`. Verify: clean clone → `bun install && bun run graph:verify` passes; `bun run graph:dev` serves. | This repo | 2h |
+| **3.5** | **Definition of Done: CI pins library SHA** | Update CI (GitHub Actions) to pin `spacegraphjs` at published SHA (`9df9b92` or new publish SHA) in `graph:setup`. | This repo | 30m |
+| **3.6** | **Definition of Done: no dead code in renderer seam** | Verify: one canvas component, one emphasis resolver, no dead `focus` option, no dead verbs, no `any` in renderer seam, no literal English in card markup. Clean up if found. | This repo | 1h |
 
-**Acceptance:** 7 packages on npm; `session-graph` branch verifies from clean clone, no sibling checkout.
+**Acceptance:** 7 packages on npm; `session-graph` branch verifies from clean clone, no sibling checkout; CI pins library SHA; renderer seam clean.
 
 ---
 
 ## 5. Batch 4 — Evidence Study T2.2 (parallel from **end of Batch 1**)
 
-*Needs only working build (Batch 1 provides). Does not wait for Batch 2/3.*
+*Needs only working build (Batch 1 provides). Runs in parallel with Batch 3. Does not wait for Batch 2/3.*
 
-| Item | Protocol | Deliverable |
-|------|----------|-------------|
-| **T2.2** | n ≥ 5 participants, counterbalanced, canonical fixture (`session-ui/src/graph/fixture.ts`), 5 investigative tasks: (1) why file changed, (2) which calls led to failure, (3) subagent contribution, (4) changes after failure, (5) retries/direction changes. Measures: success, time, wrong turns, interactions, preference 1–7, verbatim quotes. | `rfc.md` with task script, raw per-participant table, one-page result + stop-rule decision (§10.2). **If negative: stop feature work, publish finding, keep library.** |
+| Item | Protocol | Deliverable | Owner | Timebox |
+|------|----------|-------------|-------|---------|
+| **T2.2** | n ≥ 5 participants, counterbalanced, canonical fixture (`session-ui/src/graph/fixture.ts`), 5 investigative tasks: (1) why file changed, (2) which calls led to failure, (3) subagent contribution, (4) changes after failure, (5) retries/direction changes. Measures: success, time, wrong turns, interactions, preference 1–7, verbatim quotes. | `rfc.md` with task script, raw per-participant table, one-page result + stop-rule decision (§10.2). **If negative: stop feature work, publish finding, keep library.** | Study lead | 2–3 days |
+| **4.1** | **Definition of Done: SPACEGRAPH.md truthfulness** | Update `SPACEGRAPH.md` §3, §6.1, §7.1, §9.1 to match measured reality; §7.3 numbers traceable to command; `prototype.md` re-dated; no citation of missing `rfc.md`. | Study lead | 1h |
 
-**Acceptance:** `rfc.md` written with measured outcome and decision.
+**Acceptance:** `rfc.md` written with measured outcome and stop-rule decision; `SPACEGRAPH.md` accurate.
 
 ---
 
 ## 6. Batch 5 — Ship (after Batch 3 + Batch 4)
 
-| # | Item | Acceptance |
-|---|------|------------|
-| **5.1** | Hosted demo | `https://autonull.github.io/spacegraphjs7/contract.html` and `/second-host.html` load without provider key |
-| **5.2** | Landing page | One screenshot, honest limitations (link `SPACEGRAPH.md` §8), stranger's path `git clone && bun run graph:setup && bun run graph:dev` |
-| **5.3** | Demo video | `docs/spacegraph/demo.mp4` recorded **after Batch 1** (shows focus dimming, merged canvas) |
-| **5.4** | Upstream PR | Rungs 1–4; rung 5 optional. Diff table from Batch 2. Review packet matches branch. |
+| # | Item | Acceptance | Owner | Timebox |
+|---|------|------------|-------|---------|
+| **5.1** | Hosted demo | `https://autonull.github.io/spacegraphjs7/contract.html` and `/second-host.html` load without provider key | Library | 1h |
+| **5.2** | Landing page | One screenshot, honest limitations (link `SPACEGRAPH.md` §8), stranger's path `git clone && bun run graph:setup && bun run graph:dev` | This repo | 2h |
+| **5.3** | Demo video | `docs/spacegraph/demo.mp4` recorded **after Batch 1** (shows focus dimming, merged canvas) | This repo | 1h |
+| **5.4** | Upstream PR | Rungs 1–4; rung 5 optional. Diff table from Batch 2. Review packet matches branch. | This repo | 2h |
+| **5.5** | **DoD: Hybrid toggle, log text size, hybrid arrangements, permalinks, side panel, focus dimming, persistence round-trip covered in gate** | Verify each feature has a gate test in `graph:verify` (already in e2e suite) | This repo | 30m |
+| **5.6** | **DoD: Library builds with zero TS errors; 7 packages published; `test:publish` green** | Confirm Batch 3 complete; run `bun run test:publish` | Library | 30m |
 
----
+**Acceptance:** All above live and complete; all Definition of Done items checked.
 
 ## 7. Parked (with reason)
 
@@ -119,19 +181,21 @@
 
 ---
 
-## 8. Definition of Done
+## 8. Definition of Done (mapped to batches)
 
-- [ ] `bun run graph:verify` green (library build, contract, boundaries, controller, overlays, navigation, second host, 4 adapters, session-graph unit, session-ui graph unit, session-graph components, app e2e graph, side panels, capture verify, publish check)
-- [ ] `test:components` = 54 pass / 0 fail / 0 fixme without written finding
-- [ ] One canvas component; one emphasis resolver; no dead `focus` option; no dead verbs; no `any` in renderer seam; no literal English in card markup
-- [ ] CI pins library SHA (`9df9b92`) and matches `graph:setup`
-- [ ] `SPACEGRAPH.md` §3, §6.1, §7.1, §9.1 truthful; §7.3 numbers traceable to command; `prototype.md` re-dated; no citation of missing `rfc.md`
-- [ ] Library builds with zero TS errors; 7 packages published; `test:publish` green
-- [ ] `session-graph` branch installs and verifies from clean clone, no sibling checkout
-- [ ] Hybrid toggle, log text size, hybrid arrangements, permalinks, side panel, focus dimming, persistence round-trip all covered in gate
-- [ ] Two demo URLs live; landing page with stranger's path; `demo.mp4` recorded after Batch 1
-- [ ] T2.2 executed, written into `rfc.md`, stop-rule decision recorded
-- [ ] Upstream PR open: rungs 1–4, rung 5 optional
+| # | Criterion | Batch | Status |
+|---|-----------|-------|--------|
+| 1 | `bun run graph:verify` green (all steps) | 1 (gate) | 🔴 Blocked on 1.5–1.7 |
+| 2 | `test:components` = 54 pass / 0 fail / 0 fixme | 1 (gate) | 🔴 Blocked on 1.7 |
+| 3 | One canvas component; one emphasis resolver; no dead `focus` option; no dead verbs; no `any` in renderer seam; no literal English in card markup | 3.6 | ⏳ |
+| 4 | CI pins library SHA (`9df9b92` or new publish SHA) and matches `graph:setup` | 3.5 | ⏳ |
+| 5 | `SPACEGRAPH.md` §3, §6.1, §7.1, §9.1 truthful; §7.3 numbers traceable; `prototype.md` re-dated; no citation of missing `rfc.md` | 4.1 | ⏳ |
+| 6 | Library builds with zero TS errors; 7 packages published; `test:publish` green | 3.1–3.3, 5.6 | ⏳ |
+| 7 | `session-graph` branch installs and verifies from clean clone, no sibling checkout | 3.4 | ⏳ |
+| 8 | Hybrid toggle, log text size, hybrid arrangements, permalinks, side panel, focus dimming, persistence round-trip all covered in gate | 1 (e2e), 5.5 | 🟡 Partial |
+| 9 | Two demo URLs live; landing page with stranger's path; `demo.mp4` recorded after Batch 1 | 5.1–5.3 | ⏳ |
+| 10 | T2.2 executed, written into `rfc.md`, stop-rule decision recorded | 4 (T2.2) | ⏳ |
+| 11 | Upstream PR open: rungs 1–4, rung 5 optional | 5.4 | ⏳ |
 
 ---
 
