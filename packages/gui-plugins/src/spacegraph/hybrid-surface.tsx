@@ -37,7 +37,13 @@ export function HybridSurface(props: {
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
       <div class={transcript()}>{props.transcript}</div>
       <div class={map()}>
-        <FullMap model={props.model} session={props.session} screen={props.screen} />
+        <FullMap
+          model={props.model}
+          session={props.session}
+          screen={props.screen}
+          arrangement={arrangement()}
+          arrangementSide={side()}
+        />
       </div>
     </div>
   )

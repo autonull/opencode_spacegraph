@@ -4,6 +4,7 @@ import { Toast } from "@opencode/ui/toast"
 import {
   Panel,
   SessionSurface,
+  createKeyed,
   type Appearance,
   type App,
   type Context,
@@ -662,6 +663,85 @@ export function mountSessionSurface() {
     mounts: () => mounts,
     ready: () => hosts[0]?.ready() ?? false,
     status: () => hosts[0]?.state.status["surface-fixture"],
+    unmount: () => {
+      dispose()
+      container.remove()
+    },
+  }
+}
+
+/** Mounts the real host and a built-in session surface for a fake routed session. */
+export function mountBuiltInSurface(input: { definitions: readonly Entry[]; surface: string }) {
+  const container = document.createElement("div")
+  container.style.height = "320px"
+  document.body.appendChild(container)
+  const hosts: PluginHost[] = []
+  const value = { key: "surface\na", id: "a", server: { data: { session: { status: () => "idle", message: { list: () => [] } } } } }
+  // SAFETY: the surface host and GraphView read only the session id and its empty message list.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+  const session = value as unknown as MountedSession
+  // SAFETY: the surfaces read only the transcript protocol.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+  const screen = { transcript: { activeMessageID: () => undefined, reveal() {} } } as unknown as SessionScreen
+
+  const probe: Entry = {
+    id: "surface-probe",
+    windowEntry: async () => ({
+      default: (ctx: Context) => {
+        createKeyed(
+          () => `${ctx.surfaces.list().map((surface) => surface.id).join(",")}\u0000${ctx.sessions.current()?.key ?? ""}`,
+          () => {
+            const current = ctx.sessions.current()
+
+            if (current && ctx.surfaces.list().some((surface) => surface.id === input.surface)) {
+              ctx.surfaces.select(input.surface, current)
+            }
+          },
+        )
+      },
+    }),
+  }
+
+  function Mounted() {
+    const host = usePluginHost()
+    hosts.push(host)
+    const transcript = createMemo(() => <div style={{ height: "100%" }}>Transcript</div>)
+
+    return (
+      <Show when={host.ready()}>
+        <SessionSurfaceHost
+          session={session}
+          screen={screen}
+          transcript={() => transcript()}
+          default={() => <div data-testid="surface-default">Default</div>}
+        />
+      </Show>
+    )
+  }
+
+  const dispose = render(
+    () => (
+      <LanguageProvider locale="en">
+        <PlatformProvider value={web}>
+          <DialogProvider>
+            <RealHost
+              definitions={[...input.definitions, probe]}
+              captured={{}}
+              mounted={standIn({ current: () => session, screen: () => screen })}
+            >
+              <Mounted />
+            </RealHost>
+          </DialogProvider>
+        </PlatformProvider>
+      </LanguageProvider>
+    ),
+    container,
+  )
+
+  return {
+    container,
+    ready: () => hosts[0]?.ready() ?? false,
+    status: () => hosts[0]?.state.status["surface-probe"],
     unmount: () => {
       dispose()
       container.remove()

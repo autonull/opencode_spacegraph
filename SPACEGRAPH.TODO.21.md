@@ -37,7 +37,7 @@
 ### Clarified next actions
 
 - Batch 2.3 next: arrangement scroll test needs a gui-plugins component-test harness; app component tests cannot statically import gui-plugins sources without breaking the app TS project boundary.
-- Batch 2.10 next: arrangement scroll test and capture matrix (model unit coverage landed).
+- Batch 2.10 next: arrangement scroll test and capture matrix. Real-host map/hybrid render coverage landed.
 - Keep the old graph pane as `SessionSurfaceHost.default` until 3.1; do not delete `packages/app/src/session/graph/*` yet.
 - The plugin's MapSurface receives the same `transcript` element and hides it with `visibility`/position, never `display: none`.
 - `SessionLayer` ids are scoped to their surface only; the host renders them inline above the surface body.
@@ -47,7 +47,7 @@
 - `spacegraph` is a real built-in plugin with map, hybrid, turn-map layer, side panel, settings, camera, permalinks and JSON/SVG/HTML export.
 - The built-in activation matrix (`plugin-graph.spec.ts`) passes with `spacegraph` included.
 - The map now renders through `@opencode/session-graph`'s `GraphView`; depth, layouts, camera, search and export are owned by that renderer.
-- Arrangement scroll preservation is reliable because `HybridSurface` keeps one DOM tree and only changes classes; it needs a dedicated test at the gui-plugins boundary.
+- Arrangement scroll preservation is reliable because `HybridSurface` keeps one DOM tree and only changes classes; a real-host render test covers both built-in surfaces, but arrangement cycling still needs coverage.
 
 ---
 
@@ -264,7 +264,7 @@ opencode-spacegraph/
 | **2.7** | 🔶 Commands | Commands for map/hybrid/transcript, level, layout, arrangement, side, turn map, permalink, JSON export; side panel `MenuItem`; visible level/layout toolbar; settings page. Search/header slot/keybinds remain |
 | **2.8** | ✅ Permalinks + Export | `#graph:<layout>:<node>` cold-load restores layout, selects map, focuses and frames the node; `GraphView` owns export (JSON/SVG/HTML) and copy-view through its toolbar |
 | **2.9** | Workspace lens (optional) | Server part provides `WorkspaceSnapshot` RPC; GUI calls `ctx.client.rpc`; graceful absence |
-| **2.10** | 🔶 Tests | Built-in activation test and `model.test.ts` (defaults, cycling, surface persistence, camera clamp) pass; arrangement scroll test, stories, capture matrix remain |
+| **2.10** | 🔶 Tests | Built-in activation, real-host map/hybrid render, and `model.test.ts` pass; arrangement scroll test, stories, capture matrix remain |
 
 ### 2.1a Built-in Registration (2 lines)
 

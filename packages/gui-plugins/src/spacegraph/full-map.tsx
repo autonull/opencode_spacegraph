@@ -1,6 +1,7 @@
 import { createMemo } from "solid-js"
 import { GraphView } from "@opencode/session-graph"
 import { LAYOUT_STRATEGIES, buildGraph } from "@opencode/session-ui/graph"
+import type { GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 import type { SessionStatus } from "@opencode/client/promise"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
@@ -9,6 +10,8 @@ export function FullMap(props: {
   model: SpacegraphModel
   session: MountedSession
   screen: SessionScreen
+  arrangement?: GraphArrangement
+  arrangementSide?: GraphSide
 }) {
   const graph = createMemo(() => {
     const status: SessionStatus =
@@ -35,6 +38,11 @@ export function FullMap(props: {
         if (layout) props.model.setLayout(props.session, layout)
       }}
       onDepthChange={(next) => props.model.setDepth(props.session, next)}
+      arrangement={props.arrangement}
+      arrangementSide={props.arrangementSide}
+      refitKey={props.arrangement}
+      onArrangementChange={(next) => props.model.setArrangement(props.session, next)}
+      onArrangementSideChange={(next) => props.model.setSide(props.session, next)}
     />
   )
 }

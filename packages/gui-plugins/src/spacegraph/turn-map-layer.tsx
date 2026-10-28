@@ -2,7 +2,6 @@ import { For, Show, createMemo, onMount } from "solid-js"
 import { buildGraph, turnSubgraph } from "@opencode/session-ui/graph"
 import type { SessionStatus } from "@opencode/client/promise"
 import type { GraphNode } from "@opencode/session-ui/graph"
-import { usePlugin } from "@opencode/plugin/gui"
 import type { MountedSession, SessionScreen, SessionSurface } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 
@@ -13,8 +12,9 @@ export function TurnMapLayer(props: {
   session: MountedSession
   screen: SessionScreen
   surface: SessionSurface
+  labels: { title: string; open: string; close: string; empty: string }
+  openFull: () => void
 }) {
-  const ctx = usePlugin()
   let panel: HTMLDivElement | undefined
 
   const graph = createMemo(() => {
@@ -43,7 +43,7 @@ export function TurnMapLayer(props: {
 
   const openFull = () => {
     close()
-    ctx.surfaces.select(props.surface.id, props.session)
+    props.openFull()
   }
 
   onMount(() => panel?.querySelector<HTMLElement>("button")?.focus())
@@ -86,24 +86,24 @@ export function TurnMapLayer(props: {
         ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label={ctx.t("turnMap.title")}
+        aria-label={props.labels.title}
         class="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-xl border border-v2-border-border-base bg-v2-background-bg-base shadow-xl"
         data-slot="spacegraph-turn-map"
       >
         <div class="flex shrink-0 items-center justify-between gap-3 border-b border-v2-border-border-base px-4 py-3">
-          <span class="text-13-medium text-text-base">{ctx.t("turnMap.title")}</span>
+          <span class="text-13-medium text-text-base">{props.labels.title}</span>
           <button
             type="button"
             class="rounded-md px-2 py-1 text-13-regular text-text-weak hover:bg-v2-overlay-simple-overlay-hover hover:text-text-base"
             onClick={close}
           >
-            {ctx.t("turnMap.close")}
+            {props.labels.close}
           </button>
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto p-4" data-scrollable>
           <Show
             when={subgraph().nodes.length > 0}
-            fallback={<div class="py-8 text-center text-13-regular text-text-weak">{ctx.t("turnMap.empty")}</div>}
+            fallback={<div class="py-8 text-center text-13-regular text-text-weak">{props.labels.empty}</div>}
           >
             <div class="flex flex-col gap-2">
               <For each={subgraph().nodes}>
@@ -130,7 +130,7 @@ export function TurnMapLayer(props: {
             class="rounded-md border border-v2-border-border-base px-3 py-1.5 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
             onClick={openFull}
           >
-            {ctx.t("turnMap.open")}
+            {props.labels.open}
           </button>
         </div>
       </div>

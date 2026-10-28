@@ -78,6 +78,16 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.layout = layout
       })
     },
+    setArrangement: (session: MountedSession, arrangement: GraphArrangement) => {
+      store(session).update((draft) => {
+        draft.arrangement = arrangement
+      })
+    },
+    setSide: (session: MountedSession, side: GraphSide) => {
+      store(session).update((draft) => {
+        draft.side = side
+      })
+    },
     cycleArrangement: (session: MountedSession) => {
       const arrangement = next(GRAPH_ARRANGEMENTS, store(session).value?.arrangement ?? "side")
 

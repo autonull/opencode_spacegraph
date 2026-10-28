@@ -1598,3 +1598,42 @@ story("a surface keeps the transcript mounted and scrolled while surfaces switch
     { surface: "transcript", mounts: 1, scroll: 240 },
   ])
 })
+
+story("built-in spacegraph surfaces mount through the real host", async ({ page }) => {
+  const errors: string[] = []
+  page.on("pageerror", (error) => errors.push(error.message))
+  const builtins = sourceURL(new URL("../../gui-plugins/src/renderer.ts", import.meta.url))
+  const result = await page.evaluate(
+    async ({ fixture, builtins }) => {
+      const { mountBuiltInSurface, until } = await import(fixture)
+      const gui = await import(builtins)
+      const reads: Array<{ surface: string; graph: boolean; hybrid: string | null }> = []
+
+      for (const surface of ["spacegraph.map", "spacegraph.hybrid"]) {
+        const mounted = mountBuiltInSurface({ definitions: gui.builtins, surface })
+
+        try {
+          await until(() => mounted.ready())
+          await new Promise((resolve) => requestAnimationFrame(resolve))
+          await new Promise((resolve) => requestAnimationFrame(resolve))
+          reads.push({
+            surface,
+            graph: !!mounted.container.querySelector('[data-slot="graph-view"]'),
+            hybrid: mounted.container.querySelector('[data-slot="spacegraph-surface-hybrid"]')?.getAttribute("data-arrangement") ?? null,
+          })
+        } finally {
+          mounted.unmount()
+        }
+      }
+
+      return reads
+    },
+    { fixture, builtins },
+  )
+
+  expect(errors).toEqual([])
+  expect(result).toEqual([
+    { surface: "spacegraph.map", graph: true, hybrid: null },
+    { surface: "spacegraph.hybrid", graph: true, hybrid: "side" },
+  ])
+})

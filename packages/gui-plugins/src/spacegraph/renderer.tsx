@@ -98,7 +98,19 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       {
         id: "turn-map",
         render: ({ session, screen, surface }) => (
-          <TurnMapLayer model={model} session={session} screen={screen} surface={surface} />
+          <TurnMapLayer
+            model={model}
+            session={session}
+            screen={screen}
+            surface={surface}
+            openFull={() => ctx.surfaces.select(`${ctx.id}.map`, session)}
+            labels={{
+              title: ctx.t("turnMap.title"),
+              open: ctx.t("turnMap.open"),
+              close: ctx.t("turnMap.close"),
+              empty: ctx.t("turnMap.empty"),
+            }}
+          />
         ),
       },
     ],
