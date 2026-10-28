@@ -28,6 +28,7 @@ import { useDialog } from "@opencode/ui/context/dialog"
 import { pluralCategory, resolveTemplate } from "@opencode/ui/context/i18n"
 import {
   LinkHandler,
+  SessionSurface,
   type BaseContext,
   type Cleanup,
   type Context,
@@ -53,6 +54,12 @@ import { OpenCode, type OpenCodeClient } from "@opencode/client/promise"
 import { useLanguage } from "@/runtime/i18n/language"
 import { PluginAlertDialog, PluginConfirmDialog, PluginPromptDialog, PluginSelectDialog } from "./dialogs"
 import { createSessionStore, whenLoaded } from "./stores"
+import {
+  orderedSessionSurfaces,
+  resolveSessionSurface,
+  selectSessionSurface,
+  sessionSurfaceID,
+} from "./surfaces"
 
 type Contribution = { key: string; registry: string; plugin: string; value: Accessor<unknown> }
 
@@ -96,7 +103,7 @@ type HostApiFactory<T> = (
 
 /** The HostApis a window provides, by context property. The host itself provides `links` and `dialogs`. */
 export type HostApiFactories = {
-  readonly [K in Exclude<keyof HostApis, "links" | "dialogs">]: HostApiFactory<HostApis[K]>
+  readonly [K in Exclude<keyof HostApis, "links" | "dialogs" | "surfaces">]: HostApiFactory<HostApis[K]>
 }
 
 export type PluginStatus = "loading" | "active" | "failed" | "disabled"
@@ -295,6 +302,16 @@ function createHost(input: HostInput) {
   const factories = {
     ...input.apis,
     links: () => links,
+    surfaces: () => ({
+      list: () => orderedSessionSurfaces(list(SessionSurface)),
+      current: (session) =>
+        resolveSessionSurface(orderedSessionSurfaces(list(SessionSurface)), sessionSurfaceID(session)).id,
+      select: (id, session) => {
+        if (!orderedSessionSurfaces(list(SessionSurface)).some((surface) => surface.id === id)) return
+
+        selectSessionSurface(id, session)
+      },
+    }),
     // Bound to the instance that asked, so an older async call after a disable or reload opens and closes nothing.
     dialogs: (plugin, _, context, register): Dialogs => {
       // `ended` runs when the dialog closes, however it closes, and when it can no longer open.

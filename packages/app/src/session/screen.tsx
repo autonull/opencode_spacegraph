@@ -51,6 +51,7 @@ import { useServer } from "@/runtime/server/current"
 import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
 import { SessionGraphPane } from "./graph/graph-pane"
+import { SessionSurfaceHost } from "./surface"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
 import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity } from "@/shell/panel-motion"
@@ -490,16 +491,23 @@ function SessionScreenContent(props: {
               <SessionIdentityHeader sessionID={session.identity.params.id ?? ""} session={session.data.info()} />
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
-              <SessionGraphPane
-                session={session}
-                graph={graph}
-                graphEnabled={graphEnabled}
-                timeline={timeline}
-                mapVisible={mapVisible}
-                splitVisible={splitVisible}
-                screen={screen}
-                metricsEnabled={metricsEnabled}
+              <SessionSurfaceHost
+                session={props.view()}
+                screen={props.screen}
                 transcript={timelineView}
+                default={() => (
+                  <SessionGraphPane
+                    session={session}
+                    graph={graph}
+                    graphEnabled={graphEnabled}
+                    timeline={timeline}
+                    mapVisible={mapVisible}
+                    splitVisible={splitVisible}
+                    screen={screen}
+                    metricsEnabled={metricsEnabled}
+                    transcript={timelineView}
+                  />
+                )}
               />
             </Show>
           </Match>

@@ -4,7 +4,7 @@ import type { Schema } from "effect"
 import type { JSX } from "solid-js"
 import type { Store } from "solid-js/store"
 import type { Cleanup, OS, Persisted, StoreFrom } from "./core.js"
-import type { IconName, Link, SessionPanelMenuItem } from "./registries.js"
+import type { IconName, Link, SessionPanelMenuItem, SessionSurface } from "./registries.js"
 
 /**
  * A server the app lists. One ref per id that follows the live connection: read `client`, `data` and `url` from it
@@ -764,6 +764,26 @@ export interface Sessions {
    * Reactive.
    */
   current(): MountedSession | undefined
+}
+
+/** The session body views: the host's transcript and the surfaces plugins contribute. */
+export interface Surfaces {
+  /** The surfaces a session can show, in `order`, with the host's `transcript` first. Reactive. */
+  list(): readonly SessionSurface[]
+  /**
+   * The surface a session shows. Defaults to `transcript`; a stored id whose surface is gone reads `transcript`.
+   * Reactive.
+   *
+   * @param session - Any session.
+   */
+  current(session: SessionRef): string
+  /**
+   * Selects the surface a session shows. An unknown id leaves the selection unchanged.
+   *
+   * @param id - The surface's id.
+   * @param session - The session whose body changes.
+   */
+  select(id: string, session: SessionRef): void
 }
 
 /**

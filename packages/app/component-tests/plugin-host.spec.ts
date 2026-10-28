@@ -1,6 +1,15 @@
-import type { Component, Owner } from "solid-js"
+import type { Component, JSX, Owner } from "solid-js"
 import type { PluginInfo } from "@opencode/client/promise"
-import type { Context, Contract, DialogHandle, Dialogs, Live, SessionRef, SessionScreen } from "@opencode/plugin/gui"
+import type {
+  Context,
+  Contract,
+  DialogHandle,
+  Dialogs,
+  Live,
+  MountedSession,
+  SessionRef,
+  SessionScreen,
+} from "@opencode/plugin/gui"
 import type { BuiltinPanelTab } from "@opencode/plugin/gui/builtin"
 import type { Bridge, BridgeMessage, EnableState, Installed } from "@opencode/plugin/gui/host"
 import { expect, sourceURL, story } from "../../stories/playwright/story"
@@ -1510,4 +1519,49 @@ story("composer pills show per session, open their rows, and fail only their own
 
   await rows.nth(0).click()
   await expect(page.locator("body")).toHaveAttribute("data-picked", "12")
+})
+
+story("session surfaces include the host transcript and follow a per-session selection", async ({ page }) => {
+  const result = await page.evaluate(async (fixture) => {
+    const { mountPlugins, until, SessionSurface } = await import(fixture)
+    const observed: { before?: string[]; after?: string; unknown?: string; other?: string } = {}
+    const host = mountPlugins({
+      definitions: [
+        {
+          id: "fixture",
+          windowEntry: async () => ({
+            default: (ctx: Context) => {
+              ctx.add(SessionSurface, {
+                id: "map",
+                title: "Map",
+                render: (input: { session: MountedSession; screen: SessionScreen; transcript: JSX.Element }) =>
+                  input.transcript,
+              })
+
+              // SAFETY: the surface API reads only the session key.
+              const first = { key: "first" } as SessionRef
+              // SAFETY: as above.
+              const second = { key: "second" } as SessionRef
+              observed.before = ctx.surfaces.list().map((surface) => surface.id)
+              ctx.surfaces.select("map", first)
+              observed.after = ctx.surfaces.current(first)
+              observed.other = ctx.surfaces.current(second)
+              ctx.surfaces.select("missing", first)
+              observed.unknown = ctx.surfaces.current(first)
+            },
+          }),
+        },
+      ],
+    })
+
+    try {
+      await until(() => host.status("fixture") === "active")
+
+      return observed
+    } finally {
+      host.unmount()
+    }
+  }, fixture)
+
+  expect(result).toEqual({ before: ["transcript", "map"], after: "map", other: "transcript", unknown: "map" })
 })

@@ -56,6 +56,7 @@ export {
   createKeyed,
   Ipc,
   Panel,
+  SessionSurface,
   Slot,
   Store,
 } from "@opencode/plugin/gui"

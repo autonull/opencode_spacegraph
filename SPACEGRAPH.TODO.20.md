@@ -1,4 +1,7 @@
-# SPACEGRAPH.TODO.20 — Remaining Work
+# SPACEGRAPH.TODO.20 — Remaining Work (SUPERSEDED)
+
+> **Superseded by `SPACEGRAPH.TODO.21.md`.** All still-open items are carried into TODO.21 with their new batch and
+> disposition. This file is kept for history only.
 
 > **Context:** `SPACEGRAPH.TODO.19.md` records completed work. This file contains only open items. Dependency order is strict: each batch must be green before the next starts. The go/no-go decision is T2.2 (Batch 4).
 
