@@ -603,6 +603,7 @@ test("31 graph perspective", async ({ page }) => {
 
 test("32 graph workspace code", async ({ page }) => {
   test.skip(mode === "baseline", "baseline captures the transcript only")
+  test.skip(true, "workspace API removed in Batch 3B; built-in plugin builds graph locally")
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   const workspaceResponse = page.waitForResponse((response) => response.url().includes("/api/graph/workspace"))
@@ -622,6 +623,7 @@ test("32 graph workspace code", async ({ page }) => {
 
 test("33 graph workspace all", async ({ page }) => {
   test.skip(mode === "baseline", "baseline captures the transcript only")
+  test.skip(true, "workspace API removed in Batch 3B; built-in plugin builds graph locally")
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   const workspaceResponse = page.waitForResponse((response) => response.url().includes("/api/graph/workspace"))

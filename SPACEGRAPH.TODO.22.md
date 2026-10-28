@@ -11,7 +11,7 @@
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | 🔶 **19/20 core frames pass** | Fixed spacegraph-renderer depth fade guard (prevents spurious re-renders). Test 19 (depth-stack) passes. Test 18 (layered) blocked by camera animation from depth mode change (orbit→layered, 0.5s polar animation). Full 44-frame matrix also blocked by server lifecycle (SIGINT from Playwright). Core visual parity for depth modes validated. |
+| **2.10 — capture matrix** | 🟢 **server lifecycle fixed** | Removed unnecessary backend server spawn from `graph:capture` script; Playwright's `webServer` config handles app server. Test 18 (layered) blocked by camera animation (orbit→layered, 0.5s polar animation) — known issue. Test 19 (depth-stack) passes (flaky). Workspace tests 32/33 skipped (API removed in Batch 3B). Core 28 app frames run without SIGINT. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
 | **4 — T2.2 evidence** | ⏳ pending | Stop rule unchanged. Runs on built-in plugin. |
@@ -31,6 +31,7 @@
 │   - Drives running app via Playwright; identical on old/new paths           │
 │   - Validates visual parity BEFORE deleting reference implementation         │
 │   - 44 frames: 5 layouts × 4 depths × contexts                              │
+│   - **Server lifecycle FIXED**: removed manual backend spawn; uses webServer │
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -105,7 +106,7 @@
 | **Hybrid scroll = free** | One DOM tree, class toggles only. No virtualizer reset. |
 | **Dynamic imports in memo** | `require("@opencode/session-ui/graph")` inside `createMemo` avoids circular deps |
 | **Depth mode re-render bug** | SpaceGraphRenderer `setDepthFade` called on every `applySceneFade` without value check caused spurious re-renders; adding `_depthFade` guard fixed layered/depth-stack stillness |
-| **Server lifecycle in capture script** | Playwright sends SIGINT to entire process group; background server must be in separate session (`setsid`) or use Playwright's `webServer` config |
+| **Server lifecycle in capture script** | Playwright sends SIGINT to entire process group; background server must be in separate session (`setsid`) or use Playwright's `webServer` config. **FIXED**: removed manual `bun dev serve` spawn from `graph:capture` — the e2e tests use `mockOpenCodeServer` (in-browser mock), and Playwright's `webServer` config runs the app dev server. No external server needed. |
 | **Camera animation in depth mode switch** | Orbit→layered transition triggers 0.5s polar animation; test waits for canvas settle but animation may not complete in headless CI; depth-stack passes (larger tilt change) |
 
 ---
@@ -199,12 +200,10 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 
 ## 📋 IMMEDIATE NEXT ACTIONS
 
-1. **Fix capture matrix server lifecycle**: Run `bun run graph:capture --mode=verify` — the background server receives SIGINT from Playwright and exits (code 130). Need to use Playwright's `webServer` config instead of manual server spawn, or run server on separate machine/port that test runner doesn't manage.
-2. **Batch 3A**: Delete `packages/app/src/session/graph/*`, header toggle, commands, layout field, stories
-3. **Verify**: Plugin works standalone (toggle `settings.experimental.sessionGraph = true`)
-4. **Batch 3B**: Delete protocol/server graph code; run `bun run generate`
-5. **Re-baseline**: Bundle size, lazy chunks, first paint
-6. **Batch 4**: Run T2.2 study
+1. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion)
+2. **Batch 4**: Run T2.2 study on built-in plugin
+3. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle (may need longer timeout or animation handling)
+4. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI — consider `--disable-animation` flag or wait longer
 
 ---
 
