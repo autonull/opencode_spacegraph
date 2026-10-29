@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.23 — Plugins Only, Full Parity
 
-> **Status: Day 1 scaffold done.** The external bundle now builds from this repo at **668.7 KB gzip** with only the allowlisted modules. Remaining: manual stock mount (1.3), the no-`ctx.surfaces` dialog fallbacks, then parity/publish/retire. Read §1 before touching anything.
+> **Status: Day 1 + Day 2 fallbacks done.** The external bundle builds at **669.1 KB gzip** with only the allowlisted modules, and now works with or without `ctx.surfaces`. Remaining: manual stock mount (1.3), then parity/publish/retire. Read §1 before touching anything.
 
 ## Progress
 
@@ -14,7 +14,16 @@
 - `cd plugins && bun check` is green. `bun run lint:changed` reports no findings in `plugins/` or the touched built-in file.
 - External `renderer.tsx` already branches on `ctx.surfaces`: with it, it registers `SessionSurface` + turn-map layer + hybrid; without it, the map is the side `Panel` and commands open that panel. CSS and `i18n` are provided at every render root.
 
-Remaining on Day 1: **1.3** — load `dist/gui-experimental.cjs` as a local plugin on stock web + desktop and record first-interaction numbers. Everything after that is Day 2–3 below.
+Remaining on Day 1: **1.3** — load `dist/gui-experimental.cjs` as a local plugin on stock web + desktop and record first-interaction numbers.
+
+**2026-10-29 — Day 2 no-surface fallbacks.**
+
+- Added `plugins/dialogs.tsx`: `MapDialog` (full/hybrid map in `ctx.ui.Dialog`, `x-large`) and `TurnMapDialog` (turn subgraph as a `normal` dialog with an "open full map" button).
+- `renderer.tsx` now routes without surfaces: hybrid opens the map dialog over the transcript, turn map opens the turn-map dialog, map still opens the side panel. With surfaces, all three keep the surface path.
+- Build: **779 modules**, `2,401.21 kB` raw, **`669.09 kB` gzip**.
+- `plugins` typecheck green.
+
+Day 2 is complete. Everything after this is Day 3 below.
 
 ---
 
@@ -137,13 +146,13 @@ Do not proceed to Day 2 until 1.3 passes; if it cannot pass, report the exact bl
 | # | Task | Status | Files |
 |---|---|---|---|
 | 2.1 | Branch on surface support: `ctx.surfaces` when present, else panel/dialog | ✅ done | `plugins/renderer.tsx` |
-| 2.2 | Full map dialog (`ctx.dialogs.open`), turn map dialog | ◐ panel path done; dialog fallback remains | `full-map.tsx`, `turn-map-layer.tsx` |
-| 2.3 | Hybrid: Side (wide panel) + Floating (dialog) | ◐ surface path done; no-surface fallback remains | `hybrid-surface.tsx` |
+| 2.2 | Full map dialog (`ctx.dialogs.open`), turn map dialog | ✅ done | `plugins/dialogs.tsx` |
+| 2.3 | Hybrid: Side (wide panel) + Floating (dialog) | ✅ done | `hybrid-surface.tsx`, `plugins/dialogs.tsx` |
 | 2.4 | Permalinks `#spacegraph:<layout>:<node>` → open map + frame | ✅ done (also accepts legacy `#graph:`) | `plugins/renderer.tsx` |
 | 2.5 | Commands/keybinds (`mod+shift+m`, `mod+t`, level/layout/arrangement/side/export), settings page, `Store.session` | ✅ done | `plugins/renderer.tsx`, `settings.tsx` |
 | 2.6 | Transcript bridge `screen.transcript.reveal` | ✅ done (panel Inspector, turn map) | `panel.tsx`, `turn-map-layer.tsx` |
 
-Clarified remaining for Day 2: the only genuine gap is the **no-`ctx.surfaces` fallback for full map, turn map, and hybrid** (2.2/2.3). The panel already shows the full map, so this is a convenience/parity question, not a blocker for Day 1. Decide whether stock-host parity needs dialogs before doing the work.
+Day 2 is complete. All three contributions have a working path on a host without `ctx.surfaces`; the surface path is unchanged when the host provides it.
 
 ### Day 3 — Parity, publish, retire the built-in
 | # | Task | Done when |

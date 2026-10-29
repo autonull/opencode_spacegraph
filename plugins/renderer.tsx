@@ -17,6 +17,7 @@ import { createSpacegraph } from "../packages/gui-plugins/src/spacegraph/model"
 import { MapSurface } from "../packages/gui-plugins/src/spacegraph/map-surface"
 import { HybridSurface } from "../packages/gui-plugins/src/spacegraph/hybrid-surface"
 import { TurnMapLayer } from "../packages/gui-plugins/src/spacegraph/turn-map-layer"
+import { MapDialog, TurnMapDialog } from "./dialogs"
 import { createUiI18n, I18nContext } from "./i18n"
 
 type Surfaces = SetupContext<typeof definition>["surfaces"]
@@ -64,6 +65,46 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     },
     draggable: false,
     closable: "compact",
+  }
+
+  const openMapDialog = (session: MountedSession, title: string) => {
+    const screen = ctx.screen.current()
+
+    if (!screen) {
+      openPanel(session)
+      return
+    }
+
+    ctx.dialogs.open(() => (
+      <Scope>
+        <MapDialog ctx={ctx} model={model} session={session} screen={screen} title={title} />
+      </Scope>
+    ))
+  }
+
+  const openTurnMap = (session: MountedSession) => {
+    const screen = ctx.screen.current()
+
+    if (!screen) return
+
+    const dialog = ctx.dialogs.open(() => (
+      <Scope>
+        <TurnMapDialog
+          ctx={ctx}
+          session={session}
+          screen={screen}
+          labels={{
+            title: ctx.t("turnMap.title"),
+            open: ctx.t("turnMap.open"),
+            empty: ctx.t("turnMap.empty"),
+          }}
+          openFull={() => {
+            dialog.close()
+            openPanel(session)
+          }}
+        />
+      </Scope>
+    ))
   }
 
   const [hash, setHash] = createSignal(location.hash)
@@ -189,7 +230,9 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
   })
 
   ctx.add(Command, (): Command | undefined => {
-    if (!ctx.sessions.current() || !surfaces()) return undefined
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
 
     return {
       id: "hybrid",
@@ -201,7 +244,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       },
       bind: "mod+shift+h",
       section: "session",
-      run: () => select(`${ctx.id}.hybrid`),
+      run: () => (surfaces() ? select(`${ctx.id}.hybrid`) : openMapDialog(session, ctx.t("surface.hybrid"))),
     }
   })
 
@@ -276,7 +319,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
   ctx.add(Command, (): Command | undefined => {
     const session = ctx.sessions.current()
 
-    if (!session || !surfaces()) return undefined
+    if (!session) return undefined
 
     return {
       id: "turn-map",
@@ -289,6 +332,11 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       bind: "mod+t",
       section: "session",
       run: () => {
+        if (!surfaces()) {
+          openTurnMap(session)
+          return
+        }
+
         const opening = !model.turnMap(session)
         model.toggleTurnMap(session)
 
