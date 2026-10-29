@@ -155,14 +155,20 @@ Do not proceed to Day 2 until 1.3 passes; if it cannot pass, report the exact bl
 
 Day 2 is complete. All three contributions have a working path on a host without `ctx.surfaces`; the surface path is unchanged when the host provides it.
 
+**2026-10-29 — Day 3 seam archive (3.4).**
+
+- Added `patches/0001-session-surfaces.patch` (849 lines, 18 files: app surfaces, screen, timeline reconnect, SDK context/registries/host APIs, English copy) with `0001-session-surfaces.apply.sh` / `.revert.sh`.
+- Verified mechanically on a detached `upstream/dev` worktree: `git apply --check` clean, apply clean, reverse-check clean, then removed the worktree.
+- Caveat: this archives the seam only. The full external build still needs the rest of this fork (the `session-graph` and `session-ui/graph` packages), so "fork reproducible" means applying on top of the identical fork lineage, not stock alone.
+
 ### Day 3 — Parity, publish, retire the built-in
-| # | Task | Done when |
-|---|---|---|
-| 3.1 | Capture matrix **on the bundle** | Every frame matches the reference build |
-| 3.2 | e2e keepers on the bundle (panel open, reveal, permalink, export) | green |
-| 3.3 | Publish `@autonull/opencode-plugin-spacegraph` | installs and runs from npm on web + desktop |
-| 3.4 | Archive seam: `patches/0001-session-surfaces.patch` + apply/revert scripts | fork reproducible |
-| 3.5 | Delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts` | `bun run check` green |
+| # | Task | Status | Done when |
+|---|---|---|---|
+| 3.1 | Capture matrix **on the bundle** | ⏳ needs live app | Every frame matches the reference build |
+| 3.2 | e2e keepers on the bundle (panel open, reveal, permalink, export) | ⏳ needs live app | green |
+| 3.3 | Publish `@autonull/opencode-plugin-spacegraph` | ⏳ needs npm auth | installs and runs from npm on web + desktop |
+| 3.4 | Archive seam: `patches/0001-session-surfaces.patch` + apply/revert scripts | ✅ done, verified apply/revert against `upstream/dev` | fork reproducible |
+| 3.5 | Delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts` | ⏳ after 3.1/3.2 | `bun run check` green |
 
 ### Later (not blocking release)
 `session.header` turn ribbon · `ComposerPill` popover mini map · mobile drawer polish · `onIdle` preloads · optional Cytoscape build variant (one alias).
