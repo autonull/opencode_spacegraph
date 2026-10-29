@@ -1,6 +1,20 @@
 # SPACEGRAPH.TODO.23 — Plugins Only, Full Parity
 
-> **Status: usable.** The external bundle builds today (measured). Two open questions remain, each with a check. Work left is packaging: **~3 days**. Read §1 before touching anything.
+> **Status: Day 1 scaffold done.** The external bundle now builds from this repo at **668.7 KB gzip** with only the allowlisted modules. Remaining: manual stock mount (1.3), the no-`ctx.surfaces` dialog fallbacks, then parity/publish/retire. Read §1 before touching anything.
+
+## Progress
+
+**2026-10-29 — Day 1 scaffold (1.1, 1.2, 1.4).**
+
+- Created `plugins/`: `gui.tsx` (bundle entry), `renderer.tsx` (external setup), `i18n.ts` (shim for `@opencode/ui/context/i18n`), `stubs/onnx.ts`, `stubs/cytoscape.ts`, `vite.config.ts`, `build.ts`, `style.css`, `package.json`, `tsconfig.json`.
+- Added `"plugins"` to root `workspaces.packages`; declared the plugin's build/types as dev dependencies. `bun install` now gives `plugins/node_modules`.
+- Build (`bun plugins/build.ts`): **778 modules**, `2,398.74 kB` raw, **`668.65 kB` gzip**; requires only `effect`, `@opencode/plugin/gui`, `solid-js`, `solid-js/store`, `solid-js/web`. CSS compiles to `8.33 kB` and is inlined (`?inline`) into `ctx.add(Style, css)`.
+- Aliases extended beyond §2's list because the bundle named them: `spacegraphjs/activity`, `spacegraphjs/layout`, `spacegraphjs/representations`.
+- Fixed `packages/gui-plugins/src/spacegraph/panel.tsx` calling `require("@opencode/session-ui/graph")` at runtime; it now uses static imports (the CJS/ESM bundle has no `require`).
+- `cd plugins && bun check` is green. `bun run lint:changed` reports no findings in `plugins/` or the touched built-in file.
+- External `renderer.tsx` already branches on `ctx.surfaces`: with it, it registers `SessionSurface` + turn-map layer + hybrid; without it, the map is the side `Panel` and commands open that panel. CSS and `i18n` are provided at every render root.
+
+Remaining on Day 1: **1.3** — load `dist/gui-experimental.cjs` as a local plugin on stock web + desktop and record first-interaction numbers. Everything after that is Day 2–3 below.
 
 ---
 
@@ -100,29 +114,36 @@ export default defineConfig({
 
 Build: `bun plugins/build.ts` (wraps the Bun-run Vite command above).
 
+**As built (2026-10-29):**
+- `"plugins"` is a workspace package, so `vite`, `@tailwindcss/vite`, `vite-plugin-solid`, `solid-js` and `@opencode/plugin` resolve from `plugins/node_modules`. This is required: the repo root has no `vite`, and the config's imports are resolved relative to the config.
+- The config adds `@tailwindcss/vite` and **three aliases the measured list missed**: `spacegraphjs/activity` (`src/activity.ts`), `spacegraphjs/layout`, `spacegraphjs/representations`.
+- `style.css` imports `../packages/ui/src/styles/tailwind/index.css` and `../packages/session-ui/src/styles/index.css`, adds `@source` for the plugin and graph sources, and is imported with `?inline`. Vite also writes a stray `dist/opencode-plugin-spacegraph.css`; the JS string is what ships through `ctx.add(Style, css)`.
+
 ---
 
 ## 3. Remaining work
 
 ### Day 1 — Mount in a stock app (open question C1)
-| # | Task | Done when |
-|---|---|---|
-| 1.1 | `plugins/` scaffold: entry, i18n shim, stubs, config, build script | `dist/gui-experimental.cjs` builds at ≤700 KB gzip |
-| 1.2 | Panel contribution rendering the **real `GraphView`** with the vendored model | Panel opens on a stock session |
-| 1.3 | Load as a **local plugin** (`.opencode/plugins/` or a config path) on stock **web and desktop** | Graph renders, pans, zooms, selects; CSS applied |
-| 1.4 | Measure load + first interaction; record the numbers here | C2 answered (accept 684 KB or apply a targeted cut) |
+| # | Task | Status | Done when |
+|---|---|---|---|
+| 1.1 | `plugins/` scaffold: entry, i18n shim, stubs, config, build script | ✅ done | `dist/gui-experimental.cjs` builds at ≤700 KB gzip (**668.65 KB**) |
+| 1.2 | Panel contribution rendering the **real `GraphView`** with the vendored model | ✅ built (verify at 1.3) | Panel opens on a stock session |
+| 1.3 | Load as a **local plugin** (`.opencode/plugins/` or a config path) on stock **web and desktop** | ⏳ blocked on manual run | Graph renders, pans, zooms, selects; CSS applied |
+| 1.4 | Measure load + first interaction; record the numbers here | ✅ bundle measured; load timing pending 1.3 | C2 answered (accept 668.7 KB) |
 
 Do not proceed to Day 2 until 1.3 passes; if it cannot pass, report the exact blocker before writing more code.
 
 ### Day 2 — Contributions without `ctx.surfaces` (open question C3, low risk)
-| # | Task | Files |
-|---|---|---|
-| 2.1 | Branch on surface support: `ctx.surfaces` when present, else panel/dialog | `renderer.tsx`, `model.ts` (9 call sites, 4 files) |
-| 2.2 | Full map dialog (`ctx.dialogs.open`), turn map dialog | `full-map.tsx`, `turn-map-layer.tsx` |
-| 2.3 | Hybrid: Side (wide panel) + Floating (dialog) | `hybrid-surface.tsx` |
-| 2.4 | Permalinks `#spacegraph:<layout>:<node>` → open dialog + frame | `renderer.tsx` |
-| 2.5 | Commands/keybinds (`mod+shift+m`, `mod+shift+g`, `mod+t`), settings page, `Store.session` | `renderer.tsx`, `settings.tsx` |
-| 2.6 | Transcript bridge `screen.transcript.reveal` | `model.ts` |
+| # | Task | Status | Files |
+|---|---|---|---|
+| 2.1 | Branch on surface support: `ctx.surfaces` when present, else panel/dialog | ✅ done | `plugins/renderer.tsx` |
+| 2.2 | Full map dialog (`ctx.dialogs.open`), turn map dialog | ◐ panel path done; dialog fallback remains | `full-map.tsx`, `turn-map-layer.tsx` |
+| 2.3 | Hybrid: Side (wide panel) + Floating (dialog) | ◐ surface path done; no-surface fallback remains | `hybrid-surface.tsx` |
+| 2.4 | Permalinks `#spacegraph:<layout>:<node>` → open map + frame | ✅ done (also accepts legacy `#graph:`) | `plugins/renderer.tsx` |
+| 2.5 | Commands/keybinds (`mod+shift+m`, `mod+t`, level/layout/arrangement/side/export), settings page, `Store.session` | ✅ done | `plugins/renderer.tsx`, `settings.tsx` |
+| 2.6 | Transcript bridge `screen.transcript.reveal` | ✅ done (panel Inspector, turn map) | `panel.tsx`, `turn-map-layer.tsx` |
+
+Clarified remaining for Day 2: the only genuine gap is the **no-`ctx.surfaces` fallback for full map, turn map, and hybrid** (2.2/2.3). The panel already shows the full map, so this is a convenience/parity question, not a blocker for Day 1. Decide whether stock-host parity needs dialogs before doing the work.
 
 ### Day 3 — Parity, publish, retire the built-in
 | # | Task | Done when |
@@ -181,8 +202,8 @@ Parity oracle: the capture matrix on the bundle. A differing frame is a bug; nev
 | Alias seam insufficient | ✅ closed | Spike built 606 modules with zero source edits |
 | ONNX/vision bloat | ✅ closed | Stub; unreachable from the graph |
 | Bundle size | ✅ measured 684 KB gzip | Accept or apply a targeted cut (§3 1.4) |
-| Stock mount / CSS | ⏳ open (C1) | Day 1; stop and report if it fails |
-| `ctx.surfaces` branch | ⏳ open (C3) | 9 call sites, small |
+| Stock mount / CSS | ⏳ open (C1) | Bundle built; needs the manual 1.3 run. CSS is inlined in the same artifact |
+| `ctx.surfaces` branch | ✅ done | `plugins/renderer.tsx` branches; no-surface dialog fallbacks are the only remainder |
 | Upstream SDK change | routine | `git merge upstream/dev`, rebuild |
 
 ---

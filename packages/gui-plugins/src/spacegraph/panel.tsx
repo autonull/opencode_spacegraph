@@ -1,6 +1,6 @@
 import { usePlugin, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
 import { createMemo, createSignal, For, Show } from "solid-js"
-import type { GraphNode } from "@opencode/session-ui/graph"
+import { buildGraph, navigationResults, rankedSearch, type GraphNode } from "@opencode/session-ui/graph"
 import type { SpacegraphModel } from "./model"
 import { FullMap } from "./full-map"
 import { Inspector } from "./Inspector"
@@ -23,12 +23,10 @@ export default function SpacegraphPanel(props: {
     const status: { type: "busy" | "idle" } =
       props.session.server.data.session.status(props.session.id) === "running" ? { type: "busy" } : { type: "idle" }
 
-    const { buildGraph } = require("@opencode/session-ui/graph")
     return buildGraph({ messages: props.session.server.data.session.message.list(props.session.id), status })
   })
 
   const search = (query: string) => {
-    const { rankedSearch, navigationResults } = require("@opencode/session-ui/graph")
     const results = navigationResults(graph(), query) ?? rankedSearch(graph(), query)
     setSearchResults(results)
     setSearchIndex(0)
@@ -46,14 +44,17 @@ export default function SpacegraphPanel(props: {
   const windowTitle = (window: WindowState) => {
     if (window.nodeID) {
       const node = graph().nodes.find((n: GraphNode) => n.id === window.nodeID)
+
       return node?.label ?? window.kind
     }
+
     return window.kind
   }
 
   const windowContent = (window: WindowState) => {
     if (window.kind === "inspector" && window.nodeID) {
       const node = graph().nodes.find((n: GraphNode) => n.id === window.nodeID)
+
       return (
         <Inspector
           model={graph()}
@@ -63,6 +64,7 @@ export default function SpacegraphPanel(props: {
         />
       )
     }
+
     return <div>Window content for {window.kind}</div>
   }
 
@@ -73,6 +75,7 @@ export default function SpacegraphPanel(props: {
 
   const bounds = () => {
     const el = document.querySelector('[data-slot="spacegraph-panel"]')
+
     return { width: el?.clientWidth ?? 800, height: el?.clientHeight ?? 600 }
   }
 
@@ -93,6 +96,7 @@ export default function SpacegraphPanel(props: {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const results = searchResults()
+
                 if (results.length > 0) openSearchResult(results[searchIndex()])
               } else if (e.key === "ArrowDown") {
                 e.preventDefault()
