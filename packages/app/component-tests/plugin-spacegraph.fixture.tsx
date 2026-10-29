@@ -1,3 +1,4 @@
+import type { Context } from "@opencode/plugin/gui"
 import { pluginDefinition } from "../src/runtime/plugin/module"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { mountBuiltInSurface, mountSessionRegion } from "./plugin-host.fixture"
@@ -65,11 +66,21 @@ export async function mountSpacegraphDialog(code: string) {
         windowEntry: async () => ({
           default: (ctx) => {
             // SAFETY: `Entry` types the setup context as `never` so every plugin's narrower context fits; at runtime
-            // the host's object is here, and a stock host simply does not expose `surfaces`.
-            const stock = ctx as { surfaces?: unknown }
-            stock.surfaces = undefined
+            // the host's object is here.
+            const host = ctx as Context
 
-            return entry.default(ctx)
+            // SAFETY: a stock host omits `surfaces`; a proxy hides the getter-only property without assigning to it.
+            const stock = new Proxy(host, {
+              get(target, key) {
+                if (key === "surfaces") return undefined
+
+                // SAFETY: the trap forwards every other read to the host context, whose keys are `keyof Context`.
+                return target[key as keyof Context]
+              },
+            })
+
+            // SAFETY: `entry.default` is the bundle's setup; `stock` is the same context with `surfaces` removed.
+            return entry.default(stock as never)
           },
         }),
       },

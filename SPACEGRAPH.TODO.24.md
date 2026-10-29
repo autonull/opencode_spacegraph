@@ -19,7 +19,8 @@
 | C3 shared turn map | ✅ done | `TurnMapBody` serves the overlay layer and dialog |
 | C4 small unifications | ✅ done | one `DEPTH_MODES`, `SpacegraphModel`, no `surfaces!` |
 | C5 seam archive | ✅ done | `docs/spacegraph/seam/`; `patches/` holds dependency patches only |
-| D1–D3 release | ⬜ pending | needs a real `npm install`; do not retire the built-in before then |
+| D1–D3 release | ⬜ blocked | no npm auth (`npm whoami` → `ENEEDAUTH`); package is still `private: true` and has no publish allowlist. Do not retire the built-in before a real install |
+| Verification pass (2026-10-29) | ✅ done | fixed the dialog fixture (getter-only `ctx.surfaces`); 3/3 artifact frames pass; baselines unchanged |
 
 **Verification run:** `bun run graph:capture --mode=bundle` (3/3 frames), `bun run test` in `packages/plugins/spacegraph`, `bun typecheck` in `packages/gui-plugins`, `packages/plugins/spacegraph` and `packages/app`, and scoped `lint:changed` on the files this plan created or edited.
 
@@ -27,6 +28,7 @@
 - The bundle now defines `process.env.NODE_ENV` for browser libraries such as motion; without it the panel path threw `process is not defined`.
 - `bundle.test.ts` builds once at module load, not once per test, so the 5 s per-test budget is not spent on Vite.
 - `mountSessionRegion` gained an optional `tab` input (default `main`) and a `run(command)` helper; the session object also exposes `status()`.
+- The host defines `ctx.surfaces` as a getter-only property, so a stock-host fixture cannot assign `undefined` to it. The dialog fixture now hides `surfaces` with a `Proxy`; mutating the context aborted setup and left the `hybrid` command unregistered.
 - Repository-wide `bun run check` / `lint:changed` still report pre-existing fork findings. Treat only the files this plan touched as the gate until those are addressed separately.
 - D remains the release gate: publish, install in a scratch app, verify Panel on web and desktop, then delete the built-in registration and decide the thin wrapper's lifetime.
 
@@ -157,6 +159,13 @@ The loop must be fast and must test what ships. Current cost: bundle build ~6 s,
 - **Done when:** `patches/` contains only dependency patches and `bun install` is unchanged.
 
 ## 5. Phase D — Release and retire (P2, after A–C)
+
+**Blocked (2026-10-29):** A–C are green, but D needs a registry identity this environment does not have. `npm whoami` returns `ENEEDAUTH` and the package does not exist on npm yet. Do not start D2/D3 from a local mount; the gate is a real published install.
+
+Concrete unblock path:
+1. Decide whether this fork publishes `@autonull/opencode-plugin-spacegraph` or stays local; if publishing, remove `"private": true`, add a `files` allowlist (`dist`, `README.md`, `package.json`) and a `prepack`/`prepublishOnly` build, then `npm login` with the `@autonull` scope.
+2. Publish `0.1.0`, then install it in a scratch opencode app with `npm install @autonull/opencode-plugin-spacegraph` (the peer dependencies must be resolvable from that app).
+3. Verify the stock Panel on web and desktop; only then delete the built-in registration (D2) and decide the wrapper lifetime (D3).
 
 | # | Task | Gate |
 |---|---|---|
