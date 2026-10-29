@@ -22,6 +22,7 @@ Remaining on Day 1: **1.3** — load `dist/gui-experimental.cjs` as a local plug
 - `renderer.tsx` now routes without surfaces: hybrid opens the map dialog over the transcript, turn map opens the turn-map dialog, map still opens the side panel. With surfaces, all three keep the surface path.
 - Build: **779 modules**, `2,401.21 kB` raw, **`669.09 kB` gzip**.
 - `plugins` typecheck green.
+- Added `plugins/bundle.test.ts`: it builds if `dist/` is absent, asserts every static `require` is in the allowlist, then runs the real `evaluatePluginBundle` from `@opencode/plugin/gui/host` with the host modules and checks the declarations (`setup`, `prefs` global, `session` session, English copy). This is the build + manifest gate from §5, now executable: `cd plugins && bun test`.
 
 Day 2 is complete. Everything after this is Day 3 below.
 
@@ -184,7 +185,8 @@ Not shipped, with reasons:
 | Gate | Where | Catches | Cost |
 |---|---|---|---|
 | Build (`gui()`) | CI | Unaliased `@opencode/*` import (error names the module) | 5 s |
-| Artifact manifest | CI | Requires a module outside the allowlist | 1 s |
+| Artifact manifest | `plugins/bundle.test.ts` | Requires a module outside the allowlist | 1 s |
+| Bundle evaluates in the real host | `plugins/bundle.test.ts` | A malformed `Plugin.define`, missing setup/stores, or a broken CJS export | 1 s |
 | Capture matrix **on the bundle** | this fork | Any visual/interaction regression vs the reference build | `graph:capture --mode=verify` |
 | e2e keepers on the bundle | this fork | Panel open, reveal, permalink, export | 2 min |
 | Component tests (built-in) | this fork | Host lifetime contracts while developing in HMR | 35 s |

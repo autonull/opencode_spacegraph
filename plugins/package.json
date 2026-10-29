@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "bun build.ts",
+    "test": "bun test --conditions browser",
     "typecheck": "bun check --no-script"
   },
   "peerDependencies": {
@@ -22,6 +23,7 @@
     "@opencode/session-graph": "workspace:*",
     "@opencode/session-ui": "workspace:*",
     "@opencode/ui": "workspace:*",
+    "@happy-dom/global-registrator": "20.0.11",
     "@tailwindcss/vite": "catalog:",
     "@tsconfig/node22": "catalog:",
     "@types/bun": "catalog:",

@@ -991,6 +991,7 @@
       "name": "@autonull/opencode-plugin-spacegraph",
       "version": "0.1.0",
       "devDependencies": {
+        "@happy-dom/global-registrator": "20.0.11",
         "@opencode/plugin": "workspace:*",
         "@opencode/session-graph": "workspace:*",
         "@opencode/session-ui": "workspace:*",
