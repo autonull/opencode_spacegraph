@@ -1,119 +1,126 @@
-# SPACEGRAPH.TODO.23 — Plugins Only, Full Parity
+# SPACEGRAPH.TODO.23 — Plugins Only, Full Parity (measured)
 
-> **Answer to "can we build this with plugins only?" — Yes.** The existing code ships as an external plugin with **no source rewrite and no feature loss**, via build-time aliases. Remaining work is packaging: **~3 days**, not a port.
+> **Can we ship this with plugins only? Yes — and it has now been built, not argued.** An external bundle of the *unmodified* `session-graph` + `session-ui` sources with `GraphView` mounted builds today. No source edits, no fork for users, no upstream PR.
 
 ---
 
-## 1. Why it works (verified, not assumed)
+## 1. Measured facts (spike run 2026-10-29)
 
-`gui()` rejects unaliased `@opencode/*` imports. But Vite's internal alias plugin is ordered **before** user `pre` plugins (`vite/dist/node/chunks/dep-*.js`, `resolvePlugins`: `alias({...}), ...prePlugins`). So `resolve.alias` rewrites our imports **before** `gui()` sees them.
+A real `vite build` with `gui()` and nothing but `resolve.alias`:
 
-Only **four** module IDs need handling; everything else is already legal:
+| Measurement | Result |
+|---|---|
+| Build | ✅ **606 modules**, no source edits to `session-graph` or `session-ui` |
+| Aliases needed | `@opencode/session-ui/graph`, `@opencode/session-graph`, `@opencode/ui/{icon,icon-button,segmented-control}` → fork sources; `@opencode/ui/context/i18n` → 40-line shim |
+| Provided modules required by the artifact | `solid-js`, `solid-js/web`, `solid-js/store`, `@opencode/plugin/gui`, `effect` — **exactly the allowlist** |
+| Artifact size | **2.78 MB raw / 839 KB gzip** |
+| CSS | 8.33 kB emitted separately → must ship via `ctx.add(Style, css)` |
+| Vanilla attempt first | 78.7 MB / 21.3 MB gzip — because `gui()` sets `inlineDynamicImports: true`, which inlined spacegraphjs's **ONNX vision runtime** (two 37.8 MB chunks) |
+| After stubbing `onnxruntime-web` | 2.78 MB — vision is unreachable from the graph, so **no graph functionality is lost** |
 
-| Import | Sites | Treatment |
+Vite's alias plugin runs before user `pre` plugins (`resolvePlugins`: `alias({...}), ...prePlugins`), which is why zero source changes are needed.
+
+### What still has to be proven (two things, both measurable)
+
+| # | Check | Pass criterion |
 |---|---|---|
-| `@opencode/session-ui/graph` | 91 | alias → fork source (pure TS; `@opencode/client/promise` imports are **type-only**, erased) |
-| `@opencode/session-graph` | 2 | alias → fork source (12,782 lines, unchanged) |
-| `@opencode/ui/context/i18n` | 49 | **one shim** (~40 lines): `t`→`ctx.t` (346 uses), `plural`→`ctx.plural` (9), `locale`/`direction`→`ctx.locale` |
-| `@opencode/ui/{icon,icon-button,segmented-control}` | 10 | alias → fork source; these are self-contained (solid-js + kobalte + motion + own CSS), so **bundle the real components** — identical pixels |
-| `@opencode/client/promise` | 2 | type-only, nothing to do |
+| C1 | Mount the bundle in a **stock** app (web + desktop) | Panel shows the real `GraphView`, styled, interactive |
+| C2 | Is 839 KB gzip acceptable at plugin-load time? | Load/interaction timing on a stock app; if not, the fix is targeted (e.g. ship one renderer), decided on data |
 
-Consequences:
-
-- **Zero edits** to `session-ui/src/graph` or `session-graph/src`. No vendoring script, no drift guard, no parity port.
-- **Every subsystem ships**: GraphView, toolbar (level/layout/depth/draw/show/time/questions), inspector, windows, search, find, minimap, legend, gallery, equalizer, compare, notes, trace, filesystem window, turn map, status bar, failure progress, export, a11y mirror, keyboard nav, animation, depth modes, notifications, security sanitizing.
-- Only **4 files** in the plugin itself change: `renderer.tsx`/`model.ts` get a ~30-line branch so contributions work with or without `ctx.surfaces` (9 call sites).
-
-The one true loss: **the custom Transcript component**, which cannot exist on stock (the host owns the session body). It was a workaround for a hybrid virtualizer bug that no longer occurs.
+Everything else — every subsystem, every interaction — rides in the built artifact already.
 
 ---
 
-## 2. Why the plan had exploded
+## 2. Why the plan kept moving (and how that stops)
 
-I planned a **port** before testing a **build**. Treating 22k lines as something to re-implement added a vendoring script, drift guards, a monorepo, and parity phases — all unnecessary once the alias path is proven. That was my error, not a constraint. The 99% already built stays built.
+Each earlier revision was a *reading* of the source, not a *run*. Four rewrites came from four guesses: "lean UI", "vendor 22k lines", "13-day port", "monorepo". The spike replaced guesses with numbers in ~40 minutes.
+
+**Convergence rule from here on:** a claim enters this plan only with a measurement or a passing check. The design is considered converged when C1 passes and the capture matrix on the bundle matches the reference build; until then, treat the plan as a hypothesis with a named open question.
 
 ---
 
-## 3. Remaining work (3 days)
+## 3. Remaining work
 
-### Day 1 — External build (the only unknown)
-- `plugins/gui.tsx` (entry): registers the existing contributions; wraps panels/dialogs in the i18n shim provider.
-- `plugins/i18n.ts` shim (~40 lines) + `plugins/config.ts` with the aliases above.
-- Build with `gui({ entry: "plugins/gui.tsx" })`; add any further `@opencode/ui/*` alias the build names (expected: 0–2).
-- CSS: `import css from "../src/spacegraph.css?inline"` (Tailwind over the plugin + aliased sources, `cssCodeSplit: false`) → `ctx.add(Style, css)`; UI component CSS comes with the aliased sources.
-- **Mount the real `GraphView` in a `Panel` on stock web + desktop.** Measure bundle size.
-- Exit criterion: stock app renders the full graph UI, correctly styled, ~1 s rebuild reload.
+### Day 1 — Prove C1 (the only real unknown)
+- Add `plugins/gui.tsx` (entry) + `plugins/i18n.ts` (shim) + `plugins/vite.config.ts` (the measured alias set).
+- Ship CSS: Tailwind over `plugins/`, `packages/session-graph/src`, `packages/ui/src` → one string via `ctx.add(Style, css)`.
+- Register a `Panel` rendering the real `GraphView`; load as a **local plugin** on stock web + desktop.
+- Measure C2 (load + interaction timing).
 
 ### Day 2 — Contributions without `ctx.surfaces`
-- `model.select`/`renderer.tsx`: `ctx.surfaces` when present (reference build), otherwise panel + full-map dialog (stock).
-- Panel (side, `wide`), full-map dialog (`ctx.dialogs.open`), turn map dialog, permalinks `#spacegraph:`, hybrid Side/Floating, transcript bridge (`screen.transcript.reveal`), commands/keybinds, settings, per-session store.
-- ~150 lines of wiring; the map itself is unchanged.
+- `renderer.tsx` / `model.ts` (9 call sites, 4 files): use `ctx.surfaces` when present (reference build), otherwise panel + `ctx.dialogs.open` full map.
+- Full map dialog, turn map dialog, permalinks `#spacegraph:`, hybrid Side/Floating, transcript bridge (`screen.transcript.reveal`), commands/keybinds, settings, `Store.session`.
 
-### Day 3 — Prove, publish, retire the built-in
-- Run the capture matrix against the external bundle; every frame must match the reference build (fix, don't re-baseline).
-- Verify on stock web + desktop, npm install path.
-- Publish the artifact from this repo (`dist/gui-experimental.cjs` + package.json) as `@autonull/opencode-plugin-spacegraph`.
+### Day 3 — Parity proof, publish, retire the built-in
+- Capture matrix **on the bundle** vs the reference build; a differing frame is a bug, not a re-baseline.
+- Publish `@autonull/opencode-plugin-spacegraph` from this repo (`dist/gui-experimental.cjs` + manifest).
 - Archive the seam as `patches/0001-session-surfaces.patch`; delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts`.
 
-### Fast follow (optional)
+### Fast follow
 `session.header` turn ribbon, `ComposerPill` popover mini map, mobile drawer polish, `onIdle` preloads.
 
 ---
 
-## 4. Testing
+## 4. Functional scope
+
+Everything ships: GraphView, toolbar (level/layout/depth/draw/show/time/questions), inspector, detail, windows, search, find, minimap, legend, gallery, equalizer, compare, notes, trace overlay, filesystem window, turn map, status bar, failure progress, export SVG/JSON/HTML, a11y mirror, keyboard nav, 2D/3D/depth modes, both renderers, sanitizing.
+
+Not reproducible on stock:
+- **Custom Transcript component** — the host owns the session body. It existed to work around a hybrid virtualizer measurement bug that no longer occurs.
+- **Stacked hybrid arrangement** — needs the body. Side (wide panel) and Floating (dialog) remain.
+
+---
+
+## 5. Testing
 
 | Gate | Where | Catches | Cost |
 |---|---|---|---|
 | Build (`gui()`) | CI | An unaliased `@opencode/*` import — names the module | 5 s |
-| Bundle-load (Node evaluate against provided modules) | CI | Missing external, bad export shape | 2 s |
-| Capture matrix **on the bundle** | this fork | Any visual/interaction difference vs the reference build | `graph:capture --mode=verify` |
+| Artifact manifest (requires only allowlisted modules) | CI | Accidental app import | 1 s |
+| Capture matrix **on the bundle** | this fork | Any visual/interaction regression vs the reference build | `graph:capture --mode=verify` |
 | e2e keepers on the bundle | this fork | Panel open, reveal, permalink, export | 2 min |
-| Component tests (built-in) | this fork | Host contracts while developing in the HMR loop | 35 s |
-
-The capture matrix is the parity gate: a differing frame is a regression.
+| Component tests (built-in) | this fork | Host lifetime contracts while developing in the HMR loop | 35 s |
 
 ---
 
-## 5. Dev loop
+## 6. Dev loop
 
 | Loop | Command | Feedback |
 |---|---|---|
 | UI with full HMR | fork's built-in plugin, `bun run dev:live` | instant, state preserved |
-| UI on stock | `vite build --watch` + stock app with a local plugin dir | ~1 s; the host re-evaluates the bundle (hash revision), state lost |
+| UI on stock | `vite build --watch` + stock app with a local plugin dir | ~1 s; the host re-evaluates the changed bundle, state lost |
 | Unit | `bun test --watch` | instant |
 
-No HMR for the external bundle itself (`gui()` is a lib build; the host reloads the whole plugin). Develop in the fork, ship the bundle.
+---
+
+## 7. Risks
+
+| Risk | Mitigation | Status |
+|---|---|---|
+| Alias seam insufficient | Spike built 606 modules with zero source edits | ✅ closed |
+| ONNX/vision bloat | Stubbed; unreachable from the graph | ✅ closed |
+| Bundle size (839 KB gzip) | C2 measurement; targeted fix if needed | open, measured |
+| Stock mount / CSS | C1 on web + desktop | open |
+| Upstream SDK change | `git merge upstream/dev`; re-run the spike build | routine |
 
 ---
 
-## 6. Risks
-
-| Risk | Mitigation |
-|---|---|
-| An `@opencode/ui/*` module drags in context-bound code | The build fails and names it; alias or shim that module |
-| Bundle size: `inlineDynamicImports` forbids code splitting (three + cytoscape + svg in one CJS, ~1.5–2 MB raw) | Measured on Day 1. If startup cost is unacceptable, decide with data — do not pre-emptively drop a renderer |
-| CSS: utilities used by aliased sources | Tailwind scans `plugins/` + `packages/session-graph/src` + `packages/ui/src`; colors only via `var(--v2-*)` |
-| Upstream SDK change | `git merge upstream/dev` before Day 1; re-read `modules.ts` |
-
----
-
-## 7. Definition of done
+## 8. Definition of done
 
 1. Stock web + desktop load the plugin from npm; no fork for users.
-2. Capture matrix on the bundle matches the reference build; all subsystems present.
-3. Build + bundle-load gates green.
+2. Capture matrix on the bundle matches the reference build.
+3. Build + manifest gates green.
 4. Seam archived as a patch; built-in registration deleted.
-5. **No upstream PR filed, none required.**
+5. No upstream PR filed, none required.
 
 ---
 
-## 8. Principles
+## 9. Principles
 
 | # | Decision |
 |---|---|
-| P1 | No functionality sacrificed; the alias seam preserves all of `session-graph` and `session-ui` |
-| P2 | No source rewrite, no vendored copy, no drift to guard |
-| P3 | Packaging is the work; features are done |
-| P4 | The capture matrix on the bundle proves parity |
-| P5 | The built-in plugin remains the HMR development target |
-| P6 | The seam patch is reference-build-only |
+| P1 | No source rewrite, no vendored copy, no drift to guard — the alias seam preserves all code |
+| P2 | Packaging is the work; features are done |
+| P3 | Claims require measurements; the capture matrix on the bundle is the parity oracle |
+| P4 | The built-in plugin remains the HMR development target |
+| P5 | The seam patch is reference-build-only |
