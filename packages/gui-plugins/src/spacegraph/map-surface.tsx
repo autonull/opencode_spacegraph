@@ -18,7 +18,6 @@ export function MapSurface(props: {
         screen={props.screen}
         onSplitView={props.onSplitView}
       />
-      <div class="invisible absolute inset-0">{props.transcript}</div>
     </div>
   )
 }
