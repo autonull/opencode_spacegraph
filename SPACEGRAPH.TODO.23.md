@@ -1,6 +1,6 @@
-# SPACEGRAPH.TODO.23 — Plugin-Only Delivery (No Fork, No Upstream PR)
+# SPACEGRAPH.TODO.23 — Plugin-Only Delivery (Verified, Consolidated)
 
-> **Supersedes SPACEGRAPH.TODO.22.** The MVP is complete as a built-in GUI plugin. This plan delivers the same product as a **third-party plugin on stock OpenCode**, with no fork and no upstream PR. The surface seam we built stays as an *optional* reference-build patch, never a dependency.
+> **Supersedes SPACEGRAPH.TODO.22.** Verified against `upstream/dev` @ `6007274795` (`anomalyco/opencode`). This fork is now synced to it (`402 0`). The deliverable is an **external GUI plugin on stock OpenCode**; the fork stays as the reference build and test lab. No upstream PR.
 
 ---
 
@@ -8,305 +8,207 @@
 
 | Item | Status |
 |------|--------|
-| Branch base | ✅ **synced to `upstream/dev` @ `6007274795`** (anomalyco/opencode, 2026-10-29). `git rev-list --left-right --count HEAD...upstream/dev` → `402 0` |
-| Graph MVP as built-in plugin (`gui-plugins/src/spacegraph`) | ✅ 26/26 capture frames, 49/49 session-graph component tests, 33/33 plugin-host tests, plugin-graph matrix green |
-| `bun run check` (42 packages) | ✅ clean after the merge |
-| Human-testing smoke checklist (8 items) | ✅ done |
+| Branch base | ✅ `upstream/dev` @ `6007274795`, merged; `bun run check` 42/42, session-graph components 49/49, plugin-host 33/33 |
+| Built-in plugin (`gui-plugins/src/spacegraph`) | ✅ full feature parity, 26/26 capture frames |
+| Human-testing smoke checklist | ✅ done |
+| External plugin | ❌ not started — **three blockers found, see below** |
 | T2.2 evidence | ⏸️ deferred behind stop rule |
-
-> Sync note: this fork's `origin/dev` is the **fork's** dev (stale, pre-plugin). The reference is **`upstream/dev`** (`anomalyco/opencode`), which is the Plugin-API generation. Every claim below is checked against `6007274795`.
 
 ---
 
-## 🔄 SYNC VERIFICATION — what the 87 upstream commits changed
+## ✅ VERIFICATION — can the current code ship as an external plugin?
 
-| Area | Change | Effect on this plan |
-|---|---|---|
-| `@opencode/plugin/gui` registries | `ComposerPill.menu(input)` — plugin-owned popover content, host-owned placement/heading/dismissal | **New capability** (see reconsideration F8) |
-| `@opencode/plugin/gui` host APIs | `ComposerNote.title`/`subtitle`; `Composer.focus(commentID, { anchor })`; `ComposerQuoteAnchor` | none |
-| `Panel`, `PanelTab`, `Slot`, `SlotMap`, `Dialogs`, `SettingsPage`, `Command`, `MenuItem`, `TitlebarItem`, `LinkHandler`, `Style` | **unchanged** | plan holds |
-| `packages/app/src/runtime/plugin/*` | composer-quote anchoring only | plan holds |
-| `packages/gui-plugins` | new `goal` plugin, browser/terminal changes | none |
+**No, not as-is.** The SDK is closed by design, and the build enforces it. Three hard constraints:
 
-Merge conflicts resolved: `session/timeline/virtualizer.tsx` (kept our scroll-restore block + upstream's `endPending`), `session-ui/context/data.tsx` (kept `snapshot` + upstream's `readMedia`/`peekMedia`), `runtime/server/api.ts` (took upstream's `createApiForServer`/media capability), `settings/model.tsx` (dropped the dead `newModelPicker`, added `foldUserMessages`/`newQuestionUI`), `plugin-host.spec.ts` and `side-panels.spec.ts` (kept both sides' stories/tests), `bun.lock` (regenerated).
+| # | Constraint | Evidence | Consequence |
+|---|---|---|---|
+| V1 | **Fixed module allowlist.** `gui()` (`@opencode/plugin/gui/vite`) externalizes exactly `effect`, `@opencode/plugin/gui`, `@opencode/plugin/gui/main`, `@opencode/plugin/rpc`, `@opencode/schema/rpc`, `@opencode/client`, `@opencode/client/effect`, `solid-js*`, `@opencode/plugin/gui/{file,review,browser}` — and **fails the build** on any other `effect/…`, `solid-js/…` or `@opencode/…` import. | `packages/plugin/src/gui/modules.ts`, `vite.ts` | `@opencode/session-ui/graph`, `@opencode/session-graph`, `@opencode/ui/*` cannot be imported by an external bundle. |
+| V2 | **The app's Tailwind scans only `packages/*/src`.** | `packages/ui/src/styles/tailwind/index.css` | An external plugin must ship its own CSS through `ctx.add(Style, css)`; app utility classes are not generated from the bundle. |
+| V3 | **No HMR.** `gui()` is a lib build (CJS, `inlineDynamicImports`). A **local** plugin's `./gui-experimental` is watched; its content hash becomes the GUI revision and windows re-evaluate it. | `vite.ts`, `packages/core/src/plugin/module.ts` | Dev loop is `vite build --watch` + automatic GUI reload (~1 s). No preserved state. |
 
-**No SDK change requires the surface seam, and no SDK change removes the need for it.**
+### What that means for our code
+
+| Our dependency | Lines | External-safe? | Disposition |
+|---|---|---|---|
+| `@opencode/session-ui/graph` (model) | 9,284 / 56 files | Pure TS, only type-imports `@opencode/client/promise` | **Vendor** into `@autonull/spacegraph-model` and publish |
+| `@opencode/session-graph` `buildRenderModel` | ~300 | Imports `@spacegraphjs/*` | Vendor |
+| `@opencode/session-graph` `exportGraph` | ~60 | same | Vendor |
+| `@opencode/session-graph` `GraphView` + `ui/` | **12,453** | `@opencode/ui` (59 sites) + i18n | **Do not port.** Reference build keeps it; the external plugin uses a lean UI |
+| `@opencode/ui/context/i18n`, `icon`, `icon-button`, `segmented-control` in our plugin | 4 files | Not provided | Replace with `ctx.t`, `ctx.ui.Icon`, `ctx.ui.IconButton`, `ctx.ui.Menu` |
+
+**Therefore:** the external plugin is **not a copy of the built-in**. It is the built-in's *contributions* (panel, commands, settings, permalinks, export) plus a **lean map UI** built on `ctx.ui.*` and `@spacegraphjs/spacegraph-renderer`, over a vendored model package.
 
 ---
 
 ## 🧭 DECISION: NO UPSTREAM PR
 
-**Question:** do we need an upstream PR for `SessionSurface` / `ctx.surfaces` / `SessionSurfaceHost`?
+Only one product capability has no stock equivalent: taking over the session body. Everything else maps onto shipped APIs (`Panel` + `Panel.wide` + `Panel.mobile`, `ctx.dialogs.open`, `Slot` `session.header`, `ComposerPill.menu`, `SettingsPage`, `Command`, `Store.*`, `ctx.system.copy`, `ctx.ui.*`). Upstreaming is optional and unnecessary; no track depends on `anomalyco/opencode`.
 
-**Answer: No.** Verified against `upstream/dev` @ `6007274795`:
+---
 
-| Capability the plugin needs | Exists upstream today? |
+## 🔍 FEATURE SET (stock)
+
+| Feature | Stock implementation |
 |---|---|
-| Registry contributions (`Panel`, `Command`, `MenuItem`, `SettingsPage`, `Slot`, `Style`) | ✅ |
-| `ctx.dialogs.open(render, { replace })` — arbitrary JSX above the app, plugin context | ✅ |
-| `Panel.region: "side"` + `Panel.wide` + `Panel.mobile` (`tab`/`menu`/`drawer`) | ✅ |
-| `PanelTab.group`, `transient`, `fallback`, `file`, `hidden` | ✅ |
-| `Store.global` / `Store.session`, `ctx.storage`, `ctx.layout`, `ctx.sessions`, `ctx.screen` | ✅ |
-| `ctx.system.copy` (permalinks), `ctx.ui.*` (Icon, Button, Menu, Switch, Dialog frame) | ✅ |
-| `SessionSurface` (full-body session view) | ❌ **ours only** |
-| `SessionLayer` (overlay above the body) | ❌ **ours only** |
-| `ctx.surfaces` (select/list surfaces) | ❌ **ours only** |
-
-So exactly one product capability has no stock equivalent: **taking over the session body**. Everything else the plugin does maps onto shipped APIs. The body takeover is a *nice UX*, not a requirement — and it is replaceable with dialogs and a wide side panel.
-
-**Consequence:** upstreaming is optional and unnecessary. We do not wait on review, and no track depends on `anomalyco/opencode` accepting anything.
+| Session Map panel | `Panel(region: "side", wide: true)` — SVG overview + inspector |
+| Full map | `ctx.dialogs.open` full-bleed, `@spacegraphjs/spacegraph-renderer` canvas |
+| Hybrid | **Side** (wide panel) + **Floating** (dialog). **Stacked dropped** — needs the body |
+| Turn map | Dialog over the transcript (scroll preserved) |
+| Ambient ribbon | `Slot` `session.header` — fixed-height phase strip, no row work |
+| Composer pill | `ComposerPill` + `menu` popover → mini map → "Open full map" |
+| Permalinks | `#spacegraph:<layout>:<node>` → open dialog + frame |
+| Inspector / search / export / settings / per-session state | `ctx.ui.*`, vendored model, `SettingsPage`, `Store.session` |
+| Custom Transcript, composer inset, inline rows, cross-session | **Dropped** (host owns body; upstream forbids row work; no `SessionStore` contract) |
 
 ---
 
-## 🔍 FEATURE RECONSIDERATION (stock API + latest upstream)
-
-| # | Feature | Verdict on stock | Why |
-|---|---------|------------------|-----|
-| F1 | **Custom Transcript component** | **Drop** | The host owns the session body; a plugin cannot replace it. Its original purpose was hybrid-pane measurement, which no longer applies. Reference build only. |
-| F2 | **Hybrid: 3 arrangements** | **Reduce to 2**: Side (wide panel) and Floating (dialog over the transcript) | "Stacked" (map above log) needs the body. Floating is the honest stock equivalent of an overlay; Side is the real value prop. |
-| F3 | **Turn map overlay** | **Reshape**: scoped turn map opens a dialog; add an *ambient* turn ribbon in the `session.header` slot | Upstream explicitly allows timeline work only through `session.header`. A ribbon gives always-visible orientation with no seam; the dialog gives the scoped map. |
-| F4 | **Permalinks** | **Keep, rename prefix** to `#spacegraph:<layout>:<node>` | A hash must not imply a mode switch the stock plugin cannot perform. Cold load opens the Full-map dialog and frames the node. |
-| F5 | **Multi-window inspectors** | **Scope to the full-map dialog** | Free-floating windows fight a docked panel's focus model; inside the dialog they are the whole surface and behave. |
-| F6 | **Composer inset** | **Drop** | Dialogs and panels overlay the composer; nothing needs reserving. |
-| F7 | **Mobile** | **Improve** | `Panel.mobile` (`tab`/`menu`/`drawer`) gives mobile a real map entry, instead of the previous desktop-only gate. |
-| F8 | **Composer pill** | **Add (new, cheap)** | `ComposerPill.menu` (new in the latest upstream) renders plugin content in a host-owned popover. A "map" pill showing the current turn, failing tool or progress, opening a mini map + "Open full map", is the ambient orientation surface with zero seam. |
-| F9 | **Cross-session graph** | **Out of scope** | No `SessionStore` contract exists upstream; this is now an upstream-API question, not a fork question. |
-| F10 | **Inline row host** | **Drop from the roadmap** | Upstream: "Never add work to timeline rows. `session.header` is the only timeline surface." The library keeps `InlineGraph`; the plugin does not mount it per row. |
-| F11 | **Settings, export, commands, per-session state** | **Unchanged** | Pure SDK surface. |
-
-Net: stock delivery is *smaller* than the reference build — two fewer arrangements, no custom transcript, no inline rows — and gains two ambient surfaces (header ribbon, composer pill) that the reference build never had.
-
----
-
-## 🚦 TWO DELIVERY TIERS
-
-| | **Tier 1 — Stock plugin** (the product) | **Tier 2 — Reference build** (optional lab) |
-|---|---|---|
-| Runs on | Released OpenCode, unmodified | Our fork (this repo) with a 3-file patch |
-| Session body | Host transcript (unchanged) | Map / Hybrid as first-class surfaces |
-| Map, full | `ctx.dialogs.open` full-bleed render | `SessionSurface` + `ctx.surfaces` |
-| Hybrid | Wide side panel map beside transcript (**Side**) or dialog over it (**Floating**) | `HybridSurface` (3 arrangements) |
-| Turn map | Dialog over the transcript (scroll preserved) + ambient ribbon in `session.header` | `SessionLayer` on the Map surface |
-| Ambient orientation | Composer pill with popover mini map | — |
-| Custom Transcript component | Dropped (host owns the transcript) | Kept |
-| Composer inset | N/A (dialogs overlay) | `composerInset` reserves `timeline.inset()` |
-| Inline rows | Not mounted (upstream forbids timeline-row work) | Same |
-| Distribution | `npm i` + `plugin: ["@autonull/opencode-plugin-spacegraph"]` | `git clone` + `bun run dev` |
-| Ships | **Now** | Whenever, or never |
-
-Tier 1 is the deliverable. Tier 2 exists so the capture matrix, e2e keepers and the seam patch stay alive as evidence and as an upgrade path if upstream ever adds surfaces.
-
----
-
-## 🗺️ TIER 1 CAPABILITY MAPPING
-
-| Feature (today) | Built-in implementation | Stock-plugin implementation |
-|---|---|---|
-| Map surface (`spacegraph.map`) | `SessionSurface` | `Panel(region: "side", wide: true)` tab **Session Map** + `ctx.dialogs.open` **Full map** |
-| Hybrid surface (`spacegraph.hybrid`) | `SessionSurface` + 3 arrangements | **Side** = wide panel beside the transcript; **Floating** = full-map dialog over it. **Stacked** is dropped (needs the body). |
-| Turn map layer | `SessionLayer` | `ctx.dialogs.open` scoped turn subgraph; transcript keeps its mount and scroll. Plus an ambient turn ribbon in the `session.header` slot. |
-| Side panel (compact overview) | `Panel(region: "side")` | unchanged |
-| Inspector | inside surface | inside panel / dialog |
-| Windows (draggable inspectors) | plugin-owned | scoped to the full-map dialog |
-| Custom Transcript | plugin component | dropped — use host transcript + `TranscriptScreen.reveal` |
-| Permalinks `#graph:layout:node` | plugin hash + `surfaces.select` | `#spacegraph:layout:node` + open Full-map dialog, then frame node |
-| Ambient status | — | `ComposerPill` + `menu` popover: current turn / failing tool → mini map → "Open full map" |
-| Commands + keybinds | `Command` | unchanged (`mod+shift+m` → panel, `mod+shift+g` → full map dialog, `mod+t` → turn map) |
-| Settings | `SettingsPage` | unchanged |
-| Export SVG/JSON/HTML | model + `exportGraph` | unchanged |
-| Per-session state | `Store.session` | unchanged |
-
-**Spike first (half a day):** confirm a dialog render can fill the viewport (no Dialog frame, own scroll container, Esc + focus trap as the host behaves) and that a `wide: true` side panel holds a canvas without reframing. If the dialog cannot go full-bleed, fall back to "Full map" as a maximized panel tab; the rest of Tier 1 is unaffected.
-
----
-
-## 🏗️ REPOSITORY PLAN
-
-Three repos, clean ownership. Upstream is read-only to us.
+## 🏗️ REPOSITORIES
 
 | Repo | Role | Ships |
 |---|---|---|
-| **`autonull/opencode-plugin-spacegraph`** (new) | The plugin. `Plugin.define`, `renderer.tsx`, surfaces/panels/dialogs, model, i18n, Vite preset config. Own CI, own release. | npm package exposing `./gui-experimental` |
-| **`autonull/opencode_spacegraph`** (this repo) | Reference host: seam patch, capture matrix, e2e keepers, evidence. Not the deliverable. | nothing (private) |
-| **`autonull/spacegraphjs`** (exists) | Renderer contract, adapters, layout, a11y, SVG export | published packages |
+| `autonull/opencode-plugin-spacegraph` (new) | Plugin + vendored model package | npm: `@autonull/opencode-plugin-spacegraph`, `@autonull/spacegraph-model` |
+| `autonull/opencode_spacegraph` (this) | Reference build: seam patch, capture matrix, component tests, e2e keepers | nothing (private) |
+| `autonull/spacegraphjs` (exists) | Renderer contract, adapters, layout, a11y, SVG export | published |
 | `anomalyco/opencode` | Upstream | untouched |
 
-### Why a separate plugin repo (and not publish from this fork)
-
-- This fork is a *host* (1031 commits over upstream); publishing from it makes the plugin look like fork output and drags fork-only deps (`@opencode/app`, desktop) into release checks.
-- The plugin only needs `@opencode/plugin` (peer), `@opencode/session-ui` (peer), and `spacegraphjs` packages. A small repo proves that.
-- Release cadence: plugin tags move at plugin speed; the fork syncs upstream on its own schedule.
-- The fork stays useful: capture matrix and e2e keepers validate the reference build, and the seam patch is versioned there.
-
-### Plugin repo layout
-
-```
-opencode-plugin-spacegraph/
-├── package.json            name, peerDeps, exports: { ".": dist/index.js, "./gui-experimental": dist/plugin.js }
-├── tsconfig.json
-├── vite.config.ts          @opencode/plugin/gui/vite preset (solid, lib build, externals)
-├── src/
-│   ├── index.ts            Plugin.define({ stores, i18n })
-│   ├── renderer.tsx        contributions: Panel, Dialog entry, Commands, SettingsPage, Style
-│   ├── model.ts            createSpacegraph(ctx): prefs + per-session store
-│   ├── map/                MapView (used by panel and full-map dialog)
-│   ├── hybrid/             arrangements inside the panel
-│   ├── turn-map/           scoped dialog
-│   ├── inspector/ windows/ lazy chunks
-│   ├── permalink.ts        hash parse + apply
-│   ├── export.ts           exportGraph wiring
-│   └── i18n/en.ts
-├── test/                   unit (*.test.ts) + a minimal mount harness for components
-└── README.md               install, keybinds, screenshots, limitations
-```
-
-### Dev loop (no fork, no sibling checkout)
-
-```bash
-# plugin repo
-bun run dev            # Vite build --watch, emits dist/plugin.js
-
-# stock opencode, pointed at the working tree
-opencode.json:
-{ "plugin": ["/abs/path/opencode-plugin-spacegraph"] }   # or `bun link` + package name
-
-bun run dev:stock      # runs released opencode with a fixture session
-```
-
-HMR: the `@opencode/plugin/gui/vite` preset already externalizes the SDK and emits the single `./gui-experimental` bundle the host evaluates; a rebuild triggers the host's plugin revision change.
+Model packaging: `spacegraph-model` is **generated** from `packages/session-ui/src/graph` by a script in the plugin repo, with a parity test (same fixture → byte-identical JSON to the fork's model). Never hand-edited, so drift is caught, not discovered.
 
 ---
 
-## 🗂️ WORK TRACKS
+## 🗂️ CONSOLIDATED TRACKS (10 working days)
 
-### Track A — Stock-API port (Tier 1) — *the product*
+### Phase 0 — Vertical spike (1 day) — *decides everything*
+| # | Task |
+|---|------|
+| P0.1 | Minimal external plugin: `Plugin.define` + one `Panel` rendering a hand-made SVG from a **vendored model copy**, own CSS via `ctx.add(Style, css)`, built with `gui()` |
+| P0.2 | Load it as a **local plugin** on stock web and stock desktop; confirm panel renders, CSS applies, rebuild → GUI reload |
+| P0.3 | If the bundle fails to load, stop and re-scope before writing more code |
 
-| # | Task | Notes | Effort |
-|---|------|-------|--------|
-| A1 | Spike: full-bleed dialog + wide panel canvas | Decide dialog vs maximized panel for Full map | 0.5 d |
-| A2 | Panel contribution: map overview + inspector | Port `panel.tsx` + inspector; no surface props | 1 d |
-| A3 | Full map dialog: `GraphView` at full size | Reuse `@opencode/session-graph` `GraphView`; own toolbar | 1 d |
-| A4 | Hybrid on stock: **Side** (wide panel) + **Floating** (dialog) | Two arrangements, not three; CSS inside the panel, dialog for floating | 1 d |
-| A5 | Turn map dialog | Scoped subgraph; transcript untouched beneath | 0.5 d |
-| A6 | Permalinks via hash + dialog | `#spacegraph:` prefix; dialog open + frame node | 0.5 d |
-| A7 | Commands/keybinds without `ctx.surfaces` | `mod+shift+m` panel, `mod+shift+g` full map, `mod+t` turn map | 0.5 d |
-| A8 | Settings page + per-session store | unchanged from built-in | 0.5 d |
-| A9 | Export wiring | unchanged | 0.25 d |
-| A10 | Transcript bridge | `screen.transcript.reveal` from panel/full-map selection | 0.5 d |
-| A11 | i18n + a11y pass + mobile (`Panel.mobile` drawer) | | 1 d |
-| A12 | Ambient turn ribbon in `session.header` slot | Mini phase strip; keeps rows untouched (F3) | 1 d |
-| A13 | `ComposerPill` with `menu` popover | Current turn / failing tool → mini map → "Open full map" (F8) | 1 d |
+Exit criterion: a stock app shows our panel with correct styling and hot-ish reload.
 
-### Track B — Plugin repository & release
+### Phase 1 — Model package (2 days)
+| # | Task |
+|---|------|
+| P1.1 | Generate `@autonull/spacegraph-model` from `session-ui/src/graph`; publish |
+| P1.2 | Parity test vs the fork's model on the canonical fixture |
+| P1.3 | Vendor `buildRenderModel` + `exportGraph` (+ `DEFAULT_THEME` from `@spacegraphjs/renderer`) |
 
-| # | Task | Effort |
-|---|------|--------|
-| B1 | Create `autonull/opencode-plugin-spacegraph`, move `src/spacegraph` | 1 h |
-| B2 | Build config from `@opencode/plugin/gui/vite`; externals: `solid-js`, `@opencode/plugin`, `@opencode/session-ui`, `spacegraphjs`, `three` | 1 h |
-| B3 | CI: typecheck, lint, unit tests, bundle size budget | 2 h |
-| B4 | Publish `@autonull/opencode-plugin-spacegraph` (npm), verify install on stock web + desktop | 2 h |
-| B5 | README: install, keybinds, screenshots, honest limitations, "map is a dialog, transcript is the body" | 1 h |
-| B6 | Remove `spacegraph` from `gui-plugins/src/{main,renderer}.ts` in the fork once the plugin ships | 10 min |
+### Phase 2 — Map surfaces (3 days)
+| # | Task |
+|---|------|
+| P2.1 | Full-map dialog: canvas host + camera fit (from `session-graph/src/canvas`, 1,384 lines) |
+| P2.2 | Toolbar on `ctx.ui.Menu` (level, layout, depth, export) |
+| P2.3 | Inspector on `ctx.ui` + vendored selectors; `ctx.t` copy |
+| P2.4 | Panel overview: port `gui-plugins/src/session-map/panel.tsx` (137 lines, upstream-proven) |
 
-### Track C — Reference build & optional seam (Tier 2)
+### Phase 3 — Integration (2 days)
+| # | Task |
+|---|------|
+| P3.1 | Turn map dialog |
+| P3.2 | Permalinks `#spacegraph:` |
+| P3.3 | Commands + keybinds (`mod+shift+m`, `mod+shift+g`, `mod+t`) |
+| P3.4 | Settings page + `Store.session` |
+| P3.5 | Transcript bridge via `screen.transcript.reveal` |
+| P3.6 | Hybrid Side/Floating |
 
-| # | Task | Effort |
-|---|------|--------|
-| C1 | Freeze the 3 seam files as `patches/0001-session-surfaces.patch` (`git format-patch` of `runtime/plugin/surfaces.ts`, `session/surface.tsx`, `session/screen.tsx`) | 1 h |
-| C2 | `bun run patch:apply` / `patch:revert` scripts + docs so the fork is reproducible | 1 h |
-| C3 | Keep capture matrix + e2e keepers green on the reference build | ongoing |
-| C4 | If upstream ever adds a surface registry, delete the patch (no user-visible change) | — |
+### Phase 4 — Release (1 day)
+| # | Task |
+|---|------|
+| P4.1 | Publish plugin; verify installed from npm on web + desktop |
+| P4.2 | README: install, keybinds, screenshots, limitations |
+| P4.3 | Archive seam as `patches/0001-session-surfaces.patch` + `patch:apply`/`patch:revert` |
+| P4.4 | Delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts` in this fork |
 
-### Track D — DevEx
-
-| # | Task | Effort |
-|---|------|--------|
-| D1 | `mountSpacegraph()` harness in the plugin repo (only the plugin, not the host) | 2 h |
-| D2 | Chunk preloading: `onIdle` for Inspector, Windows, Settings | 30 min |
-| D3 | `suggested: true` keybinds for palette discovery | 10 min |
-| D4 | Optional `@autonull/spacegraph-ui` extraction for HMR of GraphView/Inspector | 4 h (defer) |
-
-### Track E — Polish & human testing
-
-| # | Task | Trigger |
-|---|------|---------|
-| E1 | Fix human-testing issues | feedback |
-| E2 | Mobile drawer for the map panel; narrow-screen behaviour | feedback |
-| E3 | Screen-reader + reduced-motion audit | feedback |
-
-### Track F — T2.2 (optional, stop-rule governed)
-
-n ≥ 5, counterbalanced, canonical fixture, five tasks. Publish honestly; stop feature work on a negative result.
+### Phase 5 — Ambient + polish (fast follow)
+| # | Task |
+|---|------|
+| P5.1 | `session.header` turn ribbon |
+| P5.2 | `ComposerPill` popover mini map |
+| P5.3 | Mobile drawer, a11y audit, `onIdle` chunk preloads, `suggested: true` keybinds |
 
 ---
 
-## 📅 ORDER
+## 🧪 TESTING WITH THE NEW INFRASTRUCTURE
 
-```
-Week 1  A1–A3 (spike + map in panel + full-map dialog) → demoable Tier 1
-Week 2  A4–A11 → feature parity without the seam
-Week 3  A12–A13 (ambient ribbon + composer pill) then B1–B6 → repo, CI, npm release, delete built-in registration
-Week 4  C1–C2 (seam patch archived), D1–D3, E1–E3 as feedback lands
-Later   F (T2.2) only if requested
-```
+| Gate | Where | What only it catches | Cost |
+|---|---|---|---|
+| **Build gate** (`gui()` build) | plugin repo CI | Any non-provided import (`@opencode/ui`, `@opencode/session-ui`) — the single most likely regression | ~5 s |
+| **Bundle-load gate** | plugin repo CI (Node): evaluate `dist/gui-experimental.cjs` against the provided-module map | Missing external, wrong export shape, top-level side effects | ~2 s |
+| **Model parity** | plugin repo | Vendored model drifting from `session-ui/graph` | ~2 s |
+| **Unit** | plugin repo, `bun test` | Permalink parsing, selectors, export serialization | fast |
+| **Component (real host)** | **this fork** — `mountPlugins` fixture, `plugin-host.spec.ts` | Contribution lifetimes, panel/slot rendering, surface behaviour of the *built-in* source | ~35 s |
+| **Component (bundle)** | this fork — a story that loads `dist/gui-experimental.cjs` through the host evaluator | That the *shipped artifact* mounts, not just the source | ~10 s |
+| **e2e keepers** | this fork, Playwright + mock server | What the user sees: panel opens, node click reveals message, permalink cold load | ~2 min |
+| **Capture matrix** | this fork | Visual regressions across layouts/depths | `graph:capture --mode=verify` |
 
-> Sync rule: before any week of work, `git fetch upstream dev && git merge upstream/dev` in the reference build, rerun `bun run check` and the plugin-host/session-graph component suites, and re-read the SDK diff (`packages/plugin/src/gui`) for new capabilities like F8.
+Rules of thumb:
+- **One owner per contract.** Model parity lives in the plugin repo; UI behaviour lives in the fork.
+- The fork keeps testing the **built-in** (same contributions, no bundle boundary) so UI regressions surface fast; the plugin repo proves the **artifact**.
+- No second harness in the plugin repo: a stub `ctx` for panels would test our mocks, not the host.
+- e2e for the *installed* plugin is manual/scripted (`dev:stock`), not CI, until the plugin is stable.
+
+---
+
+## ⚡ DEV LOOP — what HMR does and does not give us
+
+| Loop | Command | Feedback |
+|---|---|---|
+| Model/logic | `bun test --watch` in the plugin repo | instant |
+| UI on stock (local plugin) | `vite build --watch` + stock app pointed at the plugin dir | **~1 s**, GUI re-evaluates the changed bundle (hash revision). No state preservation |
+| UI on the reference build | `bun run dev:live` / fork dev server with the built-in plugin | Vite HMR + Solid fast refresh — the fastest loop, and why Phase 2 UI work should be developed here first, then ported |
+| Artifact check | `bun run build && bun run test:bundle` | seconds |
+
+**Practical rule:** build new UI in the fork's built-in plugin (full HMR), then apply the `ctx.ui` substitutions and verify on stock. Do not attempt HMR for the external bundle — the host reloads the whole plugin.
 
 ---
 
 ## ⚠️ RISKS
 
 | Risk | Mitigation |
-|------|------------|
-| Dialog cannot go full-bleed | Fallback: maximized panel tab; spike decides in half a day (A1) |
-| A side panel is too narrow for the map | `Panel.wide` + mobile drawer; full map lives in the dialog, not the panel |
-| Losing the custom Transcript component hurts hybrid measurements | Host transcript + `reveal` covers the bridge; revisit only if measured |
-| Turn ribbon in `session.header` costs timeline work | Upstream sanctions this slot and only this slot; keep it a fixed-height strip, no row work |
-| Composer pill popover cannot host a canvas | Popover holds an SVG/`InlineGraph` mini map, not a live canvas |
-| Plugin bundle can't resolve `@opencode/session-ui` | It is a published peer; verify in B4 on web + desktop |
-| Upstream changes the GUI SDK | Weekly `git fetch upstream dev` + merge in the reference build; the SDK diff is small and reviewed before each work week |
-| Distribution friction (config-only install) | Document both `plugin: [...]` and `.opencode/plugins/` paths; marketplace entry later |
+|---|---|
+| Phase 0 fails (bundle cannot mount/CSS) | It is one day, first thing; fall back to distributing a 4-file patch instead of a plugin |
+| Vendored model drifts | Generated + parity test in CI |
+| Lean UI diverges from the full map | Same model, same renderer contract; capture matrix compares the reference build, README compares stock |
+| `ctx.ui` lacks a control (e.g. segmented control) | `ctx.ui.Menu` / `Button` substitutions; enumerate during P2.2 |
+| Tailwind tokens differ in the plugin's CSS | Use theme CSS variables (`var(--v2-*)`), never raw colors |
+| Upstream changes the SDK | Sync before each phase (`git merge upstream/dev`), re-read `packages/plugin/src/gui/modules.ts` first |
 
 ---
 
 ## ✅ DEFINITION OF DONE
 
-| # | Criterion | Track |
-|---|-----------|-------|
-| 1 | Plugin runs on stock OpenCode (web + desktop) with no fork | A, B |
-| 2 | Map (panel + full dialog), turn map, permalink, export, settings, keybinds work | A |
-| 3 | Transcript bridge works (selection reveals message, scroll preserved) | A10 |
-| 3b | Ambient ribbon and composer pill are live and cheap (no row work) | A12, A13 |
-| 4 | Published npm package; install documented | B |
-| 5 | Built-in registration deleted from the fork | B6 |
-| 6 | Seam archived as an applyable patch; reference build still green | C |
-| 7 | Human testing passed; feedback addressed | E |
-| 8 | **No upstream PR filed, none required** | — |
+| # | Criterion |
+|---|-----------|
+| 1 | Stock web + desktop load the plugin from npm, no fork |
+| 2 | Panel, full map, turn map, permalink, export, settings, keybinds, transcript bridge work |
+| 3 | Build + bundle-load + model-parity gates green in the plugin repo |
+| 4 | Fork keeps the built-in as reference; capture matrix and component tests green |
+| 5 | Seam archived as an applyable patch; built-in registration deleted |
+| 6 | **No upstream PR filed, none required** |
 
 ---
 
 ## 📌 IMMEDIATE NEXT ACTIONS
 
-1. Spike A1 (dialog full-bleed vs maximized panel) — decides the Full-map home.
-2. Create the plugin repo (B1) and move `src/spacegraph` into it unchanged, then port A2/A3.
-3. Archive the seam patch (C1) so this fork becomes reproducible before anything is deleted.
-4. Publish, then delete the built-in registration (B5, B6).
+1. **P0.1–P0.3** — the one-day external spike. Everything else is contingent on it.
+2. While the spike runs, write `patches/0001-session-surfaces.patch` (1 h) so the fork is reproducible before anything is deleted.
+3. Generate `@autonull/spacegraph-model` (P1.1) — it unblocks both the plugin and Phase 2.
 
 ---
 
-## 🔑 ARCHITECTURAL PRINCIPLES (locked)
+## 🔑 PRINCIPLES (locked)
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| P1 | The plugin depends only on published SDK + library packages | Proves no-fork; keeps CI honest |
-| P2 | The host transcript is never replaced in Tier 1 | Removes the only capability the stock API lacks |
-| P3 | Full map lives in a dialog; the panel is the always-available surface | Both exist upstream; no seam |
-| P4 | The seam patch is reference-build-only, applied by script | Evidence and upgrade path, never a dependency |
-| P5 | The fork is an integration lab, not a product | Capture matrix + e2e keepers stay useful without shipping |
-| P6 | One plugin repository, one npm package, one install line | Simplest distribution that works today |
-| P7 | Ambient surfaces (`session.header`, `ComposerPill`) beat a body takeover | They are stock, cheap, and always visible; the body is a mode the user must enter |
-| P8 | The reference build tracks `upstream/dev` weekly | SDK drift is small but silent; a merge with green checks is the only proof of "plugin-only" |
+| # | Decision |
+|---|----------|
+| P1 | The shipped plugin depends only on the SDK allowlist + published non-`@opencode` packages |
+| P2 | The host transcript is never replaced; `screen.transcript.reveal` is the bridge |
+| P3 | The external plugin is **lean**; the full `GraphView` stays in the reference build |
+| P4 | The seam is a reference-build patch, never a dependency |
+| P5 | Ambient surfaces (`session.header`, `ComposerPill`) over a body takeover |
+| P6 | Vendored model is generated and parity-tested, never hand-edited |
+| P7 | UI is developed in the fork (HMR), then ported to the bundle |
+| P8 | The plugin repo proves the artifact; the fork proves the behaviour |
 
 ---
 
-*The fork was three app files of hosting code. We do not need them upstream, do not need them to ship, and do not wait on anyone to accept them. The plugin is the product.*
+*Verified constraint beats optimistic architecture: the SDK allowlist decides the design, the spike decides the schedule.*
