@@ -1,5 +1,7 @@
 # SPACEGRAPH.TODO.23 — Plugins Only, Full Parity
 
+> **Superseded by [SPACEGRAPH.TODO.24.md](SPACEGRAPH.TODO.24.md)** for Day 3 onward. Kept for the measured build facts and the seam archive; its "capture matrix on the bundle" gate is not yet true (the keeper mounts the source setup).
+
 > **Status: Day 1 + Day 2 fallbacks + automated mount done.** The external bundle builds at **669.1 KB gzip** with only the allowlisted modules, works with or without `ctx.surfaces`, evaluates in the real host, and mounts/renders its map surface in the component keeper with screenshots. Remaining: manual stock mount (1.3), app e2e on the bundle, publish, retire. Read §1 before touching anything.
 
 ## Progress
