@@ -97,6 +97,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         session={session}
         screen={screen}
         transcript={transcript}
+        onSplitView={() => ctx.surfaces.select(`${ctx.id}.hybrid`, session)}
       />
     ),
     layers: [
@@ -131,6 +132,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         session={session}
         screen={screen}
         transcript={transcript}
+        onSplitView={() => ctx.surfaces.select(`${ctx.id}.map`, session)}
       />
     ),
   })

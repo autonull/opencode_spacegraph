@@ -12,6 +12,7 @@ export function FullMap(props: {
   screen: SessionScreen
   arrangement?: GraphArrangement
   arrangementSide?: GraphSide
+  onSplitView?: () => void
 }) {
   const graph = createMemo(() => {
     const status: SessionStatus =
@@ -43,6 +44,7 @@ export function FullMap(props: {
       refitKey={props.arrangement}
       onArrangementChange={(next) => props.model.setArrangement(props.session, next)}
       onArrangementSideChange={(next) => props.model.setSide(props.session, next)}
+      onSplitView={props.onSplitView}
     />
   )
 }

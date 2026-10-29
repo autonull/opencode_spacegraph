@@ -9,6 +9,7 @@ export function HybridSurface(props: {
   session: MountedSession
   screen: SessionScreen
   transcript: JSX.Element
+  onSplitView?: () => void
 }) {
   const arrangement = createMemo(() => props.model.arrangement(props.session))
   const side = createMemo(() => props.model.side(props.session))
@@ -43,6 +44,7 @@ export function HybridSurface(props: {
           screen={props.screen}
           arrangement={arrangement()}
           arrangementSide={side()}
+          onSplitView={props.onSplitView}
         />
       </div>
     </div>

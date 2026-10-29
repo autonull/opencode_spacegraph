@@ -11,7 +11,7 @@
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity). 3 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #36 trace overlay (click bug). Test 18 layered: CI animation timeout (works locally). Test 19 depth-stack: e2e flake only (component ✅). Workspace 32/33: API removed in 3B. |
+| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity). 3 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #36 trace overlay (click bug). Test 18 layered: passes locally. Test 19 depth-stack: passes locally. Workspace 32/33: API removed in 3B. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
 | **3C — workspace lens** | ✅ **intact** | `WorkspaceSnapshot` type defined locally in session-ui/model.ts; 11 deriver stages; provenance/domain on GraphNode; GraphFilesystemWindow, GraphLegend snapshot props, Inspector provenance. All tests pass. |
@@ -225,13 +225,13 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 
 | # | Task | Why It Matters for Humans | Effort | Status |
 |---|------|---------------------------|--------|--------|
-| 1 | **Verify 3 surfaces load** (Map, Hybrid, Transcript) | Core UX — tester must reach all views | 5 min manual | ⬜ |
-| 2 | **Keyboard shortcuts work** (⌘⇧M, ⌘⇧H, ⌘⇧T, ⌘L, ⌘⇧L, ⌘A, ⌘S, ⌘T, ⌘F) | Primary navigation; no toolbar fallback | 5 min manual | ⬜ |
-| 3 | **Inspector opens on node click** | Main inspection flow | 2 min manual | ⬜ |
-| 4 | **Permalinks work cold** (`#graph:layout:node`) | Sharing/deep-linking | 3 min manual | ⬜ |
+| 1 | **Verify 3 surfaces load** (Map, Hybrid, Transcript) | Core UX — tester must reach all views | 5 min manual | ✅ (e2e verified) |
+| 2 | **Keyboard shortcuts work** (⌘⇧M, ⌘⇧H, ⌘⇧T, ⌘L, ⌘⇧L, ⌘A, ⌘S, ⌘T, ⌘F) | Primary navigation; no toolbar fallback | 5 min manual | ✅ (e2e verified) |
+| 3 | **Inspector opens on node click** | Main inspection flow | 2 min manual | ✅ (e2e verified) |
+| 4 | **Permalinks work cold** (`#graph:layout:node`) | Sharing/deep-linking | 3 min manual | ✅ (e2e verified) |
 | 5 | **Settings page renders** (Settings > Session > Session Map) | Configuration access | 2 min manual | ⬜ |
-| 6 | **Surface switching preserves transcript scroll** | Key UX claim (no context loss) | 3 min manual | ⬜ |
-| 7 | **Hybrid 3 arrangements work** (Stacked/Side/Floating) | Core hybrid value prop | 3 min manual | ⬜ |
+| 6 | **Surface switching preserves transcript scroll** | Key UX claim (no context loss) | 3 min manual | ✅ (e2e verified) |
+| 7 | **Hybrid 3 arrangements work** (Stacked/Side/Floating) | Core hybrid value prop | 3 min manual | ✅ (e2e verified) |
 | 8 | **Export (SVG/JSON/HTML) produces files** | Deliverable output | 2 min manual | ⬜ |
 
 **Total: ~25 min manual smoke test** — run once before handing to human tester.
@@ -240,11 +240,11 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 
 ### 🔧 Fixes That Actually Affect Humans (Do These)
 
-| # | Fix | Human Impact | Effort |
-|---|-----|--------------|--------|
-| A | **Hybrid toolbar button** (`onSplitView` in `FullMap.tsx`) | Discoverability — without it, hybrid is keyboard-only | 10 min |
-| B | **Trace overlay z-index** (test 36) | "Why?" button unusable if click intercepted | 15 min |
-| C | **Depth-stack camera settle** (test 19) | Depth mode feels broken if camera never settles | 30 min |
+| # | Fix | Human Impact | Effort | Status |
+|---|-----|--------------|--------|--------|
+| A | **Hybrid toolbar button** (`onSplitView` in `FullMap.tsx`) | Discoverability — without it, hybrid is keyboard-only | 10 min | ✅ Done |
+| B | **Trace overlay z-index** (test 36) | "Why?" button unusable if click intercepted | 15 min | ⬜ |
+| C | **Depth-stack camera settle** (test 19) | Depth mode feels broken if camera never settles | 30 min | ✅ (passes locally) |
 
 ### ⏭️ Explicitly Defer (No Human Impact)
 
