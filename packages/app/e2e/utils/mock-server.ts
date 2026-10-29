@@ -87,8 +87,6 @@ export interface MockServerConfig {
   // Initializes the mock project's VCS; without a handler this mutation answers 501.
   onVcsInit?: (input: { directory: string; provider?: string }) => void
   vcsDiff?: unknown[] | ((input: { mode?: string }) => unknown[])
-  // Replaces the graph workspace snapshot. Without it the endpoint returns an empty snapshot.
-  graphWorkspace?: unknown | (() => unknown)
   // Benchmark latency only. Tests hold message pages with `beforeMessagesResponse`.
   messageDelay?: number
   beforeMessagesResponse?: (input: { sessionID: string; before?: string }) => Promise<void>
@@ -1102,31 +1100,6 @@ function mockHandlers(
               ? config.vcsDiff({ mode: ctx.query.mode })
               : (config.vcsDiff ?? []),
           })),
-        // Minimal workspace snapshot for graph tests.
-        "graph.workspace": () =>
-          Effect.succeed({
-            location: location(config),
-            data:
-              (Predicate.isFunction(config.graphWorkspace) ? config.graphWorkspace() : config.graphWorkspace) ?? {
-                version: 1,
-                revision: "mock-revision",
-                root: config.directory,
-                scope: "workspace",
-                asOf: { tree: Date.now(), vcs: Date.now(), packages: Date.now(), symbols: Date.now(), processes: Date.now(), issues: Date.now() },
-                truncated: false,
-                workspace: { name: "mock", path: config.directory },
-                directories: [],
-                packages: [],
-                files: [],
-                branches: [],
-                commits: [],
-                symbols: [],
-                processes: [],
-                issues: [],
-                missing: [],
-                capabilities: [],
-              },
-          }),
         fsList: (ctx) =>
           Effect.promise(() => Promise.resolve(config.fileList?.(ctx.query.path ?? ""))).pipe(
             Effect.map((data) => ({ location: location(config), data })),
@@ -1641,7 +1614,6 @@ export function currentSession(session: MockSession, fallbackDirectory?: string)
   return {
     id: session.id,
     parentID: session.parentID,
-    fork: decodeSessionFork(session).fork,
     projectID: session.projectID ?? "project",
     agent: session.agent ?? "build",
     model: session.model,
@@ -1746,20 +1718,3 @@ const decodeSession = Schema.decodeUnknownSync(
 )
 
 const decodeSessionOutcome = Schema.decodeUnknownSync(Schema.Struct({ outcome: lenient(Schema.String) }))
-
-// A session's fork lineage: the session it branched off and the message it branched at.
-const decodeSessionFork = Schema.decodeUnknownSync(
-  Schema.Struct({
-    fork: lenient(
-      Schema.Struct({
-        sessionID: lenient(Schema.String),
-        boundary: lenient(
-          Schema.Struct({
-            type: lenient(Schema.Literals(["before", "through"])),
-            messageID: lenient(Schema.String),
-          }),
-        ),
-      }),
-    ),
-  }),
-)

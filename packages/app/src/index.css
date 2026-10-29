@@ -1,7 +1,6 @@
 @import "@opencode/ui/styles/tailwind";
 @import "@opencode/session-ui/styles";
 @import "@opencode/ui/styles/tokens";
-@import "@opencode/ui/styles/components/scroll-view.css";
 @import "tw-animate-css";
 
 /* Set on the timeline viewport and changed on every frame while the composer region grows. Neither inherits, so a change
@@ -245,40 +244,8 @@
   }
 
   :root[data-motion="reduce"] {
-    [data-slot="titlebar-update-loader"],
-    [data-component="session-graph-view"],
-    [data-component="session-graph-toolbar"],
-    [data-component="session-graph-window"],
-    [data-component="session-graph-find"],
-    [data-component="session-graph-inspector"],
-    [data-slot="graph-failure-progress"],
-    [data-slot="graph-compare-window"] {
+    [data-slot="titlebar-update-loader"] {
       animation: none;
-    }
-  }
-
-  :root[data-motion="reduce"] {
-    [data-slot="session-review-content"],
-    [data-slot="session-side-region-presence"],
-    [data-slot="session-side-region-presence"] #review-panel,
-    [data-component="terminal-panel"],
-    [data-component="session-graph-view"],
-    [data-component="session-graph-toolbar"],
-    [data-component="session-graph-window"],
-    [data-component="session-graph-find"],
-    [data-component="session-graph-inspector"],
-    [data-slot="graph-failure-progress"],
-    [data-slot="graph-compare-window"] {
-      transition: none;
-    }
-
-    [data-slot="session-review-content"],
-    [data-slot="graph-find"],
-    [data-slot="graph-failure-progress"],
-    [data-slot="graph-compare-window"],
-    [data-slot="graph-inspector"],
-    [data-slot="graph-window"] {
-      transition: none;
     }
   }
 

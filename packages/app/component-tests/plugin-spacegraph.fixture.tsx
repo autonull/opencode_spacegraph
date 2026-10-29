@@ -1,7 +1,7 @@
 import type { Context } from "@opencode/plugin/gui"
 import { pluginDefinition } from "../src/runtime/plugin/module"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
-import { mountBuiltInSurface, mountSessionRegion } from "./plugin-host.fixture"
+import { mountSessionRegion, mountSessionRegionWithSurfaces } from "./plugin-host.fixture"
 
 const id = "spacegraph-external"
 
@@ -21,13 +21,17 @@ function present(container: HTMLElement) {
   })
 }
 
-const storedTab = (item: { readonly plugin: string; readonly id: string }) => (item.plugin === id ? "map" : "main")
-
 /** Mounts the bundle's map surface, the fork/reference path that has `ctx.surfaces`. */
 export async function mountSpacegraphExternal(code: string) {
   const plugin = await load(code)
-  const mounted = mountBuiltInSurface({ definitions: [plugin], surface: `${id}.map`, messages: buildFixtureMessages() })
 
+  const mounted = mountSessionRegionWithSurfaces({
+    definitions: [plugin],
+    active: `${id}:map`,
+    messages: buildFixtureMessages(),
+  })
+
+  await mounted.waitForReady()
   present(mounted.container)
 
   return mounted
@@ -40,7 +44,6 @@ export async function mountSpacegraphPanel(code: string) {
   const mounted = mountSessionRegion({
     definitions: [plugin],
     active: `${id}:map`,
-    tab: storedTab,
     messages: buildFixtureMessages(),
   })
 
@@ -86,7 +89,6 @@ export async function mountSpacegraphDialog(code: string) {
       },
     ],
     active: `${id}:map`,
-    tab: storedTab,
     messages: buildFixtureMessages(),
   })
 
@@ -94,7 +96,7 @@ export async function mountSpacegraphDialog(code: string) {
 
   const deadline = performance.now() + 5000
 
-  while (!mounted.run("hybrid")) {
+  while (!mounted.route("hybrid")) {
     if (performance.now() > deadline) throw new Error("The hybrid command never registered")
     await new Promise((resolve) => requestAnimationFrame(resolve))
   }

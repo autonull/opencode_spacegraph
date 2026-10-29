@@ -138,6 +138,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   }
 
   const navigateMessageByOffset = actions.navigateMessageByOffset
+  const focusInput = actions.focusInput
 
   const sessionCommand = withCategory(language.t("command.category.session"))
   const projectCommand = withCategory(language.t("command.category.project"))
@@ -531,7 +532,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       id: "input.focus",
       title: language.t("command.input.focus"),
       keybind: "ctrl+l",
-      onSelect: actions.focusInput,
+      onSelect: focusInput,
     }),
   ]
 

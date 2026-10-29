@@ -48,12 +48,12 @@ import { usePlatform } from "@/runtime/platform/platform"
 import { useServer } from "@/runtime/server/current"
 import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
 import { SessionSurfaceHost } from "./surface"
-import { createTimelineCache } from "./timeline/cache"
 import { selectSessionSurface } from "@/runtime/plugin/surfaces"
+import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity } from "@/shell/panel-motion"
 
 export function SessionScreenView(props: { session: SessionModel }) {
-  // The timeline cache captures its owner when created, so link handling must be provided above it.
+  // Link handling for the rest of the screen; each cached timeline provides its own for its session.
   const mounted = createMountedSession(props.session)
 
   return (
@@ -125,26 +125,6 @@ function SessionScreenContent(props: {
   const screen = createSessionScreenLayout(session, { wide: region.wide })
 
   const timeline = createSessionTimelineInteraction(session)
-
-  const view = props.view
-
-  // The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
-  // asked a question of the map and the log answers it in place.
-  const revealInLog = (messageID: string, partID?: string) => {
-    timeline.actions.revealMessage(messageID, partID)
-  }
-
-  const openGraphTranscript = (messageID: string, partID?: string) => {
-    const sessionRef = view()
-    if (sessionRef) selectSessionSurface("transcript", sessionRef)
-    revealInLog(messageID, partID)
-  }
-
-  // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
-  props.bindTranscript({
-    activeMessageID: timeline.currentMessageId,
-    reveal: openGraphTranscript,
-  })
 
   const timelineSearch = createTimelineSearchController({
     sessionID: session.identity.sessionID,
@@ -304,25 +284,43 @@ function SessionScreenContent(props: {
     (source, active) => {
       // A cached timeline keeps its own session's latest object while another session is routed.
       const own = createMemo<MountedSession>((previous) => {
+        if (!active()) return previous
         const view = props.view()
 
         return view.id === source.identity.sessionID() ? view : previous
       }, untrack(props.view))
 
-      // The log pane stays mounted and measured while the map takes the panel alone, so its
-      // virtualizer never remeasures from zero and keeps the reader's scroll position.
-      const combinedActive = createMemo(() => active())
+      // The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
+      // asked a question of the map and the log answers it in place.
+      const revealInLog = (messageID: string, partID?: string) => {
+        timeline.actions.revealMessage(messageID, partID)
+      }
+
+      const openGraphTranscript = (messageID: string, partID?: string) => {
+        const sessionRef = props.view()
+        if (sessionRef) selectSessionSurface("transcript", sessionRef)
+        revealInLog(messageID, partID)
+      }
+
+      // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
+      props.bindTranscript({
+        activeMessageID: () => timeline.currentMessageId(),
+        reveal: openGraphTranscript,
+      })
 
       return (
         <MessageTimeline
-          active={combinedActive()}
+          active={active()}
           hideHeader={!isDesktop()}
           registerHeaderGap={registerHeaderGap}
           session={source}
           view={own()}
           screen={props.screen}
           background={composer.requests.background}
-          actions={composer.actions.timeline}
+          actions={composer.actions.timeline({
+            sessionID: () => source.identity.sessionID(),
+            isChild: () => !!source.data.parentID(),
+          })}
           scroll={timeline.scroll}
           onResumeScroll={timeline.actions.resume}
           setScrollRef={timeline.view.setScrollRef}
@@ -344,7 +342,7 @@ function SessionScreenContent(props: {
           reveal={timeline.view.reveal}
           setScrollToEnd={timeline.view.setScrollToEnd}
           search={
-            <Show when={combinedActive()}>
+            <Show when={active()}>
               <TimelineSearchBar controller={timelineSearch} />
             </Show>
           }
@@ -367,8 +365,6 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={attachment.mobile.select}
-          graphActive={false}
-          onGraphToggle={undefined}
         />
       )}
     </Show>
@@ -575,8 +571,7 @@ function SessionScreenContent(props: {
               </div>
             </div>
           </Show>
-
-          </div>
+        </div>
 
         {/* Hidden rather than unmounted while the user hides it, so its terminals keep their screens. */}
         <Show when={isDesktop() && !!session.identity.params.id && bottomTabs()}>

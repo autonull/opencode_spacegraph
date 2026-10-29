@@ -47,7 +47,7 @@ export type TurnDiffSource = {
   /** Starts loading the turn's diffs unless they are cached or already loading. */
   load: (input: TurnDiffInput) => void
   /** Returns all loaded diffs, keyed by turn ID (without session prefix). */
-  getAllLoaded: () => Map<string, FileDiffInfo[]>
+  getAllLoaded: () => Map<string, readonly FileDiffInfo[]>
 }
 
 /** The host's cache of the workspace snapshot. */
@@ -66,7 +66,7 @@ export type ReadMediaUrlFn = (uri: string, mime: string, signal?: AbortSignal) =
 
 export type PeekMediaUrlFn = (uri: string, mime: string) => string | undefined
 
-export const { use: useData, provider: DataProvider } = createSimpleContext({
+export const { use: useData, provider: DataProvider, context: DataContext } = createSimpleContext({
   name: "Data",
   init: (props: {
     data: Data

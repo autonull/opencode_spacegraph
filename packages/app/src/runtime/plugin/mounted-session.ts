@@ -91,6 +91,13 @@ export function createMountedSession(session: SessionModel) {
     },
   }
 
+  const defaultTranscript: TranscriptScreen = {
+    activeMessageID: () => undefined,
+    reveal: () => {},
+  }
+
+  const [transcript, setTranscript] = createSignal<TranscriptScreen>(defaultTranscript)
+
   const files: Files = {
     get root() {
       return location().directory
@@ -298,23 +305,12 @@ export function createMountedSession(session: SessionModel) {
     return view
   }
 
-  // The transcript follows the route too, but the timeline it delegates to is created by the content after this screen
-  // exists, so its members read the binding the content installs through `bindTranscript`.
-  let transcriptImpl: TranscriptScreen | undefined
-
-  const transcript: TranscriptScreen = {
-    activeMessageID: () => transcriptImpl?.activeMessageID(),
-    reveal: (messageID, partID) => {
-      transcriptImpl?.reveal(messageID, partID)
-    },
-  }
-
   // One object while this screen is mounted, whichever session it routes: its models follow the route.
   const screen: SessionScreen = Object.freeze({
     file: files,
     comment,
     composer: composerRef,
-    transcript,
+    transcript: transcript(),
   })
 
   const owner = getOwner()
@@ -360,10 +356,7 @@ export function createMountedSession(session: SessionModel) {
     screen,
     view: mounted,
     bindBackground: (tasks: Accessor<readonly BackgroundTask[]>) => setBackground(() => tasks),
-    // The content installs the transcript once it creates the timeline; until then the getters read undefined.
-    bindTranscript: (impl: TranscriptScreen) => {
-      transcriptImpl = impl
-    },
+    bindTranscript: (value: TranscriptScreen) => setTranscript(() => value),
     bindPrompt: (value: { quotable: Accessor<boolean>; focus: () => void; focused: () => boolean }) =>
       setPrompt(() => value),
   }

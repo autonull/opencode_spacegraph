@@ -6,7 +6,6 @@ import terminal from "./terminal"
 import file from "./file"
 import review from "./review"
 import details from "./details"
-import sessionMap from "./session-map"
 import spacegraph from "./spacegraph"
 import browser from "./browser"
 import pairing from "./pairing"
@@ -26,7 +25,6 @@ export const builtins = compose({
   file,
   review,
   details,
-  "session-map": sessionMap,
   spacegraph,
   browser: { ...browser, mainEntry: () => import("./browser/main") },
   pairing: { ...pairing, mainEntry: () => import("./pairing/main") },

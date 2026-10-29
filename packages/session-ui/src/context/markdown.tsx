@@ -19,6 +19,8 @@ const context = createContext<{
   readonly sessionTitle?: (sessionID: string) => string | undefined
 }>()
 
+export const MarkdownContext = context
+
 export function MarkdownProvider(
   props: ParentProps<{
     readImage?: ReadMarkdownImage

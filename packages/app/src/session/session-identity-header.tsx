@@ -79,7 +79,6 @@ export function SessionHeaderLayout(
           <span class="session-header-title-measure" aria-hidden="true">
             <span>{props.title}</span>
           </span>
-          <span role="heading" aria-level={2}>{props.title}</span>
           {props.children}
         </div>
         {/* Each read of a JSX prop renders it again, so the actions render once, from the condition's value. */}

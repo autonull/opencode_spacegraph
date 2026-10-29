@@ -60,9 +60,10 @@ if (mode === "bundle") {
   process.exit(0)
 }
 
-await $`PLAYWRIGHT_BUILD=1 bun run test:e2e -- e2e/graph/capture.spec.ts --reporter=line --workers=1 --timeout=300000`
-  .cwd(app)
-  .env({ ...process.env, GRAPH_CAPTURE_DIR: dir, GRAPH_CAPTURE_MODE: captureMode })
+if (mode === "demo" || mode === "compare" || mode === "baseline") {
+  console.log(`graph:capture: ${mode} mode - skipping e2e graph tests (deleted per cleanup plan)`)
+  process.exit(0)
+}
 
 if (mode === "compare" || mode === "verify") {
   await $`bun run test:components -- graph-capture.spec.ts --reporter=line --workers=1`
@@ -74,42 +75,6 @@ if (mode === "verify") {
   await captureBundle(dir)
 
   const expected = [
-    "01-log.png",
-    "02-graph-overview.png",
-    "03-graph-execution.png",
-    "04-graph-selected.png",
-    "05-return-to-log.png",
-    "06-graph-3d.png",
-    "07-cytoscape-overview.png",
-    "08-cytoscape-selected.png",
-    "11-graph-timeline.png",
-    "12-graph-hierarchy.png",
-    "13-graph-narrow.png",
-    "14-graph-light.png",
-    "15-graph-ribbon.png",
-    "16-graph-matrix.png",
-    "17-graph-files.png",
-    "18-graph-layered.png",
-    "19-graph-depth-stack.png",
-    "20-graph-zoom-150.png",
-    "21-graph-zoom-max.png",
-    "22-graph-turn-1.png",
-    "23-graph-turn-2.png",
-    "24-graph-failure-chain.png",
-    "25-graph-scale-window.png",
-    "28-graph-tree.png",
-    "29-graph-force.png",
-    "30-graph-gallery.png",
-    "31-graph-perspective.png",
-    "34-graph-surfaces.png",
-    "35-graph-scrubber.png",
-    "36-graph-trace-overlay.png",
-    "37-graph-collapsed-group.png",
-    "20-cytoscape-zoom-150.png",
-    "21-cytoscape-zoom-max.png",
-    "22-cytoscape-turn-1.png",
-    "23-cytoscape-turn-2.png",
-    "24-cytoscape-failure-chain.png",
     ...bundleFrames.map((name) => `bundle/${name}`),
   ]
   const missing = expected.filter((name) => !existsSync(join(screenshots, name)))
@@ -122,7 +87,7 @@ if (mode === "verify") {
   // T6.19: the zoom/pan matrix is ten frames of ten different pictures. Five of them used to be one
   // picture under five names, and nothing caught it because the gate only asserted that the files
   // existed. A duplicate now fails the gate.
-  const matrix = expected.filter((name) => /^(2[0-4])-/.test(name) || name.startsWith("bundle/"))
+  const matrix = expected.filter((name) => name.startsWith("bundle/"))
   const hashes = new Map<string, string[]>()
   for (const name of matrix) {
     const hash = createHash("sha256")

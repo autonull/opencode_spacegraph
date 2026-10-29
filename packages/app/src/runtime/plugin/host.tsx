@@ -101,7 +101,7 @@ type HostApiFactory<T> = (
   builtin: boolean,
 ) => T
 
-/** The HostApis a window provides, by context property. The host itself provides `links` and `dialogs`. */
+/** The HostApis a window provides, by context property. The host itself provides `links`, `dialogs`, and `surfaces`. */
 export type HostApiFactories = {
   readonly [K in Exclude<keyof HostApis, "links" | "dialogs" | "surfaces">]: HostApiFactory<HostApis[K]>
 }

@@ -1,5 +1,5 @@
 import { produce, reconcile, unwrap } from "solid-js/store"
-import { createEffect, createMemo, type Accessor } from "solid-js"
+import { createEffect, createMemo } from "solid-js"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Effect, Option, Predicate, Schema, SchemaGetter } from "effect"
 import { createSimpleContext } from "@opencode/ui/context"
@@ -10,8 +10,6 @@ import { Persistence } from "@/runtime/persistence/schema"
 import { ScopedKey, type ServerScope } from "@/runtime/server/scope"
 
 export type Settings = typeof settingsSchema.Type
-
-export type { SettingsContext }
 
 export type WorkspaceDefaultDestination = Settings["workspaces"]["defaultDestination"]
 
@@ -138,9 +136,9 @@ const generalSchema = Persistence.struct({
   // The redesigned keyboard-first question dock, off until it ships.
   newQuestionUI: Schema.Boolean,
   mobileTitlebarPosition: Schema.Literals(["top", "bottom"]),
+  terminalPlacement: Schema.Literals(["side", "bottom", "tab"]),
   // Owned by the review plugin, which copies it out once; kept so settings rewrites cannot drop it first.
   mobileDiffWrap: Persistence.optional(Schema.Boolean),
-  terminalPlacement: Schema.Literals(["side", "bottom", "tab"]),
   followUpBehavior: Schema.Literals(["queue", "steer"]),
 })
 
@@ -336,113 +334,14 @@ export const defaultSettings: Settings = {
   },
 }
 
-function withFallback<T>(read: () => T | undefined, fallback: T): () => T {
+function withFallback<T>(read: () => T | undefined, fallback: T) {
   return createMemo(() => read() ?? fallback)
 }
 
-type SettingsContext = {
-  ready: Accessor<boolean> & { promise: undefined | Promise<unknown> }
-  get current(): Settings
-  general: {
-    showFileTree: () => boolean
-    setShowFileTree: (value: boolean) => void
-    timelineDetail: () => TimelineDetail
-    setTimelineDetail: (value: TimelineDetail) => void
-    showCustomAgents: () => boolean
-    setShowCustomAgents: (value: boolean) => void
-    showTurnDiffs: () => boolean
-    setShowTurnDiffs: (value: boolean) => void
-    backgroundActivity: () => BackgroundActivity
-    setBackgroundActivity: (value: BackgroundActivity) => void
-    timelineWidth: () => TimelineWidth
-    setTimelineWidth: (value: TimelineWidth) => void
-    newIcons: () => boolean
-    setNewIcons: (value: boolean) => void
-    foldUserMessages: () => boolean
-    setFoldUserMessages: (value: boolean) => void
-    newQuestionUI: () => boolean
-    setNewQuestionUI: (value: boolean) => void
-    mobileTitlebarPosition: () => "top" | "bottom"
-    setMobileTitlebarPosition: (value: "top" | "bottom") => void
-    terminalPlacement: () => TerminalPlacement
-    setTerminalPlacement: (value: TerminalPlacement) => void
-    followUpBehavior: () => FollowUpBehavior
-    setFollowUpBehavior: (value: FollowUpBehavior) => void
-  }
-  experimental: {
-    sessionGraph: () => boolean
-    setSessionGraph: (value: boolean) => void
-  }
-  visibility: {
-    fileTree: () => boolean
-    customAgents: () => boolean
-  }
-  appearance: {
-    fontSize: () => number
-    setFontSize: (value: number) => void
-    font: () => string
-    setFont: (value: string) => void
-    uiFont: () => string
-    setUIFont: (value: string) => void
-    terminalFont: () => string
-    setTerminalFont: (value: string) => void
-    tabLayout: () => TabLayout
-    setTabLayout: (value: TabLayout) => void
-    sidebarOpen: () => boolean
-    setSidebarOpen: (value: boolean) => void
-    reduceMotion: () => ReduceMotion
-    setReduceMotion: (value: ReduceMotion) => void
-  }
-  keybinds: {
-    get: (action: string) => string | undefined
-    set: (action: string, keybind: string) => void
-    reset: (action: string) => void
-    resetAll: () => void
-  }
-  permissions: {
-    autoApproveDefault: () => boolean
-    setAutoApproveDefault: (value: boolean) => void
-    autoApproveOverride: (project: ScopedKey | undefined) => boolean | undefined
-    setAutoApproveOverride: (project: ScopedKey, value: boolean | undefined) => void
-    autoApproves: (project: ScopedKey | undefined) => boolean
-    autoApprovesOnServer: (scope: ServerScope) => boolean
-  }
-  workspaces: {
-    defaultDestination: () => WorkspaceDefaultDestination
-    setDefaultDestination: (value: WorkspaceDefaultDestination) => void
-    lastUsed: (scope: ServerScope, projectID: string) => WorkspaceLastUsed | undefined
-    setLastUsed: (scope: ServerScope, projectID: string, value: WorkspaceLastUsed) => void
-  }
-  notifications: {
-    agent: () => boolean
-    setAgent: (value: boolean) => void
-    permissions: () => boolean
-    setPermissions: (value: boolean) => void
-    errors: () => boolean
-    setErrors: (value: boolean) => void
-  }
-  sounds: {
-    agentEnabled: () => boolean
-    setAgentEnabled: (value: boolean) => void
-    agent: () => string
-    setAgent: (value: string) => void
-    permissionsEnabled: () => boolean
-    setPermissionsEnabled: (value: boolean) => void
-    permissions: () => string
-    setPermissions: (value: string) => void
-    errorsEnabled: () => boolean
-    setErrorsEnabled: (value: boolean) => void
-    errors: () => string
-    setErrors: (value: string) => void
-    interfaceEnabled: () => boolean
-    setInterfaceEnabled: (value: boolean) => void
-  }
-}
-
-const { use: useSettings, provider: SettingsProvider } = createSimpleContext<SettingsContext, {}>({
+export const { use: useSettings, provider: SettingsProvider } = createSimpleContext({
   name: "Settings",
   gate: false,
-  init: (): SettingsContext => {
+  init: () => {
     const [store, setStore, , ready] = persisted({ key: "settings.v3" }, settingsPersistence, defaultSettings)
 
     const showCustomAgents = withFallback(
@@ -501,10 +400,6 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         setTimelineDetail(value: TimelineDetail) {
           setStore("general", "timelineDetail", structuredClone(unwrap(value)))
         },
-        showFileTree: withFallback(() => store.general?.showFileTree, true),
-        setShowFileTree(value: boolean) {
-          setStore("general", "showFileTree", value)
-        },
         showCustomAgents,
         setShowCustomAgents(value: boolean) {
           setStore("general", "showCustomAgents", value)
@@ -543,7 +438,7 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         setMobileTitlebarPosition(value: "top" | "bottom") {
           setStore("general", "mobileTitlebarPosition", value)
         },
-        terminalPlacement: withFallback(() => store.general?.terminalPlacement, "side"),
+        terminalPlacement: withFallback(() => store.general?.terminalPlacement, defaultSettings.general.terminalPlacement),
         setTerminalPlacement(value: TerminalPlacement) {
           setStore("general", "terminalPlacement", value)
         },
@@ -562,7 +457,6 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         },
       } satisfies { sessionGraph: () => boolean; setSessionGraph: (value: boolean) => void },
       visibility: {
-        fileTree: withFallback(() => store.general?.showFileTree, true),
         customAgents: showCustomAgents,
       },
       appearance: {
@@ -715,5 +609,3 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
     }
   },
 })
-
-export { useSettings, SettingsProvider }

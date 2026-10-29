@@ -13,8 +13,6 @@ import review from "./review"
 import reviewRenderer from "./review/renderer"
 import details from "./details"
 import detailsRenderer from "./details/renderer"
-import sessionMap from "./session-map"
-import sessionMapRenderer from "./session-map/renderer"
 import spacegraph from "./spacegraph"
 import spacegraphRenderer from "./spacegraph/renderer"
 import browser from "./browser"
@@ -48,7 +46,6 @@ export const builtins = compose({
   file: { ...file, windowEntry: eager(fileRenderer) },
   review: { ...review, windowEntry: eager(reviewRenderer) },
   details: { ...details, windowEntry: eager(detailsRenderer) },
-  "session-map": { ...sessionMap, windowEntry: eager(sessionMapRenderer) },
   spacegraph: { ...spacegraph, windowEntry: eager(spacegraphRenderer) },
   browser: { ...browser, windowEntry: eager(browserRenderer) },
   pairing: { ...pairing, windowEntry: eager(pairingRenderer) },

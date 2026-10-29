@@ -220,23 +220,6 @@ export function createTimelineVirtualizer(input: Input) {
     },
   )
   let scrollTop = 0
-  // The last unpinned offset. A surface that detaches and reattaches this scroll element without
-  // recreating the virtualizer loses the live scrollTop; restore this on reconnect.
-  let rememberedOffset = 0
-  // Detaching can happen before the browser delivers the scroll event for the user's last move, so
-  // snapshot the live offset when this timeline deactivates rather than relying on it.
-  createEffect(
-    on(
-      active,
-      (isActive) => {
-        const root = listRoot()
-
-        if (isActive || !root || input.pinned()) return
-        rememberedOffset = root.scrollTop
-      },
-      { defer: true },
-    ),
-  )
   // A scroll arrived within the zoom slack of the end and may have reached it.
   let endPending = false
   let reportOffset: ((offset: number, scrolling: boolean) => void) | undefined
@@ -304,7 +287,6 @@ export function createTimelineVirtualizer(input: Input) {
         virtualContent?.querySelectorAll<HTMLDivElement>("[data-index]").forEach(virtualizer.measureElement)
 
         if (input.pinned()) virtualizer.scrollToEnd()
-        else if (rememberedOffset > 0) virtualizer.scrollToOffset(rememberedOffset)
         settleColdBottom()
       })
     },
@@ -889,13 +871,8 @@ export function createTimelineVirtualizer(input: Input) {
   // under a viewport that was already there. Merely resting near the end is not enough, otherwise
   // a later scroll would overwrite an upward intent expressed a pixel short of the bottom.
   const handleListScroll = (event: Event & { currentTarget: HTMLDivElement }) => {
-    const root = event.currentTarget
-    // Record a detached view's offset: the reconnect restore reads it, and no later scroll event
-    // may arrive before the element is reattached.
-
-    if (!input.pinned()) rememberedOffset = root.scrollTop
-
     if (!active()) return
+    const root = event.currentTarget
     const previousTop = scrollTop
     const previousMaxScroll = maxScroll
     scrollTop = root.scrollTop

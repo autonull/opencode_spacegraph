@@ -1,15 +1,6 @@
-import type { Component, JSX, Owner } from "solid-js"
+import type { Component, Owner } from "solid-js"
 import type { PluginInfo } from "@opencode/client/promise"
-import type {
-  Context,
-  Contract,
-  DialogHandle,
-  Dialogs,
-  Live,
-  MountedSession,
-  SessionRef,
-  SessionScreen,
-} from "@opencode/plugin/gui"
+import type { Context, Contract, DialogHandle, Dialogs, Live, SessionRef, SessionScreen } from "@opencode/plugin/gui"
 import type { BuiltinPanelTab } from "@opencode/plugin/gui/builtin"
 import type { Bridge, BridgeMessage, EnableState, Installed } from "@opencode/plugin/gui/host"
 import { expect, sourceURL, story } from "../../stories/playwright/story"
@@ -21,9 +12,6 @@ type Scope = { owner?: Owner | null; end: () => void; ctx?: Context }
 
 /** The context the session-routing case keeps from inside its plugin. */
 type Kept = { ctx?: Context }
-
-/** Surface ids and selections a plugin reported through `ctx.surfaces`. */
-type SurfaceObservation = { before?: string[]; after?: string; unknown?: string; other?: string }
 
 /** What the asking case keeps from inside its plugin: its dialogs, the end of its scope, and that scope's prompt. */
 type Asked = { dialogs?: Dialogs; end?: () => void; prompt?: Promise<string | undefined> }
@@ -1570,124 +1558,4 @@ story("a composer pill with a menu opens the plugin's content under the host's h
   // The content renders again on the next open.
   await pill.click()
   await expect(page.getByTestId("goal-pause")).toBeVisible()
-})
-
-story("session surfaces include the host transcript and follow a per-session selection", async ({ page }) => {
-  const result = await page.evaluate(async (fixture) => {
-    const { mountPlugins, until, SessionSurface } = await import(fixture)
-    const observed: SurfaceObservation = {}
-
-    const host = mountPlugins({
-      definitions: [
-        {
-          id: "fixture",
-          windowEntry: async () => ({
-            default: (ctx: Context) => {
-              ctx.add(SessionSurface, {
-                id: "map",
-                title: "Map",
-                render: (input: { session: MountedSession; screen: SessionScreen; transcript: JSX.Element }) =>
-                  input.transcript,
-              })
-
-              // SAFETY: the surface API reads only the session key.
-              const first = { key: "first" } as SessionRef
-              // SAFETY: as above.
-              const second = { key: "second" } as SessionRef
-              observed.before = ctx.surfaces.list().map((surface) => surface.id)
-              ctx.surfaces.select("map", first)
-              observed.after = ctx.surfaces.current(first)
-              observed.other = ctx.surfaces.current(second)
-              ctx.surfaces.select("missing", first)
-              observed.unknown = ctx.surfaces.current(first)
-            },
-          }),
-        },
-      ],
-    })
-
-    try {
-      await until(() => host.status("fixture") === "active")
-
-      return observed
-    } finally {
-      host.unmount()
-    }
-  }, fixture)
-
-  expect(result).toEqual({ before: ["transcript", "map"], after: "map", other: "transcript", unknown: "map" })
-})
-
-story("a surface keeps the transcript mounted and scrolled while surfaces switch", async ({ page }) => {
-  const result = await page.evaluate(async (fixture) => {
-    const { mountSessionSurface, until } = await import(fixture)
-    const surface = mountSessionSurface()
-
-    try {
-      await until(() => surface.ready())
-      const transcript = surface.container.querySelector('[data-testid="transcript"]')
-      transcript.scrollTop = 240
-      await new Promise((resolve) => requestAnimationFrame(resolve))
-
-      const reads: Array<{ surface: string | undefined; mounts: number; scroll: number }> = []
-
-      for (const id of ["map", "hybrid", "transcript"]) {
-        surface.select(id)
-        await new Promise((resolve) => requestAnimationFrame(resolve))
-        await new Promise((resolve) => requestAnimationFrame(resolve))
-        reads.push({ surface: surface.current(), mounts: surface.mounts(), scroll: surface.scroll() })
-      }
-
-      return { reads, map: !!surface.container.querySelector('[data-testid="map"]') }
-    } finally {
-      surface.unmount()
-    }
-  }, fixture)
-
-  expect(result.map).toBe(false)
-  expect(result.reads).toEqual([
-    { surface: "map", mounts: 1, scroll: 240 },
-    { surface: "hybrid", mounts: 1, scroll: 240 },
-    { surface: "transcript", mounts: 1, scroll: 240 },
-  ])
-})
-
-story("built-in spacegraph surfaces mount through the real host", async ({ page }) => {
-  const errors: string[] = []
-  page.on("pageerror", (error) => errors.push(error.message))
-  const builtins = sourceURL(new URL("../../gui-plugins/src/renderer.ts", import.meta.url))
-
-  const result = await page.evaluate(
-    async ({ fixture, builtins }) => {
-      const { mountBuiltInSurface, until } = await import(fixture)
-      const gui = await import(builtins)
-      const reads: Array<{ surface: string; graph: boolean; hybrid: string | null }> = []
-
-      for (const surface of ["spacegraph.map", "spacegraph.hybrid"]) {
-        const mounted = mountBuiltInSurface({ definitions: gui.builtins, surface })
-
-        try {
-          await until(() => mounted.ready())
-          await new Promise((resolve) => requestAnimationFrame(resolve))
-          await new Promise((resolve) => requestAnimationFrame(resolve))
-          reads.push({
-            surface,
-            graph: !!mounted.container.querySelector('[data-slot="graph-view"]'),
-            hybrid: mounted.container.querySelector('[data-slot="spacegraph-surface-hybrid"]')?.getAttribute("data-arrangement") ?? null,
-          })
-        } finally {
-          mounted.unmount()
-        }
-      }
-
-      return reads
-    },
-    { fixture, builtins },
-  )
-
-  expect(errors).toEqual([])
-  expect(result).toEqual([
-    { surface: "spacegraph.map", graph: true, hybrid: null },
-    { surface: "spacegraph.hybrid", graph: true, hybrid: "stacked" },
-  ])
 })
