@@ -1,14 +1,13 @@
-import { createMemo } from "solid-js"
+import { createMemo, type JSX } from "solid-js"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { FullMap } from "./full-map"
-import { Transcript } from "./transcript"
 
 export function HybridSurface(props: {
   model: SpacegraphModel
   session: MountedSession
   screen: SessionScreen
-  t: (key: string, params?: Record<string, string | number>) => string
+  transcript: JSX.Element
 }) {
   const arrangement = createMemo(() => props.model.arrangement(props.session))
   const side = createMemo(() => props.model.side(props.session))
@@ -35,9 +34,7 @@ export function HybridSurface(props: {
 
   return (
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
-      <div class={transcript()}>
-        <Transcript session={props.session} screen={props.screen} t={props.t} />
-      </div>
+      <div class={transcript()}>{props.transcript}</div>
       <div class={map()}>
         <FullMap
           model={props.model}

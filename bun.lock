@@ -572,6 +572,30 @@
         "@opencode/plugin": "^2.0.27 || ^0.0.0-dev",
       },
     },
+    "packages/plugins/spacegraph": {
+      "name": "@autonull/opencode-plugin-spacegraph",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@happy-dom/global-registrator": "20.0.11",
+        "@opencode/gui-plugins": "workspace:*",
+        "@opencode/plugin": "workspace:*",
+        "@opencode/session-graph": "workspace:*",
+        "@opencode/session-ui": "workspace:*",
+        "@opencode/ui": "workspace:*",
+        "@tailwindcss/vite": "catalog:",
+        "@tsconfig/node22": "catalog:",
+        "@types/bun": "catalog:",
+        "effect": "catalog:",
+        "solid-js": "catalog:",
+        "tailwindcss": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-solid": "catalog:",
+      },
+      "peerDependencies": {
+        "@opencode/plugin": "*",
+        "spacegraphjs": ">=8.5",
+      },
+    },
     "packages/posts": {
       "name": "@opencode/posts",
       "dependencies": {
@@ -987,30 +1011,6 @@
         "typescript": "catalog:",
       },
     },
-    "plugins": {
-      "name": "@autonull/opencode-plugin-spacegraph",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@happy-dom/global-registrator": "20.0.11",
-        "@opencode/gui-plugins": "workspace:*",
-        "@opencode/plugin": "workspace:*",
-        "@opencode/session-graph": "workspace:*",
-        "@opencode/session-ui": "workspace:*",
-        "@opencode/ui": "workspace:*",
-        "@tailwindcss/vite": "catalog:",
-        "@tsconfig/node22": "catalog:",
-        "@types/bun": "catalog:",
-        "effect": "catalog:",
-        "solid-js": "catalog:",
-        "tailwindcss": "catalog:",
-        "vite": "catalog:",
-        "vite-plugin-solid": "catalog:",
-      },
-      "peerDependencies": {
-        "@opencode/plugin": "*",
-        "spacegraphjs": ">=8.5",
-      },
-    },
     "services/changelog": {
       "name": "@opencode/changelog",
       "dependencies": {
@@ -1360,7 +1360,7 @@
 
     "@astrojs/yaml2ts": ["@astrojs/yaml2ts@0.2.4", "", { "dependencies": { "yaml": "^2.8.3" } }, "sha512-8oddpOae35pJsXPQXhTkM0ypfKPskVsh2bCxRtbf7e+/Epw2nReakFYpLKjZMEr75CsoF203PMnCocpfz0s69A=="],
 
-    "@autonull/opencode-plugin-spacegraph": ["@autonull/opencode-plugin-spacegraph@workspace:plugins"],
+    "@autonull/opencode-plugin-spacegraph": ["@autonull/opencode-plugin-spacegraph@workspace:packages/plugins/spacegraph"],
 
     "@aws-crypto/crc32": ["@aws-crypto/crc32@5.2.0", "", { "dependencies": { "@aws-crypto/util": "^5.2.0", "@aws-sdk/types": "^3.222.0", "tslib": "^2.6.2" } }, "sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg=="],
 

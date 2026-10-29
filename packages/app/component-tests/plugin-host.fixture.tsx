@@ -2,6 +2,7 @@ import type { PluginInfo, SessionMessageInfo } from "@opencode/client/promise"
 import { DialogProvider } from "@opencode/ui/context/dialog"
 import { Toast } from "@opencode/ui/toast"
 import {
+  Command,
   Panel,
   SessionSurface,
   createKeyed,
@@ -436,6 +437,8 @@ function RealHost(props: ParentProps<{ definitions: readonly Entry[]; captured: 
 export function mountSessionRegion(input: {
   definitions: readonly Entry[]
   active: string
+  /** The stored tab of each panel; defaults to `main`, the tab most fixtures list. */
+  tab?: (item: { readonly plugin: string; readonly id: string }) => string
   /** The routed session's messages, as its server holds them. */
   messages?: readonly SessionMessageInfo[]
 }) {
@@ -453,7 +456,7 @@ export function mountSessionRegion(input: {
       pending: false,
       location: { directory: "/repo" },
       visit: {},
-      server: { data: { session: { message: { list: () => input.messages ?? [] } } } },
+      server: { data: { session: { status: () => "idle", message: { list: () => input.messages ?? [] } } } },
     }
 
     // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
@@ -478,8 +481,10 @@ export function mountSessionRegion(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
-    // Every panel's `main` tab is stored, and `active` selected, as a strip restored after a reload.
-    const all = () => host.items(Panel).map((item) => `${item.plugin}:main`)
+
+    // Every panel's stored tab is listed, and `active` selected, as a strip restored after a reload.
+    const all = () =>
+      host.items(Panel).map((item) => `${item.plugin}:${input.tab?.({ plugin: item.plugin, id: item.value.id }) ?? "main"}`)
 
     const region = createRegion({
       region: "side",
@@ -555,6 +560,14 @@ export function mountSessionRegion(input: {
     /** The session each composer attachment reached, in order. */
     attached,
     status: (id: string) => hosts[0]?.state.status[id],
+    /** Runs a registered command as the palette does. */
+    run: (id: string) => {
+      const command = hosts[0]?.items(Command).find((item) => item.value.id === id)?.value
+
+      command?.run()
+
+      return command !== undefined
+    },
     unmount: () => {
       dispose()
       container.remove()

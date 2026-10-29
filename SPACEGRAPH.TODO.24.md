@@ -2,6 +2,34 @@
 
 > **Status: replaces TODO.23's Day 3.** TODO.23's bundle, no-surface fallbacks, seam archive and first mount keeper are done. This file corrects three trajectory errors and removes the duplication they left behind. Phases A–C are the work; D is release-only.
 
+## Progress (2026-10-29)
+
+| Phase | State | Evidence |
+|---|---|---|
+| A1 bundle through `pluginDefinition` | ✅ done | `plugin-spacegraph.spec.ts` reads `dist/gui-experimental.cjs`; fixture imports no plugin source |
+| A2 freshness | ✅ done | spec builds unless `GRAPH_CAPTURE_SKIP_BUILD=1`; `bundle.test.ts` builds once before its tests |
+| A3 Panel + dialog frames | ✅ done | panel mounts `${id}:map`; no-surface dialog opens the hybrid fallback |
+| A4 one capture command | ✅ done | `bun run graph:capture --mode=bundle`; verify includes bundle frames and duplicate check |
+| A5 manifest gate | ✅ done | build once, require allowlist, `evaluatePluginBundle` declarations |
+| B1 move package | ✅ done | `packages/plugins/spacegraph`; `plugins` removed from root workspaces |
+| B2 build script | ✅ done | resolves the local Vite binary; deletes the stray CSS after build |
+| B3 typecheck inclusion | ✅ done | `bun typecheck` in the package and the repo turbo task |
+| C1 one renderer | ✅ done | built-in `renderer.tsx` only adds the idle preload; external owns commands/surfaces/settings/menu; binds and `search` unified |
+| C2 host transcript | ✅ done | `HybridSurface` renders the host `transcript`; `transcript.tsx` deleted; `MapSurface` prop dropped |
+| C3 shared turn map | ✅ done | `TurnMapBody` serves the overlay layer and dialog |
+| C4 small unifications | ✅ done | one `DEPTH_MODES`, `SpacegraphModel`, no `surfaces!` |
+| C5 seam archive | ✅ done | `docs/spacegraph/seam/`; `patches/` holds dependency patches only |
+| D1–D3 release | ⬜ pending | needs a real `npm install`; do not retire the built-in before then |
+
+**Verification run:** `bun run graph:capture --mode=bundle` (3/3 frames), `bun run test` in `packages/plugins/spacegraph`, `bun typecheck` in `packages/gui-plugins`, `packages/plugins/spacegraph` and `packages/app`, and scoped `lint:changed` on the files this plan created or edited.
+
+**Deviations / notes for the remaining work**
+- The bundle now defines `process.env.NODE_ENV` for browser libraries such as motion; without it the panel path threw `process is not defined`.
+- `bundle.test.ts` builds once at module load, not once per test, so the 5 s per-test budget is not spent on Vite.
+- `mountSessionRegion` gained an optional `tab` input (default `main`) and a `run(command)` helper; the session object also exposes `status()`.
+- Repository-wide `bun run check` / `lint:changed` still report pre-existing fork findings. Treat only the files this plan touched as the gate until those are addressed separately.
+- D remains the release gate: publish, install in a scratch app, verify Panel on web and desktop, then delete the built-in registration and decide the thin wrapper's lifetime.
+
 ## 0. Why this file
 
 TODO.23 is accurate about the alias seam and the measured bundle, but three of its assumptions no longer hold:

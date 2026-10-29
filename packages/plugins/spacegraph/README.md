@@ -17,7 +17,7 @@ The app reads a server plugin's `./gui-experimental` bundle. This package is GUI
 2. Add this directory to the `plugins` list in the opencode config used by the app you are testing, for example:
 
    ```json
-   { "plugins": ["./plugins"] }
+   { "plugins": ["./packages/plugins/spacegraph"] }
    ```
 
    A relative path is resolved from the config file's directory. `.opencode/plugins/` is auto-discovered too.

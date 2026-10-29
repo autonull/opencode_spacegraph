@@ -154,8 +154,9 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       }
 
       const surface = model.surface(session)
+      const available = surfaces()
 
-      if (surface && surfaces()) surfaces()!.select(surface, session)
+      if (surface && available) available.select(surface, session)
     },
   )
 
@@ -172,7 +173,6 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             model={model}
             session={session}
             screen={screen}
-            transcript={transcript}
             onSplitView={() => select(`${ctx.id}.hybrid`)}
           />
         </Scope>
@@ -207,9 +207,9 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         return ctx.t("surface.hybrid")
       },
       order: 20,
-      render: ({ session, screen }) => (
+      render: ({ session, screen, transcript }) => (
         <Scope>
-          <HybridSurface model={model} session={session} screen={screen} t={ctx.t} />
+          <HybridSurface model={model} session={session} screen={screen} transcript={transcript} />
         </Scope>
       ),
     })
@@ -294,10 +294,11 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
   })
 
   for (const command of [
-    { id: "level", bind: "mod+shift+k", title: "command.level", run: (session: MountedSession) => model.cycleLevel(session) },
+    { id: "level", bind: "mod+l", title: "command.level", run: (session: MountedSession) => model.cycleLevel(session) },
     { id: "layout", bind: "mod+shift+l", title: "command.layout", run: (session: MountedSession) => model.cycleLayout(session) },
-    { id: "arrangement", bind: "mod+shift+a", title: "command.arrangement", run: (session: MountedSession) => model.cycleArrangement(session) },
-    { id: "side", bind: "mod+shift+s", title: "command.side", run: (session: MountedSession) => model.toggleSide(session) },
+    { id: "arrangement", bind: "mod+a", title: "command.arrangement", run: (session: MountedSession) => model.cycleArrangement(session) },
+    { id: "side", bind: "mod+s", title: "command.side", run: (session: MountedSession) => model.toggleSide(session) },
+    { id: "search", bind: "mod+f", title: "command.search", run: (session: MountedSession) => select(`${ctx.id}.map`) },
   ] as const) {
     ctx.add(Command, (): Command | undefined => {
       const session = ctx.sessions.current()
@@ -335,7 +336,9 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       bind: "mod+t",
       section: "session",
       run: () => {
-        if (!surfaces()) {
+        const available = surfaces()
+
+        if (!available) {
           openTurnMap(session)
 
           return
@@ -344,7 +347,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         const opening = !model.turnMap(session)
         model.toggleTurnMap(session)
 
-        if (opening && surfaces()!.current(session) !== `${ctx.id}.map`) select(`${ctx.id}.map`)
+        if (opening && available.current(session) !== `${ctx.id}.map`) select(`${ctx.id}.map`)
       },
     }
   })

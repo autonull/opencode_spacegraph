@@ -32,6 +32,8 @@ function build() {
   if (result.exitCode !== 0) throw new Error("The plugin bundle failed to build")
 }
 
+build()
+
 const allowlist = new Set([
   "effect",
   "@opencode/plugin/gui",
@@ -41,8 +43,6 @@ const allowlist = new Set([
 ])
 
 test("the bundle requires only modules the host provides", async () => {
-  if (!(await Bun.file(bundlePath).exists())) build()
-
   const code = await Bun.file(bundlePath).text()
   const required = new Set([...code.matchAll(/require\("([^"]+)"\)/g)].map((match) => match[1]!))
   const unexpected = [...required].filter((name) => !allowlist.has(name))
@@ -51,8 +51,6 @@ test("the bundle requires only modules the host provides", async () => {
 })
 
 test("the built bundle evaluates as a window plugin with the expected declarations", async () => {
-  if (!(await Bun.file(bundlePath).exists())) build()
-
   const bundle = evaluatePluginBundle(await Bun.file(bundlePath).text(), {
     process: "window",
     require(name) {

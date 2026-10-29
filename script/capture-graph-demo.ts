@@ -5,6 +5,7 @@
 //   bun run graph:capture --mode=baseline   transcript only
 //   bun run graph:capture --mode=demo       transcript + graph levels + selection + 3D (SpaceGraph)
 //   bun run graph:capture --mode=compare    demo + the Cytoscape backend over the same model
+//   bun run graph:capture --mode=bundle     the shipped plugin bundle: map surface, side panel, dialog fallback
 //   bun run graph:capture --mode=verify     capture into a temp dir, assert the committed set exists
 //
 // The SpaceGraph frames come from the app's own mocked-server harness; the Cytoscape frames come from
@@ -21,8 +22,11 @@ const root = resolve(import.meta.dir, "..")
 const screenshots = join(root, "docs/spacegraph/screenshots")
 const app = join(root, "packages/app")
 const sessionGraph = join(root, "packages/session-graph")
+const plugin = join(root, "packages/plugins/spacegraph")
+const bundleScreenshots = join(screenshots, "bundle")
+const bundleFrames = ["spacegraph-bundle-map.png", "spacegraph-bundle-panel.png", "spacegraph-bundle-dialog.png"]
 
-const modes = ["baseline", "demo", "compare", "verify"] as const
+const modes = ["baseline", "demo", "compare", "bundle", "verify"] as const
 type Mode = (typeof modes)[number]
 
 const { values } = parseArgs({
@@ -41,6 +45,21 @@ if (!modes.includes(mode)) {
 const dir = mode === "verify" ? await mkdtemp(join(tmpdir(), "graph-capture-")) : screenshots
 const captureMode = mode === "baseline" ? "baseline" : "demo"
 
+/** Builds the plugin and captures the three bundle frames into `target`. */
+async function captureBundle(target: string) {
+  await $`bun run build`.cwd(plugin)
+
+  await $`bun run test:components -- plugin-spacegraph.spec.ts --reporter=line --workers=1`
+    .cwd(app)
+    .env({ ...process.env, GRAPH_CAPTURE_DIR: target, GRAPH_CAPTURE_SKIP_BUILD: "1" })
+}
+
+if (mode === "bundle") {
+  await captureBundle(bundleScreenshots)
+  console.log(`graph:capture: wrote bundle screenshots to ${bundleScreenshots}`)
+  process.exit(0)
+}
+
 await $`PLAYWRIGHT_BUILD=1 bun run test:e2e -- e2e/graph/capture.spec.ts --reporter=line --workers=1 --timeout=300000`
   .cwd(app)
   .env({ ...process.env, GRAPH_CAPTURE_DIR: dir, GRAPH_CAPTURE_MODE: captureMode })
@@ -52,6 +71,8 @@ if (mode === "compare" || mode === "verify") {
 }
 
 if (mode === "verify") {
+  await captureBundle(dir)
+
   const expected = [
     "01-log.png",
     "02-graph-overview.png",
@@ -89,6 +110,7 @@ if (mode === "verify") {
     "22-cytoscape-turn-1.png",
     "23-cytoscape-turn-2.png",
     "24-cytoscape-failure-chain.png",
+    ...bundleFrames.map((name) => `bundle/${name}`),
   ]
   const missing = expected.filter((name) => !existsSync(join(screenshots, name)))
 
@@ -100,7 +122,7 @@ if (mode === "verify") {
   // T6.19: the zoom/pan matrix is ten frames of ten different pictures. Five of them used to be one
   // picture under five names, and nothing caught it because the gate only asserted that the files
   // existed. A duplicate now fails the gate.
-  const matrix = expected.filter((name) => /^(2[0-4])-/.test(name))
+  const matrix = expected.filter((name) => /^(2[0-4])-/.test(name) || name.startsWith("bundle/"))
   const hashes = new Map<string, string[]>()
   for (const name of matrix) {
     const hash = createHash("sha256")

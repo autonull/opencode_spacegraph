@@ -1,23 +1,15 @@
-import type { Entry } from "@opencode/plugin/gui/host"
-import definition from "@opencode/gui-plugins/spacegraph"
-import setup from "@opencode/gui-plugins/spacegraph/external"
+import { pluginDefinition } from "../src/runtime/plugin/module"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
-import { mountBuiltInSurface } from "./plugin-host.fixture"
+import { mountBuiltInSurface, mountSessionRegion } from "./plugin-host.fixture"
 
 const id = "spacegraph-external"
 
-/** Mounts the external SpaceGraph setup (the code the shipped bundle contains) with the canonical graph fixture. */
-export function mountSpacegraphExternal() {
-  const plugin: Entry = {
-    ...definition,
-    id,
-    windowEntry: async () => ({ default: (ctx: never) => setup(ctx) }),
-  }
+/** The plugin every frame mounts: the shipped bundle evaluated through the production loader. */
+const load = (code: string) => pluginDefinition(id, code)
 
-  const mounted = mountBuiltInSurface({ definitions: [plugin], surface: `${id}.map`, messages: buildFixtureMessages() })
-
-  // Cover the light story the test mounts first, so screenshots record the plugin rather than the story behind it.
-  Object.assign(mounted.container.style, {
+/** Covers the light story the test mounts first, so screenshots record the plugin rather than the story behind it. */
+function present(container: HTMLElement) {
+  Object.assign(container.style, {
     position: "fixed",
     inset: "0",
     zIndex: "2147483647",
@@ -26,6 +18,75 @@ export function mountSpacegraphExternal() {
     padding: "24px",
     background: "var(--v2-background-bg-base, #111)",
   })
+}
+
+const storedTab = (item: { readonly plugin: string; readonly id: string }) => (item.plugin === id ? "map" : "main")
+
+/** Mounts the bundle's map surface, the fork/reference path that has `ctx.surfaces`. */
+export async function mountSpacegraphExternal(code: string) {
+  const plugin = await load(code)
+  const mounted = mountBuiltInSurface({ definitions: [plugin], surface: `${id}.map`, messages: buildFixtureMessages() })
+
+  present(mounted.container)
+
+  return mounted
+}
+
+/** Mounts the bundle's side panel, the stock path a host without `ctx.surfaces` uses. */
+export async function mountSpacegraphPanel(code: string) {
+  const plugin = await load(code)
+
+  const mounted = mountSessionRegion({
+    definitions: [plugin],
+    active: `${id}:map`,
+    tab: storedTab,
+    messages: buildFixtureMessages(),
+  })
+
+  present(mounted.container)
+
+  return mounted
+}
+
+/**
+ * Mounts the bundle on a stock host (no `ctx.surfaces`) and opens the map dialog through the hybrid command, the
+ * no-surface fallback.
+ */
+export async function mountSpacegraphDialog(code: string) {
+  const plugin = await load(code)
+  const entry = await plugin.windowEntry?.()
+
+  if (!entry) throw new Error("The bundle has no window entry")
+
+  const mounted = mountSessionRegion({
+    definitions: [
+      {
+        ...plugin,
+        windowEntry: async () => ({
+          default: (ctx) => {
+            // SAFETY: `Entry` types the setup context as `never` so every plugin's narrower context fits; at runtime
+            // the host's object is here, and a stock host simply does not expose `surfaces`.
+            const stock = ctx as { surfaces?: unknown }
+            stock.surfaces = undefined
+
+            return entry.default(ctx)
+          },
+        }),
+      },
+    ],
+    active: `${id}:map`,
+    tab: storedTab,
+    messages: buildFixtureMessages(),
+  })
+
+  present(mounted.container)
+
+  const deadline = performance.now() + 5000
+
+  while (!mounted.run("hybrid")) {
+    if (performance.now() > deadline) throw new Error("The hybrid command never registered")
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+  }
 
   return mounted
 }

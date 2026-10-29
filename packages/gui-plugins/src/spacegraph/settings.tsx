@@ -10,9 +10,7 @@ import {
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { usePlugin } from "@opencode/plugin/gui"
-import type definition from "./index"
-
-const DEPTH_MODES = ["flat", "layered", "depth-stack", "orbit"] as const
+import definition, { DEPTH_MODES } from "./index"
 
 function next<T>(values: readonly T[], current: T) {
   return values[(values.indexOf(current) + 1) % values.length] ?? current

@@ -3,13 +3,15 @@ import tailwindcss from "@tailwindcss/vite"
 import { gui } from "@opencode/plugin/gui/vite"
 import { defineConfig } from "vite"
 
-const repo = path.resolve(import.meta.dirname, "..")
+const repo = path.resolve(import.meta.dirname, "../../..")
 const here = import.meta.dirname
 const at = (...parts: string[]) => path.join(repo, ...parts)
 const exact = (name: string, file: string) => ({ find: new RegExp(`^${name}$`), replacement: at(file) })
 
 export default defineConfig({
   root: here,
+  // Bundled browser libraries such as motion read `process.env.NODE_ENV`; a host window has no `process`.
+  define: { "process.env.NODE_ENV": JSON.stringify("production") },
   resolve: {
     alias: [
       exact("spacegraphjs", "spacegraphjs/src/index.ts"),

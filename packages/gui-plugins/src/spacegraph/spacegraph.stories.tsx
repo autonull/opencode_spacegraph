@@ -118,7 +118,7 @@ export const MapSurfaceStory: StoryObj = {
     const model = createMockModel()
     const session = createMockSession()
     const screen = createMockScreen()
-    return <MapSurface model={model} session={session} screen={screen} transcript={<Transcript />} />
+    return <MapSurface model={model} session={session} screen={screen} />
   },
 }
 

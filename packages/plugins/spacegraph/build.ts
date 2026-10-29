@@ -3,13 +3,8 @@
 
 import path from "node:path"
 
-const repo = path.resolve(import.meta.dirname, "..")
-const glob = new Bun.Glob("node_modules/.bun/vite@7.*/node_modules/vite/bin/vite.js")
-const candidates = [...glob.scanSync({ cwd: repo, absolute: true })]
-
-const vite = candidates.sort().at(-1)
-
-if (!vite) throw new Error("No Vite installation found under node_modules/.bun")
+const repo = path.resolve(import.meta.dirname, "../../..")
+const vite = path.join(path.dirname(Bun.resolveSync("vite/package.json", import.meta.dirname)), "bin/vite.js")
 
 const result = Bun.spawnSync({
   cmd: ["bun", vite, "build", "--config", path.join(import.meta.dirname, "vite.config.ts")],
@@ -17,5 +12,10 @@ const result = Bun.spawnSync({
   stdout: "inherit",
   stderr: "inherit",
 })
+
+if (result.exitCode === 0) {
+  // The stylesheet ships inside the JS string through `?inline`; Vite's side file is a second, stale artifact.
+  await Bun.file(path.join(import.meta.dirname, "dist/opencode-plugin-spacegraph.css")).delete()
+}
 
 process.exit(result.exitCode)
