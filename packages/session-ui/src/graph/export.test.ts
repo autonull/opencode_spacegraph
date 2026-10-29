@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { KernelCodec } from "@spacegraphjs/kernel"
 import { exportGraphFilename, exportGraphJSON } from "./export"
-import { buildFixtureGraphWithSnapshot } from "./fixture"
+import { buildFixtureGraph } from "./fixture"
 
 describe("graph export", () => {
   test("exports a decodable kernel", () => {
-    const model = buildFixtureGraphWithSnapshot()
+    const model = buildFixtureGraph()
     const decoded = KernelCodec.decode(exportGraphJSON(model))
 
     expect(decoded.nodes.map((node) => node.id)).toEqual(model.nodes.map((node) => node.id))

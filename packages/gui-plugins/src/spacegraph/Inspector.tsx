@@ -62,22 +62,6 @@ export const Inspector = (props: InspectorProps) => {
           <div class="mb-4 text-13-regular text-text-base">{node.summary}</div>
         )}
 
-        {node.provenance && (
-          <div class="mb-4">
-            <div class="mb-2 text-12-medium text-text-weak">Provenance</div>
-            <div class="text-12-regular text-text-base">
-              <span class="text-text-weak">{node.provenance.source}: </span>
-              <code class="font-mono text-11-regular">{node.provenance.confidence}</code>
-              {node.provenance.asOf && (
-                <>
-                  <span class="text-text-weak"> as of </span>
-                  <code class="font-mono text-11-regular">{new Date(node.provenance.asOf).toLocaleString()}</code>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
         {props.onSelect && (
           <button
             type="button"

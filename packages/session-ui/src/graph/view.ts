@@ -7,8 +7,6 @@ import type {
   GraphEdge,
   GraphViewData,
   GraphNode,
-  GraphSnapshotMeta,
-  Provenance,
 } from "./model"
 import { nodeDomain, type Domain, type NodeKind, type NodeStatus, type ZoomLevel } from "./vocabulary"
 
@@ -16,8 +14,6 @@ const HOST_KEY = "$host"
 
 export type GraphViewMeta = {
   root: string
-  workspaceRoot?: string
-  snapshot?: GraphSnapshotMeta
   goal?: string
   turns: readonly string[]
   turnByMessageID: ReadonlyMap<string, string> | Readonly<Record<string, string>>
@@ -35,13 +31,6 @@ const hostFields = (node: GraphNode): Record<string, JsonValue> => {
   if (node.derived !== undefined) fields.derived = node.derived
   if (node.minLevel !== undefined) fields.minLevel = node.minLevel
   if (node.clusterOf !== undefined) fields.clusterOf = [...node.clusterOf]
-  if (node.domain !== undefined) fields.domain = node.domain
-  if (node.provenance !== undefined)
-    fields.provenance = {
-      source: node.provenance.source,
-      confidence: node.provenance.confidence,
-      ...(node.provenance.asOf === undefined ? {} : { asOf: node.provenance.asOf }),
-    }
   return fields
 }
 
@@ -85,18 +74,7 @@ const asStringArray = (value: unknown): string[] | undefined =>
     ? [...value]
     : undefined
 
-const asProvenance = (value: unknown): Provenance | undefined => {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined
-  const record = value as Record<string, unknown>
-  const source = asString(record.source)
-  const confidence = asString(record.confidence)
-  if (!source || !confidence) return undefined
-  return {
-    source: source as Provenance["source"],
-    confidence: confidence as Provenance["confidence"],
-    ...(asNumber(record.asOf) === undefined ? {} : { asOf: asNumber(record.asOf) }),
-  }
-}
+
 
 export const toGraphNode = (node: Node): GraphNode => {
   const all = node.data ?? {}
@@ -124,9 +102,6 @@ export const toGraphNode = (node: Node): GraphNode => {
       ? {}
       : { clusterOf: asStringArray(host.clusterOf)! }),
     ...(asString(host.domain) === undefined ? {} : { domain: asString(host.domain) as Domain }),
-    ...(asProvenance(host.provenance) === undefined
-      ? {}
-      : { provenance: asProvenance(host.provenance)! }),
     ...(Object.keys(data).length === 0 ? {} : { data: data as Record<string, JsonValue> }),
   }
 }
@@ -142,8 +117,6 @@ export const toGraphEdge = (edge: Edge): GraphEdge => ({
 
 export const graphViewMeta = (model: GraphViewData): GraphViewMeta => ({
   root: model.root,
-  ...(model.workspaceRoot === undefined ? {} : { workspaceRoot: model.workspaceRoot }),
-  ...(model.snapshot === undefined ? {} : { snapshot: model.snapshot }),
   ...(model.goal === undefined ? {} : { goal: model.goal }),
   turns: model.turns,
   turnByMessageID: model.turnByMessageID,
@@ -152,8 +125,6 @@ export const graphViewMeta = (model: GraphViewData): GraphViewMeta => ({
 
 export const toGraphView = (kernel: Kernel, meta: GraphViewMeta): GraphViewData => ({
   root: meta.root,
-  ...(meta.workspaceRoot === undefined ? {} : { workspaceRoot: meta.workspaceRoot }),
-  ...(meta.snapshot === undefined ? {} : { snapshot: meta.snapshot }),
   ...(meta.goal === undefined ? {} : { goal: meta.goal }),
   nodes: kernel.nodes.map(toGraphNode),
   edges: kernel.edges.map(toGraphEdge),

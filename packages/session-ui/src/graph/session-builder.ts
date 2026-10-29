@@ -7,7 +7,6 @@ import type {
   SessionMessageInfo,
   SessionMessageShell,
   SessionStatus,
-  WorkspaceSnapshot,
 } from "@opencode/client/promise"
 import { Kernel } from "@spacegraphjs/kernel"
 import { Option, Schema } from "effect"
@@ -19,7 +18,6 @@ import {
   SESSION_NODE_ID,
   decodeString,
   diffNodeID,
-  directoryNodeID,
   errorNodeID,
   fileNodeID,
   messageNodeID,
@@ -39,11 +37,9 @@ import {
   type GraphNode,
   type NodeStatus,
   type PhaseCategory,
-  type Provenance,
-  type Range,
   type SessionLineage,
 } from "./model"
-import { toGraphEdge, toGraphNode, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
+import { toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
 
 /**
@@ -141,30 +137,6 @@ function rootData(sessionID?: string, lineage?: SessionLineage): Record<string, 
  * rules that connect them. Every activity in a turn enters the model the same way (`attach`), so a
  * node is never half-attached, and the order the model is built in is the order it is drawn in.
  */
-export type WorkspaceStage =
-  | "files"
-  | "directories"
-  | "packages"
-  | "commits"
-  | "branches"
-  | "symbols"
-  | "hunk-symbols"
-  | "processes"
-  | "ports"
-  | "issues"
-
-export const WORKSPACE_STAGES: readonly WorkspaceStage[] = [
-  "files",
-  "directories",
-  "packages",
-  "commits",
-  "branches",
-  "symbols",
-  "hunk-symbols",
-  "processes",
-  "ports",
-  "issues",
-]
 
 export class GraphBuilder {
   private readonly nodes: GraphNode[] = []
@@ -196,7 +168,6 @@ export class GraphBuilder {
   constructor(
     private readonly messages: SessionMessageInfo[],
     private readonly status: SessionStatus,
-    private readonly snapshot?: WorkspaceSnapshot,
     sessionID?: string,
     lineage?: SessionLineage,
     diffByTurn?: Map<string, FileDiffInfo[]>,
@@ -275,78 +246,6 @@ export class GraphBuilder {
     this.constructed = true
   }
 
-  static buildWorkspaceStage(
-    kernel: Kernel,
-    stage: WorkspaceStage,
-    snapshot: WorkspaceSnapshot,
-    diffByTurn?: Map<string, FileDiffInfo[]>,
-  ): Kernel {
-    const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined, diffByTurn)
-    builder.seed(kernel)
-    switch (stage) {
-      case "files":
-        builder.attachFiles(snapshot)
-        break
-      case "directories":
-        builder.attachDirectories(snapshot)
-        break
-      case "packages":
-        builder.attachPackages(snapshot)
-        break
-      case "commits":
-        builder.attachCommits(snapshot)
-        break
-      case "branches":
-        builder.attachBranches(snapshot)
-        break
-      case "symbols":
-        builder.attachSymbols(snapshot)
-        break
-      case "hunk-symbols":
-        if (diffByTurn) builder.attachHunkSymbols(diffByTurn)
-        break
-      case "processes":
-        builder.attachProcesses(snapshot)
-        break
-      case "ports":
-        builder.attachPorts(snapshot)
-        break
-      case "issues":
-        builder.attachIssues(snapshot)
-        break
-    }
-    return builder.buildKernel(kernel.version + 1)
-  }
-
-  private seed(kernel: Kernel) {
-    this.nodes.length = 0
-    this.edges.length = 0
-    this.nodeIDs.clear()
-    this.edgeIDs.clear()
-    this.nodesByID.clear()
-    this.fileNodes.clear()
-    this.touchedFiles.clear()
-    for (const node of kernel.nodes) {
-      const graphNode = toGraphNode(node)
-      this.nodes.push(graphNode)
-      this.nodeIDs.add(graphNode.id)
-      this.nodesByID.set(graphNode.id, graphNode)
-      if (graphNode.kind === "file") {
-        const path = graphNode.data?.path
-        if (typeof path === "string") {
-          this.fileNodes.set(normalizePath(path), graphNode.id)
-          if (graphNode.provenance === undefined) this.touchedFiles.add(normalizePath(path))
-        }
-      }
-    }
-    for (const edge of kernel.edges) {
-      const graphEdge = toGraphEdge(edge)
-      this.edges.push(graphEdge)
-      this.edgeIDs.add(graphEdge.id)
-    }
-    this.constructed = true
-  }
-
   buildKernel(version = 0): Kernel {
     this.construct()
     return new Kernel({
@@ -365,457 +264,7 @@ export class GraphBuilder {
       turns: this.turns,
       turnByMessageID: this.turnByMessageID,
       ...(this.activeTurn === undefined ? {} : { activeTurn: this.activeTurn }),
-      ...(this.snapshot === undefined
-        ? {}
-        : {
-            workspaceRoot: this.snapshot.root,
-            snapshot: {
-              revision: this.snapshot.revision,
-              asOf: this.snapshot.asOf,
-              missing: this.snapshot.missing,
-            },
-          }),
     }
-  }
-
-  /**
-   * T19.1/T29.3 — the directory skeleton derived from the files the session touched and the
-   * snapshot's own files. It runs only when a snapshot is present, so the session-only model stays
-   * byte-identical. Edges use the existing `part-of` vocabulary; no new layout geometry is needed.
-   */
-  private attachFiles(snapshot: WorkspaceSnapshot) {
-    const snapshotFileMeta = new Map<string, { config?: boolean; doc?: boolean }>()
-    for (const file of snapshot.files) {
-      const normalized = normalizePath(file.path)
-      if (file.config || file.doc) {
-        snapshotFileMeta.set(normalized, { config: file.config, doc: file.doc })
-      }
-    }
-
-    for (const file of snapshot.files) {
-      const normalized = normalizePath(file.path)
-      const existingId = this.fileNodes.get(normalized)
-      if (existingId) {
-        const meta = snapshotFileMeta.get(normalized)
-        if (meta) {
-          const node = this.nodesByID.get(existingId)!
-          node.data = this.filterDefined({ ...node.data, config: meta.config, doc: meta.doc })
-        }
-        continue
-      }
-      const id = fileNodeID(normalized)
-      this.fileNodes.set(normalized, id)
-      this.addNode({
-        id,
-        kind: "file",
-        label: normalized,
-        status: "neutral",
-        domain: "directories",
-        provenance: this.provenanceForSource(snapshot, "tree"),
-        data: this.filterDefined({
-          path: normalized,
-          config: snapshotFileMeta.get(normalized)?.config,
-          doc: snapshotFileMeta.get(normalized)?.doc,
-        }),
-      })
-    }
-  }
-
-  private attachDirectories(snapshot: WorkspaceSnapshot) {
-    const counts = new Map<string, { fileCount: number; touchedCount: number }>()
-    for (const file of this.fileNodes.keys()) {
-      const touched = this.touchedFiles.has(file)
-      const parts = normalizePath(file).split("/")
-      for (const directory of parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))) {
-        const count = counts.get(directory) ?? { fileCount: 0, touchedCount: 0 }
-        count.fileCount += 1
-        if (touched) count.touchedCount += 1
-        counts.set(directory, count)
-      }
-    }
-
-    const directories = [...counts.keys()].sort((a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b))
-    for (const directory of directories) {
-      const count = counts.get(directory)!
-      this.addNode({
-        id: directoryNodeID(directory),
-        kind: "directory",
-        label: directory.slice(directory.lastIndexOf("/") + 1),
-        status: "neutral",
-        minLevel: "overview",
-        domain: "directories",
-        provenance: this.provenanceForSource(snapshot, "tree"),
-        data: { path: directory, fileCount: count.fileCount, touchedCount: count.touchedCount },
-      })
-    }
-
-    for (const [file, id] of this.fileNodes) {
-      const normalized = normalizePath(file)
-      const slash = normalized.lastIndexOf("/")
-      const parent = slash === -1 ? "" : normalized.slice(0, slash)
-      if (parent) this.partOf(id, directoryNodeID(parent), "structural")
-    }
-
-    for (const directory of directories) {
-      const normalized = normalizePath(directory)
-      const slash = normalized.lastIndexOf("/")
-      const parent = slash === -1 ? "" : normalized.slice(0, slash)
-      if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
-    }
-  }
-
-  /** T22.1 — package nodes from snapshot packages array. */
-  private attachPackages(snapshot: WorkspaceSnapshot) {
-    for (const pkg of snapshot.packages) {
-      this.addNode({
-        id: `pkg:${normalizePath(pkg.path)}`,
-        kind: "package",
-        label: pkg.name ?? pkg.path,
-        status: "neutral",
-        minLevel: "overview",
-        domain: "directories",
-        provenance: this.provenanceForSource(snapshot, "packages"),
-        data: this.filterDefined({
-          path: pkg.path,
-          name: pkg.name,
-          version: pkg.version,
-          scripts: pkg.scripts,
-          dependencies: pkg.dependencies,
-          devDependencies: pkg.devDependencies,
-        }),
-      })
-    }
-  }
-
-  /** T20.1 — commit nodes from snapshot commits array. */
-  private attachCommits(snapshot: WorkspaceSnapshot) {
-    for (const commit of snapshot.commits) {
-      const id = `commit:${commit.sha}`
-      this.addNode({
-        id,
-        kind: "commit",
-        label: commit.short,
-        status: "neutral",
-        minLevel: "execution",
-        domain: "history",
-        provenance: this.provenanceForSource(snapshot, "vcs"),
-        data: this.filterDefined({ sha: commit.sha, message: commit.message, author: commit.author, time: commit.time, files: commit.files }),
-      })
-      if (commit.files) {
-        for (const file of commit.files) {
-          const fileId = this.fileNodes.get(normalizePath(file))
-          if (fileId) this.addEdge({ kind: "touches", source: id, target: fileId, confidence: "explicit" })
-        }
-      }
-    }
-    if (snapshot.base?.sha) {
-      const baseId = `commit:${snapshot.base.sha}`
-      this.addNode({
-        id: baseId,
-        kind: "commit",
-        label: `base (${snapshot.base.sha.slice(0, 7)})`,
-        status: "neutral",
-        minLevel: "execution",
-        domain: "history",
-        provenance: this.provenanceForSource(snapshot, "vcs"),
-        data: { sha: snapshot.base.sha, isBase: true },
-      })
-    }
-  }
-
-  /** T20.2 — branch nodes from snapshot branches array. */
-  private attachBranches(snapshot: WorkspaceSnapshot) {
-    for (const branch of snapshot.branches) {
-      const id = `branch:${branch.name}`
-      this.addNode({
-        id,
-        kind: "branch",
-        label: branch.name,
-        status: branch.name === snapshot.head?.branch ? "running" : "neutral",
-        minLevel: "execution",
-        domain: "history",
-        provenance: this.provenanceForSource(snapshot, "vcs"),
-        data: this.filterDefined({ name: branch.name, sha: branch.sha, upstream: branch.upstream, remote: branch.remote }),
-      })
-      // points-at edge to commit
-      const commitId = `commit:${branch.sha}`
-      if (this.nodeIDs.has(commitId)) {
-        this.addEdge({ kind: "points-at", source: id, target: commitId, confidence: "explicit" })
-      }
-    }
-  }
-
-  /** T21.1/T21.2 — symbol nodes from snapshot symbols array. */
-  private attachSymbols(snapshot: WorkspaceSnapshot) {
-    for (const sym of snapshot.symbols) {
-      const id = `symbol:${normalizePath(sym.path)}#${sym.qualified}`
-      this.addNode({
-        id,
-        kind: "symbol",
-        label: sym.name,
-        status: "neutral",
-        minLevel: "execution",
-        domain: "code",
-        provenance: this.provenanceForSource(snapshot, "symbols"),
-        data: this.filterDefined({ path: sym.path, name: sym.name, qualified: sym.qualified, kind: sym.kind, range: sym.range, signature: sym.signature, origin: sym.origin }),
-      })
-      // part-of file
-      const fileId = this.fileNodes.get(normalizePath(sym.path))
-      if (fileId) this.partOf(id, fileId, "structural")
-    }
-  }
-
-  /**
-   * T21.1 — extract symbols from a unified diff patch by parsing hunk headers.
-   * Parses `@@ -oldStart,oldCount +newStart,newCount @@ [context]` to find function/class names.
-   */
-  private symbolsFromHunk(patch: string, filePath: string): Array<{
-    name: string
-    qualified: string
-    kind: "function" | "class" | "method"
-    range: Range
-    signature?: string
-    origin: "hunk" | "hunk:anon" | "hunk:deleted"
-    deleted?: boolean
-  }> {
-    const symbols: Array<{
-      name: string
-      qualified: string
-      kind: "function" | "class" | "method"
-      range: Range
-      signature?: string
-      origin: "hunk" | "hunk:anon" | "hunk:deleted"
-      deleted?: boolean
-    }> = []
-
-    const lines = patch.split("\n")
-    let currentClass: string | undefined
-    let lineNumber = 0
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-
-      // Track line numbers from the hunk header
-      const hunkHeaderMatch = line.match(/^@@\s*-(\d+)(?:,(\d+))?\s*\+(\d+)(?:,(\d+))?\s*@@/)
-      if (hunkHeaderMatch) {
-        lineNumber = Number(hunkHeaderMatch[3]) - 1 // newStart is 1-based
-        continue
-      }
-
-      // Increment line number for each line in the patch (after hunk header)
-      lineNumber++
-
-      // Detect class/interface declarations to qualify method names
-      const classMatch = line.match(/^\+\s*(?:export\s+)?(?:abstract\s+)?(?:class|interface)\s+(\w+)/)
-      if (classMatch) {
-        const className = classMatch[1]
-        // Create symbol for the class itself
-        symbols.push({
-          name: className,
-          qualified: className,
-          kind: "class",
-          range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 20, character: 0 } },
-          origin: "hunk",
-        })
-        currentClass = className
-        continue
-      }
-
-      // Detect function declarations (including async, generators)
-      const funcMatch = line.match(/^\+\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
-      if (funcMatch) {
-        const name = funcMatch[1] || funcMatch[2]
-        if (name) {
-          symbols.push({
-            name,
-            qualified: currentClass ? `${currentClass}.${name}` : name,
-            kind: "function",
-            range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
-            origin: "hunk",
-          })
-        }
-        continue
-      }
-
-      // Detect method declarations (inside class)
-      const methodMatch = line.match(/^\+\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{?/)
-      if (methodMatch && currentClass) {
-        const name = methodMatch[1]
-        // Skip common non-method keywords
-        if (!["constructor", "get", "set", "static", "public", "private", "protected"].includes(name)) {
-          symbols.push({
-            name,
-            qualified: `${currentClass}.${name}`,
-            kind: "method",
-            range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
-            origin: "hunk",
-          })
-        }
-        continue
-      }
-
-      // Detect arrow functions assigned to properties (class fields)
-      const arrowMatch = line.match(/^\+\s*(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
-      if (arrowMatch && currentClass) {
-        const name = arrowMatch[1]
-        symbols.push({
-          name,
-          qualified: `${currentClass}.${name}`,
-          kind: "method",
-          range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
-          origin: "hunk",
-        })
-        continue
-      }
-
-      // Detect deleted functions (lines starting with - that look like function declarations)
-      const deletedFuncMatch = line.match(/^-\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
-      if (deletedFuncMatch) {
-        const name = deletedFuncMatch[1] || deletedFuncMatch[2]
-        if (name) {
-          symbols.push({
-            name,
-            qualified: currentClass ? `${currentClass}.${name}` : name,
-            kind: "function",
-            range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 10, character: 0 } },
-            signature: line.slice(1).trim(),
-            origin: "hunk:deleted",
-            deleted: true,
-          })
-        }
-        continue
-      }
-
-      // Detect anonymous/arrow functions without a name (heuristic: => or function() without name)
-      const anonMatch = line.match(/^\+\s*(?:const|let|var)\s*[A-Z_a-z][A-Z_a-z0-9]*\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
-      if (anonMatch) {
-        // Use line:col as qualified name for anonymous functions
-        symbols.push({
-          name: "anonymous",
-          qualified: `${filePath}:${lineNumber}:0`,
-          kind: "function",
-          range: { start: { line: lineNumber, character: 0 }, end: { line: lineNumber + 5, character: 0 } },
-          origin: "hunk:anon",
-        })
-        continue
-      }
-
-      // Reset class context when we see a class-level closing brace (no indentation after +)
-      // Class-level: +} or + } (0-1 spaces after +)
-      // Method-level: +  } (2+ spaces after +)
-      const braceMatch = line.match(/^\+(\s*)\}\s*$/)
-      if (braceMatch && braceMatch[1].length <= 1) {
-        currentClass = undefined
-      }
-    }
-
-    return symbols
-  }
-
-  /** T21.1 — extract and attach hunk symbols from per-turn diffs. */
-  private attachHunkSymbols(diffByTurn: Map<string, FileDiffInfo[]>) {
-    for (const [_turnID, diffs] of diffByTurn) {
-      for (const diff of diffs) {
-        const symbols = this.symbolsFromHunk(diff.patch, diff.file)
-        for (const sym of symbols) {
-          const id = `symbol:${normalizePath(diff.file)}#${sym.qualified}`
-          // Skip if already added (from snapshot)
-          if (this.nodeIDs.has(id)) continue
-
-          this.addNode({
-            id,
-            kind: "symbol",
-            label: sym.name,
-            status: sym.deleted ? "failed" : "neutral",
-            minLevel: "execution",
-            domain: "code",
-            provenance: { source: "tree", confidence: "inferred" },
-            data: this.filterDefined({
-              path: diff.file,
-              name: sym.name,
-              qualified: sym.qualified,
-              kind: sym.kind,
-              range: sym.range,
-              signature: sym.signature,
-              origin: sym.origin,
-              deleted: sym.deleted,
-            }),
-          })
-          // part-of file
-          const fileId = this.fileNodes.get(normalizePath(diff.file))
-          if (fileId) this.partOf(id, fileId, "structural")
-        }
-      }
-    }
-  }
-
-  /** T23.1/T23.2 — process and port nodes from snapshot. */
-  private attachProcesses(snapshot: WorkspaceSnapshot) {
-    for (const proc of snapshot.processes) {
-      const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
-      this.addNode({
-        id: procId,
-        kind: "process",
-        label: proc.command,
-        status: "running",
-        minLevel: "detail",
-        domain: "runtime",
-        provenance: this.provenanceForSource(snapshot, "processes"),
-        data: this.filterDefined({ pid: proc.pid, command: proc.command, cwd: proc.cwd, ports: proc.ports, startedAt: proc.startedAt }),
-      })
-    }
-  }
-
-  private attachPorts(snapshot: WorkspaceSnapshot) {
-    for (const proc of snapshot.processes) {
-      const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
-      for (const port of proc.ports) {
-        const portId = `port:${port}`
-        this.addNode({
-          id: portId,
-          kind: "port",
-          label: `Port ${port}`,
-          status: "neutral",
-          minLevel: "detail",
-          domain: "runtime",
-          provenance: this.provenanceForSource(snapshot, "processes"),
-          data: { port, processId: procId },
-        })
-        this.addEdge({ kind: "listens-on", source: procId, target: portId, confidence: "inferred" })
-      }
-    }
-  }
-
-  /** T25.1 — issue nodes from snapshot. */
-  private attachIssues(snapshot: WorkspaceSnapshot) {
-    for (const issue of snapshot.issues) {
-      const id = `issue:${issue.provider}:${issue.repo ?? "unknown"}#${issue.number}`
-      this.addNode({
-        id,
-        kind: "issue",
-        label: issue.title ?? `#${issue.number}`,
-        status: issue.state === "closed" ? "success" : "neutral",
-        minLevel: "overview",
-        domain: "work",
-        provenance: this.provenanceForSource(snapshot, "issues"),
-        data: this.filterDefined({ provider: issue.provider, repo: issue.repo, number: issue.number, title: issue.title, state: issue.state, url: issue.url }),
-      })
-    }
-  }
-
-  /** Filter out undefined values from an object for JsonValue compliance. */
-  private filterDefined(obj: Record<string, unknown>): Record<string, JsonValue> {
-    const result: Record<string, JsonValue> = {}
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== undefined) result[key] = value as JsonValue
-    }
-    return result
-  }
-
-  private provenanceForSource(snapshot: WorkspaceSnapshot, source: "tree" | "vcs" | "packages" | "symbols" | "processes" | "issues"): Provenance | undefined {
-    const asOf = snapshot.asOf[source]
-    if (asOf === undefined) return undefined
-    return { source, asOf, confidence: "inferred" }
   }
 
   private addNode(node: GraphNode): GraphNode {
@@ -1562,8 +1011,6 @@ export type BuildSessionInput = {
   status: SessionStatus
   sessionID?: string
   lineage?: SessionLineage
-  /** T29.3 — absent keeps the session-only model byte-identical. */
-  snapshot?: WorkspaceSnapshot
   /** T21.1 — per-turn file diffs for hunk symbol extraction. */
   diffByTurn?: Map<string, FileDiffInfo[]>
 }
@@ -1572,7 +1019,6 @@ export function buildSessionKernel(input: BuildSessionInput): Kernel {
   return new GraphBuilder(
     input.messages,
     input.status,
-    input.snapshot,
     input.sessionID,
     input.lineage,
     input.diffByTurn,

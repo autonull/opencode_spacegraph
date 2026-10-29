@@ -117,7 +117,7 @@ export const GraphShowControl = (props: GraphShowControlProps) => {
           onClick={() => props.onOpenWindow?.("minimap")}
         />
       </Show>
-      <Show when={props.onOpenWindow && props.model?.workspaceRoot}>
+      <Show when={props.onOpenWindow}>
         <GraphIconButton
           label={i18n.t("ui.sessionGraph.toolbar.filesystem")}
           icon="folder-tree"

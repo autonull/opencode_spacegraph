@@ -14,7 +14,6 @@ import type { GraphDiffSource } from "./GraphDiff"
 import { GraphCompare, type GraphCompareChanges } from "./GraphCompare"
 import { GraphDetailSurface } from "./GraphDetail"
 import { GraphEqualizerBody } from "./GraphEqualizer"
-import { GraphFilesystemWindow } from "./GraphFilesystemWindow"
 import { GraphFailureProgress } from "./GraphFailureProgress"
 import { GraphFind } from "./GraphFind"
 import { GraphLegendBody } from "./GraphLegend"
@@ -60,7 +59,7 @@ export type GraphWindowManagerProps = {
 }
 
 const GraphWindowManager = (props: GraphWindowManagerProps) => {
-  const { model, selection, annotations, edgeKinds, comparison, i18n, renderer, viewport, displayPositions, canvasSize, layout, theme, diffSource, link, onOpenTranscript, onOpenSession, onActionNavigate, rules, onRulesChange, findInitialTab, renderSummary } = props
+  const { model, selection, annotations, edgeKinds, comparison, i18n, renderer, viewport, displayPositions, canvasSize, layout, theme, diffSource, link, onOpenTranscript, onOpenSession, rules, onRulesChange, findInitialTab, renderSummary } = props
 
   const windowKinds = createMemo<GraphWindowKind[]>(() => [
     {
@@ -95,19 +94,6 @@ const GraphWindowManager = (props: GraphWindowManagerProps) => {
           />
         )
       },
-    },
-    {
-      name: "filesystem",
-      title: () => i18n.t("ui.sessionGraph.filesystem.title"),
-      render: (window: GraphWindowState) => (
-        <GraphFilesystemWindow
-          model={model()}
-          workspaceRoot={model().workspaceRoot ?? model().root}
-          onSelect={(id: string) => selection.select(id)}
-          onOpen={(file: GraphNode) => onActionNavigate?.({ file: file.id })}
-          selection={selection.selection()[0]}
-        />
-      ),
     },
     {
       name: "legend",

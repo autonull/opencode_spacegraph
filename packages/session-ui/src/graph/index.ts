@@ -21,9 +21,6 @@ export {
   type GraphEdge,
   type GraphViewData,
   type GraphNode,
-  type GraphSnapshotMeta,
-  type Provenance,
-  type SnapshotSource,
   type NodeKind,
   type NodeStatus,
   type PhaseCategory,
@@ -34,13 +31,8 @@ export {
 export {
   buildGraph,
   buildSessionKernel,
-  buildWorkspaceKernel,
-  workspaceDeriver,
-  workspaceDerivers,
-  WORKSPACE_STAGES,
   type BuildGraphInput,
   type BuildSessionInput,
-  type WorkspaceStage,
 } from "./build"
 
 export {
@@ -90,9 +82,7 @@ export {
 
 export {
   buildFixtureGraph,
-  buildFixtureGraphWithSnapshot,
   buildFixtureMessages,
-  buildFixtureSnapshot,
   buildInterruptedFixtureMessages,
   CHANGED_FILES,
   FIXTURE_BASE_TIME,

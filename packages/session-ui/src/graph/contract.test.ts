@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { KernelCodec } from "@spacegraphjs/kernel"
-import { buildFixtureGraph, buildFixtureGraphWithSnapshot } from "./fixture"
+import { buildFixtureGraph } from "./fixture"
 import { graphModelToKernel } from "./view"
 
 type FixtureContract = {
@@ -47,10 +47,6 @@ const assertFixture = (
 describe("graph contract", () => {
   test("the session fixture matches the contract", () => {
     assertFixture("session", buildFixtureGraph())
-  })
-
-  test("the workspace fixture matches the contract", () => {
-    assertFixture("workspace", buildFixtureGraphWithSnapshot())
   })
 
   test("the committed sample decodes as a valid kernel", async () => {

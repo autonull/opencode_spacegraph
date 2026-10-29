@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { buildFixtureGraph, buildFixtureGraphWithSnapshot } from "./fixture"
+import { buildFixtureGraph } from "./fixture"
 import {
   NAVIGATION_MNEMONICS,
   navigationHelp,
@@ -33,7 +33,7 @@ describe("navigation grammar", () => {
   })
 
   test("targets the expected kind for each mnemonic", () => {
-    const model = buildFixtureGraphWithSnapshot()
+    const model = buildFixtureGraph()
 
     expect(navigationTargets(model, parseNavigation("g s")!).map((node) => node.kind)).toEqual([
       "session",
@@ -41,10 +41,7 @@ describe("navigation grammar", () => {
     expect(navigationTargets(model, parseNavigation("g f")!).every((node) => node.kind === "file")).toBe(
       true,
     )
-    expect(
-      navigationTargets(model, parseNavigation("g d")!).every((node) => node.kind === "directory"),
-    ).toBe(true)
-    expect(navigationTargets(model, parseNavigation("g c")!).every((node) => node.kind === "commit")).toBe(
+    expect(navigationTargets(model, parseNavigation("g t")!).every((node) => node.kind === "turn")).toBe(
       true,
     )
   })
