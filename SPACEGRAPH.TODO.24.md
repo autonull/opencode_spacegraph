@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.24 — Artifact-level tests, one setup, packaging cleanup
 
-> **Status: replaces TODO.23's Day 3.** TODO.23's bundle, no-surface fallbacks, seam archive and first mount keeper are done. This file corrects three trajectory errors and removes the duplication they left behind. Phases A–C are the work; D is release-only.
+> **Status: replaces TODO.23's Day 3.** TODO.23's bundle, no-surface fallbacks, seam archive and first mount keeper are done. This file corrects three trajectory errors and removes the duplication they left behind. Phases A–C are the work; D is release-only and deferred.
 
 ## Progress (2026-10-29)
 
@@ -19,10 +19,12 @@
 | C3 shared turn map | ✅ done | `TurnMapBody` serves the overlay layer and dialog |
 | C4 small unifications | ✅ done | one `DEPTH_MODES`, `SpacegraphModel`, no `surfaces!` |
 | C5 seam archive | ✅ done | `docs/spacegraph/seam/`; `patches/` holds dependency patches only |
-| D1–D3 release | ◐ prepared | package is publishable and locally install-verified; publish blocked on `ENEEDAUTH`. Do not retire the built-in before a real install |
+| D1–D3 release | ⏸ deferred | publishing is deferred. The package is publishable and locally install-verified, and the built-in stays until a real install exists |
 | Verification pass (2026-10-29) | ✅ done | fixed the dialog fixture (getter-only `ctx.surfaces`); 3/3 artifact frames pass; baselines unchanged |
 
-**Verification run:** `bun run graph:capture --mode=bundle` (3/3 frames), `bun run test` in `packages/plugins/spacegraph`, `bun typecheck` in `packages/gui-plugins`, `packages/plugins/spacegraph` and `packages/app`, and scoped `lint:changed` on the files this plan created or edited.
+**Remaining work:** none in A–C. Only D1–D3 remain, and they are deferred until publishing resumes; the built-in registration stays meanwhile.
+
+**Verification run:** `bun install --frozen-lockfile` (no changes), `bun run graph:capture --mode=verify` (3/3 frames), `bun run graph:capture --mode=bundle` (3/3 frames), `bun run test` in `packages/plugins/spacegraph` (2 pass), `bun typecheck` in `packages/gui-plugins`, `packages/plugins/spacegraph` and `packages/app`, and scoped `lint:changed` on the files this plan created or edited.
 
 **Deviations / notes for the remaining work**
 - The bundle now defines `process.env.NODE_ENV` for browser libraries such as motion; without it the panel path threw `process is not defined`.
@@ -30,7 +32,7 @@
 - `mountSessionRegion` gained an optional `tab` input (default `main`) and a `run(command)` helper; the session object also exposes `status()`.
 - The host defines `ctx.surfaces` as a getter-only property, so a stock-host fixture cannot assign `undefined` to it. The dialog fixture now hides `surfaces` with a `Proxy`; mutating the context aborted setup and left the `hybrid` command unregistered.
 - Repository-wide `bun run check` / `lint:changed` still report pre-existing fork findings. Treat only the files this plan touched as the gate until those are addressed separately.
-- D remains the release gate: publish, install in a scratch app, verify Panel on web and desktop, then delete the built-in registration and decide the thin wrapper's lifetime.
+- D is deferred. The built-in registration stays; when publishing resumes, install in a scratch app, verify Panel on web and desktop, then retire the built-in and decide the thin wrapper's lifetime.
 
 ## 0. Why this file
 
@@ -70,7 +72,7 @@ The loop must be fast and must test what ships. Current cost: bundle build ~6 s,
 
 ### A2. Freshness
 - The spec builds before mounting unless `GRAPH_CAPTURE_SKIP_BUILD=1` is set (the capture script sets it after its own build).
-- Remove the "build only if `dist` is missing" branch from `plugins/bundle.test.ts`; always build there too, or make the whole evaluation test live in the app side and keep only the manifest regex in `plugins`.
+- Remove the "build only if `dist` is missing" branch from `packages/plugins/spacegraph/bundle.test.ts`; always build there too, or make the whole evaluation test live in the app side and keep only the manifest regex in the package.
 - **Done when:** a source edit without a rebuild cannot pass a bundle test.
 
 ### A3. Cover the stock path (Panel) and a dialog
@@ -85,7 +87,7 @@ The loop must be fast and must test what ships. Current cost: bundle build ~6 s,
 - **Done when:** `bun run graph:capture --mode=bundle` and `--mode=verify` are the only commands needed; no port or env var is remembered by hand.
 
 ### A5. Keep the unit-level manifest gate
-- Keep `plugins/bundle.test.ts` for: build → static `require` set ⊆ allowlist → `evaluatePluginBundle` shape assertions. It is 1 s and catches packaging errors before Playwright.
+- Keep `packages/plugins/spacegraph/bundle.test.ts` for: build → static `require` set ⊆ allowlist → `evaluatePluginBundle` shape assertions. It is 1 s and catches packaging errors before Playwright.
 - Do not grow a second module map. If the map grows, export one loader and use it from both; today the 10-line duplication is cheaper than the coupling.
 
 ## 3. Phase B — Structure and build (P1)
@@ -158,17 +160,18 @@ The loop must be fast and must test what ships. Current cost: bundle build ~6 s,
 - Mark the archive reference-only in its header; it is not needed to ship the external plugin.
 - **Done when:** `patches/` contains only dependency patches and `bun install` is unchanged.
 
-## 5. Phase D — Release and retire (P2, after A–C)
+## 5. Phase D — Release and retire (P2, deferred)
 
-**Status (2026-10-29):** packaging is prepared and locally verified; publishing is still blocked on registry auth. `npm whoami` returns `ENEEDAUTH`, and the package does not exist on npm yet. Do not start D2/D3 from a local mount; the gate is a real published install.
+**Deferred (2026-10-29).** Publishing is out of scope for now, so D1–D3 stay open and the built-in registration stays.
+Do not start D2/D3 from a local mount; the gate is a real published install.
 
-Packaging changes now in place:
+Prepared, not published:
 - `private: true` removed; `files` is `["dist", "README.md"]`; `prepack` runs the build.
 - The bogus `spacegraphjs` peer was removed. Vite bundles it from `spacegraphjs/src`, and the built artifact requires only `effect`, `@opencode/plugin/gui`, `solid-js`, `solid-js/store` and `solid-js/web`.
 - `npm pack` now contains only `dist/gui-experimental.cjs`, `README.md` and `package.json` (659 kB packed).
 - A scratch `npm install <tarball>` installed the package and its peer, and the `./gui-experimental` export resolved to `dist/gui-experimental.cjs`.
 
-Remaining unblock path:
+When publishing resumes:
 1. `npm login` with the `@autonull` scope, then `npm publish --access public`.
 2. Install `@autonull/opencode-plugin-spacegraph` in a scratch opencode app.
 3. Verify the stock Panel on web and desktop; only then delete the built-in registration (D2) and decide the wrapper lifetime (D3).
@@ -184,7 +187,7 @@ Remaining unblock path:
 | Gate | Where | Catches | Cost |
 |---|---|---|---|
 | Bundle builds | `packages/plugins/spacegraph` | Unaliased `@opencode/*`, missing alias | ~6 s |
-| Manifest + declaration | `plugins/bundle.test.ts` | Module outside the allowlist, broken `Plugin.define` | ~1 s |
+| Manifest + declaration | `packages/plugins/spacegraph/bundle.test.ts` | Module outside the allowlist, broken `Plugin.define` | ~1 s |
 | Artifact mounts (surface) | `component-tests/plugin-spacegraph.spec.ts` | Bundle/evaluation/render regressions | ~2 s warm |
 | Artifact mounts (Panel) | same spec | Stock path: tab listing, panel render | ~2 s warm |
 | Dialog fallback | same spec | No-surface map/turn-map path | ~1 s warm |
