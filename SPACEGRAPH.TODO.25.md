@@ -265,6 +265,60 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 ---
 
+## 11. Upstream Sync Strategy (During Cleanup)
+
+Keep this fork closely synchronized with `upstream/dev` throughout E1–E5 to minimize merge conflicts and ensure the API diff stays minimal.
+
+### Sync Workflow
+
+```bash
+# 1. Fetch latest upstream
+git fetch upstream dev
+
+# 2. Rebase this branch onto upstream/dev (preserves our commits on top)
+git rebase upstream/dev
+
+# 3. If conflicts — resolve ONLY the 9 API files + product code.
+#    NEVER accept upstream changes to our API files; they are the PR.
+#    For other files: prefer upstream (they're being reverted anyway).
+
+# 4. Verify
+bun install --frozen-lockfile
+bun run graph:capture --mode=verify
+
+# 5. Push updated branch
+git push --force-with-lease origin upstream-sync-1025
+```
+
+### Sync Frequency
+
+- **Before each E step** — ensures clean base
+- **Weekly** — prevents large divergence
+- **Before opening upstream PR** — final sync
+
+### Conflict Resolution Rules
+
+| File Category | Resolution |
+|---------------|------------|
+| 9 API files (D1–D3) | **Always keep fork version** — these ARE the PR |
+| Product code (spacegraph, session-graph) | **Keep fork version** — our features |
+| Revert-target files (E4 list) | **Take upstream** — we're reverting them anyway |
+| New files (`surface.tsx`) | **Keep fork** — new implementation |
+| `screen.tsx` (modified) | **Manual merge** — keep `SessionSurfaceHost` usage, accept upstream fixes |
+| `settings/model.tsx` (modified) | **Manual merge** — keep `experimental.sessionGraph`, accept upstream fixes |
+
+### Automation
+
+Add a weekly CI job or local cron:
+```bash
+# .github/workflows/upstream-sync.yml (optional)
+# Runs weekly, creates PR if clean rebase fails
+```
+
+This keeps the fork "review-ready" at any point — the diff vs upstream is always exactly our 9 API files + product.
+
+---
+
 ## 7. Definition of Done
 
 1. **Fork size** — `git diff upstream/dev..HEAD --stat` shows: 9 API files + SpaceGraph product + session-graph library (~10k lines added, not 23k)
