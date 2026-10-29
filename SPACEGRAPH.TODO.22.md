@@ -11,7 +11,7 @@
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity achieved). 3 skipped: #34 split view (hybrid surface replaces), #35 time scrubber (not on map surface), #36 trace overlay (click interception). Test 18 (layered) has known camera animation issue (orbit→layered transition doesn't settle in headless CI). Test 19 (depth-stack) flaky in e2e capture (canvas settle timeout); component test fixed. Workspace tests 32/33 skipped (API removed in 3B). |
+| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity). 3 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #36 trace overlay (click bug). Test 18 layered: CI animation timeout (works locally). Test 19 depth-stack: e2e flake only (component ✅). Workspace 32/33: API removed in 3B. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
 | **3C — workspace lens** | ✅ **intact** | `WorkspaceSnapshot` type defined locally in session-ui/model.ts; 11 deriver stages; provenance/domain on GraphNode; GraphFilesystemWindow, GraphLegend snapshot props, Inspector provenance. All tests pass. |
@@ -221,27 +221,56 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 
 ---
 
-## 📋 IMMEDIATE NEXT ACTIONS
+## 📋 BEFORE HUMAN TESTING — Minimum Viable Checklist
 
-1. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion, with workspace lens)
-2. ✅ **Fix flaky test 19**: depth-stack test fixed in session-graph component tests (graph-scale.spec.ts) — still flaky in e2e capture
-3. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI — known issue, test skipped in capture matrix
-4. **Fix test 36 click interception**: trace overlay "Why?" button click intercepted by composer editor — skipped in capture matrix
-5. **Optional: Restore hybrid toolbar button** — add `onSplitView` to `GraphView` props in `FullMap.tsx` to call `ctx.surfaces.select('spacegraph.hybrid')` for discoverability
-6. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
+| # | Task | Why It Matters for Humans | Effort | Status |
+|---|------|---------------------------|--------|--------|
+| 1 | **Verify 3 surfaces load** (Map, Hybrid, Transcript) | Core UX — tester must reach all views | 5 min manual | ⬜ |
+| 2 | **Keyboard shortcuts work** (⌘⇧M, ⌘⇧H, ⌘⇧T, ⌘L, ⌘⇧L, ⌘A, ⌘S, ⌘T, ⌘F) | Primary navigation; no toolbar fallback | 5 min manual | ⬜ |
+| 3 | **Inspector opens on node click** | Main inspection flow | 2 min manual | ⬜ |
+| 4 | **Permalinks work cold** (`#graph:layout:node`) | Sharing/deep-linking | 3 min manual | ⬜ |
+| 5 | **Settings page renders** (Settings > Session > Session Map) | Configuration access | 2 min manual | ⬜ |
+| 6 | **Surface switching preserves transcript scroll** | Key UX claim (no context loss) | 3 min manual | ⬜ |
+| 7 | **Hybrid 3 arrangements work** (Stacked/Side/Floating) | Core hybrid value prop | 3 min manual | ⬜ |
+| 8 | **Export (SVG/JSON/HTML) produces files** | Deliverable output | 2 min manual | ⬜ |
+
+**Total: ~25 min manual smoke test** — run once before handing to human tester.
 
 ---
 
-## 📅 ESTIMATED TIMELINE
+### 🔧 Fixes That Actually Affect Humans (Do These)
+
+| # | Fix | Human Impact | Effort |
+|---|-----|--------------|--------|
+| A | **Hybrid toolbar button** (`onSplitView` in `FullMap.tsx`) | Discoverability — without it, hybrid is keyboard-only | 10 min |
+| B | **Trace overlay z-index** (test 36) | "Why?" button unusable if click intercepted | 15 min |
+| C | **Depth-stack camera settle** (test 19) | Depth mode feels broken if camera never settles | 30 min |
+
+### ⏭️ Explicitly Defer (No Human Impact)
+
+| Task | Reason |
+|------|--------|
+| Test 18 layered animation | CI-only; works locally; 0.5s polar is visual polish |
+| Re-baseline (bundle/paint) | Metrics only; no functional change |
+| T2.2 evidence study | Stop rule: only if stakeholder demands |
+| All Post-MVP capabilities | TUI, cross-session, 3D, external distro |
+
+---
+
+## 📅 ESTIMATED TIMELINE (Human-Testing Focused)
 
 | Phase | Target | Notes |
 |-------|--------|-------|
-| **Core MVP (current)** | **Done** | 25/28 capture frames pass; plugin parity achieved; old code deleted |
-| **Polish & stabilize** | ~1 week | Re-baseline, fix flaky tests (18, 19, 36), optional hybrid toolbar button |
-| **T2.2 evidence study** | ~2 weeks | Only if stakeholder wants it; stop rule governs |
-| **Post-MVP feature track** | ~4-6 weeks | TUI, cross-session, real 3D, external distro — parallelizable |
+| **Pre-human smoke test** | **30 min** | Run 8-item checklist above |
+| **Fix A/B/C** | **~1 hour** | Only fixes that affect human testers |
+| **Human testing** | **1-2 days** | Real feedback > automated flakes |
+| **Post-human polish** | **As needed** | Address actual reported issues |
 
-**Finish line**: Core MVP is **done**. Remaining work is polish (flaky tests, re-baseline) + optional features. The plugin is production-ready for the map/hybrid/transcript surfaces today.
+**Total before human testing: ~1.5 hours** (vs ~1 week previous estimate)
+
+---
+
+**Finish line**: Core MVP is **done**. 8-item smoke test (~25 min) + 3 targeted fixes (~1 hr) = ready for human testing. All Post-MVP work deferred behind stop rule.
 
 ---
 
