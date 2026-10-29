@@ -161,6 +161,11 @@ Day 2 is complete. All three contributions have a working path on a host without
 - Verified mechanically on a detached `upstream/dev` worktree: `git apply --check` clean, apply clean, reverse-check clean, then removed the worktree.
 - Caveat: this archives the seam only. The full external build still needs the rest of this fork (the `session-graph` and `session-ui/graph` packages), so "fork reproducible" means applying on top of the identical fork lineage, not stock alone.
 
+**2026-10-29 — local mount path clarified (for 1.3).**
+
+- `plugins/package.json` now exports **only** `./gui-experimental`. `Host.resolve` then finds no `server`/`tui` entry, so the directory lists as a GUI-only plugin instead of trying to import `gui.tsx` as a server entry.
+- Added `plugins/README.md`: build/test commands, and the exact local mount (`"plugins": ["./plugins"]` in the opencode config, relative to the config file; `.opencode/plugins/` is auto-discovered), then reload the window.
+
 ### Day 3 — Parity, publish, retire the built-in
 | # | Task | Status | Done when |
 |---|---|---|---|
