@@ -132,7 +132,6 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         session={session}
         screen={screen}
         t={ctx.t}
-        onSplitView={() => ctx.surfaces.select(`${ctx.id}.map`, session)}
       />
     ),
   })
