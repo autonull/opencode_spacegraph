@@ -1,73 +1,151 @@
-# SPACEGRAPH.TODO.23 — Plugins Only, Full Parity (measured)
+# SPACEGRAPH.TODO.23 — Plugins Only, Full Parity
 
-> **Can we ship this with plugins only? Yes — and it has now been built, not argued.** An external bundle of the *unmodified* `session-graph` + `session-ui` sources with `GraphView` mounted builds today. No source edits, no fork for users, no upstream PR.
+> **Status: usable.** The external bundle builds today (measured). Two open questions remain, each with a check. Work left is packaging: **~3 days**. Read §1 before touching anything.
 
 ---
 
-## 1. Measured facts (spike run 2026-10-29)
+## 0. Context for a fresh reader
 
-A real `vite build` with `gui()` and nothing but `resolve.alias`:
-
-| Measurement | Result |
+| Thing | Where |
 |---|---|
-| Build | ✅ **606 modules**, no source edits to `session-graph` or `session-ui` |
-| Aliases needed | `@opencode/session-ui/graph`, `@opencode/session-graph`, `@opencode/ui/{icon,icon-button,segmented-control}` → fork sources; `@opencode/ui/context/i18n` → 40-line shim |
-| Provided modules required by the artifact | `solid-js`, `solid-js/web`, `solid-js/store`, `@opencode/plugin/gui`, `effect` — **exactly the allowlist** |
-| Artifact size | **2.78 MB raw / 839 KB gzip** |
-| CSS | 8.33 kB emitted separately → must ship via `ctx.add(Style, css)` |
-| Vanilla attempt first | 78.7 MB / 21.3 MB gzip — because `gui()` sets `inlineDynamicImports: true`, which inlined spacegraphjs's **ONNX vision runtime** (two 37.8 MB chunks) |
-| After stubbing `onnxruntime-web` | 2.78 MB — vision is unreachable from the graph, so **no graph functionality is lost** |
+| The graph feature, as a **built-in GUI plugin** | `packages/gui-plugins/src/spacegraph/` (`renderer.tsx`, `model.ts`, `map-surface.tsx`, `hybrid-surface.tsx`, `full-map.tsx`, `panel.tsx`, `Inspector.tsx`, `Windows.tsx`, `settings.tsx`, `i18n/en.ts`) |
+| Graph UI (12,782 lines, unchanged) | `packages/session-graph/src/` (`ui/` 12,453, `canvas/` 1,384, `contract/` 154) |
+| Graph model (9,284 lines, unchanged) | `packages/session-ui/src/graph/` |
+| The GUI plugin SDK | `packages/plugin/src/gui/` — `vite.ts` (`gui()` build), `modules.ts` (allowlist), `registries.ts`, `host-apis.ts` |
+| Reference build extras (ours) | `packages/app/src/runtime/plugin/surfaces.ts`, `packages/app/src/session/surface.tsx`, `packages/app/src/session/screen.tsx` |
+| Tests | `packages/app/component-tests/plugin-host.spec.ts` (33), `packages/session-graph/component-tests/` (49), capture matrix |
+| Base commit | `upstream/dev` @ `6007274795`, merged (`git rev-list --left-right --count HEAD...upstream/dev` → `402 0`) |
 
-Vite's alias plugin runs before user `pre` plugins (`resolvePlugins`: `alias({...}), ...prePlugins`), which is why zero source changes are needed.
-
-### What still has to be proven (two things, both measurable)
-
-| # | Check | Pass criterion |
-|---|---|---|
-| C1 | Mount the bundle in a **stock** app (web + desktop) | Panel shows the real `GraphView`, styled, interactive |
-| C2 | Is 839 KB gzip acceptable at plugin-load time? | Load/interaction timing on a stock app; if not, the fix is targeted (e.g. ship one renderer), decided on data |
-
-Everything else — every subsystem, every interaction — rides in the built artifact already.
+Goal: ship the same feature as an **external plugin on stock OpenCode**. No upstream PR, no fork for users, no source rewrite, no feature loss beyond what the host makes impossible (§4).
 
 ---
 
-## 2. Why the plan kept moving (and how that stops)
+## 1. Measured facts — do not re-litigate
 
-Each earlier revision was a *reading* of the source, not a *run*. Four rewrites came from four guesses: "lean UI", "vendor 22k lines", "13-day port", "monorepo". The spike replaced guesses with numbers in ~40 minutes.
+A real `gui()` build of the unmodified sources with only `resolve.alias`:
 
-**Convergence rule from here on:** a claim enters this plan only with a measurement or a passing check. The design is considered converged when C1 passes and the capture matrix on the bundle matches the reference build; until then, treat the plan as a hypothesis with a named open question.
+| Variant | Raw | gzip |
+|---|---|---|
+| Naive build (no stubs) | 78.7 MB | 21.3 MB — `inlineDynamicImports` inlined spacegraphjs **vision/ONNX** (two 37.8 MB chunks) |
+| + `onnxruntime-web` stub | 2.78 MB | 839 KB |
+| **+ Cytoscape stub (chosen)** | **2.32 MB** | **684 KB** |
+
+- 606 modules transform; **zero edits** to `session-graph` or `session-ui`.
+- The artifact requires exactly the allowlist: `solid-js`, `solid-js/web`, `solid-js/store`, `@opencode/plugin/gui`, `effect`.
+- CSS is emitted separately (8.3 kB) → must ship through `ctx.add(Style, css)`.
+- Vite's internal `alias` plugin runs before user `pre` plugins, so aliases bypass `gui()`'s `@opencode/*` rejection.
+- **Gotcha:** running `vite build` through Node fails to load the config (`@opencode/plugin/gui/vite` imports `./modules.js`, which only exists as `.ts`). Run Vite **through Bun**: `bun node_modules/.bun/vite@7.3.7*/node_modules/vite/bin/vite.js build --config <config>`.
+
+Decisions already made (do not reopen without a measurement):
+| Question | Decision | Why |
+|---|---|---|
+| Vendor `session-graph`/`session-ui`? | **No** | Aliases need no source copy, no drift guard |
+| Port GraphView to `ctx.ui`? | **No** | Nothing is lost; the real UI bundles |
+| Upstream PR for `SessionSurface`? | **No** | Stock APIs suffice |
+| Cytoscape renderer | **Excluded from the external build** | Saves 155 KB gzip; SpaceGraph renderer is the product (§3) |
+| ONNX / vision | **Excluded** | Unreachable from the graph |
+| Custom Transcript component | **Cannot ship** | Host owns the session body |
+| Stacked hybrid arrangement | **Cannot ship** | Needs the body |
+| Separate monorepo before release | **No** | Build and publish from this repo; extract later if wanted |
+
+---
+
+## 2. Build recipe (copy verbatim)
+
+Files at `plugins/` (repo root):
+
+1. **`plugins/gui.tsx`** — bundle entry. Default export `Plugin.define({ setup })`; setup registers contributions only (`Panel`, `Command`, `MenuItem`, `SettingsPage`, `Slot`, `ComposerPill`, `Style`).
+2. **`plugins/i18n.ts`** — shim for `@opencode/ui/context/i18n`: `t → ctx.t`, `plural → ctx.plural`, `locale/direction → ctx.locale`, plus `tDynamic`/`list`/`listSeparator` fallbacks. Provided through a tiny Solid context set at each render root (panel render, dialog render).
+3. **`plugins/stubs/onnx.ts`**, **`plugins/stubs/cytoscape.ts`** — throw-on-use stubs (as measured).
+4. **`plugins/vite.config.ts`**:
+
+```ts
+import path from "node:path"
+import { defineConfig } from "vite"
+import { gui } from "@opencode/plugin/gui/vite"
+
+const repo = path.resolve(import.meta.dirname, "../..")
+const here = import.meta.dirname
+const at = (...parts: string[]) => path.join(repo, ...parts)
+const exact = (name: string, file: string) => ({ find: new RegExp(`^${name}$`), replacement: at(file) })
+
+export default defineConfig({
+  root: repo,
+  resolve: {
+    alias: [
+      exact("spacegraphjs", "spacegraphjs/src/index.ts"),
+      exact("spacegraphjs/control", "spacegraphjs/src/control/index.ts"),
+      exact("spacegraphjs/a11y", "spacegraphjs/src/a11y/index.ts"),
+      exact("spacegraphjs/navigation", "spacegraphjs/src/navigation/index.ts"),
+      exact("spacegraphjs/overlays", "spacegraphjs/src/overlays/index.ts"),
+      exact("spacegraphjs/levels", "spacegraphjs/src/levels/index.ts"),
+      exact("spacegraphjs/zoom", "spacegraphjs/src/zoom/index.ts"),
+      exact("spacegraphjs/utils", "spacegraphjs/src/utils/index.ts"),
+      exact("@opencode/session-graph", "packages/session-graph/src/index.ts"),
+      exact("@opencode/session-ui/graph", "packages/session-ui/src/graph/index.ts"),
+      exact("@opencode/ui/icon", "packages/ui/src/icons/icon/icon.tsx"),
+      exact("@opencode/ui/icon-button", "packages/ui/src/actions/icon-button/icon-button.tsx"),
+      exact("@opencode/ui/segmented-control", "packages/ui/src/navigation/segmented-control/segmented-control.tsx"),
+      { find: /^@opencode\/ui\/context\/i18n$/, replacement: path.join(here, "i18n.ts") },
+      { find: /^onnxruntime-web.*$/, replacement: path.join(here, "stubs/onnx.ts") },
+      { find: /^@spacegraphjs\/cytoscape-renderer$/, replacement: path.join(here, "stubs/cytoscape.ts") },
+    ],
+  },
+  plugins: [gui({ entry: path.join(here, "gui.tsx"), outFile: path.join(here, "dist/gui-experimental.cjs") })],
+})
+```
+
+5. **`plugins/style.css`** — Tailwind entry with `@source` for `plugins/`, `packages/session-graph/src`, `packages/ui/src`; compile to a string and `ctx.add(Style, css)`. Colors only via `var(--v2-*)` / theme tokens.
+6. **`plugins/package.json`** — name `@autonull/opencode-plugin-spacegraph`, `exports: { ".": …, "./gui-experimental": "./dist/gui-experimental.cjs" }`, `peerDependencies: { "@opencode/plugin": "*", "spacegraphjs": ">=8.5" }`.
+
+Build: `bun plugins/build.ts` (wraps the Bun-run Vite command above).
 
 ---
 
 ## 3. Remaining work
 
-### Day 1 — Prove C1 (the only real unknown)
-- Add `plugins/gui.tsx` (entry) + `plugins/i18n.ts` (shim) + `plugins/vite.config.ts` (the measured alias set).
-- Ship CSS: Tailwind over `plugins/`, `packages/session-graph/src`, `packages/ui/src` → one string via `ctx.add(Style, css)`.
-- Register a `Panel` rendering the real `GraphView`; load as a **local plugin** on stock web + desktop.
-- Measure C2 (load + interaction timing).
+### Day 1 — Mount in a stock app (open question C1)
+| # | Task | Done when |
+|---|---|---|
+| 1.1 | `plugins/` scaffold: entry, i18n shim, stubs, config, build script | `dist/gui-experimental.cjs` builds at ≤700 KB gzip |
+| 1.2 | Panel contribution rendering the **real `GraphView`** with the vendored model | Panel opens on a stock session |
+| 1.3 | Load as a **local plugin** (`.opencode/plugins/` or a config path) on stock **web and desktop** | Graph renders, pans, zooms, selects; CSS applied |
+| 1.4 | Measure load + first interaction; record the numbers here | C2 answered (accept 684 KB or apply a targeted cut) |
 
-### Day 2 — Contributions without `ctx.surfaces`
-- `renderer.tsx` / `model.ts` (9 call sites, 4 files): use `ctx.surfaces` when present (reference build), otherwise panel + `ctx.dialogs.open` full map.
-- Full map dialog, turn map dialog, permalinks `#spacegraph:`, hybrid Side/Floating, transcript bridge (`screen.transcript.reveal`), commands/keybinds, settings, `Store.session`.
+Do not proceed to Day 2 until 1.3 passes; if it cannot pass, report the exact blocker before writing more code.
 
-### Day 3 — Parity proof, publish, retire the built-in
-- Capture matrix **on the bundle** vs the reference build; a differing frame is a bug, not a re-baseline.
-- Publish `@autonull/opencode-plugin-spacegraph` from this repo (`dist/gui-experimental.cjs` + manifest).
-- Archive the seam as `patches/0001-session-surfaces.patch`; delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts`.
+### Day 2 — Contributions without `ctx.surfaces` (open question C3, low risk)
+| # | Task | Files |
+|---|---|---|
+| 2.1 | Branch on surface support: `ctx.surfaces` when present, else panel/dialog | `renderer.tsx`, `model.ts` (9 call sites, 4 files) |
+| 2.2 | Full map dialog (`ctx.dialogs.open`), turn map dialog | `full-map.tsx`, `turn-map-layer.tsx` |
+| 2.3 | Hybrid: Side (wide panel) + Floating (dialog) | `hybrid-surface.tsx` |
+| 2.4 | Permalinks `#spacegraph:<layout>:<node>` → open dialog + frame | `renderer.tsx` |
+| 2.5 | Commands/keybinds (`mod+shift+m`, `mod+shift+g`, `mod+t`), settings page, `Store.session` | `renderer.tsx`, `settings.tsx` |
+| 2.6 | Transcript bridge `screen.transcript.reveal` | `model.ts` |
 
-### Fast follow
-`session.header` turn ribbon, `ComposerPill` popover mini map, mobile drawer polish, `onIdle` preloads.
+### Day 3 — Parity, publish, retire the built-in
+| # | Task | Done when |
+|---|---|---|
+| 3.1 | Capture matrix **on the bundle** | Every frame matches the reference build |
+| 3.2 | e2e keepers on the bundle (panel open, reveal, permalink, export) | green |
+| 3.3 | Publish `@autonull/opencode-plugin-spacegraph` | installs and runs from npm on web + desktop |
+| 3.4 | Archive seam: `patches/0001-session-surfaces.patch` + apply/revert scripts | fork reproducible |
+| 3.5 | Delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts` | `bun run check` green |
+
+### Later (not blocking release)
+`session.header` turn ribbon · `ComposerPill` popover mini map · mobile drawer polish · `onIdle` preloads · optional Cytoscape build variant (one alias).
 
 ---
 
 ## 4. Functional scope
 
-Everything ships: GraphView, toolbar (level/layout/depth/draw/show/time/questions), inspector, detail, windows, search, find, minimap, legend, gallery, equalizer, compare, notes, trace overlay, filesystem window, turn map, status bar, failure progress, export SVG/JSON/HTML, a11y mirror, keyboard nav, 2D/3D/depth modes, both renderers, sanitizing.
+Ships: GraphView; toolbar (level/layout/depth/draw/show/time/questions); inspector; detail; windows; search; find; minimap; legend; gallery; equalizer; compare; notes; trace overlay; filesystem window; turn map; status bar; failure progress; export SVG/JSON/HTML; a11y mirror; keyboard nav; 2D/3D/depth modes; sanitizing.
 
-Not reproducible on stock:
-- **Custom Transcript component** — the host owns the session body. It existed to work around a hybrid virtualizer measurement bug that no longer occurs.
-- **Stacked hybrid arrangement** — needs the body. Side (wide panel) and Floating (dialog) remain.
+Not shipped, with reasons:
+- **Custom Transcript component** — host owns the session body; it existed to work around a hybrid virtualizer bug that no longer occurs.
+- **Stacked hybrid** — needs the body. Side and Floating remain.
+- **Cytoscape renderer** — 2D Canvas fallback for WebGL-less machines. Excluded to save 155 KB gzip. If a WebGL failure occurs, `mountRenderer` falls back to Cytoscape, which throws here and surfaces the existing error state. Restore with one alias if a user reports it.
 
 ---
 
@@ -75,33 +153,37 @@ Not reproducible on stock:
 
 | Gate | Where | Catches | Cost |
 |---|---|---|---|
-| Build (`gui()`) | CI | An unaliased `@opencode/*` import — names the module | 5 s |
-| Artifact manifest (requires only allowlisted modules) | CI | Accidental app import | 1 s |
+| Build (`gui()`) | CI | Unaliased `@opencode/*` import (error names the module) | 5 s |
+| Artifact manifest | CI | Requires a module outside the allowlist | 1 s |
 | Capture matrix **on the bundle** | this fork | Any visual/interaction regression vs the reference build | `graph:capture --mode=verify` |
 | e2e keepers on the bundle | this fork | Panel open, reveal, permalink, export | 2 min |
-| Component tests (built-in) | this fork | Host lifetime contracts while developing in the HMR loop | 35 s |
+| Component tests (built-in) | this fork | Host lifetime contracts while developing in HMR | 35 s |
+
+Parity oracle: the capture matrix on the bundle. A differing frame is a bug; never re-baseline.
 
 ---
 
-## 6. Dev loop
+## 6. Efficiency rules
 
-| Loop | Command | Feedback |
-|---|---|---|
-| UI with full HMR | fork's built-in plugin, `bun run dev:live` | instant, state preserved |
-| UI on stock | `vite build --watch` + stock app with a local plugin dir | ~1 s; the host re-evaluates the changed bundle, state lost |
-| Unit | `bun test --watch` | instant |
+- **Build and publish from this repo.** No monorepo, no extraction, no second harness until after release.
+- **Develop UI in the built-in (full HMR); build the bundle to verify.** `bun run dev:live` for iteration; `bun plugins/build.ts` for truth.
+- **One checkpoint per day**, each with a pass criterion; stop and report rather than extending scope.
+- **Defer everything not on Day 1–3.** Ambient surfaces, mobile polish, extra renderers.
+- **Never port or copy graph code.** If a build error appears, add an alias/stub — the error names the module.
+- **One source of truth for features**: `packages/gui-plugins/src/spacegraph/` stays the implementation; the bundle is a packaging artifact of it.
 
 ---
 
 ## 7. Risks
 
-| Risk | Mitigation | Status |
+| Risk | Status | Mitigation |
 |---|---|---|
-| Alias seam insufficient | Spike built 606 modules with zero source edits | ✅ closed |
-| ONNX/vision bloat | Stubbed; unreachable from the graph | ✅ closed |
-| Bundle size (839 KB gzip) | C2 measurement; targeted fix if needed | open, measured |
-| Stock mount / CSS | C1 on web + desktop | open |
-| Upstream SDK change | `git merge upstream/dev`; re-run the spike build | routine |
+| Alias seam insufficient | ✅ closed | Spike built 606 modules with zero source edits |
+| ONNX/vision bloat | ✅ closed | Stub; unreachable from the graph |
+| Bundle size | ✅ measured 684 KB gzip | Accept or apply a targeted cut (§3 1.4) |
+| Stock mount / CSS | ⏳ open (C1) | Day 1; stop and report if it fails |
+| `ctx.surfaces` branch | ⏳ open (C3) | 9 call sites, small |
+| Upstream SDK change | routine | `git merge upstream/dev`, rebuild |
 
 ---
 
@@ -112,15 +194,3 @@ Not reproducible on stock:
 3. Build + manifest gates green.
 4. Seam archived as a patch; built-in registration deleted.
 5. No upstream PR filed, none required.
-
----
-
-## 9. Principles
-
-| # | Decision |
-|---|---|
-| P1 | No source rewrite, no vendored copy, no drift to guard — the alias seam preserves all code |
-| P2 | Packaging is the work; features are done |
-| P3 | Claims require measurements; the capture matrix on the bundle is the parity oracle |
-| P4 | The built-in plugin remains the HMR development target |
-| P5 | The seam patch is reference-build-only |
