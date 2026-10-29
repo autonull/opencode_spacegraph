@@ -11,7 +11,7 @@
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity achieved). 3 skipped: #34 split view (hybrid surface replaces), #35 time scrubber (not on map surface), #36 trace overlay (click interception). Test 18 (layered) has known camera animation issue (orbit→layered transition doesn't settle in headless CI). Test 19 (depth-stack) fixed - no longer flaky. Workspace tests 32/33 skipped (API removed in 3B). |
+| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity achieved). 3 skipped: #34 split view (hybrid surface replaces), #35 time scrubber (not on map surface), #36 trace overlay (click interception). Test 18 (layered) has known camera animation issue (orbit→layered transition doesn't settle in headless CI). Test 19 (depth-stack) flaky in e2e capture (canvas settle timeout); component test fixed. Workspace tests 32/33 skipped (API removed in 3B). |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
 | **3C — workspace lens** | ✅ **intact** | `WorkspaceSnapshot` type defined locally in session-ui/model.ts; 11 deriver stages; provenance/domain on GraphNode; GraphFilesystemWindow, GraphLegend snapshot props, Inspector provenance. All tests pass. |
@@ -224,7 +224,7 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 ## 📋 IMMEDIATE NEXT ACTIONS
 
 1. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion, with workspace lens)
-2. ✅ **Fix flaky test 19**: depth-stack test fixed in session-graph component tests (graph-scale.spec.ts)
+2. ✅ **Fix flaky test 19**: depth-stack test fixed in session-graph component tests (graph-scale.spec.ts) — still flaky in e2e capture
 3. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI — known issue, test skipped in capture matrix
 4. **Fix test 36 click interception**: trace overlay "Why?" button click intercepted by composer editor — skipped in capture matrix
 5. **Optional: Restore hybrid toolbar button** — add `onSplitView` to `GraphView` props in `FullMap.tsx` to call `ctx.surfaces.select('spacegraph.hybrid')` for discoverability
