@@ -8,17 +8,17 @@
 
 TODO.24 shipped the artifact test loop and packaging, but the fork carries ~23k lines of noise:
 - A built-in `session-map` feature that duplicates the plugin's purpose
-- App-level integration glue (`screen.tsx`, `surface.tsx`, timeline/composer changes) that should use the API, not fork internals
 - Unrelated test deletions and e2e tests for features we don't ship
-- The `session-graph` library mixed into the fork instead of being a clean workspace package
+- The `session-graph` library mixed into the fork instead of a clean workspace package
+- Many app-level changes for session-graph that should be organized, not left scattered
 
-**Core insight:** The fork only needs **7 small files (~180 lines)** to add `SessionSurface` to the Plugin API. Everything else is either the product (SpaceGraph + session-graph) or noise.
+**Core insight:** The fork needs **9 essential files** for the `SessionSurface` API (4 plugin types + 3 runtime + 2 host rendering). Everything else is either the SpaceGraph product (plugin + session-graph library + app integrations) or noise.
 
 ---
 
 ## 1. The Minimal Upstreamable API (Phase D)
 
-These **7 files, ~180 lines** are the complete upstream PR. They add main-session-body replacement to the Plugin API without touching upstream product code.
+These **9 files, ~300 lines** are the complete upstream PR. They add main-session-body replacement to the Plugin API.
 
 ### D1. Plugin API Types (`packages/plugin/src/gui/`)
 
@@ -45,16 +45,19 @@ These **7 files, ~180 lines** are the complete upstream PR. They add main-sessio
 | `host.tsx` | Expose `ctx.surfaces` getter | +20 |
 | `surfaces.test.ts` | Unit tests for the API | +51 |
 
-**Behavioral guarantees (documented in PR):**
-- Surface switches keep transcript mounted (visibility/position only)
-- Per-session selection persists across routing (keyed by `SessionRef.key`)
-- Unknown surface ID → falls back to transcript
-- Plugin surface list is reactive; host transcript is always first
+### D3. Host Rendering (App-Private, Not Upstreamed as API)
 
-### D3. Upstream PR Checklist
+| File | Change | Purpose |
+|------|--------|---------|
+| `packages/app/src/session/surface.tsx` | **NEW FILE** | `SessionSurfaceHost` component: gets plugin surfaces via `host.items(SessionSurface)`, renders selected surface with transcript, manages layers |
+| `packages/app/src/session/screen.tsx` | Modified | Uses `SessionSurfaceHost` instead of direct `MessageTimeline` |
 
-- [ ] Types are in `packages/plugin/src/gui/` (public API surface)
-- [ ] Runtime is in `packages/app/src/runtime/plugin/` (internal, not exported)
+**Key point:** These 2 files are **host-private implementation**. The upstream PR only includes D1+D2 (the Plugin API contract + reference runtime). How a host renders surfaces is up to the host — upstream opencode would adopt D3 in its own app code.
+
+### D4. Upstream PR Checklist
+
+- [ ] Types in `packages/plugin/src/gui/` (public API surface)
+- [ ] Runtime in `packages/app/src/runtime/plugin/` (internal reference implementation)
 - [ ] No breaking changes to existing `Panel`, `MobileView`, `Slot` APIs
 - [ ] Tests pass in upstream CI
 - [ ] Documentation: when to use `SessionSurface` vs `Panel` vs `MobileView`
@@ -64,7 +67,7 @@ These **7 files, ~180 lines** are the complete upstream PR. They add main-sessio
 
 ## 2. Product Code (Phases A–C — Complete, Keep)
 
-These are **done and verified**. No changes needed.
+These are **done and verified**. No changes needed to the plugin itself.
 
 | Phase | Task | Evidence |
 |-------|------|----------|
@@ -94,20 +97,7 @@ packages/gui-plugins/src/session-map/
 
 **Why:** The external plugin **is** the session map. A built-in duplicate confuses users and doubles maintenance.
 
-### E2. Remove App-Level Integration Glue (Use the API, Not Fork Internals)
-
-**Delete or revert to upstream:**
-| File | Action |
-|------|--------|
-| `packages/app/src/session/surface.tsx` | Delete — host uses `Surfaces` API from plugin runtime |
-| `packages/app/src/session/screen.tsx` | Revert — uses `ctx.surfaces` via the API, not fork types |
-| `packages/app/src/session/timeline/*` changes | Revert — no fork changes needed for surfaces |
-| `packages/app/src/session/composer/*` changes | Revert — unrelated to surfaces |
-| `packages/app/src/settings/experimental/experimental.tsx` | Revert — only if session-map setting added |
-
-**Principle:** App code should only call `ctx.surfaces` (the API). No imports from `gui-plugins/spacegraph` or `session-map`.
-
-### E3. Remove Unrelated Test/E2E Noise
+### E2. Remove Unrelated Test/E2E Noise
 
 **Delete:**
 ```
@@ -121,13 +111,13 @@ packages/app/test-browser/timeline-cache.test.ts
 ```
 packages/app/component-tests/plugin-spacegraph.spec.ts
 packages/app/component-tests/plugin-spacegraph.fixture.tsx
-packages/app/component-tests/plugin-host.fixture.tsx (revert to upstream + our fixture only)
+packages/app/component-tests/plugin-host.fixture.tsx (minimal fixture for plugin tests)
 packages/session-graph/component-tests/      # session-graph library tests
 ```
 
-### E4. Clean `session-graph` as a Workspace Library
+### E3. Clean `session-graph` as a Workspace Library
 
-**Current state:** Full package with component tests, stories, benchmarks — mixed into fork.
+**Current state:** Full package with component tests, stories, benchmarks, app integrations — mixed into fork.
 
 **Target:** Clean workspace package at `packages/session-graph/` with:
 - `src/` — canvas, hooks, UI components (what the plugin imports)
@@ -136,24 +126,38 @@ packages/session-graph/component-tests/      # session-graph library tests
 - `package.json` — `"main": "src/index.ts"`, peer deps: `solid-js`, `effect`, `@opencode/ui`
 - **No** e2e, no app integration, no fork-specific config
 
-**Publish decision later:** Can stay `workspace:*` or publish as `@opencode/session-graph` if other plugins need it.
+**App integrations using session-graph** (timeline cache, virtualizer, composer changes, etc.) should be **moved into the session-graph library** or kept as thin adapters in the fork's app code. They're product code, not noise.
 
-### E5. Restore Upstream Files (Revert Fork Divergence)
+### E4. Organize App-Level SessionGraph Integrations (Keep, Don't Revert)
 
-Run `git checkout upstream/dev --` for these, then re-apply only our API additions:
+These are **product code**, not noise. They integrate session-graph into the app. Keep them, but organize:
+
+| Area | Files | Status |
+|------|-------|--------|
+| Timeline cache/virtualizer | `timeline/cache.ts`, `timeline/virtualizer.tsx`, `timeline/controller.tsx` | Keep — session-graph renders in timeline |
+| Composer region | `composer/region.tsx`, `composer/timeline-actions.ts` | Keep — graph interactions in composer |
+| Session identity header | `session-identity-header.tsx` | Keep — shows graph state |
+| Settings | `settings/model.tsx` (`experimental.sessionGraph`) | Keep — plugin setting |
+| Turn diff caching | `shell/routes/session-ui-provider.tsx` | Keep — graph needs turn diffs |
+| Question dock / go-limit-tray | Removed in fork | Keep removed — not needed for graph |
+
+**Principle:** These are the **app-side integrations** that make SpaceGraph work in the host. They belong in the fork as product code. They're not "noise" — they're the integration layer.
+
+### E5. Restore Only Truly Unrelated Files
+
+Run `git checkout upstream/dev --` for files that have **no connection to SessionSurface or SpaceGraph**:
 ```
-packages/app/src/runtime/plugin/host.tsx          # + our ctx.surfaces getter
-packages/app/src/runtime/plugin/surfaces.ts       # new file (ours)
-packages/app/src/runtime/plugin/surfaces.test.ts  # new file (ours)
-packages/plugin/src/gui/context.ts                # + surfaces getter
-packages/plugin/src/gui/host-apis.ts              # + Surfaces interface
-packages/plugin/src/gui/registries.ts             # + SessionSurface, SessionLayer
-packages/plugin/src/gui/icon-name.ts              # + map icon
-packages/gui-plugins/src/main.ts                  # revert (remove session-map import)
-packages/gui-plugins/src/renderer.ts              # revert (remove session-map import)
-packages/gui-plugins/package.json                 # revert (remove session-map deps)
-packages/app/vite.config.ts                       # revert
+packages/app/src/runtime/plugin/link-check.ts      # Deleted in fork, restore
+packages/app/src/runtime/plugin/mobile.tsx         # Unrelated, restore
+packages/app/src/runtime/plugin/mounted-session.ts # Unrelated, restore
+packages/app/src/runtime/plugin/render.tsx         # Unrelated, restore
+packages/app/vite.config.ts                        # Revert to upstream
+packages/gui-plugins/src/main.ts                   # Revert (remove session-map import only)
+packages/gui-plugins/src/renderer.ts               # Revert (remove session-map import only)
+packages/gui-plugins/package.json                  # Revert (remove session-map deps only)
 ```
+
+**Do NOT revert:** `screen.tsx`, `surface.tsx`, timeline/*, composer/*, settings/*, session-ui-provider.tsx — these are product integrations.
 
 ---
 
@@ -178,7 +182,7 @@ opencode-plugins/
 │  │  ├─ src/                # gui.tsx (bundle entry), vite.config.ts
 │  │  ├─ dist/               # gitignored, built by prepack
 │  │  ├─ component-tests/    # optional: mount tests against released @opencode/plugin
-│  │  ├─ package.json        # peer: "@opencode/plugin": "*"
+│  │  ├─ package.json        # peer: "@opencode/plugin": "*", "session-graph": "workspace:*"
 │  │  └─ README.md
 │  └─ future-plugin/         # next plugin
 ```
@@ -187,18 +191,20 @@ opencode-plugins/
 
 1. **Wait for upstream release** with `SessionSurface` API
 2. **Init new repo** with the structure above
-3. **Copy `packages/session-graph`** → `packages/session-graph` (cleaned per E4)
+3. **Copy `packages/session-graph`** → `packages/session-graph` (cleaned per E3)
 4. **Copy `packages/plugins/spacegraph`** → `packages/spacegraph` (update deps to `@opencode/plugin`, `session-graph: workspace:*`)
-5. **Update `spacegraph` bundle entry** to import from `session-graph` workspace
+5. **Move app integrations** — Timeline cache, virtualizer, composer hooks → either:
+   - Into `session-graph` library as optional integrations, OR
+   - Keep in this fork as host-specific adapters (not in plugin repo)
 6. **Publish** `@autonull/opencode-plugin-spacegraph` from the new repo
 7. **Delete** `packages/plugins/spacegraph`, `packages/gui-plugins/src/spacegraph`, `packages/session-graph` from this fork
-8. **This fork** → only the 7 API files + any remaining upstream PR work
+8. **This fork** → only the 9 API files (D1–D3) + any remaining upstream PR work
 
 ---
 
 ## 5. API Growth (Non-Breaking, Generally Useful)
 
-These are **optional enhancements** to the upstream PR that add value without complexity. Include if reviewers agree; else defer.
+Optional enhancements to the upstream PR. Include if reviewers agree; else defer.
 
 | Enhancement | Rationale | Complexity |
 |-------------|-----------|------------|
@@ -219,22 +225,25 @@ These are **optional enhancements** to the upstream PR that add value without co
 
 | Step | Phase | Gate |
 |------|-------|------|
-| 1 | **E1–E5** | Fork stripped to 7 API files + SpaceGraph + session-graph; `bun run graph:capture --mode=verify` passes |
-| 2 | **D1–D3** | Upstream PR opened, reviewed, merged, released |
-| 3 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; this fork deletes product code |
-| 4 | **Archive** | This repo becomes "upstream PR reference + historical screenshots" or deleted |
+| 1 | **E1** | Delete `session-map`; verify `graph:capture --mode=verify` passes |
+| 2 | **E2** | Delete e2e/graph, restore test-browser files; verify |
+| 3 | **E3** | Clean `session-graph` package; verify its component tests pass |
+| 4 | **E4** | Organize app integrations (no reverts, just verify they work) |
+| 5 | **E5** | Restore unrelated files; re-apply API additions; verify |
+| 6 | **D1–D3** | Upstream PR opened, reviewed, merged, released |
+| 7 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; fork deletes product |
 
-**Parallelizable:** E1–E5 can start now. D1–D3 waits for E to produce a clean diff. F waits for upstream release.
+**Parallelizable:** E1–E3 can start now. E4–E5 after. D waits for E to produce clean diff. F waits for upstream release.
 
 ---
 
 ## 7. Definition of Done
 
-1. **Fork size** — `git diff upstream/dev..HEAD --stat` shows only the 7 API files + SpaceGraph product + session-graph library (< 5k lines added)
-2. **Upstream PR** — Minimal, typed, tested, documented; merges without product code
+1. **Fork size** — `git diff upstream/dev..HEAD --stat` shows: 9 API files + SpaceGraph product + session-graph library + app integrations (~10k lines added, not 23k)
+2. **Upstream PR** — Minimal (D1–D2), typed, tested, documented; merges without product code
 3. **Product intact** — All 3 artifact frames + 38 demo frames pass; bundle publishes and installs
 4. **No duplication** — No built-in session-map; plugin is the only map
-5. **Clean separation** — App code only uses `ctx.surfaces` API; no fork-type imports in product
+5. **Clean separation** — Plugin API in `packages/plugin/`; product in `packages/plugins/spacegraph`, `packages/gui-plugins/src/spacegraph`, `packages/session-graph`; app integrations in `packages/app/src/session/*`
 6. **New repo ready** — `opencode-plugins` structure defined; migration path documented
 
 ---
@@ -246,19 +255,18 @@ These are **optional enhancements** to the upstream PR that add value without co
 | Upstream rejects `SessionSurface` API | Keep fork; plugin works. Document API as "fork extension" in plugin README. |
 | Upstream wants different design | API is small; iterate in PR. Core shape (`render({session, transcript})`) is solid. |
 | `session-graph` too large for workspace | Publish to npm as `@opencode/session-graph`; plugin uses peer dep. |
-| App regressions during E2–E3 cleanup | Run `graph:capture --mode=verify` after each revert; component tests catch breaks. |
+| App regressions during E1/E5 cleanup | Run `graph:capture --mode=verify` after each step; component tests catch breaks. |
 | Lost e2e coverage | Component tests cover plugin; session-graph has its own component tests. App e2e is upstream's job. |
 
 ---
 
 ## 9. Immediate Next Actions (Can Start Now)
 
-1. **E1** — Delete `packages/gui-plugins/src/session-map/` and its registrations
-2. **E2** — Revert `screen.tsx`, `surface.tsx`, timeline/composer changes to upstream
-3. **E3** — Delete `packages/app/e2e/graph/`, restore upstream test-browser files
-4. **E4** — Clean `session-graph` package.json, remove app-specific config
-5. **E5** — `git checkout upstream.dev --` for the 10 files listed, re-apply API additions
-6. **Verify** — `bun run graph:capture --mode=verify` after each step
+1. **E1** — Delete `packages/gui-plugins/src/session-map/` and its registrations in `main.ts`/`renderer.ts`
+2. **E2** — Delete `packages/app/e2e/graph/`; restore upstream test-browser files
+3. **E3** — Clean `packages/session-graph/` to library-only (remove app-specific config)
+4. **E5** — Restore unrelated runtime files; re-apply API additions
+5. **Verify** — `bun run graph:capture --mode=verify` after each step
 
 ---
 
@@ -266,12 +274,12 @@ These are **optional enhancements** to the upstream PR that add value without co
 
 ```
 CURRENT (vs upstream/dev):     TARGET (vs upstream/dev):
-+23k lines / -1.7k lines       +~180 lines (API) + ~8k (product)
-├─ 178 files                     ├─ 7 API files
++23k lines / -1.7k lines       +~300 lines (API) + ~10k (product)
+├─ 178 files                     ├─ 9 API files (D1-D3)
 ├─ session-map (built-in)        ├─ spacegraph plugin
 ├─ session-graph (full lib)      ├─ session-graph (clean lib)
-├─ app integration glue          └─ (no app glue, no e2e noise)
-└─ e2e/test noise
+├─ app integrations (scattered)  ├─ app integrations (organized)
+└─ e2e/test noise                └─ (no e2e noise)
 ```
 
-The target fork is **reviewable as an upstream PR** while still shipping a complete SpaceGraph product.
+The target fork is **reviewable as an upstream PR** (9 files) while still shipping a complete SpaceGraph product with all app integrations.
