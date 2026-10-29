@@ -18,6 +18,7 @@
     "spacegraphjs": ">=8.5"
   },
   "devDependencies": {
+    "@opencode/gui-plugins": "workspace:*",
     "@opencode/plugin": "workspace:*",
     "@opencode/session-graph": "workspace:*",
     "@opencode/session-ui": "workspace:*",

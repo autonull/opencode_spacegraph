@@ -671,12 +671,22 @@ export function mountSessionSurface() {
 }
 
 /** Mounts the real host and a built-in session surface for a fake routed session. */
-export function mountBuiltInSurface(input: { definitions: readonly Entry[]; surface: string }) {
+export function mountBuiltInSurface(input: {
+  definitions: readonly Entry[]
+  surface: string
+  messages?: readonly SessionMessageInfo[]
+}) {
   const container = document.createElement("div")
   container.style.height = "320px"
   document.body.appendChild(container)
   const hosts: PluginHost[] = []
-  const value = { key: "surface\na", id: "a", server: { data: { session: { status: () => "idle", message: { list: () => [] } } } } }
+
+  const value = {
+    key: "surface\na",
+    id: "a",
+    server: { data: { session: { status: () => "idle", message: { list: () => input.messages ?? [] } } } },
+  }
+
   // SAFETY: the surface host and GraphView read only the session id and its empty message list.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
   const session = value as unknown as MountedSession

@@ -128,6 +128,7 @@ Build: `bun plugins/build.ts` (wraps the Bun-run Vite command above).
 - `"plugins"` is a workspace package, so `vite`, `@tailwindcss/vite`, `vite-plugin-solid`, `solid-js` and `@opencode/plugin` resolve from `plugins/node_modules`. This is required: the repo root has no `vite`, and the config's imports are resolved relative to the config.
 - The config adds `@tailwindcss/vite` and **three aliases the measured list missed**: `spacegraphjs/activity` (`src/activity.ts`), `spacegraphjs/layout`, `spacegraphjs/representations`.
 - `style.css` imports `../packages/ui/src/styles/tailwind/index.css` and `../packages/session-ui/src/styles/index.css`, adds `@source` for the plugin and graph sources, and is imported with `?inline`. Vite also writes a stray `dist/opencode-plugin-spacegraph.css`; the JS string is what ships through `ctx.add(Style, css)`.
+- The external setup (renderer, dialogs, i18n shim) lives in `packages/gui-plugins/src/spacegraph/external/`; `plugins/gui.tsx` imports it through `@opencode/gui-plugins/spacegraph` and `.../external`, which the Vite config aliases to the source files.
 
 ---
 
@@ -166,11 +167,18 @@ Day 2 is complete. All three contributions have a working path on a host without
 - `plugins/package.json` now exports **only** `./gui-experimental`. `Host.resolve` then finds no `server`/`tui` entry, so the directory lists as a GUI-only plugin instead of trying to import `gui.tsx` as a server entry.
 - Added `plugins/README.md`: build/test commands, and the exact local mount (`"plugins": ["./plugins"]` in the opencode config, relative to the config file; `.opencode/plugins/` is auto-discovered), then reload the window.
 
+**2026-10-29 — external setup moved in-tree + component keeper.**
+
+- Moved the external setup from `plugins/{renderer,dialogs,i18n}.tsx` to `packages/gui-plugins/src/spacegraph/external/`. The bundle entry imports it through new `@opencode/gui-plugins/spacegraph` / `@opencode/gui-plugins/spacegraph/external` exports, so it is typechecked with the built-in instead of being a cross-project source import.
+- Added `packages/app/component-tests/plugin-spacegraph.spec.ts` and `plugin-spacegraph.fixture.tsx`: mount the real host, select the external `spacegraph-external.map` surface, wait for `data-graph-ready`, and screenshot when `GRAPH_CAPTURE_DIR` is set (`spacegraph-external-map.png`).
+- Passing: cold run with **zero** optimizer events, `--workers=2 --repeat-each=3`, and the existing `plugin-host.spec.ts` (33) still green. Typecheck green for `plugins`, `gui-plugins`, and `app`.
+- `packages/app/component-tests/plugin-host.fixture.tsx` now accepts optional `messages` for `mountBuiltInSurface` (default unchanged).
+
 ### Day 3 — Parity, publish, retire the built-in
 | # | Task | Status | Done when |
 |---|---|---|---|
 | 3.1 | Capture matrix **on the bundle** | ⏳ needs live app | Every frame matches the reference build |
-| 3.2 | e2e keepers on the bundle (panel open, reveal, permalink, export) | ⏳ needs live app | green |
+| 3.2 | e2e keepers on the bundle (panel open, reveal, permalink, export) | ◐ component keeper + screenshot done; app e2e on the bundle remains | green |
 | 3.3 | Publish `@autonull/opencode-plugin-spacegraph` | ⏳ needs npm auth | installs and runs from npm on web + desktop |
 | 3.4 | Archive seam: `patches/0001-session-surfaces.patch` + apply/revert scripts | ✅ done, verified apply/revert against `upstream/dev` | fork reproducible |
 | 3.5 | Delete `spacegraph` from `gui-plugins/src/{main,renderer}.ts` | ⏳ after 3.1/3.2 | `bun run check` green |
@@ -198,6 +206,7 @@ Not shipped, with reasons:
 | Build (`gui()`) | CI | Unaliased `@opencode/*` import (error names the module) | 5 s |
 | Artifact manifest | `plugins/bundle.test.ts` | Requires a module outside the allowlist | 1 s |
 | Bundle evaluates in the real host | `plugins/bundle.test.ts` | A malformed `Plugin.define`, missing setup/stores, or a broken CJS export | 1 s |
+| External setup mounts and renders | `packages/app/component-tests/plugin-spacegraph.spec.ts` | Surface registration, map render, console errors; screenshot under `GRAPH_CAPTURE_DIR` | ~7 s |
 | Capture matrix **on the bundle** | this fork | Any visual/interaction regression vs the reference build | `graph:capture --mode=verify` |
 | e2e keepers on the bundle | this fork | Panel open, reveal, permalink, export | 2 min |
 | Component tests (built-in) | this fork | Host lifetime contracts while developing in HMR | 35 s |

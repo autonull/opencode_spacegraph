@@ -5,9 +5,9 @@ import { createMemo, For, Show, type JSX } from "solid-js"
 import type { SessionStatus } from "@opencode/client/promise"
 import { buildGraph, turnSubgraph } from "@opencode/session-ui/graph"
 import type { MountedSession, SessionScreen, SetupContext } from "@opencode/plugin/gui"
-import definition from "../packages/gui-plugins/src/spacegraph"
-import { FullMap } from "../packages/gui-plugins/src/spacegraph/full-map"
-import type { SpacegraphModel } from "../packages/gui-plugins/src/spacegraph/model"
+import definition from ".."
+import { FullMap } from "../full-map"
+import type { SpacegraphModel } from "../model"
 
 const TURN_PREFIX = "turn:"
 

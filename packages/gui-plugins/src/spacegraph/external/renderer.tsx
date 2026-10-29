@@ -12,11 +12,11 @@ import {
 } from "@opencode/plugin/gui"
 import { createSignal, lazy, onCleanup, onMount, Suspense, type ParentProps } from "solid-js"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
-import definition from "../packages/gui-plugins/src/spacegraph"
-import { createSpacegraph } from "../packages/gui-plugins/src/spacegraph/model"
-import { MapSurface } from "../packages/gui-plugins/src/spacegraph/map-surface"
-import { HybridSurface } from "../packages/gui-plugins/src/spacegraph/hybrid-surface"
-import { TurnMapLayer } from "../packages/gui-plugins/src/spacegraph/turn-map-layer"
+import definition from ".."
+import { createSpacegraph } from "../model"
+import { MapSurface } from "../map-surface"
+import { HybridSurface } from "../hybrid-surface"
+import { TurnMapLayer } from "../turn-map-layer"
 import { MapDialog, TurnMapDialog } from "./dialogs"
 import { createUiI18n, I18nContext } from "./i18n"
 
@@ -33,12 +33,13 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>
   )
 
-  const SpacegraphPanel = lazy(() => import("../packages/gui-plugins/src/spacegraph/panel"))
-  const SpacegraphSettings = lazy(() => import("../packages/gui-plugins/src/spacegraph/settings"))
+  const SpacegraphPanel = lazy(() => import("../panel"))
+  const SpacegraphSettings = lazy(() => import("../settings"))
 
   const model = createSpacegraph(ctx)
 
   // Stock hosts may not expose session surfaces yet. When they do not, the map lives in the side panel and dialogs.
+  // SAFETY: a stock host omits the property rather than giving it another type; every read below handles undefined.
   const surfaces = () => (ctx as { surfaces?: Surfaces }).surfaces
 
   const openPanel = (session: MountedSession | undefined) => {
@@ -52,6 +53,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
 
     if (surfaces()) {
       model.select(session, id)
+
       return
     }
 
@@ -72,6 +74,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
 
     if (!screen) {
       openPanel(session)
+
       return
     }
 
@@ -334,6 +337,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       run: () => {
         if (!surfaces()) {
           openTurnMap(session)
+
           return
         }
 

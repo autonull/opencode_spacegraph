@@ -8,6 +8,8 @@
   "exports": {
     "./renderer": "./src/renderer.ts",
     "./main": "./src/main.ts",
+    "./spacegraph": "./src/spacegraph/index.ts",
+    "./spacegraph/external": "./src/spacegraph/external/renderer.tsx",
     "./terminal": "./src/terminal/index.ts",
     "./debug/options": "./src/debug/options.ts"
   },

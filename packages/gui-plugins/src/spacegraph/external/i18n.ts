@@ -17,6 +17,7 @@ export interface UiI18n {
 }
 
 type Translate = (key: string, params?: UiI18nParams) => string
+
 type Plural = (key: string, count: number, params?: UiI18nParams) => string
 
 export function createUiI18n(input: {

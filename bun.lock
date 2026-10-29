@@ -992,6 +992,7 @@
       "version": "0.1.0",
       "devDependencies": {
         "@happy-dom/global-registrator": "20.0.11",
+        "@opencode/gui-plugins": "workspace:*",
         "@opencode/plugin": "workspace:*",
         "@opencode/session-graph": "workspace:*",
         "@opencode/session-ui": "workspace:*",
