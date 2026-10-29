@@ -120,6 +120,7 @@
 | **Server lifecycle in capture script** | Playwright sends SIGINT to entire process group; background server must be in separate session (`setsid`) or use Playwright's `webServer` config. **FIXED**: removed manual `bun dev serve` spawn from `graph:capture` — the e2e tests use `mockOpenCodeServer` (in-browser mock), and Playwright's `webServer` config runs the app dev server. No external server needed. |
 | **Camera animation in depth mode switch** | Orbit→layered transition triggers 0.5s polar animation; test waits for canvas settle but animation may not complete in headless CI; depth-stack passes (larger tilt change) |
 | **Workspace lens is the product** | Removing it (3C) was a mistake — the derived nodes (directory, package, commit, branch, symbol, process, port, issue) + provenance/domain are what connect activity to repository results. Local `WorkspaceSnapshot` type in session-ui keeps it working without RPC. |
+| **E2e mock server flakiness** | After build, SSE transport + `mockOpenCodeServer` timing is fragile; `openSession` times out waiting for `sessionHref` → tab-link visible; need to debug `mockServers` + `installSseTransport` lifecycle |
 
 ---
 
@@ -213,11 +214,12 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 
 ## 📋 IMMEDIATE NEXT ACTIONS
 
-1. **Run capture matrix (2.10)**: Verify visual parity with workspace lens enabled (tests 32/33 now active)
-2. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion, with workspace lens)
-3. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle
-4. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI
-5. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
+1. **Run capture matrix (2.10)**: Verify visual parity with workspace lens enabled — currently **blocked by e2e flakes** (mock server not booting in CI)
+2. **Fix e2e flakes**: Session opening timing out — `openSession` waits for `sessionHref` but mock server not responding; likely SSE/transport issue after build
+3. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion, with workspace lens)
+4. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle
+5. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI
+6. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
 
 ---
 
