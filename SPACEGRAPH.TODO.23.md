@@ -8,10 +8,29 @@
 
 | Item | Status |
 |------|--------|
-| Graph MVP as built-in plugin (`gui-plugins/src/spacegraph`) | ✅ 26/26 capture frames, 49/49 component tests, plugin-graph matrix green |
-| `bun run check` (42 packages) | ✅ clean |
+| Branch base | ✅ **synced to `upstream/dev` @ `6007274795`** (anomalyco/opencode, 2026-10-29). `git rev-list --left-right --count HEAD...upstream/dev` → `402 0` |
+| Graph MVP as built-in plugin (`gui-plugins/src/spacegraph`) | ✅ 26/26 capture frames, 49/49 session-graph component tests, 33/33 plugin-host tests, plugin-graph matrix green |
+| `bun run check` (42 packages) | ✅ clean after the merge |
 | Human-testing smoke checklist (8 items) | ✅ done |
 | T2.2 evidence | ⏸️ deferred behind stop rule |
+
+> Sync note: this fork's `origin/dev` is the **fork's** dev (stale, pre-plugin). The reference is **`upstream/dev`** (`anomalyco/opencode`), which is the Plugin-API generation. Every claim below is checked against `6007274795`.
+
+---
+
+## 🔄 SYNC VERIFICATION — what the 87 upstream commits changed
+
+| Area | Change | Effect on this plan |
+|---|---|---|
+| `@opencode/plugin/gui` registries | `ComposerPill.menu(input)` — plugin-owned popover content, host-owned placement/heading/dismissal | **New capability** (see reconsideration F8) |
+| `@opencode/plugin/gui` host APIs | `ComposerNote.title`/`subtitle`; `Composer.focus(commentID, { anchor })`; `ComposerQuoteAnchor` | none |
+| `Panel`, `PanelTab`, `Slot`, `SlotMap`, `Dialogs`, `SettingsPage`, `Command`, `MenuItem`, `TitlebarItem`, `LinkHandler`, `Style` | **unchanged** | plan holds |
+| `packages/app/src/runtime/plugin/*` | composer-quote anchoring only | plan holds |
+| `packages/gui-plugins` | new `goal` plugin, browser/terminal changes | none |
+
+Merge conflicts resolved: `session/timeline/virtualizer.tsx` (kept our scroll-restore block + upstream's `endPending`), `session-ui/context/data.tsx` (kept `snapshot` + upstream's `readMedia`/`peekMedia`), `runtime/server/api.ts` (took upstream's `createApiForServer`/media capability), `settings/model.tsx` (dropped the dead `newModelPicker`, added `foldUserMessages`/`newQuestionUI`), `plugin-host.spec.ts` and `side-panels.spec.ts` (kept both sides' stories/tests), `bun.lock` (regenerated).
+
+**No SDK change requires the surface seam, and no SDK change removes the need for it.**
 
 ---
 
@@ -19,7 +38,7 @@
 
 **Question:** do we need an upstream PR for `SessionSurface` / `ctx.surfaces` / `SessionSurfaceHost`?
 
-**Answer: No.** Verified against `upstream/dev` @ `6007274795` (2026-10-29):
+**Answer: No.** Verified against `upstream/dev` @ `6007274795`:
 
 | Capability the plugin needs | Exists upstream today? |
 |---|---|
@@ -39,17 +58,39 @@ So exactly one product capability has no stock equivalent: **taking over the ses
 
 ---
 
+## 🔍 FEATURE RECONSIDERATION (stock API + latest upstream)
+
+| # | Feature | Verdict on stock | Why |
+|---|---------|------------------|-----|
+| F1 | **Custom Transcript component** | **Drop** | The host owns the session body; a plugin cannot replace it. Its original purpose was hybrid-pane measurement, which no longer applies. Reference build only. |
+| F2 | **Hybrid: 3 arrangements** | **Reduce to 2**: Side (wide panel) and Floating (dialog over the transcript) | "Stacked" (map above log) needs the body. Floating is the honest stock equivalent of an overlay; Side is the real value prop. |
+| F3 | **Turn map overlay** | **Reshape**: scoped turn map opens a dialog; add an *ambient* turn ribbon in the `session.header` slot | Upstream explicitly allows timeline work only through `session.header`. A ribbon gives always-visible orientation with no seam; the dialog gives the scoped map. |
+| F4 | **Permalinks** | **Keep, rename prefix** to `#spacegraph:<layout>:<node>` | A hash must not imply a mode switch the stock plugin cannot perform. Cold load opens the Full-map dialog and frames the node. |
+| F5 | **Multi-window inspectors** | **Scope to the full-map dialog** | Free-floating windows fight a docked panel's focus model; inside the dialog they are the whole surface and behave. |
+| F6 | **Composer inset** | **Drop** | Dialogs and panels overlay the composer; nothing needs reserving. |
+| F7 | **Mobile** | **Improve** | `Panel.mobile` (`tab`/`menu`/`drawer`) gives mobile a real map entry, instead of the previous desktop-only gate. |
+| F8 | **Composer pill** | **Add (new, cheap)** | `ComposerPill.menu` (new in the latest upstream) renders plugin content in a host-owned popover. A "map" pill showing the current turn, failing tool or progress, opening a mini map + "Open full map", is the ambient orientation surface with zero seam. |
+| F9 | **Cross-session graph** | **Out of scope** | No `SessionStore` contract exists upstream; this is now an upstream-API question, not a fork question. |
+| F10 | **Inline row host** | **Drop from the roadmap** | Upstream: "Never add work to timeline rows. `session.header` is the only timeline surface." The library keeps `InlineGraph`; the plugin does not mount it per row. |
+| F11 | **Settings, export, commands, per-session state** | **Unchanged** | Pure SDK surface. |
+
+Net: stock delivery is *smaller* than the reference build — two fewer arrangements, no custom transcript, no inline rows — and gains two ambient surfaces (header ribbon, composer pill) that the reference build never had.
+
+---
+
 ## 🚦 TWO DELIVERY TIERS
 
 | | **Tier 1 — Stock plugin** (the product) | **Tier 2 — Reference build** (optional lab) |
 |---|---|---|
 | Runs on | Released OpenCode, unmodified | Our fork (this repo) with a 3-file patch |
 | Session body | Host transcript (unchanged) | Map / Hybrid as first-class surfaces |
-| Map, full | `ctx.dialogs.open` full-bleed render | `SessionSurface` + `contexts.surfaces` |
-| Hybrid | Wide side panel map beside transcript | `HybridSurface` (3 arrangements) |
-| Turn map | Dialog over the transcript (scroll preserved) | `SessionLayer` on the Map surface |
+| Map, full | `ctx.dialogs.open` full-bleed render | `SessionSurface` + `ctx.surfaces` |
+| Hybrid | Wide side panel map beside transcript (**Side**) or dialog over it (**Floating**) | `HybridSurface` (3 arrangements) |
+| Turn map | Dialog over the transcript (scroll preserved) + ambient ribbon in `session.header` | `SessionLayer` on the Map surface |
+| Ambient orientation | Composer pill with popover mini map | — |
 | Custom Transcript component | Dropped (host owns the transcript) | Kept |
 | Composer inset | N/A (dialogs overlay) | `composerInset` reserves `timeline.inset()` |
+| Inline rows | Not mounted (upstream forbids timeline-row work) | Same |
 | Distribution | `npm i` + `plugin: ["@autonull/opencode-plugin-spacegraph"]` | `git clone` + `bun run dev` |
 | Ships | **Now** | Whenever, or never |
 
@@ -62,14 +103,15 @@ Tier 1 is the deliverable. Tier 2 exists so the capture matrix, e2e keepers and 
 | Feature (today) | Built-in implementation | Stock-plugin implementation |
 |---|---|---|
 | Map surface (`spacegraph.map`) | `SessionSurface` | `Panel(region: "side", wide: true)` tab **Session Map** + `ctx.dialogs.open` **Full map** |
-| Hybrid surface (`spacegraph.hybrid`) | `SessionSurface` + arrangements | Wide side panel beside the transcript (side-by-side is the stock equivalent); stacked/floating become layout options inside the panel |
-| Turn map layer | `SessionLayer` | `ctx.dialogs.open` scoped turn subgraph; transcript keeps its mount and scroll |
+| Hybrid surface (`spacegraph.hybrid`) | `SessionSurface` + 3 arrangements | **Side** = wide panel beside the transcript; **Floating** = full-map dialog over it. **Stacked** is dropped (needs the body). |
+| Turn map layer | `SessionLayer` | `ctx.dialogs.open` scoped turn subgraph; transcript keeps its mount and scroll. Plus an ambient turn ribbon in the `session.header` slot. |
 | Side panel (compact overview) | `Panel(region: "side")` | unchanged |
 | Inspector | inside surface | inside panel / dialog |
-| Windows (draggable inspectors) | plugin-owned | unchanged (plugin-owned overlays) |
+| Windows (draggable inspectors) | plugin-owned | scoped to the full-map dialog |
 | Custom Transcript | plugin component | dropped — use host transcript + `TranscriptScreen.reveal` |
-| Permalinks `#graph:layout:node` | plugin hash + `surfaces.select` | plugin hash + open Full-map dialog, then frame node |
-| Commands + keybinds | `Command` | unchanged (`mod+shift+m` → panel, `mod+shift+f` → full map dialog…) |
+| Permalinks `#graph:layout:node` | plugin hash + `surfaces.select` | `#spacegraph:layout:node` + open Full-map dialog, then frame node |
+| Ambient status | — | `ComposerPill` + `menu` popover: current turn / failing tool → mini map → "Open full map" |
+| Commands + keybinds | `Command` | unchanged (`mod+shift+m` → panel, `mod+shift+g` → full map dialog, `mod+t` → turn map) |
 | Settings | `SettingsPage` | unchanged |
 | Export SVG/JSON/HTML | model + `exportGraph` | unchanged |
 | Per-session state | `Store.session` | unchanged |
@@ -144,14 +186,16 @@ HMR: the `@opencode/plugin/gui/vite` preset already externalizes the SDK and emi
 | A1 | Spike: full-bleed dialog + wide panel canvas | Decide dialog vs maximized panel for Full map | 0.5 d |
 | A2 | Panel contribution: map overview + inspector | Port `panel.tsx` + inspector; no surface props | 1 d |
 | A3 | Full map dialog: `GraphView` at full size | Reuse `@opencode/session-graph` `GraphView`; own toolbar | 1 d |
-| A4 | Hybrid-in-panel: arrangement switch (side/stacked/floating) | CSS-only inside the panel; no host changes | 1 d |
+| A4 | Hybrid on stock: **Side** (wide panel) + **Floating** (dialog) | Two arrangements, not three; CSS inside the panel, dialog for floating | 1 d |
 | A5 | Turn map dialog | Scoped subgraph; transcript untouched beneath | 0.5 d |
-| A6 | Permalinks via hash + dialog | Replace `surfaces.select` with dialog open + frame | 0.5 d |
+| A6 | Permalinks via hash + dialog | `#spacegraph:` prefix; dialog open + frame node | 0.5 d |
 | A7 | Commands/keybinds without `ctx.surfaces` | `mod+shift+m` panel, `mod+shift+g` full map, `mod+t` turn map | 0.5 d |
 | A8 | Settings page + per-session store | unchanged from built-in | 0.5 d |
 | A9 | Export wiring | unchanged | 0.25 d |
 | A10 | Transcript bridge | `screen.transcript.reveal` from panel/full-map selection | 0.5 d |
 | A11 | i18n + a11y pass + mobile (`Panel.mobile` drawer) | | 1 d |
+| A12 | Ambient turn ribbon in `session.header` slot | Mini phase strip; keeps rows untouched (F3) | 1 d |
+| A13 | `ComposerPill` with `menu` popover | Current turn / failing tool → mini map → "Open full map" (F8) | 1 d |
 
 ### Track B — Plugin repository & release
 
@@ -201,10 +245,12 @@ n ≥ 5, counterbalanced, canonical fixture, five tasks. Publish honestly; stop 
 ```
 Week 1  A1–A3 (spike + map in panel + full-map dialog) → demoable Tier 1
 Week 2  A4–A11 → feature parity without the seam
-Week 3  B1–B6 → plugin repo, CI, npm release, delete built-in registration
+Week 3  A12–A13 (ambient ribbon + composer pill) then B1–B6 → repo, CI, npm release, delete built-in registration
 Week 4  C1–C2 (seam patch archived), D1–D3, E1–E3 as feedback lands
 Later   F (T2.2) only if requested
 ```
+
+> Sync rule: before any week of work, `git fetch upstream dev && git merge upstream/dev` in the reference build, rerun `bun run check` and the plugin-host/session-graph component suites, and re-read the SDK diff (`packages/plugin/src/gui`) for new capabilities like F8.
 
 ---
 
@@ -215,8 +261,10 @@ Later   F (T2.2) only if requested
 | Dialog cannot go full-bleed | Fallback: maximized panel tab; spike decides in half a day (A1) |
 | A side panel is too narrow for the map | `Panel.wide` + mobile drawer; full map lives in the dialog, not the panel |
 | Losing the custom Transcript component hurts hybrid measurements | Host transcript + `reveal` covers the bridge; revisit only if measured |
+| Turn ribbon in `session.header` costs timeline work | Upstream sanctions this slot and only this slot; keep it a fixed-height strip, no row work |
+| Composer pill popover cannot host a canvas | Popover holds an SVG/`InlineGraph` mini map, not a live canvas |
 | Plugin bundle can't resolve `@opencode/session-ui` | It is a published peer; verify in B4 on web + desktop |
-| Upstream changes the GUI SDK | We track `@opencode/plugin` peer range; the fork's e2e keepers catch drift early |
+| Upstream changes the GUI SDK | Weekly `git fetch upstream dev` + merge in the reference build; the SDK diff is small and reviewed before each work week |
 | Distribution friction (config-only install) | Document both `plugin: [...]` and `.opencode/plugins/` paths; marketplace entry later |
 
 ---
@@ -228,6 +276,7 @@ Later   F (T2.2) only if requested
 | 1 | Plugin runs on stock OpenCode (web + desktop) with no fork | A, B |
 | 2 | Map (panel + full dialog), turn map, permalink, export, settings, keybinds work | A |
 | 3 | Transcript bridge works (selection reveals message, scroll preserved) | A10 |
+| 3b | Ambient ribbon and composer pill are live and cheap (no row work) | A12, A13 |
 | 4 | Published npm package; install documented | B |
 | 5 | Built-in registration deleted from the fork | B6 |
 | 6 | Seam archived as an applyable patch; reference build still green | C |
@@ -255,6 +304,8 @@ Later   F (T2.2) only if requested
 | P4 | The seam patch is reference-build-only, applied by script | Evidence and upgrade path, never a dependency |
 | P5 | The fork is an integration lab, not a product | Capture matrix + e2e keepers stay useful without shipping |
 | P6 | One plugin repository, one npm package, one install line | Simplest distribution that works today |
+| P7 | Ambient surfaces (`session.header`, `ComposerPill`) beat a body takeover | They are stock, cheap, and always visible; the body is a mode the user must enter |
+| P8 | The reference build tracks `upstream/dev` weekly | SDK drift is small but silent; a merge with green checks is the only proof of "plugin-only" |
 
 ---
 
