@@ -1,7 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
-import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { tabKey } from "../utils/app"
-import { trackPageErrors } from "../utils/errors"
 import { fileDiff, openSession } from "../utils/workspace"
 import { openReviewLauncher } from "../utils/side-panel"
 import { expectSessionTitle } from "../utils/waits"
@@ -192,36 +190,74 @@ test("new tab selection and closing stay in the focused pane", async ({ page }) 
   await expect(sideTabs.nth(0)).toHaveAttribute("aria-selected", "true")
 })
 
-// The session map is an extension side panel: it renders the canonical session graph in the side region and
-// links it to the transcript in both directions. It proves H6.3's synchronized panel without a core timeline edit.
-test("session map panel follows the transcript and reveals messages", async ({ page }) => {
-  const errors = trackPageErrors(page)
+test("closing the last New tab closes the side region, and only a New tab lists the launchers", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
+  await openSession(page, { name: "LastNewTab", seed: { panes: { ses_lastnewtab: { review: true } } } })
+
+  const panel = page.locator("#review-panel")
+  const toggle = page.getByRole("button", { name: "Toggle review", exact: true })
+  const newTab = panel.getByRole("tab", { name: "New tab", exact: true })
+  const review = panel.getByRole("button", { name: /^Review/ })
+
+  // An empty side region opens on a New tab listing the launchers.
+  await expect(newTab).toHaveAttribute("aria-selected", "true")
+  await expect(review).toBeVisible()
+
+  // Closing it leaves no tab, so the region closes rather than listing the launchers without one.
+  await newTab.locator("..").getByRole("button", { name: "Close tab" }).click()
+  await expect(toggle).toHaveAttribute("aria-expanded", "false")
+
+  await toggle.click()
+  await expect(newTab).toHaveAttribute("aria-selected", "true")
+  await expect(review).toBeVisible()
+})
+
+test("tabs in a narrow side strip shrink to keep their close buttons, and a tab's menu closes the others", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1000, height: 700 })
+  const directory = "C:/OpenCode/NarrowStrip"
+  const key = `local\u0000${base64Encode(directory)}/ses_narrowstrip`
+  const files = ["a.md", "a-file-name-long-enough-to-overflow-the-side-strip-by-itself.md", "b.md"]
+
   await openSession(page, {
-    name: "SessionMap",
-    sessions: [{ id: "ses_session_map", title: "Session map" }],
-    pageMessages: () => ({ items: buildFixtureMessages() }),
+    name: "NarrowStrip",
+    fileList: () => [],
+    fileContent: (path) => ({ type: "text", content: `contents:${path}` }),
+    seed: {
+      panes: { ses_narrowstrip: { review: true, sessionWidth: 640 } },
+      storage: {
+        "opencode.global.dat:layout": {
+          sessionTabs: { [key]: { all: files.map((file) => `file://${file}`), active: `file://${files[1]}` } },
+        },
+      },
+    },
   })
 
-  // The map is a side panel an extension contributes, so it is added from the strip's add menu, not a header toggle.
-  await page.getByRole("button", { name: "Toggle review" }).click()
-  await page.getByRole("button", { name: "Add tab" }).click()
-  await page.getByRole("menuitem", { name: "Open session map" }).click()
+  const side = page.locator('[data-pane-content="side"]')
+  const add = side.getByRole("button", { name: "Add tab", exact: true })
+  await expect(side.getByRole("tab", { name: files[1], exact: true })).toHaveAttribute("aria-selected", "true")
 
-  const panel = page.locator('[data-slot="session-map-panel"]')
-  await expect(panel).toBeVisible()
+  // Every tab's close button stays left of "+", instead of the strip scrolling it away under its edge fade.
+  const end = (await add.boundingBox())!.x
+  const closes = side.locator('[data-pane-strip="side"] [data-slot="tabs-trigger-close-button"]')
+  await expect(closes).toHaveCount(files.length)
 
-  // The first turn's node starts unhighlighted: the transcript opens at the bottom, on a later turn.
-  const node = panel.locator('[data-slot="session-map-node"][data-node-id="turn:msg_user_1"]')
-  await expect(node).toBeVisible()
-  await expect(node.locator("rect")).toHaveAttribute("stroke-width", "1")
+  for (const close of await closes.all()) {
+    const box = (await close.boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(end)
+  }
 
-  // Picking the node reveals its message in the transcript, and the map highlights the turn it now shows.
-  await node.click()
-  await expect(page.locator('[data-timeline-row="UserMessage"][data-message-id="msg_user_1"]')).toBeVisible()
-  await expect(node.locator("rect")).toHaveAttribute("stroke-width", "2")
+  await side.getByRole("tab", { name: "b.md", exact: true }).click({ button: "right" })
+  await page.getByRole("menuitem", { name: "Close other tabs", exact: true }).click()
+  await expect(side.getByRole("tab")).toHaveCount(1)
+  await expect(side.getByRole("tab", { name: "b.md", exact: true })).toHaveAttribute("aria-selected", "true")
 
-  expect(errors).toEqual([])
+  // With nothing else to close, the menu offers only the tab itself.
+  await side.getByRole("tab", { name: "b.md", exact: true }).click({ button: "right" })
+  await expect(page.getByRole("menuitem", { name: "Close other tabs", exact: true })).toBeDisabled()
+  await page.getByRole("menuitem", { name: "Close tab", exact: true }).click()
+  await expect(side.getByRole("tab", { name: "b.md", exact: true })).toHaveCount(0)
 })
 
 // A DOM mark survives only while the same node stays mounted.
@@ -288,10 +324,13 @@ test("the new tab view lists recently closed tabs, expands to the rest, and keep
   await panel.getByRole("button", { name: "Add tab", exact: true }).click()
   await expect(rows).toHaveCount(5)
   await expect(rows.first()).toContainText("closed-00.ts")
-  await recent.getByRole("button", { name: "Show more", exact: true }).click()
+  const more = recent.getByRole("button", { name: "Show more", exact: true })
+  await more.focus()
+  await more.press("Enter")
   await expect(rows).toHaveCount(12)
-  await recent.getByRole("button", { name: "Show less", exact: true }).click()
-  await expect(rows).toHaveCount(5)
+  await expect(rows.filter({ hasText: "closed-05.ts" })).toBeFocused()
+  await expect(recent.getByRole("button", { name: "Show more", exact: true })).toHaveCount(0)
+  await expect(recent.getByRole("button", { name: "Show less", exact: true })).toHaveCount(0)
 
   // Closing the last tab closes the region; it opens on its launchers with that tab listed first.
   const readme = panel.getByRole("tab", { name: "README.md" })
@@ -310,4 +349,36 @@ test("the new tab view lists recently closed tabs, expands to the rest, and keep
   await panel.getByRole("button", { name: "Add tab", exact: true }).click()
   await expect(rows.first()).toContainText("closed-00.ts")
   await expect(recent).not.toContainText("README.md")
+})
+
+// The session map is an extension side panel: it renders the canonical session graph in the side region and
+// links it to the transcript in both directions. It proves H6.3's synchronized panel without a core timeline edit.
+test("session map panel follows the transcript and reveals messages", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openSession(page, {
+    name: "SessionMap",
+    sessions: [{ id: "ses_session_map", title: "Session map" }],
+    pageMessages: () => ({ items: buildFixtureMessages() }),
+  })
+
+  // The map is a side panel an extension contributes, so it is added from the strip's add menu, not a header toggle.
+  await page.getByRole("button", { name: "Toggle review" }).click()
+  await page.getByRole("button", { name: "Add tab" }).click()
+  await page.getByRole("menuitem", { name: "Open session map" }).click()
+
+  const panel = page.locator('[data-slot="session-map-panel"]')
+  await expect(panel).toBeVisible()
+
+  // The first turn's node starts unhighlighted: the transcript opens at the bottom, on a later turn.
+  const node = panel.locator('[data-slot="session-map-node"][data-node-id="turn:msg_user_1"]')
+  await expect(node).toBeVisible()
+  await expect(node.locator("rect")).toHaveAttribute("stroke-width", "1")
+
+  // Picking the node reveals its message in the transcript, and the map highlights the turn it now shows.
+  await node.click()
+  await expect(page.locator('[data-timeline-row="UserMessage"][data-message-id="msg_user_1"]')).toBeVisible()
+  await expect(node.locator("rect")).toHaveAttribute("stroke-width", "2")
+
+  expect(errors).toEqual([])
 })

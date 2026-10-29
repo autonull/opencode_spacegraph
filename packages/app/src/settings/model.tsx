@@ -133,8 +133,10 @@ const generalSchema = Persistence.struct({
   timelineWidth: Schema.Literals(["focused", "comfortable", "wide"]),
   // The "New icons" design experiment, off until it ships.
   newIcons: Schema.Boolean,
-  // The "New model picker" design experiment, off until it ships.
-  newModelPicker: Schema.Boolean,
+  // The "Fold long messages" experiment, off until it ships.
+  foldUserMessages: Schema.Boolean,
+  // The redesigned keyboard-first question dock, off until it ships.
+  newQuestionUI: Schema.Boolean,
   mobileTitlebarPosition: Schema.Literals(["top", "bottom"]),
   // Owned by the review plugin, which copies it out once; kept so settings rewrites cannot drop it first.
   mobileDiffWrap: Persistence.optional(Schema.Boolean),
@@ -309,7 +311,8 @@ export const defaultSettings: Settings = {
     backgroundActivity: "left",
     timelineWidth: "comfortable",
     newIcons: false,
-    newModelPicker: false,
+    foldUserMessages: false,
+    newQuestionUI: false,
     mobileTitlebarPosition: "top",
     terminalPlacement: "side",
     followUpBehavior: "steer",
@@ -355,8 +358,10 @@ type SettingsContext = {
     setTimelineWidth: (value: TimelineWidth) => void
     newIcons: () => boolean
     setNewIcons: (value: boolean) => void
-    newModelPicker: () => boolean
-    setNewModelPicker: (value: boolean) => void
+    foldUserMessages: () => boolean
+    setFoldUserMessages: (value: boolean) => void
+    newQuestionUI: () => boolean
+    setNewQuestionUI: (value: boolean) => void
     mobileTitlebarPosition: () => "top" | "bottom"
     setMobileTitlebarPosition: (value: "top" | "bottom") => void
     terminalPlacement: () => TerminalPlacement
@@ -523,9 +528,13 @@ const { use: useSettings, provider: SettingsProvider } = createSimpleContext<Set
         setNewIcons(value: boolean) {
           setStore("general", "newIcons", value)
         },
-        newModelPicker: withFallback(() => store.general?.newModelPicker, defaultSettings.general.newModelPicker),
-        setNewModelPicker(value: boolean) {
-          setStore("general", "newModelPicker", value)
+        foldUserMessages: withFallback(() => store.general?.foldUserMessages, defaultSettings.general.foldUserMessages),
+        setFoldUserMessages(value: boolean) {
+          setStore("general", "foldUserMessages", value)
+        },
+        newQuestionUI: withFallback(() => store.general?.newQuestionUI, defaultSettings.general.newQuestionUI),
+        setNewQuestionUI(value: boolean) {
+          setStore("general", "newQuestionUI", value)
         },
         mobileTitlebarPosition: withFallback(
           () => store.general?.mobileTitlebarPosition,

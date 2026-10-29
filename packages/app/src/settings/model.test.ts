@@ -96,7 +96,8 @@ describe("settings schema", () => {
         backgroundActivity: "left",
         timelineWidth: "comfortable",
         newIcons: false,
-        newModelPicker: false,
+        foldUserMessages: false,
+        newQuestionUI: false,
         mobileTitlebarPosition: "top",
         terminalPlacement: "side",
         followUpBehavior: "steer",
@@ -138,6 +139,7 @@ describe("settings schema", () => {
         followUpBehavior: "invalid",
         backgroundActivity: "invalid",
         timelineWidth: "invalid",
+        newQuestionUI: "invalid",
       },
       appearance: { fontSize: "large", mono: "Custom Mono", tabLayout: "vertical", showProjectName: true },
       permissions: { autoApprove: true, autoApproveProjects: { on: true, off: false, bad: "yes" } },
@@ -154,6 +156,7 @@ describe("settings schema", () => {
       followUpBehavior: "steer",
       backgroundActivity: "left",
       timelineWidth: "comfortable",
+      newQuestionUI: false,
     })
     expect(settings.appearance).toEqual({
       fontSize: 14,
