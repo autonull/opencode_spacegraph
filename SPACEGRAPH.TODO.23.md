@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.23 — Plugins Only, Full Parity
 
-> **Status: Day 1 + Day 2 fallbacks done.** The external bundle builds at **669.1 KB gzip** with only the allowlisted modules, and now works with or without `ctx.surfaces`. Remaining: manual stock mount (1.3), then parity/publish/retire. Read §1 before touching anything.
+> **Status: Day 1 + Day 2 fallbacks + automated mount done.** The external bundle builds at **669.1 KB gzip** with only the allowlisted modules, works with or without `ctx.surfaces`, evaluates in the real host, and mounts/renders its map surface in the component keeper with screenshots. Remaining: manual stock mount (1.3), app e2e on the bundle, publish, retire. Read §1 before touching anything.
 
 ## Progress
 
