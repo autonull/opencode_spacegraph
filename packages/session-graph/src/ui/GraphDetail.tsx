@@ -16,6 +16,7 @@ import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import { childSessionID, count, filePath, fileRange, flag, forkedFrom, parentSessionID, strings, text } from "./node-data"
+import { formatProvenance } from "./provenance"
 
 const STATUS_TONE: Record<GraphNode["status"], string> = {
   pending: "text-text-weak",
@@ -214,6 +215,7 @@ export const GraphDetailHeader = (props: GraphDetailProps) => {
 export const GraphDetailBody = (props: GraphDetailProps) => {
   const i18n = useI18n()
   const data = () => props.node.data
+  const now = Date.now()
   const [copied, setCopied] = createSignal(false)
 
   const copyOutput = async () => {
@@ -269,6 +271,9 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
     </Show>
   )
 
+  // T30.3 — provenance for derived nodes
+  const provenance = formatProvenance(props.node.provenance, now)
+
   return (
     <div class="min-h-0 flex-1 overflow-y-auto px-3 py-2">
       <Show when={props.node.summary}>
@@ -295,6 +300,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         {field(i18n.t("ui.sessionGraph.inspector.parentSession"), text(data()?.parentSessionID))}
         {field(i18n.t("ui.sessionGraph.inspector.attempt"), count(data()?.attempt))}
         {field(i18n.t("ui.sessionGraph.inspector.exit"), count(data()?.exit))}
+        {field(i18n.t("ui.sessionGraph.inspector.source"), provenance)}
       </dl>
 
       {props.node.kind === "file" && (() => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { buildGraph, buildSessionKernel } from "./build"
-import { fixtureMessages } from "./fixture"
+import { buildGraph, buildSessionKernel, buildWorkspaceKernel, WORKSPACE_STAGES } from "./build"
+import { buildFixtureSnapshot, fixtureMessages } from "./fixture"
 import {
   createGraphViewCache,
   graphModelToKernel,
@@ -16,6 +16,12 @@ const node = (overrides: Partial<GraphNode> & Pick<GraphNode, "id" | "kind" | "l
 
 const model: GraphViewData = {
   root: "session",
+  workspaceRoot: "/repo",
+  snapshot: {
+    revision: "r1",
+    asOf: { tree: 1 },
+    missing: [],
+  },
   goal: "Fix auth",
   nodes: [
     node({
@@ -57,6 +63,16 @@ const model: GraphViewData = {
       label: "src/auth/session.ts",
       status: "neutral",
       data: { path: "src/auth/session.ts" },
+    }),
+    node({
+      id: "sym:src/auth/session.ts#load",
+      kind: "symbol",
+      label: "load",
+      status: "neutral",
+      minLevel: "execution",
+      domain: "code",
+      provenance: { source: "tree", confidence: "explicit", asOf: 2 },
+      data: { path: "src/auth/session.ts", name: "load" },
     }),
   ],
   edges: [
@@ -123,6 +139,20 @@ describe("GraphView projection", () => {
       duplicateEdges: [],
       hyperedgeMissingNodes: [],
     })
+  })
+
+  test("buildSessionKernel stays session-only and the workspace deriver adds domains", () => {
+    const snapshot = buildFixtureSnapshot()
+    const session = buildSessionKernel({
+      messages: fixtureMessages,
+      status: { type: "idle" },
+      snapshot,
+    })
+    const workspace = buildWorkspaceKernel(session, snapshot)
+
+    expect(session.nodes.some((item) => item.kind === "directory")).toBe(false)
+    expect(workspace.nodes.some((item) => item.kind === "directory")).toBe(true)
+    expect(workspace.version).toBe(session.version + WORKSPACE_STAGES.length)
   })
 
   test("buildGraph accepts a kernel and its metadata", () => {

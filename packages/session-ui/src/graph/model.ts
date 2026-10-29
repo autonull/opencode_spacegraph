@@ -1,6 +1,126 @@
 import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
-import type { NodeKind, NodeStatus, PhaseCategory, ZoomLevel } from "./vocabulary"
+import type { Domain, NodeKind, NodeStatus, PhaseCategory, ZoomLevel } from "./vocabulary"
+
+/** T29.1 — workspace snapshot: plain JSON, versioned, stamped per source. */
+export type Source = "tree" | "vcs" | "packages" | "symbols" | "issues" | "processes" | "coverage"
+
+export type SymbolKind =
+  | "function" | "method" | "class" | "interface" | "type" | "variable" | "constant" | "module" | "enum"
+
+export type SnapshotScope = "session" | "directory" | "workspace"
+
+export type Range = {
+  start: { line: number; character: number }
+  end: { line: number; character: number }
+}
+
+export type Directory = {
+  path: string
+  parent?: string
+}
+
+export type Package = {
+  path: string
+  name?: string
+  version?: string
+  private?: boolean
+  scripts?: string[]
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+}
+
+export type FileEntry = {
+  path: string
+  status?: "added" | "modified" | "deleted"
+  doc?: boolean
+  config?: boolean
+}
+
+export type Head = {
+  branch?: string
+  sha?: string
+}
+
+export type Base = { sha: string }
+
+export type Branch = {
+  name: string
+  sha: string
+  upstream?: string
+  remote?: boolean
+}
+
+export type Commit = {
+  sha: string
+  short: string
+  message: string
+  author?: string
+  time?: number
+  files?: string[]
+}
+
+export type SymbolEntry = {
+  path: string
+  name: string
+  qualified: string
+  kind: SymbolKind
+  range: Range
+  signature?: string
+  origin: "parser" | "hunk"
+}
+
+export type Process = {
+  id: string
+  pid?: number
+  command: string
+  cwd?: string
+  ports: number[]
+  startedAt?: number
+}
+
+export type Issue = {
+  provider: string
+  repo?: string
+  number: string
+  title?: string
+  state?: string
+  url?: string
+}
+
+export type Missing = {
+  source: Source
+  reason: string
+}
+
+export type WorkspaceSnapshot = {
+  version: 1
+  revision: string
+  root: string
+  scope: SnapshotScope
+  asOf: {
+    tree?: number
+    vcs?: number
+    packages?: number
+    symbols?: number
+    processes?: number
+    issues?: number
+  }
+  truncated: boolean
+  workspace: { name: string; path: string }
+  directories: Directory[]
+  packages: Package[]
+  files: FileEntry[]
+  head?: Head
+  base?: Base
+  branches: Branch[]
+  commits: Commit[]
+  symbols: SymbolEntry[]
+  processes: Process[]
+  issues: Issue[]
+  missing: Missing[]
+  capabilities: string[]
+}
 import {
   EDIT_TOOLS,
   PHASE_CATEGORIES,
@@ -11,13 +131,17 @@ import {
 
 export type { NodeKind, NodeStatus, PhaseCategory, ZoomLevel }
 
-/** A source range in a file. */
-export type Range = {
-  start: { line: number; character: number }
-  end: { line: number; character: number }
-}
-
 export type Confidence = "explicit" | "structural" | "inferred"
+
+/** T30.1 — what a derived fact came from. The snapshot's own source vocabulary. */
+export type SnapshotSource = WorkspaceSnapshot["missing"][number]["source"]
+
+/** T30.3 — every derived node and edge can be attributed and dated. */
+export type Provenance = {
+  source: SnapshotSource
+  asOf?: number
+  confidence: Confidence
+}
 
 export type EdgeKind =
   | "part-of"
@@ -55,6 +179,9 @@ export type GraphNode = {
   minLevel?: ZoomLevel
   clusterOf?: string[]
   /** T30.1 — set only when the node's kind does not decide its domain. */
+  domain?: Domain
+  /** T30.3 — the source and age of a derived fact. */
+  provenance?: Provenance
   data?: Record<string, JsonValue>
 }
 
@@ -69,8 +196,22 @@ export type GraphEdge = {
   data?: { additions: number; deletions: number }
 }
 
+/**
+ * T29.3 — the snapshot facts the model carries for the inspector and the legend. The snapshot
+ * itself never rides on the model: only the revision, the per-source stamps and what is absent.
+ */
+export type GraphSnapshotMeta = {
+  revision: string
+  asOf: WorkspaceSnapshot["asOf"]
+  missing: WorkspaceSnapshot["missing"]
+}
+
 export type GraphViewData = {
   root: string
+  /** T29.3 — the workspace root when a snapshot is present; `root` stays the literal session id. */
+  workspaceRoot?: string
+  /** T29.4 — how old the derived facts are and which sources are absent. */
+  snapshot?: GraphSnapshotMeta
   goal?: string
   nodes: GraphNode[]
   edges: GraphEdge[]

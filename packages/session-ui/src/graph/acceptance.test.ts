@@ -1,19 +1,23 @@
 import { describe, expect, test } from "bun:test"
 import type {
+  FileDiffInfo,
   JsonValue,
   SessionMessageAssistant,
   SessionMessageAssistantTool,
   SessionMessageInfo,
 } from "@opencode/client/promise"
 import { buildGraph } from "./build"
+import { actionsFor } from "./actions"
 import { EQUALIZER_PRESETS } from "./equalizer"
 import {
   buildFixtureGraph,
+  buildFixtureGraphWithSnapshot,
   buildFixtureMessages,
+  buildFixtureSnapshot,
   buildInterruptedFixtureMessages,
 } from "./fixture"
 import { nodesAtLevel } from "./levels"
-import { fileNodeID, turnNodeID, type GraphViewData } from "./model"
+import { fileNodeID, turnNodeID, type GraphViewData, type WorkspaceSnapshot } from "./model"
 import { scopeModel } from "./view"
 import { search } from "./selectors"
 import { DOMAINS, nodeDomain } from "./vocabulary"
@@ -204,19 +208,141 @@ describe("acceptance — session behaviors", () => {
     expect(node(model, model.activeTurn!)?.data?.active).toBe(true)
   })
 })
+
+describe("acceptance — workspace behaviors", () => {
+  test("11. directories union touched and snapshot files with total and touched counts", () => {
+    const model = buildFixtureGraphWithSnapshot()
+    const src = node(model, "dir:src")
+    const packages = node(model, "dir:packages")
+
+    expect(src?.data).toEqual({ path: "src", fileCount: 5, touchedCount: 5 })
+    expect(packages?.data).toEqual({ path: "packages", fileCount: 4, touchedCount: 0 })
+
+    for (const file of nodesOfKind(model, "file")) {
+      const path = file.data?.path as string
+      const slash = path.lastIndexOf("/")
+      if (slash === -1) continue
+      expect(hasEdge(model, "part-of", file.id, `dir:${path.slice(0, slash)}`)).toBe(true)
+    }
+  })
+
+  test("12. packages use pkg ids and carry dependency data", () => {
+    const snapshot = {
+      ...buildFixtureSnapshot(),
+      packages: [
+        {
+          path: "packages/ui/package.json",
+          name: "@project/ui",
+          version: "1.0.0",
+          dependencies: { solid: "1.0.0" },
+          devDependencies: { typescript: "5.0.0" },
+        },
+      ],
+    } satisfies WorkspaceSnapshot
+    const pkg = node(buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, snapshot }), "pkg:packages/ui/package.json")
+
+    expect(pkg?.kind).toBe("package")
+    expect(pkg?.data?.dependencies).toEqual({ solid: "1.0.0" })
+    expect(pkg?.data?.devDependencies).toEqual({ typescript: "5.0.0" })
+  })
+
+  test("13. commits touch files, branches point at commits and the current branch is marked", () => {
+    const model = buildFixtureGraphWithSnapshot()
+
+    expect(hasEdge(model, "touches", "commit:abc123def456", "file:src/auth/session.ts")).toBe(true)
+    expect(hasEdge(model, "points-at", "branch:main", "commit:abc123def456")).toBe(true)
+    expect(node(model, "branch:dev")?.status).toBe("running")
+  })
+
+  test("14. symbols derive from snapshot and hunks, with origin and deleted metadata", () => {
+    const diffByTurn = new Map<string, FileDiffInfo[]>([
+      [
+        "turn:msg_edit_1",
+        [
+          {
+            file: "src/auth/old.ts",
+            patch: `@@ -1,3 +0,0 @@\n-function oldFunction() {\n-  return "old"\n-}`,
+            additions: 0,
+            deletions: 3,
+            status: "deleted",
+          },
+        ],
+      ],
+    ])
+    const model = buildGraph({
+      messages: buildFixtureMessages(),
+      status: { type: "idle" },
+      snapshot: buildFixtureSnapshot(),
+      diffByTurn,
+    })
+    const symbols = nodesOfKind(model, "symbol")
+    const deleted = symbols.find((symbol) => symbol.data?.origin === "hunk:deleted")
+
+    expect(symbols.some((symbol) => symbol.data?.origin === "parser")).toBe(true)
+    expect(deleted?.data?.deleted).toBe(true)
+    expect(new Set(symbols.map((symbol) => symbol.id)).size).toBe(symbols.length)
+  })
+
+  test("15. processes and ports derive with listens-on and a shared port", () => {
+    const snapshot = {
+      ...buildFixtureSnapshot(),
+      processes: [
+        { id: "p1", pid: 1, command: "one", cwd: "/", ports: [3000] },
+        { id: "p2", pid: 1, command: "two", cwd: "/", ports: [3000] },
+      ],
+    } satisfies WorkspaceSnapshot
+    const model = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, snapshot })
+    const ports = nodesOfKind(model, "port")
+
+    expect(nodesOfKind(model, "process").length).toBe(2)
+    expect(ports.length).toBe(1)
+    expect(hasEdge(model, "listens-on", "proc:p1", "port:3000")).toBe(true)
+    expect(hasEdge(model, "listens-on", "proc:p2", "port:3000")).toBe(true)
+  })
+
+  test("16. issues use provider/repo/number ids and files mark config and doc roles", () => {
+    const model = buildFixtureGraphWithSnapshot()
+
+    expect(node(model, "issue:github:project/repo#42")?.data?.number).toBe("42")
+    expect(node(model, "file:packages/ui/package.json")?.data?.config).toBe(true)
+    expect(node(model, "file:README.md")?.data?.doc).toBe(true)
+  })
+
+  test("17. every derived node carries provenance and the model carries snapshot meta", () => {
+    const model = buildFixtureGraphWithSnapshot()
+    const derived = new Set([
+      "directory",
+      "package",
+      "commit",
+      "branch",
+      "symbol",
+      "process",
+      "port",
+      "issue",
+    ])
+
+    for (const item of model.nodes.filter((candidate) => derived.has(candidate.kind)))
+      expect(item.provenance).toBeDefined()
+
+    expect(model.snapshot?.revision).toBe("fixture-r1")
+    expect(model.snapshot?.asOf).toBeDefined()
+    expect(model.snapshot?.missing).toEqual([])
+  })
+})
+
 describe("acceptance — host behaviors", () => {
   test("18. the domain lens drops non-session domains and never drops session", () => {
-    const model = buildFixtureGraph()
+    const model = buildFixtureGraphWithSnapshot()
     const sessionOnly = scopeModel(model, new Set(["session"]))
     const code = scopeModel(model, new Set(["code"]))
 
     expect(node(sessionOnly, "session")).toBeDefined()
     expect(sessionOnly.nodes.every((item) => nodeDomain(item) === "session")).toBe(true)
-    expect(code.nodes.some((item) => item.kind === "symbol")).toBe(false)
-    expect(code.nodes.every((item) => nodeDomain(item) === "session")).toBe(true)
+    expect(code.nodes.some((item) => item.kind === "symbol")).toBe(true)
+    expect(code.nodes.every((item) => nodeDomain(item) === "session" || nodeDomain(item) === "code")).toBe(true)
   })
 
-  test("19. the graph is session-only and derived domains are absent", () => {
+  test("19. without a snapshot the graph is session-only and derived domains are absent", () => {
     const model = buildFixtureGraph()
     const derived = new Set([
       "directory",
@@ -229,6 +355,7 @@ describe("acceptance — host behaviors", () => {
       "issue",
     ])
 
+    expect(model.snapshot).toBeUndefined()
     expect(model.nodes.some((item) => derived.has(item.kind))).toBe(false)
   })
 
@@ -247,10 +374,17 @@ describe("acceptance — host behaviors", () => {
   })
 
   test("21. toolbar, inspector, filesystem, equalizer and search surfaces keep working", () => {
-    const model = buildFixtureGraph()
+    const model = buildFixtureGraphWithSnapshot()
+    const issue = node(model, "issue:github:project/repo#42")!
+    const directory = node(model, "dir:src")!
 
     expect(DOMAINS).toContain("session")
+    expect(DOMAINS).toContain("runtime")
+    expect(actionsFor(issue, model).length).toBeGreaterThan(0)
+    expect(actionsFor(directory, model).some((action) => action.kind === "reveal")).toBe(true)
     expect(EQUALIZER_PRESETS.length).toBeGreaterThan(0)
     expect(search(model, "auth").length).toBeGreaterThan(0)
+    expect(issue.data?.title).toBe("Auth test failures")
+    expect(directory.data?.path).toBe("src")
   })
 })

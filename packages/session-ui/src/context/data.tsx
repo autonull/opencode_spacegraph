@@ -5,6 +5,7 @@ import type {
   ShellOutputInput,
   ShellOutputOutput,
 } from "@opencode/client/promise"
+import type { WorkspaceSnapshot } from "../graph/model"
 import { createSimpleContext } from "@opencode/ui/context"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
 
@@ -49,6 +50,14 @@ export type TurnDiffSource = {
   getAllLoaded: () => Map<string, FileDiffInfo[]>
 }
 
+/** The host's cache of the workspace snapshot. */
+export type SnapshotSource = {
+  /** The snapshot for the given scope, or undefined until it loads. */
+  get: (scope: "session" | "directory" | "workspace", paths?: string) => WorkspaceSnapshot | undefined
+  /** Starts loading the snapshot unless it is cached or already loading. */
+  load: (scope: "session" | "directory" | "workspace", paths?: string) => void
+}
+
 export type NavigateToSessionFn = (sessionID: string) => void
 
 export type SessionHrefFn = (sessionID: string) => string
@@ -64,6 +73,7 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
     shellRunning?: (id: string) => boolean
     shellOutput?: (input: ShellOutputInput) => Promise<ShellOutputOutput>
     turnDiff?: TurnDiffSource
+    snapshot?: SnapshotSource
     onNavigateToSession?: NavigateToSessionFn
     onSessionHref?: SessionHrefFn
     /** Whether `experimental.background_compaction` is on for this location; automatic compactions then show quietly. */
@@ -90,6 +100,7 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
       shellRunning: props.shellRunning,
       shellOutput: props.shellOutput,
       turnDiff: props.turnDiff,
+      snapshot: props.snapshot,
     }
   },
 })

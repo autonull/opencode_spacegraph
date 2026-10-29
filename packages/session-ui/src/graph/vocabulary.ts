@@ -367,6 +367,7 @@ export const CARD_SIZE: readonly [number, number] = [220, 72]
 /** The box a structural chip occupies (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
 
+/** T30.1 — a node's domain, unless the snapshot placed it elsewhere (an untouched file). */
 export function nodeDomain(node: GraphNode): Domain {
-  return DOMAIN_OF_KIND[node.kind]
+  return node.domain ?? DOMAIN_OF_KIND[node.kind]
 }

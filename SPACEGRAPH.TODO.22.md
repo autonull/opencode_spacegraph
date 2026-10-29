@@ -14,7 +14,6 @@
 | **2.10 — capture matrix** | 🟢 **server lifecycle fixed** | Removed unnecessary backend server spawn from `graph:capture` script; Playwright's `webServer` config handles app server. Test 18 (layered) blocked by camera animation (orbit→layered, 0.5s polar animation) — known issue. Test 19 (depth-stack) passes (flaky). Workspace tests 32/33 skipped (API removed in Batch 3B). Core 28 app frames run without SIGINT. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
-| **3C — remove workspace lens (session-ui)** | ✅ done | Deleted WorkspaceSnapshot types, workspace derivers, and all snapshot-dependent code from `packages/session-ui/src/graph/`. Updated `GraphViewData`, `GraphViewMeta`, `GraphNode` (removed `domain`, `provenance`). Removed `GraphFilesystemWindow`, `GraphLegend` snapshot props. Updated `session-graph` plugin and `gui-plugins` Inspector to remove provenance references. All tests pass, typecheck clean. |
 | **4 — T2.2 evidence** | ⏳ pending | Stop rule unchanged. Runs on built-in plugin. |
 
 ---
@@ -103,7 +102,6 @@
 | External `@spacegraphjs/session-model` package | **Post-MVP** | Distribution concern only; built-in works today |
 | TUI renderer | **Post-MVP** | Adds OpenTUI, second renderer, second test matrix |
 | Real 3D / depth / cross-session | **Post-MVP** | Only if T2.2 validates |
-| Workspace lens (snapshot-backed derived nodes) | **Done (3C)** | Removed from session-ui, session-graph, gui-plugins. Session-only graph is the product. Re-add only if T2.2 validates real 3D/depth. |
 
 ---
 
@@ -120,7 +118,6 @@
 | **Depth mode re-render bug** | SpaceGraphRenderer `setDepthFade` called on every `applySceneFade` without value check caused spurious re-renders; adding `_depthFade` guard fixed layered/depth-stack stillness |
 | **Server lifecycle in capture script** | Playwright sends SIGINT to entire process group; background server must be in separate session (`setsid`) or use Playwright's `webServer` config. **FIXED**: removed manual `bun dev serve` spawn from `graph:capture` — the e2e tests use `mockOpenCodeServer` (in-browser mock), and Playwright's `webServer` config runs the app dev server. No external server needed. |
 | **Camera animation in depth mode switch** | Orbit→layered transition triggers 0.5s polar animation; test waits for canvas settle but animation may not complete in headless CI; depth-stack passes (larger tilt change) |
-| **Workspace lens removed cleanly** | `WorkspaceSnapshot` types, `provenance`, `domain` on `GraphNode`, and all derived node kinds (directory, package, commit, branch, symbol, test, process, port, issue) removed from session-ui. `GraphFilesystemWindow`, `GraphLegend` snapshot props, and `Inspector` provenance display removed from session-graph and gui-plugins. Session-only graph is now the single implementation. |
 
 ---
 
@@ -207,14 +204,13 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 | 5 | Capture matrix passes (visual parity) | 2.10 |
 | 6 | Old app graph code deleted; plugin gate green | 3A |
 | 7 | Protocol/server graph code deleted; `generate` runs; re-baselined | 3B |
-| 8 | Workspace lens removed from session-ui/session-graph/gui-plugins; session-only graph | 3C |
-| 9 | T2.2 executed on built-in plugin; `rfc.md` + stop-rule | 4 (deferred) |
+| 8 | T2.2 executed on built-in plugin; `rfc.md` + stop-rule | 4 (deferred) |
 
 ---
 
 ## 📋 IMMEDIATE NEXT ACTIONS
 
-1. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B/3C deletion)
+1. **Re-baseline**: Bundle size, lazy chunks, first paint (after 3B deletion)
 2. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
 3. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle
 4. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI
@@ -229,6 +225,7 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 | **Cross-session graph** | Deferred | SessionStore contract, multi-session fixture | Medium |
 | **Real 3D / depth / DOF** | Deferred | Protocol prefers `layered`/`depth-stack` validation | Medium |
 | **External plugin distribution** | Deferred | `@spacegraphjs/session-model` extraction, Vite preset | Medium |
+| **Workspace lens RPC** | Dropped | `snapshot-cache` degrades gracefully | — |
 | **Inline row host** | Deferred | Maintainer approval for generic timeline slot | Low |
 | **Host-neutral activity adapter** | Deferred | Real second host needs it | Low |
 

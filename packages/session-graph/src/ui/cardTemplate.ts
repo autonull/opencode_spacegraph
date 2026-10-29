@@ -16,6 +16,7 @@ import { text } from "./node-data"
 /** Safe escapeHtml that handles undefined/null. */
 const safeEscapeHtml = (value: string | undefined) => escapeHtml(value ?? "")
 import type { TraceOverlay } from "./overlay"
+import { formatAge, sourceLabel } from "./provenance"
 
 /**
  * RF.3 — the rich activity card. It is a host template (the render model stays neutral): a leading
@@ -430,6 +431,18 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       : 1
     const combinedFade = fade * depthFade
 
+    // T30.3 — provenance badge on far tier: shows the source and age of derived facts
+    const provenanceBadge = tier === "far" && node.provenance
+      ? (() => {
+          const { source, asOf } = node.provenance
+          const age = asOf !== undefined && options.now !== undefined
+            ? formatAge(options.now - asOf)
+            : undefined
+          const label = age ? `${sourceLabel(source)}, ${age}` : sourceLabel(source)
+          return `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;color:${theme.textMuted};padding:1px 4px;border-radius:3px;background:${theme.surfaceMuted}">${safeEscapeHtml(label)}</span>`
+        })()
+      : ""
+
     // Phase/group node enhancements: distinct background, group glyph, member preview data
     const isGroupNode = isPhase
     const groupBg = isGroupNode ? `background:linear-gradient(180deg,${soft}00,${theme.surface});` : `background:${theme.surface};`
@@ -491,6 +504,7 @@ ${contentRow}
 ${detailRow}
 </span>
 ${groupToggle}
+${provenanceBadge}
 ${copyButton}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`
