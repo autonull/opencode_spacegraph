@@ -1,344 +1,261 @@
-# SPACEGRAPH.TODO.23 — Plugin-Only Architecture & Upstream Readiness
+# SPACEGRAPH.TODO.23 — Plugin-Only Delivery (No Fork, No Upstream PR)
 
-> **Supersedes SPACEGRAPH.TODO.22.** The core MVP is complete and verified. This plan moves the entire graph implementation into the Plugin API, contributes the 3 minimal app-side seams upstream, and establishes a clean external plugin distribution workflow. No fork required.
-
----
-
-## 📍 CURRENT STATE (2026-10-29)
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Core graph MVP | ✅ Done | 26/26 capture frames, 49/49 component tests, plugin-graph test passes |
-| Built-in GUI plugin | ✅ Complete | `packages/gui-plugins/src/spacegraph/` — Map, Hybrid, TurnMap, Inspector, Windows, Settings, Commands, Permalinks, Export, custom Transcript |
-| All 8 smoke items | ✅ Verified | Ready for human testing |
-| T2.2 evidence study | ⏸️ Deferred | Stop rule: only if stakeholder demands; runs on built-in plugin when MVP-complete |
-| Typecheck | ✅ Clean | 42/42 packages pass |
+> **Supersedes SPACEGRAPH.TODO.22.** The MVP is complete as a built-in GUI plugin. This plan delivers the same product as a **third-party plugin on stock OpenCode**, with no fork and no upstream PR. The surface seam we built stays as an *optional* reference-build patch, never a dependency.
 
 ---
 
-## 🎯 GOAL: ZERO FORK, PURE PLUGINS
+## 📍 STATE (2026-10-29)
 
-The graph is **already 100% implemented as a plugin** in `packages/gui-plugins/src/spacegraph/`. Only **3 small app-side files** remain fork-specific. Once upstreamed, the entire feature works as a standard built-in plugin and can be distributed externally.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  PLUGIN-ONLY ARCHITECTURE                                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌─────────────────────┐    ┌─────────────────────────────┐   │
-│   │  @opencode/plugin   │◄───│  gui-plugins/src/spacegraph/  │   │
-│   │  (SDK + Registries) │    │  • MapSurface                 │   │
-│   │  • SessionSurface   │    │  • HybridSurface              │   │
-│   │  • ctx.surfaces     │    │  • TurnMapLayer               │   │
-│   │  • SessionLayer     │    │  • SidePanel (Inspector)      │   │
-│   │  • SettingsPage     │    │  • Settings                   │   │
-│   │  • Panel/Command    │    │  • Commands + Keybinds        │   │
-│   │  • Store.session    │    │  • Permalinks, Export         │   │
-│   └─────────┬───────────┘    │  • Custom Transcript          │   │
-│             │                └─────────────────────────────┘   │
-│             │                            │                      │
-│             │          ┌─────────────────┴─────────────────┐   │
-│             │          │     session-graph (library)        │   │
-│             │          │  • GraphView, Toolbar, Inspector  │   │
-│             │          │  • Windows, Breadcrumbs, Search   │   │
-│             │          │  • Minimap, A11y                  │   │
-│             │          │  • Imports @spacegraphjs/renderer │   │
-│             │          └──────────────────────────────────┘   │
-│             │                            │                      │
-│             ▼                            ▼                      │
-│   ┌─────────────────────────────────────────────────────┐      │
-│   │  APP SIDE (3 files to upstream)                     │      │
-│   │  • packages/app/src/runtime/plugin/surfaces.ts      │      │
-│   │  • packages/app/src/session/surface.tsx             │      │
-│   │  • packages/app/src/session/screen.tsx (integration)│      │
-│   └─────────────────────────────────────────────────────┘      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Item | Status |
+|------|--------|
+| Graph MVP as built-in plugin (`gui-plugins/src/spacegraph`) | ✅ 26/26 capture frames, 49/49 component tests, plugin-graph matrix green |
+| `bun run check` (42 packages) | ✅ clean |
+| Human-testing smoke checklist (8 items) | ✅ done |
+| T2.2 evidence | ⏸️ deferred behind stop rule |
 
 ---
 
-## 🗂️ REMAINING WORK TRACKS
+## 🧭 DECISION: NO UPSTREAM PR
 
-### Track A: Upstream the 3 App Seams (Blocker for Zero Fork)
+**Question:** do we need an upstream PR for `SessionSurface` / `ctx.surfaces` / `SessionSurfaceHost`?
 
-| # | File | Purpose | Effort | Risk |
-|---|------|---------|--------|------|
-| A1 | `packages/app/src/runtime/plugin/surfaces.ts` | Surface ID persistence, ordering, resolution helpers | 15 min | None — pure helpers |
-| A2 | `packages/app/src/session/surface.tsx` | `SessionSurfaceHost` — surface switching, transcript preservation, composer inset | 30 min | Low — self-contained component |
-| A3 | `packages/app/src/session/screen.tsx` | Integration point — uses `SessionSurfaceHost` instead of old graph panel | 15 min | Low — delete old branch |
+**Answer: No.** Verified against `upstream/dev` @ `6007274795` (2026-10-29):
 
-**Deliverable:** PR to upstream `dev` with these 3 files. Review packet in `docs/spacegraph/upstream-review.md`.
+| Capability the plugin needs | Exists upstream today? |
+|---|---|
+| Registry contributions (`Panel`, `Command`, `MenuItem`, `SettingsPage`, `Slot`, `Style`) | ✅ |
+| `ctx.dialogs.open(render, { replace })` — arbitrary JSX above the app, plugin context | ✅ |
+| `Panel.region: "side"` + `Panel.wide` + `Panel.mobile` (`tab`/`menu`/`drawer`) | ✅ |
+| `PanelTab.group`, `transient`, `fallback`, `file`, `hidden` | ✅ |
+| `Store.global` / `Store.session`, `ctx.storage`, `ctx.layout`, `ctx.sessions`, `ctx.screen` | ✅ |
+| `ctx.system.copy` (permalinks), `ctx.ui.*` (Icon, Button, Menu, Switch, Dialog frame) | ✅ |
+| `SessionSurface` (full-body session view) | ❌ **ours only** |
+| `SessionLayer` (overlay above the body) | ❌ **ours only** |
+| `ctx.surfaces` (select/list surfaces) | ❌ **ours only** |
 
-### Track B: External Plugin Distribution
+So exactly one product capability has no stock equivalent: **taking over the session body**. Everything else the plugin does maps onto shipped APIs. The body takeover is a *nice UX*, not a requirement — and it is replaceable with dialogs and a wide side panel.
 
-| # | Task | Description | Effort |
-|---|------|-------------|--------|
-| B1 | **Extract `@opencode/plugin-spacegraph`** | Move `gui-plugins/src/spacegraph/` to a standalone plugin package (same code, different entry) | 2 hrs |
-| B2 | **Vite preset for external plugins** | Create `@opencode/plugin-vite-preset` or document manual setup so external plugins get HMR, chunking, i18n | 4 hrs |
-| B3 | **Publish to npm** | `npm publish @opencode/plugin-spacegraph` (or GitHub Packages) with proper peer deps | 1 hr |
-| B4 | **Extension marketplace entry** | Add to Extensions › Plugins with install button, screenshots, changelog | 1 hr |
-| B5 | **Delete built-in registration** | Remove `spacegraph` from `gui-plugins/src/{main,renderer}.ts` — external plugin takes over | 10 min |
-
-**Key insight:** The built-in plugin **is** the external plugin. Two registration lines in `gui-plugins/src/{main,renderer}.ts` is the entire fork cost. Deleting them makes the external package the only source.
-
-### Track C: Clean Development Workflow
-
-| # | Task | Description | Effort |
-|---|------|-------------|--------|
-| C1 | **`bun run dev:spacegraph`** | Single command: starts app + Storybook + plugin HMR (no mock server needed for UI work) | 1 hr |
-| C2 | **Component test isolation** | `mountSpacegraphSurface(id)` fixture — loads only spacegraph plugin, not full host | 2 hrs |
-| C3 | **Chunk-level preloading** | Separate `onIdle` preloads for Inspector, Windows, Settings chunks | 30 min |
-| C4 | **Plugin-scoped keybind discovery** | Add `suggested: true` to commands for palette discoverability | 10 min |
-| C5 | **HMR for graph UI** | Extract `GraphView`, `Inspector`, `Windows` to `@opencode/spacegraph-ui` (Vite + HMR), import from plugin | 4 hrs |
-
-### Track D: Polish & Harden (Post-Human Testing)
-
-| # | Task | Description | Trigger |
-|---|------|-------------|---------|
-| D1 | **Settings page e2e test** | Verify Settings > Session > Session Map renders and persists | Human feedback |
-| D2 | **Export file download test** | Verify SVG/JSON/HTML produce valid downloads | Human feedback |
-| D3 | **Mobile hybrid arrangements** | Test Stacked/Side/Floating on narrow viewports | Human feedback |
-| D4 | **Permalink cold-load test** | `#graph:layout:node` from fresh tab | Human feedback |
-| D5 | **Accessibility audit** | Screen reader, keyboard, reduced motion, high contrast | Human feedback |
-
-### Track E: T2.2 Evidence Study (Optional, Stop-Rule Governed)
-
-| # | Task | Description |
-|---|------|-------------|
-| E1 | **Recruit n ≥ 5** | Counterbalanced, canonical fixture, 5 investigative tasks |
-| E2 | **Run protocol** | Measure success, time, wrong turns, preference (1–7), quotes |
-| E3 | **Publish RFC** | Honest result — if graph doesn't beat transcript, stop feature work |
-| E4 | **Decision** | Proceed with upstream PRs only if evidence positive |
+**Consequence:** upstreaming is optional and unnecessary. We do not wait on review, and no track depends on `anomalyco/opencode` accepting anything.
 
 ---
 
-## 📋 PRIORITIZED EXECUTION ORDER
+## 🚦 TWO DELIVERY TIERS
 
-```
-WEEK 1 (Upstream & Distribute)
-├── A1, A2, A3  →  PR to upstream dev (3 files, ~1 hour total)
-├── B1          →  Extract @opencode/plugin-spacegraph package
-├── B2          →  Document Vite preset (or create minimal one)
-├── B3          →  Publish to npm/GitHub Packages
-├── B4          →  Marketplace entry
-└── B5          →  Delete built-in registration (gui-plugins)
+| | **Tier 1 — Stock plugin** (the product) | **Tier 2 — Reference build** (optional lab) |
+|---|---|---|
+| Runs on | Released OpenCode, unmodified | Our fork (this repo) with a 3-file patch |
+| Session body | Host transcript (unchanged) | Map / Hybrid as first-class surfaces |
+| Map, full | `ctx.dialogs.open` full-bleed render | `SessionSurface` + `contexts.surfaces` |
+| Hybrid | Wide side panel map beside transcript | `HybridSurface` (3 arrangements) |
+| Turn map | Dialog over the transcript (scroll preserved) | `SessionLayer` on the Map surface |
+| Custom Transcript component | Dropped (host owns the transcript) | Kept |
+| Composer inset | N/A (dialogs overlay) | `composerInset` reserves `timeline.inset()` |
+| Distribution | `npm i` + `plugin: ["@autonull/opencode-plugin-spacegraph"]` | `git clone` + `bun run dev` |
+| Ships | **Now** | Whenever, or never |
 
-WEEK 2 (DevEx & Polish)
-├── C1          →  bun run dev:spacegraph
-├── C2          →  mountSpacegraphSurface fixture
-├── C3          →  Chunk preloading
-├── C4          →  Suggested keybinds
-└── D1–D5       →  As human testing surfaces issues
-
-WEEK 3+ (Optional)
-├── C5          →  HMR extraction (if dev velocity demands)
-└── E1–E4       →  T2.2 only if stakeholder requests
-```
+Tier 1 is the deliverable. Tier 2 exists so the capture matrix, e2e keepers and the seam patch stay alive as evidence and as an upgrade path if upstream ever adds surfaces.
 
 ---
 
-## 🏗️ PLUGIN ARCHITECTURE DETAILS
+## 🗺️ TIER 1 CAPABILITY MAPPING
 
-### Plugin Structure (`@opencode/plugin-spacegraph`)
+| Feature (today) | Built-in implementation | Stock-plugin implementation |
+|---|---|---|
+| Map surface (`spacegraph.map`) | `SessionSurface` | `Panel(region: "side", wide: true)` tab **Session Map** + `ctx.dialogs.open` **Full map** |
+| Hybrid surface (`spacegraph.hybrid`) | `SessionSurface` + arrangements | Wide side panel beside the transcript (side-by-side is the stock equivalent); stacked/floating become layout options inside the panel |
+| Turn map layer | `SessionLayer` | `ctx.dialogs.open` scoped turn subgraph; transcript keeps its mount and scroll |
+| Side panel (compact overview) | `Panel(region: "side")` | unchanged |
+| Inspector | inside surface | inside panel / dialog |
+| Windows (draggable inspectors) | plugin-owned | unchanged (plugin-owned overlays) |
+| Custom Transcript | plugin component | dropped — use host transcript + `TranscriptScreen.reveal` |
+| Permalinks `#graph:layout:node` | plugin hash + `surfaces.select` | plugin hash + open Full-map dialog, then frame node |
+| Commands + keybinds | `Command` | unchanged (`mod+shift+m` → panel, `mod+shift+f` → full map dialog…) |
+| Settings | `SettingsPage` | unchanged |
+| Export SVG/JSON/HTML | model + `exportGraph` | unchanged |
+| Per-session state | `Store.session` | unchanged |
+
+**Spike first (half a day):** confirm a dialog render can fill the viewport (no Dialog frame, own scroll container, Esc + focus trap as the host behaves) and that a `wide: true` side panel holds a canvas without reframing. If the dialog cannot go full-bleed, fall back to "Full map" as a maximized panel tab; the rest of Tier 1 is unaffected.
+
+---
+
+## 🏗️ REPOSITORY PLAN
+
+Three repos, clean ownership. Upstream is read-only to us.
+
+| Repo | Role | Ships |
+|---|---|---|
+| **`autonull/opencode-plugin-spacegraph`** (new) | The plugin. `Plugin.define`, `renderer.tsx`, surfaces/panels/dialogs, model, i18n, Vite preset config. Own CI, own release. | npm package exposing `./gui-experimental` |
+| **`autonull/opencode_spacegraph`** (this repo) | Reference host: seam patch, capture matrix, e2e keepers, evidence. Not the deliverable. | nothing (private) |
+| **`autonull/spacegraphjs`** (exists) | Renderer contract, adapters, layout, a11y, SVG export | published packages |
+| `anomalyco/opencode` | Upstream | untouched |
+
+### Why a separate plugin repo (and not publish from this fork)
+
+- This fork is a *host* (1031 commits over upstream); publishing from it makes the plugin look like fork output and drags fork-only deps (`@opencode/app`, desktop) into release checks.
+- The plugin only needs `@opencode/plugin` (peer), `@opencode/session-ui` (peer), and `spacegraphjs` packages. A small repo proves that.
+- Release cadence: plugin tags move at plugin speed; the fork syncs upstream on its own schedule.
+- The fork stays useful: capture matrix and e2e keepers validate the reference build, and the seam patch is versioned there.
+
+### Plugin repo layout
 
 ```
-plugin-spacegraph/
-├── package.json                    # name, peerDependencies: @opencode/plugin, @opencode/session-ui, spacegraphjs
+opencode-plugin-spacegraph/
+├── package.json            name, peerDeps, exports: { ".": dist/index.js, "./gui-experimental": dist/plugin.js }
+├── tsconfig.json
+├── vite.config.ts          @opencode/plugin/gui/vite preset (solid, lib build, externals)
 ├── src/
-│   ├── index.ts                    # Plugin.define({ stores, i18n, contracts? })
-│   ├── contract.ts                 # (none needed — uses SDK registries only)
-│   ├── renderer.tsx                # Plugin.Setup — contributes surfaces, commands, panels, settings
-│   ├── model.ts                    # createSpacegraph(ctx) — session store + prefs
-│   ├── settings.tsx                # SpacegraphSettings component
-│   ├── panel.tsx                   # Side panel (SessionMapPanel)
-│   ├── map-surface.tsx             # SessionSurface: MapSurface
-│   ├── hybrid-surface.tsx          # SessionSurface: HybridSurface
-│   ├── turn-map-layer.tsx          # SessionLayer: TurnMapLayer
-│   ├── i18n/
-│   │   └── en.ts                   # All copy
-│   └── lazy/                       # Heavy UI behind lazy()
-│       ├── SpacegraphPanel.tsx
-│       ├── SpacegraphSettings.tsx
-│       ├── Inspector.tsx
-│       └── Windows.tsx
-├── vite.config.ts                  # Extends @opencode/plugin-vite-preset
-└── README.md                       # Install, configure, develop
+│   ├── index.ts            Plugin.define({ stores, i18n })
+│   ├── renderer.tsx        contributions: Panel, Dialog entry, Commands, SettingsPage, Style
+│   ├── model.ts            createSpacegraph(ctx): prefs + per-session store
+│   ├── map/                MapView (used by panel and full-map dialog)
+│   ├── hybrid/             arrangements inside the panel
+│   ├── turn-map/           scoped dialog
+│   ├── inspector/ windows/ lazy chunks
+│   ├── permalink.ts        hash parse + apply
+│   ├── export.ts           exportGraph wiring
+│   └── i18n/en.ts
+├── test/                   unit (*.test.ts) + a minimal mount harness for components
+└── README.md               install, keybinds, screenshots, limitations
 ```
 
-### Vite Preset for External Plugins
-
-```ts
-// @opencode/plugin-vite-preset
-export default defineConfig({
-  plugins: [solid()],
-  build: {
-    lib: { entry: 'src/renderer.tsx', formats: ['es'], fileName: 'plugin' },
-    rollupOptions: {
-      external: ['solid-js', '@opencode/plugin/gui', '@opencode/session-ui', 'spacegraphjs'],
-      output: { globals: { 'solid-js': 'SolidJS' } }
-    }
-  },
-  resolve: {
-    alias: { '@opencode/plugin/gui': '/path/to/plugin/src/gui' } // for HMR in dev
-  }
-})
-```
-
-### Development Workflow (Post-Extraction)
+### Dev loop (no fork, no sibling checkout)
 
 ```bash
-# In opencode repo (for core dev)
-bun run dev:spacegraph          # Starts app + plugin HMR
+# plugin repo
+bun run dev            # Vite build --watch, emits dist/plugin.js
 
-# In plugin-spacegraph repo (for plugin dev)
-bun run dev                     # Vite dev server with HMR
-bun run build                   # Production bundle
-npm publish                     # Release
+# stock opencode, pointed at the working tree
+opencode.json:
+{ "plugin": ["/abs/path/opencode-plugin-spacegraph"] }   # or `bun link` + package name
+
+bun run dev:stock      # runs released opencode with a fixture session
+```
+
+HMR: the `@opencode/plugin/gui/vite` preset already externalizes the SDK and emits the single `./gui-experimental` bundle the host evaluates; a rebuild triggers the host's plugin revision change.
+
+---
+
+## 🗂️ WORK TRACKS
+
+### Track A — Stock-API port (Tier 1) — *the product*
+
+| # | Task | Notes | Effort |
+|---|------|-------|--------|
+| A1 | Spike: full-bleed dialog + wide panel canvas | Decide dialog vs maximized panel for Full map | 0.5 d |
+| A2 | Panel contribution: map overview + inspector | Port `panel.tsx` + inspector; no surface props | 1 d |
+| A3 | Full map dialog: `GraphView` at full size | Reuse `@opencode/session-graph` `GraphView`; own toolbar | 1 d |
+| A4 | Hybrid-in-panel: arrangement switch (side/stacked/floating) | CSS-only inside the panel; no host changes | 1 d |
+| A5 | Turn map dialog | Scoped subgraph; transcript untouched beneath | 0.5 d |
+| A6 | Permalinks via hash + dialog | Replace `surfaces.select` with dialog open + frame | 0.5 d |
+| A7 | Commands/keybinds without `ctx.surfaces` | `mod+shift+m` panel, `mod+shift+g` full map, `mod+t` turn map | 0.5 d |
+| A8 | Settings page + per-session store | unchanged from built-in | 0.5 d |
+| A9 | Export wiring | unchanged | 0.25 d |
+| A10 | Transcript bridge | `screen.transcript.reveal` from panel/full-map selection | 0.5 d |
+| A11 | i18n + a11y pass + mobile (`Panel.mobile` drawer) | | 1 d |
+
+### Track B — Plugin repository & release
+
+| # | Task | Effort |
+|---|------|--------|
+| B1 | Create `autonull/opencode-plugin-spacegraph`, move `src/spacegraph` | 1 h |
+| B2 | Build config from `@opencode/plugin/gui/vite`; externals: `solid-js`, `@opencode/plugin`, `@opencode/session-ui`, `spacegraphjs`, `three` | 1 h |
+| B3 | CI: typecheck, lint, unit tests, bundle size budget | 2 h |
+| B4 | Publish `@autonull/opencode-plugin-spacegraph` (npm), verify install on stock web + desktop | 2 h |
+| B5 | README: install, keybinds, screenshots, honest limitations, "map is a dialog, transcript is the body" | 1 h |
+| B6 | Remove `spacegraph` from `gui-plugins/src/{main,renderer}.ts` in the fork once the plugin ships | 10 min |
+
+### Track C — Reference build & optional seam (Tier 2)
+
+| # | Task | Effort |
+|---|------|--------|
+| C1 | Freeze the 3 seam files as `patches/0001-session-surfaces.patch` (`git format-patch` of `runtime/plugin/surfaces.ts`, `session/surface.tsx`, `session/screen.tsx`) | 1 h |
+| C2 | `bun run patch:apply` / `patch:revert` scripts + docs so the fork is reproducible | 1 h |
+| C3 | Keep capture matrix + e2e keepers green on the reference build | ongoing |
+| C4 | If upstream ever adds a surface registry, delete the patch (no user-visible change) | — |
+
+### Track D — DevEx
+
+| # | Task | Effort |
+|---|------|--------|
+| D1 | `mountSpacegraph()` harness in the plugin repo (only the plugin, not the host) | 2 h |
+| D2 | Chunk preloading: `onIdle` for Inspector, Windows, Settings | 30 min |
+| D3 | `suggested: true` keybinds for palette discovery | 10 min |
+| D4 | Optional `@autonull/spacegraph-ui` extraction for HMR of GraphView/Inspector | 4 h (defer) |
+
+### Track E — Polish & human testing
+
+| # | Task | Trigger |
+|---|------|---------|
+| E1 | Fix human-testing issues | feedback |
+| E2 | Mobile drawer for the map panel; narrow-screen behaviour | feedback |
+| E3 | Screen-reader + reduced-motion audit | feedback |
+
+### Track F — T2.2 (optional, stop-rule governed)
+
+n ≥ 5, counterbalanced, canonical fixture, five tasks. Publish honestly; stop feature work on a negative result.
+
+---
+
+## 📅 ORDER
+
+```
+Week 1  A1–A3 (spike + map in panel + full-map dialog) → demoable Tier 1
+Week 2  A4–A11 → feature parity without the seam
+Week 3  B1–B6 → plugin repo, CI, npm release, delete built-in registration
+Week 4  C1–C2 (seam patch archived), D1–D3, E1–E3 as feedback lands
+Later   F (T2.2) only if requested
 ```
 
 ---
 
-## 🔄 UPSTREAM CONTRIBUTION STRATEGY
-
-### The 3-File PR (Minimal, Reviewable)
-
-**File 1:** `packages/app/src/runtime/plugin/surfaces.ts` (35 lines)
-- Pure helpers: `sessionSurfaceID`, `selectSessionSurface`, `orderedSessionSurfaces`, `resolveSessionSurface`
-- No UI, no side effects, fully tested in `surfaces.test.ts`
-
-**File 2:** `packages/app/src/session/surface.tsx` (95 lines)
-- `SessionSurfaceHost` component
-- Props: `{ session, screen, transcript, children? }`
-- Handles: surface list from `ctx.add(SessionSurface)`, selection persistence, composer inset (`timeline.inset()`), render prop passes stable `transcript` element
-- Tests: `surface.test.tsx` (component tests)
-
-**File 3:** `packages/app/src/session/screen.tsx` (integration)
-- Replace `SessionGraphView`/`SessionGraphPanel` branch with `<SessionSurfaceHost />`
-- Delete `settings.experimental.sessionGraph` feature flag logic
-- ~30 lines changed
-
-### Why This Gets Accepted
-
-| Concern | Mitigation |
-|---------|------------|
-| "Too much fork" | 3 files, <150 lines total, generic surface infrastructure (not graph-specific) |
-| "Maintenance burden" | Plugin owns all graph code; app only hosts surfaces |
-| "Feature flag" | No flag — surfaces register themselves; disabled = not loaded |
-| "Breaking changes" | Additive only; `transcript` surface remains default |
-| "Review overhead" | Self-contained PR with tests, review guide in `docs/spacegraph/upstream-review.md` |
-
----
-
-## 📦 EXTERNAL PLUGIN PUBLISHING CHECKLIST
-
-- [ ] **Peer dependencies** declared correctly:
-  ```json
-  "peerDependencies": {
-    "@opencode/plugin": "workspace:*",
-    "@opencode/session-ui": "workspace:*",
-    "spacegraphjs": "workspace:*",
-    "@spacegraphjs/renderer": "workspace:*",
-    "@spacegraphjs/adapter": "workspace:*",
-    "@spacegraphjs/spacegraph-renderer": "workspace:*",
-    "@spacegraphjs/cytoscape-renderer": "workspace:*",
-    "@spacegraphjs/svg-renderer": "workspace:*"
-  }
-  ```
-- [ ] **No `@opencode/app`, `@opencode/desktop`, `@/` imports** (lint enforces)
-- [ ] **Icon names** from generated `IconName` type (`bun run generate` in `packages/plugin`)
-- [ ] **i18n** — English only in plugin; translations land separately
-- [ ] **Store keys** namespaced: `plugin.spacegraph.<key>`
-- [ ] **Command IDs** prefixed: `spacegraph.map`, `spacegraph.hybrid`, etc.
-- [ ] **Panel keys** use `BuiltinPanel.legacy` for migration if renaming
-- [ ] **Settings page** at `Settings > Session > Session Map`
-- [ ] **README** with install, config, screenshots, keybinds
-
----
-
-## 🛡️ RISKS & MITIGATIONS
+## ⚠️ RISKS
 
 | Risk | Mitigation |
 |------|------------|
-| Upstream rejects surface PR | Keep as 3-file fork seam; plugin still works built-in |
-| External plugin API gaps | Plugin uses only stable SDK (`SessionSurface`, `ctx.surfaces`, `Panel`, `Command`, `SettingsPage`, `Store.session`) — all shipping in v2 |
-| HMR not working for external plugins | Vite preset documents alias + `server.fs.allow`; fallback: `bun run dev:live` in opencode repo |
-| Bundle size | Graph chunk is 282 KB gzipped (lazy); Inspector/Windows separate chunks |
-| T2.2 negative result | Stop rule respected — library remains publishable, plugin stays opt-in |
+| Dialog cannot go full-bleed | Fallback: maximized panel tab; spike decides in half a day (A1) |
+| A side panel is too narrow for the map | `Panel.wide` + mobile drawer; full map lives in the dialog, not the panel |
+| Losing the custom Transcript component hurts hybrid measurements | Host transcript + `reveal` covers the bridge; revisit only if measured |
+| Plugin bundle can't resolve `@opencode/session-ui` | It is a published peer; verify in B4 on web + desktop |
+| Upstream changes the GUI SDK | We track `@opencode/plugin` peer range; the fork's e2e keepers catch drift early |
+| Distribution friction (config-only install) | Document both `plugin: [...]` and `.opencode/plugins/` paths; marketplace entry later |
 
 ---
 
-## 📝 MIGRATION NOTES (For Upstream Reviewers)
-
-### What Changes for Users
-
-| Before (Fork) | After (Plugin) |
-|---------------|----------------|
-| `settings.experimental.sessionGraph` flag | No flag — plugin loads automatically |
-| Header toggle button | Command palette (`⌘⇧M` Map, `⌘⇧H` Hybrid, `⌘⇧T` Transcript) |
-| Layout in global settings | Per-session in Session Map settings page |
-| Permalinks in `graph-permalink.ts` | Plugin owns `#graph:` hash |
-| Side panel in `SessionGraphPane` | Plugin `Panel` with `region: "side"`, mobile drawer |
-
-### What Stays the Same
-
-- Transcript remains default surface
-- Session data model unchanged (no protocol/server changes)
-- `session-ui/src/graph` pure model unchanged
-- `session-graph` host package unchanged (imports renderer contract only)
-
----
-
-## ✅ DEFINITION OF DONE (PLUGIN-ONLY)
+## ✅ DEFINITION OF DONE
 
 | # | Criterion | Track |
 |---|-----------|-------|
-| 1 | 3 app seams PR'd to upstream `dev` | A |
-| 2 | `@opencode/plugin-spacegraph` published to npm | B |
-| 3 | Extension marketplace entry live | B |
-| 4 | Built-in registration deleted from `gui-plugins` | B |
-| 5 | `bun run dev:spacegraph` works for core dev | C |
-| 6 | `mountSpacegraphSurface` fixture for component tests | C |
-| 7 | All 8 smoke items pass on external plugin | B + D |
-| 8 | Human testing complete, issues addressed | D |
-| 9 | T2.2 executed (if stakeholder requests) | E |
+| 1 | Plugin runs on stock OpenCode (web + desktop) with no fork | A, B |
+| 2 | Map (panel + full dialog), turn map, permalink, export, settings, keybinds work | A |
+| 3 | Transcript bridge works (selection reveals message, scroll preserved) | A10 |
+| 4 | Published npm package; install documented | B |
+| 5 | Built-in registration deleted from the fork | B6 |
+| 6 | Seam archived as an applyable patch; reference build still green | C |
+| 7 | Human testing passed; feedback addressed | E |
+| 8 | **No upstream PR filed, none required** | — |
 
 ---
 
-## 📅 TIMELINE
+## 📌 IMMEDIATE NEXT ACTIONS
 
-| Phase | Target | Notes |
-|-------|--------|-------|
-| **Upstream PR + External Package** | **Week 1** | Tracks A + B (can parallelize) |
-| **DevEx + Polish** | **Week 2** | Tracks C + D |
-| **T2.2 (Optional)** | **Week 3+** | Track E — stop rule governs |
-
-**Total to zero-fork: ~1 week** (vs months previously estimated).
+1. Spike A1 (dialog full-bleed vs maximized panel) — decides the Full-map home.
+2. Create the plugin repo (B1) and move `src/spacegraph` into it unchanged, then port A2/A3.
+3. Archive the seam patch (C1) so this fork becomes reproducible before anything is deleted.
+4. Publish, then delete the built-in registration (B5, B6).
 
 ---
 
-## 🎯 WHY PLUGIN-ONLY IS SUPERIOR
+## 🔑 ARCHITECTURAL PRINCIPLES (locked)
 
-| Dimension | Fork Approach | Plugin Approach |
-|-----------|---------------|-----------------|
-| **Upstream review** | Large, mixed diff | 3-file seam PR + external package |
-| **Maintenance** | Fork sync burden | Plugin updates independently |
-| **Distribution** | Fork clone only | `npm install @opencode/plugin-spacegraph` |
-| **Dogfooding** | Must use fork | Works on released OpenCode |
-| **Third-party plugins** | Can't reuse graph | Other plugins can `ctx.use(SpacegraphIpc)` |
-| **Experimentation** | Blocks mainline | Plugin can iterate freely |
-| **Rollback** | Git revert | Disable plugin / uninstall |
-
----
-
-## 📌 NEXT IMMEDIATE ACTIONS
-
-1. **Create upstream PR** with the 3 app files (`surfaces.ts`, `surface.tsx`, `screen.tsx` integration)
-2. **Extract `plugin-spacegraph`** from `gui-plugins/src/spacegraph/`
-3. **Add Vite preset documentation** (or minimal preset package)
-4. **Publish and announce** external plugin
-5. **Delete built-in registration** — the fork seam is gone
+| # | Decision | Rationale |
+|---|----------|-----------|
+| P1 | The plugin depends only on published SDK + library packages | Proves no-fork; keeps CI honest |
+| P2 | The host transcript is never replaced in Tier 1 | Removes the only capability the stock API lacks |
+| P3 | Full map lives in a dialog; the panel is the always-available surface | Both exist upstream; no seam |
+| P4 | The seam patch is reference-build-only, applied by script | Evidence and upgrade path, never a dependency |
+| P5 | The fork is an integration lab, not a product | Capture matrix + e2e keepers stay useful without shipping |
+| P6 | One plugin repository, one npm package, one install line | Simplest distribution that works today |
 
 ---
 
-*This plan replaces the fork-centric TODO.21/22. The graph is a plugin; the fork was only 3 app files. Upstream them, publish the plugin, done.*
+*The fork was three app files of hosting code. We do not need them upstream, do not need them to ship, and do not wait on anyone to accept them. The plugin is the product.*
