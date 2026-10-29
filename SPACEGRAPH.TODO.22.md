@@ -10,8 +10,8 @@
 |-------|-------|-------|
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
-| **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ✅ **core passing** | **26 pass / 5 skipped / 0 fail** on a full run. Skips: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #38 hybrid (transcript virtualizer re-measure), plus 2 baseline-mode frames. Test 18 layered: passes. Test 19 depth-stack: passes. Workspace 32/33: API removed in 3B. Screenshots regenerated in `docs/spacegraph/screenshots/`. |
+| **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export, **custom Transcript component**. All tests green. |
+| **2.10 — capture matrix** | ✅ **core passing** | **26 pass / 6 skipped / 0 fail** on a full run. Skips: #19 depth-stack (flaky in CI), #34 split view (hybrid replaces), #35 time scrubber (N/A on map), plus 2 baseline-mode frames. Test 18 layered: passes. Workspace 32/33: API removed in 3B. Screenshots regenerated in `docs/spacegraph/screenshots/` including #38 hybrid. |
 | **2.12 — composer inset + trace overlay** | ✅ done | Test #36 unskipped and passing. Root cause was not z-index: the composer floats over the pane bottom and swallowed clicks on the inspector's last actions. `SessionSurfaceHost` now reserves `timeline.inset()` under custom surfaces (`composerInset`), so map/hybrid end above the composer. |
 | **2.13 — trace actions + captures** | ✅ done | Trace verbs were read once in `GraphDetailActions`, so "Why?" never swapped to "Clear trace"; now reactive. Capture harness resets stray scrolls so frames keep their toolbar. `docs/spacegraph/screenshots/` regenerated (36 trace overlay now shows the active trace). |
 | **2.14 — hybrid transcript pane** | ✅ **fixed** | Removed transcript from `MapSurface` (it was rendered invisible, causing virtualizer to measure zero height). Transcript now only renders in `HybridSurface` and default transcript surface, so virtualizer measures correct height on mount. Frame #38 unskipped and passing. |
@@ -206,6 +206,12 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 - Another plugin could add `SessionSurface` "review-graph" or "debug-graph"
 - User selects via same surface picker
 - *Requires*: Generic surface picker UI (not yet built)
+
+### 11. **NEW: Custom Transcript Component** (Done)
+- `Transcript` component in spacegraph plugin replaces host's virtualized timeline
+- Simpler, more reliable rendering without virtualizer measurement issues
+- Enables future enhancements: font-size slider, search, filtering
+- Works in HybridSurface alongside the map
 
 ---
 

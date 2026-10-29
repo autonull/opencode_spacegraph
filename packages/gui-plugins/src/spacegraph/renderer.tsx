@@ -126,12 +126,12 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     id: `${ctx.id}.hybrid`,
     title: ctx.t("surface.hybrid"),
     order: 20,
-    render: ({ session, screen, transcript }) => (
+    render: ({ session, screen }) => (
       <HybridSurface
         model={model}
         session={session}
         screen={screen}
-        transcript={transcript}
+        t={ctx.t}
         onSplitView={() => ctx.surfaces.select(`${ctx.id}.map`, session)}
       />
     ),
