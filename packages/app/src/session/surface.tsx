@@ -1,4 +1,4 @@
-import { For, createEffect, createMemo, on, onCleanup, type Accessor, type JSX } from "solid-js"
+import { For, Show, createEffect, createMemo, on, onCleanup, type Accessor, type JSX } from "solid-js"
 import { SessionSurface, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
 import { useLanguage } from "@/runtime/i18n/language"
 import { usePluginHost } from "@/runtime/plugin/host"
@@ -18,6 +18,8 @@ export function SessionSurfaceHost(props: {
   screen: SessionScreen
   transcript: (active: Accessor<boolean>) => JSX.Element
   default: () => JSX.Element
+  /** The room the composer takes at the bottom; the transcript reserves it itself, a custom surface needs it here. */
+  composerInset?: Accessor<number>
 }) {
   const host = usePluginHost()
   const language = useLanguage()
@@ -79,7 +81,12 @@ export function SessionSurfaceHost(props: {
 
   return (
     <>
-      {content()}
+      <Show when={custom()} fallback={content()}>
+        {/* The composer floats over the pane's bottom; a custom surface ends above it so its own controls stay clickable. */}
+        <div class="flex h-full min-h-0 flex-col" style={{ "padding-bottom": `${props.composerInset?.() ?? 0}px` }}>
+          {content()}
+        </div>
+      </Show>
       <For each={custom()?.layers ?? []}>
         {(layer) => layer.render({ session: props.session, screen: props.screen, surface: custom() ?? surface() })}
       </For>

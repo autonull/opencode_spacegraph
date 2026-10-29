@@ -681,7 +681,6 @@ test("35 graph scrubber", async ({ page }) => {
 
 test("36 graph trace overlay", async ({ page }) => {
   test.skip(mode === "baseline", "baseline captures the transcript only")
-  test.skip(true, "click intercepted by composer editor; trace overlay needs z-index fix")
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)

@@ -11,7 +11,8 @@
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ✅ **core passing** | **27/28 frames pass** (core parity + ribbon/matrix). 1 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #36 trace overlay (click bug). Test 18 layered: passes. Test 19 depth-stack: passes. Workspace 32/33: API removed in 3B. |
+| **2.10 — capture matrix** | ✅ **core passing** | **26 pass / 4 skipped / 0 fail** on a full run. Skips: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), plus 2 baseline-mode frames. Test 18 layered: passes. Test 19 depth-stack: passes. Workspace 32/33: API removed in 3B. |
+| **2.12 — composer inset + trace overlay** | ✅ done | Test #36 unskipped and passing. Root cause was not z-index: the composer floats over the pane bottom and swallowed clicks on the inspector's last actions. `SessionSurfaceHost` now reserves `timeline.inset()` under custom surfaces (`composerInset`), so map/hybrid end above the composer. |
 | **2.11 — session store schema fix** | ✅ **fixed** | Updated session store schema from `LAYOUT_STRATEGIES` to `LAYOUTS` to allow "ribbon"/"matrix" persistence. Capture tests for ribbon/matrix/depth-stack pass. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
@@ -24,17 +25,17 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ CURRENT: Batch 2 complete (parity achieved); 2.10 capture matrix CORE PASSING│
+│ CURRENT: Batch 2 + 3A/3B/3C complete; capture matrix 26/26 runnable pass │
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 2.10 CAPTURE MATRIX (DONE — core 25/28 frames)                               │
-│   ✅ 25 frames pass: log, overview, execution, selected, return, 3D,         │
+│ 2.10 CAPTURE MATRIX (DONE — 26 pass, 0 fail, 4 skipped)                      │
+│   ✅ 26 frames pass: log, overview, execution, selected, return, 3D,         │
 │      4 layouts × 2 depths, narrow, light, zoom, turns, failure chain,       │
-│      tree, force, gallery, perspective, collapsed group                     │
-│   ⏭️  3 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A),  │
-│      #36 trace overlay (click interception bug)                             │
+│      tree, force, gallery, perspective, trace overlay, collapsed group      │
+│   ⏭️  2 feature skips: #34 split view (hybrid replaces), #35 time scrubber   │
+│      (N/A on map); plus 2 baseline-mode frames                              │
 │   ⚠️  Test 18 layered: camera animation (orbit→layered) known issue         │
 │   ⚠️  Test 19 depth-stack: flaky in CI                                      │
 │   📋 Workspace tests 32/33 skipped (API removed in 3B; lens works locally)  │
@@ -235,7 +236,7 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 | 7 | **Hybrid 3 arrangements work** (Stacked/Side/Floating) | Core hybrid value prop | 3 min manual | ✅ (e2e verified) |
 | 8 | **Export (SVG/JSON/HTML) produces files** | Deliverable output | 2 min manual | ⬜ |
 
-**Total: ~25 min manual smoke test** — run once before handing to human tester.
+**Total: ~10 min remaining** — items 5 (Settings page renders) and 8 (Export writes a file) are the only unchecked smoke items; the rest is now covered by the capture matrix and the e2e keepers. Everything below the checklist is deferred behind the T2.2 stop rule.
 
 ---
 
@@ -244,7 +245,7 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 | # | Fix | Human Impact | Effort | Status |
 |---|-----|--------------|--------|--------|
 | A | **Hybrid toolbar button** (`onSplitView` in `FullMap.tsx`) | Discoverability — without it, hybrid is keyboard-only | 10 min | ✅ Done |
-| B | **Trace overlay z-index** (test 36) | "Why?" button unusable if click intercepted | 15 min | ⬜ |
+| B | **Trace overlay click** (test 36) | "Why?" button unusable if click intercepted | 15 min | ✅ Done — composer inset in `SessionSurfaceHost`, not a z-index change |
 | C | **Depth-stack camera settle** (test 19) | Depth mode feels broken if camera never settles | 30 min | ✅ (passes locally) |
 
 ### ⏭️ Explicitly Defer (No Human Impact)
