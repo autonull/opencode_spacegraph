@@ -22,6 +22,7 @@ import {
 import type { BuiltinLayout, BuiltinLocale } from "@opencode/plugin/gui/builtin"
 import {
   createComponent,
+  createEffect,
   createMemo,
   createSignal,
   getOwner,
@@ -30,6 +31,7 @@ import {
   Show,
   type ParentProps,
 } from "solid-js"
+import { ErrorBoundary } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { Schema } from "effect"
 import { render } from "solid-js/web"
@@ -57,6 +59,7 @@ import {
   resolveSessionSurface,
   selectSessionSurface,
   sessionSurfaceID,
+  transcriptSurfaceID,
 } from "@/runtime/plugin/surfaces"
 import type { Surfaces, SessionRef } from "@opencode/plugin/gui"
 
@@ -511,8 +514,8 @@ export function mountSessionRegion(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
-    // Every panel's `main` tab is stored, and `active` selected, as a strip restored after a reload.
-    const all = () => host.items(Panel).map((item) => `${item.plugin}:main`)
+    // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
+    const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
 
     const region = createRegion({
       region: "side",
@@ -530,6 +533,13 @@ export function mountSessionRegion(input: {
       closed: createClosedTabs(),
       open() {},
       side: () => ({ opened: () => true, toggle() {} }),
+    })
+
+    // Debug: log the region's pane entries
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("Pane entries:", pane.keys())
+      console.log("Pane selected:", pane.selected()?.key)
     })
 
     return (
@@ -579,6 +589,30 @@ export function mountSessionRegion(input: {
     container,
   )
 
+  // Wait for the host to be ready (all plugins activated)
+  const waitForReady = async (timeout = 10000) => {
+    const start = performance.now()
+    while (performance.now() - start < timeout) {
+      if (hosts[0]?.state.status) {
+        const allActive = input.definitions.every(
+          (def) => hosts[0]?.state.status[def.id] === "active",
+        )
+        const anyFailed = input.definitions.some(
+          (def) => hosts[0]?.state.status[def.id] === "failed",
+        )
+        if (anyFailed) {
+          const failures = input.definitions
+            .filter((def) => hosts[0]?.state.status[def.id] === "failed")
+            .map((def) => `${def.id}: ${hosts[0]?.state.failures[def.id]?.error}`)
+          throw new Error(`Plugin(s) failed: ${failures.join(", ")}`)
+        }
+        if (allActive) return
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    throw new Error("Timed out waiting for host to be ready")
+  }
+
   return {
     container,
     /** Routes a session: the screen creates a new session object for it. */
@@ -588,6 +622,7 @@ export function mountSessionRegion(input: {
     /** The session each composer attachment reached, in order. */
     attached,
     status: (id: string) => hosts[0]?.state.status[id],
+    waitForReady,
     unmount: () => {
       dispose()
       container.remove()
@@ -644,8 +679,8 @@ export function mountSessionRegionWithSurfaces(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
-    // Every panel's `main` tab is stored, and `active` selected, as a strip restored after a reload.
-    const all = () => host.items(Panel).map((item) => `${item.plugin}:main`)
+    // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
+    const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
 
     const region = createRegion({
       region: "side",
@@ -663,6 +698,13 @@ export function mountSessionRegionWithSurfaces(input: {
       closed: createClosedTabs(),
       open() {},
       side: () => ({ opened: () => true, toggle() {} }),
+    })
+
+    // Debug: log the region's pane entries
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("Pane entries:", pane.keys())
+      console.log("Pane selected:", pane.selected()?.key)
     })
 
     return (
@@ -696,7 +738,11 @@ export function mountSessionRegionWithSurfaces(input: {
   // Surfaces API - provides session surfaces for plugins using the real surfaces implementation
   const language = { t: (key: string) => key }
 
-  const getSurfaces = () => hosts[0]?.items(SessionSurface).map((item) => item.value) ?? []
+  const getSurfaces = () => {
+    const items = hosts[0]?.items(SessionSurface).map((item) => item.value) ?? []
+    console.log("Registered surfaces:", items.map(s => s.id))
+    return items
+  }
 
   const surfaces: Surfaces = {
     list: () => orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript")),
@@ -707,6 +753,63 @@ export function mountSessionRegionWithSurfaces(input: {
     select: (id: string, session: SessionRef) => {
       selectSessionSurface(id, session)
     },
+  }
+
+  // SessionSurfaceHost for the fixture - renders the selected surface
+  function FixtureSessionSurfaceHost() {
+    const [surfaceItemsSignal, setSurfaceItemsSignal] = createSignal<SessionSurface[]>([])
+
+  createEffect(() => {
+    const items = hosts[0]?.items(SessionSurface)?.map((item) => item.value) ?? []
+    const filtered = items.filter((v): v is SessionSurface => v !== undefined)
+    console.log("Effect updating surfaceItemsSignal:", filtered.map(s => s.id))
+    setSurfaceItemsSignal(filtered)
+  })
+
+  const surfaceItems = createMemo(() => {
+    const items = surfaceItemsSignal()
+    console.log("surfaceItems memo (via signal):", items.map(s => s.id))
+    return orderedSessionSurfaces(items, language.t("session.surface.transcript"))
+  })
+    const selectedId = createMemo(() => {
+      const id = surfaces.current(view())
+      console.log("selectedId memo:", id)
+      return id
+    })
+    const selectedSurface = createMemo(() => {
+      const surface = resolveSessionSurface(surfaceItems(), selectedId())
+      console.log("selectedSurface memo:", surface.id)
+      return surface
+    })
+    const isTranscript = createMemo(() => selectedSurface().id === transcriptSurfaceID)
+    const transcript = createMemo(() => <div data-slot="session-transcript">Transcript</div>)
+
+    const content = createMemo(() => {
+      const surface = selectedSurface()
+      console.log("Rendering surface:", surface.id, "isTranscript:", isTranscript())
+      if (isTranscript()) return transcript()
+
+      // Test: return a simple div instead of the plugin's surface
+      return <div data-test-content="true">Content rendered: {surface.id}</div>
+    })
+
+    return (
+      <ErrorBoundary fallback={(err) => {
+        console.error("Surface render error:", err)
+        return <div data-slot="surface-error">Error: {String(err)}</div>
+      }}>
+        <div class="flex h-full min-h-0 flex-col" data-slot="session-surface-host">
+          <div data-test-host="true">Host mounted</div>
+          <Show when={isTranscript()}>
+            <div data-test-transcript="true">Transcript shown</div>
+          </Show>
+          <Show when={() => !isTranscript()}>
+            <div data-test-surface="true">Surface shown</div>
+            {content()}
+          </Show>
+        </div>
+      </ErrorBoundary>
+    )
   }
 
   const dispose = render(
@@ -720,7 +823,10 @@ export function mountSessionRegionWithSurfaces(input: {
               mounted={standIn({ current: () => (routed() ? view() : undefined), screen: () => screen })}
               surfaces={surfaces}
             >
-              <Region />
+              <div class="flex h-full flex-col" style={{ height: "100vh" }}>
+                <FixtureSessionSurfaceHost />
+                <Region />
+              </div>
             </RealHostWithSurfaces>
           </DialogProvider>
         </PlatformProvider>
@@ -735,8 +841,17 @@ export function mountSessionRegionWithSurfaces(input: {
     while (performance.now() - start < timeout) {
       if (hosts[0]?.state.status) {
         const allActive = input.definitions.every(
-          (def) => hosts[0]?.state.status[def.id] === "active" || hosts[0]?.state.status[def.id] === "failed",
+          (def) => hosts[0]?.state.status[def.id] === "active",
         )
+        const anyFailed = input.definitions.some(
+          (def) => hosts[0]?.state.status[def.id] === "failed",
+        )
+        if (anyFailed) {
+          const failures = input.definitions
+            .filter((def) => hosts[0]?.state.status[def.id] === "failed")
+            .map((def) => `${def.id}: ${hosts[0]?.state.failures[def.id]?.error}`)
+          throw new Error(`Plugin(s) failed: ${failures.join(", ")}`)
+        }
         if (allActive) return
       }
       await new Promise((resolve) => requestAnimationFrame(resolve))
@@ -754,6 +869,8 @@ export function mountSessionRegionWithSurfaces(input: {
     attached,
     status: (id: string) => hosts[0]?.state.status[id],
     waitForReady,
+    /** Select a session surface by id. */
+    selectSurface: (id: string) => surfaces.select(id, view()),
     unmount: () => {
       dispose()
       container.remove()

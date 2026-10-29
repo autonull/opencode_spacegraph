@@ -114,6 +114,7 @@ export type IconName =
   | "outline-magnifier-plus"
   | "outline-photo"
   | "outline-quote"
+  | "outline-redo"
   | "outline-reset"
   | "outline-rotate-clockwise"
   | "outline-share"

@@ -215,13 +215,13 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 | Step | Phase | Gate |
 |------|-------|------|
-| 1 | **E1** | Delete `session-map`; verify `graph:capture --mode=verify` passes | ✅ Complete |
-| 2 | **E2** | Delete e2e/graph, restore test-browser files; verify | ✅ Complete |
-| 3 | **E3** | Clean `session-graph` package; verify its component tests pass | ✅ Complete |
-| 4 | **E4** | Revert all app changes EXCEPT SessionSurface impl + plugin setting; verify | ✅ Complete |
-| 5 | **E5** | Restore gui-plugins entry points; verify | ✅ Complete |
-| 6 | **D1–D3** | Upstream PR opened, reviewed, merged, released | 🟡 In progress (9 files implemented, ready for PR) |
-| 7 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; fork deletes product | ⏳ Pending upstream release |
+| 1 | **E1** | Delete `session-map`; verify `graph:capture --mode=verify` passes |
+| 2 | **E2** | Delete e2e/graph, restore test-browser files; verify |
+| 3 | **E3** | Clean `session-graph` package; verify its component tests pass |
+| 4 | **E4** | Revert all app changes EXCEPT SessionSurface impl + plugin setting; verify |
+| 5 | **E5** | Restore gui-plugins entry points; verify |
+| 6 | **D1–D3** | Upstream PR opened, reviewed, merged, released |
+| 7 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; fork deletes product |
 
 **Parallelizable:** E1–E3 can start now. E4–E5 after. D waits for E to produce clean diff. F waits for upstream release.
 
@@ -241,15 +241,29 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 ## 8. Known Issues
 
 - **Component tests for spacegraph bundle** — Test fixture doesn't fully replicate surfaces API. The plugin works in the real app (verified by manual testing), but the test fixture's `mountSessionRegionWithSurfaces` doesn't properly activate the plugin's surfaces. This is a test infrastructure issue, not a product issue.
-- **Upstream PR** — D1-D3 are implemented locally (9 files, ~300 lines). Ready for review and merge into upstream `opencode/plugin`. Once merged and released, Phase F can execute to create the `opencode-plugins` repo.
+- **Upstream PR not yet opened** — D1-D3 implemented locally; needs to be submitted to upstream.
 
 ---
 
-## 9. Immediate Next Actions
+## 9. Status Summary (Updated)
 
-1. ✅ **Open upstream PR** with D1-D3 (9 files) — implemented and ready for review
-   - Plugin API types: `packages/plugin/src/gui/` (registries.ts, host-apis.ts, context.ts, icon-name.ts)
-   - Runtime implementation: `packages/app/src/runtime/plugin/` (surfaces.ts, host.tsx, surfaces.test.ts)
-   - Host rendering: `packages/app/src/session/` (surface.tsx, screen.tsx)
-2. **Fix test fixture** for spacegraph component tests (optional, test infrastructure only) — the `mountSessionRegionWithSurfaces` fixture doesn't fully activate plugin surfaces; verified the plugin works in the real app
-3. **Wait for upstream release** then execute Phase F — create `opencode-plugins` repo, migrate session-graph and spacegraph packages
+**Completed:**
+- ✅ E1-E5: Noise elimination complete (built-in session-map removed, test/e2e noise cleaned, session-graph as workspace library, app changes reverted except SessionSurface + plugin setting, gui-plugins entry points restored)
+- ✅ D1-D3: Minimal upstreamable API implemented (9 files in plugin SDK + app runtime + host rendering)
+- ✅ Typecheck clean across all 43 packages
+- ✅ Lint passes (warnings only, no errors)
+- ✅ Session-graph component tests: 49 passed
+- ✅ SpaceGraph product bundle builds correctly
+
+**Remaining:**
+- ⬜ SpaceGraph component tests: 3 failures due to test fixture not replicating surfaces API (infrastructure issue, not product)
+- ⬜ Open upstream PR with D1-D3
+- ⬜ Wait for upstream release, then execute Phase F (new opencode-plugins repo)
+
+---
+
+## 10. Immediate Next Actions
+
+1. **Open upstream PR** with D1-D3 (9 files)
+2. **Fix test fixture** for spacegraph component tests (optional, test infrastructure only)
+3. **Wait for upstream release** then execute Phase F

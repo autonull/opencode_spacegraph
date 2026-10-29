@@ -286,6 +286,10 @@ const icons = {
     viewBox: "0 0 16 16",
     body: `<path d="M2 10L4.25193 7.76999C7.29213 4.7594 12.4119 5.77372 14.0747 9.71606" stroke="currentColor"/><path d="M2 6V10H6" stroke="currentColor" stroke-linecap="square"/>`,
   },
+  "outline-redo": {
+    viewBox: "0 0 16 16",
+    body: `<path d="M14 6L11.748 8.23C8.70787 11.2406 3.58813 10.22628 1.92526 6.28394" stroke="currentColor"/><path d="M14 10V6H10" stroke="currentColor" stroke-linecap="square"/>`,
+  },
   "outline-reset": {
     viewBox: "0 0 16 16",
     body: `<path d="M2.5 6.5H12.5C13.0523 6.5 13.5 6.94772 13.5 7.5V10.5C13.5 11.0523 13.0523 11.5 12.5 11.5H8.5M5.5 9.5L2.5 6.5L5.5 3.5" stroke="currentColor"/>`,
