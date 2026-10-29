@@ -26,3 +26,22 @@ The app reads a server plugin's `./gui-experimental` bundle. This package is GUI
 The bundle requires only `effect`, `@opencode/plugin/gui`, `solid-js`, `solid-js/store` and `solid-js/web`, which the
 app provides. It registers the side `Panel` map, commands, the settings page and the menu item; on hosts that expose
 `ctx.surfaces` it also registers the map, hybrid and turn-map views.
+
+## Publishing
+
+`spacegraphjs` is bundled into `dist/gui-experimental.cjs`, so it is not a peer dependency. The only host module the
+tarball depends on is `@opencode/plugin`.
+
+```sh
+npm pack          # runs `prepack`, then contains only dist/gui-experimental.cjs, README.md and package.json
+npm publish --access public
+```
+
+Install the published package in the target app and list it by package name:
+
+```json
+{ "plugins": ["@autonull/opencode-plugin-spacegraph"] }
+```
+
+Verify `npm pack` contents and a scratch install (`npm install <tarball>`, then confirm the export resolves to
+`dist/gui-experimental.cjs`) before retiring the built-in registration.

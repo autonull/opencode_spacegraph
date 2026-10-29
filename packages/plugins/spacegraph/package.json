@@ -2,20 +2,24 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@autonull/opencode-plugin-spacegraph",
   "version": "0.1.0",
-  "private": true,
+  "description": "SpaceGraph session map for the OpenCode GUI",
   "type": "module",
   "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
     "./gui-experimental": "./dist/gui-experimental.cjs"
   },
   "scripts": {
     "build": "bun build.ts",
+    "prepack": "bun run build",
     "test": "bun test --conditions browser",
     "typecheck": "bun check --no-script"
   },
   "peerDependencies": {
-    "@opencode/plugin": "*",
-    "spacegraphjs": ">=8.5"
+    "@opencode/plugin": "*"
   },
   "devDependencies": {
     "@opencode/gui-plugins": "workspace:*",

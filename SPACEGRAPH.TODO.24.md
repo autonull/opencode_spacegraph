@@ -19,7 +19,7 @@
 | C3 shared turn map | ✅ done | `TurnMapBody` serves the overlay layer and dialog |
 | C4 small unifications | ✅ done | one `DEPTH_MODES`, `SpacegraphModel`, no `surfaces!` |
 | C5 seam archive | ✅ done | `docs/spacegraph/seam/`; `patches/` holds dependency patches only |
-| D1–D3 release | ⬜ blocked | no npm auth (`npm whoami` → `ENEEDAUTH`); package is still `private: true` and has no publish allowlist. Do not retire the built-in before a real install |
+| D1–D3 release | ◐ prepared | package is publishable and locally install-verified; publish blocked on `ENEEDAUTH`. Do not retire the built-in before a real install |
 | Verification pass (2026-10-29) | ✅ done | fixed the dialog fixture (getter-only `ctx.surfaces`); 3/3 artifact frames pass; baselines unchanged |
 
 **Verification run:** `bun run graph:capture --mode=bundle` (3/3 frames), `bun run test` in `packages/plugins/spacegraph`, `bun typecheck` in `packages/gui-plugins`, `packages/plugins/spacegraph` and `packages/app`, and scoped `lint:changed` on the files this plan created or edited.
@@ -160,16 +160,22 @@ The loop must be fast and must test what ships. Current cost: bundle build ~6 s,
 
 ## 5. Phase D — Release and retire (P2, after A–C)
 
-**Blocked (2026-10-29):** A–C are green, but D needs a registry identity this environment does not have. `npm whoami` returns `ENEEDAUTH` and the package does not exist on npm yet. Do not start D2/D3 from a local mount; the gate is a real published install.
+**Status (2026-10-29):** packaging is prepared and locally verified; publishing is still blocked on registry auth. `npm whoami` returns `ENEEDAUTH`, and the package does not exist on npm yet. Do not start D2/D3 from a local mount; the gate is a real published install.
 
-Concrete unblock path:
-1. Decide whether this fork publishes `@autonull/opencode-plugin-spacegraph` or stays local; if publishing, remove `"private": true`, add a `files` allowlist (`dist`, `README.md`, `package.json`) and a `prepack`/`prepublishOnly` build, then `npm login` with the `@autonull` scope.
-2. Publish `0.1.0`, then install it in a scratch opencode app with `npm install @autonull/opencode-plugin-spacegraph` (the peer dependencies must be resolvable from that app).
+Packaging changes now in place:
+- `private: true` removed; `files` is `["dist", "README.md"]`; `prepack` runs the build.
+- The bogus `spacegraphjs` peer was removed. Vite bundles it from `spacegraphjs/src`, and the built artifact requires only `effect`, `@opencode/plugin/gui`, `solid-js`, `solid-js/store` and `solid-js/web`.
+- `npm pack` now contains only `dist/gui-experimental.cjs`, `README.md` and `package.json` (659 kB packed).
+- A scratch `npm install <tarball>` installed the package and its peer, and the `./gui-experimental` export resolved to `dist/gui-experimental.cjs`.
+
+Remaining unblock path:
+1. `npm login` with the `@autonull` scope, then `npm publish --access public`.
+2. Install `@autonull/opencode-plugin-spacegraph` in a scratch opencode app.
 3. Verify the stock Panel on web and desktop; only then delete the built-in registration (D2) and decide the wrapper lifetime (D3).
 
 | # | Task | Gate |
 |---|---|---|
-| D1 | Publish `@autonull/opencode-plugin-spacegraph` | `npm install` in a scratch app, then the Panel frame works on web and desktop |
+| D1 | Publish `@autonull/opencode-plugin-spacegraph` | package ready; `npm install` in a scratch app, then the Panel frame works on web and desktop |
 | D2 | Delete the built-in registration from `gui-plugins/src/{main,renderer}.ts` | A–C green; scoped typecheck + `lint:changed`; no `bun run check` claim |
 | D3 | Keep or drop the thin built-in wrapper | Decide after D1: if users must install the plugin, keep the wrapper for one release to avoid drift, then remove |
 
