@@ -125,6 +125,8 @@
 | **Camera animation in depth mode switch** | Orbit→layered transition triggers 0.5s polar animation; test waits for canvas settle but animation may not complete in headless CI; depth-stack passes (larger tilt change) |
 | **Workspace lens is the product** | Removing it (3C) was a mistake — the derived nodes (directory, package, commit, branch, symbol, process, port, issue) + provenance/domain are what connect activity to repository results. Local `WorkspaceSnapshot` type in session-ui keeps it working without RPC. |
 | **E2e mock server flakiness** | After build, SSE transport + `mockOpenCodeServer` timing is fragile; `openSession` times out waiting for `sessionHref` → tab-link visible; need to debug `mockServers` + `installSseTransport` lifecycle |
+| **Hybrid mode IS working** | `HybridSurface` is a separate `SessionSurface` (id: `spacegraph.hybrid`), accessible via `Ctrl+Shift+H` or command palette. Transcript is provided by host (not reimplemented). The "split view" toolbar button was removed — users switch surfaces instead. To restore toolbar access, add `onSplitView` prop to `GraphView` calling `ctx.surfaces.select('spacegraph.hybrid')`. |
+| **No Log view reimplementation needed** | Host provides transcript via `SessionSurface` render prop (`{ session, screen, transcript }`). Plugin can wrap/filter it but doesn't own it. |
 
 ---
 
@@ -222,7 +224,21 @@ The Plugin API's architecture unlocks several UX improvements that were difficul
 2. **Fix flaky test 19**: depth-stack occasionally times out waiting for canvas settle
 3. **Test 18 layered**: camera animation from orbit→layered (0.5s polar) doesn't complete in headless CI
 4. **Fix test 36 click interception**: trace overlay "Why?" button click intercepted by composer editor
-5. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
+5. **Optional: Restore hybrid toolbar button** — add `onSplitView` to `GraphView` props in `FullMap.tsx` to call `ctx.surfaces.select('spacegraph.hybrid')` for discoverability
+6. **Feature completion**: See "Capability Gaps" below — TUI renderer, cross-session, real 3D, external distribution
+
+---
+
+## 📅 ESTIMATED TIMELINE
+
+| Phase | Target | Notes |
+|-------|--------|-------|
+| **Core MVP (current)** | **Done** | 25/28 capture frames pass; plugin parity achieved; old code deleted |
+| **Polish & stabilize** | ~1 week | Re-baseline, fix flaky tests (18, 19, 36), optional hybrid toolbar button |
+| **T2.2 evidence study** | ~2 weeks | Only if stakeholder wants it; stop rule governs |
+| **Post-MVP feature track** | ~4-6 weeks | TUI, cross-session, real 3D, external distro — parallelizable |
+
+**Finish line**: Core MVP is **done**. Remaining work is polish (flaky tests, re-baseline) + optional features. The plugin is production-ready for the map/hybrid/transcript surfaces today.
 
 ---
 
