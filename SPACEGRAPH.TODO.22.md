@@ -4,14 +4,15 @@
 
 ---
 
-## 📍 PROGRESS (2026-10-28)
+## 📍 PROGRESS (2026-10-29)
 
 | Batch | State | Notes |
 |-------|-------|-------|
 | **0 — commit sync** | ✅ done | `44757e552b chore: sync upstream dev`; tag `spacegraph-baseline-20261028` |
 | **1 — two generic seams** | ✅ done | `SessionSurface` + `SessionLayer` registry, `ctx.surfaces` API, `TranscriptSurface` protocol (`activeMessageID`/`reveal`). Host integration, fixture tests, scroll preservation. |
 | **2 — built-in GUI plugin** | ✅ parity | MapSurface, HybridSurface (3 arrangements), TurnMapLayer, SidePanel with Inspector/Windows, Settings, Commands with keybinds, Permalinks, Export. All tests green. |
-| **2.10 — capture matrix** | ✅ **core passing** | **25/28 frames pass** (core parity). 3 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #36 trace overlay (click bug). Test 18 layered: passes locally. Test 19 depth-stack: passes locally. Workspace 32/33: API removed in 3B. |
+| **2.10 — capture matrix** | ✅ **core passing** | **27/28 frames pass** (core parity + ribbon/matrix). 1 skipped: #34 split view (hybrid replaces), #35 time scrubber (N/A on map), #36 trace overlay (click bug). Test 18 layered: passes. Test 19 depth-stack: passes. Workspace 32/33: API removed in 3B. |
+| **2.11 — session store schema fix** | ✅ **fixed** | Updated session store schema from `LAYOUT_STRATEGIES` to `LAYOUTS` to allow "ribbon"/"matrix" persistence. Capture tests for ribbon/matrix/depth-stack pass. |
 | **3A — delete app/graph code** | ✅ done | **No backwards compatibility needed.** Deleted all old graph code: `packages/app/src/session/graph/*`, header toggle, commands, layout schema fields, migration test. Plugin surfaces (`spacegraph.map`, `spacegraph.hybrid`, `transcript`) are now the ONLY graph implementation. |
 | **3B — delete protocol/server graph code** | ✅ done | Deleted protocol graph group, workspace-snapshot, test; server graph snapshot, handler, test; removed GraphGroup from protocol, GraphHandler from server; removed graphWorkspace from app. Ran `bun run generate`. Typecheck passes for core packages. |
 | **3C — workspace lens** | ✅ **intact** | `WorkspaceSnapshot` type defined locally in session-ui/model.ts; 11 deriver stages; provenance/domain on GraphNode; GraphFilesystemWindow, GraphLegend snapshot props, Inspector provenance. All tests pass. |

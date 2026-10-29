@@ -39,8 +39,8 @@ export function FullMap(props: {
         if (layout) props.model.setLayout(props.session, layout)
       }}
       onDepthChange={(next) => props.model.setDepth(props.session, next)}
-      arrangement={props.arrangement}
-      arrangementSide={props.arrangementSide}
+      arrangement={props.model.arrangement(props.session)}
+      arrangementSide={props.model.side(props.session)}
       refitKey={props.arrangement}
       onArrangementChange={(next) => props.model.setArrangement(props.session, next)}
       onArrangementSideChange={(next) => props.model.setSide(props.session, next)}

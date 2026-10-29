@@ -1,12 +1,12 @@
 import {
   GRAPH_ARRANGEMENTS,
   GRAPH_SIDES,
-  LAYOUT_STRATEGIES,
+  LAYOUTS,
   ZOOM_LEVELS,
   type DepthMode,
   type GraphArrangement,
   type GraphSide,
-  type LayoutStrategy,
+  type Layout,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { usePlugin } from "@opencode/plugin/gui"
@@ -39,7 +39,7 @@ export default function SpacegraphSettings() {
     }
   }
 
-  const layoutLabel = (value: LayoutStrategy) => {
+  const layoutLabel = (value: Layout) => {
     switch (value) {
       case "lanes":
         return ctx.t("layout.lanes")
@@ -51,6 +51,12 @@ export default function SpacegraphSettings() {
         return ctx.t("layout.tree")
       case "force":
         return ctx.t("layout.force")
+      case "ribbon":
+        return ctx.t("layout.ribbon")
+      case "matrix":
+        return ctx.t("layout.matrix")
+      case "log":
+        return ctx.t("layout.log")
     }
   }
 
@@ -104,7 +110,7 @@ export default function SpacegraphSettings() {
         value={() => layoutLabel(layout())}
         act={() =>
           prefs.update((draft) => {
-            draft.layout = next(LAYOUT_STRATEGIES, layout())
+            draft.layout = next(LAYOUTS, layout())
           })
         }
       />
