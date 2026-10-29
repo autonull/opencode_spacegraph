@@ -48,11 +48,26 @@ async function openLayers(page: Page) {
   if (!open) await menu.locator(":scope > summary").click()
 }
 
+async function closeLayers(page: Page) {
+  const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
+  if (await menu.evaluate((element) => (element as HTMLDetailsElement).open)) {
+    await menu.locator(":scope > summary").click()
+  }
+}
+
 async function openFacets(page: Page) {
   const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-facets"]`)
   const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
   if (!open) await menu.locator(":scope > summary").click()
   return menu
+}
+
+async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") {
+  await openLayers(page)
+  const levels = page.locator('[data-slot="graph-layers-level"]')
+  await levels.locator('button', { hasText: level }).click()
+  await expect(levels.locator('button', { hasText: level })).toHaveAttribute("aria-pressed", "true")
+  await closeLayers(page)
 }
 
 
@@ -73,13 +88,14 @@ type GraphInput = Parameters<typeof openSession>[1]
 async function openGraph(page: Page, input: GraphInput) {
   await openSession(page, input)
   await openGraphViaMenu(page)
-  // Wait for the lazy-loaded graph module to resolve (Suspense fallback to disappear)
-  await expect(page.locator('[data-slot="session-graph-loading"]')).toBeHidden({ timeout: 30_000 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 }
 
 async function openGraphViaMenu(page: Page) {
-  await page.getByRole("button", { name: "Toggle graph view" }).click()
+  // Open spacegraph map surface via keyboard shortcut (Control+Shift+M)
+  await page.keyboard.press("Control+Shift+M")
+  // Wait for the lazy-loaded graph module to resolve (Suspense fallback to disappear)
+  await expect(page.locator('[data-slot="session-graph-loading"]')).toBeHidden({ timeout: 30_000 })
 }
 
 test("switches to the graph, renders the fixture, and persists the mode", async ({ page }) => {
@@ -89,6 +105,7 @@ test("switches to the graph, renders the fixture, and persists the mode", async 
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
   await expect(page.locator(toolbar)).toBeVisible()
   // Execution level renders activity cards from the model; a changed file is a stable anchor.
+  await setLevel(page, "Execution")
   await expect(page.getByText("src/auth/token.ts").first()).toBeVisible()
 
   await page.reload()
@@ -124,10 +141,9 @@ test("offers the graph switch on a narrow mobile viewport", async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 900 })
   await openSession(page, graphFixture())
 
-  // T1.4: the desktop header toggle is absent, so the mobile tab surface carries the switch.
-  const toggle = page.getByRole("button", { name: "Toggle graph view" })
-  await expect(toggle).toBeVisible()
-  await toggle.click()
+  // The graph is opened via keyboard shortcut (Control+Shift+M) on all viewports.
+  await page.keyboard.press("Control+Shift+M")
+  await expect(page.locator('[data-slot="session-graph-loading"]')).toBeHidden({ timeout: 30_000 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await expect(page.locator(toolbar)).toBeVisible()
 
@@ -155,9 +171,13 @@ test("switches to the ribbon layout, honours the level, and persists it", async 
   await page.locator('[data-slot="graph-layers-level"] button', { hasText: "Overview" }).click()
   await expect.poll(() => page.locator(`${canvasHost} [data-kind="phase"]`).count()).toBeGreaterThan(0)
 
+  // Wait for the layout to be persisted before reload
+  await page.waitForTimeout(500)
+
   await page.reload()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await expect(page.locator(`${toolbar} [data-slot="graph-layout-name"]`)).toHaveText("Ribbon")
+  // The layout should persist across reloads; wait for the session store to load
+  await expect.poll(() => page.locator(`${toolbar} [data-slot="graph-layout-name"]`).textContent()).toBe("Ribbon")
 
   expect(errors).toEqual([])
 })

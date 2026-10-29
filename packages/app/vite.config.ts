@@ -22,6 +22,12 @@ const sentry =
       })
     : false
 
+import { searchForWorkspaceRoot } from "vite"
+import path from "node:path"
+
+const workspaceRoot = searchForWorkspaceRoot(process.cwd())
+const spacegraphjsRoot = path.resolve(workspaceRoot, "spacegraphjs")
+
 export default defineConfig({
   plugins: [
     desktopPlugin,
@@ -48,6 +54,9 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     port: 3000,
+    fs: {
+      allow: [workspaceRoot, spacegraphjsRoot],
+    },
   },
   build: (() => {
     const base: import("vite").BuildOptions = {

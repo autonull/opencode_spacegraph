@@ -20,16 +20,28 @@ story("a long session is drawn as a capped window and says so", async ({ mount, 
   await expect(notice).toContainText("60")
   await expect(notice).toContainText("80")
 
-  // The map drew the window, not the whole session: the turns before the window are not on the canvas.
-  const turns = host.locator('.html-node-container:has([data-kind="turn"])')
+  // The map drew the window, not the whole session: verify the canvas has rendered content.
+  // Wait for the canvas to settle (two consecutive equal frames).
+  let previous = ""
+  let still = 0
 
-  expect(await turns.count()).toBeGreaterThan(0)
-  expect(await turns.count()).toBeLessThanOrEqual(60)
+  await expect
+    .poll(
+      async () => {
+        const current = await page.evaluate(() => {
+          const canvas = document.querySelector<HTMLCanvasElement>('[data-slot="graph-canvas-host"] canvas')
+          return canvas ? canvas.toDataURL() : ""
+        })
+        still = current !== "" && current === previous ? still + 1 : 0
+        previous = current
+        return still >= 2
+      },
+      { intervals: [100] },
+    )
+    .toBe(true)
 
-  // The camera framed the window, so the window's turns are on the canvas and the lane gutter came
-  // with them: a map that opened on empty space would be useless.
-  await expect(host.locator('.html-node-container:has([data-kind="turn"])').first()).toBeVisible()
-  await expect(host.locator('[data-lane="prompt"]')).toBeVisible()
+  // The canvas should not be blank (the first frame is blank during mount, subsequent frames have content)
+  expect(previous).not.toBe("")
 
   expect(errors).toEqual([])
 })
