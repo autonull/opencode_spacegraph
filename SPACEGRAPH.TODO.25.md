@@ -10,17 +10,17 @@ TODO.24 shipped the artifact test loop and packaging, but the fork carries ~23k 
 - A built-in `session-map` feature that duplicates the plugin's purpose
 - Unrelated test deletions and e2e tests for features we don't ship
 - The `session-graph` library mixed into the fork instead of a clean workspace package
-- Many app-level changes for session-graph that should be organized, not left scattered
+- Many app-level changes that are independent refactors, not required by the plugin
 
-**Core insight:** The fork needs **9 essential files** for the `SessionSurface` API (4 plugin types + 3 runtime + 2 host rendering). Everything else is either the SpaceGraph product (plugin + session-graph library + app integrations) or noise.
+**Core insight:** The fork needs **9 essential files** for the `SessionSurface` API (4 plugin types + 3 runtime + 2 host rendering). Everything else is either the SpaceGraph product (plugin + session-graph library) or noise to remove/revert.
 
 ---
 
-## 1. The Minimal Upstreamable API (Phase D)
+## 1. The Minimal Upstreamable API (Phase D — Upstream PR)
 
 These **9 files, ~300 lines** are the complete upstream PR. They add main-session-body replacement to the Plugin API.
 
-### D1. Plugin API Types (`packages/plugin/src/gui/`)
+### D1. Plugin API Types (`packages/plugin/src/gui/`) — Public API
 
 | File | Change | Lines |
 |------|--------|-------|
@@ -37,7 +37,7 @@ These **9 files, ~300 lines** are the complete upstream PR. They add main-sessio
 - Host reserves `transcript` surface ID; plugins cannot override it
 - `ctx.surfaces` is a getter (not assignable), consistent with `ctx.layout`, `ctx.sessions`
 
-### D2. Runtime Implementation (`packages/app/src/runtime/plugin/`)
+### D2. Runtime Implementation (`packages/app/src/runtime/plugin/`) — Reference Implementation
 
 | File | Change | Lines |
 |------|--------|-------|
@@ -45,7 +45,7 @@ These **9 files, ~300 lines** are the complete upstream PR. They add main-sessio
 | `host.tsx` | Expose `ctx.surfaces` getter | +20 |
 | `surfaces.test.ts` | Unit tests for the API | +51 |
 
-### D3. Host Rendering (App-Private, Not Upstreamed as API)
+### D3. Host Rendering (App-Private, Stays in Fork)
 
 | File | Change | Purpose |
 |------|--------|---------|
@@ -92,8 +92,8 @@ These are **done and verified**. No changes needed to the plugin itself.
 packages/gui-plugins/src/session-map/
 ```
 - `index.ts`, `model.ts`, `panel.tsx`, `renderer.tsx`, `i18n/en.ts`
-- Registrations in `gui-plugins/src/main.ts`, `renderer.ts`
-- Panel tab `session-map:map` — the plugin provides `spacegraph:map`
+- Registrations in `gui-plugins/src/main.ts`, `renderer.ts` (remove imports and `compose` entries)
+- Panel tab `session-map:main` — the plugin provides `spacegraph:map`
 
 **Why:** The external plugin **is** the session map. A built-in duplicate confuses users and doubles maintenance.
 
@@ -102,9 +102,9 @@ packages/gui-plugins/src/session-map/
 **Delete:**
 ```
 packages/app/e2e/graph/                    # Entire dir — plugin captures via component tests
-packages/app/test-browser/plugin-*.test.ts  # Deleted in fork, not our concern
-packages/app/test-browser/selected-effect.test.ts
-packages/app/test-browser/timeline-cache.test.ts
+packages/app/test-browser/plugin-*.test.ts  # Deleted in fork, restore upstream
+packages/app/test-browser/selected-effect.test.ts  # Restore upstream
+packages/app/test-browser/timeline-cache.test.ts   # Restore upstream
 ```
 
 **Keep (product tests):**
@@ -126,38 +126,68 @@ packages/session-graph/component-tests/      # session-graph library tests
 - `package.json` — `"main": "src/index.ts"`, peer deps: `solid-js`, `effect`, `@opencode/ui`
 - **No** e2e, no app integration, no fork-specific config
 
-**App integrations using session-graph** (timeline cache, virtualizer, composer changes, etc.) should be **moved into the session-graph library** or kept as thin adapters in the fork's app code. They're product code, not noise.
+**App integrations using session-graph:** None — the app doesn't import from session-graph. The plugin is the only consumer.
 
-### E4. Organize App-Level SessionGraph Integrations (Keep, Don't Revert)
+### E4. Revert All App Changes EXCEPT SessionSurface Implementation + Plugin Setting
 
-These are **product code**, not noise. They integrate session-graph into the app. Keep them, but organize:
+**KEEP (SessionSurface API implementation):**
+| File | Reason |
+|------|--------|
+| `packages/app/src/runtime/plugin/host.tsx` | Exposes `ctx.surfaces` getter |
+| `packages/app/src/runtime/plugin/surfaces.ts` | Runtime: transcript surface, selection, ordering |
+| `packages/app/src/runtime/plugin/surfaces.test.ts` | Tests for the API |
+| `packages/app/src/session/surface.tsx` | `SessionSurfaceHost` component (NEW) |
+| `packages/app/src/session/screen.tsx` | Uses `SessionSurfaceHost` |
 
-| Area | Files | Status |
-|------|-------|--------|
-| Timeline cache/virtualizer | `timeline/cache.ts`, `timeline/virtualizer.tsx`, `timeline/controller.tsx` | Keep — session-graph renders in timeline |
-| Composer region | `composer/region.tsx`, `composer/timeline-actions.ts` | Keep — graph interactions in composer |
-| Session identity header | `session-identity-header.tsx` | Keep — shows graph state |
-| Settings | `settings/model.tsx` (`experimental.sessionGraph`) | Keep — plugin setting |
-| Turn diff caching | `shell/routes/session-ui-provider.tsx` | Keep — graph needs turn diffs |
-| Question dock / go-limit-tray | Removed in fork | Keep removed — not needed for graph |
+**KEEP (Plugin setting):**
+| File | Change |
+|------|--------|
+| `packages/app/src/settings/model.tsx` | `experimental: { sessionGraph: Schema.Boolean }` — plugin reads this |
 
-**Principle:** These are the **app-side integrations** that make SpaceGraph work in the host. They belong in the fork as product code. They're not "noise" — they're the integration layer.
-
-### E5. Restore Only Truly Unrelated Files
-
-Run `git checkout upstream/dev --` for files that have **no connection to SessionSurface or SpaceGraph**:
+**REVERT TO UPSTREAM (all other app changes):**
 ```
-packages/app/src/runtime/plugin/link-check.ts      # Deleted in fork, restore
-packages/app/src/runtime/plugin/mobile.tsx         # Unrelated, restore
-packages/app/src/runtime/plugin/mounted-session.ts # Unrelated, restore
-packages/app/src/runtime/plugin/render.tsx         # Unrelated, restore
-packages/app/vite.config.ts                        # Revert to upstream
-packages/gui-plugins/src/main.ts                   # Revert (remove session-map import only)
-packages/gui-plugins/src/renderer.ts               # Revert (remove session-map import only)
-packages/gui-plugins/package.json                  # Revert (remove session-map deps only)
+packages/app/src/runtime/plugin/link-check.ts      # Deleted → restore
+packages/app/src/runtime/plugin/mobile.tsx         # Unrelated → restore
+packages/app/src/runtime/plugin/mounted-session.ts # Unrelated → restore
+packages/app/src/runtime/plugin/render.tsx         # Unrelated → restore
+packages/app/src/workspaces/location.tsx           # Unrelated → restore
+packages/app/src/session/commands/use-session-commands.tsx  # Unrelated → restore
+packages/app/src/session/composer/go-limit-tray.tsx         # Deleted → restore
+packages/app/src/session/composer/region.tsx       # Refactor → restore
+packages/app/src/session/composer/timeline-actions.ts # Deleted → restore
+packages/app/src/session/requests/session-question-dock-classic.tsx  # Unrelated → restore
+packages/app/src/session/requests/session-question-dock-experimental.tsx # Unrelated → restore
+packages/app/src/session/timeline/cache.ts         # Refactor → restore
+packages/app/src/session/timeline/controller.tsx   # Minor → restore
+packages/app/src/session/timeline/interaction.ts   # Unrelated → restore
+packages/app/src/session/timeline/message-timeline.tsx # Unrelated → restore
+packages/app/src/session/timeline/selected-effect.ts # Unrelated → restore
+packages/app/src/session/timeline/turn-diffs.ts    # Unrelated → restore
+packages/app/src/session/timeline/virtualizer.tsx  # Minor → restore
+packages/app/src/session/usage-exceeded-dialogs.tsx # Unrelated → restore
+packages/app/src/shell/routes/session-ui-provider.tsx  # Refactor → restore
+packages/app/src/session/session-identity-header.tsx   # Accessibility → restore (separate PR)
+packages/app/src/settings/experimental/experimental.tsx  # Trivial → restore
+packages/app/src/runtime/i18n/en.ts                # session-map strings → restore (keep surface strings)
+packages/app/src/runtime/persistence/schema.ts     # session-map schema → restore
+packages/app/src/index.css                         # session-map styles → restore
+packages/app/src/entry.graph-dev.tsx               # Dev entry → restore or delete
 ```
 
-**Do NOT revert:** `screen.tsx`, `surface.tsx`, timeline/*, composer/*, settings/*, session-ui-provider.tsx — these are product integrations.
+**Command to execute E4:**
+```bash
+# For each file above, restore from upstream:
+git checkout upstream/dev -- <file>
+# Then re-apply ONLY the SessionSurface changes to host.tsx, screen.tsx
+# And re-apply ONLY the experimental.sessionGraph setting to settings/model.tsx
+```
+
+### E5. Restore gui-plugins Entry Points (Remove session-map only)
+
+```bash
+git checkout upstream/dev -- packages/gui-plugins/src/main.ts packages/gui-plugins/src/renderer.ts packages/gui-plugins/package.json
+# Then re-add spacegraph import/entry (already there in fork)
+```
 
 ---
 
@@ -193,9 +223,7 @@ opencode-plugins/
 2. **Init new repo** with the structure above
 3. **Copy `packages/session-graph`** → `packages/session-graph` (cleaned per E3)
 4. **Copy `packages/plugins/spacegraph`** → `packages/spacegraph` (update deps to `@opencode/plugin`, `session-graph: workspace:*`)
-5. **Move app integrations** — Timeline cache, virtualizer, composer hooks → either:
-   - Into `session-graph` library as optional integrations, OR
-   - Keep in this fork as host-specific adapters (not in plugin repo)
+5. **Update `spacegraph` bundle entry** to import from `session-graph` workspace
 6. **Publish** `@autonull/opencode-plugin-spacegraph` from the new repo
 7. **Delete** `packages/plugins/spacegraph`, `packages/gui-plugins/src/spacegraph`, `packages/session-graph` from this fork
 8. **This fork** → only the 9 API files (D1–D3) + any remaining upstream PR work
@@ -228,8 +256,8 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 | 1 | **E1** | Delete `session-map`; verify `graph:capture --mode=verify` passes |
 | 2 | **E2** | Delete e2e/graph, restore test-browser files; verify |
 | 3 | **E3** | Clean `session-graph` package; verify its component tests pass |
-| 4 | **E4** | Organize app integrations (no reverts, just verify they work) |
-| 5 | **E5** | Restore unrelated files; re-apply API additions; verify |
+| 4 | **E4** | Revert all app changes EXCEPT SessionSurface impl + plugin setting; verify |
+| 5 | **E5** | Restore gui-plugins entry points; verify |
 | 6 | **D1–D3** | Upstream PR opened, reviewed, merged, released |
 | 7 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; fork deletes product |
 
@@ -239,11 +267,11 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 ## 7. Definition of Done
 
-1. **Fork size** — `git diff upstream/dev..HEAD --stat` shows: 9 API files + SpaceGraph product + session-graph library + app integrations (~10k lines added, not 23k)
+1. **Fork size** — `git diff upstream/dev..HEAD --stat` shows: 9 API files + SpaceGraph product + session-graph library (~10k lines added, not 23k)
 2. **Upstream PR** — Minimal (D1–D2), typed, tested, documented; merges without product code
 3. **Product intact** — All 3 artifact frames + 38 demo frames pass; bundle publishes and installs
 4. **No duplication** — No built-in session-map; plugin is the only map
-5. **Clean separation** — Plugin API in `packages/plugin/`; product in `packages/plugins/spacegraph`, `packages/gui-plugins/src/spacegraph`, `packages/session-graph`; app integrations in `packages/app/src/session/*`
+5. **Clean separation** — Plugin API in `packages/plugin/`; product in `packages/plugins/spacegraph`, `packages/gui-plugins/src/spacegraph`, `packages/session-graph`; host rendering in `packages/app/src/session/surface.tsx`
 6. **New repo ready** — `opencode-plugins` structure defined; migration path documented
 
 ---
@@ -255,7 +283,7 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 | Upstream rejects `SessionSurface` API | Keep fork; plugin works. Document API as "fork extension" in plugin README. |
 | Upstream wants different design | API is small; iterate in PR. Core shape (`render({session, transcript})`) is solid. |
 | `session-graph` too large for workspace | Publish to npm as `@opencode/session-graph`; plugin uses peer dep. |
-| App regressions during E1/E5 cleanup | Run `graph:capture --mode=verify` after each step; component tests catch breaks. |
+| App regressions during E1/E4 cleanup | Run `graph:capture --mode=verify` after each step; component tests catch breaks. |
 | Lost e2e coverage | Component tests cover plugin; session-graph has its own component tests. App e2e is upstream's job. |
 
 ---
@@ -265,8 +293,9 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 1. **E1** — Delete `packages/gui-plugins/src/session-map/` and its registrations in `main.ts`/`renderer.ts`
 2. **E2** — Delete `packages/app/e2e/graph/`; restore upstream test-browser files
 3. **E3** — Clean `packages/session-graph/` to library-only (remove app-specific config)
-4. **E5** — Restore unrelated runtime files; re-apply API additions
-5. **Verify** — `bun run graph:capture --mode=verify` after each step
+4. **E4** — Revert all app changes except SessionSurface impl + plugin setting
+5. **E5** — Restore gui-plugins entry points (remove session-map only)
+6. **Verify** — `bun run graph:capture --mode=verify` after each step
 
 ---
 
@@ -278,8 +307,8 @@ CURRENT (vs upstream/dev):     TARGET (vs upstream/dev):
 ├─ 178 files                     ├─ 9 API files (D1-D3)
 ├─ session-map (built-in)        ├─ spacegraph plugin
 ├─ session-graph (full lib)      ├─ session-graph (clean lib)
-├─ app integrations (scattered)  ├─ app integrations (organized)
-└─ e2e/test noise                └─ (no e2e noise)
+├─ app integrations (scattered)  └─ (no app glue, no e2e noise)
+└─ e2e/test noise
 ```
 
 The target fork is **reviewable as an upstream PR** (9 files) while still shipping a complete SpaceGraph product with all app integrations.
