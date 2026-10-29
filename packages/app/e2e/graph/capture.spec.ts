@@ -54,11 +54,25 @@ function graphFixture() {
 
 async function capture(page: Page, name: string) {
   if (!captureDir) return
-  // A menu the reader opened stays open; the frame is the map's record, not a stray dropdown.
+  // A menu the reader opened stays open; the frame is the map's record, not a stray dropdown. A frame
+  // that clicked a dropdown near the bottom of the page also scrolled it; the map is recorded unscrolled.
   await page.evaluate(() => {
     document.querySelectorAll<HTMLDetailsElement>("details[data-slot^='graph-toolbar-']").forEach((menu) => {
       menu.open = false
     })
+    // Scrolling a control into view also scrolls the containers that hold the map's own chrome, which
+    // would record the frame without its toolbar. The inspector keeps the position the reader reached.
+    window.scrollTo(0, 0)
+    for (const element of document.querySelectorAll<HTMLElement>("*")) {
+      if (element.closest('[data-slot="graph-inspector"]')) continue
+      if (element.scrollTop > 0) element.scrollTop = 0
+      if (element.scrollLeft > 0) element.scrollLeft = 0
+    }
+    // The inspector's verbs sit under a long connection list; show them at the end of the panel.
+    const panel = document.querySelector<HTMLElement>('[data-slot="graph-inspector"]')
+    for (const element of panel?.querySelectorAll<HTMLElement>("*") ?? []) {
+      if (element.scrollHeight > element.clientHeight) element.scrollTop = element.scrollHeight
+    }
   })
   mkdirSync(captureDir, { recursive: true })
   await page.screenshot({ path: resolve(captureDir, name) })
@@ -710,5 +724,29 @@ test("37 graph collapsed group", async ({ page }) => {
   await page.locator('[data-slot="graph-status-bar"] [data-slot="graph-status-group-toggle"]').click()
   await still(page)
   await capture(page, "37-graph-collapsed-group.png")
+  expect(errors).toEqual([])
+})
+
+test("38 graph hybrid", async ({ page }) => {
+  test.skip(mode === "baseline", "baseline captures the transcript only")
+  // Entering the hybrid from another surface leaves the transcript pane empty: the timeline keeps the
+  // zero height it measured while hidden in the map surface. Capture this frame once that is fixed.
+  test.skip(true, "hybrid transcript pane renders empty when the surface is entered after load")
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openSession(page, graphFixture())
+  await settle(page)
+  // Ctrl+Shift+H lands on the hybrid surface: the log beside the map, which replaced split view.
+  await page.keyboard.press("Control+Shift+H")
+  const hybrid = page.locator('[data-slot="spacegraph-surface-hybrid"]')
+  await expect(hybrid).toBeVisible()
+  // The default arrangement stacks the map under the log; the frame records the side-by-side reading.
+  await openMenu(page)
+  await page.locator('[data-slot="graph-arrangement-option"][data-value="side"]').click()
+  await expect(hybrid).toHaveAttribute("data-arrangement", "side")
+  await expect(page.locator('[data-slot="session-timeline-scroll"]').getByText("Fix the authentication test failures")).toBeVisible()
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await still(page)
+  await capture(page, "38-graph-hybrid.png")
   expect(errors).toEqual([])
 })

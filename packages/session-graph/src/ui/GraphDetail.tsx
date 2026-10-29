@@ -606,8 +606,10 @@ function GraphDetailActions(props: {
     }
   }
 
-  const traceActions = props.traceKind
-    ? [
+  // A live trace swaps the verbs for its own: read it in a function so the list follows the trace.
+  const traceActions = () =>
+    props.traceKind
+      ? [
         {
           id: "trace.copyOutline",
           label: i18n.t("ui.sessionGraph.trace.copyOutline"),
@@ -629,40 +631,38 @@ function GraphDetailActions(props: {
         { id: "trace.related", label: i18n.t("ui.sessionGraph.trace.related"), onClick: () => handleTrace("related") },
       ]
 
-  const allActionElements = [
-    ...(actions.length > 0
-      ? actions.map((action) => (
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
-            onClick={() => handleAction(action)}
-          >
-            <span class="text-12-regular text-text-base truncate">{i18n.t(action.labelKey)}</span>
-            {action.kind === "run" && action.operation && (
-              <span class="text-10-regular text-text-weaker ml-auto">
-                {action.operation.id}
-              </span>
-            )}
-          </button>
-        ))
-      : []),
-    ...traceActions.map((action) => (
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
-        onClick={action.onClick}
-      >
-        <span class="text-12-regular text-text-base truncate">{action.label}</span>
-      </button>
-    )),
-  ]
-
-  if (allActionElements.length === 0) return null
-
   return (
     <div class="mt-4" data-component="graph-detail-actions" data-slot="graph-detail-actions">
       <div class="text-12-regular text-text-weak mb-2">{i18n.t("ui.graph.actions.label")}</div>
-      <div class="flex flex-col gap-1.5">{allActionElements}</div>
+      <div class="flex flex-col gap-1.5">
+        <For each={actions}>
+          {(action) => (
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              onClick={() => handleAction(action)}
+            >
+              <span class="text-12-regular text-text-base truncate">{i18n.t(action.labelKey)}</span>
+              <Show when={action.kind === "run" && action.operation}>
+                {(operation) => (
+                  <span class="text-10-regular text-text-weaker ml-auto">{operation().id}</span>
+                )}
+              </Show>
+            </button>
+          )}
+        </For>
+        <For each={traceActions()}>
+          {(action) => (
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              onClick={action.onClick}
+            >
+              <span class="text-12-regular text-text-base truncate">{action.label}</span>
+            </button>
+          )}
+        </For>
+      </div>
     </div>
   )
 }

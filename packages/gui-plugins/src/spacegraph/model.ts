@@ -95,7 +95,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       })
     },
     cycleArrangement: (session: MountedSession) => {
-      const arrangement = next(GRAPH_ARRANGEMENTS, store(session).value?.arrangement ?? "side")
+      const arrangement = next(GRAPH_ARRANGEMENTS, store(session).value?.arrangement ?? prefValue().arrangement ?? "stacked")
 
       store(session).update((draft) => {
         draft.arrangement = arrangement
