@@ -1,6 +1,7 @@
-import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import type { Domain, NodeKind, NodeStatus, PhaseCategory, ZoomLevel } from "./vocabulary"
+
+export type JsonValue = import("@opencode/client/promise").JsonValue
 
 /** T29.1 — workspace snapshot: plain JSON, versioned, stamped per source. */
 export type Source = "tree" | "vcs" | "packages" | "symbols" | "issues" | "processes" | "coverage"
