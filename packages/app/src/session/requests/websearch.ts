@@ -20,6 +20,7 @@ export function createWebSearchRequest(input: {
 }) {
   const [store, setStore] = createStore({
     selected: "random",
+    // SAFETY: initial value is undefined; the type narrows when set
     sending: undefined as { form: FormInfo; abort: AbortController } | undefined,
     error: false,
   })

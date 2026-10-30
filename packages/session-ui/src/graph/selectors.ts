@@ -448,6 +448,7 @@ export function sessionOutline(model: GraphViewData): Array<{
       .filter((node): node is GraphNode => !!node && node.kind === "phase")
       .map((phase) => ({
         id: phase.id,
+        // SAFETY: `category` is always a string when present per GraphPhaseData schema
         category: phase.data?.category as string ?? "unknown",
         label: phase.label,
       }))

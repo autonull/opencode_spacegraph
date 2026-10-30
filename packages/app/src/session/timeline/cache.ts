@@ -139,6 +139,9 @@ export function createTimelineCache(
                 get turnDiff() {
                   return turnDiff()
                 },
+                get snapshot() {
+                  return data.snapshot
+                },
               },
               () =>
                 provide(

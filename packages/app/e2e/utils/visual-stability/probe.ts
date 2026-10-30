@@ -235,7 +235,10 @@ export async function stopVisualProbe<RegionName extends string = string>(
       return { markers: probe.markers, samples: probe.samples }
     })
     .then(
-      async (trace) => ({ ...trace, frames: await stopCapture(page) }) as unknown as VisualProbeResult<RegionName>,
+      async (trace) => ({
+        ...trace,
+        frames: await stopCapture(page),
+      }) as unknown as VisualProbeResult<RegionName>, // SAFETY: `trace` has all VisualProbeResult fields except `frames`; we add them here
       async (error: unknown) => {
         await stopCapture(page)
         throw error
