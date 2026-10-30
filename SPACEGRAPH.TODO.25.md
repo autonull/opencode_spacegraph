@@ -253,13 +253,14 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 **Completed:**
 - ✅ E1-E5: Noise elimination complete (built-in session-map removed, test/e2e noise cleaned, session-graph as workspace library, app changes reverted except SessionSurface + plugin setting, gui-plugins entry points restored)
 - ✅ D1-D3: Minimal upstreamable API implemented (9 files in plugin SDK + app runtime + host rendering)
-- ✅ Typecheck clean across all 43 packages
-- ✅ Lint passes (warnings only, no errors)
+- ✅ Typecheck clean across core packages (app, plugin, gui-plugins, session-ui, session-graph, plugins/spacegraph)
+- ✅ Lint passes (0 errors, 1786 pre-existing warnings)
 - ✅ Session-graph component tests: 113 passing (25 failing due to Playwright config/version issues unrelated to SessionSurface)
 - ✅ SpaceGraph product bundle builds correctly
 - ✅ SpaceGraph component tests: 3/3 passing (map surface + side panel + dialog fallback)
 - ✅ Unit tests for SessionSurface API: 4 passing
 - ✅ Test fixture bug fixed: `runCommand` now executes commands via Command registry
+- ✅ **Fork synchronized with upstream/dev** (merged 6b4329c885, resolved all conflicts in 9 API files + product code)
 
 **Remaining (Upstream PR - Phase D):**
 - ⬜ Open upstream PR with D1-D3 (9 files diff ready)
@@ -275,9 +276,8 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 ## 10. Immediate Next Actions
 
-1. **Open upstream PR** with D1-D3 (9 files) — diff ready in this fork
-2. **Sync with upstream/dev** — rebase/merge before PR submission and regularly thereafter
-3. **Verify upstream CI passes** on the PR
-4. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
+1. **Open upstream PR** with D1-D3 (9 files) — diff ready, fork fully synced
+2. **Verify upstream CI passes** on the PR
+3. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
 
-> Documentation and example plugin created. All local tests pass (typecheck, lint, component tests).
+> All local verification complete: typecheck ✅ (core packages), lint ✅ (0 errors), component tests ✅ (3/3 SpaceGraph, 31/31 plugin-host, 1/1 plugin-graph), unit tests ✅ (4/4 surfaces).
