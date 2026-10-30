@@ -11,6 +11,7 @@ const Prefs = Schema.Struct({
   depth: Schema.optional(Schema.Literals(DEPTH_MODES)),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
+  renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
 })
 
 const State = Schema.Struct({

@@ -12,6 +12,8 @@ import {
 import { usePlugin } from "@opencode/plugin/gui"
 import definition, { DEPTH_MODES } from "./index"
 
+const RENDERERS = ["spacegraph", "cytoscape"] as const
+
 function next<T>(values: readonly T[], current: T) {
   return values[(values.indexOf(current) + 1) % values.length] ?? current
 }
@@ -25,6 +27,7 @@ export default function SpacegraphSettings() {
   const depth = () => prefs.value.depth ?? "flat"
   const arrangement = () => prefs.value.arrangement ?? "side"
   const side = () => prefs.value.side ?? "end"
+  const renderer = () => (prefs.value.renderer ?? "spacegraph") as "spacegraph" | "cytoscape"
 
   const levelLabel = (value: ZoomLevel) => {
     switch (value) {
@@ -84,6 +87,8 @@ export default function SpacegraphSettings() {
 
   const sideLabel = (value: GraphSide) => (value === "start" ? ctx.t("side.start") : ctx.t("side.end"))
 
+  const rendererLabel = (value: string) => (value === "spacegraph" ? ctx.t("renderer.spacegraph") : ctx.t("renderer.cytoscape"))
+
   const Row = (props: { label: string; value: () => string; act: () => void }) => (
     <div class="flex items-center justify-between gap-4">
       <span class="text-13-regular text-text-base">{props.label}</span>
@@ -136,6 +141,15 @@ export default function SpacegraphSettings() {
         act={() =>
           prefs.update((draft) => {
             draft.side = next(GRAPH_SIDES, side())
+          })
+        }
+      />
+      <Row
+        label={ctx.t("settings.renderer")}
+        value={() => rendererLabel(renderer())}
+        act={() =>
+          prefs.update((draft) => {
+            draft.renderer = next(RENDERERS, renderer())
           })
         }
       />

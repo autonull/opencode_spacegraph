@@ -129,9 +129,7 @@ export type GraphToolbarProps = {
   endInset?: string
   /** T27.1: the model to derive domain presence from. */
   model?: GraphViewData
-  /** Callback when the renderer changes. */
-  onRendererChange?: (renderer: "spacegraph" | "cytoscape") => void
-}
+  }
 
 /**
  * Graph toolbar (U3.9). It owns no graph state; it renders the semantic level, projection, and the
@@ -293,7 +291,6 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         onSplitView={props.onSplitView}
         onBack={props.onBack}
         endInset={props.endInset}
-        onRendererChange={props.onRendererChange}
       />
     </div>
   )

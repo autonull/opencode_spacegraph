@@ -18,9 +18,13 @@
 | Screenshots | ⚠️ Partial | Bundle: 3/3 pass; Cytoscape: 5/31 regenerated (07,08,20,21,25) |
 | **Upstream PR** | ❌ **Not opened** | **This is the blocker** |
 | **SurfaceContext export** | ✅ **Done** | Exported from `@spacegraphjs/renderer` |
-| **Renderer selector** | ✅ **Done** | Dropdown in GraphRendererStatus |
+| **Renderer selector** | ✅ **Done** | **Moved to Settings page** (persisted default) |
 | **Mobile responsive** | ✅ **Done** | Narrow/compact support via `narrow`/`compact` signals |
 | **A11y baseline** | ✅ **Done** | AccessibilityLayer with roving tabindex, aria-live, edge listing |
+| **Hybrid arrangements** | ✅ **Done** | Stacked/side/floating + persisted per session |
+| **Keyboard shortcuts** | ✅ **Done** | `/` search, `g` navigate, `f` fit, `1/2/3` levels, `z/Z` undo/redo |
+| **Turn map overlay** | ✅ **Done** | Focus trap, Escape to close, open full graph |
+| **Export (SVG/JSON/HTML)** | ✅ **Done** | Toolbar export control |
 
 ---
 
@@ -279,12 +283,21 @@ autonull/opencode-spacegraph/
 
 ## 9. Immediate Next Actions (This Week)
 
-**All grill questions resolved. G1, H1 (renderer selector, mobile), H3 (a11y baseline) complete.**
+**All core features complete. Ready for presentation phase.**
 
-1. Record demo video, create animated SVG, capture screenshots
-2. Draft integration guide (technical content) (Q8)
-3. **We pair**: Finalize demo video, animated SVG
-4. Open upstream PR with product demo
+1. **Capture screenshots** (5 key frames + banner)
+   - `bun run graph:capture` or manual via Playwright
+   - Frames: overview, execution detail, hybrid stacked, hybrid side, turn map
+2. **Record demo video** (2-3 min)
+   - Flow: renderer note → overview → hybrid → turn map → inspector → export
+3. **Create animated SVG** (240×72, <8 KB)
+   - Graph → transcript transition, or hybrid toggle
+4. **Draft integration guide** (technical content)
+   - How to enable, keyboard shortcuts, hybrid modes, permalinks
+5. **Update fork landing page**
+   - Banner screenshot, "Try it: `bun run graph:dev`", limitations
+6. **Open upstream PR**
+   - Include demo video link, animated SVG, screenshots
 
 ---
 

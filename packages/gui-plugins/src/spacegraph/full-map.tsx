@@ -22,6 +22,7 @@ export function FullMap(props: {
   })
 
   const focused = () => props.model.focused(props.session)
+  const preferredRenderer = () => props.model.renderer(props.session)
 
   return (
     <GraphView
@@ -45,6 +46,7 @@ export function FullMap(props: {
       onArrangementChange={(next) => props.model.setArrangement(props.session, next)}
       onArrangementSideChange={(next) => props.model.setSide(props.session, next)}
       onSplitView={props.onSplitView}
+      preferredRenderer={preferredRenderer}
     />
   )
 }

@@ -45,6 +45,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     },
     arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "stacked",
     side: (session: MountedSession): GraphSide => sessionValue(session)?.side ?? prefValue().side ?? "end",
+    renderer: (session: MountedSession): "spacegraph" | "cytoscape" => (prefValue().renderer ?? "spacegraph") as "spacegraph" | "cytoscape",
     surface: (session: MountedSession) => sessionValue(session)?.surface,
     select: (session: MountedSession, id: string) => {
       store(session).update((draft) => {
