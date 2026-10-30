@@ -12,3 +12,22 @@
   flex: 0 0 auto;
   padding: 0 10px;
 }
+
+/*
+ * Toolbar menu dropdown items — style the selected (aria-pressed="true") state
+ * so the current renderer/arrangement/etc. is visually indicated.
+ */
+[data-slot="graph-toolbar"] [data-slot$="-option"][aria-pressed="true"] {
+  background: var(--surface-raised-base-hover);
+  font-weight: 530;
+}
+
+[data-slot="graph-toolbar"] [data-slot$="-option"][aria-pressed="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-inline-end: 8px;
+  border-radius: 50%;
+  background: var(--accent-base);
+}

@@ -38,7 +38,7 @@ export const GraphRendererStatus = (props: GraphRendererStatusProps) => {
         <ToolbarMenu
           slot="graph-toolbar-renderer"
           label={i18n.t("ui.sessionGraph.toolbar.rendererSelector")}
-          icon="outline-cpu"
+          icon="monitor"
           align="end"
           value={props.renderer ? RENDERER_LABELS[props.renderer] : undefined}
           valueSlot="graph-renderer-name"
