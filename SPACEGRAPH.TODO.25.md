@@ -27,7 +27,7 @@ These **9 files, ~300 lines** are the complete upstream PR. They add main-sessio
 | `registries.ts` | Add `SessionSurface`, `SessionLayer` interfaces | +61 |
 | `host-apis.ts` | Add `Surfaces` interface (`list`, `selected`, `select`) | +44 |
 | `context.ts` | Add `readonly surfaces: Surfaces` getter to `Context` | +10 |
-| `icon-name.ts` | Add `"map"` icon (or reuse existing) | +1 |
+| `icon-name.ts` | Add `"map"` icon | +1 |
 
 **Design principles for upstream review:**
 - `SessionSurface` mirrors `Panel` shape: `id`, `title`, `icon`, `order`, `render(input)`, optional `layers`
@@ -263,8 +263,8 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 **Remaining (Upstream PR - Phase D):**
 - ⬜ Open upstream PR with D1-D3 (9 files diff ready)
-- ⬜ Documentation: when to use `SessionSurface` vs `Panel` vs `MobileView`
-- ⬜ Example: a minimal plugin contributing a map surface
+- ✅ Documentation: when to use `SessionSurface` vs `Panel` vs `MobileView` (docs/spacegraph/surface-vs-panel-vs-mobileview.md)
+- ✅ Example: a minimal plugin contributing a map surface (docs/spacegraph/example-session-surface-plugin.md)
 - ⬜ Ensure tests pass in upstream CI (run on PR)
 
 **Remaining (Post-Upstream - Phase F):**
@@ -276,10 +276,8 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 ## 10. Immediate Next Actions
 
 1. **Open upstream PR** with D1-D3 (9 files) — diff ready in this fork
-2. **Add documentation** to the PR: when to use `SessionSurface` vs `Panel` vs `MobileView`
-3. **Add example** to the PR: a minimal plugin contributing a map surface
-4. **Verify upstream CI passes** on the PR
-5. **Sync with upstream/dev** — rebase/merge before PR submission and regularly thereafter
-6. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
+2. **Sync with upstream/dev** — rebase/merge before PR submission and regularly thereafter
+3. **Verify upstream CI passes** on the PR
+4. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
 
-> All 3 SpaceGraph component tests pass. The dialog fallback test failure was a bug in this fork's test fixture (`runCommand` stub). Fixed by implementing command execution via the host's Command registry.
+> Documentation and example plugin created. All local tests pass (typecheck, lint, component tests).

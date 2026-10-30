@@ -81,6 +81,7 @@ export type IconName =
   | "lock"
   | "magnifying-glass"
   | "magnifying-glass-menu"
+  | "map"
   | "mcp"
   | "menu"
   | "minus"

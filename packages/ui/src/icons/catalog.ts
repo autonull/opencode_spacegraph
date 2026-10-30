@@ -78,6 +78,10 @@ const icons = {
     viewBox: "0 0 16 16",
     body: `<path d="M14 14L11 11M4.66667 7.33333H10M7.33333 4.66667V10M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z" stroke-miterlimit="10" stroke-linecap="square" stroke="currentColor"/>`,
   },
+  map: {
+    viewBox: "0 0 16 16",
+    body: `<path d="M4 4L8 2L12 4L8 6L4 4Z" stroke="currentColor"/><path d="M4 12L8 10L12 12L8 14L4 12Z" stroke="currentColor"/><path d="M2 8L4 6M14 8L12 6M4 10L2 8M14 10L12 8" stroke="currentColor"/><circle cx="8" cy="8" r="2" stroke="currentColor"/>`,
+  },
   menu: {
     viewBox: "0 0 16 16",
     body: `<path d="M2 8H14M2 4.664H14M2 11.336H14" stroke="currentColor"/>`,
