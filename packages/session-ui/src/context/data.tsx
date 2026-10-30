@@ -66,7 +66,11 @@ export type ReadMediaUrlFn = (uri: string, mime: string, signal?: AbortSignal) =
 
 export type PeekMediaUrlFn = (uri: string, mime: string) => string | undefined
 
-export const { use: useData, provider: DataProvider, context: DataContext } = createSimpleContext({
+export const {
+  use: useData,
+  provider: DataProvider,
+  context: DataContext,
+} = createSimpleContext({
   name: "Data",
   init: (props: {
     data: Data
@@ -105,8 +109,12 @@ export const { use: useData, provider: DataProvider, context: DataContext } = cr
       sessionHref: props.onSessionHref,
       shellRunning: props.shellRunning,
       shellOutput: props.shellOutput,
-      turnDiff: props.turnDiff,
-      snapshot: props.snapshot,
+      get turnDiff() {
+        return props.turnDiff
+      },
+      get snapshot() {
+        return props.snapshot
+      },
       readMedia: props.readMedia,
       peekMedia: props.peekMedia,
     }

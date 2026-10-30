@@ -290,7 +290,7 @@ function SessionScreenContent(props: {
         return view.id === source.identity.sessionID() ? view : previous
       }, untrack(props.view))
 
-      // The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
+// The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
       // asked a question of the map and the log answers it in place.
       const revealInLog = (messageID: string, partID?: string) => {
         timeline.actions.revealMessage(messageID, partID)
@@ -308,6 +308,11 @@ function SessionScreenContent(props: {
         reveal: openGraphTranscript,
       })
 
+      const actions = composer.actions.timeline({
+        sessionID: () => source.identity.sessionID(),
+        isChild: () => !!source.data.parentID(),
+      })
+
       return (
         <MessageTimeline
           active={active()}
@@ -317,10 +322,7 @@ function SessionScreenContent(props: {
           view={own()}
           screen={props.screen}
           background={composer.requests.background}
-          actions={composer.actions.timeline({
-            sessionID: () => source.identity.sessionID(),
-            isChild: () => !!source.data.parentID(),
-          })}
+          actions={actions}
           scroll={timeline.scroll}
           onResumeScroll={timeline.actions.resume}
           setScrollRef={timeline.view.setScrollRef}
@@ -333,6 +335,7 @@ function SessionScreenContent(props: {
           pinned={timeline.view.pinned()}
           centered={screen.centered()}
           reserveReviewToggle={!sideVisible()}
+          onContentResize={timeline.view.contentResized}
           setContentRef={timeline.view.setContentRef}
           bottomInset={timeline.inset()}
           setVisibleRef={timeline.view.setVisibleRef}
@@ -341,6 +344,7 @@ function SessionScreenContent(props: {
           setRevealPart={timeline.view.setRevealPart}
           reveal={timeline.view.reveal}
           setScrollToEnd={timeline.view.setScrollToEnd}
+          setPage={timeline.view.setPage}
           search={
             <Show when={active()}>
               <TimelineSearchBar controller={timelineSearch} />
