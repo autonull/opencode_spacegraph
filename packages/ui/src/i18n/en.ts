@@ -433,6 +433,7 @@ const source = {
   "ui.sessionGraph.depth.depthStack": "Stack",
   "ui.sessionGraph.depth.orbit": "Orbit",
   "ui.sessionGraph.toolbar.renderer": "Renderer: {{renderer}}",
+  "ui.sessionGraph.toolbar.rendererSelector": "Renderer",
   "ui.sessionGraph.capability.depthUnavailable": "{{depth}} depth is unavailable in the {{renderer}} renderer",
   "ui.sessionGraph.toolbar.billboard": "Billboard cards",
   "ui.sessionGraph.toolbar.billboardOff": "Billboard cards off",

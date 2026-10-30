@@ -1507,6 +1507,7 @@ export const GraphView = (props: GraphViewProps) => {
         searching={searchOpen()}
         compact={compact()}
         endInset={props.endInset}
+        onRendererChange={setRendererID}
       />
       <GraphBreadcrumbs crumbs={selection.crumbs()} onSelect={fitSubtree} />
       <GraphStatusBar

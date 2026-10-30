@@ -129,6 +129,8 @@ export type GraphToolbarProps = {
   endInset?: string
   /** T27.1: the model to derive domain presence from. */
   model?: GraphViewData
+  /** Callback when the renderer changes. */
+  onRendererChange?: (renderer: "spacegraph" | "cytoscape") => void
 }
 
 /**
@@ -286,11 +288,12 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       {/* The renderer label and the back control sit at the end of the row: the host's own chrome
           floats over the panel's top-right, and the end inset keeps them clear of it. */}
       <GraphRendererStatus
-        renderer={props.renderer}
+        renderer={props.renderer as any}
         compact={props.compact}
         onSplitView={props.onSplitView}
         onBack={props.onBack}
         endInset={props.endInset}
+        onRendererChange={props.onRendererChange}
       />
     </div>
   )
