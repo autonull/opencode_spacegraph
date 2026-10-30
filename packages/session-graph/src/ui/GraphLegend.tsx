@@ -102,6 +102,33 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
       <p class="mt-1 text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.legend.help")}</p>
 
       {section(
+        i18n.t("ui.sessionGraph.legend.shortcuts"),
+        [
+          { key: "⌘/", label: i18n.t("ui.sessionGraph.legend.shortcut.search") },
+          { key: "g", label: i18n.t("ui.sessionGraph.legend.shortcut.goTo") },
+          { key: "f", label: i18n.t("ui.sessionGraph.legend.shortcut.fit") },
+          { key: "1", label: i18n.t("ui.sessionGraph.legend.shortcut.levelOverview") },
+          { key: "2", label: i18n.t("ui.sessionGraph.legend.shortcut.levelExecution") },
+          { key: "3", label: i18n.t("ui.sessionGraph.legend.shortcut.levelDetail") },
+          { key: "⌘z", label: i18n.t("ui.sessionGraph.legend.shortcut.undo") },
+          { key: "⌘⇧z", label: i18n.t("ui.sessionGraph.legend.shortcut.redo") },
+          { key: "n", label: i18n.t("ui.sessionGraph.legend.shortcut.note") },
+          { key: "w", label: i18n.t("ui.sessionGraph.legend.shortcut.traceWhy") },
+          { key: "e", label: i18n.t("ui.sessionGraph.legend.shortcut.traceLedHere") },
+          { key: "r", label: i18n.t("ui.sessionGraph.legend.shortcut.traceRelated") },
+          { key: "[ / ]", label: i18n.t("ui.sessionGraph.legend.shortcut.stepPrev") + " / " + i18n.t("ui.sessionGraph.legend.shortcut.stepNext") },
+          { key: "⌘⌥t", label: i18n.t("ui.sessionGraph.legend.shortcut.turnMap") },
+          { key: "⌘⇧h", label: i18n.t("ui.sessionGraph.legend.shortcut.hybrid") },
+          { key: "⌘g", label: i18n.t("ui.sessionGraph.legend.shortcut.graph") },
+        ].map(({ key, label }) => (
+          <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
+            <kbd class="px-1.5 py-0.5 text-11-regular text-text-weak bg-surface-base border border-border-weaker-base rounded-sm shrink-0 font-mono">{key}</kbd>
+            <span class="truncate">{label}</span>
+          </span>
+        )),
+      )}
+
+      {section(
         i18n.t("ui.sessionGraph.legend.lanes"),
         LANES.map((lane) => (
           <span class="truncate text-12-regular text-text-base">{i18n.t(VOCABULARY_KEYS.lane[lane])}</span>

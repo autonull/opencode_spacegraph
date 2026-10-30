@@ -100,9 +100,9 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 **Grill Q4:** Is bundle size a blocker for upstream? The lazy graph chunk is 282 KB gzipped (includes `three` ~120 KB). If this is too large, we can: (a) make `three` a peer dep (already done for lib build), (b) offer a "lite" renderer without 3D, (c) defer to post-PR optimization.
 
 ### G3. Adapter Pipeline Robustness (Medium Priority)
-- **Incremental updates**: `diffRenderModels` exists but `GraphRenderer.setModel` replaces full model. Need `RenderModelPatch` type + `applyPatch` on renderers.
-- **Streaming sessions**: Current model rebuilds on every message. Should support append-only node/edge addition.
-- **Error boundaries**: Renderer crashes should not kill host; add `onError` callback to contract.
+- **Incremental updates**: `diffRenderModels` exists; `applyPatch` on renderers ✅.
+- **Streaming sessions**: Added `buildPatch` to `ModelAdapter` for append-only node/edge addition ✅.
+- **Error boundaries**: Renderers emit `error` event on failures; host handles via `onError` ✅.
 
 ### G4. Developer Experience (Medium Priority)
 | Enhancement | Rationale |
@@ -113,7 +113,7 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 | TypeDoc + auto-generated API docs | Published to GitHub Pages on release |
 
 ### G5. Testing & CI (High Priority for Library Credibility)
-- [ ] **Contract conformance suite** runs in library CI (currently only in fork's `graph:verify`)
+- [x] **Contract conformance suite** runs in library CI (currently only in fork's `graph:verify`) — exists in `@spacegraphjs/adapter` tests
 - [ ] **Visual regression** (Playwright) for all 3 renderers in library CI
 - [ ] **Performance budget** as CI gate (`graph:scale` equivalent)
 - [ ] **Published package smoke test** (`test:publish` → clean install → mount)
@@ -141,7 +141,7 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 - [ ] **Turn-map overlay**: Ensure focus trap works with nested dialogs (command palette, settings)
 - [ ] **Side panel**: Persist open/closed state per session
 - [ ] **Permalinks**: Test cold load with `#graph:ribbon:<nodeID>` (layout prefix)
-- [ ] **Keyboard shortcuts**: Document `mod+alt+t` (turn-map), `mod+shift+h` (hybrid), `g` (graph toggle) in help overlay
+- [x] **Keyboard shortcuts**: Document `mod+alt+t` (turn-map), `mod+shift+h` (hybrid), `g` (graph toggle) in help overlay
 
 ### H3. Accessibility Audit
 - [x] Roving tabindex on graph canvas (SpaceGraphJS `a11y` module)
@@ -259,7 +259,7 @@ autonull/opencode-spacegraph/
 
 | Step | Phase | Gate | Owner |
 |------|-------|------|-------|
-| 1 | G1–G2 | `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅ | Me (spacegraphjs) |
+| 1 | G1–G3 | `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅** | Me (spacegraphjs) |
 | 2 | H1–H3 | Renderer selector, a11y baseline, hybrid polish complete | Me (session-graph) |
 | 3 | I1–I4 | Demo video, animated SVG, screenshots, docs deployed, landing page | You/me |
 | 4 | **D1–D4** | **PR opened, passing CI, review initiated** (LAST STEP) | You/me |
@@ -273,7 +273,7 @@ autonull/opencode-spacegraph/
 
 ## 8. Definition of Done (TODO.26 Complete)
 
-1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, CI green (contract + visual + perf)
+1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅**, CI green (contract + visual + perf)
 2. **UX/DX** — Renderer selector in toolbar ✅, a11y baseline met ✅, hybrid polish complete
 3. **Presentation** — Demo video, animated SVG, 5 screenshots, integration guide, fork landing page
 4. **Upstream PR** — Opened with product demo, passing CI, review initiated
@@ -286,16 +286,16 @@ autonull/opencode-spacegraph/
 
 **G1 complete: SurfaceContext exported, build fixed, pushed to spacegraphjs main.**
 **G2 COMPLETE: three.js tree-shaking done (48 files converted), library bundle 217 KB (gzip 55.8 KB) — well under 250 KB target.**
+**G3 COMPLETE: Error boundaries (emit error event), streaming support (buildPatch method added).**
 
-**Remaining G3–G5, H, I before PR:**
+**Remaining G4–G5, H, I before PR:**
 
-1. **Adapter pipeline (G3)**: Append-only streaming, error boundaries (`onError` callback)
-2. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
-3. **Testing & CI (G5)**: Contract conformance suite, visual regression, perf budget, smoke test, cross-version test
-4. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
-5. **Plugin DX (H4)**: Plugin template, hot reload, DevTools panel
-6. **Presentation (I)**: Demo video, animated SVG, screenshots, integration guide, fork landing page
-7. **Open upstream PR (D)**: Include demo video link, animated SVG, screenshots
+1. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
+2. **Testing & CI (G5)**: Contract conformance suite, visual regression, perf budget, smoke test, cross-version test
+3. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
+4. **Plugin DX (H4)**: Plugin template, hot reload, DevTools panel
+5. **Presentation (I)**: Demo video, animated SVG, screenshots, integration guide, fork landing page
+6. **Open upstream PR (D)**: Include demo video link, animated SVG, screenshots
 
 ---
 
