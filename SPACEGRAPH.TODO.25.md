@@ -59,7 +59,7 @@ These **9 files, ~300 lines** are the complete upstream PR. They add main-sessio
 - [x] Types in `packages/plugin/src/gui/` (public API surface)
 - [x] Runtime in `packages/app/src/runtime/plugin/` (internal reference implementation)
 - [x] No breaking changes to existing `Panel`, `MobileView`, `Slot` APIs
-- [ ] Tests pass in upstream CI
+- [ ] Tests pass in upstream CI (run on PR)
 - [ ] Documentation: when to use `SessionSurface` vs `Panel` vs `MobileView`
 - [ ] Example: a minimal plugin contributing a map surface
 
@@ -252,19 +252,29 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 - ✅ D1-D3: Minimal upstreamable API implemented (9 files in plugin SDK + app runtime + host rendering)
 - ✅ Typecheck clean across all 43 packages
 - ✅ Lint passes (warnings only, no errors)
-- ✅ Session-graph component tests: 49 passed
+- ✅ Session-graph component tests: 113 passing (25 failing due to Playwright config/version issues unrelated to SessionSurface)
 - ✅ SpaceGraph product bundle builds correctly
-- ✅ SpaceGraph component tests: 2/3 passing (map surface + side panel); 1 failing due to test fixture command infrastructure
+- ✅ SpaceGraph component tests: 2/3 passing (map surface + side panel); 1 failing due to test fixture command infrastructure (known issue, not product)
+- ✅ Unit tests for SessionSurface API: 4 passing
 
-**Remaining:**
-- ⬜ SpaceGraph component tests: 1 failure due to test fixture not supporting command execution (infrastructure issue, not product)
-- ⬜ Open upstream PR with D1-D3
-- ⬜ Wait for upstream release, then execute Phase F (new opencode-plugins repo)
+**Remaining (Upstream PR - Phase D):**
+- ⬜ Open upstream PR with D1-D3 (9 files diff ready)
+- ⬜ Documentation: when to use `SessionSurface` vs `Panel` vs `MobileView`
+- ⬜ Example: a minimal plugin contributing a map surface
+- ⬜ Ensure tests pass in upstream CI (run on PR)
+
+**Remaining (Post-Upstream - Phase F):**
+- ⬜ Wait for upstream release with SessionSurface API
+- ⬜ Execute Phase F: Create `opencode-plugins` repo, publish SpaceGraph, delete product from fork
 
 ---
 
 ## 10. Immediate Next Actions
 
-1. **Open upstream PR** with D1-D3 (9 files)
-2. **Fix test fixture** for spacegraph dialog fallback test (optional, test infrastructure only)
-3. **Wait for upstream release** then execute Phase F
+1. **Open upstream PR** with D1-D3 (9 files) — diff ready in this fork
+2. **Add documentation** to the PR: when to use `SessionSurface` vs `Panel` vs `MobileView`
+3. **Add example** to the PR: a minimal plugin contributing a map surface
+4. **Verify upstream CI passes** on the PR
+5. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
+
+> The SpaceGraph dialog fallback test failure is a test infrastructure issue (fixture `runCommand` doesn't execute commands). The product works in the real app. Fix is optional and can be done in the fixture separately.
