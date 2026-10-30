@@ -79,7 +79,7 @@ import { createCardCopy } from "./card-copy"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
-import { GraphInspector } from "./GraphInspector"
+import { GraphInspectorPanel, GraphInspectorSheet } from "./GraphInspectorPanel"
 import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphCompareBar } from "./GraphCompareBar"
@@ -1615,43 +1615,29 @@ export const GraphView = (props: GraphViewProps) => {
           </button>
         </Show>
         <Show when={narrow() && inspectorSheetOpen()}>
-          <div class="absolute inset-0 z-30 flex flex-col" data-slot="graph-inspector-sheet">
-            <div class="flex h-12 items-center justify-between border-b border-border-weaker-base bg-surface-base px-3">
-              <span class="text-13-medium text-text-base">{selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title")}</span>
-              <button
-                type="button"
-                class="flex h-8 w-8 items-center justify-center rounded-sm text-text-base hover:bg-surface-base-hover"
-                onClick={() => setInspectorSheetOpen(false)}
-                aria-label={i18n.t("ui.sessionGraph.inspector.closeSheet")}
-              >
-                <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 4l8 8M12 4l-8 8" />
-                </svg>
-              </button>
-            </div>
-            <div class="flex-1 overflow-auto">
-              <GraphInspector
-                model={model()}
-                node={selectedNode()}
-                diffSource={props.diffSource}
-                renderSummary={props.renderSummary}
-                link={props.link}
-                onCopyView={copyView}
-                onSelect={selection.select}
-                onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-                onOpenSession={props.onOpenSession}
-                traceKind={annotations.traceKind()}
-                onTraceWhy={annotations.traceWhy}
-                onTraceLedHere={annotations.traceLedHere}
-                onTraceRelated={annotations.traceRelated}
-                onClearTrace={annotations.clearTrace}
-                onCopyTraceOutline={annotations.copyTraceOutline}
-                onEditNote={annotations.editNote}
-                onDeleteNote={annotations.deleteNote}
-                onCopyNote={annotations.copyNote}
-              />
-            </div>
-          </div>
+          <GraphInspectorSheet
+            title={selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title")}
+            onClose={() => setInspectorSheetOpen(false)}
+            i18n={i18n}
+            model={model()}
+            node={selectedNode()}
+            diffSource={props.diffSource}
+            renderSummary={props.renderSummary}
+            link={props.link}
+            onCopyView={copyView}
+            onSelect={selection.select}
+            onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+            onOpenSession={props.onOpenSession}
+            traceKind={annotations.traceKind()}
+            onTraceWhy={annotations.traceWhy}
+            onTraceLedHere={annotations.traceLedHere}
+            onTraceRelated={annotations.traceRelated}
+            onClearTrace={annotations.clearTrace}
+            onCopyTraceOutline={annotations.copyTraceOutline}
+            onEditNote={annotations.editNote}
+            onDeleteNote={annotations.deleteNote}
+            onCopyNote={annotations.copyNote}
+          />
         </Show>
         <Show when={effectiveDetailMode() === "panel"}>
           <Show when={inspectorOpen() && !narrow()}>
@@ -1667,12 +1653,7 @@ export const GraphView = (props: GraphViewProps) => {
           <div
             classList={{
               "shrink-0": true,
-              // A closed gutter takes no room: in a narrow layout it is a sibling of the canvas in
-              // the same column, and its content would otherwise push the canvas out of the frame.
               "h-0 w-0 overflow-hidden": !inspectorOpen(),
-              // LE.4: at narrow widths the inspector is a real bottom sheet (a flex sibling below the
-              // canvas), not an overlay, so the canvas is sized to the area above it and fit never
-              // frames content under it.
               "h-1/2 w-full border-t border-border-weaker-base": !!(inspectorOpen() && narrow()),
               "border-s border-border-weaker-base": !!(inspectorOpen() && !narrow()),
             }}
@@ -1681,7 +1662,7 @@ export const GraphView = (props: GraphViewProps) => {
             data-collapsed={!inspectorOpen()}
             data-layout={narrow() ? "sheet" : "side"}
           >
-            <GraphInspector
+            <GraphInspectorPanel
               model={model()}
               node={selectedNode()}
               diffSource={props.diffSource}
