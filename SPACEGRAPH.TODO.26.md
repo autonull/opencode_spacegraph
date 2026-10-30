@@ -11,7 +11,7 @@
 | Noise elimination (E1–E5) | ✅ Done | Built-in `session-map` removed, e2e noise cleaned, `session-graph` cleaned, app changes reverted except SessionSurface + plugin setting, gui-plugins restored |
 | Upstream API (D1–D3) | ✅ Implemented | 9 files: 4 plugin types + 3 runtime + 2 host rendering |
 | Fork sync | ✅ Done | Merged upstream/dev (6b4329c885), conflicts resolved |
-| Typecheck/lint | ✅ Clean | Core packages: 0 errors, 1786 pre-existing warnings |
+| Typecheck/lint | ✅ Clean | Core packages: 0 errors, 1786 pre-existing warnings; spacegraphjs build fixed (process global TS errors resolved) |
 | Component tests | ✅ Passing | SpaceGraph: 3/3, plugin-host: 31/31, plugin-graph: 1/1, surfaces unit: 4/4 |
 | Bundle | ✅ Builds | `packages/plugins/spacegraph/dist/gui-experimental.cjs` |
 | Documentation | ✅ Written | `surface-vs-panel-vs-mobileview.md`, `example-session-surface-plugin.md` |
@@ -81,7 +81,8 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 ### G1. TypeScript API Hardening (High Priority)
 | Enhancement | Rationale | Effort | Status |
 |-------------|-----------|--------|--------|
-| Export `SurfaceContext` type from `@spacegraphjs/renderer` | Plugins type `render(input)` without `any`; currently input shape is implicit | Low | ✅ Done |
+| Export `SurfaceContext` type from `@spacegraphjs/renderer` | Plugins type `render(input)` without `any`; currently input shape is implicit | Low | ✅ Done (pushed to main) |
+| Fix build TypeScript errors (`process` global) | Clean CI/build for library consumers | Low | ✅ Done (95928c6) |
 | Strict `RenderModel` node/edge `data` schema | Prevents runtime mismatches between adapter and renderer; currently `data: unknown` | Medium | ⏳ Deferred |
 | Versioned contract exports (`v3/`, `v4/`) | Allows gradual migration; currently single `CONTRACT_VERSION` constant | Medium | ⏳ Deferred |
 | Generic `GraphRenderer<TNodeData, TEdgeData>` | Type-safe custom node/edge data; currently requires casting | Medium | ⏳ Deferred |
@@ -241,7 +242,7 @@ autonull/opencode-spacegraph/
 |---|----------|-----------------|
 | Q1 | **DEFERRED** — PR is last step | — |
 | Q2 | **DECIDED** — Include product demo in PR | — |
-| Q3 | **RESOLVED** — `SurfaceContext` now, rest later | API stability |
+| Q3 | **RESOLVED** — `SurfaceContext` now ✅, rest later | API stability |
 | Q4 | **DECIDED** — Bundle size deferred (no NPM setup) | — |
 | Q5 | **RESOLVED** — Fork CI sufficient for PR | Credibility signal |
 | Q6 | **RESOLVED** — Mobile responsive required; Cytoscape mirror deferred | Scope for demo |
@@ -250,7 +251,7 @@ autonull/opencode-spacegraph/
 | Q9 | **DECIDED** — NPM publishing deferred | — |
 | Q10 | **RESOLVED** — Plugin monorepo: `autonull/opencode-spacegraph` | — |
 
-**All grill questions resolved.** Ready to execute when you give the go.
+**All grill questions resolved.** Ready to execute G2–G5, H, I.
 
 ---
 
@@ -258,7 +259,7 @@ autonull/opencode-spacegraph/
 
 | Step | Phase | Gate | Owner |
 |------|-------|------|-------|
-| 1 | G1–G2 | `SurfaceContext` exported, bundle optimized (local, no publish) | Me (spacegraphjs) |
+| 1 | G1–G2 | `SurfaceContext` exported ✅, build fixed ✅, bundle optimized (local, no publish) | Me (spacegraphjs) |
 | 2 | H1–H3 | Renderer selector, a11y baseline, hybrid polish complete | Me (session-graph) |
 | 3 | I1–I4 | Demo video, animated SVG, screenshots, docs deployed, landing page | You/me |
 | 4 | **D1–D4** | **PR opened, passing CI, review initiated** (LAST STEP) | You/me |
@@ -272,7 +273,7 @@ autonull/opencode-spacegraph/
 
 ## 8. Definition of Done (TODO.26 Complete)
 
-1. **spacegraphjs/** — `SurfaceContext` exported ✅, bundle optimized locally, CI green (contract + visual + perf)
+1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, bundle optimized locally, CI green (contract + visual + perf)
 2. **UX/DX** — Renderer selector in toolbar ✅, a11y baseline met ✅, hybrid polish complete
 3. **Presentation** — Demo video, animated SVG, 5 screenshots, integration guide, fork landing page
 4. **Upstream PR** — Opened with product demo, passing CI, review initiated
@@ -283,21 +284,18 @@ autonull/opencode-spacegraph/
 
 ## 9. Immediate Next Actions (This Week)
 
-**All core features complete. Ready for presentation phase.**
+**G1 complete: SurfaceContext exported, build fixed, pushed to spacegraphjs main.**
 
-1. **Capture screenshots** (5 key frames + banner)
-   - `bun run graph:capture` or manual via Playwright
-   - Frames: overview, execution detail, hybrid stacked, hybrid side, turn map
-2. **Record demo video** (2-3 min)
-   - Flow: renderer note → overview → hybrid → turn map → inspector → export
-3. **Create animated SVG** (240×72, <8 KB)
-   - Graph → transcript transition, or hybrid toggle
-4. **Draft integration guide** (technical content)
-   - How to enable, keyboard shortcuts, hybrid modes, permalinks
-5. **Update fork landing page**
-   - Banner screenshot, "Try it: `bun run graph:dev`", limitations
-6. **Open upstream PR**
-   - Include demo video link, animated SVG, screenshots
+**Remaining G2–G5, H, I before PR:**
+
+1. **Bundle size optimization (G2)**: Tree-shake `three` (manual imports from `three/src`), verify cytoscape size
+2. **Adapter pipeline (G3)**: Implement `applyPatch` on renderers, append-only streaming, error boundaries
+3. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
+4. **Testing & CI (G5)**: Contract conformance suite, visual regression, perf budget, smoke test, cross-version test
+5. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
+6. **Plugin DX (H4)**: Plugin template, hot reload, DevTools panel
+7. **Presentation (I)**: Demo video, animated SVG, screenshots, integration guide, fork landing page
+8. **Open upstream PR (D)**: Include demo video link, animated SVG, screenshots
 
 ---
 
