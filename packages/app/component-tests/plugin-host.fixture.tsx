@@ -60,6 +60,7 @@ import {
   selectSessionSurface,
   sessionSurfaceID,
   transcriptSurfaceID,
+  defaultSessionSurface,
 } from "@/runtime/plugin/surfaces"
 import type { Surfaces, SessionRef } from "@opencode/plugin/gui"
 
@@ -145,6 +146,11 @@ function fakeApis(storage: (plugin: string) => Storage): HostApiFactories {
     attention: () => ({ notify: async () => ({ notification: false, sound: false }) }),
     commands: () => ({ run: () => false }),
     ui: () => ui,
+    surfaces: () => ({
+      list: () => [],
+      current: () => "transcript",
+      select: () => {},
+    }),
   }
 }
 
@@ -755,42 +761,29 @@ export function mountSessionRegionWithSurfaces(input: {
     },
   }
 
-  // SessionSurfaceHost for the fixture - renders the selected surface
+  // SessionSurfaceHost for the fixture - renders the selected surface by calling the plugin's render function
   function FixtureSessionSurfaceHost() {
-    const [surfaceItemsSignal, setSurfaceItemsSignal] = createSignal<SessionSurface[]>([])
+    const host = usePluginHost()
+    const pluginId = "spacegraph-external"
+    const context = host.context(pluginId)
+    const surfaces = context?.surfaces
 
-  createEffect(() => {
-    const items = hosts[0]?.items(SessionSurface)?.map((item) => item.value) ?? []
-    const filtered = items.filter((v): v is SessionSurface => v !== undefined)
-    console.log("Effect updating surfaceItemsSignal:", filtered.map(s => s.id))
-    setSurfaceItemsSignal(filtered)
-  })
-
-  const surfaceItems = createMemo(() => {
-    const items = surfaceItemsSignal()
-    console.log("surfaceItems memo (via signal):", items.map(s => s.id))
-    return orderedSessionSurfaces(items, language.t("session.surface.transcript"))
-  })
-    const selectedId = createMemo(() => {
-      const id = surfaces.current(view())
-      console.log("selectedId memo:", id)
-      return id
+    const surfaceItems = createMemo(() => {
+      if (!surfaces) return [defaultSessionSurface(language.t("session.surface.transcript"))]
+      const items = surfaces.list()
+      return items.length > 0 ? items : [defaultSessionSurface(language.t("session.surface.transcript"))]
     })
-    const selectedSurface = createMemo(() => {
-      const surface = resolveSessionSurface(surfaceItems(), selectedId())
-      console.log("selectedSurface memo:", surface.id)
-      return surface
-    })
+    const selectedId = createMemo(() => surfaces?.current(view()) ?? transcriptSurfaceID)
+    const selectedSurface = createMemo(() => resolveSessionSurface(surfaceItems(), selectedId()))
     const isTranscript = createMemo(() => selectedSurface().id === transcriptSurfaceID)
     const transcript = createMemo(() => <div data-slot="session-transcript">Transcript</div>)
 
     const content = createMemo(() => {
       const surface = selectedSurface()
-      console.log("Rendering surface:", surface.id, "isTranscript:", isTranscript())
       if (isTranscript()) return transcript()
 
-      // Test: return a simple div instead of the plugin's surface
-      return <div data-test-content="true">Content rendered: {surface.id}</div>
+      // Call the plugin's surface render function with the correct input
+      return surface.render({ session: view(), screen, transcript: transcript() })
     })
 
     return (
@@ -799,12 +792,10 @@ export function mountSessionRegionWithSurfaces(input: {
         return <div data-slot="surface-error">Error: {String(err)}</div>
       }}>
         <div class="flex h-full min-h-0 flex-col" data-slot="session-surface-host">
-          <div data-test-host="true">Host mounted</div>
           <Show when={isTranscript()}>
-            <div data-test-transcript="true">Transcript shown</div>
+            {transcript()}
           </Show>
           <Show when={() => !isTranscript()}>
-            <div data-test-surface="true">Surface shown</div>
             {content()}
           </Show>
         </div>

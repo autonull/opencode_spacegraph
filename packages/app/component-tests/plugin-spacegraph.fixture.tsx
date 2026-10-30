@@ -47,6 +47,7 @@ export async function mountSpacegraphPanel(code: string) {
     messages: buildFixtureMessages(),
   })
 
+  await mounted.waitForReady()
   present(mounted.container)
 
   return mounted
@@ -92,6 +93,7 @@ export async function mountSpacegraphDialog(code: string) {
     messages: buildFixtureMessages(),
   })
 
+  await mounted.waitForReady()
   present(mounted.container)
 
   const deadline = performance.now() + 5000

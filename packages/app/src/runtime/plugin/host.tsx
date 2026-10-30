@@ -103,7 +103,7 @@ type HostApiFactory<T> = (
 
 /** The HostApis a window provides, by context property. The host itself provides `links`, `dialogs`, and `surfaces`. */
 export type HostApiFactories = {
-  readonly [K in Exclude<keyof HostApis, "links" | "dialogs" | "surfaces">]: HostApiFactory<HostApis[K]>
+  readonly [K in Exclude<keyof HostApis, "links" | "dialogs">]: HostApiFactory<HostApis[K]>
 }
 
 export type PluginStatus = "loading" | "active" | "failed" | "disabled"
@@ -304,7 +304,7 @@ function createHost(input: HostInput) {
   const factories = {
     ...input.apis,
     links: () => links,
-    surfaces: () => ({
+    surfaces: input.apis.surfaces ?? (() => ({
       list: sessionSurfaces,
       current: (session) => resolveSessionSurface(sessionSurfaces(), sessionSurfaceID(session)).id,
       select: (id, session) => {
@@ -312,7 +312,7 @@ function createHost(input: HostInput) {
 
         selectSessionSurface(id, session)
       },
-    }),
+    })),
     // Bound to the instance that asked, so an older async call after a disable or reload opens and closes nothing.
     dialogs: (plugin, _, context, register): Dialogs => {
       // `ended` runs when the dialog closes, however it closes, and when it can no longer open.
