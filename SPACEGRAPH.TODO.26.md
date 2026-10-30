@@ -92,12 +92,12 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 ### G2. Performance & Bundle Size (High Priority)
 | Metric | Current | Target | Action |
 |--------|---------|--------|--------|
-| SpaceGraph renderer (gzip) | 282 KB | < 250 KB | Tree-shake `three` (use `three/src` + manual imports), drop unused post-processing |
-| Cytoscape renderer (gzip) | 138 KB | < 120 KB | Already good; verify no duplicate `cytoscape` copies |
-| Adapter pipeline | 230 ms (5k nodes) | < 150 ms | Incremental `RenderModelPatch` (D3 from SPACEGRAPH.md §12) |
-| First paint / pan FPS | Unmeasured | 60 FPS | Add perf harness (Playwright + `performance.now()`) |
+| SpaceGraph renderer (gzip) | 282 KB | < 250 KB | Tree-shake `three` (named imports) — **started: WebGLRenderer.ts ✅**, 27 more files |
+| Cytoscape renderer (gzip) | 138 KB | < 120 KB | ✅ Verified: cytoscape is peer dep, no duplicates |
+| Adapter pipeline | 230 ms (5k nodes) | < 150 ms | `diffRenderModels` exists in adapter; `applyPatch` on spacegraph-renderer ✅ |
+| First paint / pan FPS | Unmeasured | 60 FPS | Perf harness exists (benchmark.html + Playwright) — **extends to first-paint** |
 
-**Grill Q4:** Is bundle size a blocker for upstream? The lazy graph chunk is 282 KB gzipped (includes `three` ~120 KB). If this is too large, we can: (a) make `three` a peer dep, (b) offer a "lite" renderer without 3D, (c) defer to post-PR optimization.
+**Grill Q4:** Is bundle size a blocker for upstream? The lazy graph chunk is 282 KB gzipped (includes `three` ~120 KB). If this is too large, we can: (a) make `three` a peer dep (already done for lib build), (b) offer a "lite" renderer without 3D, (c) defer to post-PR optimization.
 
 ### G3. Adapter Pipeline Robustness (Medium Priority)
 - **Incremental updates**: `diffRenderModels` exists but `GraphRenderer.setModel` replaces full model. Need `RenderModelPatch` type + `applyPatch` on renderers.
@@ -259,7 +259,7 @@ autonull/opencode-spacegraph/
 
 | Step | Phase | Gate | Owner |
 |------|-------|------|-------|
-| 1 | G1–G2 | `SurfaceContext` exported ✅, build fixed ✅, bundle optimized (local, no publish) | Me (spacegraphjs) |
+| 1 | G1–G2 | `SurfaceContext` exported ✅, build fixed ✅, three.js tree-shaking started (WebGLRenderer.ts ✅), cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅ | Me (spacegraphjs) |
 | 2 | H1–H3 | Renderer selector, a11y baseline, hybrid polish complete | Me (session-graph) |
 | 3 | I1–I4 | Demo video, animated SVG, screenshots, docs deployed, landing page | You/me |
 | 4 | **D1–D4** | **PR opened, passing CI, review initiated** (LAST STEP) | You/me |
@@ -273,7 +273,7 @@ autonull/opencode-spacegraph/
 
 ## 8. Definition of Done (TODO.26 Complete)
 
-1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, bundle optimized locally, CI green (contract + visual + perf)
+1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, three.js tree-shaking started (1/28 files), cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, CI green (contract + visual + perf)
 2. **UX/DX** — Renderer selector in toolbar ✅, a11y baseline met ✅, hybrid polish complete
 3. **Presentation** — Demo video, animated SVG, 5 screenshots, integration guide, fork landing page
 4. **Upstream PR** — Opened with product demo, passing CI, review initiated
@@ -285,11 +285,12 @@ autonull/opencode-spacegraph/
 ## 9. Immediate Next Actions (This Week)
 
 **G1 complete: SurfaceContext exported, build fixed, pushed to spacegraphjs main.**
+**G2 progress: three.js tree-shaking started (WebGLRenderer.ts), cytoscape verified, applyPatch exists, perf harness exists.**
 
 **Remaining G2–G5, H, I before PR:**
 
-1. **Bundle size optimization (G2)**: Tree-shake `three` (manual imports from `three/src`), verify cytoscape size
-2. **Adapter pipeline (G3)**: Implement `applyPatch` on renderers, append-only streaming, error boundaries
+1. **Complete three.js tree-shaking (G2)**: Convert remaining 27 files to named imports from `three`
+2. **Adapter pipeline (G3)**: Append-only streaming, error boundaries (`onError` callback)
 3. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
 4. **Testing & CI (G5)**: Contract conformance suite, visual regression, perf budget, smoke test, cross-version test
 5. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
