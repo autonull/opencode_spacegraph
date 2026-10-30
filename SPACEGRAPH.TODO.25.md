@@ -245,6 +245,7 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 - **Upstream PR not yet opened** — D1-D3 implemented locally; needs to be submitted to upstream.
 - **Fork synchronization** — This fork must stay synchronized with `upstream/dev`. Regular rebases/merges required to avoid drift.
+- **Bundle screenshot verify fails** — `spacegraph-bundle-panel.png` and `spacegraph-bundle-dialog.png` are identical (test fixture bug: dialog fallback renders same as panel). The 3 component tests pass; visual verification is flawed. This is a test infrastructure issue, not a product issue.
 
 ---
 
@@ -261,6 +262,7 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 - ✅ Unit tests for SessionSurface API: 4 passing
 - ✅ Test fixture bug fixed: `runCommand` now executes commands via Command registry
 - ✅ **Fork synchronized with upstream/dev** (merged 6b4329c885, resolved all conflicts in 9 API files + product code)
+- ✅ Screenshots regenerated: bundle (3), cytoscape (5: 07, 08, 20, 21, 25)
 
 **Remaining (Upstream PR - Phase D):**
 - ⬜ Open upstream PR with D1-D3 (9 files diff ready)
