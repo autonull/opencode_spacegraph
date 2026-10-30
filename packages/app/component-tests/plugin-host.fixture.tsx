@@ -4,6 +4,7 @@ import { Toast } from "@opencode/ui/toast"
 import {
   Panel,
   SessionSurface,
+  Command,
   type Appearance,
   type App,
   type Keybinds,
@@ -641,9 +642,15 @@ export function mountSessionRegion(input: {
     runCommand: (id: string) => {
       const host = hosts[0]
       if (!host) return false
-      // Note: Command registry token not available in browser context for this fixture.
-      // This is a test infrastructure limitation. The plugin works correctly in the real app.
-      return false
+      const commandItems = host.items(Command)
+      const command = commandItems.find((item) => item.value.id === id)?.value
+      if (!command) return false
+      try {
+        command.run?.()
+        return true
+      } catch {
+        return false
+      }
     },
     unmount: () => {
       dispose()
@@ -907,6 +914,20 @@ export function mountSessionRegionWithSurfaces(input: {
     waitForReady,
     /** Select a session surface by id. */
     selectSurface: (id: string) => surfaces.select(id, view()),
+    /** Run a command by ID (e.g., "hybrid") by looking it up in the Command registry. */
+    runCommand: (id: string) => {
+      const host = hosts[0]
+      if (!host) return false
+      const commandItems = host.items(Command)
+      const command = commandItems.find((item) => item.value.id === id)?.value
+      if (!command) return false
+      try {
+        command.run?.()
+        return true
+      } catch {
+        return false
+      }
+    },
     unmount: () => {
       dispose()
       container.remove()

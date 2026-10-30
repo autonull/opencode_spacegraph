@@ -15,7 +15,12 @@ const result = Bun.spawnSync({
 
 if (result.exitCode === 0) {
   // The stylesheet ships inside the JS string through `?inline`; Vite's side file is a second, stale artifact.
-  await Bun.file(path.join(import.meta.dirname, "dist/opencode-plugin-spacegraph.css")).delete()
+  const cssPath = path.join(import.meta.dirname, "dist/opencode-plugin-spacegraph.css")
+  try {
+    await Bun.file(cssPath).delete()
+  } catch {
+    // Ignore if file doesn't exist
+  }
 }
 
 process.exit(result.exitCode)
