@@ -40,6 +40,7 @@ import {
   type PhaseCategory,
   type Range,
   type SessionLineage,
+  type ZoomLevel,
 } from "./model"
 import { toGraphEdge, toGraphNode, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
@@ -772,6 +773,39 @@ export class GraphBuilder {
     this.lastErrorByTurn.set(turnID, nodeID)
   }
 
+  /** Builds the common node fields shared by all `attach` calls. */
+  private baseNode(
+    id: string,
+    kind: GraphNode["kind"],
+    turnID: string,
+    options: {
+      label: string
+      summary?: string
+      status?: GraphNode["status"]
+      messageID?: string
+      partID?: string
+      toolID?: string
+      time?: number
+      minLevel?: ZoomLevel
+      data?: Record<string, JsonValue>
+    },
+  ): GraphNode {
+    return {
+      id,
+      kind,
+      label: options.label,
+      summary: options.summary,
+      status: options.status ?? "neutral",
+      turnID,
+      messageID: options.messageID,
+      partID: options.partID,
+      toolID: options.toolID,
+      time: options.time,
+      minLevel: options.minLevel ?? "execution",
+      data: options.data,
+    }
+  }
+
   private appendUserPrompt(
     message: Extract<SessionMessageInfo, { type: "user" }>,
     turnID: string,
@@ -780,18 +814,14 @@ export class GraphBuilder {
     const nodeID = messageNodeID(message.id)
 
     this.attach(
-      {
-        id: nodeID,
-        kind: "message",
+      this.baseNode(nodeID, "message", turnID, {
         label: truncate(message.text),
         summary: message.text,
-        status: "neutral",
-        turnID,
         messageID: message.id,
         time: message.time.created,
         minLevel: steered ? "execution" : "overview",
         data: steered ? { role: "user", steered: true } : { role: "user" },
-      },
+      }),
       turnID,
     )
 
@@ -807,18 +837,14 @@ export class GraphBuilder {
     const status = shellStatus(message)
 
     this.attach(
-      {
-        id: nodeID,
-        kind: "message",
+      this.baseNode(nodeID, "message", turnID, {
         label: truncate(message.command),
         summary: message.command,
         status: status === "failed" ? "failed" : "neutral",
-        turnID,
         messageID: message.id,
         time: message.time.created,
-        minLevel: "execution",
         data: { role: "shell", command: message.command },
-      },
+      }),
       turnID,
       { phase: "verify" },
     )
@@ -826,23 +852,19 @@ export class GraphBuilder {
     const resultID = resultNodeID(message.id)
 
     this.attach(
-      {
-        id: resultID,
-        kind: "result",
+      this.baseNode(resultID, "result", turnID, {
         label: message.status === "exited" ? `exit ${message.exit ?? 0}` : message.status,
         summary: message.output?.output ? truncate(message.output.output, 200) : undefined,
         status,
-        turnID,
         messageID: message.id,
         time: message.time.completed ?? message.time.created,
-        minLevel: "execution",
         data: {
           exit: message.exit ?? null,
           timeout: message.status === "timeout",
           truncated: message.output?.truncated ?? null,
           output: terminalOutput(message.output?.output),
         },
-      },
+      }),
       turnID,
       { produces: nodeID, phase: "verify" },
     )
@@ -870,18 +892,13 @@ export class GraphBuilder {
       if (content.type === "text") {
         if (!content.text.trim()) continue
         this.attach(
-          {
-            id: textNodeID(message.id, textOrdinal++),
-            kind: "message",
+          this.baseNode(textNodeID(message.id, textOrdinal++), "message", turnID, {
             label: truncate(content.text),
             summary: content.text,
-            status: "neutral",
-            turnID,
             messageID: message.id,
             time: message.time.created,
-            minLevel: "execution",
             data: { role: "assistant" },
-          },
+          }),
           turnID,
         )
         continue
@@ -891,18 +908,14 @@ export class GraphBuilder {
         if (!content.text.trim()) continue
         const nodeID = reasoningNodeID(message.id, reasoningOrdinal++)
         this.attach(
-          {
-            id: nodeID,
-            kind: "reasoning",
+          this.baseNode(nodeID, "reasoning", turnID, {
             label: truncate(content.text),
             summary: content.text,
-            status: "neutral",
-            turnID,
             messageID: message.id,
             partID: nodeID,
             time: content.time?.created ?? message.time.created,
             minLevel: "detail",
-          },
+          }),
           turnID,
         )
         continue
@@ -918,18 +931,14 @@ export class GraphBuilder {
       const nodeID = errorNodeID(message.id, "assistant")
 
       this.attach(
-        {
-          id: nodeID,
-          kind: "error",
+        this.baseNode(nodeID, "error", turnID, {
           label: interrupted ? "Interrupted" : truncate(message.error.message),
           summary: message.error.message,
           status: interrupted ? "interrupted" : "failed",
-          turnID,
           messageID: message.id,
           time: message.time.completed ?? message.time.created,
-          minLevel: "execution",
           data: { type: message.error.type },
-        },
+        }),
         turnID,
       )
       this.noteError(turnID, nodeID)
@@ -939,18 +948,13 @@ export class GraphBuilder {
       const nodeID = retryNodeID(message.id, message.retry.attempt)
 
       this.attach(
-        {
-          id: nodeID,
-          kind: "retry",
+        this.baseNode(nodeID, "retry", turnID, {
           label: `Retry #${message.retry.attempt}`,
           summary: message.retry.error.message,
-          status: "neutral",
-          turnID,
           messageID: message.id,
           time: message.retry.at,
-          minLevel: "execution",
           data: { attempt: message.retry.attempt },
-        },
+        }),
         turnID,
       )
 
@@ -974,13 +978,10 @@ export class GraphBuilder {
       const nodeID = childID ? subagentNodeID(childID) : subagentToolNodeID(tool.id)
 
       this.attach(
-        {
-          id: nodeID,
-          kind: "subagent",
+        this.baseNode(nodeID, "subagent", turnID, {
           label: stringField(input, "description") ?? stringField(input, "agent") ?? "Subagent",
           summary: stringField(input, "prompt"),
           status,
-          turnID,
           messageID: message.id,
           partID: tool.id,
           toolID: tool.id,
@@ -991,7 +992,7 @@ export class GraphBuilder {
             agent: stringField(input, "agent") ?? null,
             childSessionID: childID ?? null,
           },
-        },
+        }),
         turnID,
         { phase: "delegate" },
       )
@@ -1005,20 +1006,16 @@ export class GraphBuilder {
     const { input, metadata, error, output } = toolFacts(tool)
 
     this.attach(
-      {
-        id: nodeID,
-        kind: "tool",
+      this.baseNode(nodeID, "tool", turnID, {
         label: tool.name,
         summary: output ? truncate(output, 200) : error ? truncate(error) : undefined,
         status,
-        turnID,
         messageID: message.id,
         partID: tool.id,
         toolID: tool.id,
         time: tool.time.created,
-        minLevel: "execution",
         data: { name: tool.name, category, input },
-      },
+      }),
       turnID,
       { phase: phaseCategoryForTool(tool.name) },
     )
@@ -1027,20 +1024,16 @@ export class GraphBuilder {
       const resultID = resultNodeID(tool.id)
 
       this.attach(
-        {
-          id: resultID,
-          kind: "result",
+        this.baseNode(resultID, "result", turnID, {
           label: status === "failed" ? "failed" : status === "running" ? "running" : "ok",
           summary: output ? truncate(output, 400) : error,
           status,
-          turnID,
           messageID: message.id,
           partID: tool.id,
           toolID: tool.id,
           time: tool.time.completed ?? tool.time.created,
-          minLevel: "execution",
           data: { exit: metadata.exit ?? null, timeout: metadata.timeout === true, output: terminalOutput(output) },
-        },
+        }),
         turnID,
         { produces: nodeID, phase: "verify" },
       )
@@ -1054,18 +1047,14 @@ export class GraphBuilder {
       const errorID = errorNodeID(message.id, tool.id)
 
       this.attach(
-        {
-          id: errorID,
-          kind: "error",
+        this.baseNode(errorID, "error", turnID, {
           label: truncate(error),
           summary: error,
           status: "failed",
-          turnID,
           messageID: message.id,
           partID: tool.id,
           time: tool.time.completed ?? tool.time.created,
-          minLevel: "execution",
-        },
+        }),
         turnID,
         { produces: nodeID },
       )
@@ -1080,34 +1069,26 @@ export class GraphBuilder {
       const nodeID = errorNodeID(message.id, "idle")
 
       this.attach(
-        {
-          id: nodeID,
-          kind: "error",
+        this.baseNode(nodeID, "error", turnID, {
           label: truncate(message.error.message),
           summary: message.error.message,
           status: "failed",
-          turnID,
           messageID: message.id,
           time: message.time.created,
-          minLevel: "execution",
           data: { type: message.error.type },
-        },
+        }),
         turnID,
       )
       this.noteError(turnID, nodeID)
     } else if (message.outcome === "interrupted") {
       this.attach(
-        {
-          id: errorNodeID(message.id, "idle"),
-          kind: "error",
+        this.baseNode(errorNodeID(message.id, "idle"), "error", turnID, {
           label: "Interrupted",
           summary: message.error?.message,
           status: "interrupted",
-          turnID,
           messageID: message.id,
           time: message.time.created,
-          minLevel: "execution",
-        },
+        }),
         turnID,
       )
     }
@@ -1119,17 +1100,12 @@ export class GraphBuilder {
     const nodeID = diffNodeID(message.id)
 
     this.attach(
-      {
-        id: nodeID,
-        kind: "diff",
+      this.baseNode(nodeID, "diff", turnID, {
         label: `${files.size} file${files.size === 1 ? "" : "s"} changed`,
-        status: "neutral",
-        turnID,
         messageID: message.id,
         time: message.time.created,
-        minLevel: "execution",
         data: { files: [...files].sort() },
-      },
+      }),
       turnID,
     )
 
@@ -1141,20 +1117,16 @@ export class GraphBuilder {
     const nodeID = messageNodeID(message.id)
 
     this.attach(
-      {
-        id: nodeID,
-        kind: "compaction",
+      this.baseNode(nodeID, "compaction", turnID, {
         label: message.status === "completed" ? "Compacted context" : `Compaction ${message.status}`,
         summary: compactionSummary(message),
         status: compactionStatus(message),
-        turnID,
         messageID: message.id,
         time: message.time.created,
-        minLevel: "execution",
         // T6.5: a compaction either replaces the context with a summary or replays a provider's
         // replacement window. The two are different facts about what the agent can still see.
         data: { reason: message.reason, replayed: compactionReplays(message) },
-      },
+      }),
       turnID,
     )
 
@@ -1169,13 +1141,9 @@ export class GraphBuilder {
     const childID = stringField(metadata, "childID") ?? stringField(metadata, "sessionID")
 
     this.attach(
-      {
-        id: nodeID,
-        kind: "notice",
+      this.baseNode(nodeID, "notice", turnID, {
         label: noticeLabel(message),
         summary: noticeSummary(message),
-        status: "neutral",
-        turnID,
         messageID: message.id,
         time: message.time.created,
         minLevel: "detail",
@@ -1186,7 +1154,7 @@ export class GraphBuilder {
           source: stringField(metadata, "source") ?? null,
           childSessionID: childID ?? null,
         },
-      },
+      }),
       turnID,
     )
 

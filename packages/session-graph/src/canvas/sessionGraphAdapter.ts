@@ -2,6 +2,7 @@ import { ModelAdapter, type AdapterConfig, type AdapterPosition } from "@spacegr
 import type { NodeStatus, RenderEdge, RenderNode } from "@spacegraphjs/renderer"
 import {
   STRUCTURAL_KINDS,
+  NODE_SHAPE,
   clusterCount,
   domBudget,
   edgesAtLevel,
@@ -20,40 +21,6 @@ import {
 } from "@opencode/session-ui/graph"
 
 type Shape = NonNullable<RenderNode["shape"]>
-
-/**
- * The semantic level decides which nodes exist; the shape decides how the renderer draws one. Rich
- * activity kinds become DOM `card`s (host markup), structural kinds stay vector `panel`/`badge`, and
- * unclassified tools fall to a `badge` so nothing silently disappears.
- */
-const NODE_SHAPE: Record<NodeKind, Shape> = {
-  session: "panel",
-  turn: "panel",
-  phase: "panel",
-  message: "card",
-  reasoning: "panel",
-  tool: "card",
-  file: "card",
-  directory: "card",
-  subagent: "card",
-  result: "card",
-  error: "badge",
-  retry: "badge",
-  compaction: "panel",
-  notice: "panel",
-  diff: "card",
-  // T19-T26 derived kinds
-  package: "card",
-  commit: "card",
-  branch: "card",
-  symbol: "card",
-  test: "card",
-  "test-run": "card",
-  process: "card",
-  port: "card",
-  issue: "card",
-  note: "card",
-}
 
 const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {
   pending: "pending",

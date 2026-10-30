@@ -367,6 +367,39 @@ export const CARD_SIZE: readonly [number, number] = [220, 72]
 /** The box a structural chip occupies (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
 
+/**
+ * Shape each node kind renders as. Structural kinds are compact panels; activity kinds are DOM cards.
+ * This is the single source of truth for the renderer contract — layout.ts and the adapter both read it.
+ */
+export const NODE_SHAPE: Record<NodeKind, "panel" | "card" | "badge"> = {
+  session: "panel",
+  turn: "panel",
+  phase: "panel",
+  message: "card",
+  reasoning: "panel",
+  tool: "card",
+  file: "card",
+  directory: "card",
+  subagent: "card",
+  result: "card",
+  error: "badge",
+  retry: "badge",
+  compaction: "panel",
+  notice: "panel",
+  diff: "card",
+  // T19-T26 derived kinds
+  package: "card",
+  commit: "card",
+  branch: "card",
+  symbol: "card",
+  test: "card",
+  "test-run": "card",
+  process: "card",
+  port: "card",
+  issue: "card",
+  note: "card",
+} as const
+
 /** T30.1 — a node's domain, unless the snapshot placed it elsewhere (an untouched file). */
 export function nodeDomain(node: GraphNode): Domain {
   return node.domain ?? DOMAIN_OF_KIND[node.kind]
