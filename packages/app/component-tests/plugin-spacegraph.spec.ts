@@ -61,7 +61,7 @@ async function ready(
   canvas = '[data-slot="graph-canvas-host"]',
 ) {
   await expect(page.locator(selector)).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator(canvas)).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+  await expect(page.locator(canvas).first()).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
   await page.evaluate(() => document.fonts.ready.then(() => undefined))
 }
 

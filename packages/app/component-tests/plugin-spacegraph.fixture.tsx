@@ -32,6 +32,7 @@ export async function mountSpacegraphExternal(code: string) {
   })
 
   await mounted.waitForReady()
+  await mounted.selectSurface(`${id}.map`)
   present(mounted.container)
 
   return mounted
@@ -96,10 +97,14 @@ export async function mountSpacegraphDialog(code: string) {
   await mounted.waitForReady()
   present(mounted.container)
 
+  // Trigger the hybrid command to open the dialog
+  mounted.runCommand("hybrid")
+
   const deadline = performance.now() + 5000
 
-  while (!mounted.route("hybrid")) {
-    if (performance.now() > deadline) throw new Error("The hybrid command never registered")
+  // Wait for the dialog to appear
+  while (!document.querySelector('[data-slot="dialog-content"]')) {
+    if (performance.now() > deadline) throw new Error("The hybrid command never opened the dialog")
     await new Promise((resolve) => requestAnimationFrame(resolve))
   }
 

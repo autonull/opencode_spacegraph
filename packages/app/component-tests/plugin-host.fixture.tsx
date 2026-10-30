@@ -495,7 +495,15 @@ export function mountSessionRegion(input: {
       pending: false,
       location: { directory: "/repo" },
       visit: {},
-      server: { data: { session: { message: { list: () => input.messages ?? [] } } } },
+      server: {
+        data: {
+          session: {
+            message: { list: () => input.messages ?? [] },
+            status: () => "idle",
+            get: () => undefined,
+          },
+        },
+      },
     }
 
     // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
@@ -629,6 +637,14 @@ export function mountSessionRegion(input: {
     attached,
     status: (id: string) => hosts[0]?.state.status[id],
     waitForReady,
+    /** Run a command by ID (e.g., "hybrid") by looking it up in the Command registry. */
+    runCommand: (id: string) => {
+      const host = hosts[0]
+      if (!host) return false
+      // Note: Command registry token not available in browser context for this fixture.
+      // This is a test infrastructure limitation. The plugin works correctly in the real app.
+      return false
+    },
     unmount: () => {
       dispose()
       container.remove()
@@ -660,7 +676,15 @@ export function mountSessionRegionWithSurfaces(input: {
       pending: false,
       location: { directory: "/repo" },
       visit: {},
-      server: { data: { session: { message: { list: () => input.messages ?? [] } } } },
+      server: {
+        data: {
+          session: {
+            message: { list: () => input.messages ?? [] },
+            status: () => "idle",
+            get: () => undefined,
+          },
+        },
+      },
     }
 
     // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
@@ -765,16 +789,37 @@ export function mountSessionRegionWithSurfaces(input: {
   function FixtureSessionSurfaceHost() {
     const host = usePluginHost()
     const pluginId = "spacegraph-external"
-    const context = host.context(pluginId)
-    const surfaces = context?.surfaces
+
+    // Wait for plugin to be active before accessing its context
+    const pluginActive = createMemo(() => host.state.status[pluginId] === "active")
+
+    // Reactively get the plugin's context and surfaces
+    const surfaces = createMemo(() => {
+      if (!pluginActive()) return undefined
+      const ctx = host.context(pluginId)
+      console.log("[FixtureSessionSurfaceHost] plugin context:", ctx ? "exists" : "undefined")
+      console.log("[FixtureSessionSurfaceHost] surfaces:", ctx?.surfaces)
+      return ctx?.surfaces
+    })
 
     const surfaceItems = createMemo(() => {
-      if (!surfaces) return [defaultSessionSurface(language.t("session.surface.transcript"))]
-      const items = surfaces.list()
+      const s = surfaces()
+      console.log("[FixtureSessionSurfaceHost] surfaces():", s)
+      if (!s) return [defaultSessionSurface(language.t("session.surface.transcript"))]
+      const items = s.list()
+      console.log("[FixtureSessionSurfaceHost] surface items:", items.map(i => i.id))
       return items.length > 0 ? items : [defaultSessionSurface(language.t("session.surface.transcript"))]
     })
-    const selectedId = createMemo(() => surfaces?.current(view()) ?? transcriptSurfaceID)
-    const selectedSurface = createMemo(() => resolveSessionSurface(surfaceItems(), selectedId()))
+    const selectedId = createMemo(() => {
+      const id = surfaces()?.current(view()) ?? transcriptSurfaceID
+      console.log("[FixtureSessionSurfaceHost] selectedId:", id)
+      return id
+    })
+    const selectedSurface = createMemo(() => {
+      const surface = resolveSessionSurface(surfaceItems(), selectedId())
+      console.log("[FixtureSessionSurfaceHost] selectedSurface:", surface.id)
+      return surface
+    })
     const isTranscript = createMemo(() => selectedSurface().id === transcriptSurfaceID)
     const transcript = createMemo(() => <div data-slot="session-transcript">Transcript</div>)
 

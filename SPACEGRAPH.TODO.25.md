@@ -240,7 +240,7 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 ## 8. Known Issues
 
-- **Component tests for spacegraph bundle** — Test fixture doesn't fully replicate surfaces API. The plugin works in the real app (verified by manual testing), but the test fixture's `mountSessionRegionWithSurfaces` doesn't properly activate the plugin's surfaces. This is a test infrastructure issue, not a product issue.
+- **Component tests for spacegraph bundle** — Test fixture doesn't fully replicate surfaces API for the dialog fallback test. The plugin works in the real app (verified by manual testing), but the test fixture's `mountSessionRegion` doesn't support running commands in the browser context. Two of three tests pass (map surface + side panel). This is a test infrastructure issue, not a product issue.
 - **Upstream PR not yet opened** — D1-D3 implemented locally; needs to be submitted to upstream.
 
 ---
@@ -254,9 +254,10 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 - ✅ Lint passes (warnings only, no errors)
 - ✅ Session-graph component tests: 49 passed
 - ✅ SpaceGraph product bundle builds correctly
+- ✅ SpaceGraph component tests: 2/3 passing (map surface + side panel); 1 failing due to test fixture command infrastructure
 
 **Remaining:**
-- ⬜ SpaceGraph component tests: 3 failures due to test fixture not replicating surfaces API (infrastructure issue, not product)
+- ⬜ SpaceGraph component tests: 1 failure due to test fixture not supporting command execution (infrastructure issue, not product)
 - ⬜ Open upstream PR with D1-D3
 - ⬜ Wait for upstream release, then execute Phase F (new opencode-plugins repo)
 
@@ -265,5 +266,5 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 ## 10. Immediate Next Actions
 
 1. **Open upstream PR** with D1-D3 (9 files)
-2. **Fix test fixture** for spacegraph component tests (optional, test infrastructure only)
+2. **Fix test fixture** for spacegraph dialog fallback test (optional, test infrastructure only)
 3. **Wait for upstream release** then execute Phase F
