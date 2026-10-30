@@ -50,6 +50,11 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
     cwd: spacegraphjs,
     cmd: [vitest, "run", "packages/adapter/test/adapter.test.ts"],
   },
+  {
+    label: "adapter performance budget",
+    cwd: spacegraphjs,
+    cmd: [vitest, "run", "packages/adapter/test/performance.test.ts"],
+  },
   { label: "SpaceGraph adapter", cwd: join(spacegraphjs, "packages/spacegraph-renderer"), cmd: ["bun", "test"] },
   { label: "Cytoscape adapter", cwd: join(spacegraphjs, "packages/cytoscape-renderer"), cmd: ["bun", "test"] },
   { label: "SVG renderer", cwd: join(spacegraphjs, "packages/svg-renderer"), cmd: ["bun", "test"] },

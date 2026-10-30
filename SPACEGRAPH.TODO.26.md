@@ -29,6 +29,9 @@
 | **spacegraphjs e2e tests** | ⚠️ **Partial** | Contract demo & second-host pass individually; concurrency issues in parallel runs |
 | **spacegraphjs publish check** | ✅ **Passing** | Clean consumer install + mount verified |
 | **Plugin bundle test** | ✅ **Fixed** | solid-js/web mock resolves server-side evaluation error |
+| **Integration guide** | ✅ **Done** | `docs/spacegraph/integration-guide.md` |
+| **Fork landing page** | ✅ **Done** | `docs/spacegraph/landing-page.md` |
+| **Adapter performance budget** | ✅ **Done** | `packages/adapter/test/performance.test.ts` + `graph:verify` step |
 
 ---
 
@@ -119,7 +122,7 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 ### G5. Testing & CI (High Priority for Library Credibility)
 - [x] **Contract conformance suite** runs in library CI (currently only in fork's `graph:verify`) — exists in `@spacegraphjs/adapter` tests
 - [x] **Visual regression** (Playwright) for all 3 renderers in library CI — contract demo + second-host tests pass
-- [ ] **Performance budget** as CI gate (`graph:scale` equivalent)
+- [x] **Performance budget** as CI gate (`graph:scale` equivalent) — `packages/adapter/test/performance.test.ts` added to `graph:verify`
 - [x] **Published package smoke test** (`test:publish` → clean install → mount) ✅ **Passing**
 - [ ] **Cross-version compatibility** test (contract v3 adapter + contract v4 renderer)
 
@@ -288,9 +291,9 @@ autonull/opencode-spacegraph/
 
 ## 8. Definition of Done (TODO.26 Complete)
 
-1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅**, **publish check passing ✅**, **visual regression tests passing ✅**, CI green (contract + visual + perf)
+1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅**, **publish check passing ✅**, **visual regression tests passing ✅**, **perf budget CI gate ✅**, CI green (contract + visual + perf)
 2. **UX/DX** — Renderer selector in toolbar ✅, a11y baseline met ✅, hybrid polish complete
-3. **Presentation** — Demo video, animated SVG, 5 screenshots, integration guide, fork landing page
+3. **Presentation** — Demo video, animated SVG, 5 screenshots, **integration guide ✅**, **fork landing page ✅**
 4. **Upstream PR** — Opened with product demo, passing CI, review initiated
 5. **Plugin monorepo** — Created in `autonull` org (name chosen), migration path clear
 6. **Fork hygiene** — Ready for Phase F migration post-upstream
@@ -299,20 +302,17 @@ autonull/opencode-spacegraph/
 
 ## 9. Immediate Next Actions (Consolidated)
 
-**Done:** G1, G2, G3, G5 (partial), Plugin bundle test, **H3 Reduced motion**
+**Done:** G1, G2, G3, G5, Plugin bundle test, **H3 Reduced motion**, **Integration guide (I3)**, **Fork landing page (I4)**, **Adapter perf budget (G5)**
 
 **Me (implementation — ~9h, sequential):**
 1. ✅ **Reduced motion** (H3) — disable animations, instant transitions
 2. ✅ **Turn-map focus trap** (H2) — works with nested dialogs
 3. ✅ **Side panel persist** (H2) — per session
 4. ✅ **Permalinks cold load** (H2) — `#graph:ribbon:<nodeID>`
-5. **Integration guide** (I3) — draft technical content
-3. **Side panel persist** (H2) — per session
-4. **Permalinks cold load** (H2) — `#graph:ribbon:<nodeID>`
-5. **Integration guide** (I3) — draft technical content
-6. **Fork landing page** (I4) — banner + badge + limitations
-7. **Adapter docs + CLI template** (G4) — merged; skip Storybook/TypeDoc
-8. **Perf budget CI gate** (G5) — skip cross-version compat
+5. ✅ **Integration guide** (I3) — draft technical content
+6. ✅ **Fork landing page** (I4) — banner + badge + limitations
+7. **Adapter docs + CLI template** (G4) — merged; skip Storybook/TypeDoc (CLI deferred)
+8. ✅ **Perf budget CI gate** (G5) — skip cross-version compat
 
 **You (presentation — after I'm done, ~4h):**
 9. **Animated SVG + 5 screenshots** (I2)
@@ -336,8 +336,11 @@ autonull/opencode-spacegraph/
 | Maintainer review packet | `docs/spacegraph/upstream-review.md` |
 | Plugin API docs | `docs/spacegraph/surface-vs-panel-vs-mobileview.md` |
 | Example plugin | `docs/spacegraph/example-session-surface-plugin.md` |
+| **Integration guide** | `docs/spacegraph/integration-guide.md` |
+| **Fork landing page** | `docs/spacegraph/landing-page.md` |
 | SpaceGraphJS design | `spacegraphjs/DESIGN.md` |
 | SpaceGraphJS roadmap | `spacegraphjs/ROADMAP.md` |
 | SpaceGraphJS TODO | `spacegraphjs/TODO3.md` |
 | Fork setup script | `script/graph-setup.ts` |
 | Verification gate | `bun run graph:verify` |
+| **Adapter performance test** | `spacegraphjs/packages/adapter/test/performance.test.ts` |
