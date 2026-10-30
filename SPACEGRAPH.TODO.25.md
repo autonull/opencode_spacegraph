@@ -220,10 +220,13 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 | 3 | **E3** | Clean `session-graph` package; verify its component tests pass |
 | 4 | **E4** | Revert all app changes EXCEPT SessionSurface impl + plugin setting; verify |
 | 5 | **E5** | Restore gui-plugins entry points; verify |
-| 6 | **D1–D3** | Upstream PR opened, reviewed, merged, released |
-| 7 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; fork deletes product |
+| 6 | **Fix fixture** | Implement `runCommand` in `mountSessionRegion`; all 3 SpaceGraph tests pass |
+| 7 | **D1–D3** | Upstream PR opened, reviewed, merged, released |
+| 8 | **F1–F2** | New `opencode-plugins` repo publishes SpaceGraph; fork deletes product |
 
-**Parallelizable:** E1–E3 can start now. E4–E5 after. D waits for E to produce clean diff. F waits for upstream release.
+**Parallelizable:** E1–E3 can start now. E4–E5 after. D waits for E to produce clean diff + fixture fix. F waits for upstream release.
+
+**Sync protocol:** Before opening PR and weekly thereafter: `git fetch upstream && git rebase upstream/dev` (or merge). Resolve conflicts in the 9 API files + product code only.
 
 ---
 
@@ -240,8 +243,9 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 ## 8. Known Issues
 
-- **Component tests for spacegraph bundle** — Test fixture doesn't fully replicate surfaces API for the dialog fallback test. The plugin works in the real app (verified by manual testing), but the test fixture's `mountSessionRegion` doesn't support running commands in the browser context. Two of three tests pass (map surface + side panel). This is a test infrastructure issue, not a product issue.
+- **Component tests for spacegraph bundle** — Test fixture doesn't fully replicate surfaces API for the dialog fallback test. The fixture's `mountSessionRegion.runCommand` is a stub that returns `false` without executing commands. This blocks the "no-surface dialog fallback" test (1 of 3). **Must be fixed** — it's a bug in this fork's test infrastructure, not upstream.
 - **Upstream PR not yet opened** — D1-D3 implemented locally; needs to be submitted to upstream.
+- **Fork synchronization** — This fork must stay synchronized with `upstream/dev`. Regular rebases/merges required to avoid drift.
 
 ---
 
@@ -271,10 +275,12 @@ Optional enhancements to the upstream PR. Include if reviewers agree; else defer
 
 ## 10. Immediate Next Actions
 
-1. **Open upstream PR** with D1-D3 (9 files) — diff ready in this fork
-2. **Add documentation** to the PR: when to use `SessionSurface` vs `Panel` vs `MobileView`
-3. **Add example** to the PR: a minimal plugin contributing a map surface
-4. **Verify upstream CI passes** on the PR
-5. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
+1. **Fix test fixture** — Implement `runCommand` in `mountSessionRegion` to execute commands via the Command registry (blocks 1/3 SpaceGraph tests)
+2. **Open upstream PR** with D1-D3 (9 files) — diff ready in this fork
+3. **Add documentation** to the PR: when to use `SessionSurface` vs `Panel` vs `MobileView`
+4. **Add example** to the PR: a minimal plugin contributing a map surface
+5. **Verify upstream CI passes** on the PR
+6. **Sync with upstream/dev** — rebase/merge before PR submission and regularly thereafter
+7. **Wait for upstream release** then execute Phase F (new opencode-plugins repo)
 
-> The SpaceGraph dialog fallback test failure is a test infrastructure issue (fixture `runCommand` doesn't execute commands). The product works in the real app. Fix is optional and can be done in the fixture separately.
+> The dialog fallback test failure is a bug in this fork's test fixture (`runCommand` stub). Must be fixed before PR — all tests should pass.
