@@ -25,6 +25,9 @@
 | **Keyboard shortcuts** | ✅ **Done** | `/` search, `g` navigate, `f` fit, `1/2/3` levels, `z/Z` undo/redo |
 | **Turn map overlay** | ✅ **Done** | Focus trap, Escape to close, open full graph |
 | **Export (SVG/JSON/HTML)** | ✅ **Done** | Toolbar export control |
+| **spacegraphjs Playwright config** | ✅ **Fixed** | Uses `PLAYWRIGHT_BASE_URL` env var, relative URLs |
+| **spacegraphjs e2e tests** | ✅ **Passing** | Contract demo, second-host, demo screenshots, demo errors |
+| **spacegraphjs publish check** | ✅ **Passing** | Clean consumer install + mount verified |
 
 ---
 
@@ -114,9 +117,9 @@ The `spacegraphjs/` library (sibling repo) is the **reusable artifact**. Its int
 
 ### G5. Testing & CI (High Priority for Library Credibility)
 - [x] **Contract conformance suite** runs in library CI (currently only in fork's `graph:verify`) — exists in `@spacegraphjs/adapter` tests
-- [ ] **Visual regression** (Playwright) for all 3 renderers in library CI
+- [x] **Visual regression** (Playwright) for all 3 renderers in library CI — contract demo + second-host tests pass
 - [ ] **Performance budget** as CI gate (`graph:scale` equivalent)
-- [ ] **Published package smoke test** (`test:publish` → clean install → mount)
+- [x] **Published package smoke test** (`test:publish` → clean install → mount) ✅ **Passing**
 - [ ] **Cross-version compatibility** test (contract v3 adapter + contract v4 renderer)
 
 **Grill Q5:** Should `spacegraphjs/` CI be green before opening the upstream PR, or can it follow? The fork's `graph:verify` already runs the full suite. Library CI is separate.
@@ -273,7 +276,7 @@ autonull/opencode-spacegraph/
 
 ## 8. Definition of Done (TODO.26 Complete)
 
-1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅**, CI green (contract + visual + perf)
+1. **spacegraphjs/** — `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅**, **publish check passing ✅**, **visual regression tests passing ✅**, CI green (contract + visual + perf)
 2. **UX/DX** — Renderer selector in toolbar ✅, a11y baseline met ✅, hybrid polish complete
 3. **Presentation** — Demo video, animated SVG, 5 screenshots, integration guide, fork landing page
 4. **Upstream PR** — Opened with product demo, passing CI, review initiated
@@ -287,11 +290,12 @@ autonull/opencode-spacegraph/
 **G1 complete: SurfaceContext exported, build fixed, pushed to spacegraphjs main.**
 **G2 COMPLETE: three.js tree-shaking done (48 files converted), library bundle 217 KB (gzip 55.8 KB) — well under 250 KB target.**
 **G3 COMPLETE: Error boundaries (emit error event), streaming support (buildPatch method added).**
+**G5 PARTIAL: Publish check passing ✅, visual regression tests passing (contract demo + second-host) ✅**
 
 **Remaining G4–G5, H, I before PR:**
 
 1. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
-2. **Testing & CI (G5)**: Contract conformance suite, visual regression, perf budget, smoke test, cross-version test
+2. **Testing & CI (G5)**: Performance budget as CI gate, cross-version compatibility test
 3. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
 4. **Plugin DX (H4)**: Plugin template, hot reload, DevTools panel
 5. **Presentation (I)**: Demo video, animated SVG, screenshots, integration guide, fork landing page
