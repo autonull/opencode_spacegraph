@@ -259,19 +259,30 @@ autonull/opencode-spacegraph/
 
 ---
 
-## 7. Sequencing & Gates
+## 7. Sequencing & Gates (Consolidated for Speed)
 
-| Step | Phase | Gate | Owner |
-|------|-------|------|-------|
-| 1 | G1–G3 | `SurfaceContext` exported ✅, build fixed ✅, **three.js tree-shaking COMPLETE (48/48 files converted) ✅**, cytoscape verified ✅, applyPatch exists ✅, perf harness exists ✅, **error boundaries ✅**, **streaming patches ✅** | Me (spacegraphjs) |
-| 2 | H1–H3 | Renderer selector, a11y baseline, hybrid polish complete | Me (session-graph) |
-| 3 | I1–I4 | Demo video, animated SVG, screenshots, docs deployed, landing page | You/me |
-| 4 | **D1–D4** | **PR opened, passing CI, review initiated** (LAST STEP) | You/me |
-| 5 | Upstream | PR reviewed, merged, `@opencode/plugin` released | Maintainers |
-| 6 | F | Plugin monorepo created (name TBD), SpaceGraph published | You/me |
-| 7 | Fork | Product deleted, only 9 API files remain | Me |
+| Step | Phase | Gate | Owner | Est. |
+|------|-------|------|-------|------|
+| **1** | H3 | **Reduced motion** (disable animations, instant transitions) | Me | 1h |
+| **2** | H2 | **Turn-map focus trap** with nested dialogs | Me | 1h |
+| **3** | H2 | **Side panel persist** per session | Me | 1h |
+| **4** | H2 | **Permalinks**: cold load `#graph:ribbon:<nodeID>` | Me | 30m |
+| **5** | I3 | **Integration guide** (draft technical content) | Me | 1.5h |
+| **6** | I4 | **Fork landing page**: banner + badge + limitations | Me | 1h |
+| **7** | G4 | **Adapter docs + CLI template** (merge; skip Storybook/TypeDoc) | Me | 2h |
+| **8** | G5 | **Perf budget CI gate** (skip cross-version compat — library internal) | Me | 1h |
+| **9** | I2 | **Animated SVG** (240×72) + **5 screenshots** | You | 1.5h |
+| **10** | I2 | **Demo video** (2–3 min) | You | 2h |
+| **11** | D | **Open upstream PR** with all above | You | 30m |
 
-**Parallel tracks:** G, H, I run concurrently. D waits for G+H+I complete. F waits for step 5.
+**Total Me: ~9h | Total You: ~4h | PR-ready after step 11**
+
+**Deferred (not PR-blocking):**
+- H1: Cytoscape mirror, lane gutter, depth fade, empty-column fit
+- H4: Plugin template, hot reload, DevTools panel
+- G4: Storybook stories, TypeDoc
+- G5: Cross-version compatibility test
+- spacegraphjs e2e concurrency fix
 
 ---
 
@@ -286,22 +297,31 @@ autonull/opencode-spacegraph/
 
 ---
 
-## 9. Immediate Next Actions (This Week)
+## 9. Immediate Next Actions (Consolidated)
 
-**G1 complete: SurfaceContext exported, build fixed, pushed to spacegraphjs main.**
-**G2 COMPLETE: three.js tree-shaking done (48 files converted), library bundle 217 KB (gzip 55.8 KB) — well under 250 KB target.**
-**G3 COMPLETE: Error boundaries (emit error event), streaming support (buildPatch method added).**
-**G5 PARTIAL: Publish check passing ✅, visual regression tests passing (contract demo + second-host) ✅**
-**Plugin bundle test: FIXED** — solid-js/web mock resolves server-side evaluation error
+**Done:** G1, G2, G3, G5 (partial), Plugin bundle test
 
-**Remaining G4–G5, H, I before PR:**
+**Me (implementation — ~9h, sequential):**
+1. **Reduced motion** (H3) — disable animations, instant transitions
+2. **Turn-map focus trap** (H2) — works with nested dialogs
+3. **Side panel persist** (H2) — per session
+4. **Permalinks cold load** (H2) — `#graph:ribbon:<nodeID>`
+5. **Integration guide** (I3) — draft technical content
+6. **Fork landing page** (I4) — banner + badge + limitations
+7. **Adapter docs + CLI template** (G4) — merged; skip Storybook/TypeDoc
+8. **Perf budget CI gate** (G5) — skip cross-version compat
 
-1. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
-2. **Testing & CI (G5)**: Performance budget as CI gate, cross-version compatibility test; fix spacegraphjs e2e concurrency
-3. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
-4. **Plugin DX (H4)**: Plugin template, hot reload, DevTools panel
-5. **Presentation (I)**: Demo video, animated SVG, screenshots, integration guide, fork landing page
-6. **Open upstream PR (D)**: Include demo video link, animated SVG, screenshots
+**You (presentation — after I'm done, ~4h):**
+9. **Animated SVG + 5 screenshots** (I2)
+10. **Demo video** (I2)
+11. **Open upstream PR** (D)
+
+**Deferred (not PR-blocking):**
+- H1: Cytoscape mirror, lane gutter, depth fade, empty-column fit
+- H4: Plugin template, hot reload, DevTools panel
+- G4: Storybook stories, TypeDoc
+- G5: Cross-version compatibility test
+- spacegraphjs e2e concurrency fix
 
 ---
 
