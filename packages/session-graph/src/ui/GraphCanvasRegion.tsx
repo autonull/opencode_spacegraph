@@ -135,6 +135,9 @@ export type GraphCanvasRegionProps = {
   onViewportChange: (viewport: RendererViewport) => void
   setViewport: (vp: { zoom: number; center: number[] } | undefined) => void
   viewportTracker: GraphViewportTrackerReturn
+  
+  // Reduced motion
+  reducedMotion: boolean
 }
 
 /**
@@ -149,6 +152,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   // Subscribe to projection/depth getters so this component re-renders when they change
   const projection = createMemo(() => props.projection())
   const depth = createMemo(() => props.depth())
+  const reducedMotion = createMemo(() => props.reducedMotion)
 
   // V117: Touch gestures for mobile - set up when renderer and canvas are available
   createEffect(() => {
@@ -213,6 +217,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         onReady={props.onReady}
         onViewportChange={props.onViewportChange}
         onError={props.onError}
+        reducedMotion={reducedMotion()}
       />
       <GraphOverlayManager
         // Model & theme

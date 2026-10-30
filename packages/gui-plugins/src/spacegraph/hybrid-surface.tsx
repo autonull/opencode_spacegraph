@@ -18,13 +18,13 @@ export function HybridSurface(props: {
     stacked() ? "relative flex size-full min-h-0 flex-col" : "relative flex size-full min-h-0",
   )
 
-  const transcript = createMemo(() => {
+  const transcriptClass = createMemo(() => {
     if (floating()) return "size-full"
 
     return stacked() ? "min-h-0 flex-1" : "min-h-0 min-w-0 flex-1"
   })
 
-  const map = createMemo(() => {
+  const mapClass = createMemo(() => {
     if (floating()) return `absolute top-4 bottom-4 w-2/5 overflow-hidden rounded-lg border border-v2-border-border-base bg-v2-background-bg-base shadow-lg ${side() === "start" ? "left-4" : "right-4"}`
 
     if (stacked()) return "h-1/3 shrink-0 border-t border-v2-border-border-base"
@@ -34,8 +34,8 @@ export function HybridSurface(props: {
 
   return (
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
-      <div class={transcript()}>{props.transcript}</div>
-      <div class={map()}>
+      <div class={transcriptClass()}>{props.transcript}</div>
+      <div class={mapClass()}>
         <FullMap
           model={props.model}
           session={props.session}

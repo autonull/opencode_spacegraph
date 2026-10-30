@@ -38,7 +38,7 @@ export type MountedRenderer = {
  */
 export async function mountRenderer(
   container: HTMLElement,
-  options: { theme: RenderTheme; projection: Projection; preferred?: RendererID },
+  options: { theme: RenderTheme; projection: Projection; preferred?: RendererID; reducedMotion?: boolean },
   overrides: Partial<Record<RendererID, RendererFactory>> = {},
 ): Promise<MountedRenderer> {
   let lastError: unknown
@@ -46,7 +46,8 @@ export async function mountRenderer(
   for (const [index, id] of rendererOrder(options.preferred).entries()) {
     try {
       const renderer = await (overrides[id] ?? FACTORIES[id])()
-      await renderer.mount(container, { theme: options.theme, projection: options.projection })
+      // SpaceGraphRenderer accepts reducedMotion; other renderers ignore unknown options
+      await renderer.mount(container, { theme: options.theme, projection: options.projection, reducedMotion: options.reducedMotion } as { theme: RenderTheme; projection: Projection; reducedMotion?: boolean })
 
       return { id, renderer, fallback: index > 0, ...(lastError ? { error: lastError } : {}) }
     } catch (error) {

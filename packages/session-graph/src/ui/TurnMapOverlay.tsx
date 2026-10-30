@@ -25,6 +25,8 @@ export type TurnMapOverlayProps = {
   onSelect?: (id: string | undefined) => void
   onOpenFullGraph?: (turnID: string) => void
   onClose: () => void
+  /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
+  reducedMotion?: boolean
 }
 
 /**
@@ -59,7 +61,8 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
   }
 
   onMount(() => {
-    overlay = new ScopedOverlay({ container: dialog, onClose: () => props.onClose() })
+    // Use capture phase to ensure focus trap works correctly when nested inside another dialog
+    overlay = new ScopedOverlay({ container: dialog, onClose: () => props.onClose(), useCapture: true })
   })
   onCleanup(() => {
     overlay?.dispose()
@@ -99,6 +102,7 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
               overrides={props.rendererOverrides}
               onSelect={(ids) => select(ids[0])}
               onBackgroundClick={() => select(undefined)}
+              reducedMotion={props.reducedMotion}
             />
           </div>
           <div class="w-64 max-w-[45%] shrink-0">

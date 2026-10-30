@@ -23,6 +23,7 @@ export function FullMap(props: {
 
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer(props.session)
+  const detailMode = () => props.model.detailMode(props.session)
 
   return (
     <GraphView
@@ -30,6 +31,7 @@ export function FullMap(props: {
       level={props.model.level(props.session)}
       layout={props.model.layout(props.session)}
       depth={props.model.depth(props.session)}
+      detailMode={detailMode()}
       selection={focused()}
       frame={focused()}
       activeTurn={graph().activeTurn}
@@ -40,6 +42,7 @@ export function FullMap(props: {
         if (layout) props.model.setLayout(props.session, layout)
       }}
       onDepthChange={(next) => props.model.setDepth(props.session, next)}
+      onDetailModeChange={(next) => props.model.setDetailMode(props.session, next)}
       arrangement={props.model.arrangement(props.session)}
       arrangementSide={props.model.side(props.session)}
       refitKey={props.arrangement}

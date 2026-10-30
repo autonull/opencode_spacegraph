@@ -178,6 +178,8 @@ export type GraphViewProps = {
   renderCard?: CardTemplate
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
+  /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
+  reducedMotion?: boolean
   /**
    * The node to select and frame. The view raises the semantic level when the node is hidden
    * at the current one, then moves the camera to it once the model that carries it is applied.
@@ -1315,6 +1317,9 @@ export const GraphView = (props: GraphViewProps) => {
     applyModel,
     preferredRenderer: props.preferredRenderer,
     rendererOverrides: props.rendererOverrides,
+    
+    // Reduced motion
+    reducedMotion: props.reducedMotion ?? false,
     
     // Detail mode
     detailMode,

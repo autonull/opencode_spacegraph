@@ -11,7 +11,7 @@ import {
   type SetupContext,
 } from "@opencode/plugin/gui"
 import { createSignal, lazy, onCleanup, onMount, Suspense, type ParentProps } from "solid-js"
-import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import { LAYOUTS } from "@opencode/session-ui/graph"
 import definition from ".."
 import { createSpacegraph } from "../model"
 import { MapSurface } from "../map-surface"
@@ -125,7 +125,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
 
     const value = hash().slice(prefix.length)
     const [head, ...rest] = value.split(":")
-    const layout = LAYOUT_STRATEGIES.find((candidate) => candidate === head)
+    // Check both layout strategies (node-link) and summary layouts (ribbon, matrix)
+    const layout = LAYOUTS.find((candidate) => candidate === head)
 
     if (rest.length && layout) return { layout, node: rest.join(":") }
 

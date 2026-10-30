@@ -10,6 +10,7 @@ import {
   type Layout,
   type LayoutStrategy,
   type ZoomLevel,
+  type DetailMode,
 } from "@opencode/session-ui/graph"
 import type definition from "./index"
 import { buildGraph, layoutGraph } from "@opencode/session-ui/graph"
@@ -38,9 +39,15 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     level: (session: MountedSession): ZoomLevel => sessionValue(session)?.level ?? prefValue().level ?? "overview",
     layout: (session: MountedSession): Layout => sessionValue(session)?.layout ?? prefValue().layout ?? "lanes",
     depth: (session: MountedSession): DepthMode => sessionValue(session)?.depth ?? prefValue().depth ?? "flat",
+    detailMode: (session: MountedSession): DetailMode => sessionValue(session)?.detailMode ?? prefValue().detailMode ?? "panel",
     setDepth: (session: MountedSession, depth: DepthMode) => {
       store(session).update((draft) => {
         draft.depth = depth
+      })
+    },
+    setDetailMode: (session: MountedSession, detailMode: DetailMode) => {
+      store(session).update((draft) => {
+        draft.detailMode = detailMode
       })
     },
     arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "stacked",

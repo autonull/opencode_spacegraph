@@ -53,6 +53,8 @@ export type GraphCanvasProps = {
   onRenderer?: (renderer: GraphRenderer | undefined) => void
   /** Fires when the renderer has been mounted with its id. */
   onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
+  /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
+  reducedMotion?: boolean | (() => boolean)
 }
 
 const groupIDOf = (target: EventTarget | null) => {
@@ -93,7 +95,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     const current = ++generation
     teardown()
 
-    mountRenderer(host, { theme: props.theme, projection: getProjection(), preferred: id }, props.overrides ?? {})
+    const getReducedMotion = () => typeof props.reducedMotion === "function" ? props.reducedMotion() : (props.reducedMotion ?? false)
+
+    mountRenderer(host, { theme: props.theme, projection: getProjection(), preferred: id, reducedMotion: getReducedMotion() }, props.overrides ?? {})
       .then((result) => {
         if (current !== generation) {
           result.renderer.dispose()

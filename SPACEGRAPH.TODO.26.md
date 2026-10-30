@@ -299,11 +299,14 @@ autonull/opencode-spacegraph/
 
 ## 9. Immediate Next Actions (Consolidated)
 
-**Done:** G1, G2, G3, G5 (partial), Plugin bundle test
+**Done:** G1, G2, G3, G5 (partial), Plugin bundle test, **H3 Reduced motion**
 
 **Me (implementation — ~9h, sequential):**
-1. **Reduced motion** (H3) — disable animations, instant transitions
-2. **Turn-map focus trap** (H2) — works with nested dialogs
+1. ✅ **Reduced motion** (H3) — disable animations, instant transitions
+2. ✅ **Turn-map focus trap** (H2) — works with nested dialogs
+3. ✅ **Side panel persist** (H2) — per session
+4. ✅ **Permalinks cold load** (H2) — `#graph:ribbon:<nodeID>`
+5. **Integration guide** (I3) — draft technical content
 3. **Side panel persist** (H2) — per session
 4. **Permalinks cold load** (H2) — `#graph:ribbon:<nodeID>`
 5. **Integration guide** (I3) — draft technical content

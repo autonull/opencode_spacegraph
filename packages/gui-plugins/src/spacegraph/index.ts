@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { Plugin, Store } from "@opencode/plugin/gui"
-import { GRAPH_ARRANGEMENTS, GRAPH_SIDES, LAYOUTS, ZOOM_LEVELS } from "@opencode/session-ui/graph"
+import { GRAPH_ARRANGEMENTS, GRAPH_SIDES, LAYOUTS, ZOOM_LEVELS, DETAIL_MODES } from "@opencode/session-ui/graph"
 import en from "./i18n/en"
 
 export const DEPTH_MODES = ["flat", "layered", "depth-stack", "orbit"] as const
@@ -11,6 +11,7 @@ const Prefs = Schema.Struct({
   depth: Schema.optional(Schema.Literals(DEPTH_MODES)),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
+  detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
   renderer: Schema.optional(Schema.Literals(["spacegraph", "cytoscape"])),
 })
 
@@ -21,6 +22,7 @@ const State = Schema.Struct({
   depth: Schema.optional(Schema.Literals(DEPTH_MODES)),
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
+  detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
 })
