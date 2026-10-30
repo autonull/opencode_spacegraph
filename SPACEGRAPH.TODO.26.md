@@ -13,7 +13,7 @@
 | Fork sync | ✅ Done | Merged upstream/dev (6b4329c885), conflicts resolved |
 | Typecheck/lint | ✅ Clean | Core packages: 0 errors, 1786 pre-existing warnings; spacegraphjs build fixed (process global TS errors resolved) |
 | Component tests | ✅ Passing | SpaceGraph: 3/3, plugin-host: 31/31, plugin-graph: 1/1, surfaces unit: 4/4 |
-| Bundle | ✅ Builds | `packages/plugins/spacegraph/dist/gui-experimental.cjs` |
+| Bundle | ✅ Builds | `packages/plugins/spacegraph/dist/gui-experimental.cjs` (2.4 MB, 668 KB gzip) |
 | Documentation | ✅ Written | `surface-vs-panel-vs-mobileview.md`, `example-session-surface-plugin.md` |
 | Screenshots | ⚠️ Partial | Bundle: 3/3 pass; Cytoscape: 5/31 regenerated (07,08,20,21,25) |
 | **Upstream PR** | ❌ **Not opened** | **This is the blocker** |
@@ -26,8 +26,9 @@
 | **Turn map overlay** | ✅ **Done** | Focus trap, Escape to close, open full graph |
 | **Export (SVG/JSON/HTML)** | ✅ **Done** | Toolbar export control |
 | **spacegraphjs Playwright config** | ✅ **Fixed** | Uses `PLAYWRIGHT_BASE_URL` env var, relative URLs |
-| **spacegraphjs e2e tests** | ✅ **Passing** | Contract demo, second-host, demo screenshots, demo errors |
+| **spacegraphjs e2e tests** | ⚠️ **Partial** | Contract demo & second-host pass individually; concurrency issues in parallel runs |
 | **spacegraphjs publish check** | ✅ **Passing** | Clean consumer install + mount verified |
+| **Plugin bundle test** | ✅ **Fixed** | solid-js/web mock resolves server-side evaluation error |
 
 ---
 
@@ -291,11 +292,12 @@ autonull/opencode-spacegraph/
 **G2 COMPLETE: three.js tree-shaking done (48 files converted), library bundle 217 KB (gzip 55.8 KB) — well under 250 KB target.**
 **G3 COMPLETE: Error boundaries (emit error event), streaming support (buildPatch method added).**
 **G5 PARTIAL: Publish check passing ✅, visual regression tests passing (contract demo + second-host) ✅**
+**Plugin bundle test: FIXED** — solid-js/web mock resolves server-side evaluation error
 
 **Remaining G4–G5, H, I before PR:**
 
 1. **DX improvements (G4)**: Adapter docs, Storybook stories, CLI template, TypeDoc
-2. **Testing & CI (G5)**: Performance budget as CI gate, cross-version compatibility test
+2. **Testing & CI (G5)**: Performance budget as CI gate, cross-version compatibility test; fix spacegraphjs e2e concurrency
 3. **UX/DX polish (H)**: Turn-map focus trap, side panel persist, permalinks, keyboard shortcuts docs, reduced motion
 4. **Plugin DX (H4)**: Plugin template, hot reload, DevTools panel
 5. **Presentation (I)**: Demo video, animated SVG, screenshots, integration guide, fork landing page

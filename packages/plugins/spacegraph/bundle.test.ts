@@ -7,7 +7,81 @@ import * as pluginGui from "@opencode/plugin/gui"
 import path from "node:path"
 import * as solid from "solid-js"
 import * as solidStore from "solid-js/store"
-import * as solidWeb from "solid-js/web"
+
+// Mock solid-js/web to avoid "Client-only API called on the server side" errors.
+// The bundle requires solid-js/web for JSX runtime functions (template, effect, memo, etc.)
+// but the test runs in Node.js without a real browser environment.
+const solidWeb = {
+  // JSX runtime - template returns a no-op function since we don't actually create DOM
+  template: () => () => {},
+  effect: (fn: () => void) => fn(),
+  memo: (fn: () => any) => fn(),
+  createComponent: (Component: any, props: any) => ({ Component, props }),
+  mergeProps: (props: any) => props,
+  splitProps: (props: any, _keys: string[]) => [props, {}],
+  insert: () => {},
+  spread: (props: any, ...sources: any[]) => Object.assign(props, ...sources),
+  // Component helpers - return children or empty
+  For: (props: any) => props.each?.map((item: any, i: number) => props.children?.(item, i)) ?? [],
+  Index: (props: any) => props.each?.map((item: any, i: number) => props.children?.(item, i)) ?? [],
+  Show: (props: any) => props.when ? props.children : props.fallback ?? null,
+  Switch: (props: any) => props.children,
+  Match: (props: any) => props.children,
+  ErrorBoundary: (props: any) => props.children,
+  Suspense: (props: any) => props.children,
+  SuspenseList: (props: any) => props.children,
+  Portal: (props: any) => props.children,
+  Dynamic: (props: any) => props.component,
+  lazy: (fn: () => Promise<any>) => fn(),
+  // Reactivity (re-exported from solid-js)
+  createSignal: (value?: any) => {
+    let v = value;
+    return [() => v, (next: any) => { v = typeof next === "function" ? next(v) : next; }] as const;
+  },
+  createEffect: (fn: () => void) => fn(),
+  createMemo: (fn: () => any) => fn(),
+  createResource: () => [{}, () => {}],
+  createContext: (defaultValue?: any) => ({ Provider: (props: any) => props.children, defaultValue }),
+  useContext: (context: any) => context.defaultValue ?? {},
+  root: (fn: () => any) => fn(),
+  untrack: (fn: () => any) => fn(),
+  batch: (fn: () => any) => fn(),
+  startTransition: (fn: () => any) => fn(),
+  onCleanup: () => {},
+  onMount: () => {},
+  onError: () => {},
+  getOwner: () => null,
+  setOwner: () => {},
+  runWithOwner: (_owner: any, fn: () => any) => fn(),
+  enableScheduling: () => {},
+  children: () => null,
+  toArray: (children: any) => Array.isArray(children) ? children : children ? [children] : [],
+  // DOM
+  render: () => () => {},
+  // Properties
+  Properties: new Set(),
+  ChildProperties: new Set(),
+  Aliases: {},
+  PropAliases: {},
+  DelegatedEvents: new Set(),
+  SVGElements: new Set(),
+  SVGNamespace: { xlink: "", xml: "" },
+  DOMElements: new Set(),
+  reconcileArrays: () => {},
+  getPropAlias: () => undefined,
+  // Event delegation
+  delegateEvents: (events: string[]) => {},
+  setAttribute: () => {},
+  removeAttribute: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  createEvent: () => ({}),
+  // SSR
+  isServer: false,
+  hydrate: () => {},
+  // Streaming
+  stream: () => {},
+  } as any
 
 GlobalRegistrator.register()
 
