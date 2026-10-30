@@ -281,10 +281,10 @@ autonull/opencode-spacegraph/
 
 **All grill questions resolved. G1, H1 (renderer selector, mobile), H3 (a11y baseline) complete.**
 
-1. `spacegraphjs`: Defer Cytoscape minimap mirror (Q6)
-2. Record demo video, create animated SVG, capture screenshots
-3. Draft integration guide (technical content) (Q8)
-4. **We pair**: Finalize demo video, animated SVG
+1. Record demo video, create animated SVG, capture screenshots
+2. Draft integration guide (technical content) (Q8)
+3. **We pair**: Finalize demo video, animated SVG
+4. Open upstream PR with product demo
 
 ---
 
