@@ -1,4 +1,5 @@
 import type { NodeKind, PhaseCategory } from "@opencode/session-ui/graph"
+import { HUES, CATEGORY_HUES } from "./hues"
 
 /** The SVG path for each node kind's glyph. */
 export const GLYPH: Record<NodeKind, string> = {
@@ -34,43 +35,10 @@ export const GLYPH: Record<NodeKind, string> = {
 export const GLYPH_GROUP = "M3 13.5V4.5M6 12.5V3.5M9 11.5V2.5M12 10.5V1.5"
 
 /** The accent a phase category carries. Every category has one, so the legend cannot drift. */
-export const CATEGORY_HUE: Record<PhaseCategory, number> = {
-  explore: 210,
-  edit: 145,
-  verify: 38,
-  delegate: 275,
-  result: 196,
-}
+export const CATEGORY_HUE: Record<PhaseCategory, number> = CATEGORY_HUES
 
 /** The accent a kind carries when it does not belong to a phase. Every kind has one. */
-export const KIND_HUE: Record<NodeKind, number> = {
-  session: 265,
-  turn: 220,
-  message: 220,
-  reasoning: 300,
-  subagent: 275,
-  file: 190,
-  directory: 45,
-  result: 196,
-  diff: 160,
-  error: 0,
-  retry: 28,
-  notice: 220,
-  compaction: 220,
-  phase: 210,
-  tool: 210,
-  // T19-T26 derived kinds
-  package: 45,
-  commit: 28,
-  branch: 28,
-  symbol: 190,
-  test: 38,
-  "test-run": 38,
-  process: 210,
-  port: 210,
-  issue: 0,
-  note: 265,
-}
+export const KIND_HUE: Record<NodeKind, number> = HUES
 
 /** The kinds that use monospace font for their labels. */
 export const MONO_KINDS = new Set<NodeKind>(["tool", "file", "diff"])
