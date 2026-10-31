@@ -1,19 +1,14 @@
 import { For, Show, createMemo } from "solid-js"
-import { buildGraph, turnSubgraph } from "@opencode/session-ui/graph"
-import type { SessionStatus } from "@opencode/client/promise"
+import { turnSubgraph } from "@opencode/session-ui/graph"
 import type { GraphNode } from "@opencode/session-ui/graph"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
+import type { SpacegraphModel } from "./model"
 
 const TURN_PREFIX = "turn:"
 
 /** The turn's nodes, shared by the overlay layer and the no-surface dialog. */
-export function TurnMapBody(props: { session: MountedSession; screen: SessionScreen; empty: string }) {
-  const graph = createMemo(() => {
-    const status: SessionStatus =
-      props.session.server.data.session.status(props.session.id) === "running" ? { type: "busy" } : { type: "idle" }
-
-    return buildGraph({ messages: props.session.server.data.session.message.list(props.session.id), status })
-  })
+export function TurnMapBody(props: { model: SpacegraphModel; session: MountedSession; screen: SessionScreen; empty: string }) {
+  const graph = props.model.graph(props.session)
 
   const turn = createMemo(() => {
     const messageID = props.screen.transcript.activeMessageID()

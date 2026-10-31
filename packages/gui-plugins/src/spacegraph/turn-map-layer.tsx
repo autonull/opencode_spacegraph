@@ -75,7 +75,7 @@ export function TurnMapLayer(props: {
           </button>
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto p-4" data-scrollable>
-          <TurnMapBody session={props.session} screen={props.screen} empty={props.labels.empty} />
+          <TurnMapBody model={props.model} session={props.session} screen={props.screen} empty={props.labels.empty} />
         </div>
         <div class="flex shrink-0 justify-end border-t border-v2-border-border-base px-4 py-3">
           <button

@@ -28,6 +28,7 @@ export function MapDialog(props: {
 
 export function TurnMapDialog(props: {
   ctx: Ctx
+  model: SpacegraphModel
   session: MountedSession
   screen: SessionScreen
   labels: { title: string; open: string; empty: string }
@@ -44,7 +45,7 @@ export function TurnMapDialog(props: {
       }
     >
       <div class="flex flex-col gap-2">
-        <TurnMapBody session={props.session} screen={props.screen} empty={props.labels.empty} />
+        <TurnMapBody model={props.model} session={props.session} screen={props.screen} empty={props.labels.empty} />
       </div>
     </props.ctx.ui.Dialog>
   )

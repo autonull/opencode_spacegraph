@@ -94,6 +94,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       <Scope>
         <TurnMapDialog
           ctx={ctx}
+          model={model}
           session={session}
           screen={screen}
           labels={{
