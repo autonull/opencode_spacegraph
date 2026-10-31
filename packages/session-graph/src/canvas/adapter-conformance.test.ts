@@ -76,7 +76,7 @@ test("the Cytoscape adapter caps the card budget at the renderer's DOM capabilit
 
 test("the Cytoscape DOM cap mirrors the renderer's declared capability", async () => {
   const { CytoscapeRenderer } = await import("@spacegraphjs/cytoscape-renderer")
-  const { CYTOSCAPE_DOM_NODES } = await import("./sessionGraphAdapter")
+  const { CYTOSCAPE_DOM_NODES } = await import("./constants")
 
   expect(new CytoscapeRenderer().capabilities.maxDomNodes).toBe(CYTOSCAPE_DOM_NODES)
 })

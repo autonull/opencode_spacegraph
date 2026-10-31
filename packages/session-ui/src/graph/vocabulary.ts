@@ -386,6 +386,12 @@ export const CARD_SIZE: readonly [number, number] = [220, 72]
 /** The box a structural chip occupies (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
 
+/** Horizontal distance between hierarchy levels (indentation step). */
+export const LAYOUT_INDENT_STEP = 120
+
+/** Extra room around a turn column. */
+export const LAYOUT_PADDING = 48
+
 /**
  * Shape each node kind renders as. Structural kinds are compact panels; activity kinds are DOM cards.
  * This is the single source of truth for the renderer contract — layout.ts and the adapter both read it.

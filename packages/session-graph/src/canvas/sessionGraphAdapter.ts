@@ -19,6 +19,7 @@ import {
   type NodeKind,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
+import { BAND_PADDING, CYTOSCAPE_DOM_NODES } from "./constants"
 
 type Shape = NonNullable<RenderNode["shape"]>
 
@@ -52,7 +53,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       // T1.17: the box each node occupies, so a band is sized around the cards it groups.
       nodeSizeFn: (node: GraphNode) => nodeSize(node),
       // The group header is its own strip above the members; the sides and foot are breathing room.
-      geometry: { bandPadding: { top: 40, right: 20, bottom: 20, left: 20 } },
+      geometry: { bandPadding: BAND_PADDING },
     }
     super({ ...baseConfig, ...config })
   }
@@ -221,13 +222,6 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
     return bundled
   }
 }
-
-/**
- * The DOM budget of the Cytoscape renderer: it declares `maxDomNodes: 20` and draws the first nodes
- * that carry markup. The host must not import a renderer package at module scope, so the number is
- * declared here and a test checks it against the renderer's own capabilities.
- */
-export const CYTOSCAPE_DOM_NODES = 20
 
 /** Factory for creating session graph adapters with optional DOM node cap. */
 function createSessionGraphAdapter(domNodeCap?: number): SessionGraphAdapter {

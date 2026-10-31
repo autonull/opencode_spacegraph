@@ -10,7 +10,7 @@ import type { GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from ".
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
 import { nodeIndex, parentIndex } from "./lookup"
-import { CARD_SIZE, COMPACT_SIZE, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
+import { CARD_SIZE, COMPACT_SIZE, LAYOUT_INDENT_STEP, LAYOUT_PADDING, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
 
 export type { Position }
 
@@ -171,11 +171,11 @@ const LAYOUT: LayoutConfig<GraphNode, GraphEdge, Lane> = {
   geometry: {
     standardSize: CARD_SIZE,
     // Indent step must be large enough to read at fit; 120px gives a clear visual hierarchy.
-    indentStep: 120,
+    indentStep: LAYOUT_INDENT_STEP,
     // The depth levels the hierarchy outline budgets for (session, turn, work, artifact).
     depthLevels: 4,
     // The extra room around a turn column.
-    padding: 48,
+    padding: LAYOUT_PADDING,
   },
 }
 
