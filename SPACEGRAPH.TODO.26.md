@@ -286,7 +286,6 @@ autonull/opencode-spacegraph/
 - G4: Storybook stories, TypeDoc
 - G5: Cross-version compatibility test
 - spacegraphjs e2e concurrency fix
-- **Component test failures (5 tests)**: graph-a11y, graph-refine (4 tests) — inspector not updating on selection change; likely GraphController/selection sync issue
 
 ---
 
@@ -303,7 +302,7 @@ autonull/opencode-spacegraph/
 
 ## 9. Immediate Next Actions (Consolidated)
 
-**Done:** G1, G2, G3, G5, Plugin bundle test, **H3 Reduced motion**, **Integration guide (I3)**, **Fork landing page (I4)**, **Adapter perf budget (G5)**
+**Done:** G1, G2, G3, G5, Plugin bundle test, **H3 Reduced motion**, **Integration guide (I3)**, **Fork landing page (I4)**, **Adapter perf budget (G5)**, **Component test fixes (graph-a11y, graph-refine x4)**
 
 **Me (implementation — ~9h, sequential):**
 1. ✅ **Reduced motion** (H3) — disable animations, instant transitions
@@ -312,8 +311,9 @@ autonull/opencode-spacegraph/
 4. ✅ **Permalinks cold load** (H2) — `#graph:ribbon:<nodeID>`
 5. ✅ **Integration guide** (I3) — draft technical content
 6. ✅ **Fork landing page** (I4) — banner + badge + limitations
-7. **Adapter docs + CLI template** (G4) — merged; skip Storybook/TypeDoc (CLI deferred)
-8. ✅ **Perf budget CI gate** (G5) — skip cross-version compat
+7. ✅ **Component test fixes** — graph-selection sync + inspector remount on node change
+8. **Adapter docs + CLI template** (G4) — merged; skip Storybook/TypeDoc (CLI deferred)
+9. ✅ **Perf budget CI gate** (G5) — skip cross-version compat
 
 **You (presentation — after I'm done, ~4h):**
 9. **Animated SVG + 5 screenshots** (I2)
@@ -326,7 +326,6 @@ autonull/opencode-spacegraph/
 - G4: Storybook stories, TypeDoc
 - G5: Cross-version compatibility test
 - spacegraphjs e2e concurrency fix
-- **Component test failures (5 tests)**: graph-a11y, graph-refine (4 tests) — inspector not updating on selection change; likely GraphController/selection sync issue
 
 ---
 
