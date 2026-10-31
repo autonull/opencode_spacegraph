@@ -1,6 +1,7 @@
 import type { RenderModel } from "@spacegraphjs/renderer"
 import type { ClusterBounds, GraphViewData, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { sessionGraphAdapter } from "./sessionGraphAdapter"
+import { escapeHtml } from "@spacegraphjs/adapter"
 
 /** Host-owned, sanitized markup for a `card`. Text must be escaped by the template. */
 export type CardTemplate = (node: GraphNode, level: ZoomLevel) => string
@@ -30,7 +31,7 @@ export type BuildRenderModelOptions = {
    * LE.10: localized lane labels (with the lanes layout's Y anchors) drawn as a non-interactive
    * gutter to the left of the content, so the spatial grammar is visible.
    */
-  laneLabels?: readonly { id: string; label: string; y: number }[]
+  laneLabels?: readonly { id: string; label: string; y: number; anchorNodeId?: string }[]
   /**
    * T1.11: non-interactive row/column captions for the summary representations, positioned in layout
    * space by the host (it owns the turn/category axes).
@@ -47,4 +48,4 @@ export function buildRenderModel(model: GraphViewData, options: BuildRenderModel
   return sessionGraphAdapter.build(model, options)
 }
 
-export { escapeHtml } from "@spacegraphjs/adapter"
+export { escapeHtml }

@@ -23,25 +23,18 @@ import type {
 } from "@opencode/session-ui/graph"
 import { GraphActionTarget } from "./GraphActionTarget"
 import { ancestors,
-  applyNodeBudget,
-  byProximity,
   CARD_SIZE,
   changedFiles,
   composeScopes,
-  degreeBudget,
   withAnnotations,
   type Annotations,
   DETAIL_TIER_WIDTH,
   detailTier,
-  equalizerScale,
   facetCounts,
   facetsFromQuery,
   facetsToQuery,
   fileRelations,
   isSummaryLayout,
-  isSummaryOrLogLayout,
-  laneAnchors,
-  layoutGraph,
   logLayout,
   matrixLayout,
   LEVEL_RANK,
@@ -49,13 +42,10 @@ import { ancestors,
   minLevelOf,
   nodeByID,
   nodeIndex,
-  nodeSize,
   ribbonLayout,
   scaleWindow,
   scopeToTurns,
-  sessionOrder,
   subtree,
-  summaryUnits,
   turnRows,
 } from "@opencode/session-ui/graph"
 import {
@@ -69,7 +59,9 @@ import {
   type JSX,
 } from "solid-js"
 import { createStore } from "solid-js/store"
-import { buildRenderModel, type CardTemplate } from "../canvas/buildRenderModel"
+import { type CardTemplate } from "../canvas/buildRenderModel"
+import { createRenderModelBuilder, createContentIDs, createOrderedModel, createBudgetedModel, createDrawnModel } from "../canvas/buildRenderModelHelpers"
+import { createLayoutComputer } from "../canvas/computeLayout"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate, createCardTemplate } from "./cardTemplate"
@@ -695,35 +687,15 @@ export const GraphView = (props: GraphViewProps) => {
   const renderBand = createMemo(() =>
     createBandTemplate(theme(), undefined, { copy, collapsedGroups: groupCollapse.collapsedGroups() }),
   )
-  // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
-  // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
-  // a streamed session never moves a node the reader is looking at.
-  const layoutHistory = new Map<string, ReadonlyMap<string, Position>>()
+
+  // Compute layout using extracted helper
   const sessionKey = () => {
     const root = nodeIndex(model()).get(model().root)
     return root ? sessionID(root) ?? "session" : "session"
   }
-  // A manual arrangement belongs to the view it was made in. Changing session, layout, or level
-  // returns the reader to the derived layout instead of carrying stale coordinates across views.
-  const viewKey = createMemo(() => `${sessionKey()}:${layout()}:${level()}`)
-  createEffect((previous: string | undefined) => {
-    const key = viewKey()
-    if (previous !== undefined && previous !== key) {
-      setManual("positions", {})
-      setManual("sizes", {})
-    }
-    return key
-  }, undefined)
-  // T15: a size rule scales the card's box, and the layout's cell cursor reads it.
-  const sizedCard = (node: GraphNode): readonly [number, number] => {
-    const [width, height] = nodeSize(node)
-    const scale = equalizerScale(props.rules ?? [], node)
-    return scale === 1 ? [width, height] : [width * scale, height * scale]
-  }
-  const rulesKey = createMemo(() => JSON.stringify(props.rules ?? []))
 
-  // T17.1 — the layout axis. A summary layout packs the level's units into the session's grammar; the
-  // node-link strategies place the model in the library's geometry.
+  const layoutComputer = createLayoutComputer(model, layout, level, () => props.rules, sessionKey)
+
   geometry = createMemo((): GraphLayout => {
     if (props.positions)
       return {
@@ -739,22 +711,7 @@ export const GraphView = (props: GraphViewProps) => {
     if (current === "matrix") return matrixLayout(scoped(), { level: level() })
     if (current === "log") return logLayout(scoped(), { level: level() })
 
-    // T15: the rules are part of the layout key, because a size rule re-lays-out the map — the
-    // same way a level or a layout change does.
-    const key = `${sessionKey()}:${current}:${level()}:${rulesKey()}`
-    const next = layoutGraph(model(), {
-      strategy: current,
-      level: level(),
-      previous: layoutHistory.get(key),
-      nodeSizeFn: sizedCard,
-      // Give lanes more vertical breathing room: the default 24px gap between 72px cards
-      // makes 8 lanes feel cramped at typical viewport heights.
-      laneGap: 40,
-    })
-
-    layoutHistory.set(key, next.positions)
-
-    return next
+    return layoutComputer()
   })
 
   displayPositions = () => {
@@ -828,15 +785,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // T17.2 — a summary draws the level's units, and a cluster yields to its members below the
   // overview. The render model draws the same set, so the two cannot disagree.
-  const drawn = createMemo(() => {
-    const current = scoped()
-    if (!isSummaryOrLogLayout(layout())) return current
-    const units = summaryUnits(current, level())
-    return { 
-      ...current, 
-      nodes: current.nodes?.filter((node) => units.has(node.id)) ?? [] 
-    }
-  })
+  const drawn = createDrawnModel(scoped, layout, level)
 
   // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
   // content past it, and the reader pans the rest.
@@ -859,11 +808,9 @@ export const GraphView = (props: GraphViewProps) => {
 
   // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
   // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
-  const budget = createMemo(() => {
-    const current = drawn()
-    const centre = viewportTracker?.resting()
-    const ordered = centre ? byProximity(current, displayPositions(), centre) : current
-    return applyNodeBudget(ordered, degreeBudget(current, selection.selection()))
+  const budget = createBudgetedModel(drawn, displayPositions, () => selection.selection(), () => {
+    const r = viewportTracker?.resting()
+    return r ? { x: r[0], y: r[1], z: r[2] } : undefined
   })
 
   // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
@@ -905,81 +852,37 @@ export const GraphView = (props: GraphViewProps) => {
     })
   }
 
-  const applyManualLayout = (model: RenderModel): RenderModel => {
-    if (Object.keys(manual.sizes).length === 0 && Object.keys(manual.positions).length === 0) return model
-
-    return {
-      ...model,
-      nodes: model.nodes.map((node) => {
-        const size = manual.sizes[node.id]
-        const position = manual.positions[node.id]
-        if (!size && !position) return node
-        return {
-          ...node,
-          ...(size ? { size: [size[0], size[1], node.size?.[2] ?? 0] } : {}),
-          ...(position ? { position } : {}),
-        }
-      }),
-    }
-  }
-
-  renderModel = createMemo(() => {
-    const budgeted = budget() ?? { nodes: [], edges: [], bands: [], laneLabels: [], axisLabels: [] }
-    const model = applyManualLayout(
-      buildRenderModel(budgeted, {
-        level: level(),
-        positions: displayPositions(),
-        bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
-        edges: !isSummaryOrLogLayout(layout()),
-        bundle: !isSummaryOrLogLayout(layout()) && files(),
-        laneLabels:
-          !isSummaryOrLogLayout(layout()) && layout() === "lanes"
-            ? laneAnchors().map((lane) => ({
-                id: lane.name,
-                label: i18n.t(VOCABULARY_KEYS.lane[lane.name]),
-                y: lane.y,
-                // T6.6: the gutter belongs to the drawn window, not to the session root far to the left.
-                anchorNodeId: windowAnchor(),
-              }))
-            : undefined,
-        axisLabels: axisLabels(),
-        renderCard: renderCard(),
-        renderBand: renderBand(),
-      }),
-    )
-    const hidden = edgeKinds.hiddenEdgeKinds()
-    return hidden.size === 0
-      ? model
-      : { ...model, edges: model.edges.filter((edge) => !hidden.has(edge.kind)) }
+  // Build render model using extracted helper
+  const renderModelBuilder = createRenderModelBuilder({
+    model,
+    layout,
+    level,
+    files,
+    displayPositions,
+    budget,
+    renderCard,
+    renderBand,
+    axisLabels,
+    windowAnchor,
+    i18n: createMemo(() => ({ t: (key: string) => i18n.t(key) })),
+    vocabularyKeys: createMemo(() => VOCABULARY_KEYS),
+    manualPositions: manual.positions,
+    manualSizes: manual.sizes,
+    hiddenEdgeKinds: edgeKinds.hiddenEdgeKinds,
   })
+
+  renderModel = renderModelBuilder
 
   // LE.1: fit the drawn content, not the non-interactive bands, and re-frame when the inspector
   // toggles (the canvas narrows when the side panel opens). Streaming updates deliberately do not
   // refit, so the ids are read untracked inside the fit effect rather than as a dependency.
   // T6.6: at scale the session root sits far to the left of the drawn window, so framing it would
   // open the camera on empty space. The root stays drawn; it just does not pull the frame away.
-  contentIDs = createMemo(() => {
-    const rm = renderModel()
-    const ids = rm?.nodes?.filter((node) => node.kind !== "band").map((node) => node.id) ?? []
-
-    const budgeted = budget()
-    const d = drawn()
-    const m = model()
-    return budgeted?.nodes?.length < d?.nodes?.length ? ids.filter((id) => id !== m?.root) : ids
-  })
+  contentIDs = createContentIDs(renderModel, budget, drawn, model)
 
   // The proximity order must not leak: a screen reader reads the session, and a saved map reads the
   // same whoever opens it. Both read the render model in the session's own order.
-  const ordered = createMemo(() => {
-    const model = renderModel() ?? { nodes: [], edges: [], bands: [], laneLabels: [], axisLabels: [] }
-    const order = sessionOrder(drawn())
-    return {
-      ...model,
-      nodes: [...model.nodes].sort(
-        (a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
-      ),
-    }
-  })
+  const ordered = createOrderedModel(renderModel, drawn)
 
   // T3.4: Export the current render model as SVG, JSON, or standalone HTML.
   const handleExport = (format: ExportFormat, model: RenderModel) =>
