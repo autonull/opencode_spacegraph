@@ -1,12 +1,14 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo } from "solid-js"
-import { nodeByID, breadcrumbs, type GraphViewData } from "@opencode/session-ui/graph"
+import { breadcrumbs, type GraphViewData } from "@opencode/session-ui/graph"
 import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
+import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
 export type UseTraceOverlayOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
   onAnnounce: (message: string) => void
+  nodeLookup?: NodeLookup
 }
 
 export type UseTraceOverlayReturn = {
@@ -31,6 +33,8 @@ export function useTraceOverlay(options: UseTraceOverlayOptions): UseTraceOverla
   const [traceKind, setTraceKind] = createSignal<TraceKind | null>(null)
   const [traceSource, setTraceSource] = createSignal<string | null>(null)
 
+  const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
+
   const traceOverlay = createMemo<TraceOverlay | null>(() => {
     const kind = traceKind()
     const source = traceSource()
@@ -48,7 +52,7 @@ export function useTraceOverlay(options: UseTraceOverlayOptions): UseTraceOverla
     if (!from) return
     setTraceKind(kind)
     setTraceSource(from)
-    const node = nodeByID(options.model(), from)
+    const node = nodeLookup()(from)
     const label = node?.label ?? from
     const messages: Record<TraceKind, string> = {
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),

@@ -104,6 +104,7 @@ import { useGraphViewport } from "./useGraphViewport"
 import { useGraphState } from "./useGraphState"
 import { useGraphSelection } from "./useGraphSelection"
 import { useGraphAnnotations } from "./useGraphAnnotations"
+import { useNodeLookup } from "./useNodeLookup"
 import type { GraphWindowState } from "./GraphWindows"
 
 /**
@@ -393,6 +394,9 @@ export const GraphView = (props: GraphViewProps) => {
   const [notesStore, setNotesStore] = createStore<Annotations>({})
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
 
+  // Shared node lookup for hooks
+  const nodeLookup = useNodeLookup(model)
+
   // Hooks for modular state/logic
   const graphSelection = useGraphSelection({
     model,
@@ -410,6 +414,7 @@ export const GraphView = (props: GraphViewProps) => {
     onAnnounce: announce,
     notes: notesStore,
     setNotes: setNotesStore,
+    nodeLookup,
   })
 
   const edgeKinds = useEdgeKinds({ model })
@@ -420,16 +425,13 @@ export const GraphView = (props: GraphViewProps) => {
     checkpoint: () => props.checkpoint,
     turnCount: () => props.turnCount,
     selection: () => selection.selection(),
-    nodeByID: (id) => nodeByID(model(), id),
+    nodeLookup,
   })
 
   const groupCollapse = useGroupCollapse({
     model,
     selection: () => selection.selection(),
-    nodeByID: (id) => {
-      const m = model()
-      return m?.nodes?.find((n) => n.id === id)
-    },
+    nodeLookup,
   })
 
   // T18.3: the auto detail mode threshold

@@ -1,5 +1,6 @@
 import { createSignal, createMemo } from "solid-js"
-import { scopeToTurns, reviewChanges, type GraphViewData, type TurnStats } from "@opencode/session-ui/graph"
+import { scopeToTurns, reviewChanges, type GraphViewData, type GraphNode, type TurnStats } from "@opencode/session-ui/graph"
+import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
 export type ComparisonChanges = {
   added: ReadonlySet<string>
@@ -16,7 +17,7 @@ export type UseComparisonOptions = {
   checkpoint: () => number | undefined
   turnCount: () => number | undefined
   selection: () => readonly string[]
-  nodeByID: (id: string) => { kind: string; id: string } | undefined
+  nodeLookup?: NodeLookup
 }
 
 export type UseComparisonReturn = {
@@ -28,13 +29,14 @@ export type UseComparisonReturn = {
 }
 
 export function useComparison(options: UseComparisonOptions): UseComparisonReturn {
+  const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
   const [comparedTurns, setComparedTurns] = createSignal<readonly [string, string] | null>(null)
 
   const selectedTurns = () =>
     options
       .selection()
-      .map((id) => options.nodeByID(id))
-      .filter((node): node is { kind: string; id: string } => node?.kind === "turn")
+      .map((id) => nodeLookup()(id))
+      .filter((node): node is GraphNode => node?.kind === "turn")
 
   const comparison = createMemo(() => {
     const pair = comparedTurns()

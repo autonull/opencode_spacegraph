@@ -1,10 +1,11 @@
 import { createSignal, createMemo } from "solid-js"
 import { type GraphViewData } from "@opencode/session-ui/graph"
+import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
 export type UseGroupCollapseOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
-  nodeByID: (id: string) => { id: string; clusterOf?: string[] } | undefined
+  nodeLookup?: NodeLookup
 }
 
 export type UseGroupCollapseReturn = {
@@ -16,12 +17,13 @@ export type UseGroupCollapseReturn = {
 }
 
 export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupCollapseReturn {
+  const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
   const [collapsedGroups, setCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
 
   const selectedGroup = createMemo(() => {
     const id = options.selection()[0]
     if (!id) return undefined
-    const node = options.model().nodes.find((item) => item.id === id)
+    const node = nodeLookup()(id)
     return node && (node.clusterOf?.length ?? 0) > 0 ? node : undefined
   })
 

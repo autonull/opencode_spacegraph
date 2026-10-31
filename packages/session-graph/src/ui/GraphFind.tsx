@@ -5,7 +5,7 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { GraphIconButton } from "./GraphIconButton"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
-import { CATEGORY_HUE } from "./cardTemplate"
+import { CATEGORY_HUE } from "./cardConstants"
 
 export type GraphFindProps = {
   model: GraphViewData

@@ -1,9 +1,10 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo } from "solid-js"
 import { produce, type SetStoreFunction } from "solid-js/store"
-import { nodeByID, breadcrumbs, type GraphViewData, type GraphNode, type Annotations } from "@opencode/session-ui/graph"
+import { breadcrumbs, type GraphViewData, type GraphNode, type Annotations } from "@opencode/session-ui/graph"
 import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
 import { noteData } from "./node-data"
+import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
 export type UseGraphAnnotationsOptions = {
   model: () => GraphViewData
@@ -11,6 +12,7 @@ export type UseGraphAnnotationsOptions = {
   onAnnounce: (message: string) => void
   notes: Annotations
   setNotes: SetStoreFunction<Annotations>
+  nodeLookup?: NodeLookup
 }
 
 export type UseGraphAnnotationsReturn = {
@@ -47,6 +49,8 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
   const [noteTarget, setNoteTarget] = createSignal<string>()
   const [editingNote, setEditingNote] = createSignal<string>()
 
+  const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
+
   const [traceKind, setTraceKind] = createSignal<TraceKind | null>(null)
   const [traceSource, setTraceSource] = createSignal<string | null>(null)
 
@@ -60,7 +64,7 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
   const openNoteComposer = () => {
     const id = options.selection()[0]
     if (!id) return
-    const node = nodeByID(options.model(), id)
+    const node = nodeLookup()(id)
     if (!node) return
     if (node.kind === "note") {
       const data = noteData(node)
@@ -126,7 +130,7 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     if (!from) return
     setTraceKind(kind)
     setTraceSource(from)
-    const node = nodeByID(options.model(), from)
+    const node = nodeLookup()(from)
     const label = node?.label ?? from
     const messages: Record<TraceKind, string> = {
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),

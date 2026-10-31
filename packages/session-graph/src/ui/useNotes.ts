@@ -1,13 +1,15 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { nodeByID, type GraphViewData, type GraphNode, type Annotations } from "@opencode/session-ui/graph"
+import { type GraphViewData, type GraphNode, type Annotations } from "@opencode/session-ui/graph"
 import { noteData } from "./node-data"
+import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
 export type UseNotesOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
   onAnnounce: (message: string) => void
+  nodeLookup?: NodeLookup
 }
 
 export type UseNotesReturn = {
@@ -28,10 +30,12 @@ export function useNotes(options: UseNotesOptions): UseNotesReturn {
   const [noteTarget, setNoteTarget] = createSignal<string>()
   const [editingNote, setEditingNote] = createSignal<string>()
 
+  const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
+
   const openNoteComposer = () => {
     const id = options.selection()[0]
     if (!id) return
-    const node = nodeByID(options.model(), id)
+    const node = nodeLookup()(id)
     if (!node) return
     if (node.kind === "note") {
       const data = noteData(node)
