@@ -1,6 +1,6 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createUniqueId } from "solid-js"
-import { createStore, produce } from "solid-js/store"
+import { createStore, produce, type SetStoreFunction } from "solid-js/store"
 import type {
   DepthMode,
   Projection,
@@ -133,23 +133,12 @@ const initialState: GraphState = {
 
 const MAX_HISTORY = 50
 
-const stateKeys = [
-  "level", "projection", "depth", "layout", "files", "detailMode", "detailFraming",
-  "peek", "followLog", "facets", "cardFacing", "searchOpen", "searchInitial",
-  "legendOpen", "galleryOpen", "findInitialTab", "popoverDismissed",
-  "hovered", "edgeHovered", "capabilities", "rendererReady", "rendererID",
-  "fallback", "error", "narrow", "compact", "inspectorWidth",
-  "inspectorSheetOpen", "canvasSize", "manualHistory", "manualFuture"
-] as const satisfies (keyof GraphState)[]
-
-type StateKey = typeof stateKeys[number]
-
 export type UseGraphStateReturn = {
   i18n: ReturnType<typeof useI18n>
   a11yInstructionsId: string
   resolvedTheme: () => RenderTheme
 
-  // Controlled state (accessors)
+  // Controlled state
   level: () => ZoomLevel
   setLevel: (level: ZoomLevel | ((prev: ZoomLevel) => ZoomLevel)) => void
   projection: () => Projection
@@ -241,6 +230,20 @@ export type UseGraphStateReturn = {
   announce: (message: string) => void
 }
 
+function createGetter<K extends keyof GraphState>(state: GraphState, key: K): () => GraphState[K] {
+  return () => state[key]
+}
+
+function createSetter<K extends keyof GraphState>(setStateFn: SetStoreFunction<GraphState>, key: K): (value: GraphState[K] | ((prev: GraphState[K]) => GraphState[K])) => void {
+  return (value) => {
+    if (typeof value === "function") {
+      setStateFn(key, value)
+    } else {
+      setStateFn(key, value)
+    }
+  }
+}
+
 export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
   const i18n = useI18n()
   const a11yInstructionsId = createUniqueId()
@@ -260,7 +263,6 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     facets: facetsFromQuery(props.facetQuery ?? ""),
   })
 
-  // Announce to screen readers via the live region
   const announce = (message: string) => {
     const region = document.getElementById(a11yInstructionsId)
     if (region) region.textContent = message
@@ -274,20 +276,6 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     turnByMessageID: new Map(),
   }
   const model = () => (props.model ? { ...props.model, annotations: state.notesStore } : emptyModel)
-
-  // Generic setter with function support
-  const set = <K extends keyof GraphState>(key: K, value: GraphState[K] | ((prev: GraphState[K]) => GraphState[K])) => {
-    setState(key, value as any)
-  }
-
-  // Create getter/setter pairs for all simple state keys
-  const accessors = {} as Record<StateKey, { get: () => any; set: (v: any) => void }>
-  for (const key of stateKeys) {
-    accessors[key] = {
-      get: () => state[key],
-      set: (v: any) => set(key, v),
-    }
-  }
 
   const captureManualState = () => ({
     positions: { ...state.manual.positions },
@@ -351,85 +339,85 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     resolvedTheme,
 
     // Controlled state
-    level: accessors.level.get,
-    setLevel: accessors.level.set,
-    projection: accessors.projection.get,
-    setProjection: accessors.projection.set,
-    depth: accessors.depth.get,
-    setDepth: accessors.depth.set,
-    layout: accessors.layout.get,
-    setLayout: accessors.layout.set,
-    files: accessors.files.get,
-    setFiles: accessors.files.set,
-    detailMode: accessors.detailMode.get,
-    setDetailMode: accessors.detailMode.set,
-    detailFraming: accessors.detailFraming.get,
-    setDetailFraming: accessors.detailFraming.set,
-    peek: accessors.peek.get,
-    setPeek: accessors.peek.set,
-    followLog: accessors.followLog.get,
-    setFollowLog: accessors.followLog.set,
-    facets: accessors.facets.get,
-    setFacets: accessors.facets.set,
+    level: createGetter(state, "level"),
+    setLevel: createSetter(setState, "level"),
+    projection: createGetter(state, "projection"),
+    setProjection: createSetter(setState, "projection"),
+    depth: createGetter(state, "depth"),
+    setDepth: createSetter(setState, "depth"),
+    layout: createGetter(state, "layout"),
+    setLayout: createSetter(setState, "layout"),
+    files: createGetter(state, "files"),
+    setFiles: createSetter(setState, "files"),
+    detailMode: createGetter(state, "detailMode"),
+    setDetailMode: createSetter(setState, "detailMode"),
+    detailFraming: createGetter(state, "detailFraming"),
+    setDetailFraming: createSetter(setState, "detailFraming"),
+    peek: createGetter(state, "peek"),
+    setPeek: createSetter(setState, "peek"),
+    followLog: createGetter(state, "followLog"),
+    setFollowLog: createSetter(setState, "followLog"),
+    facets: createGetter(state, "facets"),
+    setFacets: createSetter(setState, "facets"),
 
     // Card facing
-    cardFacing: accessors.cardFacing.get,
-    setCardFacing: accessors.cardFacing.set,
-    toggleBillboard: () => set("cardFacing", (c: "plane" | "camera") => c === "camera" ? "plane" : "camera"),
+    cardFacing: createGetter(state, "cardFacing"),
+    setCardFacing: createSetter(setState, "cardFacing"),
+    toggleBillboard: () => createSetter(setState, "cardFacing")((c: "plane" | "camera") => c === "camera" ? "plane" : "camera"),
 
     // UI state
-    searchOpen: accessors.searchOpen.get,
-    setSearchOpen: accessors.searchOpen.set,
-    searchInitial: accessors.searchInitial.get,
-    setSearchInitial: accessors.searchInitial.set,
-    legendOpen: accessors.legendOpen.get,
-    setLegendOpen: accessors.legendOpen.set,
-    galleryOpen: accessors.galleryOpen.get,
-    setGalleryOpen: accessors.galleryOpen.set,
-    findInitialTab: accessors.findInitialTab.get,
-    setFindInitialTab: accessors.findInitialTab.set,
+    searchOpen: createGetter(state, "searchOpen"),
+    setSearchOpen: createSetter(setState, "searchOpen"),
+    searchInitial: createGetter(state, "searchInitial"),
+    setSearchInitial: createSetter(setState, "searchInitial"),
+    legendOpen: createGetter(state, "legendOpen"),
+    setLegendOpen: createSetter(setState, "legendOpen"),
+    galleryOpen: createGetter(state, "galleryOpen"),
+    setGalleryOpen: createSetter(setState, "galleryOpen"),
+    findInitialTab: createGetter(state, "findInitialTab"),
+    setFindInitialTab: createSetter(setState, "findInitialTab"),
 
     // Popover
-    popoverDismissed: accessors.popoverDismissed.get,
-    setPopoverDismissed: accessors.popoverDismissed.set,
+    popoverDismissed: createGetter(state, "popoverDismissed"),
+    setPopoverDismissed: createSetter(setState, "popoverDismissed"),
 
     // Hover
-    hovered: accessors.hovered.get,
-    setHovered: accessors.hovered.set,
-    edgeHovered: accessors.edgeHovered.get,
-    setEdgeHovered: accessors.edgeHovered.set,
+    hovered: createGetter(state, "hovered"),
+    setHovered: createSetter(setState, "hovered"),
+    edgeHovered: createGetter(state, "edgeHovered"),
+    setEdgeHovered: createSetter(setState, "edgeHovered"),
 
     // Renderer state
-    capabilities: accessors.capabilities.get,
-    setCapabilities: accessors.capabilities.set,
-    rendererReady: accessors.rendererReady.get,
-    setRendererReady: accessors.rendererReady.set,
-    rendererID: accessors.rendererID.get,
-    setRendererID: accessors.rendererID.set,
-    fallback: accessors.fallback.get,
-    setFallback: accessors.fallback.set,
-    error: accessors.error.get,
-    setError: accessors.error.set,
+    capabilities: createGetter(state, "capabilities"),
+    setCapabilities: createSetter(setState, "capabilities"),
+    rendererReady: createGetter(state, "rendererReady"),
+    setRendererReady: createSetter(setState, "rendererReady"),
+    rendererID: createGetter(state, "rendererID"),
+    setRendererID: createSetter(setState, "rendererID"),
+    fallback: createGetter(state, "fallback"),
+    setFallback: createSetter(setState, "fallback"),
+    error: createGetter(state, "error"),
+    setError: createSetter(setState, "error"),
 
     // Responsive
-    narrow: accessors.narrow.get,
-    setNarrow: accessors.narrow.set,
-    compact: accessors.compact.get,
-    setCompact: accessors.compact.set,
-    inspectorWidth: accessors.inspectorWidth.get,
-    setInspectorWidth: accessors.inspectorWidth.set,
-    inspectorSheetOpen: accessors.inspectorSheetOpen.get,
-    setInspectorSheetOpen: accessors.inspectorSheetOpen.set,
-    canvasSize: accessors.canvasSize.get,
-    setCanvasSize: accessors.canvasSize.set,
+    narrow: createGetter(state, "narrow"),
+    setNarrow: createSetter(setState, "narrow"),
+    compact: createGetter(state, "compact"),
+    setCompact: createSetter(setState, "compact"),
+    inspectorWidth: createGetter(state, "inspectorWidth"),
+    setInspectorWidth: createSetter(setState, "inspectorWidth"),
+    inspectorSheetOpen: createGetter(state, "inspectorSheetOpen"),
+    setInspectorSheetOpen: createSetter(setState, "inspectorSheetOpen"),
+    canvasSize: createGetter(state, "canvasSize"),
+    setCanvasSize: createSetter(setState, "canvasSize"),
 
     // Manual layout
     manual: state.manual,
     setManual,
-    manualHistory: accessors.manualHistory.get,
-    setManualHistory: accessors.manualHistory.set,
-    manualFuture: accessors.manualFuture.get,
-    setManualFuture: accessors.manualFuture.set,
+    manualHistory: createGetter(state, "manualHistory"),
+    setManualHistory: createSetter(setState, "manualHistory"),
+    manualFuture: createGetter(state, "manualFuture"),
+    setManualFuture: createSetter(setState, "manualFuture"),
     pushHistory,
     undoManual,
     redoManual,
