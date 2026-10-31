@@ -57,8 +57,6 @@ import { ancestors,
   subtree,
   summaryUnits,
   turnRows,
-  incoming,
-  outgoing,
 } from "@opencode/session-ui/graph"
 import {
   createEffect,
@@ -104,6 +102,7 @@ import { useGraphViewport } from "./useGraphViewport"
 import { useGraphState } from "./useGraphState"
 import { useGraphSelection } from "./useGraphSelection"
 import { useGraphAnnotations } from "./useGraphAnnotations"
+import { createMergedTraceOverlay } from "./useMergedTraceOverlay"
 import { useNodeLookup } from "./useNodeLookup"
 import type { GraphWindowState } from "./GraphWindows"
 
@@ -771,31 +770,13 @@ export const GraphView = (props: GraphViewProps) => {
     return result
   }
 
+  // Merged trace overlay (explicit trace + focus dimming)
+  const mergedTrace = createMergedTraceOverlay(annotations, model, level, () => selection.selection())
+
   const renderCard = createMemo(() => {
     // The age rules fade a card against the clock, so the cards are rebuilt with the model.
     const now = Date.now()
-    const overlay = annotations.traceOverlay()
-
-    // Focus dimming: at execution level, compute 1-hop neighborhood of selected node.
-    // Explicit trace (why/led-here/related) takes precedence over focus.
     const selectedId = selection.selection()[0]
-    const focusOverlay = level() === "execution" && selectedId
-      ? (() => {
-          const answerIds = new Set<string>([selectedId])
-          const contextIds = new Set<string>()
-          for (const edge of incoming(model(), selectedId)) contextIds.add(edge.source)
-          for (const edge of outgoing(model(), selectedId)) contextIds.add(edge.target)
-          return {
-            answerIds: answerIds as ReadonlySet<string>,
-            contextIds: contextIds as ReadonlySet<string>,
-            answerEdgeIds: new Set<string>() as ReadonlySet<string>,
-            visibleEdgeIds: new Set<string>() as ReadonlySet<string>,
-          }
-        })()
-      : null
-
-    // Merge traces: explicit trace wins over focus
-    const mergedTrace = overlay ?? focusOverlay ?? undefined
 
     return (
       props.renderCard ??
@@ -809,7 +790,7 @@ export const GraphView = (props: GraphViewProps) => {
     },
         now,
         copy,
-        trace: mergedTrace,
+        trace: mergedTrace(),
         diff: comparison(),
         collapsedGroups: groupCollapse.collapsedGroups(),
         positions: displayPositions(),
