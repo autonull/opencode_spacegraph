@@ -161,6 +161,7 @@ export {
 } from "./facets"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
+export { DOM_BUDGET } from "./dom-budget"
 export { exportGraphFilename, exportGraphJSON } from "./export"
 
 export {

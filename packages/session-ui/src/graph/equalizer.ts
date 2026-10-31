@@ -1,4 +1,5 @@
 import type { GraphNode, NodeKind, NodeStatus } from "./model"
+import { EQUALIZER_FADE_DURATION_S, MS_PER_S, DEFAULT_FILE_FADE_AFTER_S } from "./equalizer-constants"
 
 /**
  * T15 — the equalizer. A rule is a **predicate over a node** plus an **effect on the card**, written
@@ -63,10 +64,10 @@ export function equalizerScale(rules: EqualizerRuleSet, node: GraphNode): number
 export function equalizerFade(rules: EqualizerRuleSet, node: GraphNode, now: number): number {
   const fadeAfter = equalizerMatch(rules, node)?.fadeAfter
   if (fadeAfter === undefined || node.time === undefined) return 1
-  const age = (now - node.time) / 1000
+  const age = (now - node.time) / MS_PER_S
   if (age <= fadeAfter) return 1
   // The fade runs over the next hour, so an old card dims without disappearing.
-  return Math.max(0.25, 1 - (age - fadeAfter) / 3600)
+  return Math.max(0.25, 1 - (age - fadeAfter) / EQUALIZER_FADE_DURATION_S)
 }
 
 /**
@@ -84,7 +85,7 @@ export const EQUALIZER_PRESETS: readonly { id: string; rules: EqualizerRuleSet }
   },
   {
     id: "old-files-dimmer",
-    rules: [{ id: "old-files-dimmer", kind: "file", fadeAfter: 600 }],
+    rules: [{ id: "old-files-dimmer", kind: "file", fadeAfter: DEFAULT_FILE_FADE_AFTER_S }],
   },
   {
     id: "directories-as-large",

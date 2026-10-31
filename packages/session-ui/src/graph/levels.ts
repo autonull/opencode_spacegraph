@@ -1,6 +1,7 @@
 import { Levels, type LabelMode, type LevelConfig } from "spacegraphjs/levels"
 import type { EdgeKind, GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { nodeIndex } from "./lookup"
+import { DOM_BUDGET } from "./dom-budget"
 
 /**
  * Semantic zoom policy (§5.4). The model carries each node's own `minLevel`; this table supplies the
@@ -58,7 +59,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     executes: "execution",
     annotates: "execution",
   },
-  domBudget: { overview: 12, execution: 40, detail: 24 },
+  domBudget: DOM_BUDGET,
   isClusterExpanded: (level) => level !== "overview",
   edgeFilterFn: (model, level, focus, candidates, visible) => {
     const nodes = nodeIndex(model)
