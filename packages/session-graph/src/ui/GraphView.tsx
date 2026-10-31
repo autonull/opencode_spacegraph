@@ -107,6 +107,47 @@ import { useGraphAnnotations } from "./useGraphAnnotations"
 import { useNodeLookup } from "./useNodeLookup"
 import type { GraphWindowState } from "./GraphWindows"
 
+function renderInspectorPanel(
+  i18n: ReturnType<typeof import("@opencode/ui/context/i18n")["useI18n"]>,
+  model: () => GraphViewData,
+  selectedNode: () => GraphNode | undefined,
+  annotations: ReturnType<typeof useGraphAnnotations>,
+  props: GraphViewProps,
+  copyView: () => void,
+  selection: ReturnType<typeof useGraphSelection>["selection"],
+  openInTranscript: (id: string) => void,
+  sheet?: boolean,
+  title?: string,
+  onClose?: () => void,
+) {
+  return (
+    <GraphInspectorPanel
+      sheet={sheet}
+      title={title}
+      onClose={onClose}
+      i18n={i18n}
+      model={model()}
+      node={selectedNode()}
+      diffSource={props.diffSource}
+      renderSummary={props.renderSummary}
+      link={props.link}
+      onCopyView={copyView}
+      onSelect={selection.select}
+      onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+      onOpenSession={props.onOpenSession}
+      traceKind={annotations.traceKind()}
+      onTraceWhy={annotations.traceWhy}
+      onTraceLedHere={annotations.traceLedHere}
+      onTraceRelated={annotations.traceRelated}
+      onClearTrace={annotations.clearTrace}
+      onCopyTraceOutline={annotations.copyTraceOutline}
+      onEditNote={annotations.editNote}
+      onDeleteNote={annotations.deleteNote}
+      onCopyNote={annotations.copyNote}
+    />
+  )
+}
+
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
  * a view that cannot show everything (the hierarchy outline, the file lens between the rail and the
@@ -1598,30 +1639,7 @@ export const GraphView = (props: GraphViewProps) => {
           </button>
         </Show>
         <Show when={narrow() && inspectorSheetOpen()}>
-          <GraphInspectorPanel
-            sheet={true}
-            title={selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title")}
-            onClose={() => setInspectorSheetOpen(false)}
-            i18n={i18n}
-            model={model()}
-            node={selectedNode()}
-            diffSource={props.diffSource}
-            renderSummary={props.renderSummary}
-            link={props.link}
-            onCopyView={copyView}
-            onSelect={selection.select}
-            onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-            onOpenSession={props.onOpenSession}
-            traceKind={annotations.traceKind()}
-            onTraceWhy={annotations.traceWhy}
-            onTraceLedHere={annotations.traceLedHere}
-            onTraceRelated={annotations.traceRelated}
-            onClearTrace={annotations.clearTrace}
-            onCopyTraceOutline={annotations.copyTraceOutline}
-            onEditNote={annotations.editNote}
-            onDeleteNote={annotations.deleteNote}
-            onCopyNote={annotations.copyNote}
-          />
+          {renderInspectorPanel(i18n, model, selectedNode, annotations, props, copyView, selection, openInTranscript, true, selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title"), () => setInspectorSheetOpen(false))}
         </Show>
         <Show when={effectiveDetailMode() === "panel"}>
           <Show when={inspectorOpen() && !narrow()}>
@@ -1646,26 +1664,7 @@ export const GraphView = (props: GraphViewProps) => {
             data-collapsed={!inspectorOpen()}
             data-layout={narrow() ? "sheet" : "side"}
           >
-            <GraphInspectorPanel
-              model={model()}
-              node={selectedNode()}
-              diffSource={props.diffSource}
-              renderSummary={props.renderSummary}
-              link={props.link}
-              onCopyView={copyView}
-              onSelect={selection.select}
-              onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-              onOpenSession={props.onOpenSession}
-              traceKind={annotations.traceKind()}
-              onTraceWhy={annotations.traceWhy}
-              onTraceLedHere={annotations.traceLedHere}
-              onTraceRelated={annotations.traceRelated}
-              onClearTrace={annotations.clearTrace}
-              onCopyTraceOutline={annotations.copyTraceOutline}
-              onEditNote={annotations.editNote}
-              onDeleteNote={annotations.deleteNote}
-              onCopyNote={annotations.copyNote}
-            />
+            {renderInspectorPanel(i18n, model, selectedNode, annotations, props, copyView, selection, openInTranscript)}
           </div>
         </Show>
       </div>
