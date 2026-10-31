@@ -2,6 +2,7 @@ import type { GraphNode } from "@opencode/session-ui/graph"
 import type { GraphViewData } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import type { JSX } from "solid-js"
+import { formatProvenance, text } from "@opencode/session-graph"
 
 export type InspectorProps = {
   model: GraphViewData
@@ -22,6 +23,7 @@ export type InspectorProps = {
 
 export const Inspector = (props: InspectorProps) => {
   const i18n = useI18n()
+  const now = Date.now()
 
   if (!props.node) {
     return (
@@ -40,6 +42,7 @@ export const Inspector = (props: InspectorProps) => {
   }
 
   const node = props.node
+  const output = text(node.data?.output)
 
   return (
     <aside
@@ -64,17 +67,19 @@ export const Inspector = (props: InspectorProps) => {
 
         {node.provenance && (
           <div class="mb-4">
-            <div class="mb-2 text-12-medium text-text-weak">Provenance</div>
-            <div class="text-12-regular text-text-base">
-              <span class="text-text-weak">{node.provenance.source}: </span>
-              <code class="font-mono text-11-regular">{node.provenance.confidence}</code>
-              {node.provenance.asOf && (
-                <>
-                  <span class="text-text-weak"> as of </span>
-                  <code class="font-mono text-11-regular">{new Date(node.provenance.asOf).toLocaleString()}</code>
-                </>
-              )}
+            <div class="mb-2 text-12-medium text-text-weak">{i18n.t("panel.inspectorProvenance")}</div>
+            <div class="text-12-regular text-text-base">{formatProvenance(node.provenance, now)}</div>
+          </div>
+        )}
+
+        {output && (
+          <div class="mb-4" data-slot="graph-inspector-output">
+            <div class="flex items-center justify-between">
+              <div class="text-12-regular text-text-weak">{i18n.t("panel.inspectorOutput")}</div>
             </div>
+            <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono text-text-base whitespace-pre-wrap break-words">
+              {output}
+            </pre>
           </div>
         )}
 

@@ -79,7 +79,7 @@ import { createCardCopy } from "./card-copy"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
-import { GraphInspectorPanel, GraphInspectorSheet } from "./GraphInspectorPanel"
+import { GraphInspectorPanel } from "./GraphInspectorPanel"
 import { GraphStatusBar } from "./GraphStatusBar"
 import { GraphToolbar } from "./GraphToolbar"
 import { GraphCompareBar } from "./GraphCompareBar"
@@ -1598,7 +1598,8 @@ export const GraphView = (props: GraphViewProps) => {
           </button>
         </Show>
         <Show when={narrow() && inspectorSheetOpen()}>
-          <GraphInspectorSheet
+          <GraphInspectorPanel
+            sheet={true}
             title={selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title")}
             onClose={() => setInspectorSheetOpen(false)}
             i18n={i18n}

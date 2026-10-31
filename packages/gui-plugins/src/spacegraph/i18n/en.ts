@@ -6,6 +6,8 @@ export default {
   "panel.inspectorEmpty": "No node selected",
   "panel.inspectorEmptyHint": "Click a node on the map to see details",
   "panel.inspectorFocus": "Focus on map",
+  "panel.inspectorProvenance": "Provenance",
+  "panel.inspectorOutput": "Output",
   "panel.windowClose": "Close window",
   "panel.searchResults": "{count, plural, one {# result} other {# results}}",
   "menu.open": "Open session map",
