@@ -1,3 +1,4 @@
+import { createMemo } from "solid-js"
 import type { MountedSession, SetupContext } from "@opencode/plugin/gui"
 import {
   GRAPH_ARRANGEMENTS,
@@ -28,6 +29,15 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
   const sessionValue = (session: MountedSession) => store(session).value
   const prefValue = () => prefs.value
+
+  /** Shared graph memo - built once per session, reused by panel, full-map, hybrid, etc. */
+  const graph = (session: MountedSession) =>
+    createMemo(() => {
+      const status: { type: "busy" | "idle" } =
+        session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
+
+      return buildGraph({ messages: session.server.data.session.message.list(session.id), status })
+    })
 
   return {
     focused: (session: MountedSession) => sessionValue(session)?.focused,
@@ -62,10 +72,10 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     },
     turnMap: (session: MountedSession) => sessionValue(session)?.turnMap ?? false,
     toggleTurnMap: (session: MountedSession) => {
-      const next = !store(session).value?.turnMap
+      const nextVal = !store(session).value?.turnMap
 
       store(session).update((draft) => {
-        draft.turnMap = next
+        draft.turnMap = nextVal
       })
     },
     closeTurnMap: (session: MountedSession) => {
@@ -117,13 +127,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       })
     },
     export: (session: MountedSession, format: "svg" | "json" | "html") => {
-      const status: { type: "busy" | "idle" } =
-        session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
-      const graph = buildGraph({ messages: session.server.data.session.message.list(session.id), status })
+      const g = graph(session)()
       const level = store(session).value?.level ?? prefs.value.level ?? "overview"
       const layoutStrategy = (store(session).value?.layout ?? prefs.value.layout ?? "lanes") as LayoutStrategy
-      const layout = layoutGraph(graph, { strategy: layoutStrategy })
-      const renderModel = buildRenderModel(graph, {
+      const layout = layoutGraph(g, { strategy: layoutStrategy })
+      const renderModel = buildRenderModel(g, {
         level,
         positions: layout.positions,
       })
@@ -131,6 +139,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       const testedCommit = "unknown"
       exportGraph(format, renderModel, { theme: DEFAULT_THEME, sessionTitle, testedCommit })
     },
+    /** The shared graph memo for this session. */
+    graph,
   }
 }
 

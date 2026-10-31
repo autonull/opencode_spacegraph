@@ -229,10 +229,19 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
  */
 export const CYTOSCAPE_DOM_NODES = 20
 
+/** Factory for creating session graph adapters with optional DOM node cap. */
+function createSessionGraphAdapter(domNodeCap?: number): SessionGraphAdapter {
+  return new SessionGraphAdapter(
+    domNodeCap
+      ? {
+          cardBudget: (level) => Math.min(domBudget(level), domNodeCap),
+        }
+      : undefined,
+  )
+}
+
 /** The default adapter: the SpaceGraph renderer draws every card the level's budget allows. */
-export const sessionGraphAdapter = new SessionGraphAdapter()
+export const sessionGraphAdapter = createSessionGraphAdapter()
 
 /** The Cytoscape adapter: the same model, with the renderer's DOM cap applied to the card budget. */
-export const cytoscapeSessionAdapter = new SessionGraphAdapter({
-  cardBudget: (level) => Math.min(domBudget(level), CYTOSCAPE_DOM_NODES),
-})
+export const cytoscapeSessionAdapter = createSessionGraphAdapter(CYTOSCAPE_DOM_NODES)

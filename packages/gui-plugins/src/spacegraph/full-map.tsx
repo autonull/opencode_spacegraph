@@ -1,8 +1,6 @@
-import { createMemo } from "solid-js"
 import { GraphView } from "@opencode/session-graph"
-import { LAYOUT_STRATEGIES, buildGraph } from "@opencode/session-ui/graph"
+import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type { GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
-import type { SessionStatus } from "@opencode/client/promise"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 
@@ -14,12 +12,7 @@ export function FullMap(props: {
   arrangementSide?: GraphSide
   onSplitView?: () => void
 }) {
-  const graph = createMemo(() => {
-    const status: SessionStatus =
-      props.session.server.data.session.status(props.session.id) === "running" ? { type: "busy" } : { type: "idle" }
-
-    return buildGraph({ messages: props.session.server.data.session.message.list(props.session.id), status })
-  })
+  const graph = props.model.graph(props.session)
 
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer(props.session)

@@ -1,6 +1,6 @@
 import { usePlugin, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
-import { createMemo, createSignal, For, Show } from "solid-js"
-import { buildGraph, navigationResults, rankedSearch, type GraphNode } from "@opencode/session-ui/graph"
+import { createSignal, For, Show } from "solid-js"
+import { navigationResults, rankedSearch, type GraphNode } from "@opencode/session-ui/graph"
 import type { SpacegraphModel } from "./model"
 import { FullMap } from "./full-map"
 import { Inspector } from "./Inspector"
@@ -19,12 +19,7 @@ export default function SpacegraphPanel(props: {
   const [searchResults, setSearchResults] = createSignal<GraphNode[]>([])
   const [searchIndex, setSearchIndex] = createSignal(0)
 
-  const graph = createMemo(() => {
-    const status: { type: "busy" | "idle" } =
-      props.session.server.data.session.status(props.session.id) === "running" ? { type: "busy" } : { type: "idle" }
-
-    return buildGraph({ messages: props.session.server.data.session.message.list(props.session.id), status })
-  })
+  const graph = props.model.graph(props.session)
 
   const search = (query: string) => {
     const results = navigationResults(graph(), query) ?? rankedSearch(graph(), query)
