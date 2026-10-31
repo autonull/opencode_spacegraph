@@ -286,6 +286,7 @@ autonull/opencode-spacegraph/
 - G4: Storybook stories, TypeDoc
 - G5: Cross-version compatibility test
 - spacegraphjs e2e concurrency fix
+- **Component test failures (5 tests)**: graph-a11y, graph-refine (4 tests) — inspector not updating on selection change; likely GraphController/selection sync issue
 
 ---
 
@@ -325,6 +326,7 @@ autonull/opencode-spacegraph/
 - G4: Storybook stories, TypeDoc
 - G5: Cross-version compatibility test
 - spacegraphjs e2e concurrency fix
+- **Component test failures (5 tests)**: graph-a11y, graph-refine (4 tests) — inspector not updating on selection change; likely GraphController/selection sync issue
 
 ---
 

@@ -120,31 +120,36 @@ function renderInspectorPanel(
   title?: string,
   onClose?: () => void,
 ) {
+  const node = selectedNode()
   return (
-    <GraphInspectorPanel
-      sheet={sheet}
-      title={title}
-      onClose={onClose}
-      i18n={i18n}
-      model={model()}
-      node={selectedNode()}
-      diffSource={props.diffSource}
-      renderSummary={props.renderSummary}
-      link={props.link}
-      onCopyView={copyView}
-      onSelect={selection.select}
-      onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
-      onOpenSession={props.onOpenSession}
-      traceKind={annotations.traceKind()}
-      onTraceWhy={annotations.traceWhy}
-      onTraceLedHere={annotations.traceLedHere}
-      onTraceRelated={annotations.traceRelated}
-      onClearTrace={annotations.clearTrace}
-      onCopyTraceOutline={annotations.copyTraceOutline}
-      onEditNote={annotations.editNote}
-      onDeleteNote={annotations.deleteNote}
-      onCopyNote={annotations.copyNote}
-    />
+    <Show when={node} keyed fallback={<GraphInspectorPanel sheet={sheet} title={title} onClose={onClose} i18n={i18n} model={model()} node={undefined} diffSource={props.diffSource} renderSummary={props.renderSummary} link={props.link} onCopyView={copyView} onSelect={selection.select} onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined} onOpenSession={props.onOpenSession} traceKind={annotations.traceKind()} onTraceWhy={annotations.traceWhy} onTraceLedHere={annotations.traceLedHere} onTraceRelated={annotations.traceRelated} onClearTrace={annotations.clearTrace} onCopyTraceOutline={annotations.copyTraceOutline} onEditNote={annotations.editNote} onDeleteNote={annotations.deleteNote} onCopyNote={annotations.copyNote} />}>
+      {(node) => (
+        <GraphInspectorPanel
+          sheet={sheet}
+          title={title}
+          onClose={onClose}
+          i18n={i18n}
+          model={model()}
+          node={node}
+          diffSource={props.diffSource}
+          renderSummary={props.renderSummary}
+          link={props.link}
+          onCopyView={copyView}
+          onSelect={selection.select}
+          onOpenTranscript={props.onOpenTranscript ? openInTranscript : undefined}
+          onOpenSession={props.onOpenSession}
+          traceKind={annotations.traceKind()}
+          onTraceWhy={annotations.traceWhy}
+          onTraceLedHere={annotations.traceLedHere}
+          onTraceRelated={annotations.traceRelated}
+          onClearTrace={annotations.clearTrace}
+          onCopyTraceOutline={annotations.copyTraceOutline}
+          onEditNote={annotations.editNote}
+          onDeleteNote={annotations.deleteNote}
+          onCopyNote={annotations.copyNote}
+        />
+      )}
+    </Show>
   )
 }
 
@@ -885,10 +890,10 @@ export const GraphView = (props: GraphViewProps) => {
   // every frame and make the cards churn under the reader's hand.
   // The panel takes layout width and reframes the camera when it opens; the popover and the card do
   // neither, so the map does not move under the reader when a node is selected.
-  const selectedNode = () => {
+  const selectedNode = createMemo(() => {
     const id = selection.selection()[0]
     return id ? nodeByID(model(), id) : undefined
-  }
+  })
 
   const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode() || (narrow() && inspectorSheetOpen()))
 

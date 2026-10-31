@@ -59,6 +59,10 @@ export function createGraphSelection(options: GraphSelectionOptions): GraphSelec
   const select = (target: string | readonly string[] | undefined, counted = true) => {
     const id = typeof target === "string" ? target : target?.[0]
     controller.select(target ?? null)
+    // Update local signal directly since controller.onChange may not fire for programmatic select()
+    // Build new selection from target (controller.select may not update controller.selection synchronously)
+    const newSelection = target === undefined ? [] : typeof target === "string" ? [target] : [...target]
+    setSelection((current) => (sameIDs(current, newSelection) ? current : newSelection))
     seedTrail(id)
     options.onChange?.()
     options.onSelect(id)

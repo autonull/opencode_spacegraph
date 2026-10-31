@@ -214,6 +214,10 @@ const ViewHarness = (props: HarnessProps) => {
     select: testHarness.select,
     setRenderer: testHarness.setRenderer,
   }
+  // Ensure __graphView.select stays in sync after GraphView overwrites testHarness.select
+  createEffect(() => {
+    ;(window as unknown as { __graphView?: { select: (id: string | undefined) => void } }).__graphView!.select = testHarness.select
+  })
 
   const size = props.fullscreen
     ? { width: "100vw", height: "100vh" }
