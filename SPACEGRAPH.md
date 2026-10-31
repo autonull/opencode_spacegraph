@@ -438,22 +438,19 @@ The canonical verification gate is `bun run graph:verify`. It runs:
 4. **Global `SpaceGraph.instances`** remains as off-by-default dev handle
 5. **`./activity` types stopgap** (`types/activity.d.ts`) — replace with generated declarations
 6. **Toolbar `endInset`** clears floating header toggles; desktop-media-query-gated
-7. **Mobile graph mode** desktop-gated for v1; mobile reaches graph only via `graph.toggle` command. The hybrid needs room for two surfaces, so a narrow screen falls back to the map alone
-8. **Minimap vertically mirrored under Cytoscape** (model +y downward); correct under SpaceGraph
-9. **Two adapter-failure e2e cases** dev-only (built chunks hashed); component suite covers seam
-10. **First paint / pan frame rate** unmeasured — no graph perf harness
-11. **Renderer selector** not in app toolbar; choice is prototype setting
-12. **Swimlane bands** full-opacity under execution focus dimming (structure, not content)
-13. **Lane gutter** is world-space (left of content, included in fit), not screen-fixed overlay
-14. **Lanes overview** has dominant empty region (reserves execution width at overview)
-15. **Empty-column exclusion** not implemented; fit frames content IDs
-16. **Depth fade** is scene fog; DOM cards do not fade (HTML over canvas)
-17. **Capture matrix** is one frame per option value, not cartesian product
-18. **2026-10-19 visual review** found legibility defects; tracked T1.1–T1.18, layout-variety T7
-19. **Long sessions** drawn as recent 60 turns + banner; layout measures whole session
-20. **Camera-driven captures** used to vary (T6.20 fixed: fit measures live surface, zoom stops at renderer limit)
-21. **Five layouts are not comparable kinds** — three grid policies, two different geometries; best is unmeasured
-22. **Middle-drag orbit** does nothing in an orthographic view; there is no orbit to have
+7. **Minimap vertically mirrored under Cytoscape** (model +y downward); correct under SpaceGraph
+8. **Two adapter-failure e2e cases** dev-only (built chunks hashed); component suite covers seam
+9. **First paint / pan frame rate** unmeasured — no graph perf harness
+10. **Swimlane bands** full-opacity under execution focus dimming (structure, not content)
+11. **Lane gutter** is world-space (left of content, included in fit), not screen-fixed overlay
+12. **Lanes overview** has dominant empty region (reserves execution width at overview)
+13. **Empty-column exclusion** not implemented; fit frames content IDs
+14. **Depth fade** is scene fog; DOM cards do not fade (HTML over canvas)
+15. **Capture matrix** is one frame per option value, not cartesian product
+16. **2026-10-19 visual review** found legibility defects; tracked T1.1–T1.18, layout-variety T7
+17. **Long sessions** drawn as recent 60 turns + banner; layout measures whole session
+18. **Five layouts are not comparable kinds** — three grid policies, two different geometries; best is unmeasured
+19. **Middle-drag orbit** does nothing in an orthographic view; there is no orbit to have
 
 ---
 
