@@ -87,6 +87,7 @@ import { GraphScaleNotice } from "./GraphScaleNotice"
 import { GraphHiddenSelection } from "./GraphHiddenSelection"
 import { GraphFallback } from "./GraphFallback"
 import { GraphCanvasRegion } from "./GraphCanvasRegion"
+import { buildCanvasRegionProps } from "./GraphCanvasRegionProps"
 import { GraphWindowManager } from "./GraphWindowManager"
 import { POPOVER_GAP, POPOVER_MAX_HEIGHT, POPOVER_WIDTH } from "./GraphPopover"
 import "./graph-cards.css"
@@ -1276,21 +1277,19 @@ export const GraphView = (props: GraphViewProps) => {
     )
   })
 
-  // Build context object for GraphCanvasRegion (replaces 225 lines of props)
+  // Build context object for GraphCanvasRegion
   const projectionSignal = createMemo(() => projection())
   const depthSignal = createMemo(() => depth())
-  const canvasRegionProps = {
+  const canvasRegionProps = buildCanvasRegionProps({
     // Core rendering
     model,
     theme,
-    get renderModel() {
-      return renderModel()
-    },
+    renderModel,
     projection: projectionSignal,
     depth: depthSignal,
     layout,
     level,
-    
+
     // Selection & navigation
     selection: () => selection.selection(),
     select: selection.select,
@@ -1309,7 +1308,7 @@ export const GraphView = (props: GraphViewProps) => {
       const rect = canvasRegionEl?.getBoundingClientRect()
       if (rect) setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
     },
-    
+
     // Layout interactions
     onNodeMoved: moveNodes,
     onNodeResized: resizeNode,
@@ -1317,63 +1316,49 @@ export const GraphView = (props: GraphViewProps) => {
     applyModel,
     preferredRenderer: props.preferredRenderer,
     rendererOverrides: props.rendererOverrides,
-    
+
     // Reduced motion
-    reducedMotion: props.reducedMotion ?? false,
-    
+    reducedMotion: () => props.reducedMotion ?? false,
+
     // Detail mode
     detailMode,
-    get effectiveDetailMode() {
-      return effectiveDetailMode()
-    },
+    effectiveDetailMode,
     files,
-    
+
     // Peek
-    get peekFrame() {
-      return peekFrame()
-    },
-    get peekEdge() {
-      return peekEdge()
-    },
-    
+    peekFrame,
+    peekEdge,
+
     // Popover
-    get popoverVisible() {
-      return popoverVisible()
-    },
-    get popoverNode() {
-      return popoverNode()
-    },
-    get popoverPlacement() {
-      return popoverPlacement()
-    },
+    popoverVisible,
+    popoverNode,
+    popoverPlacement,
     setPopoverDismissed,
-    
+
     // Annotations (notes + trace)
     annotations,
     noteTargetNode,
     noteAnchor,
-    
+
     // Search
-    searchOpen: searchOpen,
+    searchOpen,
     searchInitial,
     setSearchOpen,
     jumpTo,
-    
+
     // Legend
-    legendOpen: legendOpen,
+    legendOpen,
     setLegendOpen,
     edgeKinds,
-    get rules() {
-      return props.rules
-    },
-    
+    rules: () => props.rules,
+
     // Gallery
-    galleryOpen: galleryOpen,
+    galleryOpen,
     setGalleryOpen,
     changeLayout,
-    
+
     // Group menu
-    groupMenu: groupMenu,
+    groupMenu,
     setGroupMenu,
     groupCollapse,
     camera: viewportTracker.camera,
@@ -1381,11 +1366,11 @@ export const GraphView = (props: GraphViewProps) => {
     modelForGroupMenu: model,
     graphSelection,
     handleRegionKeyDown,
-    
+
     // Error/Empty states
     error,
     onBack: props.onBack,
-    
+
     // Diff
     diffSource: props.diffSource,
     link: props.link,
@@ -1394,21 +1379,17 @@ export const GraphView = (props: GraphViewProps) => {
     onOpenWindow: openWindow,
     onCopyView: copyView,
     renderSummary: props.renderSummary,
-    
+
     // A11y
-    get ordered() {
-      return ordered()
-    },
-    get viewAnnouncement() {
-      return viewAnnouncement()
-    },
+    ordered,
+    viewAnnouncement,
     a11yInstructionsId,
     announce,
     i18n,
-    
+
     // Canvas ref
     canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
-    
+
     // Viewport
     onViewportChange: (next: any) => {
       viewportTracker.camera.report(next)
@@ -1417,7 +1398,7 @@ export const GraphView = (props: GraphViewProps) => {
     },
     setViewport,
     viewportTracker,
-    
+
     // Renderer
     onRenderer: (r: GraphRenderer | undefined) => {
       setRenderer(r)
@@ -1430,7 +1411,7 @@ export const GraphView = (props: GraphViewProps) => {
     },
     onReady: (info: { fallback: boolean }) => setFallback(info.fallback),
     onError: setError,
-  }
+  })
 
   return (
     <div

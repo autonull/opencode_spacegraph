@@ -1,144 +1,11 @@
-import type {
-  Projection,
-  RenderTheme,
-  RenderModel,
-  RendererViewport,
-  GraphRenderer,
-} from "@spacegraphjs/renderer"
-import type {
-  DetailMode,
-  EqualizerRuleSet,
-  GraphViewData,
-  GraphNode,
-  GraphEdge,
-  Layout,
-  ZoomLevel,
-} from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, onCleanup, type JSX } from "solid-js"
-import { GraphCanvas, type GraphCanvasReady } from "../canvas/GraphCanvas"
-import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
+import { createEffect, createMemo, createSignal, onCleanup } from "solid-js"
+import { GraphCanvas } from "../canvas/GraphCanvas"
 import { GraphOverlayManager } from "./GraphOverlayManager"
-import { createNodeAnchor } from "./graph-anchors"
 import { attachTouchGestures } from "./graph-utils"
-import type { GraphDiffSource } from "./GraphDiff"
-import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
-import type { UseGroupCollapseReturn } from "./useGroupCollapse"
-import type { UseEdgeKindsReturn } from "./useEdgeKinds"
-import type { GraphViewportTrackerReturn } from "./useGraphViewport"
-import type { UseGraphSelectionReturn } from "./useGraphSelection"
-
-export type GraphCanvasRegionProps = {
-  // Core rendering
-  model: () => GraphViewData
-  theme: () => RenderTheme
-  renderModel: RenderModel
-  projection: () => Projection
-  depth: () => "flat" | "layered" | "depth-stack" | "orbit"
-  layout: () => Layout
-  level: () => ZoomLevel
-  
-  // Selection & navigation
-  selection: () => readonly string[]
-  select: (id: string | undefined, add?: boolean) => void
-  onNodeDoubleClick: (id: string) => void
-  onBackgroundClick: () => void
-  onHover: (id: string | undefined) => void
-  onEdgeHover: (id: string | undefined) => void
-  onEdgeSelect: (id: string) => void
-  onGroupToggle: (id: string) => void
-  onGroupMenu: (id: string, at: { x: number; y: number }) => void
-  
-  // Layout interactions
-  onNodeMoved: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
-  onNodeResized: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
-  cardFacing: () => "plane" | "camera"
-  applyModel: (instance: any) => void
-  onRenderer?: (renderer: GraphRenderer | undefined) => void
-  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
-  onReady?: (info: GraphCanvasReady) => void
-  preferredRenderer?: () => RendererID
-  rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
-  
-  // Detail mode
-  detailMode: () => DetailMode
-  effectiveDetailMode: DetailMode
-  files: () => boolean
-  
-  // Peek
-  peekFrame: { node: GraphNode; left: number; top: number } | undefined
-  peekEdge: GraphEdge | undefined
-  
-  // Popover
-  popoverVisible: GraphNode | undefined
-  popoverNode: GraphNode | undefined
-  popoverPlacement: { left: number; top: number }
-  setPopoverDismissed: (dismissed: boolean) => void
-  
-  // Annotations (notes + trace)
-  annotations: UseGraphAnnotationsReturn
-  noteTargetNode: () => GraphNode | undefined
-  noteAnchor: ReturnType<typeof createNodeAnchor>
-  
-  // Search
-  searchOpen: () => boolean
-  searchInitial: () => string | undefined
-  setSearchOpen: (open: boolean) => void
-  jumpTo: (node: GraphNode) => void
-  
-  // Legend
-  legendOpen: () => boolean
-  setLegendOpen: (open: boolean) => void
-  edgeKinds: UseEdgeKindsReturn
-  rules: EqualizerRuleSet | undefined
-  
-  // Gallery
-  galleryOpen: () => boolean
-  setGalleryOpen: (open: boolean) => void
-  changeLayout: (layout: Layout) => void
-  
-  // Group menu
-  groupMenu: () => { id: string; x: number; y: number } | undefined
-  setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
-  groupCollapse: UseGroupCollapseReturn
-  camera: GraphViewportTrackerReturn["camera"]
-  toggleGroupByID: (id: string) => void
-  modelForGroupMenu: () => GraphViewData
-  graphSelection: UseGraphSelectionReturn
-  handleRegionKeyDown: (event: KeyboardEvent) => void
-  
-  // Error/Empty states
-  error: () => string | undefined
-  onError: (error: string | undefined) => void
-  onBack: (() => void) | undefined
-  
-  // Diff
-  diffSource: GraphDiffSource | undefined
-  link: string | undefined
-  onOpenTranscript: ((id: string) => void) | undefined
-  onOpenSession: ((sessionID: string) => void) | undefined
-  onOpenWindow: ((kind: string, nodeID?: string) => void) | undefined
-  onCopyView: () => void
-  renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
-  
-  // A11y
-  ordered: RenderModel
-  viewAnnouncement: string
-  a11yInstructionsId: string
-  announce: (message: string) => void
-  i18n: ReturnType<typeof useI18n>
-  
-  // Canvas ref
-  canvasRegionRef: (el: HTMLDivElement | undefined) => void
-  
-  // Viewport
-  onViewportChange: (viewport: RendererViewport) => void
-  setViewport: (vp: { zoom: number; center: number[] } | undefined) => void
-  viewportTracker: GraphViewportTrackerReturn
-  
-  // Reduced motion
-  reducedMotion: boolean
-}
+import type { GraphCanvasRegionProps } from "./GraphCanvasRegionProps"
+import type { GraphRenderer, RendererViewport } from "@spacegraphjs/renderer"
+import type { RendererID } from "../canvas/renderer-registry"
 
 /**
  * The canvas region of the graph view — the renderer, overlays, and all interactive surfaces
@@ -152,7 +19,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   // Subscribe to projection/depth getters so this component re-renders when they change
   const projection = createMemo(() => props.projection())
   const depth = createMemo(() => props.depth())
-  const reducedMotion = createMemo(() => props.reducedMotion)
 
   // V117: Touch gestures for mobile - set up when renderer and canvas are available
   createEffect(() => {
@@ -217,7 +83,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         onReady={props.onReady}
         onViewportChange={props.onViewportChange}
         onError={props.onError}
-        reducedMotion={reducedMotion()}
+        reducedMotion={props.reducedMotion()}
       />
       <GraphOverlayManager
         // Model & theme
@@ -226,7 +92,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         projection={props.projection()}
         depth={props.depth()}
         detailMode={props.detailMode()}
-        effectiveDetailMode={props.effectiveDetailMode}
+        effectiveDetailMode={props.effectiveDetailMode()}
         layout={props.layout()}
 
         // Selection & navigation
@@ -235,13 +101,13 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         graphSelection={props.graphSelection}
 
         // Peek
-        peekFrame={props.peekFrame}
-        peekEdge={props.peekEdge}
+        peekFrame={props.peekFrame()}
+        peekEdge={props.peekEdge()}
 
         // Popover
-        popoverVisible={props.popoverVisible}
-        popoverNode={props.popoverNode}
-        popoverPlacement={props.popoverPlacement}
+        popoverVisible={props.popoverVisible()}
+        popoverNode={props.popoverNode()}
+        popoverPlacement={props.popoverPlacement()}
         setPopoverDismissed={props.setPopoverDismissed}
 
         // Annotations (notes + trace)
@@ -259,7 +125,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         legendOpen={props.legendOpen}
         setLegendOpen={props.setLegendOpen}
         edgeKinds={props.edgeKinds}
-        rules={props.rules}
+        rules={props.rules()}
 
         // Gallery
         galleryOpen={props.galleryOpen}
@@ -288,8 +154,8 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         renderSummary={props.renderSummary}
 
         // A11y
-        ordered={props.ordered}
-        viewAnnouncement={props.viewAnnouncement}
+        ordered={props.ordered()}
+        viewAnnouncement={props.viewAnnouncement()}
         a11yInstructionsId={props.a11yInstructionsId}
         announce={props.announce}
         i18n={props.i18n}
