@@ -1,6 +1,6 @@
 import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { onCleanup, onMount, Show } from "solid-js"
+import { onCleanup, onMount } from "solid-js"
 import "./graph-toolbar.css"
 import {
   type DetailFraming,
@@ -12,19 +12,12 @@ import {
   type GraphSide,
   type Layout,
   type ZoomLevel,
-  VOCABULARY_KEYS,
 } from "@opencode/session-ui/graph"
-import { GraphIconButton } from "./GraphIconButton"
 import { GraphLayersControl } from "./GraphLayersControl"
 import { GraphLayoutControl } from "./GraphLayoutControl"
-import { GraphDrawControl } from "./GraphDrawControl"
-import { GraphShowControl } from "./GraphShowControl"
 import { GraphTimeControl } from "./GraphTimeControl"
-import { GraphQuestionsControl } from "./GraphQuestionsControl"
-import { GraphZoomControl } from "./GraphZoomControl"
-import { GraphExportControl } from "./GraphExportControl"
-import { GraphRendererStatus } from "./GraphRendererStatus"
-import { ToolbarMenu } from "./ToolbarMenu"
+import { GraphToolbarViewControls } from "./GraphToolbarViewControls"
+import { GraphToolbarCommandControls } from "./GraphToolbarCommandControls"
 
 export type GraphToolbarProps = {
   capabilities?: RendererCapabilities
@@ -142,72 +135,6 @@ export type GraphToolbarProps = {
 export const GraphToolbar = (props: GraphToolbarProps) => {
   const i18n = useI18n()
 
-  const viewControls = () => (
-    <>
-      <div data-slot="graph-toolbar-draw-group">
-        <div class="px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
-          {i18n.t("ui.sessionGraph.toolbar.draw")}
-        </div>
-        <GraphDrawControl
-          capabilities={props.capabilities}
-          billboard={props.billboard}
-          onToggleBillboard={props.onToggleBillboard}
-          detailFraming={props.detailFraming}
-          onDetailFramingChange={props.onDetailFramingChange}
-          files={props.files}
-          onToggleFiles={props.onToggleFiles}
-          onOpenEqualizer={props.onOpenEqualizer}
-          arrangement={props.arrangement}
-          onArrangementChange={props.onArrangementChange}
-          arrangementSide={props.arrangementSide}
-          onArrangementSideChange={props.onArrangementSideChange}
-        />
-      </div>
-      <div data-slot="graph-toolbar-show-group">
-        <div class="px-2 py-1 text-11-medium uppercase tracking-wide text-text-weak">
-          {i18n.t("ui.sessionGraph.toolbar.show")}
-        </div>
-        <GraphShowControl
-          manualHistoryLength={props.manualHistoryLength}
-          manualFutureLength={props.manualFutureLength}
-          onUndoManual={props.onUndoManual}
-          onRedoManual={props.onRedoManual}
-          detailMode={props.detailMode}
-          onDetailModeChange={props.onDetailModeChange}
-          peek={props.peek}
-          onTogglePeek={props.onTogglePeek}
-          followLog={props.followLog}
-          onFollowLogChange={props.onFollowLogChange}
-          onOpenWindow={props.onOpenWindow}
-          model={props.model}
-          legend={props.legend}
-          onToggleLegend={props.onToggleLegend}
-          gallery={props.gallery}
-          onToggleGallery={props.onToggleGallery}
-          onTurnMap={props.onTurnMap}
-          onExpandGraph={props.onExpandGraph}
-        />
-      </div>
-    </>
-  )
-
-  const commandControls = () => (
-    <>
-      <GraphIconButton
-        label={i18n.t("ui.sessionGraph.toolbar.search")}
-        icon="magnifying-glass"
-        pressed={props.searching}
-        onClick={props.onSearch}
-      />
-      <GraphQuestionsControl dispatchCommand={props.dispatchCommand} />
-      <GraphExportControl
-        onExport={props.onExport}
-        renderModel={props.renderModel}
-        onCopyView={props.onCopyView}
-      />
-    </>
-  )
-
   return (
     <div
       ref={(el) => {
@@ -252,46 +179,8 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         model={props.model}
       />
 
-      <GraphZoomControl
-        zoomPercent={props.zoomPercent}
-        onZoomOut={props.onZoomOut}
-        onZoomIn={props.onZoomIn}
-        zoomOutDisabled={props.zoomOutDisabled}
-        zoomInDisabled={props.zoomInDisabled}
-        onFit={props.onFit}
-      />
-
-      <GraphIconButton label={i18n.t("ui.sessionGraph.toolbar.fit")} icon="expand" onClick={props.onFit} />
-
-      <Show
-        when={!props.compact}
-        fallback={
-          <ToolbarMenu slot="graph-toolbar-overflow" label={i18n.t("ui.sessionGraph.toolbar.more")} icon="outline-dots">
-            {viewControls()}
-            {commandControls()}
-          </ToolbarMenu>
-        }
-      >
-        <ToolbarMenu
-          slot="graph-toolbar-view"
-          label={i18n.t("ui.sessionGraph.toolbar.view")}
-          icon="outline-sliders"
-          value={i18n.t(VOCABULARY_KEYS.detailMode[props.detailMode ?? "panel"])}
-        >
-          {viewControls()}
-          {commandControls()}
-        </ToolbarMenu>
-      </Show>
-
-      {/* The renderer label and the back control sit at the end of the row: the host's own chrome
-          floats over the panel's top-right, and the end inset keeps them clear of it. */}
-      <GraphRendererStatus
-        renderer={props.renderer as any}
-        compact={props.compact}
-        onSplitView={props.onSplitView}
-        onBack={props.onBack}
-        endInset={props.endInset}
-      />
+      <GraphToolbarViewControls {...props} i18n={i18n} />
+      <GraphToolbarCommandControls {...props} i18n={i18n} />
     </div>
   )
 }
