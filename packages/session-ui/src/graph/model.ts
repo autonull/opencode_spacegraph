@@ -122,6 +122,7 @@ export type WorkspaceSnapshot = {
   missing: Missing[]
   capabilities: string[]
 }
+
 import {
   EDIT_TOOLS,
   PHASE_CATEGORIES,
@@ -306,10 +307,12 @@ export function phaseCategoryOf(node: GraphNode): PhaseCategory | undefined {
   if (node.kind === "phase") return Option.getOrUndefined(decodePhaseCategory(node.data?.category))
 
   const staticCategory = STATIC_PHASE_CATEGORY[node.kind]
+
   if (staticCategory) return staticCategory
 
   if (node.kind === "tool") {
     const name = decodeString(node.data?.name)
+
     return Option.isSome(name) ? phaseCategoryForTool(name.value) : undefined
   }
 
