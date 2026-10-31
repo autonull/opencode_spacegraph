@@ -93,7 +93,7 @@ import { buildAxisLabels } from "./axisLabels"
 import { exportGraph, type ExportFormat } from "./export"
 import { createNodeAnchor } from "./graph-anchors"
 import { sessionID } from "./node-data"
-import { proposeWindow, createWidthThresholdTracker } from "./graph-utils"
+import { proposeWindow, createWidthThresholdTracker, mirror } from "./graph-utils"
 import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
 import { useEdgeKinds } from "./useEdgeKinds"
@@ -1224,12 +1224,6 @@ export const GraphView = (props: GraphViewProps) => {
 
   // The host owns the controlled values; the view keeps its own copy so an uncontrolled view still
   // works. A prop the host leaves undefined never overwrites what the reader chose.
-  const mirror = <T,>(read: () => T | undefined, write: (value: T) => void) =>
-    createEffect(() => {
-      const value = read()
-      if (value !== undefined) write(value)
-    })
-
   mirror(() => props.level, setLevel)
   mirror(() => props.projection, setProjection)
   mirror(() => props.depth, setDepth)

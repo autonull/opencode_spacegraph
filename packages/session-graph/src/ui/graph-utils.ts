@@ -2,6 +2,8 @@
 // here because the pinned library commit doesn't have them yet. When the library publishes
 // these, replace with imports from "@spacegraphjs/utils".
 
+import { createEffect } from "solid-js"
+
 export type WidthThresholdFlags = {
   narrow?: boolean
   compact?: boolean
@@ -144,3 +146,15 @@ export function attachKeyboardShortcuts(shortcuts: KeyboardShortcut[]): () => vo
 
 // Re-export proposeWindow from the local graph-windows module
 export { proposeWindow } from "./graph-windows"
+
+/**
+ * Mirrors a controlled prop to local state. The host owns the controlled value; the view keeps its
+ * own copy so an uncontrolled view still works. A prop the host leaves undefined never overwrites
+ * what the reader chose.
+ */
+export function mirror<T>(read: () => T | undefined, write: (value: T) => void) {
+  return createEffect(() => {
+    const value = read()
+    if (value !== undefined) write(value)
+  })
+}

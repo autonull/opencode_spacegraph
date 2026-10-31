@@ -1168,41 +1168,44 @@ export class GraphBuilder {
       this.addEdge({ kind: "delegates", source: nodeID, target: childNodeID, confidence: "explicit" })
   }
 
+  /** Strategy for recording provenance edges for a tool. */
+  private readonly provenanceStrategies: Record<string, (tool: SessionMessageAssistantTool, toolID: string, turnID: string) => void> = {
+    read: (tool, toolID, turnID) => {
+      const { input } = toolFacts(tool)
+      const path = stringField(input, "path")
+      if (path) this.addEdge({ kind: "reads", source: toolID, target: this.requireFile(path), confidence: "explicit" })
+    },
+    edit: (tool, toolID, turnID) => this.recordWriteProvenance(tool, toolID, turnID),
+    write: (tool, toolID, turnID) => this.recordWriteProvenance(tool, toolID, turnID),
+    patch: (tool, toolID, turnID) => this.recordMetadataWritesProvenance(tool, toolID, turnID),
+    apply_patch: (tool, toolID, turnID) => this.recordMetadataWritesProvenance(tool, toolID, turnID),
+  }
+
   /** The files a tool touched, as provenance edges. */
   private recordProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
-    const { input, metadata } = toolFacts(tool)
-
-    if (tool.name === "read") {
-      const path = stringField(input, "path")
-
-      if (path) this.addEdge({ kind: "reads", source: toolID, target: this.requireFile(path), confidence: "explicit" })
-
-      return
-    }
-
-    if (tool.name === "edit" || tool.name === "write") {
-      const path = stringField(input, "path")
-
-      if (path) this.addWritesEdge(toolID, turnID, path)
-
-      for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
-
-      return
-    }
-
-    if (tool.name === "patch" || tool.name === "apply_patch") {
-      for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
-
+    const strategy = this.provenanceStrategies[tool.name]
+    if (strategy) {
+      strategy(tool, toolID, turnID)
       return
     }
 
     if (SEARCH_TOOLS.has(tool.name)) {
+      const { input } = toolFacts(tool)
       const scope = stringField(input, "path")
-
       if (scope) this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
-
-      return
     }
+  }
+
+  private recordWriteProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
+    const { input, metadata } = toolFacts(tool)
+    const path = stringField(input, "path")
+    if (path) this.addWritesEdge(toolID, turnID, path)
+    for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
+  }
+
+  private recordMetadataWritesProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
+    const { metadata } = toolFacts(tool)
+    for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
   }
 
   private addWritesEdge(toolID: string, turnID: string, path: string) {

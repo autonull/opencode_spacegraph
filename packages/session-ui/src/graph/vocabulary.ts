@@ -1,4 +1,4 @@
-import type { GraphNode } from "./model"
+import type { GraphNode, EdgeKind } from "./model"
 import type { Lane } from "./layout"
 import type { GraphEdge } from "./model"
 
@@ -276,6 +276,25 @@ export const PHASE_LABELS: Record<PhaseCategory, string> = {
  * consume the activity card budget.
  */
 export const STRUCTURAL_KINDS: ReadonlySet<NodeKind> = new Set(["session", "turn", "phase", "error", "retry"])
+
+/**
+ * Edge kinds that represent provenance (file activity). Used to trace why a file changed.
+ * These are the edges that connect tools to files.
+ */
+export const PROVENANCE_EDGE_KINDS: ReadonlySet<EdgeKind> = new Set([
+  "writes",
+  "reads",
+  "produces",
+  "searches",
+  "compacts",
+  "evidence",
+])
+
+/**
+ * Edge kinds that represent reading a file (as opposed to writing).
+ * Used for the changed-files rail to find readers of a file.
+ */
+export const READ_EDGE_KINDS: ReadonlySet<EdgeKind> = new Set(["reads", "searches", "references"])
 
 /** The tools that delegate work to another agent. */
 export const SUBAGENT_TOOLS = new Set(["subagent", "task"])

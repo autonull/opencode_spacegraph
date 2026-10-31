@@ -2,8 +2,9 @@ import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
-import type { EdgeKind, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
+import type { GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
+import { PROVENANCE_EDGE_KINDS, READ_EDGE_KINDS } from "./vocabulary"
 import { diffKernels } from "@spacegraphjs/kernel"
 import { graphModelToKernel } from "./view"
 
@@ -39,9 +40,8 @@ function countNodeKinds(nodes: GraphNode[]): {
   return { filesTouched, toolsRun, errors, retries }
 }
 
-export function nodeByID(model: GraphViewData, id: string) {
-  return lookupNode(model, id)
-}
+/** Alias for lookupNode (for backward compatibility). */
+export const nodeByID = lookupNode
 
 export function incoming(model: GraphViewData, id: string) {
   return model.edges.filter((edge) => edge.target === id)
@@ -167,14 +167,12 @@ export function breadcrumbs(model: GraphViewData, id: string, seen: Set<string> 
   return owner ? [...breadcrumbs(model, owner.id, seen), node] : [node]
 }
 
-const PROVENANCE: ReadonlySet<EdgeKind> = new Set(["writes", "reads", "produces", "searches", "compacts", "evidence"])
-
 function provenanceOwner(model: GraphViewData, node: GraphNode): GraphNode | undefined {
   const related = model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)
 
   const ordered = [
-    ...related.filter((edge) => PROVENANCE.has(edge.kind)),
-    ...related.filter((edge) => !PROVENANCE.has(edge.kind)),
+    ...related.filter((edge) => PROVENANCE_EDGE_KINDS.has(edge.kind)),
+    ...related.filter((edge) => !PROVENANCE_EDGE_KINDS.has(edge.kind)),
   ]
 
   for (const edge of ordered) {
@@ -307,8 +305,6 @@ export function rankedSearch(model: GraphViewData, query: string): GraphNode[] {
   return Navigation.searchBy(model, query, rank)
 }
 
-const READ_KINDS = new Set<EdgeKind>(["reads", "searches", "references"])
-
 export type ChangedFile = {
   id: string
   path: string
@@ -347,7 +343,7 @@ export function changedFiles(model: GraphViewData): ChangedFile[] {
   }
 
   for (const edge of model.edges) {
-    if (nodes.get(edge.target)?.kind !== "file" || !READ_KINDS.has(edge.kind)) continue
+    if (nodes.get(edge.target)?.kind !== "file" || !READ_EDGE_KINDS.has(edge.kind)) continue
     byID.get(edge.target)?.readers.push(edge.source)
   }
 
