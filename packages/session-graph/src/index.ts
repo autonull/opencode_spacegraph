@@ -16,56 +16,75 @@ export {
 
 export { GraphCanvas, type GraphCanvasProps, type GraphCanvasReady } from "./canvas/GraphCanvas"
 
+// Re-exports from @spacegraphjs/a11y
+export { GraphA11y, type GraphA11yProps } from "@spacegraphjs/a11y"
+export { AccessibilityLayer, type AccessibilityLayerConfig } from "@spacegraphjs/a11y"
+
+// Re-exports from @spacegraphjs/navigation
+export { GraphBreadcrumbs, type GraphBreadcrumb, type GraphBreadcrumbsProps } from "@spacegraphjs/navigation"
+export { GraphMinimap, type GraphMinimapProps, MINIMAP_SIZE, MINIMAP_GAP } from "@spacegraphjs/navigation"
+export { GraphLegend, type GraphLegendProps } from "@spacegraphjs/navigation"
+export { GraphLegendBody, type GraphLegendBodyProps } from "@spacegraphjs/navigation"
+export { GraphIconButton, type GraphIconButtonProps } from "@spacegraphjs/navigation"
+export { kindAccent, categoryAccent, statusAccent, formatAge, sourceLabel, CONFIDENCE_STYLE } from "@spacegraphjs/navigation"
+
+// Re-exports from @spacegraphjs/diff
+export { GraphDiffView, type GraphDiffViewProps } from "@spacegraphjs/diff"
+export { diffTone, type DiffTone, TONE_CLASS, type GraphDiff, type GraphDiffSource } from "@spacegraphjs/diff"
+
+export { GraphFileRail, type GraphFileRailProps } from "./ui/GraphFileRail"
+export { GraphInspector, type GraphInspectorProps } from "./ui/GraphInspector"
+
+// Re-exports from @spacegraphjs/search
+export { GraphFind, type GraphFindProps } from "@spacegraphjs/search"
+export { GraphSearch, type GraphSearchProps } from "@spacegraphjs/search"
 export {
-  GraphA11y,
-  type GraphA11yProps,
-} from "./ui/GraphA11y"
+  navigationResults,
+  navigationHelp,
+  navigationTargets,
+  parseNavigation,
+  nextNavigationTarget,
+  type NavigationMnemonic,
+} from "@spacegraphjs/search"
 export {
-  GraphBreadcrumbs,
-  type GraphBreadcrumbsProps,
-} from "./ui/GraphBreadcrumbs"
-export {
-  GraphDiffView,
-  type GraphDiff,
-  type GraphDiffSource,
-} from "./ui/GraphDiff"
-export {
-  GraphFileRail,
-  type GraphFileRailProps,
-} from "./ui/GraphFileRail"
-export {
-  GraphInspector,
-  type GraphInspectorProps,
-} from "./ui/GraphInspector"
-export {
-  GraphFind,
-  type GraphFindProps,
-} from "./ui/GraphFind"
-export {
-  GraphSearch,
-  type GraphSearchProps,
-} from "./ui/GraphSearch"
-export {
-  GraphToolbar,
-  type GraphToolbarProps,
-} from "./ui/GraphToolbar"
-export {
-  GraphView,
-  type GraphViewProps,
-  MIN_CARD_HEIGHT_PX,
-  READABLE_CARD_WIDTH,
-} from "./ui/GraphView"
-export {
-  TurnMapInlineGraph,
-  type TurnMapInlineGraphProps,
-} from "./ui/TurnMapInlineGraph"
-export {
-  TurnMapOverlay,
-  type TurnMapOverlayProps,
-} from "./ui/TurnMapOverlay"
-export { buildTurnRenderModel, turnGraphModel } from "./ui/turnMap"
+  rankedSearch,
+  sessionOutline,
+  facetCounts,
+  search,
+  searchBy,
+  defaultRank,
+  defaultSearchText,
+  type SearchFn,
+  type SearchTextFn,
+  type OutlineTurn,
+} from "@spacegraphjs/search"
+export { useSearch, useFind, type UseSearchOptions, type UseSearchReturn, type UseFindOptions, type UseFindReturn } from "@spacegraphjs/search"
+
+// Re-exports from @spacegraphjs/toolbar
+export { GraphToolbar, type GraphToolbarProps } from "@spacegraphjs/toolbar"
+export { GraphLayersControl, type GraphLayersControlProps } from "@spacegraphjs/toolbar"
+export { GraphLayoutControl, type GraphLayoutControlProps } from "@spacegraphjs/toolbar"
+export { GraphTimeControl, type GraphTimeControlProps } from "@spacegraphjs/toolbar"
+export { GraphDrawControl, type GraphDrawControlProps } from "@spacegraphjs/toolbar"
+export { GraphShowControl, type GraphShowControlProps } from "@spacegraphjs/toolbar"
+export { GraphZoomControl, type GraphZoomControlProps } from "@spacegraphjs/toolbar"
+export { GraphQuestionsControl, type GraphQuestionsControlProps } from "@spacegraphjs/toolbar"
+export { ToolbarMenu, type ToolbarMenuProps } from "@spacegraphjs/toolbar"
+export { useToolbarState } from "@spacegraphjs/toolbar"
+
+export { GraphView, type GraphViewProps, MIN_CARD_HEIGHT_PX, READABLE_CARD_WIDTH } from "./ui/GraphView"
+
+// Re-exports from @spacegraphjs/turn-map
+export { TurnMapInlineGraph, type TurnMapInlineGraphProps } from "@spacegraphjs/turn-map"
+export { TurnMapOverlay, type TurnMapOverlayProps } from "@spacegraphjs/turn-map"
+export { buildTurnRenderModel, turnGraphModel } from "@spacegraphjs/turn-map"
+
 export { createGraphTheme, graphThemeFromTokens, resolveGraphTheme } from "./ui/theme"
-export { exportGraph, type ExportFormat, type ExportOptions } from "./ui/export"
+
+// Re-exports from @spacegraphjs/export
+export { GraphExportControl, type GraphExportControlProps } from "@spacegraphjs/export"
+export { exportGraph, standaloneHtml, type ExportFormat, type ExportOptions } from "@spacegraphjs/export"
+
 export {
   text,
   count,
@@ -82,5 +101,23 @@ export {
   fileRange,
   sessionID,
 } from "./ui/node-data"
-export { sourceLabel, formatAge, formatProvenance } from "./ui/provenance"
+export { formatProvenance } from "./ui/provenance"
+
+// Re-exports from @spacegraphjs/overlays
+export { GraphPeek, type GraphPeekProps } from "@spacegraphjs/overlays"
+export { GraphPopover, type GraphPopoverProps, POPOVER_WIDTH, POPOVER_MAX_HEIGHT, POPOVER_GAP } from "@spacegraphjs/overlays"
+export { GraphOverlayManager, type GraphOverlayManagerProps } from "@spacegraphjs/overlays"
+export { ScopedOverlay, type ScopedOverlayOptions } from "@spacegraphjs/overlays"
+export { type GraphDetailProps, type GraphDetailSurfaceProps } from "@spacegraphjs/overlays"
+
+// Re-exports from @spacegraphjs/controls
+export { GraphStatusBar, type GraphStatusBarProps } from "@spacegraphjs/controls"
+
+// Re-exports from @spacegraphjs/compare
+export { GraphCompare, type GraphCompareProps, type GraphCompareChanges } from "@spacegraphjs/compare"
+export { GraphCompareBar, type GraphCompareBarProps } from "@spacegraphjs/compare"
+
 export { DEFAULT_THEME } from "@spacegraphjs/renderer"
+
+// Adapters
+export * from "./adapters/spacegraphjs"

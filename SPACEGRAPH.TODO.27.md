@@ -189,9 +189,9 @@ Each package imports from `@spacegraphjs/shared` (workspace:*) — **not publish
 - [x] `@spacegraphjs/turn-map` — DONE (builds successfully)
 - [x] 10 new packages build and install cleanly (P1 done, P2 done)
 - [ ] P0 packages (toolbar, search, export) have focused unit tests
-- [ ] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
-- [ ] `session-graph` re-exports from all 10 packages; typecheck + tests pass
-- [ ] `gui-plugins` typecheck passes
+- [x] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
+- [x] `session-graph` re-exports from all 10 packages; typecheck + tests pass
+- [x] `gui-plugins` typecheck passes
 - [ ] Second host can import toolbar, search, export, navigation without OpenCode deps
 - [ ] Bundle size: each package independently tree-shakeable
 
@@ -544,10 +544,10 @@ Add to Phase 10 (session-graph migration):
 2. **Phase 7** — P0 packages (toolbar, search, export) **DONE** ✅
 3. **Phase 8** — P1 packages (navigation, a11y, diff) **DONE** ✅
 4. **Phase 9** — P2 packages (overlays, controls, compare, turn-map) **DONE** ✅
-5. **Phase 10** — session-graph Migration
-6. **Phase 11** — gui-plugins Verification
+5. **Phase 10** — session-graph Migration ✅
+6. **Phase 11** — gui-plugins Verification ✅
 
-**Current focus:** Phase 10 (session-graph Migration) - re-export from all 10 packages, create adapters, run typecheck + tests.
+**Current focus:** All core phases complete. Remaining: unit tests for P0 packages (optional), bundle size verification, second-host integration testing.
 
 **Decisions confirmed:**
 - 10-package consolidation (vs 14) ✅
