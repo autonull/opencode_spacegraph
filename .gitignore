@@ -38,4 +38,3 @@ tsconfig.tsbuildinfo
 /artifacts/
 
 # Sibling SpaceGraphJS source checkout (separate git repo, pinned; not vendored).
-spacegraphjs/

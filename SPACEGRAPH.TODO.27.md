@@ -22,8 +22,8 @@
 | Package | Components | Source Files | Priority | Notes |
 |---------|------------|--------------|----------|-------|
 | **@spacegraphjs/toolbar** | GraphToolbar, LayersControl, LayoutControl, TimeControl, ViewControls, CommandControls | `GraphToolbar.tsx`, `GraphToolbar*.tsx` | **P0** | Core UI; 6 sub-controls tightly coupled | ✅ **DONE** |
-| **@spacegraphjs/search** | GraphSearch, GraphFind, search utils | `GraphSearch.tsx`, `GraphFind.tsx` | **P0** | High user value; pure search logic extractable |
-| **@spacegraphjs/export** | exportGraph, GraphExportControl, standaloneHtml | `export.ts`, `GraphExportControl.tsx` | **P0** | High user value; core fn already generic |
+| **@spacegraphjs/search** | GraphSearch, GraphFind, search utils | `GraphSearch.tsx`, `GraphFind.tsx` | **P0** | High user value; pure search logic extractable | ✅ **DONE** |
+| **@spacegraphjs/export** | exportGraph, GraphExportControl, standaloneHtml | `export.ts`, `GraphExportControl.tsx` | **P0** | High user value; core fn already generic | ✅ **DONE** |
 | **@spacegraphjs/navigation** | GraphBreadcrumbs, GraphMinimap, GraphLegend | `GraphBreadcrumbs.tsx`, `GraphMinimap.tsx`, `GraphLegend.tsx` | **P1** | Pure presentational; no deps after type abstraction |
 | **@spacegraphjs/a11y** | GraphA11y | `GraphA11y.tsx` | **P1** | Already generic; tiny |
 | **@spacegraphjs/diff** | GraphDiffView | `GraphDiff.tsx` | **P1** | Generic diff visualization |
@@ -178,6 +178,8 @@ Each package imports from `@spacegraphjs/shared` (workspace:*) — **not publish
 
 - [x] `window-manager`, `inspector` — DONE
 - [x] `@spacegraphjs/toolbar` — DONE (builds successfully)
+- [x] `@spacegraphjs/search` — DONE (builds successfully)
+- [x] `@spacegraphjs/export` — DONE (builds successfully)
 - [ ] 10 new packages build and install cleanly
 - [ ] P0 packages (toolbar, search, export) have focused unit tests
 - [ ] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
@@ -531,10 +533,14 @@ Add to Phase 10 (session-graph migration):
 
 ## 14. Next Steps
 
-1. **Approve plan** — confirm package consolidation, priorities
-2. **Phase 6** — Create `shared/` + 10 package skeletons (single script)
-3. **Phase 7** — Start with `toolbar` (highest complexity, establishes patterns)
-4. **Parallel** — While toolbar builds, create codemod scaffolding
+1. **Phase 6** — Package skeletons created ✅
+2. **Phase 7** — P0 packages (toolbar, search, export) **DONE** ✅
+3. **Phase 8** — P1 packages (navigation, a11y, diff) — Next
+4. **Phase 9** — P2 packages (overlays, controls, compare, turn-map)
+5. **Phase 10** — session-graph Migration
+6. **Phase 11** — gui-plugins Verification
+
+**Current focus:** Start Phase 8 (P1 packages: navigation, a11y, diff) - these are parallelizable and have no cross-deps.
 
 **Decision needed:** 
 - Confirm 10-package consolidation (vs 14)
