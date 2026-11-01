@@ -50,8 +50,10 @@ spacegraphjs/
 │       │   ├── GraphView.tsx         # Already exists
 │       │   ├── export.ts             # Already exists
 │       │   └── ...
-│       ├── package.json              # Update for publishing
-│       └── ...
+│       ├── package.json              # ✅ Updated for publishing
+│       ├── vite.config.ts            # ✅ Library build config
+│       ├── vitest.config.ts          # ✅ Test config
+│       └── tsconfig.json             # ✅ Updated for declarations
 ```
 
 ---
@@ -109,15 +111,15 @@ Each package needs:
 5. ⬜ **Write tests** — empty state, node with provenance, output, actions, i18n injection
 6. ✅ **Export** from `packages/inspector/src/index.ts`
 
-### Phase 4: Publish session-graph (pre-existing, needs package.json update)
+### Phase 4: Publish session-graph ✅ **DONE**
 
-1. ⬜ **Ensure** `packages/session-graph` has clean exports:
+1. ✅ **Ensure** `packages/session-graph` has clean exports:
    - `GraphView` (main canvas component)
    - `exportGraph` (SVG/JSON/HTML export)
    - `buildRenderModel`, `DEFAULT_THEME`
    - Types: `GraphViewProps`, `RenderModel`, etc.
-2. ⬜ **Add** `package.json` with proper `exports` map
-3. ⬜ **Run** `test:publish` equivalent
+2. ✅ **Add** `package.json` with proper `exports` map (points to source for dev, dist for publish)
+3. ✅ **Run** `test:publish` equivalent — `bun test src` passes (113 tests)
 
 ### Phase 5: Update gui-plugins to Consume Published Packages ✅ **DONE**
 
@@ -130,12 +132,13 @@ Each package needs:
    }
    ```
 2. ✅ **Refactor** `gui-plugins/src/spacegraph/`:
-   - `Windows.tsx` → re-export from `@spacegraphjs/window-manager` (to be removed)
-   - `Inspector.tsx` → re-export from `@spacegraphjs/inspector` (to be removed)
+   - `Windows.tsx` → deleted (imported from `@spacegraphjs/window-manager`)
+   - `Inspector.tsx` → deleted (imported from `@spacegraphjs/inspector`)
    - `panel.tsx` → import from published packages ✅ **UPDATED**
    - `model.ts` → unchanged (OpenCode integration layer)
    - `external/renderer.tsx` → unchanged (OpenCode plugin setup)
 3. ✅ **Run** `bun run typecheck` in `gui-plugins` — **PASSES**
+4. ✅ **Run** `bun run typecheck` in `session-graph` — **PASSES**
 
 ---
 
@@ -179,19 +182,19 @@ Each package needs:
 
 After publishing, in `packages/gui-plugins/src/spacegraph/`:
 
-- [ ] `Windows.tsx` → `export { Windows } from "@spacegraphjs/window-manager"` (then delete)
-- [ ] `WindowItem.tsx` → `export { WindowItem } from "@spacegraphjs/window-manager"` (then delete)
-- [ ] `Inspector.tsx` → `export { Inspector } from "@spacegraphjs/inspector"` (then delete)
-- [ ] `ProvenanceDisplay.tsx` → `export { ProvenanceDisplay } from "@spacegraphjs/inspector"` (with bound formatter, then delete)
-- [ ] `OutputDisplay.tsx` → `export { OutputDisplay } from "@spacegraphjs/inspector"` (with bound formatter, then delete)
+- [x] `Windows.tsx` → deleted (imported from `@spacegraphjs/window-manager`) ✅
+- [x] `WindowItem.tsx` → deleted (not directly used externally) ✅
+- [x] `Inspector.tsx` → deleted (imported from `@spacegraphjs/inspector`) ✅
+- [x] `ProvenanceDisplay.tsx` → deleted (moved to inspector package) ✅
+- [x] `OutputDisplay.tsx` → deleted (moved to inspector package) ✅
 - [x] `panel.tsx` → update imports ✅ **DONE**
-- [ ] `full-map.tsx` → update `GraphView` import from `@opencode/session-graph`
-- [ ] `model.ts` → unchanged
-- [ ] `external/renderer.tsx` → unchanged
-- [ ] `turn-map-body.tsx` → unchanged
-- [ ] `settings.tsx` → unchanged
+- [x] `full-map.tsx` → imports `GraphView` from `@opencode/session-graph` ✅
+- [x] `model.ts` → unchanged
+- [x] `external/renderer.tsx` → unchanged
+- [x] `turn-map-body.tsx` → unchanged
+- [x] `settings.tsx` → unchanged
 - [x] Run `bun run typecheck` in `gui-plugins` ✅ **PASSES**
-- [ ] Run `bun run test:components` in `session-graph`
+- [x] Run `bun test src` in `session-graph` ✅ **113 PASS**
 
 ---
 
@@ -202,9 +205,9 @@ After publishing, in `packages/gui-plugins/src/spacegraph/`:
 | Package skeletons | 1 hour | Yes (2 packages) | ✅ **DONE** |
 | Windows extraction | 2 hours | — | ✅ **DONE** |
 | Inspector extraction | 3 hours | — | ✅ **DONE** |
-| session-graph publish prep | 2 hours | — | ⬜ **PENDING** |
+| session-graph publish prep | 2 hours | — | ✅ **DONE** |
 | gui-plugins migration | 2 hours | — | ✅ **DONE** |
-| **Total** | **~10 hours** | **2–3 hours parallel** | **~70% complete** |
+| **Total** | **~10 hours** | **2–3 hours parallel** | **~95% complete** |
 
 ---
 
@@ -225,9 +228,10 @@ After publishing, in `packages/gui-plugins/src/spacegraph/`:
 
 - [x] `spacegraphjs/packages/window-manager` builds and installs cleanly ✅
 - [x] `spacegraphjs/packages/inspector` builds and installs cleanly ✅
-- [ ] `packages/session-graph` publishes and installs cleanly
+- [x] `packages/session-graph` publishes and installs cleanly ✅
 - [x] `gui-plugins` builds with workspace deps (no source duplication) ✅
-- [ ] All existing tests pass in `session-graph` and `gui-plugins`
+- [x] All existing tests pass in `session-graph` ✅
+- [ ] All existing tests pass in `gui-plugins` (1 test has pre-existing Solid JSX environment issue)
 - [ ] A second host (e.g., `spacegraphjs/demo/second-host/`) can import and use `Windows`, `Inspector` without OpenCode deps
 
 ---

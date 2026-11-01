@@ -1,17 +1,24 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@opencode/session-graph",
-  "version": "2.0.32",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "vite build",
     "typecheck": "tsc -b",
     "test": "bun test src",
-    "test:components": "playwright test --config playwright.components.config.ts"
+    "test:components": "playwright test --config playwright.components.config.ts",
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
     "@opencode/session-ui": "workspace:*",
@@ -32,6 +39,7 @@
     "@typescript/native": "catalog:",
     "three": "0.186.1",
     "vite": "catalog:",
-    "vite-plugin-solid": "catalog:"
+    "vite-plugin-solid": "catalog:",
+    "vite-plugin-dts": "^5.1.0"
   }
 }

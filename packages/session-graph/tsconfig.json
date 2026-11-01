@@ -11,10 +11,16 @@
     "isolatedModules": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "noEmit": true,
     "lib": ["es2023", "dom", "dom.iterable"],
     "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true,
+    "noEmit": false,
     "types": ["vite/client", "bun"]
   },
-  "exclude": ["**/*.mdx"]
+  "include": ["src/**/*"],
+  "exclude": ["**/*.mdx", "dist", "node_modules"]
 }
