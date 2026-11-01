@@ -180,7 +180,10 @@ Each package imports from `@spacegraphjs/shared` (workspace:*) — **not publish
 - [x] `@spacegraphjs/toolbar` — DONE (builds successfully)
 - [x] `@spacegraphjs/search` — DONE (builds successfully)
 - [x] `@spacegraphjs/export` — DONE (builds successfully)
-- [ ] 10 new packages build and install cleanly
+- [x] `@spacegraphjs/navigation` — DONE (builds successfully)
+- [x] `@spacegraphjs/a11y` — DONE (builds successfully)
+- [x] `@spacegraphjs/diff` — DONE (builds successfully)
+- [ ] 10 new packages build and install cleanly (P1 done, P2 remaining)
 - [ ] P0 packages (toolbar, search, export) have focused unit tests
 - [ ] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
 - [ ] `session-graph` re-exports from all 10 packages; typecheck + tests pass
@@ -535,12 +538,12 @@ Add to Phase 10 (session-graph migration):
 
 1. **Phase 6** — Package skeletons created ✅
 2. **Phase 7** — P0 packages (toolbar, search, export) **DONE** ✅
-3. **Phase 8** — P1 packages (navigation, a11y, diff) — Next
-4. **Phase 9** — P2 packages (overlays, controls, compare, turn-map)
+3. **Phase 8** — P1 packages (navigation, a11y, diff) **DONE** ✅
+4. **Phase 9** — P2 packages (overlays, controls, compare, turn-map) — Next
 5. **Phase 10** — session-graph Migration
 6. **Phase 11** — gui-plugins Verification
 
-**Current focus:** Start Phase 8 (P1 packages: navigation, a11y, diff) - these are parallelizable and have no cross-deps.
+**Current focus:** Start Phase 9 (P2 packages: overlays, controls, compare, turn-map) - these are parallelizable and have no cross-deps.
 
 **Decision needed:** 
 - Confirm 10-package consolidation (vs 14)
