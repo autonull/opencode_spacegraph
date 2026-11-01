@@ -8,19 +8,19 @@ import type { GraphEdge, GraphNode } from "./model"
  * instead of a scan of every node or edge.
  */
 
+function memoize<T, M extends object>(cache: WeakMap<M, T>, model: M, compute: () => T): T {
+  const cached = cache.get(model)
+  if (cached) return cached
+  const result = compute()
+  cache.set(model, result)
+  return result
+}
+
 const NODE_INDEX = new WeakMap<object, ReadonlyMap<string, GraphNode>>()
 
 /** Every node by id. */
 export function nodeIndex(model: { nodes: readonly GraphNode[] }): ReadonlyMap<string, GraphNode> {
-  const cached = NODE_INDEX.get(model)
-
-  if (cached) return cached
-
-  const index = new Map(model.nodes.map((node) => [node.id, node]))
-
-  NODE_INDEX.set(model, index)
-
-  return index
+  return memoize(NODE_INDEX, model, () => new Map(model.nodes.map((node) => [node.id, node])))
 }
 
 /** The node with this id, or undefined. */
@@ -36,48 +36,31 @@ const PARENT_INDEX = new WeakMap<object, ReadonlyMap<string, string>>()
  * Edges go from child -> parent (source=child, target=parent).
  */
 export function parentIndex(model: { edges: readonly GraphEdge[] }): ReadonlyMap<string, string> {
-  const cached = PARENT_INDEX.get(model)
-
-  if (cached) return cached
-
-  const parents = new Map<string, string>()
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "part-of") continue
-
-    // part-of edges go from child -> parent, so source is the child
-    if (parents.has(edge.source)) continue
-
-    parents.set(edge.source, edge.target)
-  }
-
-  PARENT_INDEX.set(model, parents)
-
-  return parents
+  return memoize(PARENT_INDEX, model, () => {
+    const parents = new Map<string, string>()
+    for (const edge of model.edges) {
+      if (edge.kind !== "part-of") continue
+      if (parents.has(edge.source)) continue
+      parents.set(edge.source, edge.target)
+    }
+    return parents
+  })
 }
 
 const CHILD_INDEX = new WeakMap<object, ReadonlyMap<string, readonly string[]>>()
 
 /** The `part-of` children of each node. */
 export function childIndex(model: { edges: readonly GraphEdge[] }): ReadonlyMap<string, readonly string[]> {
-  const cached = CHILD_INDEX.get(model)
-
-  if (cached) return cached
-
-  const children = new Map<string, string[]>()
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "part-of") continue
-
-    const existing = children.get(edge.target)
-
-    if (existing) existing.push(edge.source)
-    else children.set(edge.target, [edge.source])
-  }
-
-  CHILD_INDEX.set(model, children)
-
-  return children
+  return memoize(CHILD_INDEX, model, () => {
+    const children = new Map<string, string[]>()
+    for (const edge of model.edges) {
+      if (edge.kind !== "part-of") continue
+      const existing = children.get(edge.target)
+      if (existing) existing.push(edge.source)
+      else children.set(edge.target, [edge.source])
+    }
+    return children
+  })
 }
 
 export type SequenceIndex = {
@@ -94,24 +77,14 @@ const SEQUENCE_INDEX = new WeakMap<object, SequenceIndex>()
  * at most one successor and one predecessor — so the first edge wins.
  */
 export function sequenceIndex(model: { edges: readonly GraphEdge[] }): SequenceIndex {
-  const cached = SEQUENCE_INDEX.get(model)
-
-  if (cached) return cached
-
-  const next = new Map<string, string>()
-  const previous = new Map<string, string>()
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "sequence") continue
-
-    if (!next.has(edge.source)) next.set(edge.source, edge.target)
-
-    if (!previous.has(edge.target)) previous.set(edge.target, edge.source)
-  }
-
-  const index = { next, previous }
-
-  SEQUENCE_INDEX.set(model, index)
-
-  return index
+  return memoize(SEQUENCE_INDEX, model, () => {
+    const next = new Map<string, string>()
+    const previous = new Map<string, string>()
+    for (const edge of model.edges) {
+      if (edge.kind !== "sequence") continue
+      if (!next.has(edge.source)) next.set(edge.source, edge.target)
+      if (!previous.has(edge.target)) previous.set(edge.target, edge.source)
+    }
+    return { next, previous }
+  })
 }

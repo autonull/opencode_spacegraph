@@ -145,9 +145,6 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
         html: renderBand(node, drawn.length, box),
         size: [box.max.x - box.min.x, box.max.y - box.min.y, 0],
         position: [(box.min.x + box.max.x) / 2, (box.min.y + box.max.y) / 2, 0],
-        // T1.3: groups sit on the content plane and face the camera, so a tilted depth treatment does
-        // not turn a large group into a trapezoid across the cards. Members name their group so a
-        // drag carries them with it.
         data: {
           band: node.kind === "turn" ? "turn" : "phase",
           count: drawn.length,
@@ -159,34 +156,28 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       })
     }
 
-    // LE.3: a turn band would span every lane a turn touches — at overview the phase chips sit on one
-    // row and the delegated/message members sit lanes away, so the band is a large near-empty box. The
-    // columns already group the turn there, so bands are suppressed at overview and kept where the
-    // members fill the lanes (execution/detail).
+    // Turn bands: suppressed at overview (LE.3), built in one pass (T6.6)
     if (level !== "overview") {
-      // One pass over the model builds the per-turn buckets: a filter per turn was quadratic, and a
-      // long session paid for it in the render-model build (T6.6).
       const byTurn = new Map<string, GraphNode[]>()
 
       for (const node of model.nodes) {
         if (!node.turnID) continue
         const bucket = byTurn.get(node.turnID)
-
         if (bucket) bucket.push(node)
         else byTurn.set(node.turnID, [node])
       }
 
       for (const turnID of model.turns) {
         const turn = byID.get(turnID)
-        if (!turn) continue
-        emit(turn, (byTurn.get(turnID) ?? []).map((node) => node.id))
+        if (turn) emit(turn, (byTurn.get(turnID) ?? []).map((n) => n.id))
       }
     }
 
+    // Phase bands: only when expanded at this level
     for (const node of model.nodes) {
-      if (node.kind !== "phase" || !node.clusterOf) continue
-      if (!isClusterExpanded(level)) continue
-      emit(node, node.clusterOf)
+      if (node.kind === "phase" && node.clusterOf && isClusterExpanded(level)) {
+        emit(node, node.clusterOf)
+      }
     }
 
     return bands
@@ -200,22 +191,22 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
    */
   bundleEdges(model: GraphViewData, edges: readonly GraphEdge[]): GraphEdge[] {
     const byID = nodeIndex(model)
-    // `GraphNode.turnID` is already the owning turn node id (`turn:<opener>`), not the opener message id.
     const turnOf = (id: string) => byID.get(id)?.turnID ?? id
     const seen = new Set<string>()
     const bundled: GraphEdge[] = []
 
     for (const edge of edges) {
-      if (!BUNDLED_KINDS.has(edge.kind) || byID.get(edge.target)?.kind !== "file") {
+      const target = byID.get(edge.target)
+      if (!BUNDLED_KINDS.has(edge.kind) || target?.kind !== "file") {
         bundled.push(edge)
         continue
       }
 
       const source = turnOf(edge.source)
       const key = `${source}:${edge.target}:${edge.kind}`
-
       if (seen.has(key)) continue
       seen.add(key)
+
       bundled.push(source === edge.source ? edge : { ...edge, id: `bundle:${key}`, source })
     }
 

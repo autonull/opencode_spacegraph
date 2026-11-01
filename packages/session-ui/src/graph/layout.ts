@@ -250,6 +250,22 @@ function laneOf(node: GraphNode): Lane {
 }
 
 /**
+ * Memoize a computation on a model object using WeakMap.
+ * Returns the cached result or computes and caches it.
+ */
+function memoize<T, Model extends object>(
+  cache: WeakMap<Model, T>,
+  model: Model,
+  compute: () => T,
+): T {
+  const cached = cache.get(model)
+  if (cached) return cached
+  const result = compute()
+  cache.set(model, result)
+  return result
+}
+
+/**
  * The turn that owns each file: the turn of the other endpoint of its first incident edge. The
  * answer is the same for every call on the same model, so it is built once per model — asking each
  * file for its owner one edge at a time was quadratic in the size of the session (T6.6).
@@ -257,32 +273,28 @@ function laneOf(node: GraphNode): Lane {
 const FILE_OWNERS = new WeakMap<object, ReadonlyMap<string, string>>()
 
 function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }) {
-  const cached = FILE_OWNERS.get(model)
+  return memoize(FILE_OWNERS, model, () => {
+    const nodes = nodeIndex(model)
+    const owners = new Map<string, string>()
 
-  if (cached) return cached
+    const claim = (node: string, turn: string | undefined) => {
+      if (turn === undefined || owners.has(node)) return
+      owners.set(node, turn)
+    }
 
-  const nodes = nodeIndex(model)
-  const owners = new Map<string, string>()
+    // A write names the turn that produced the file, so it outranks the file's other incident edges.
+    for (const edge of model.edges) {
+      if (edge.kind !== "writes") continue
+      claim(edge.target, nodes.get(edge.source)?.turnID)
+    }
 
-  const claim = (node: string, turn: string | undefined) => {
-    if (turn === undefined || owners.has(node)) return
-    owners.set(node, turn)
-  }
+    for (const edge of model.edges) {
+      claim(edge.target, nodes.get(edge.source)?.turnID)
+      claim(edge.source, nodes.get(edge.target)?.turnID)
+    }
 
-  // A write names the turn that produced the file, so it outranks the file's other incident edges.
-  for (const edge of model.edges) {
-    if (edge.kind !== "writes") continue
-    claim(edge.target, nodes.get(edge.source)?.turnID)
-  }
-
-  for (const edge of model.edges) {
-    claim(edge.target, nodes.get(edge.source)?.turnID)
-    claim(edge.source, nodes.get(edge.target)?.turnID)
-  }
-
-  FILE_OWNERS.set(model, owners)
-
-  return owners
+    return owners
+  })
 }
 
 /**
@@ -293,26 +305,23 @@ function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphE
 const NEIGHBOURS = new WeakMap<object, ReadonlyMap<string, readonly string[]>>()
 
 function neighbours(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }, id: string) {
-  const cached = NEIGHBOURS.get(model)
+  const links = memoize(NEIGHBOURS, model, () => {
+    const map = new Map<string, string[]>()
 
-  if (cached) return cached.get(id) ?? []
+    const link = (from: string, to: string) => {
+      const existing = map.get(from)
+      if (existing) existing.push(to)
+      else map.set(from, [to])
+    }
 
-  const links = new Map<string, string[]>()
+    for (const edge of model.edges) {
+      if (edge.kind !== "part-of" && edge.kind !== "sequence") continue
+      link(edge.source, edge.target)
+      link(edge.target, edge.source)
+    }
 
-  const link = (from: string, to: string) => {
-    const existing = links.get(from)
-
-    if (existing) existing.push(to)
-    else links.set(from, [to])
-  }
-
-  for (const edge of model.edges) {
-    if (edge.kind !== "part-of" && edge.kind !== "sequence") continue
-    link(edge.source, edge.target)
-    link(edge.target, edge.source)
-  }
-
-  NEIGHBOURS.set(model, links)
+    return map
+  })
 
   return links.get(id) ?? []
 }

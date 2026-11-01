@@ -147,20 +147,20 @@ function yieldsToMembers(node: GraphNode, nodes: ReadonlyMap<string, GraphNode>,
 const CLUSTER_CATEGORIES = new WeakMap<readonly GraphNode[], ReadonlyMap<string, PhaseCategory>>()
 
 function clusterCategories(model: GraphViewData): ReadonlyMap<string, PhaseCategory> {
-  const cached = CLUSTER_CATEGORIES.get(model.nodes)
-
+  const nodes = model.nodes
+  const cached = CLUSTER_CATEGORIES.get(nodes)
   if (cached) return cached
 
   const categories = new Map<string, PhaseCategory>()
 
-  for (const node of model.nodes) {
+  for (const node of nodes) {
     if (node.kind !== "phase") continue
     const category = phaseCategoryOf(node)
     if (!category) continue
     for (const member of node.clusterOf ?? []) categories.set(member, category)
   }
 
-  CLUSTER_CATEGORIES.set(model.nodes, categories)
+  CLUSTER_CATEGORIES.set(nodes, categories)
 
   return categories
 }

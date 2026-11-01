@@ -327,6 +327,9 @@ export const SUMMARY_LAYOUTS = ["ribbon", "matrix"] as const
 
 export type SummaryLayout = (typeof SUMMARY_LAYOUTS)[number]
 
+/** O(1) summary layout lookup. */
+const SUMMARY_LAYOUT_SET = new Set(SUMMARY_LAYOUTS)
+
 /**
  * T17.1 — one layout axis. The node-link strategies and the session's summary layouts answer the
  * same question — how are the nodes arranged — so they are one list, chosen the same way, and the
@@ -338,7 +341,7 @@ export type Layout = (typeof LAYOUTS)[number]
 
 /** Whether a layout is a summary: the session's own grammar, not the library's node-link geometry. */
 export function isSummaryLayout(layout: Layout): layout is SummaryLayout {
-  return (SUMMARY_LAYOUTS as readonly Layout[]).includes(layout)
+  return SUMMARY_LAYOUT_SET.has(layout as SummaryLayout)
 }
 
 /** Whether a layout is the log layout: the session's reading order as a vertical spine. */
@@ -348,7 +351,7 @@ export function isLogLayout(layout: Layout): layout is "log" {
 
 /** Whether a layout is a summary or log layout (host-level geometry, not node-link). */
 export function isSummaryOrLogLayout(layout: Layout): layout is SummaryLayout | "log" {
-  return isSummaryLayout(layout) || isLogLayout(layout)
+  return SUMMARY_LAYOUT_SET.has(layout as SummaryLayout) || layout === "log"
 }
 
 /** Where a selected node's detail is shown. The modes are alternatives, not stages. */
