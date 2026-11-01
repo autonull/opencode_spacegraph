@@ -188,7 +188,7 @@ Each package imports from `@spacegraphjs/shared` (workspace:*) — **not publish
 - [x] `@spacegraphjs/compare` — DONE (builds successfully)
 - [x] `@spacegraphjs/turn-map` — DONE (builds successfully)
 - [x] 10 new packages build and install cleanly (P1 done, P2 done)
-- [ ] P0 packages (toolbar, search, export) have focused unit tests
+- [x] P0 packages (toolbar, search, export) have focused unit tests
 - [x] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
 - [x] `session-graph` re-exports from all 10 packages; typecheck + tests pass
 - [x] `gui-plugins` typecheck passes
@@ -547,7 +547,7 @@ Add to Phase 10 (session-graph migration):
 5. **Phase 10** — session-graph Migration ✅
 6. **Phase 11** — gui-plugins Verification ✅
 
-**Current focus:** All core phases complete. Remaining: unit tests for P0 packages (optional), bundle size verification, second-host integration testing.
+**Current focus:** All core phases complete. Remaining: bundle size verification, second-host integration testing.
 
 **Decisions confirmed:**
 - 10-package consolidation (vs 14) ✅
