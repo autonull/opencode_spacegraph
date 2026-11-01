@@ -21,7 +21,7 @@
 
 | Package | Components | Source Files | Priority | Notes |
 |---------|------------|--------------|----------|-------|
-| **@spacegraphjs/toolbar** | GraphToolbar, LayersControl, LayoutControl, TimeControl, ViewControls, CommandControls | `GraphToolbar.tsx`, `GraphToolbar*.tsx` | **P0** | Core UI; 6 sub-controls tightly coupled |
+| **@spacegraphjs/toolbar** | GraphToolbar, LayersControl, LayoutControl, TimeControl, ViewControls, CommandControls | `GraphToolbar.tsx`, `GraphToolbar*.tsx` | **P0** | Core UI; 6 sub-controls tightly coupled | ✅ **DONE** |
 | **@spacegraphjs/search** | GraphSearch, GraphFind, search utils | `GraphSearch.tsx`, `GraphFind.tsx` | **P0** | High user value; pure search logic extractable |
 | **@spacegraphjs/export** | exportGraph, GraphExportControl, standaloneHtml | `export.ts`, `GraphExportControl.tsx` | **P0** | High user value; core fn already generic |
 | **@spacegraphjs/navigation** | GraphBreadcrumbs, GraphMinimap, GraphLegend | `GraphBreadcrumbs.tsx`, `GraphMinimap.tsx`, `GraphLegend.tsx` | **P1** | Pure presentational; no deps after type abstraction |
@@ -177,6 +177,7 @@ Each package imports from `@spacegraphjs/shared` (workspace:*) — **not publish
 ## 7. Updated Success Criteria
 
 - [x] `window-manager`, `inspector` — DONE
+- [x] `@spacegraphjs/toolbar` — DONE (builds successfully)
 - [ ] 10 new packages build and install cleanly
 - [ ] P0 packages (toolbar, search, export) have focused unit tests
 - [ ] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
