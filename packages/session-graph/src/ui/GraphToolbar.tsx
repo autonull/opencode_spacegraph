@@ -1,4 +1,5 @@
-import type { DepthMode, RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
+import type { RendererCapabilities, RenderModel } from "@spacegraphjs/renderer"
+import type { DepthMode } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { onCleanup, onMount } from "solid-js"
 import "./graph-toolbar.css"

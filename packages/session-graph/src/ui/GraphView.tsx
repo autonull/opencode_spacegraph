@@ -1,11 +1,11 @@
 import type {
-  DepthMode,
   GraphRenderer,
   Projection,
   RenderTheme,
   RenderModel,
 } from "@spacegraphjs/renderer"
 import { DEPTH_MODES, supports, supportsDepth } from "@spacegraphjs/renderer"
+import type { DepthMode } from "@opencode/session-ui/graph"
 import type {
   DetailFraming,
   DetailMode,
