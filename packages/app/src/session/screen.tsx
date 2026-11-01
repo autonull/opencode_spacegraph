@@ -50,7 +50,7 @@ import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-ac
 import { SessionSurfaceHost } from "./surface"
 import { selectSessionSurface } from "@/runtime/plugin/surfaces"
 import { createTimelineCache } from "./timeline/cache"
-import { createPanelMotion, holdLandingWidth, panelOpacity } from "@/shell/panel-motion"
+import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
 
 export function SessionScreenView(props: { session: SessionModel }) {
   // Link handling for the rest of the screen; each cached timeline provides its own for its session.
@@ -535,6 +535,7 @@ function SessionScreenContent(props: {
                   screen.size.touch()
                   session.layout.view().session.resize(width)
                 }}
+                onDraggingChange={setPanelResizing}
               />
             </div>
           </div>
@@ -596,6 +597,7 @@ function SessionScreenContent(props: {
                   screen.size.touch()
                   session.layout.view().bottom.resize(height)
                 }}
+                onDraggingChange={setPanelResizing}
               />
             </div>
             <section
