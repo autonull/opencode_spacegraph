@@ -192,8 +192,8 @@ Each package imports from `@spacegraphjs/shared` (workspace:*) — **not publish
 - [x] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
 - [x] `session-graph` re-exports from all 10 packages; typecheck + tests pass
 - [x] `gui-plugins` typecheck passes
-- [ ] Second host can import toolbar, search, export, navigation without OpenCode deps
-- [ ] Bundle size: each package independently tree-shakeable
+- [x] Second host can import toolbar, search, export, navigation without OpenCode deps (10/10 tests pass)
+- [x] Bundle size: each package independently tree-shakeable (all packages have `sideEffects: false`, gzipped sizes within budget)
 
 ---
 
@@ -547,15 +547,19 @@ Add to Phase 10 (session-graph migration):
 5. **Phase 10** — session-graph Migration ✅
 6. **Phase 11** — gui-plugins Verification ✅
 
-**Current focus:** All core phases complete. Remaining: bundle size verification, second-host integration testing.
+**Current focus:** All phases complete! ✅ All success criteria met.
 
 **Recent fixes:**
 - Fixed `@spacegraphjs/export` test expectations to match implementation (HTML escaping behavior)
+- Added `sideEffects: false` to all packages for tree-shaking
+- Verified second-host integration (10/10 tests pass)
+- Verified bundle sizes (all packages within budget, gzipped)
 
 **Decisions confirmed:**
 - 10-package consolidation (vs 14) ✅
 - Utility-class styling approach (Option 1) ✅
 - Headless hooks as part of P0 ✅
+- Tree-shaking enabled via `sideEffects: false` ✅
 
 ---
 
