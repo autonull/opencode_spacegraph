@@ -3,528 +3,218 @@
 > **Goal:** Extract framework-agnostic UI components from `packages/gui-plugins/src/spacegraph/` and `packages/session-graph/src/ui/` into `spacegraphjs/` so other dependents (VS Code extension, JetBrains plugin, standalone hosts) can reuse them without OpenCode's plugin SDK.
 >
 > **Strategy:** Generic graph capabilities belong in SpaceGraphJS, not in host-specific packages. The host packages (`@opencode/session-graph`, `gui-plugins`) should only contain OpenCode-specific integration glue (plugin SDK, session semantics, layout policy). This minimizes integration surface, improves compatibility, and makes SpaceGraphJS a full-featured graph UI library usable by any dependent.
+>
+> **Optimization:** Consolidate tiny packages, prioritize high-impact work, share test infrastructure, batch operations.
 
 ---
 
-## 1. Component Inventory (Expanded)
+## 1. Component Inventory (Optimized)
 
 ### 1.1 Already Lifted (Phases 1-5) ✅
 
-| Component | Source | OpenCode Deps | Status |
-|-----------|--------|---------------|--------|
-| **Windows** (window manager) | `gui-plugins/src/spacegraph/Windows.tsx` | `@opencode/ui/i18n` (empty state only) | ✅ **DONE** → `@spacegraphjs/window-manager` |
-| **Inspector** (node detail) | `gui-plugins/src/spacegraph/Inspector.tsx` | `@opencode/ui/i18n`, `session-graph/formatProvenance`, `session-graph/text` | ✅ **DONE** → `@spacegraphjs/inspector` |
+| Component | Source | Status |
+|-----------|--------|--------|
+| **Windows** (window manager) | `gui-plugins/src/spacegraph/Windows.tsx` | ✅ **DONE** → `@spacegraphjs/window-manager` |
+| **Inspector** (node detail) | `gui-plugins/src/spacegraph/Inspector.tsx` | ✅ **DONE** → `@spacegraphjs/inspector` |
 
-### 1.2 To Lift from `session-graph/src/ui/` (Phases 6+)
+### 1.2 Consolidated Package Targets (Phases 6+)
 
-| Component | Current Path | OpenCode Deps | Liftable? | Target Package |
-|-----------|--------------|---------------|-----------|----------------|
-| **GraphToolbar** + subcontrols | `session-graph/src/ui/GraphToolbar.tsx` + `GraphToolbar*.tsx` | `useI18n`, `@opencode/session-ui/graph` types | ✅ Yes (with i18n externalization) | `@spacegraphjs/toolbar` |
-| **GraphSearch** | `session-graph/src/ui/GraphSearch.tsx` | `useI18n`, `@opencode/ui/Icon`, `session-ui/graph` search fns | ✅ Yes (with i18n/Icon externalization) | `@spacegraphjs/search` |
-| **GraphFind** | `session-graph/src/ui/GraphFind.tsx` | `useI18n`, `@opencode/ui/Icon` | ✅ Yes (with i18n/Icon externalization) | `@spacegraphjs/search` |
-| **GraphBreadcrumbs** | `session-graph/src/ui/GraphBreadcrumbs.tsx` | None (pure Solid) | ✅ Yes | `@spacegraphjs/navigation` |
-| **GraphA11y** | `session-graph/src/ui/GraphA11y.tsx` | None (pure Solid) | ✅ Yes | `@spacegraphjs/a11y` |
-| **GraphDiffView** | `session-graph/src/ui/GraphDiff.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/diff` |
-| **GraphExportControl** + `export.ts` | `session-graph/src/ui/export.ts`, `GraphExportControl.tsx` | `@opencode/ui/Dialog` (for control) | ✅ Yes (core export fn is generic; control needs abstraction) | `@spacegraphjs/export` |
-| **GraphMinimap** | `session-graph/src/ui/GraphMinimap.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/minimap` |
-| **GraphLegend** | `session-graph/src/ui/GraphLegend.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/legend` |
-| **GraphPeek** | `session-graph/src/ui/GraphPeek.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/peek` |
-| **GraphPopover** | `session-graph/src/ui/GraphPopover.tsx` | `@opencode/ui/Popover` | ✅ Yes (needs popover abstraction) | `@spacegraphjs/popover` |
-| **GraphShowControl** | `session-graph/src/ui/GraphShowControl.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/show-control` |
-| **GraphDrawControl** | `session-graph/src/ui/GraphDrawControl.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/draw-control` |
-| **GraphZoomControl** | `session-graph/src/ui/GraphZoomControl.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/zoom-control` |
-| **GraphStatusBar** | `session-graph/src/ui/GraphStatusBar.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/status-bar` |
-| **GraphQuestionsControl** | `session-graph/src/ui/GraphQuestionsControl.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/questions-control` |
-| **GraphOverlayManager** | `session-graph/src/ui/GraphOverlayManager.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/overlay-manager` |
-| **GraphCompare** / `GraphCompareBar` | `session-graph/src/ui/GraphCompare.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/compare` |
-| **TurnMapInlineGraph** / **TurnMapOverlay** | `session-graph/src/ui/TurnMap*.tsx` | `@opencode/session-ui/graph` types | ✅ Yes (with type abstraction) | `@spacegraphjs/turn-map` |
+| Package | Components | Source Files | Priority | Notes |
+|---------|------------|--------------|----------|-------|
+| **@spacegraphjs/toolbar** | GraphToolbar, LayersControl, LayoutControl, TimeControl, ViewControls, CommandControls | `GraphToolbar.tsx`, `GraphToolbar*.tsx` | **P0** | Core UI; 6 sub-controls tightly coupled |
+| **@spacegraphjs/search** | GraphSearch, GraphFind, search utils | `GraphSearch.tsx`, `GraphFind.tsx` | **P0** | High user value; pure search logic extractable |
+| **@spacegraphjs/export** | exportGraph, GraphExportControl, standaloneHtml | `export.ts`, `GraphExportControl.tsx` | **P0** | High user value; core fn already generic |
+| **@spacegraphjs/navigation** | GraphBreadcrumbs, GraphMinimap, GraphLegend | `GraphBreadcrumbs.tsx`, `GraphMinimap.tsx`, `GraphLegend.tsx` | **P1** | Pure presentational; no deps after type abstraction |
+| **@spacegraphjs/a11y** | GraphA11y | `GraphA11y.tsx` | **P1** | Already generic; tiny |
+| **@spacegraphjs/diff** | GraphDiffView | `GraphDiff.tsx` | **P1** | Generic diff visualization |
+| **@spacegraphjs/overlays** | GraphPeek, GraphPopover, GraphOverlayManager | `GraphPeek.tsx`, `GraphPopover.tsx`, `GraphOverlayManager.tsx` | **P2** | Related overlay system; share popover abstraction |
+| **@spacegraphjs/controls** | GraphShowControl, GraphDrawControl, GraphZoomControl, GraphStatusBar, GraphQuestionsControl | `GraphShowControl.tsx`, `GraphDrawControl.tsx`, `GraphZoomControl.tsx`, `GraphStatusBar.tsx`, `GraphQuestionsControl.tsx` | **P2** | Small toolbar-adjacent controls; consolidate |
+| **@spacegraphjs/compare** | GraphCompare, GraphCompareBar | `GraphCompare.tsx` | **P2** | Diff comparison UI |
+| **@spacegraphjs/turn-map** | TurnMapInlineGraph, TurnMapOverlay | `TurnMap*.tsx` | **P2** | Turn visualization |
+
+**Total: 10 packages** (vs 14 originally) — consolidated 4 single-component packages.
 
 ### 1.3 OpenCode-Specific — Stay in `@opencode/session-graph` / `gui-plugins`
 
 | Component | Reason |
 |-----------|--------|
-| `GraphInspector` | Uses `@opencode/ui` (Button, Dialog, Popover, etc.) — host-specific detail panel |
-| `GraphInspectorPanel` | Uses `@opencode/ui` components |
-| `GraphWindows` / `GraphWindowManager` | OpenCode window system (now can use `@spacegraphjs/window-manager` internally) |
-| `GraphFilesystemWindow` | File system integration (OpenCode-specific) |
+| `GraphInspector` / `GraphInspectorPanel` | Uses `@opencode/ui` (Button, Dialog, Popover, etc.) |
+| `GraphWindows` / `GraphWindowManager` | OpenCode window system (can use `@spacegraphjs/window-manager` internally) |
+| `GraphFilesystemWindow` | File system integration |
 | `GraphGroupMenu` / `GraphGallery` / `GraphNoteComposer` / `GraphError` / `GraphFallback` | Use `@opencode/ui` components |
-| `model.ts` (gui-plugins) | Full plugin SDK integration |
-| `panel.tsx` / `renderer.tsx` / `external/*` | Plugin host integration |
-| `settings.tsx` | OpenCode settings surface |
-| `turn-map-body.tsx` / `turn-map-layer.tsx` | Transcript integration |
+| `model.ts` / `panel.tsx` / `renderer.tsx` / `external/*` / `settings.tsx` / `turn-map-body.tsx` / `turn-map-layer.tsx` | Plugin SDK integration |
 
 ---
 
-## 2. Target Structure in spacegraphjs (Expanded)
+## 2. Optimized Implementation Phases
 
-```
-spacegraphjs/
-├── packages/
-│   ├── window-manager/        # ✅ DONE: Windows component
-│   │   ├── src/Windows.tsx, WindowItem.tsx, focus-trap.ts, types.ts, index.ts
-│   ├── inspector/             # ✅ DONE: Inspector component
-│   │   ├── src/Inspector.tsx, ProvenanceDisplay.tsx, OutputDisplay.tsx, types.ts, index.ts
-│   │
-│   ├── toolbar/               # NEW: Graph toolbar with sub-controls
-│   │   ├── src/
-│   │   │   ├── GraphToolbar.tsx              # Main toolbar
-│   │   │   ├── GraphLayersControl.tsx        # Level, facets, depth, renderer
-│   │   │   ├── GraphLayoutControl.tsx        # Layout selector
-│   │   │   ├── GraphTimeControl.tsx          # Turn checkpoint navigation
-│   │   │   ├── GraphToolbarViewControls.tsx  # View toggles (peek, legend, gallery, etc.)
-│   │   │   ├── GraphToolbarCommandControls.tsx # Commands (export, equalizer, etc.)
-│   │   │   ├── types.ts                      # GraphToolbarProps, sub-control props
-│   │   │   └── index.ts
-│   │
-│   ├── search/                # NEW: Search & find
-│   │   ├── src/
-│   │   │   ├── GraphSearch.tsx               # Full search dialog
-│   │   │   ├── GraphFind.tsx                 # Inline find bar
-│   │   │   ├── search.ts                     # Pure search functions (navigationResults, rankedSearch, navigationHelp)
-│   │   │   ├── types.ts                      # GraphSearchProps, GraphFindProps
-│   │   │   └── index.ts
-│   │
-│   ├── export/                # NEW: Export functionality
-│   │   ├── src/
-│   │   │   ├── export.ts                     # Core exportGraph function (SVG/JSON/HTML)
-│   │   │   ├── GraphExportControl.tsx        # Export button/menu (needs popover abstraction)
-│   │   │   ├── standaloneHtml.ts             # HTML template generator
-│   │   │   ├── types.ts                      # ExportFormat, ExportOptions
-│   │   │   └── index.ts
-│   │
-│   ├── navigation/            # NEW: Navigation aids
-│   │   ├── src/
-│   │   │   ├── GraphBreadcrumbs.tsx          # Path breadcrumbs
-│   │   │   ├── GraphMinimap.tsx              # Minimap overview
-│   │   │   ├── GraphLegend.tsx               # Legend panel
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── a11y/                  # NEW: Accessibility
-│   │   ├── src/
-│   │   │   ├── GraphA11y.tsx                 # Live region announcements
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── diff/                  # NEW: Graph diff visualization
-│   │   ├── src/
-│   │   │   ├── GraphDiffView.tsx             # Diff comparison view
-│   │   │   ├── types.ts                      # GraphDiff, GraphDiffSource
-│   │   │   └── index.ts
-│   │
-│   ├── peek/                  # NEW: Hover peek
-│   │   ├── src/
-│   │   │   ├── GraphPeek.tsx                 # Transient node peek
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── popover/               # NEW: Generic popover (abstraction over @opencode/ui/Popover)
-│   │   ├── src/
-│   │   │   ├── GraphPopover.tsx              # Popover component
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── show-control/          # NEW: Show/hide toggles
-│   │   ├── src/
-│   │   │   ├── GraphShowControl.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── draw-control/          # NEW: Draw mode controls
-│   │   ├── src/
-│   │   │   ├── GraphDrawControl.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── zoom-control/          # NEW: Zoom controls
-│   │   ├── src/
-│   │   │   ├── GraphZoomControl.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── status-bar/            # NEW: Status bar
-│   │   ├── src/
-│   │   │   ├── GraphStatusBar.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── questions-control/     # NEW: Questions/filters
-│   │   ├── src/
-│   │   │   ├── GraphQuestionsControl.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── overlay-manager/       # NEW: Overlay management
-│   │   ├── src/
-│   │   │   ├── GraphOverlayManager.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── compare/               # NEW: Graph comparison
-│   │   ├── src/
-│   │   │   ├── GraphCompare.tsx
-│   │   │   ├── GraphCompareBar.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   ├── turn-map/              # NEW: Turn map visualization
-│   │   ├── src/
-│   │   │   ├── TurnMapInlineGraph.tsx
-│   │   │   ├── TurnMapOverlay.tsx
-│   │   │   ├── types.ts
-│   │   │   └── index.ts
-│   │
-│   └── session-graph/         # EXISTING: @opencode/session-graph (thin integration layer)
-│       ├── src/
-│       │   ├── GraphView.tsx                 # Main canvas (stays — ties to renderer)
-│       │   ├── GraphInspector.tsx            # OpenCode-specific inspector (uses @opencode/ui)
-│       │   ├── GraphInspectorPanel.tsx       # OpenCode-specific panel
-│       │   ├── GraphWindows.tsx              # Uses @spacegraphjs/window-manager internally
-│       │   ├── GraphFilesystemWindow.tsx     # OpenCode-specific
-│       │   ├── GraphGroupMenu.tsx            # OpenCode-specific
-│       │   ├── GraphGallery.tsx              # OpenCode-specific
-│       │   ├── GraphNoteComposer.tsx         # OpenCode-specific
-│       │   ├── GraphError.tsx                # OpenCode-specific
-│       │   ├── GraphFallback.tsx             # OpenCode-specific
-│       │   ├── export.ts                     # Re-export from @spacegraphjs/export
-│       │   ├── theme.ts                      # Re-export from @spacegraphjs/renderer
-│       │   └── ... (other OpenCode-specific)
-│       ├── package.json                      # ✅ Updated
-│       ├── vite.config.ts                    # ✅ Library build
-│       └── tsconfig.json                     # ✅ Declarations
-```
-
----
-
-## 3. Dependency Decoupling Strategy (Extended)
-
-### 3.3 Toolbar Package (`@spacegraphjs/toolbar`)
-
-- **Current deps:** `useI18n` from `@opencode/ui/context/i18n`, `@opencode/session-ui/graph` types
-- **Fix:** 
-  - Accept `t: (key: string) => string` and `plural: (key: string, count: number, params?) => string` props on main toolbar
-  - Pass i18n down to sub-controls via context or props
-  - Replace `@opencode/session-ui/graph` types with local generic types (`GraphFacets`, `FacetCounts`, `Layout`, `DepthMode`, `ZoomLevel`, `GraphArrangement`, `GraphSide`, `DetailMode`, `DetailFraming`, `GraphViewData`)
-  - Sub-controls: `GraphLayersControl`, `GraphLayoutControl`, `GraphTimeControl`, `GraphToolbarViewControls`, `GraphToolbarCommandControls`
-  - Each sub-control accepts its own props slice; main toolbar composes them
-  - **Capability detection:** `RendererCapabilities` from `@spacegraphjs/renderer` — keep as peer dep
-  - **Dispatch command:** `dispatchCommand?: (command: string) => void` — host provides
-  - **Export callback:** `onExport?: (format, model) => void` — host provides render model
-
-### 3.4 Search Package (`@spacegraphjs/search`)
-
-- **Current deps:** `useI18n`, `@opencode/ui/Icon`, `session-ui/graph` search functions
-- **Fix:**
-  - Accept `t`, `plural` props
-  - Accept `Icon` component as prop (default to simple SVG) — decouples from `@opencode/ui`
-  - Move pure search functions (`navigationResults`, `rankedSearch`, `navigationHelp`) to `search.ts` with generic `GraphNode`/`GraphViewData` types
-  - `GraphFind` — inline find bar, similar externalization
-
-### 3.5 Export Package (`@spacegraphjs/export`)
-
-- **Current deps:** `@spacegraphjs/svg-renderer` (already in spacegraphjs), `@opencode/ui/Dialog` (for control)
-- **Fix:**
-  - `exportGraph` function: already generic, uses renderer contracts — keep as-is
-  - `GraphExportControl`: accept `Popover` component as prop (abstraction), or make it a headless hook + render prop
-  - `standaloneHtml`: generic template function
-
-### 3.6 Navigation Package (`@spacegraphjs/navigation`)
-
-- **Current deps:** `@opencode/session-ui/graph` types
-- **Fix:** Replace with local generic types (`GraphNode`, `GraphEdge`, `GraphViewData`)
-
-### 3.7 Type Abstraction Pattern
-
-For all packages consuming `@opencode/session-ui/graph` types:
-
-```typescript
-// In each package's types.ts — define local generic types
-export interface GraphNode { id: string; label: string; kind?: string; summary?: string; provenance?: Provenance; data?: Record<string, unknown>; }
-export interface GraphEdge { from: string; to: string; kind?: string; }
-export interface GraphViewData { nodes: GraphNode[]; edges: GraphEdge[]; }
-export interface Provenance { source: string; asOf?: number; confidence?: "explicit" | "structural" | "inferred"; }
-
-// Host-specific types (Layout, DepthMode, etc.) — define as string unions or accept as generic params
-export type Layout = "lanes" | "timeline" | "hierarchy" | "tree" | "force";
-export type DepthMode = "flat" | "layered" | "depthStack" | "orbit";
-export type ZoomLevel = "overview" | "execution" | "detail";
-// ... etc.
-```
-
-**Host adapter pattern** (in `@opencode/session-graph`):
-```typescript
-// session-graph/src/adapters/spacegraphjs.ts
-export function toSpacegraphjsGraphViewData(data: SessionGraphViewData): SpacegraphjsGraphViewData { ... }
-export function toSpacegraphjsGraphNode(node: SessionGraphNode): SpacegraphjsGraphNode { ... }
-```
-
----
-
-## 4. Implementation Phases (Extended)
-
-### Phase 6: Create New Package Skeletons (Parallelizable)
+### Phase 6: Batch Create All Package Skeletons (1 hour, parallelizable)
 
 ```bash
-# In spacegraphjs/
-mkdir -p packages/toolbar/src packages/toolbar/test
-mkdir -p packages/search/src packages/search/test
-mkdir -p packages/export/src packages/export/test
-mkdir -p packages/navigation/src packages/navigation/test
-mkdir -p packages/a11y/src packages/a11y/test
-mkdir -p packages/diff/src packages/diff/test
-mkdir -p packages/minimap/src packages/minimap/test
-mkdir -p packages/legend/src packages/legend/test
-mkdir -p packages/peek/src packages/peek/test
-mkdir -p packages/popover/src packages/popover/test
-mkdir -p packages/show-control/src packages/show-control/test
-mkdir -p packages/draw-control/src packages/draw-control/test
-mkdir -p packages/zoom-control/src packages/zoom-control/test
-mkdir -p packages/status-bar/src packages/status-bar/test
-mkdir -p packages/questions-control/src packages/questions-control/test
-mkdir -p packages/overlay-manager/src packages/overlay-manager/test
-mkdir -p packages/compare/src packages/compare/test
-mkdir -p packages/turn-map/src packages/turn-map/test
+# In spacegraphjs/ — single command creates all 10 packages
+for pkg in toolbar search export navigation a11y diff overlays controls compare turn-map; do
+  mkdir -p packages/$pkg/src packages/$pkg/test
+done
 ```
 
-Each package: `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts` (same pattern as window-manager/inspector).
+Each package gets: `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts` (templated, shared config).
 
-### Phase 7: Extract Toolbar (Core — enables other UI)
+### Phase 7: Core Packages (P0) — Sequential, High Impact
 
-1. **Copy** `session-graph/src/ui/GraphToolbar.tsx` + sub-controls → `packages/toolbar/src/`
-2. **Create** `types.ts` with all props types, generic graph types
-3. **Externalize** i18n: add `t`, `plural` props to `GraphToolbarProps`, pass to sub-controls
-4. **Abstract** `@opencode/session-ui/graph` types to local generics
-5. **Abstract** `@opencode/ui/Icon` (if used in sub-controls) — accept as prop
-5. **Export** from `index.ts`
-6. **Write tests** — render with mock props, verify i18n injection, capability gating
+| Order | Package | Effort | Key Work |
+|-------|---------|--------|----------|
+| 1 | **toolbar** | 4 hrs | Externalize i18n; abstract session-ui types; 6 sub-controls |
+| 2 | **search** | 2 hrs | Move pure search fns; externalize i18n + Icon; keyboard nav tests |
+| 3 | **export** | 1.5 hrs | exportGraph done; abstract popover for control; HTML template |
 
-### Phase 8: Extract Search
+**Shared work:** Type abstraction pattern, i18n externalization, Icon abstraction — done once in toolbar, reused.
 
-1. **Copy** `GraphSearch.tsx`, `GraphFind.tsx` → `packages/search/src/`
-2. **Move** `navigationResults`, `rankedSearch`, `navigationHelp` from `@opencode/session-ui/graph` → `packages/search/src/search.ts` (pure functions)
-3. **Create** `types.ts` with generic types
-4. **Externalize** i18n + `Icon` component prop
-5. **Export** from `index.ts`
-6. **Write tests** — search logic, keyboard nav, i18n
+### Phase 8: P1 Packages — Parallelizable (3-4 hrs total)
 
-### Phase 9: Extract Export
+| Package | Effort | Notes |
+|---------|--------|-------|
+| **navigation** | 1 hr | Breadcrumbs, Minimap, Legend — pure presentational |
+| **a11y** | 0.5 hr | Already generic; just copy + types |
+| **diff** | 1 hr | GraphDiffView with generic types |
 
-1. **Copy** `export.ts` → `packages/export/src/export.ts` (already generic)
-2. **Copy** `GraphExportControl.tsx` → `packages/export/src/` (abstract popover)
-3. **Create** `types.ts`
-4. **Export** from `index.ts`
+Can run in parallel since no cross-deps.
 
-### Phase 10: Extract Navigation, A11y, Diff, and Remaining (Parallelizable)
+### Phase 9: P2 Packages — Parallelizable (2-3 hrs total)
 
-Each follows same pattern: copy → create types.ts with generic types → externalize deps → export → test.
+| Package | Effort | Notes |
+|---------|--------|-------|
+| **overlays** | 1 hr | Peek, Popover, OverlayManager — share popover abstraction |
+| **controls** | 1 hr | 5 small controls — shared types, minimal logic |
+| **compare** | 0.5 hr | Compare + CompareBar |
+| **turn-map** | 0.5 hr | TurnMapInlineGraph + TurnMapOverlay |
 
-### Phase 11: Update `@opencode/session-graph` to Consume Published Packages
+### Phase 10: session-graph Migration (2 hrs)
 
-1. **Add** workspace dependencies for new packages
-2. **Refactor** `session-graph/src/ui/`:
-   - `GraphToolbar.tsx` → re-export from `@spacegraphjs/toolbar` with OpenCode i18n/formatters bound
-   - `GraphSearch.tsx` / `GraphFind.tsx` → re-export from `@spacegraphjs/search`
-   - `GraphBreadcrumbs.tsx` → re-export from `@spacegraphjs/navigation`
-   - `GraphA11y.tsx` → re-export from `@spacegraphjs/a11y`
-   - `GraphDiffView.tsx` → re-export from `@spacegraphjs/diff`
-   - `export.ts` → re-export from `@spacegraphjs/export`
-   - `GraphMinimap.tsx` / `GraphLegend.tsx` / `GraphPeek.tsx` / `GraphPopover.tsx` / etc. → re-export
-3. **Create** adapter functions in `session-graph/src/adapters/spacegraphjs.ts` for type conversion
-4. **Run** `bun run typecheck` and `bun test src` in `session-graph`
+1. Add workspace deps for 10 new packages
+2. Replace `session-graph/src/ui/` files with re-exports + adapters
+3. Create `src/adapters/spacegraphjs.ts` for type conversion
+4. Run typecheck + tests
 
-### Phase 12: Update `gui-plugins` to Use New Session-Graph Re-exports
+### Phase 11: gui-plugins Verification (0.5 hrs)
 
-1. **No direct changes needed** — gui-plugins imports from `@opencode/session-graph`, which now re-exports from spacegraphjs packages
-2. **Verify** `bun run typecheck` in `gui-plugins`
-3. **Run** component tests
+- Typecheck passes (imports from session-graph unchanged)
 
 ---
 
-## 5. Modularity & Extensibility Considerations
+## 3. Test Strategy (Minimized)
 
-### 5.1 Composable Package Design
+| Package | Test Approach | Rationale |
+|---------|---------------|-----------|
+| **toolbar** | Unit: capability gating, i18n injection, prop passing | Complex logic |
+| **search** | Unit: search fns (navigationResults, rankedSearch); Integration: keyboard nav, results rendering | Core logic + UX |
+| **export** | Unit: exportGraph (SVG/JSON/HTML), standaloneHtml template | Pure functions |
+| **navigation** | **None** — covered by session-graph component tests | Pure presentational |
+| **a11y** | **None** — covered by session-graph component tests | Pure presentational |
+| **diff** | Unit: diff rendering with mock data | Logic-heavy |
+| **overlays** | Unit: popover positioning, peek timing | Interaction logic |
+| **controls** | **None** — trivial presentational | 5 tiny components |
+| **compare** | Unit: compare rendering | Logic |
+| **turn-map** | Unit: turn model building | Logic |
 
-Each package is independently installable. A minimal host might only need:
-```json
-"dependencies": {
-  "@spacegraphjs/window-manager": "^0.1.0",
-  "@spacegraphjs/inspector": "^0.1.0",
-  "@spacegraphjs/toolbar": "^0.1.0"
-}
-```
-
-Advanced hosts add search, export, navigation, etc. as needed.
-
-### 5.2 Icon Abstraction
-
-Instead of hardcoding `@opencode/ui/Icon`, accept a component prop:
-```typescript
-interface IconProps { name: string; size?: "small" | "medium" | "large"; class?: string; }
-type IconComponent = (props: IconProps) => JSX.Element;
-
-interface SearchProps {
-  Icon?: IconComponent;  // Default: simple inline SVG
-}
-```
-
-### 5.3 Popover/Dialog Abstraction
-
-For `GraphExportControl`, `GraphPopover`, and similar — accept a render prop or component:
-```typescript
-interface PopoverProps {
-  children: JSX.Element;
-  content: JSX.Element;
-  trigger?: "hover" | "click";
-  position?: "top" | "bottom" | "left" | "right";
-}
-type PopoverComponent = (props: PopoverProps) => JSX.Element;
-```
-
-Host provides implementation (e.g., `@opencode/ui/Popover`, `@floating-ui/react`, custom).
-
-### 5.4 Theme Token Abstraction
-
-Already handled: `session-graph/src/ui/theme.ts` maps OpenCode CSS vars → `@spacegraphjs/renderer` `RenderTheme`. Keep this adapter in session-graph; spacegraphjs packages consume `RenderTheme` directly.
-
-### 5.5 Future: React/Vue/Svelte Bindings
-
-Each package exports Solid components. When a React host appears:
-- Add `@spacegraphjs/toolbar-react` wrapper package using `@solidjs/meta` or manual port
-- Keep Solid as source of truth; bindings are thin adapters
-
-### 5.6 Future: Headless Hooks
-
-For maximum flexibility, consider exposing headless logic as hooks:
-```typescript
-// @spacegraphjs/search
-export function useGraphSearch(model: GraphViewData) { ... } // Returns { query, results, setQuery, select }
-// @spacegraphjs/toolbar
-export function useGraphToolbarState() { ... } // Returns level, facets, depth, layout, etc.
-```
-
-This lets hosts build custom UI while reusing logic.
+**Test budget:** ~6 focused test files vs 14 packages. Session-graph's existing component tests cover integration.
 
 ---
 
-## 6. Migration Checklist for @opencode/session-graph
+## 4. Shared Abstraction Infrastructure (Do Once, Reuse)
 
-After publishing new packages:
+Create in `spacegraphjs/packages/shared/` (not published, internal):
 
-- [ ] Add workspace deps for all new `@spacegraphjs/*` packages
-- [ ] `GraphToolbar.tsx` → `export { GraphToolbar } from "@spacegraphjs/toolbar"` (with bound i18n)
-- [ ] `GraphLayersControl.tsx` → re-export from `@spacegraphjs/toolbar`
-- [ ] `GraphLayoutControl.tsx` → re-export from `@spacegraphjs/toolbar`
-- [ ] `GraphTimeControl.tsx` → re-export from `@spacegraphjs/toolbar`
-- [ ] `GraphToolbarViewControls.tsx` → re-export from `@spacegraphjs/toolbar`
-- [ ] `GraphToolbarCommandControls.tsx` → re-export from `@spacegraphjs/toolbar`
-- [ ] `GraphSearch.tsx` → `export { GraphSearch } from "@spacegraphjs/search"`
-- [ ] `GraphFind.tsx` → `export { GraphFind } from "@spacegraphjs/search"`
-- [ ] `GraphBreadcrumbs.tsx` → `export { GraphBreadcrumbs } from "@spacegraphjs/navigation"`
-- [ ] `GraphMinimap.tsx` → `export { GraphMinimap } from "@spacegraphjs/minimap"`
-- [ ] `GraphLegend.tsx` → `export { GraphLegend } from "@spacegraphjs/legend"`
-- [ ] `GraphA11y.tsx` → `export { GraphA11y } from "@spacegraphjs/a11y"`
-- [ ] `GraphDiffView.tsx` → `export { GraphDiffView } from "@spacegraphjs/diff"`
-- [ ] `export.ts` → `export { exportGraph, type ExportFormat, type ExportOptions } from "@spacegraphjs/export"`
-- [ ] `GraphExportControl.tsx` → `export { GraphExportControl } from "@spacegraphjs/export"`
-- [ ] `GraphPeek.tsx` → `export { GraphPeek } from "@spacegraphjs/peek"`
-- [ ] `GraphPopover.tsx` → `export { GraphPopover } from "@spacegraphjs/popover"`
-- [ ] `GraphShowControl.tsx` → `export { GraphShowControl } from "@spacegraphjs/show-control"`
-- [ ] `GraphDrawControl.tsx` → `export { GraphDrawControl } from "@spacegraphjs/draw-control"`
-- [ ] `GraphZoomControl.tsx` → `export { GraphZoomControl } from "@spacegraphjs/zoom-control"`
-- [ ] `GraphStatusBar.tsx` → `export { GraphStatusBar } from "@spacegraphjs/status-bar"`
-- [ ] `GraphQuestionsControl.tsx` → `export { GraphQuestionsControl } from "@spacegraphjs/questions-control"`
-- [ ] `GraphOverlayManager.tsx` → `export { GraphOverlayManager } from "@spacegraphjs/overlay-manager"`
-- [ ] `GraphCompare.tsx` / `GraphCompareBar.tsx` → `export from "@spacegraphjs/compare"`
-- [ ] `TurnMapInlineGraph.tsx` / `TurnMapOverlay.tsx` → `export from "@spacegraphjs/turn-map"`
-- [ ] Create `src/adapters/spacegraphjs.ts` for type conversions
-- [ ] Run `bun run typecheck` and `bun test src` in `session-graph`
+```
+shared/
+├── src/
+│   ├── i18n.ts              # t, plural prop types; default no-op implementations
+│   ├── icons.ts             # IconComponent type; default inline SVGs
+│   ├── popover.ts           # PopoverComponent type; render-prop pattern
+│   ├── types.ts             # GraphNode, GraphEdge, GraphViewData, Provenance, Layout, DepthMode, ZoomLevel, etc.
+│   └── index.ts
+```
+
+Each package imports from `@spacegraphjs/shared` (workspace:*) — **not published**, avoids version drift.
 
 ---
 
-## 7. Timeline Estimate (Extended)
+## 5. Optimized Timeline
 
-| Phase | Effort | Can Parallelize | Status |
-|-------|--------|-----------------|--------|
-| Phases 1-5 (Windows, Inspector, session-graph, gui-plugins) | ~10 hours | 2–3 hrs | ✅ **DONE** |
-| Phase 6: New package skeletons (14 packages) | 2 hours | Yes (all) | ⬜ **PENDING** |
-| Phase 7: Toolbar extraction | 4 hours | — | ⬜ **PENDING** |
-| Phase 8: Search extraction | 2 hours | — | ⬜ **PENDING** |
-| Phase 9: Export extraction | 1 hour | — | ⬜ **PENDING** |
-| Phase 10: Navigation/A11y/Diff/Remaining (11 packages) | 6 hours | Yes (groups of 3-4) | ⬜ **PENDING** |
-| Phase 11: session-graph migration | 3 hours | — | ⬜ **PENDING** |
-| Phase 12: gui-plugins verification | 1 hour | — | ⬜ **PENDING** |
-| **Total (new phases)** | **~19 hours** | **~8 hours parallel** | **0% complete** |
-| **Grand Total** | **~29 hours** | | **~35% complete** |
+| Phase | Effort | Parallelization | Cumulative |
+|-------|--------|-----------------|------------|
+| 1-5 (done) | 10 hrs | 2-3 hrs | 10 hrs ✅ |
+| 6: Skeletons | 1 hr | All 10 at once | 11 hrs |
+| 7: P0 (toolbar, search, export) | 7.5 hrs | Sequential | 18.5 hrs |
+| 8: P1 (nav, a11y, diff) | 2.5 hrs | 3-way parallel | 21 hrs |
+| 9: P2 (overlays, controls, compare, turn-map) | 3 hrs | 4-way parallel | 24 hrs |
+| 10: session-graph migration | 2 hrs | — | 26 hrs |
+| 11: gui-plugins verify | 0.5 hrs | — | **26.5 hrs** |
+
+**vs Original: ~29 hrs → ~26.5 hrs (savings: ~2.5 hrs from consolidation + test reduction + batching)**
 
 ---
 
-## 8. Versioning & Publishing (Extended)
+## 6. Package Consolidation Details
 
-| Package | Version | Publish Target |
-|---------|---------|----------------|
-| `@spacegraphjs/window-manager` | `0.1.0` | npm (public) |
-| `@spacegraphjs/inspector` | `0.1.0` | npm (public) |
-| `@spacegraphjs/toolbar` | `0.1.0` | npm (public) |
-| `@spacegraphjs/search` | `0.1.0` | npm (public) |
-| `@spacegraphjs/export` | `0.1.0` | npm (public) |
-| `@spacegraphjs/navigation` | `0.1.0` | npm (public) |
-| `@spacegraphjs/a11y` | `0.1.0` | npm (public) |
-| `@spacegraphjs/diff` | `0.1.0` | npm (public) |
-| `@spacegraphjs/minimap` | `0.1.0` | npm (public) |
-| `@spacegraphjs/legend` | `0.1.0` | npm (public) |
-| `@spacegraphjs/peek` | `0.1.0` | npm (public) |
-| `@spacegraphjs/popover` | `0.1.0` | npm (public) |
-| `@spacegraphjs/show-control` | `0.1.0` | npm (public) |
-| `@spacegraphjs/draw-control` | `0.1.0` | npm (public) |
-| `@spacegraphjs/zoom-control` | `0.1.0` | npm (public) |
-| `@spacegraphjs/status-bar` | `0.1.0` | npm (public) |
-| `@spacegraphjs/questions-control` | `0.1.0` | npm (public) |
-| `@spacegraphjs/overlay-manager` | `0.1.0` | npm (public) |
-| `@spacegraphjs/compare` | `0.1.0` | npm (public) |
-| `@spacegraphjs/turn-map` | `0.1.0` | npm (public) |
-| `@opencode/session-graph` | `0.1.0` | npm (public, scoped) |
+### Merged Packages
+
+| Original | Merged Into | Savings |
+|----------|-------------|---------|
+| `show-control`, `draw-control`, `zoom-control`, `status-bar`, `questions-control` | **controls** | 4 package configs, 4 test setups |
+| `peek`, `popover`, `overlay-manager` | **overlays** | 2 package configs, shared popover abstraction |
+| `minimap`, `legend`, `breadcrumbs` | **navigation** | 2 package configs |
+
+### Why This Works
+
+- **Toolbar sub-controls** already live in one package — natural grouping
+- **Search** has shared pure logic — natural grouping
+- **Navigation** components are all pure presentational with same type deps
+- **Controls** are all toolbar-adjacent toggles with identical prop patterns
+- **Overlays** share popover abstraction and positioning logic
+
+---
+
+## 7. Updated Success Criteria
+
+- [x] `window-manager`, `inspector` — DONE
+- [ ] 10 new packages build and install cleanly
+- [ ] P0 packages (toolbar, search, export) have focused unit tests
+- [ ] P1/P2 packages: no dedicated tests (covered by session-graph component tests)
+- [ ] `session-graph` re-exports from all 10 packages; typecheck + tests pass
+- [ ] `gui-plugins` typecheck passes
+- [ ] Second host can import toolbar, search, export, navigation without OpenCode deps
+- [ ] Bundle size: each package independently tree-shakeable
+
+---
+
+## 8. Versioning (10 packages + session-graph)
+
+| Package | Version |
+|---------|---------|
+| `@spacegraphjs/window-manager` | `0.1.0` |
+| `@spacegraphjs/inspector` | `0.1.0` |
+| `@spacegraphjs/toolbar` | `0.1.0` |
+| `@spacegraphjs/search` | `0.1.0` |
+| `@spacegraphjs/export` | `0.1.0` |
+| `@spacegraphjs/navigation` | `0.1.0` |
+| `@spacegraphjs/a11y` | `0.1.0` |
+| `@spacegraphjs/diff` | `0.1.0` |
+| `@spacegraphjs/overlays` | `0.1.0` |
+| `@spacegraphjs/controls` | `0.1.0` |
+| `@spacegraphjs/compare` | `0.1.0` |
+| `@spacegraphjs/turn-map` | `0.1.0` |
+| `@opencode/session-graph` | `0.1.0` |
 
 **Publish Order:**
-1. `window-manager`, `inspector` (no deps) ✅
-2. `toolbar`, `search`, `export`, `navigation`, `a11y`, `diff` (no deps on each other)
-3. `minimap`, `legend`, `peek`, `popover`, `show-control`, `draw-control`, `zoom-control`, `status-bar`, `questions-control`, `overlay-manager`, `compare`, `turn-map` (depend on toolbar/search types)
-4. `session-graph` (depends on all above)
+1. `window-manager`, `inspector` ✅
+2. `toolbar`, `search`, `export`, `navigation`, `a11y`, `diff` (no cross-deps)
+3. `overlays`, `controls`, `compare`, `turn-map` (depend on shared types)
+4. `session-graph` (depends on all)
 5. `gui-plugins` (depends on session-graph)
 
 ---
 
-## 9. Success Criteria (Extended)
-
-- [x] `spacegraphjs/packages/window-manager` builds and installs cleanly
-- [x] `spacegraphjs/packages/inspector` builds and installs cleanly
-- [x] `packages/session-graph` publishes and installs cleanly
-- [x] `gui-plugins` builds with workspace deps (no source duplication)
-- [x] All existing tests pass in `session-graph`
-- [ ] All 14 new packages build and install cleanly
-- [ ] All new packages have unit tests (search logic, toolbar capability gating, export formats)
-- [ ] `session-graph` re-exports from new packages and all tests pass
-- [ ] `gui-plugins` typecheck passes with new session-graph
-- [ ] A second host (e.g., `spacegraphjs/demo/second-host/`) can import and use toolbar, search, export, etc. without OpenCode deps
-- [ ] Bundle size analysis: each package is independently tree-shakeable
-
----
-
-## 10. Non-Goals (Deferred)
-
-| Item | Reason |
-|------|--------|
-| React/Vue/Svelte bindings | Only Solid used in OpenCode; add when a host appears |
-| TurnMapBody / turn-map-layer | OpenCode-specific transcript integration |
-| Dialog fallbacks (`external/dialogs.tsx`) | OpenCode UI components |
-| Settings page | OpenCode settings surface |
-| Plugin setup (`external/renderer.tsx`) | OpenCode plugin host |
-| `GraphInspector` / `GraphInspectorPanel` | OpenCode-specific detail panels (use `@opencode/ui`) |
-| `GraphWindows` / `GraphWindowManager` | Can use `@spacegraphjs/window-manager` internally but remain in session-graph for OpenCode integration |
-| `GraphFilesystemWindow` / `GraphGroupMenu` / `GraphGallery` / `GraphNoteComposer` / `GraphError` / `GraphFallback` | OpenCode-specific |
-
----
-
-## 11. Related Documents
+## 9. Related Documents
 
 - `SPACEGRAPH.md` §6 — SpaceGraphJS dependency overview
 - `SPACEGRAPH.md` §9.1 — Five-rung contribution ladder
@@ -534,22 +224,324 @@ After publishing new packages:
 
 ---
 
-## 12. Open Questions / Design Decisions
+---
 
-1. **Popover abstraction**: Should `@spacegraphjs/popover` be a generic component with render prop, or a headless hook + CSS? → Start with render prop; headless hook as future enhancement.
+## 10. Additional Improvements & Code Sharing
 
-2. **Icon system**: Accept `Icon` component prop vs. string name + registry? → Component prop is more flexible; provide default inline SVGs.
+### 10.1 Extended Shared Infrastructure
 
-3. **Toolbar sub-control granularity**: Keep as one `@spacegraphjs/toolbar` package with sub-controls, or split each sub-control? → One package for now (they're tightly coupled); can split later if needed.
+Add to `spacegraphjs/packages/shared/src/`:
 
-4. **Turn map types**: `TurnMapInlineGraph`/`TurnMapOverlay` use `turnGraphModel`/`buildTurnRenderModel` from session-graph. These are generic turn visualization — move to `@spacegraphjs/turn-map` with their own types.
+| File | Purpose | Used By |
+|------|---------|---------|
+| `animations.ts` | Spring/transition configs (framer-motion style); shared `useSpring`, `useTransition` hooks | overlays, controls, turn-map, peek |
+| `keyboard.ts` | `useKeyboardShortcuts`, `useArrowNavigation`, `useFocusTrap` hooks | search, toolbar, overlays, navigation |
+| `tokens.ts` | Design token types (spacing, radii, shadows, transitions); maps to CSS custom properties | All packages for consistent theming |
+| `css.ts` | `cx`/`cn` utility for conditional classes; `styleVar` for CSS var access | All packages |
+| `portal.ts` | `Portal` component for rendering overlays/popovers at document root | overlays, popover, export-control |
+| `hooks.ts` | `useClickOutside`, `useResizeObserver`, `useIntersectionObserver`, `useMediaQuery` | overlays, minimap, toolbar, peek |
 
-5. **GraphCompare types**: `GraphDiffSource` is generic (left/right render models). Move to `@spacegraphjs/compare`.
+**Benefit:** Avoids reimplementing interaction logic across 10 packages. Each hook is ~30 lines, tree-shakeable.
 
-6. **Theme system**: Already in `@spacegraphjs/renderer` — session-graph's `theme.ts` is just an adapter. Keep as-is.
+### 10.2 Headless Hooks Pattern (Future-Proofing)
+
+For maximum flexibility without committing to UI, export headless logic alongside components:
+
+```typescript
+// @spacegraphjs/toolbar/src/hooks.ts
+export function useToolbarState(initial?: Partial<ToolbarState>) {
+  // Returns { level, facets, depth, layout, zoom, checkpoint, ... setters }
+}
+
+export function useSearch(model: GraphViewData) {
+  // Returns { query, results, setQuery, select, navigate }
+}
+
+export function usePeek(model: GraphViewData) {
+  // Returns { peekedNode, showPeek, hidePeek }
+}
+```
+
+**Usage:**
+```tsx
+// Host builds custom UI
+function CustomToolbar() {
+  const { level, setLevel, facets, setFacets } = useToolbarState();
+  return <MyCustomLevelPicker value={level} onChange={setLevel} />;
+}
+
+// Or use provided component
+<GraphToolbar level={level} onLevel={setLevel} facets={facets} onFacetsChange={setFacets} />
+```
+
+**Implementation:** Extract state logic from components into hooks during Phase 7-9. Zero extra cost if done during extraction.
+
+### 10.3 Automated Migration (Codemod)
+
+Create `spacegraphjs/codemods/` for session-graph migration:
+
+```bash
+# Run in session-graph/
+npx jscodeshift --parser=tsx \
+  --transform=spacegraphjs/codemods/lift-toolbar.ts \
+  src/ui/GraphToolbar.tsx
+
+# Transforms:
+# import { GraphToolbar } from "./GraphToolbar"
+# → import { GraphToolbar } from "@spacegraphjs/toolbar"
+# Adds adapter imports for type conversion
+```
+
+**Patterns to codemod:**
+1. Import replacement: `./GraphToolbar` → `@spacegraphjs/toolbar`
+2. Prop type updates: `level: ZoomLevel` → `level: ToolbarLevel` (local type)
+3. i18n prop injection: Add `t={i18n.t} plural={i18n.plural}` to component usage
+4. Adapter function generation for type conversion
+
+**Effort:** 2 hrs to write; saves 30 min manual editing per file × 30 files = 15 hrs saved.
+
+### 10.4 Bundle Optimization Strategy
+
+| Technique | Implementation |
+|-----------|----------------|
+| **Tree-shaking** | All exports are named; no barrel re-exports of entire packages |
+| **Dynamic imports** | Heavy components (GraphSearch, GraphExportControl) exported as `lazy(() => import(...))` |
+| **Side-effect free** | `package.json`: `"sideEffects": false` — enables dead code elimination |
+| **Peer deps** | `@spacegraphjs/renderer`, `solid-js` as peers — single copy in host |
+| **Shared internal** | `@spacegraphjs/shared` not published — no version conflicts |
+
+**Bundle budget per package (gzipped):**
+- toolbar: ~8 KB (core) + 2 KB per sub-control
+- search: ~5 KB
+- export: ~3 KB (core) + 2 KB (control)
+- navigation: ~4 KB
+- overlays: ~6 KB
+- controls: ~3 KB
+- diff/compare/turn-map: ~4 KB each
+
+### 10.5 CSS/Styling Approach
+
+**Current:** Tailwind-like utility classes in JSX (`class="flex items-center gap-2 px-2 py-1.5"`)
+
+**Options for spacegraphjs:**
+1. **Keep utility classes** — Host must provide matching CSS (Tailwind, UnoCSS, or custom). Document required classes.
+2. **Extract to CSS Modules** — `.module.css` files co-located with components. More portable, slightly larger bundles.
+3. **CSS-in-JS (vanilla-extract)** — Type-safe, zero-runtime, but adds build complexity.
+
+**Decision:** **Option 1 (utility classes) + documented class map.** 
+- Most SpaceGraphJS hosts already use Tailwind-compatible utilities
+- Add `packages/shared/src/classMap.ts` documenting required classes per component
+- Host can map to their design system
+
+```typescript
+// shared/src/classMap.ts
+export const classMap = {
+  toolbar: "flex flex-wrap items-center gap-2 border-b px-2 py-1.5",
+  toolbarButton: "rounded px-2 py-1 text-sm hover:bg-muted",
+  searchInput: "flex-1 bg-transparent outline-none placeholder:text-muted",
+  // ...
+} as const;
+```
+
+### 10.6 Storybook / Documentation per Package
+
+Each package gets `stories/` for visual testing:
+
+```
+packages/toolbar/
+├── src/
+├── stories/
+│   ├── GraphToolbar.stories.tsx      # All prop combinations
+│   ├── GraphLayersControl.stories.tsx
+│   └── index.ts                      # Register with spacegraphjs storybook
+├── .storybook/
+│   └── main.ts                       # Extends root config
+```
+
+**Shared storybook config** at `spacegraphjs/.storybook/` — packages extend it. Runs in CI for visual regression.
+
+### 10.7 Type-Safe Adapter Pattern
+
+Formalize the session-graph → spacegraphjs conversion:
+
+```typescript
+// session-graph/src/adapters/spacegraphjs.ts
+import type { GraphViewData as SGViewData, GraphNode as SGNode } from "@opencode/session-ui/graph";
+import type { GraphViewData as SGJSViewData, GraphNode as SGJSNode } from "@spacegraphjs/shared";
+
+/** Converts session-ui graph types to spacegraphjs generic types. */
+export function toSGJSViewData(data: SGViewData): SGJSViewData {
+  return {
+    nodes: data.nodes.map(toSGJSNode),
+    edges: data.edges.map(e => ({ from: e.source, to: e.target, kind: e.kind })),
+  };
+}
+
+export function toSGJSNode(node: SGNode): SGJSNode {
+  return {
+    id: node.id,
+    label: node.label,
+    kind: node.kind,
+    summary: node.summary,
+    provenance: node.provenance ? { ...node.provenance, source: String(node.provenance.source) } : undefined,
+    data: node.data as Record<string, unknown>,
+  };
+}
+
+/** Batch adapter for toolbar — converts all props at once. */
+export function adaptToolbarProps(props: SessionGraphToolbarProps): SGJSToolbarProps {
+  return {
+    ...props,
+    model: toSGJSViewData(props.model),
+    t: (k) => props.i18n.t(k),
+    plural: (k, c, p) => props.i18n.plural(k, c, p),
+    // ...
+  };
+}
+```
+
+**Benefit:** Single conversion point; components stay pure; easy to test.
+
+### 10.8 Accessibility Enhancements
+
+During extraction, upgrade a11y beyond current state:
+
+| Component | Current | Improved |
+|-----------|---------|----------|
+| Toolbar | Basic ARIA labels | Full roving tabindex for overflow menu; keyboard shortcuts announced |
+| Search | Basic combobox | Live region for result count; `aria-describedby` for hints |
+| Overlays | Focus trap | Return focus to trigger; `aria-modal`; `Esc` handling |
+| Peek | None | `role="tooltip"`; `aria-describedby` on target |
+| Navigation | Breadcrumbs only | `nav` landmark; `aria-current="page"` |
+
+**Effort:** +1 hr during P0/P2 extraction (done inline, not separate).
+
+### 10.9 Performance Considerations
+
+| Concern | Mitigation |
+|---------|------------|
+| **Toolbar re-renders** | Split into `ToolbarRow` (memo) + sub-controls (memo); only changed axis re-renders |
+| **Search on every keystroke** | Debounce `query` in `useSearch` hook (150ms); memoize `rankedSearch` |
+| **Minimap canvas** | `useMemo` for render model; only re-draw on viewport/model change |
+| **Peek popover** | `requestAnimationFrame` for position update; cleanup on unmount |
+| **Turn map** | Virtualized turn list; only render visible turns |
+
+### 10.10 Migration Checklist Additions
+
+Add to Phase 10 (session-graph migration):
+
+- [ ] Run codemod for import replacements
+- [ ] Add adapter imports to each re-export file
+- [ ] Verify all i18n keys exist in OpenCode's `en.ts` (new keys for spacegraphjs components)
+- [ ] Update `session-graph/src/index.ts` to re-export from spacegraphjs packages
+- [ ] Run `bun run test:components` (component tests catch visual regressions)
+- [ ] Verify bundle size: `bun run build && npx bundle-analyzer dist/`
+
+---
+
+## 11. Complete Package Dependency Graph
+
+```
+@spacegraphjs/
+├── shared (internal, not published)
+│   ├── i18n, icons, popover, types, animations, keyboard, tokens, css, portal, hooks
+│
+├── window-manager ✅
+│   └── deps: shared, solid-js
+│
+├── inspector ✅
+│   └── deps: shared, solid-js
+│
+├── toolbar (P0)
+│   ├── GraphToolbar + 5 sub-controls
+│   └── deps: shared, @spacegraphjs/renderer (peer), solid-js
+│
+├── search (P0)
+│   ├── GraphSearch, GraphFind, search.ts
+│   └── deps: shared, solid-js
+│
+├── export (P0)
+│   ├── exportGraph, GraphExportControl, standaloneHtml
+│   └── deps: shared, @spacegraphjs/svg-renderer (peer), solid-js
+│
+├── navigation (P1)
+│   ├── GraphBreadcrumbs, GraphMinimap, GraphLegend
+│   └── deps: shared, solid-js
+│
+├── a11y (P1)
+│   ├── GraphA11y
+│   └── deps: shared, solid-js
+│
+├── diff (P1)
+│   ├── GraphDiffView
+│   └── deps: shared, solid-js
+│
+├── overlays (P2)
+│   ├── GraphPeek, GraphPopover, GraphOverlayManager
+│   └── deps: shared, solid-js
+│
+├── controls (P2)
+│   ├── 5 small controls
+│   └── deps: shared, solid-js
+│
+├── compare (P2)
+│   ├── GraphCompare, GraphCompareBar
+│   └── deps: shared, solid-js
+│
+├── turn-map (P2)
+│   ├── TurnMapInlineGraph, TurnMapOverlay
+│   └── deps: shared, solid-js
+│
+└── @opencode/session-graph (integration layer)
+    ├── GraphView, GraphInspector, GraphWindows, etc.
+    └── deps: ALL above (re-exports) + @opencode/ui + @opencode/plugin/gui
+```
+
+**No circular deps.** All arrows point inward to `shared` or outward to peers.
+
+---
+
+## 12. Risk Mitigation
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Type drift between session-ui and spacegraphjs types | Medium | High | Adapter functions + unit tests for conversion |
+| Missing i18n keys in OpenCode | Low | Medium | Codemod extracts keys; CI checks against en.ts |
+| Bundle size regression | Low | Medium | CI budget check: `size-limit` per package |
+| Breaking change in @spacegraphjs/renderer | Low | High | Peer dep with `^` version; test against latest in CI |
+| Host doesn't provide popover/Icon | Medium | Medium | Default implementations in shared; documented as required |
+
+---
+
+## 13. Final Timeline with Improvements
+
+| Phase | Work | Effort | Notes |
+|-------|------|--------|-------|
+| 6 | Batch skeletons + shared infrastructure | 1.5 hrs | Includes shared package |
+| 7 | P0: toolbar, search, export | 8.5 hrs | Includes hooks extraction + a11y upgrades |
+| 8 | P1: navigation, a11y, diff | 2.5 hrs | Parallel |
+| 9 | P2: overlays, controls, compare, turn-map | 3 hrs | Parallel |
+| 10 | Codemod writing + session-graph migration | 3 hrs | Codemod saves manual work |
+| 11 | gui-plugins verify + CI setup | 1 hr | Bundle budgets, storybook |
+
+**Total: ~29.5 hrs** (vs 26.5 hrs without improvements — but includes headless hooks, codemod, a11y, CI, docs which pay off long-term)
+
+---
+
+## 14. Next Steps
+
+1. **Approve plan** — confirm package consolidation, priorities
+2. **Phase 6** — Create `shared/` + 10 package skeletons (single script)
+3. **Phase 7** — Start with `toolbar` (highest complexity, establishes patterns)
+4. **Parallel** — While toolbar builds, create codemod scaffolding
+
+**Decision needed:** 
+- Confirm 10-package consolidation (vs 14)
+- Confirm utility-class styling approach (Option 1)
+- Confirm headless hooks as part of P0 (not separate phase)
 
 ---
 
 **Owner:** SpaceGraph maintainers
-**Blockers:** None — pure extraction with abstraction, no functional changes
-**Depends on:** Upstream sync complete (✅ done), all tests green (✅ done), Phases 1-5 complete (✅ done)
+**Blockers:** None
+**Depends on:** Phases 1-5 complete (✅ done)
