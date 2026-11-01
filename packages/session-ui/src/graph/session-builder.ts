@@ -57,6 +57,9 @@ import {
   buildIssueNodes,
 } from "./workspace-attachments"
 
+type ProvenanceStrategy = (tool: SessionMessageAssistantTool, toolID: string, turnID: string) => void
+type ProvenanceStrategies = Record<string, ProvenanceStrategy>
+
 /**
  * The message types the model reads as work. Everything else the session says is a *notice*: a
  * synthetic message, a skill, a system line, or the model changing under the reader's feet.
@@ -337,6 +340,7 @@ export class GraphBuilder {
     this.nodesByID.clear()
     this.fileNodes.clear()
     this.touchedFiles.clear()
+
     for (const node of kernel.nodes) {
       const graphNode = toGraphNode(node)
       this.nodes.push(graphNode)
@@ -370,23 +374,24 @@ export class GraphBuilder {
 
   meta(): GraphViewMeta {
     this.construct()
-    return {
+    const meta: GraphViewMeta = {
       root: SESSION_NODE_ID,
-      ...(this.goal === undefined ? {} : { goal: this.goal }),
       turns: this.turns,
       turnByMessageID: this.turnByMessageID,
-      ...(this.activeTurn === undefined ? {} : { activeTurn: this.activeTurn }),
-      ...(this.snapshot === undefined
-        ? {}
-        : {
-            workspaceRoot: this.snapshot.root,
-            snapshot: {
-              revision: this.snapshot.revision,
-              asOf: this.snapshot.asOf,
-              missing: this.snapshot.missing,
-            },
-          }),
     }
+
+    if (this.goal !== undefined) meta.goal = this.goal
+    if (this.activeTurn !== undefined) meta.activeTurn = this.activeTurn
+    if (this.snapshot !== undefined) {
+      meta.workspaceRoot = this.snapshot.root
+      meta.snapshot = {
+        revision: this.snapshot.revision,
+        asOf: this.snapshot.asOf,
+        missing: this.snapshot.missing,
+      }
+    }
+
+    return meta
   }
 
   /**
@@ -1023,9 +1028,11 @@ export class GraphBuilder {
     if (SHELL_TOOLS.has(tool.name)) {
       const resultID = resultNodeID(tool.id)
 
+      const resultLabel = status === "failed" ? "failed" : status === "running" ? "running" : "ok"
+
       this.attach(
         this.baseNode(resultID, "result", turnID, {
-          label: status === "failed" ? "failed" : status === "running" ? "running" : "ok",
+          label: resultLabel,
           summary: output ? truncate(output, 400) : error,
           status,
           messageID: message.id,
@@ -1169,7 +1176,7 @@ export class GraphBuilder {
   }
 
   /** Strategy for recording provenance edges for a tool. */
-  private readonly provenanceStrategies: Record<string, (tool: SessionMessageAssistantTool, toolID: string, turnID: string) => void> = {
+  private readonly provenanceStrategies: ProvenanceStrategies = {
     read: (tool, toolID, turnID) => {
       const { input } = toolFacts(tool)
       const path = stringField(input, "path")

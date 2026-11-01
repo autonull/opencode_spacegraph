@@ -1,11 +1,48 @@
 import { usePlugin, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
+import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, For, Show } from "solid-js"
-import { navigationResults, rankedSearch, type GraphNode } from "@opencode/session-ui/graph"
+import { navigationResults, rankedSearch, type GraphNode as SessionGraphNode, type GraphViewData as SessionGraphViewData } from "@opencode/session-ui/graph"
+import { formatProvenance, text } from "@opencode/session-graph"
 import type { SpacegraphModel } from "./model"
 import { FullMap } from "./full-map"
-import { Inspector } from "./Inspector"
-import { Windows } from "./Windows"
-import type { WindowState } from "./Windows"
+import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
+import { Windows, type WindowState } from "@spacegraphjs/window-manager"
+
+function convertGraphData(data: SessionGraphViewData): InspectorGraphViewData {
+  return {
+    nodes: data.nodes.map((n) => ({
+      id: n.id,
+      label: n.label,
+      kind: n.kind,
+      summary: n.summary,
+      provenance: n.provenance,
+      data: n.data,
+    })),
+    edges: data.edges.map((e) => ({
+      from: e.source,
+      to: e.target,
+      kind: e.kind,
+    })),
+  }
+}
+
+function convertNode(node: SessionGraphNode): InspectorGraphNode {
+  return {
+    id: node.id,
+    label: node.label,
+    kind: node.kind,
+    summary: node.summary,
+    provenance: node.provenance,
+    data: node.data,
+  }
+}
+
+function toInspectorFormatProvenance(
+  provenance: import("@opencode/session-ui/graph").Provenance | undefined,
+  now: number,
+): string | undefined {
+  return formatProvenance(provenance as any, now)
+}
 
 export default function SpacegraphPanel(props: {
   model: SpacegraphModel
@@ -13,21 +50,22 @@ export default function SpacegraphPanel(props: {
   screen: SessionScreen
 }) {
   const ctx = usePlugin()
+  const i18n = useI18n()
 
   const [windows, setWindows] = createSignal<WindowState[]>([])
   const [searchQuery, setSearchQuery] = createSignal("")
-  const [searchResults, setSearchResults] = createSignal<GraphNode[]>([])
+  const [searchResults, setSearchResults] = createSignal<SessionGraphNode[]>([])
   const [searchIndex, setSearchIndex] = createSignal(0)
 
   const graph = props.model.graph(props.session)
 
   const search = (query: string) => {
     const results = navigationResults(graph(), query) ?? rankedSearch(graph(), query)
-    setSearchResults(results)
+    setSearchResults(results as SessionGraphNode[])
     setSearchIndex(0)
   }
 
-  const openSearchResult = (node: GraphNode) => {
+  const openSearchResult = (node: SessionGraphNode) => {
     props.model.focus(props.session, node.id)
     setSearchQuery("")
   }
@@ -38,7 +76,7 @@ export default function SpacegraphPanel(props: {
 
   const windowTitle = (window: WindowState) => {
     if (window.nodeID) {
-      const node = graph().nodes.find((n: GraphNode) => n.id === window.nodeID)
+      const node = graph().nodes.find((n: SessionGraphNode) => n.id === window.nodeID)
 
       return node?.label ?? window.kind
     }
@@ -48,14 +86,20 @@ export default function SpacegraphPanel(props: {
 
   const windowContent = (window: WindowState) => {
     if (window.kind === "inspector" && window.nodeID) {
-      const node = graph().nodes.find((n: GraphNode) => n.id === window.nodeID)
+      const node = graph().nodes.find((n: SessionGraphNode) => n.id === window.nodeID)
+      const convertedGraph = convertGraphData(graph())
+      const convertedNode = node ? convertNode(node) : undefined
 
       return (
         <Inspector
-          model={graph()}
-          node={node}
-          onSelect={(id) => props.model.focus(props.session, id)}
-          onOpenTranscript={(messageID, partID) => props.screen.transcript.reveal(messageID, partID)}
+          model={convertedGraph}
+          node={convertedNode}
+          onSelect={(id: string) => props.model.focus(props.session, id)}
+          onOpenTranscript={(messageID: string, partID?: string) => props.screen.transcript.reveal(messageID, partID)}
+          t={i18n.t}
+          plural={(key: string, count: number, params?: Record<string, string | number | boolean | undefined>) => i18n.plural(key as any, count, params as any)}
+          formatProvenance={(prov, now) => toInspectorFormatProvenance(prov as any, now)}
+          formatOutput={text}
         />
       )
     }
@@ -116,6 +160,7 @@ export default function SpacegraphPanel(props: {
           title={windowTitle}
           anchorOf={anchorOf}
           bounds={bounds}
+          emptyTitle={ctx.t("panel.window")}
         />
         <Show when={searchQuery().length > 0 && searchResults().length > 0}>
           <div class="absolute left-2 top-2 z-10 flex w-72 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-md border border-v2-border-border-base bg-v2-background-bg-base shadow-md">

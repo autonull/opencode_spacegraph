@@ -8,6 +8,7 @@ export default {
   "panel.inspectorFocus": "Focus on map",
   "panel.inspectorProvenance": "Provenance",
   "panel.inspectorOutput": "Output",
+  "panel.window": "Window",
   "panel.windowClose": "Close window",
   "panel.searchResults": "{count, plural, one {# result} other {# results}}",
   "menu.open": "Open session map",

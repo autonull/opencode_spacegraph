@@ -37,6 +37,8 @@
     "@solid-primitives/media": "catalog:",
     "@solid-primitives/resize-observer": "catalog:",
     "@solid-primitives/scheduled": "1.5.3",
+    "@spacegraphjs/inspector": "workspace:*",
+    "@spacegraphjs/window-manager": "workspace:*",
     "@tanstack/solid-query": "5.91.4",
     "@tanstack/solid-virtual": "catalog:",
     "effect": "catalog:",
