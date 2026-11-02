@@ -1,6 +1,6 @@
 # SpaceGraph for OpenCode — Design, Progress & Evidence
 
-> **Status (2026-10-21):** The prototype is built and verified. The hypothesis remains unproven — it requires human evaluation (T2.2). This document is the design argument and architectural record for the **OpenCode integration only**; `docs/spacegraph/prototype.md` is the release write-up; `SPACEGRAPH.TODO.3.md` is the closing plan. The broader SpaceGraphJS platform vision lives in `spacegraphjs/README.vision.md`.
+> **Status (2026-11-02):** The prototype is built and verified. The hypothesis remains unproven — it requires human evaluation (T2.2). This document is the design argument and architectural record for the **OpenCode integration only**; `docs/spacegraph/prototype.md` is the release write-up; `SPACEGRAPH.TODO.27.md` is the closing plan. The broader SpaceGraphJS platform vision lives in `spacegraphjs/README.md`.
 
 ---
 
@@ -394,7 +394,7 @@ bun run graph:capture --mode=verify   # assert committed set
 
 The canonical verification gate is `bun run graph:verify`. It runs:
 
-1. **Library build** — `spacegraphjs` builds all 7 packages (types + dist)
+1. **Library build** — `spacegraphjs` builds all packages (types + dist)
 2. **Contract conformance** — shared renderer contract suite against both adapters (Vitest)
 3. **Package boundaries** — no core → contract/Cytoscape imports (Vitest)
 4. **View controller + framework bindings** — React/Solid bindings (Vitest)
@@ -523,7 +523,7 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 
 ---
 
-## 11. Remaining Work (Closing Plan: TODO.3)
+## 11. Remaining Work (Closing Plan: TODO.27)
 
 ### 11.1 Engineering wrap-up (G5 — CI green, code frozen)
 
