@@ -489,7 +489,7 @@ function SessionScreenContent(props: {
           {/* Keep the control outside panel animations. */}
           <Show when={isDesktop() && messagesReady() && session.identity.params.id}>
             <div
-              class="absolute end-3 top-0 z-30 h-12 flex items-center gap-1"
+              class="absolute end-[var(--session-header-inset-end,12px)] top-0 z-30 h-12 flex items-center gap-1"
               data-slot="session-header-toggles"
               onPointerDown={hideTimelineScrollbar}
               onClick={hideTimelineScrollbar}
