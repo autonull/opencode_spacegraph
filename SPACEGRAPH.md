@@ -341,7 +341,7 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 | Export (SVG/JSON/standalone HTML) | ✅ Complete | Contract demo, component test |
 | Security/escaping suite | ✅ Complete | 13 unit + browser tests, sanitization contract |
 | Performance budget (linear pipeline, 60-turn window) | ✅ Measured | `graph:scale` benchmark, guard tests |
-| Capture matrix (44 frames, 5 layouts × 4 depths × contexts) | ✅ Committed | `graph:capture --mode=verify` asserts set |
+| Capture matrix (5 layouts × 4 depths × 2 projections × 2 contexts = 80 frames) | ✅ Committed | `graph:capture --mode=verify` asserts set |
 | Library published + clean consumer proof | ✅ Done | `test:publish` packs → external `node_modules` → mounts both adapters |
 | Second host (framework-free, plain TS) | ✅ Running | `spacegraphjs/demo/second-host/` |
 | Direct mouse interaction (pan, zoom, pick, frame, drag) | ✅ Complete | Library unit + Playwright e2e; app e2e in `e2e/graph/` |
@@ -446,8 +446,8 @@ The canonical verification gate is `bun run graph:verify`. It runs:
 12. **Lanes overview** has dominant empty region (reserves execution width at overview)
 13. **Empty-column exclusion** not implemented; fit frames content IDs
 14. **Depth fade** is scene fog; DOM cards do not fade (HTML over canvas)
-15. **Capture matrix** is one frame per option value, not cartesian product
-16. **2026-10-19 visual review** found legibility defects; tracked T1.1–T1.18, layout-variety T7
+15. **Capture matrix** is one frame per layout/depth/projection/context combination, not cartesian product of all options
+16. **Visual review** found legibility defects; tracked T1.1–T1.18, layout-variety T7
 17. **Long sessions** drawn as recent 60 turns + banner; layout measures whole session
 18. **Five layouts are not comparable kinds** — three grid policies, two different geometries; best is unmeasured
 19. **Middle-drag orbit** does nothing in an orthographic view; there is no orbit to have
@@ -529,7 +529,7 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 
 - **T8.1** Fix all four red CI workflows (library build toolchain, deploy pnpm version, retire benchmark, fork Graph gate installer independence, reduced-motion test flake)
 - **T8.2** Make fork installable from clean clone (`graph:setup` script, correct README)
-- **T8.3** Library roadmap: budget CI, embedder devtools, API docs/release automation, `vue-spacegraph` deprecation, README audit
+- **T8.3** Library roadmap: budget CI, embedder devtools, API docs/release automation, README audit
 - **T8.4** Retire ad-hoc scripts (`PLAN/`, `verification/`, competing docs) → `docs/archive/`
 - **T8.5** Final capture set + demo video (`docs/spacegraph/demo.mp4`)
 - **T8.6** Re-measure every number in docs against current merge base
