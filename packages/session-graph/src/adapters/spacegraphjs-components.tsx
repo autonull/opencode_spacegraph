@@ -8,9 +8,6 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import type { UiI18nPluralKey } from "@opencode/ui/context/i18n"
 import { Icon } from "@opencode/ui/icon"
 import type { JSX } from "solid-js"
-import type { IconComponent } from "@spacegraphjs/shared/icons"
-import type { PopoverComponent } from "@spacegraphjs/shared/popover"
-import { NODE_KINDS, NODE_STATUSES, DOMAINS } from "@opencode/session-ui/graph"
 
 // Import SpaceGraphJS components
 import {
@@ -71,10 +68,33 @@ import type {
 } from "@spacegraphjs/turn-map"
 import type { GraphExportControlProps } from "@spacegraphjs/export"
 
-// ============ i18n Adapter ============
+// Import from session-ui for type conversion
+import { NODE_KINDS, NODE_STATUSES, DOMAINS } from "@opencode/session-ui/graph"
+import { createI18nAdapter, toSGJSViewData } from "./spacegraphjs"
 
-/** Creates an I18n adapter from OpenCode's useI18n hook result. */
-export function createI18nAdapter(i18n: ReturnType<typeof useI18n>): I18n {
+// ============ Shared Renderer Instances ============
+
+function mapIconSize(size: 'small' | 'medium' | 'large' | undefined): "small" | "normal" | "large" | undefined {
+  if (size === 'medium') return 'normal'
+  return size
+}
+
+const renderIcon: import("@spacegraphjs/shared/icons").IconComponent = ({ name, size, class: className, style }) => (
+  <Icon name={name} size={mapIconSize(size)} class={className} style={style} />
+)
+
+const PopoverComponentImpl: import("@spacegraphjs/shared/popover").PopoverComponent = ({ slot, label, icon, children, ...props }) => (
+  <details data-slot={slot} data-popover={true} {...props}>
+    <summary class="flex items-center gap-1" aria-label={label}>
+      {icon && <Icon name={icon} size="small" />}
+      {children}
+    </summary>
+  </details>
+)
+
+// ============ Helper: create host I18n adapter ============
+
+function createHostI18nAdapter(i18n: ReturnType<typeof useI18n>): I18n {
   return {
     t: (key: string, values?: Record<string, string | number>) => i18n.t(key, values),
     plural: (key: string, count: number, values?: Record<string, string | number>) =>
@@ -82,40 +102,7 @@ export function createI18nAdapter(i18n: ReturnType<typeof useI18n>): I18n {
   }
 }
 
-// ============ Icon/Popover Renderers ============
-
-/** Maps SpaceGraphJS icon sizes to OpenCode icon sizes. */
-function mapIconSize(size: 'small' | 'medium' | 'large' | undefined): "small" | "normal" | "large" | undefined {
-  if (size === 'medium') return 'normal'
-  return size
-}
-
-/** Default icon renderer using OpenCode's Icon component. */
-export function createOpenCodeIconRenderer(): IconComponent {
-  return ({ name, size, class: className, style }) => (
-    <Icon name={name} size={mapIconSize(size)} class={className} style={style} />
-  )
-}
-
-/** Default popover renderer using OpenCode's popover pattern. */
-export function createOpenCodePopoverRenderer(): PopoverComponent {
-  return ({ slot, label, icon, children, ...props }) => (
-    <details data-slot={slot} data-popover={true} {...props}>
-      <summary class="flex items-center gap-1" aria-label={label}>
-        {icon && <Icon name={icon} size="small" />}
-        {children}
-      </summary>
-    </details>
-  )
-}
-
-// Shared renderer instances
-const renderIcon = createOpenCodeIconRenderer()
-const PopoverComponent = createOpenCodePopoverRenderer()
-
 // ============ Toolbar Adapters ============
-
-import { toSGJSViewData } from "./spacegraphjs"
 
 /** Adapter props for GraphToolbar - adds OpenCode i18n. */
 export interface GraphToolbarAdapterProps
@@ -130,7 +117,7 @@ export interface GraphToolbarAdapterProps
 export function GraphToolbarAdapter(props: GraphToolbarAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, model, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphToolbar
@@ -138,7 +125,7 @@ export function GraphToolbarAdapter(props: GraphToolbarAdapterProps): JSX.Elemen
       model={model ? toSGJSViewData(model) : undefined}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -150,12 +137,10 @@ export interface GraphLayersControlAdapterProps
   model?: import("@opencode/session-ui/graph").GraphViewData
 }
 
-export function GraphLayersControlAdapter(
-  props: GraphLayersControlAdapterProps,
-): JSX.Element {
+export function GraphLayersControlAdapter(props: GraphLayersControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, model, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphLayersControl
@@ -163,7 +148,7 @@ export function GraphLayersControlAdapter(
       model={model ? toSGJSViewData(model) : undefined}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -174,19 +159,17 @@ export interface GraphLayoutControlAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphLayoutControlAdapter(
-  props: GraphLayoutControlAdapterProps,
-): JSX.Element {
+export function GraphLayoutControlAdapter(props: GraphLayoutControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphLayoutControl
       {...rest}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -198,12 +181,10 @@ export interface GraphTimeControlAdapterProps
   model?: import("@opencode/session-ui/graph").GraphViewData
 }
 
-export function GraphTimeControlAdapter(
-  props: GraphTimeControlAdapterProps,
-): JSX.Element {
+export function GraphTimeControlAdapter(props: GraphTimeControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, model, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphTimeControl
@@ -211,7 +192,7 @@ export function GraphTimeControlAdapter(
       model={model ? toSGJSViewData(model) : undefined}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -222,19 +203,17 @@ export interface GraphDrawControlAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphDrawControlAdapter(
-  props: GraphDrawControlAdapterProps,
-): JSX.Element {
+export function GraphDrawControlAdapter(props: GraphDrawControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphDrawControl
       {...rest}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -246,12 +225,10 @@ export interface GraphShowControlAdapterProps
   model?: import("@opencode/session-ui/graph").GraphViewData
 }
 
-export function GraphShowControlAdapter(
-  props: GraphShowControlAdapterProps,
-): JSX.Element {
+export function GraphShowControlAdapter(props: GraphShowControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, model, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphShowControl
@@ -259,7 +236,7 @@ export function GraphShowControlAdapter(
       model={model ? toSGJSViewData(model) : undefined}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -270,12 +247,10 @@ export interface GraphZoomControlAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphZoomControlAdapter(
-  props: GraphZoomControlAdapterProps,
-): JSX.Element {
+export function GraphZoomControlAdapter(props: GraphZoomControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphZoomControl {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
@@ -286,19 +261,17 @@ export interface GraphQuestionsControlAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphQuestionsControlAdapter(
-  props: GraphQuestionsControlAdapterProps,
-): JSX.Element {
+export function GraphQuestionsControlAdapter(props: GraphQuestionsControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphQuestionsControl
       {...rest}
       i18n={adaptedI18n}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
@@ -314,7 +287,7 @@ export interface GraphSearchAdapterProps
 export function GraphSearchAdapter(props: GraphSearchAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphSearch {...rest} t={adaptedI18n.t} plural={adaptedI18n.plural} Icon={renderIcon} />
 }
@@ -328,7 +301,7 @@ export interface GraphFindAdapterProps
 export function GraphFindAdapter(props: GraphFindAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphFind
@@ -337,15 +310,9 @@ export function GraphFindAdapter(props: GraphFindAdapterProps): JSX.Element {
       plural={adaptedI18n.plural}
       Icon={renderIcon}
       vocabularyKeys={{
-        kind: Object.fromEntries(
-          NODE_KINDS.map((k) => [k, adaptedI18n.t(`ui.sessionGraph.kind.${k}`)]),
-        ) as Record<string, string>,
-        status: Object.fromEntries(
-          NODE_STATUSES.map((s) => [s, adaptedI18n.t(`ui.sessionGraph.status.${s}`)]),
-        ) as Record<string, string>,
-        domain: Object.fromEntries(
-          DOMAINS.map((d) => [d, adaptedI18n.t(`ui.sessionGraph.domain.${d}`)]),
-        ) as Record<string, string>,
+        kind: Object.fromEntries(NODE_KINDS.map(k => [k, adaptedI18n.t(`ui.sessionGraph.kind.${k}`)])) as Record<string, string>,
+        status: Object.fromEntries(NODE_STATUSES.map(s => [s, adaptedI18n.t(`ui.sessionGraph.status.${s}`)])) as Record<string, string>,
+        domain: Object.fromEntries(DOMAINS.map(d => [d, adaptedI18n.t(`ui.sessionGraph.domain.${d}`)])) as Record<string, string>,
       }}
     />
   )
@@ -359,12 +326,10 @@ export interface GraphBreadcrumbsAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphBreadcrumbsAdapter(
-  props: GraphBreadcrumbsAdapterProps,
-): JSX.Element {
+export function GraphBreadcrumbsAdapter(props: GraphBreadcrumbsAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphBreadcrumbs {...rest} i18n={adaptedI18n} />
 }
@@ -378,23 +343,23 @@ export interface GraphMinimapAdapterProps
 export function GraphMinimapAdapter(props: GraphMinimapAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphMinimap {...rest} i18n={adaptedI18n} />
 }
 
 /** Adapter for GraphLegend. */
 export interface GraphLegendAdapterProps
-  extends Omit<GraphLegendProps, "i18n"> {
+  extends Omit<GraphLegendProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
 export function GraphLegendAdapter(props: GraphLegendAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <GraphLegend {...rest} i18n={adaptedI18n} />
+  return <GraphLegend {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 // ============ A11y Adapter ============
@@ -408,7 +373,7 @@ export interface GraphA11yAdapterProps
 export function GraphA11yAdapter(props: GraphA11yAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphA11y {...rest} i18n={adaptedI18n} />
 }
@@ -424,7 +389,7 @@ export interface GraphDiffViewAdapterProps
 export function GraphDiffViewAdapter(props: GraphDiffViewAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphDiffView {...rest} i18n={adaptedI18n} />
 }
@@ -433,62 +398,60 @@ export function GraphDiffViewAdapter(props: GraphDiffViewAdapterProps): JSX.Elem
 
 /** Adapter for GraphPeek. */
 export interface GraphPeekAdapterProps
-  extends Omit<GraphPeekProps, "i18n"> {
+  extends Omit<GraphPeekProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
 export function GraphPeekAdapter(props: GraphPeekAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <GraphPeek {...rest} i18n={adaptedI18n} />
+  return <GraphPeek {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 /** Adapter for GraphPopover. */
 export interface GraphPopoverAdapterProps
-  extends Omit<GraphPopoverProps, "i18n"> {
+  extends Omit<GraphPopoverProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
 export function GraphPopoverAdapter(props: GraphPopoverAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <GraphPopover {...rest} i18n={adaptedI18n} />
+  return <GraphPopover {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 /** Adapter for GraphOverlayManager. */
 export interface GraphOverlayManagerAdapterProps
-  extends Omit<GraphOverlayManagerProps, "i18n"> {
+  extends Omit<GraphOverlayManagerProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphOverlayManagerAdapter(
-  props: GraphOverlayManagerAdapterProps,
-): JSX.Element {
+export function GraphOverlayManagerAdapter(props: GraphOverlayManagerAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <GraphOverlayManager {...rest} i18n={adaptedI18n} />
+  return <GraphOverlayManager {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 // ============ Controls Adapters ============
 
 /** Adapter for GraphStatusBar. */
 export interface GraphStatusBarAdapterProps
-  extends Omit<GraphStatusBarProps, "i18n"> {
+  extends Omit<GraphStatusBarProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
 export function GraphStatusBarAdapter(props: GraphStatusBarAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <GraphStatusBar {...rest} i18n={adaptedI18n} />
+  return <GraphStatusBar {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 // ============ Compare Adapters ============
@@ -502,23 +465,23 @@ export interface GraphCompareAdapterProps
 export function GraphCompareAdapter(props: GraphCompareAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <GraphCompare {...rest} i18n={adaptedI18n} />
 }
 
 /** Adapter for GraphCompareBar. */
 export interface GraphCompareBarAdapterProps
-  extends Omit<GraphCompareBarProps, "i18n"> {
+  extends Omit<GraphCompareBarProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
 export function GraphCompareBarAdapter(props: GraphCompareBarAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <GraphCompareBar {...rest} i18n={adaptedI18n} />
+  return <GraphCompareBar {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 // ============ Turn Map Adapters ============
@@ -529,28 +492,26 @@ export interface TurnMapInlineGraphAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function TurnMapInlineGraphAdapter(
-  props: TurnMapInlineGraphAdapterProps,
-): JSX.Element {
+export function TurnMapInlineGraphAdapter(props: TurnMapInlineGraphAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return <TurnMapInlineGraph {...rest} i18n={adaptedI18n} />
 }
 
 /** Adapter for TurnMapOverlay. */
 export interface TurnMapOverlayAdapterProps
-  extends Omit<TurnMapOverlayProps, "i18n"> {
+  extends Omit<TurnMapOverlayProps, "i18n" | "t" | "plural" | "Icon"> {
   i18n?: ReturnType<typeof useI18n>
 }
 
 export function TurnMapOverlayAdapter(props: TurnMapOverlayAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
-  return <TurnMapOverlay {...rest} i18n={adaptedI18n} />
+  return <TurnMapOverlay {...rest} i18n={adaptedI18n} Icon={renderIcon} />
 }
 
 // ============ Export Adapters ============
@@ -561,12 +522,10 @@ export interface GraphExportControlAdapterProps
   i18n?: ReturnType<typeof useI18n>
 }
 
-export function GraphExportControlAdapter(
-  props: GraphExportControlAdapterProps,
-): JSX.Element {
+export function GraphExportControlAdapter(props: GraphExportControlAdapterProps): JSX.Element {
   const i18n = props.i18n ?? useI18n()
   const { i18n: _i18n, ...rest } = props
-  const adaptedI18n = createI18nAdapter(i18n)
+  const adaptedI18n = createHostI18nAdapter(i18n)
 
   return (
     <GraphExportControl
@@ -574,7 +533,10 @@ export function GraphExportControlAdapter(
       t={adaptedI18n.t}
       plural={adaptedI18n.plural}
       Icon={renderIcon}
-      Popover={PopoverComponent}
+      Popover={PopoverComponentImpl}
     />
   )
 }
+
+// Re-export core utilities
+export { createI18nAdapter, toSGJSViewData }
