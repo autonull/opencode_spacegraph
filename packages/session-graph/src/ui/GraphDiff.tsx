@@ -51,7 +51,10 @@ export const GraphDiffView = (props: { from: string; source?: GraphDiffSource })
                 </div>
                 <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono">
                   <For each={diff.patch.split("\n")}>
-                    {(line) => <div class={TONE_CLASS[diffTone(line)]}>{line || " "}</div>}
+                    {(line) => {
+                      const tone: 'header' | 'added' | 'removed' | 'context' = diffTone(line)
+                      return <div class={TONE_CLASS[tone]}>{line || " "}</div>
+                    }}
                   </For>
                 </pre>
               </div>
