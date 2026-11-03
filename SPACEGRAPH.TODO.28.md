@@ -75,11 +75,20 @@ git merge upstream/dev --no-ff -m "merge upstream/dev into fork"
 
 | Test | File | Likely Fix | Status |
 |------|------|------------|--------|
-| Security: script tag escapes | `security.spec.ts:28` | Card template escapeHtml not applied — budget exhaustion makes tool node a ShapeNode instead of HtmlNode | 🔄 Investigating (root cause: card budget 40 exceeded before tool:prt_tool_read_1 in model order) |
-| Window detail: selection not visible | `graph-detail.spec.ts:42` | Same root cause — tool node rendered as ShapeNode (no card template), so `data-selected` absent | 🔄 Investigating |
-| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Card height 0 — same budget issue, hierarchy layout nodes not getting cards | ⏳ Pending |
-| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Ribbon layout at overview: turn nodes structural but budget 12 may exclude them | ⏳ Pending |
-| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Matrix layout at overview: phase nodes structural but budget 12 may exclude them | ⏳ Pending |
+| Security: script tag escapes | `security.spec.ts:28` | Module resolution: browser uses stale adapter build; `escapeHtml` not applied to card template in canvas host | 🔄 Investigating (card template not invoked — minimal 3-node model, budget not the issue) |
+| Window detail: selection not visible | `graph-detail.spec.ts:42` | Card budget 40 exhausted before `tool:prt_tool_read_1` in model order → renders as ShapeNode (no card template, no `data-selected`) | 🔄 Root cause identified: fixture node order puts 40+ card nodes before test tool |
+| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Same budget exhaustion → hierarchy layout nodes render as ShapeNodes (height 0) | 🔄 Root cause identified |
+| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Overview budget 12: turn nodes structural but excluded by budget before rendering | 🔄 Root cause identified |
+| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Overview budget 12: phase nodes structural but excluded by budget before rendering | 🔄 Root cause identified |
+
+**Execution:**
+```bash
+# After Phase 1 merge + Phase 2.1 changes:
+cd packages/session-graph && bun run test:components
+# Fix one, re-run, repeat until 0 failures
+```
+
+**Success criteria:** `bun run graph:verify` **passes completely** (all component tests green).
 
 **Execution:**
 ```bash
@@ -272,12 +281,12 @@ cd spacegraphjs && bun run build:demo
 - `packages/session-graph/src/ui/TurnMapOverlay.stories.tsx` — Remove Cytoscape story, fix preferredRenderer
 - `packages/session-graph/src/ui/GraphRendererStatus.tsx` — Remove Cytoscape from RENDERER_LABELS
 - `packages/session-graph/src/canvas/renderer-registry.test.ts` — Update tests for SpaceGraph-only
-- `spacegraphjs/src/nodes/HtmlNode.ts` — Fix selection state sync for HTML nodes (add CSS class toggle)
+- `spacegraphjs/src/nodes/HtmlNode.ts` — Fix selection state sync for HTML nodes (add CSS class toggle) ✅
 - `packages/session-graph/src/ui/cardTemplate.ts` — Fix sanitizeHTML (security) 🔄
 - `packages/session-graph/src/ui/GraphView.tsx` — Fix selection prop (window detail) 🔄
-- `packages/session-graph/src/ui/cardTemplate.ts` — Fix MIN_CARD_HEIGHT_PX (legibility) ⏳
-- `packages/session-graph/src/ui/representations/ribbon.ts` — Fix turn nodes ⏳
-- `packages/session-graph/src/ui/representations/matrix.ts` — Fix phase nodes ⏳
+- `packages/session-graph/src/ui/cardTemplate.ts` — Fix MIN_CARD_HEIGHT_PX (legibility) 🔄
+- `packages/session-graph/src/ui/representations/ribbon.ts` — Fix turn nodes 🔄
+- `packages/session-graph/src/ui/representations/matrix.ts` — Fix phase nodes 🔄
 
 ### Upstream Sync Conflicts (Resolve in Phase 1)
 - `package.json`, `turbo.json`
