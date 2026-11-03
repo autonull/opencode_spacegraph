@@ -401,8 +401,8 @@ export const LAYOUT_PADDING = 48
  */
 export const NODE_SHAPE: Record<NodeKind, "panel" | "card" | "badge"> = {
   session: "panel",
-  turn: "panel",
-  phase: "panel",
+  turn: "card",
+  phase: "card",
   message: "card",
   reasoning: "panel",
   tool: "card",

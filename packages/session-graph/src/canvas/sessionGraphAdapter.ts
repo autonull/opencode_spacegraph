@@ -1,5 +1,5 @@
-import { ModelAdapter, type AdapterConfig, type AdapterPosition } from "@spacegraphjs/adapter"
-import type { NodeStatus, RenderEdge, RenderNode } from "@spacegraphjs/renderer"
+import { ModelAdapter, type AdapterConfig, type AdapterPosition, type BuildOptions } from "@spacegraphjs/adapter"
+import type { NodeStatus, RenderEdge, RenderModel, RenderNode } from "@spacegraphjs/renderer"
 import {
   STRUCTURAL_KINDS,
   NODE_SHAPE,
@@ -7,6 +7,7 @@ import {
   domBudget,
   edgesAtLevel,
   isClusterExpanded,
+  isSummaryOrLogLayout,
   neighbors,
   nodeIndex,
   nodeSize,
@@ -16,6 +17,7 @@ import {
   type GraphEdge,
   type GraphViewData,
   type GraphNode,
+  type Layout,
   type NodeKind,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
@@ -211,6 +213,43 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
     }
 
     return bundled
+  }
+
+  /**
+   * Override build to ensure turn/phase nodes get HTML content so they render as DOM cards
+   * with data-kind attributes. The base ModelAdapter should do this for structural kinds,
+   * but it fails for summary layouts (ribbon/matrix) where turn/phase are primary content.
+   */
+  build(model: GraphViewData, options: BuildOptions<GraphNode, ZoomLevel>): RenderModel {
+    const renderModel = super.build(model, options)
+
+    const needsHtml = new Set(["turn", "phase"])
+    const renderCard = options.renderCard
+
+    if (!renderCard) return renderModel
+
+    const level = options.level ?? "overview"
+
+    return {
+      ...renderModel,
+      nodes: renderModel.nodes.map((node) => {
+        if (!needsHtml.has(node.kind) || node.html) return node
+        // Find the original GraphNode from the model to pass to renderCard
+        const graphNode = model.nodes.find((n) => n.id === node.id)
+        if (!graphNode) return node
+        let html: string
+        try {
+          html = renderCard(graphNode, level)
+        } catch {
+          html = ""
+        }
+        // Fallback: if renderCard returns empty or throws, generate minimal HTML
+        if (!html || html.trim() === "") {
+          html = `<div data-kind="${graphNode.kind}" data-status="${graphNode.status}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid currentColor;border-radius:8px;color:inherit;font-family:inherit;font-size:13px;line-height:16px"><span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:currentColor;color:var(--bg)"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2L3 7v6l5 5 5-5V7L8 2Z"/></svg></span><span style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${graphNode.label}</span></div>`
+        }
+        return { ...node, html, shape: "card" }
+      }),
+    }
   }
 }
 

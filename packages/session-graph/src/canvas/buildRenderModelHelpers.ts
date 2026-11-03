@@ -1,6 +1,6 @@
 import { buildRenderModel as buildBaseRenderModel, type CardTemplate, type BandTemplate } from "./buildRenderModel"
 import { applyNodeBudget, byProximity, degreeBudget, type GraphViewData } from "@opencode/session-ui/graph"
-import type { RenderModel } from "@spacegraphjs/renderer"
+import type { RenderModel, RenderNode } from "@spacegraphjs/renderer"
 import { createMemo, type Accessor } from "solid-js"
 import { laneAnchors, type Lane } from "@opencode/session-ui/graph"
 import { sessionOrder, summaryUnits, isSummaryOrLogLayout, type Layout } from "@opencode/session-ui/graph"
@@ -49,15 +49,24 @@ export function createRenderModelBuilder(options: BuildRenderModelOptions) {
       hiddenEdgeKinds,
     } = options
 
-    const budgeted = budget() ?? { root: "session", nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
-    const baseModel = buildBaseRenderModel(budgeted, {
-      level: level(),
+    const currentLayout = layout()
+    const currentLevel = level()
+    const isSummary = isSummaryOrLogLayout(currentLayout)
+
+    // For summary layouts (ribbon/matrix), use the drawn model directly to ensure
+    // turn/phase nodes are included. The budget pipeline can filter them out.
+    const modelForAdapter = isSummary
+      ? createDrawnModelInternal(options.model, currentLayout, currentLevel)()
+      : budget() ?? { root: "session", nodes: [], edges: [], turns: [], turnByMessageID: new Map() }
+
+    const baseModel = buildBaseRenderModel(modelForAdapter, {
+      level: currentLevel,
       positions: displayPositions(),
-      bands: !isSummaryOrLogLayout(layout()) && layout() !== "hierarchy",
-      edges: !isSummaryOrLogLayout(layout()),
-      bundle: !isSummaryOrLogLayout(layout()) && files(),
+      bands: !isSummary && currentLayout !== "hierarchy",
+      edges: !isSummary,
+      bundle: !isSummary && files(),
       laneLabels:
-        !isSummaryOrLogLayout(layout()) && layout() === "lanes"
+        !isSummary && currentLayout === "lanes"
           ? laneAnchors().map((lane) => ({
               id: lane.name,
               label: i18n().t(vocabularyKeys().lane[lane.name]),
@@ -81,6 +90,25 @@ export function createRenderModelBuilder(options: BuildRenderModelOptions) {
       edges: withManual.edges.filter((edge) => !hiddenEdgeKinds().has(edge.kind)),
     }
   })
+}
+
+/**
+ * Internal drawn model creator for summary layouts (avoids memo overhead).
+ */
+function createDrawnModelInternal(
+  scoped: Accessor<GraphViewData>,
+  layout: Layout,
+  level: "overview" | "execution" | "detail"
+): () => GraphViewData {
+  return () => {
+    const current = scoped()
+    if (!isSummaryOrLogLayout(layout)) return current
+    const units = summaryUnits(current, level)
+    return {
+      ...current,
+      nodes: current.nodes?.filter((node) => units.has(node.id)) ?? [],
+    }
+  }
 }
 
 /**
