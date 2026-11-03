@@ -75,11 +75,11 @@ git merge upstream/dev --no-ff -m "merge upstream/dev into fork"
 
 | Test | File | Likely Fix | Status |
 |------|------|------------|--------|
-| Security: script tag escapes | `security.spec.ts:28` | `cardTemplate.ts` escapeHtml must prevent script element creation | 🔄 Investigating |
-| Window detail: selection not visible | `graph-detail.spec.ts:42` | `GraphView` → renderer selection prop (`data-selected`) sync | 🔄 Investigating |
-| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Increase `MIN_CARD_HEIGHT_PX` or hierarchy lane spacing | ⏳ Pending |
-| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | `representations/ribbon.ts` filter for overview level | ⏳ Pending |
-| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | `representations/matrix.ts` phase column rendering | ⏳ Pending |
+| Security: script tag escapes | `security.spec.ts:28` | Card template escapeHtml not applied — budget exhaustion makes tool node a ShapeNode instead of HtmlNode | 🔄 Investigating (root cause: card budget 40 exceeded before tool:prt_tool_read_1 in model order) |
+| Window detail: selection not visible | `graph-detail.spec.ts:42` | Same root cause — tool node rendered as ShapeNode (no card template), so `data-selected` absent | 🔄 Investigating |
+| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Card height 0 — same budget issue, hierarchy layout nodes not getting cards | ⏳ Pending |
+| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Ribbon layout at overview: turn nodes structural but budget 12 may exclude them | ⏳ Pending |
+| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Matrix layout at overview: phase nodes structural but budget 12 may exclude them | ⏳ Pending |
 
 **Execution:**
 ```bash
@@ -261,7 +261,7 @@ cd spacegraphjs && bun run build:demo
 - `packages/session-graph/component-tests/cytoscape.spec.ts`
 - `packages/gui-extensions/src/session-map/` (entire dir — Rung 4, goes upstream)
 
-### Modify (15 files)
+### Modify (16 files)
 - `packages/session-graph/src/canvas/renderer-registry.ts` — SpaceGraph only
 - `packages/gui-plugins/src/spacegraph/index.ts` — Remove renderer pref
 - `packages/gui-plugins/src/spacegraph/model.ts` — Hardcode renderer
@@ -272,6 +272,7 @@ cd spacegraphjs && bun run build:demo
 - `packages/session-graph/src/ui/TurnMapOverlay.stories.tsx` — Remove Cytoscape story, fix preferredRenderer
 - `packages/session-graph/src/ui/GraphRendererStatus.tsx` — Remove Cytoscape from RENDERER_LABELS
 - `packages/session-graph/src/canvas/renderer-registry.test.ts` — Update tests for SpaceGraph-only
+- `spacegraphjs/src/nodes/HtmlNode.ts` — Fix selection state sync for HTML nodes (add CSS class toggle)
 - `packages/session-graph/src/ui/cardTemplate.ts` — Fix sanitizeHTML (security) 🔄
 - `packages/session-graph/src/ui/GraphView.tsx` — Fix selection prop (window detail) 🔄
 - `packages/session-graph/src/ui/cardTemplate.ts` — Fix MIN_CARD_HEIGHT_PX (legibility) ⏳
