@@ -76,10 +76,10 @@ git merge upstream/dev --no-ff -m "merge upstream/dev into fork"
 | Test | File | Likely Fix | Status |
 |------|------|------------|--------|
 | Security: script tag escapes | `security.spec.ts:28` | Module resolution: browser uses stale adapter build; `escapeHtml` not applied to card template in canvas host | 🔄 Investigated - adapter rebuilt, caches cleared, Vite config tried; root cause: session-graph dist used instead of source in component tests |
-| Window detail: selection not visible | `graph-detail.spec.ts:42` | Card budget 40 exhausted before `tool:prt_tool_read_1` in model order → renders as ShapeNode (no card template, no `data-selected`) | 🔄 Root cause identified: fixture node order puts 40+ card nodes before test tool |
-| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Same budget exhaustion → hierarchy layout nodes render as ShapeNodes (height 0) | 🔄 Root cause identified |
-| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Overview budget 12: turn nodes structural but excluded by budget before rendering | 🔄 Root cause identified |
-| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Overview budget 12: phase nodes structural but excluded by budget before rendering | 🔄 Root cause identified |
+| Window detail: selection not visible | `graph-detail.spec.ts:42` | Card budget 40 exhausted before `tool:prt_tool_read_1` in model order → renders as ShapeNode (no card template, no `data-selected`) | ⏳ Fix: reorder fixture nodes or increase test budget |
+| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Same budget exhaustion → hierarchy layout nodes render as ShapeNodes (height 0) | ⏳ Fix: reorder fixture nodes or increase test budget |
+| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Overview budget 12: turn nodes structural but excluded by budget before rendering | ⏳ Fix: reorder fixture nodes or increase test budget |
+| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Overview budget 12: phase nodes structural but excluded by budget before rendering | ⏳ Fix: reorder fixture nodes or increase test budget |
 
 **Execution:**
 ```bash
