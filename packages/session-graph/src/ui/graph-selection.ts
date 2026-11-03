@@ -31,7 +31,7 @@ export type GraphSelection = {
  * into signals, so the DOM and the renderer read one source. The trail is seeded from the model's
  * own `part-of` ancestry, so one primitive backs both the selection and the breadcrumb line.
  */
-export function createGraphSelection(options: GraphSelectionOptions): GraphSelection {
+export function createGraphSelection(options: GraphSelectionOptions): GraphSelection & { controller: GraphController } {
   const initial = options.controlled()
   const [selection, setSelection] = createSignal<readonly string[]>(initial ? [initial] : [])
   const [crumbs, setCrumbs] = createSignal<readonly { id: string; label: string }[]>([])
@@ -82,5 +82,5 @@ export function createGraphSelection(options: GraphSelectionOptions): GraphSelec
     seedTrail(next)
   })
 
-  return { selection, crumbs, select }
+  return { selection, crumbs, select, controller }
 }

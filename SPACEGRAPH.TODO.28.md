@@ -76,7 +76,7 @@ git merge upstream/dev --no-ff -m "merge upstream/dev into fork"
 | Test | File | Root Cause | Status |
 |------|------|------------|--------|
 | Security: script tag escapes | `security.spec.ts:28` | Escaped HTML still creates DOM elements via renderer's innerHTML pipeline; needs sanitization at render level | 🔄 Blocked (user: don't attempt) |
-| Window detail: selection not visible | `graph-detail.spec.ts:42` | Selection state not reflected on card; test selector expects descendant but `data-selected` is on root | ✅ Fixed (selector changed to same-element) |
+| Window detail: selection not visible | `graph-detail.spec.ts:42` | Selection state not propagated from GraphController to SpaceGraph core renderer; fixed by binding controller to renderer in onRenderer callback | ✅ Fixed (controller binding added) |
 | Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Hierarchy layout nodes render as fallback HTML instead of card template — SpaceGraph core replaces spec.data.html with fallback | 🔄 Blocked (SpaceGraph core issue) |
 | Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Turn nodes render as fallback HTML instead of card template — same SpaceGraph core issue | 🔄 Blocked (SpaceGraph core issue) |
 | Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Phase nodes render as fallback HTML instead of card template — same SpaceGraph core issue | 🔄 Blocked (SpaceGraph core issue) |

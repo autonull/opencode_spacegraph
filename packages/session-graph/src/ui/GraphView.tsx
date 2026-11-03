@@ -476,6 +476,7 @@ export const GraphView = (props: GraphViewProps) => {
   const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
   let rootEl!: HTMLDivElement
   let canvasRegionEl: HTMLDivElement | undefined
+  let controllerBound = false
 
   // Viewport tracker dependencies - declared early, initialized later
   let displayPositions: () => ReadonlyMap<string, Position>
@@ -1329,6 +1330,15 @@ export const GraphView = (props: GraphViewProps) => {
     onRenderer: (r: GraphRenderer | undefined) => {
       setRenderer(r)
       props.onRenderer?.(r)
+      // Bind the GraphController to the renderer so selection changes propagate to the SpaceGraph core
+      if (r && !controllerBound) {
+        const selObj = graphSelection.selection
+        const controller = (selObj as unknown as { controller: import("spacegraphjs/control").GraphController }).controller
+        if (controller) {
+          controller.bind(r)
+          controllerBound = true
+        }
+      }
     },
     onRendererMounted: (renderer: GraphRenderer, id: RendererID) => {
       setCapabilities(renderer.capabilities)
