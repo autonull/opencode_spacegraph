@@ -76,14 +76,16 @@ git merge upstream/dev --no-ff -m "merge upstream/dev into fork"
 | Test | File | Root Cause | Status |
 |------|------|------------|--------|
 | Security: script tag escapes | `security.spec.ts:28` | Escaped HTML still creates DOM elements via renderer's innerHTML pipeline; needs sanitization at render level | 🔄 Blocked (user: don't attempt) |
-| Window detail: selection not visible | `graph-detail.spec.ts:42` | Selection state not reflected on card; test selector expects descendant but `data-selected` is on root | 🔧 Selector fix needed |
-| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Hierarchy layout nodes render as ShapeNodes (height 0) due to NODE_SHAPE=panel | 🔧 Revert NODE_SHAPE for turn/phase |
-| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Turn nodes render as WebGL ShapeNodes in ribbon layout — adapter override generates HTML but browser build doesn't include it | 🔄 Architectural (build issue) |
-| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Phase nodes render as WebGL ShapeNodes in matrix layout — same build issue | 🔄 Architectural (build issue) |
+| Window detail: selection not visible | `graph-detail.spec.ts:42` | Selection state not reflected on card; test selector expects descendant but `data-selected` is on root | ✅ Fixed (selector changed to same-element) |
+| Legibility: hierarchy cards too small | `graph-legibility.spec.ts:25` | Hierarchy layout nodes render as fallback HTML instead of card template — SpaceGraph core replaces spec.data.html with fallback | 🔄 Blocked (SpaceGraph core issue) |
+| Turn ribbon: no turn nodes | `graph-refine.spec.ts:192` | Turn nodes render as fallback HTML instead of card template — same SpaceGraph core issue | 🔄 Blocked (SpaceGraph core issue) |
+| Turn matrix: no phase nodes | `graph-refine.spec.ts:257` | Phase nodes render as fallback HTML instead of card template — same SpaceGraph core issue | 🔄 Blocked (SpaceGraph core issue) |
 
 **Budget fix applied:** DOM_BUDGET doubled (overview:24, execution:80, detail:48), spacegraph-renderer maxDomNodes=80. 
 
-**Adapter fix implemented:** SessionGraphAdapter.build() override generates HTML for turn/phase nodes in summary layouts (verified in Node.js unit test). Browser build has module resolution issue preventing override from taking effect.
+**Adapter fix implemented:** SessionGraphAdapter.build() override generates HTML for turn/phase nodes in summary layouts (verified in Node.js unit test). 
+
+**SpaceGraph core issue discovered:** The SpaceGraph core Node constructor calls `applyNodeTheme()` which creates a new data object, but the HtmlNode constructor receives `spec.data.html` as fallback HTML instead of the card template HTML. Root cause: `spec.data.html` is being replaced with fallback HTML between the adapter's nodeSpec() and the HtmlNode constructor. This affects all DOM card rendering in summary layouts (ribbon, matrix, hierarchy).
 
 **Execution:**
 ```bash

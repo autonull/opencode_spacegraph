@@ -239,7 +239,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
         if (!graphNode) return node
         let html: string
         try {
-          html = renderCard(graphNode, level)
+          html = renderCard(graphNode, level, { count: 0, dimmed: false })
         } catch {
           html = ""
         }

@@ -51,7 +51,7 @@ story("the window detail mode opens a window with the node's detail", async ({ m
   await expect(window).toContainText("src/auth/session.ts")
 
   // A selected card says so.
-  await expect(root.locator(`[data-node-id="${TOOL_ID}"] [data-selected="true"]`)).toBeVisible()
+  await expect(root.locator(`[data-node-id="${TOOL_ID}"][data-selected="true"]`)).toBeVisible()
 
   await expect(root.locator('[data-slot="graph-popover"]')).toHaveCount(0)
   await expect(root.locator('[data-slot="graph-inspector-gutter"]')).toHaveCount(0)
