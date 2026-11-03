@@ -64,21 +64,6 @@ story("keeps keyboard focus trapped inside the overlay", async ({ mount, page })
   expect(await inside()).toBe(true)
 })
 
-story("renders the turn map with the Cytoscape fallback", async ({ mount, page }) => {
-  const errors: string[] = []
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text())
-  })
-
-  const root = await mount("session-graph-turn-map--cytoscape")
-  const host = root.getByRole("dialog", { name: "Turn map" }).locator('[data-slot="graph-canvas-host"]')
-
-  await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
-  await expect(host).toHaveAttribute("data-graph-renderer", "cytoscape")
-
-  expect(errors).toEqual([])
-})
-
 story("renders the inline subgraph as static SVG within its node cap", async ({ mount }) => {
   const root = await mount("session-graph-turn-inline")
   const inline = root.locator('[data-slot="graph-turn-inline"]')

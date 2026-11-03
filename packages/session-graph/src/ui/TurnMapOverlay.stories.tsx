@@ -14,7 +14,7 @@ type Harness = {
   openedFull: () => string | undefined
 }
 
-const OverlayHarness = (props: { theme?: RenderTheme; limit?: number; renderer?: "spacegraph" | "cytoscape" }) => {
+const OverlayHarness = (props: { theme?: RenderTheme; limit?: number }) => {
   const [open, setOpen] = createSignal(true)
   const [openedFull, setOpenedFull] = createSignal<string>()
   const turnMapHarness = {
@@ -36,7 +36,7 @@ const OverlayHarness = (props: { theme?: RenderTheme; limit?: number; renderer?:
           turnID={TURN}
           theme={props.theme ?? resolveGraphTheme()}
           limit={props.limit}
-          preferredRenderer={() => props.renderer ?? "spacegraph"}
+          preferredRenderer={() => "spacegraph"}
           onClose={() => setOpen(false)}
           onOpenFullGraph={(turnID) => setOpenedFull(turnID)}
         />
@@ -53,10 +53,6 @@ export default {
 
 export const Default = {
   render: () => <OverlayHarness />,
-}
-
-export const Cytoscape = {
-  render: () => <OverlayHarness renderer="cytoscape" />,
 }
 
 export const SmallLimit = {

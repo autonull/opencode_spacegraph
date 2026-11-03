@@ -4,7 +4,6 @@ import { expect, story } from "../../stories/playwright/story"
 type A11yWindow = {
   __graphA11y?: {
     selected: () => string | undefined
-    setRenderer: (id: "spacegraph" | "cytoscape") => void
   }
 }
 
@@ -80,11 +79,6 @@ story("drives selection and inspection from the keyboard mirror in both renderer
   await page.keyboard.press("Escape")
   await expect.poll(() => selected(page)).toBeUndefined()
   await expect(inspector).toContainText("Select a node to see its details")
-
-  // The same mirror selects and inspects over the second renderer.
-  await page.evaluate(() => (window as unknown as A11yWindow).__graphA11y!.setRenderer("cytoscape"))
-  await expect(host).toHaveAttribute("data-graph-renderer", "cytoscape", { timeout: 30_000 })
-  await inspectByKeyboard(page, ids, inspector)
 
   expect(errors).toEqual([])
 })

@@ -6,14 +6,17 @@ import { createRenderer, mountRenderer, rendererOrder } from "./renderer-registr
 function stub(): GraphRenderer {
   return {
     capabilities: {
-      projections: ["2d"],
-      depths: ["flat"],
-      domNodes: false,
-      maxDomNodes: 0,
-      edgeLabels: false,
-      clusterNodes: false,
+      projections: ["2d", "3d"],
+      depths: ["flat", "layered", "depth-stack", "orbit"],
+      domNodes: true,
+      maxDomNodes: 40,
+      edgeLabels: true,
+      clusterNodes: true,
       minimap: false,
-      maxRecommendedNodes: 0,
+      maxRecommendedNodes: 300,
+      zoomRange: { min: 0, max: 1 },
+      cardFacing: true,
+      fitInsets: true,
     },
     mount: async () => {},
     setModel: () => {},
@@ -33,32 +36,26 @@ function stub(): GraphRenderer {
 const container = {} as HTMLElement
 const options = { theme: DARK_THEME, projection: "2d" as const }
 
-test("spacegraph is preferred and cytoscape is its fallback", () => {
-  expect(rendererOrder()).toEqual(["spacegraph", "cytoscape"])
-  expect(rendererOrder("cytoscape")).toEqual(["cytoscape"])
+test("rendererOrder always returns spacegraph", () => {
+  expect(rendererOrder()).toEqual(["spacegraph"])
+  expect(rendererOrder("spacegraph")).toEqual(["spacegraph"])
 })
 
 test("createRenderer exposes capabilities without mounting", async () => {
   expect((await createRenderer("spacegraph")).capabilities.projections).toContain("3d")
-  expect((await createRenderer("cytoscape")).capabilities.projections).toEqual(["2d"])
 })
 
-test("a failing preferred mount falls through to the fallback", async () => {
+test("a failing mount throws the error (no fallback)", async () => {
+  await expect(mountRenderer(container, options, {
+    spacegraph: () => Promise.reject(new Error("no webgl")),
+  })).rejects.toThrow("no webgl")
+})
+
+test("successful mount returns spacegraph without fallback", async () => {
   const mounted = await mountRenderer(container, options, {
-    spacegraph: () => Promise.reject(new Error("no webgl")),
-    cytoscape: async () => stub(),
+    spacegraph: async () => stub(),
   })
 
-  expect(mounted.id).toBe("cytoscape")
-  expect(mounted.fallback).toBe(true)
-  expect((mounted.error as Error).message).toBe("no webgl")
-})
-
-test("every renderer failing rethrows the last error", async () => {
-  const run = mountRenderer(container, options, {
-    spacegraph: () => Promise.reject(new Error("no webgl")),
-    cytoscape: () => Promise.reject(new Error("no dom")),
-  })
-
-  await expect(run).rejects.toThrow("no dom")
+  expect(mounted.id).toBe("spacegraph")
+  expect(mounted.fallback).toBe(false)
 })

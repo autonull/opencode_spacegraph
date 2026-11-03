@@ -13,7 +13,6 @@ import {
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { createEffect, createSignal } from "solid-js"
-import { DARK_THEME } from "../fixtures"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphView } from "./GraphView"
@@ -117,13 +116,11 @@ const COMPACTED_MODEL: GraphViewData = buildGraph({ messages: [
 /** A failing adapter factory pair forces the registry to throw, exercising the error state. */
 const FAILING: Partial<Record<RendererID, RendererFactory>> = {
   spacegraph: () => Promise.reject(new Error("spacegraph unavailable")),
-  cytoscape: () => Promise.reject(new Error("cytoscape unavailable")),
 }
 
 /** A mount that never settles keeps the canvas in its loading skeleton without an error. */
 const PENDING: Partial<Record<RendererID, RendererFactory>> = {
   spacegraph: () => new Promise(() => {}),
-  cytoscape: () => new Promise(() => {}),
 }
 
 type HarnessProps = {
@@ -334,11 +331,6 @@ export const Matrix = {
 /** LE.12: the file-first lens — the changed-files rail with bundled provenance edges. */
 export const Files = {
   render: () => <ViewHarness files={true} selection="file:src/auth/token.ts" />,
-}
-
-export const Cytoscape = {
-  render: () => <ViewHarness renderer="cytoscape" selection={INITIAL_SELECTION} fullscreen theme={DARK_THEME} />,
-  parameters: { layout: "fullscreen" },
 }
 
 export const Empty = {

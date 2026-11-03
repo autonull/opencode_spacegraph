@@ -56,7 +56,6 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
     cmd: [vitest, "run", "packages/adapter/test/performance.test.ts"],
   },
   { label: "SpaceGraph adapter", cwd: join(spacegraphjs, "packages/spacegraph-renderer"), cmd: ["bun", "test"] },
-  { label: "Cytoscape adapter", cwd: join(spacegraphjs, "packages/cytoscape-renderer"), cmd: ["bun", "test"] },
   { label: "SVG renderer", cwd: join(spacegraphjs, "packages/svg-renderer"), cmd: ["bun", "test"] },
   { label: "session-graph unit tests", cwd: join(root, "packages/session-graph"), cmd: ["bun", "test", "src"] },
   { label: "session-graph component contract", cwd: join(root, "packages/session-graph"), cmd: ["bun", "run", "test:components"] },

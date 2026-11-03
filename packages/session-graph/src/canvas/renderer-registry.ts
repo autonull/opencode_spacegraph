@@ -1,59 +1,47 @@
 import { type GraphRenderer, type Projection, type RenderTheme } from "@spacegraphjs/renderer"
 
-export type RendererID = "spacegraph" | "cytoscape"
+export type RendererID = "spacegraph"
 
 export type RendererFactory = () => Promise<GraphRenderer>
 
-/**
- * Adapters load behind dynamic `import()` so neither backend is pulled at module scope; a host that
- * only ever uses SpaceGraphJS never pays for Cytoscape, and vice versa.
- */
+/** SpaceGraphJS only — no fallback. */
 const FACTORIES: Record<RendererID, RendererFactory> = {
   spacegraph: async () => new (await import("@spacegraphjs/spacegraph-renderer")).SpaceGraphRenderer(),
-  cytoscape: async () => new (await import("@spacegraphjs/cytoscape-renderer")).CytoscapeRenderer(),
 }
 
-/** Constructs an adapter without mounting, so a host can inspect capabilities before it commits. */
+/** Constructs the SpaceGraph adapter without mounting. */
 export function createRenderer(id: RendererID): Promise<GraphRenderer> {
   return FACTORIES[id]()
 }
 
-/** SpaceGraphJS first with Cytoscape as the 2D fallback; a Cytoscape request never falls back up. */
+/** Always returns SpaceGraphJS — no Cytoscape fallback. */
 export function rendererOrder(preferred: RendererID = "spacegraph"): RendererID[] {
-  return preferred === "cytoscape" ? ["cytoscape"] : ["spacegraph", "cytoscape"]
+  return ["spacegraph"]
 }
 
 export type MountedRenderer = {
   id: RendererID
   renderer: GraphRenderer
-  /** True when the preferred renderer failed and a later one mounted instead. */
-  fallback: boolean
-  /** The mount error that forced the fallback, when one occurred. */
+  /** Always false — no fallback path exists. */
+  fallback: false
+  /** The mount error when one occurred. */
   error?: unknown
 }
 
 /**
- * Mounts the preferred adapter, falling back down the order on a mount failure. A failed attempt is
- * discarded; the caller keeps the previous renderer or returns to the transcript, never a broken canvas.
+ * Mounts the SpaceGraph adapter. On mount failure, throws the error — no fallback.
  */
 export async function mountRenderer(
   container: HTMLElement,
   options: { theme: RenderTheme; projection: Projection; preferred?: RendererID; reducedMotion?: boolean },
   overrides: Partial<Record<RendererID, RendererFactory>> = {},
 ): Promise<MountedRenderer> {
-  let lastError: unknown
-
-  for (const [index, id] of rendererOrder(options.preferred).entries()) {
-    try {
-      const renderer = await (overrides[id] ?? FACTORIES[id])()
-      // SpaceGraphRenderer accepts reducedMotion; other renderers ignore unknown options
-      await renderer.mount(container, { theme: options.theme, projection: options.projection, reducedMotion: options.reducedMotion } as { theme: RenderTheme; projection: Projection; reducedMotion?: boolean })
-
-      return { id, renderer, fallback: index > 0, ...(lastError ? { error: lastError } : {}) }
-    } catch (error) {
-      lastError = error
-    }
+  const id = "spacegraph"
+  try {
+    const renderer = await (overrides[id] ?? FACTORIES[id])()
+    await renderer.mount(container, { theme: options.theme, projection: options.projection, reducedMotion: options.reducedMotion } as { theme: RenderTheme; projection: Projection; reducedMotion?: boolean })
+    return { id, renderer, fallback: false }
+  } catch (error) {
+    throw error
   }
-
-  throw lastError
 }
