@@ -15,7 +15,7 @@ export function FullMap(props: {
   const graph = props.model.graph(props.session)
 
   const focused = () => props.model.focused(props.session)
-  const preferredRenderer = () => props.model.renderer(props.session)
+  const preferredRenderer = () => props.model.renderer()
   const detailMode = () => props.model.detailMode(props.session)
 
   return (

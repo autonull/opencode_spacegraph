@@ -82,6 +82,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.turnMap = false
       })
     },
+    renderer: () => "spacegraph" as const,
     cycleLevel: (session: MountedSession) => {
       const level = next(ZOOM_LEVELS, store(session).value?.level ?? "overview")
 
