@@ -4,7 +4,7 @@
 >
 > **Strategy:** 1) Sync upstream → 2) **Single pass: Disable Canvas/Cytoscape + Fix remaining 6 tests** → 3) Write one e2e (parallel) → 4) Demo artifacts → 5) Publish.
 >
-> **Current status (2026-11-03):** Phases 0–3 are complete. `bun run check` and `bun run graph:verify` pass. The component suite is 45 passed / 18 skipped / 0 failed. The one graph e2e passes repeatedly. Remaining work is external artifact and release work (Phases 4–5), listed at the end.
+> **Current status (2026-11-04):** Phases 0–3 are complete and verified. `bun run check` and `bun run graph:verify` pass completely. The component suite is 45 passed / 18 skipped / 0 failed. The one graph e2e passes repeatedly. Remaining work is external artifact and release work (Phases 4–5), listed at the end.
 
 ---
 
@@ -154,7 +154,7 @@ cd packages/app && PLAYWRIGHT_PORT=4310 bun run test:e2e:built -- e2e/graph/sess
 
 ---
 
-## Phase 5: Publish & Release (not started)
+## Phase 5: Publish & Release (not started — external follow-up)
 
 None of these steps have been run. They need a release decision, credentials, and a stable fork
 remote, so they are intentionally left as external follow-up work.
