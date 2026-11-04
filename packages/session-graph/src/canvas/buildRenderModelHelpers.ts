@@ -3,7 +3,7 @@ import { applyNodeBudget, byProximity, degreeBudget, type GraphViewData } from "
 import type { RenderModel } from "@spacegraphjs/renderer"
 import { createMemo, type Accessor } from "solid-js"
 import { laneAnchors, type Lane } from "@opencode/session-ui/graph"
-import { sessionOrder, isSummaryOrLogLayout, type Layout } from "@opencode/session-ui/graph"
+import { sessionOrder, summaryUnits, isSummaryOrLogLayout, type Layout } from "@opencode/session-ui/graph"
 
 /**
  * Builds the render model for the canvas, applying card budget, manual layout overrides,
