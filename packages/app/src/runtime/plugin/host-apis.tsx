@@ -424,11 +424,6 @@ export function createHostApis() {
     }),
     embeds: () => embeds,
     ui: () => ui,
-    surfaces: () => ({
-      list: () => [],
-      current: () => "transcript",
-      select: () => {},
-    }),
   }
 
   return {

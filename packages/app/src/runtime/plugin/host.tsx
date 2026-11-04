@@ -103,7 +103,10 @@ type HostApiFactory<T> = (
 
 /** The HostApis a window provides, by context property. The host itself provides `links`, `dialogs`, and `surfaces`. */
 export type HostApiFactories = {
-  readonly [K in Exclude<keyof HostApis, "links" | "dialogs">]: HostApiFactory<HostApis[K]>
+  readonly [K in Exclude<keyof HostApis, "links" | "dialogs" | "surfaces">]: HostApiFactory<HostApis[K]>
+} & {
+  /** Optional: the host supplies the real session surfaces, and a fixture may replace them. */
+  readonly surfaces?: HostApiFactory<HostApis["surfaces"]>
 }
 
 export type PluginStatus = "loading" | "active" | "failed" | "disabled"

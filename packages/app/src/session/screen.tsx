@@ -453,7 +453,6 @@ function SessionScreenContent(props: {
                 session={props.view()}
                 screen={props.screen}
                 transcript={timelineView}
-                default={() => <> </>}
                 composerInset={timeline.inset}
               />
             </Show>

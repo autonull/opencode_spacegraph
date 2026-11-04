@@ -17,7 +17,6 @@ export function SessionSurfaceHost(props: {
   session: MountedSession
   screen: SessionScreen
   transcript: (active: Accessor<boolean>) => JSX.Element
-  default: () => JSX.Element
   /** The room the composer takes at the bottom; the transcript reserves it itself, a custom surface needs it here. */
   composerInset?: Accessor<number>
 }) {
@@ -74,7 +73,7 @@ export function SessionSurfaceHost(props: {
   const content = createMemo(() => {
     const selected = custom()
 
-    if (!selected) return props.default()
+    if (!selected) return transcript()
 
     return selected.render({ session: props.session, screen: props.screen, transcript: transcript() })
   })
