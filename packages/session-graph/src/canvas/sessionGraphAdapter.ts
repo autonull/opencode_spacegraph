@@ -12,6 +12,7 @@ import {
   nodeIndex,
   nodeSize,
   nodesAtLevel,
+  summaryUnits,
   type ClusterBounds,
   type EdgeKind,
   type GraphEdge,
@@ -46,18 +47,42 @@ export type SessionGraphAdapterConfig = AdapterConfig<GraphNode, GraphEdge, Zoom
  */
 export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, ZoomLevel, GraphViewData> {
   constructor(config: SessionGraphAdapterConfig = {}) {
-    const baseConfig = {
+    const baseConfig: AdapterConfig<GraphNode, GraphEdge, ZoomLevel, GraphViewData> = {
       cardBudget: (level: ZoomLevel) => domBudget(level),
       nodeFilter: (model: GraphViewData, level: ZoomLevel) => nodesAtLevel(model, level),
       edgeFilter: (model: GraphViewData, level: ZoomLevel, focus: string | undefined) => edgesAtLevel(model, level, focus),
       isClusterExpanded: (level: ZoomLevel) => isClusterExpanded(level),
       neighbors: (model: GraphViewData, id: string) => neighbors(model, id).nodes.map((node) => node.id),
-      // T1.17: the box each node occupies, so a band is sized around the cards it groups.
       nodeSizeFn: (node: GraphNode) => nodeSize(node),
-      // The group header is its own strip above the members; the sides and foot are breathing room.
       geometry: { bandPadding: BAND_PADDING },
+      renderCardTemplate: config.renderCardTemplate,
     }
     super({ ...baseConfig, ...config })
+  }
+
+  /**
+   * Returns the nodes that should be rendered for a given layout and level.
+   * This replaces host-side filtering in buildRenderModelHelpers.ts.
+   */
+  getNodesForLayout(model: GraphViewData, level: ZoomLevel, layout: Layout): GraphNode[] {
+    if (isSummaryOrLogLayout(layout)) {
+      const units = summaryUnits(model, level)
+      return model.nodes.filter((node) => units.has(node.id))
+    }
+    return nodesAtLevel(model, level)
+  }
+
+  /**
+   * Override build to use layout-aware node filtering.
+   * The host passes the layout via options.layout.
+   */
+  build(model: GraphViewData, options: BuildOptions<GraphNode, ZoomLevel>): RenderModel {
+    const layout = (options as BuildOptions<GraphNode, ZoomLevel> & { layout?: Layout }).layout ?? "lanes"
+    const filteredModel = {
+      ...model,
+      nodes: this.getNodesForLayout(model, options.level ?? "overview", layout),
+    }
+    return super.build(filteredModel, options)
   }
 
   nodeShape(node: GraphNode): Shape {
@@ -213,43 +238,6 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
     }
 
     return bundled
-  }
-
-  /**
-   * Override build to ensure turn/phase nodes get HTML content so they render as DOM cards
-   * with data-kind attributes. The base ModelAdapter should do this for structural kinds,
-   * but it fails for summary layouts (ribbon/matrix) where turn/phase are primary content.
-   */
-  build(model: GraphViewData, options: BuildOptions<GraphNode, ZoomLevel>): RenderModel {
-    const renderModel = super.build(model, options)
-
-    const needsHtml = new Set(["turn", "phase"])
-    const renderCard = options.renderCard
-
-    if (!renderCard) return renderModel
-
-    const level = options.level ?? "overview"
-
-    return {
-      ...renderModel,
-      nodes: renderModel.nodes.map((node) => {
-        if (!needsHtml.has(node.kind) || node.html) return node
-        // Find the original GraphNode from the model to pass to renderCard
-        const graphNode = model.nodes.find((n) => n.id === node.id)
-        if (!graphNode) return node
-        let html: string
-        try {
-          html = renderCard(graphNode, level, { count: 0, dimmed: false })
-        } catch {
-          html = ""
-        }
-        // Fallback: if renderCard returns empty or throws, generate minimal HTML
-        if (!html || html.trim() === "") {
-          html = `<div data-kind="${graphNode.kind}" data-status="${graphNode.status}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid currentColor;border-radius:8px;color:inherit;font-family:inherit;font-size:13px;line-height:16px"><span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:currentColor;color:var(--bg)"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2L3 7v6l5 5 5-5V7L8 2Z"/></svg></span><span style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${graphNode.label}</span></div>`
-        }
-        return { ...node, html, shape: "card" }
-      }),
-    }
   }
 }
 

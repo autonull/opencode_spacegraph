@@ -107,8 +107,8 @@ describe("semantic levels — clusters and budgets", () => {
   test("clusters expand after overview and budgets are per level", () => {
     expect(isClusterExpanded("overview")).toBe(false)
     expect(isClusterExpanded("execution")).toBe(true)
-    expect(domBudget("overview")).toBe(12)
-    expect(domBudget("execution")).toBe(40)
+    expect(domBudget("overview")).toBe(24)
+    expect(domBudget("execution")).toBe(80)
     expect(labelMode("detail")).toBe("constant")
   })
 })

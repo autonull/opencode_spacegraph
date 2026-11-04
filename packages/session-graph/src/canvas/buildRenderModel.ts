@@ -1,5 +1,5 @@
 import type { RenderModel } from "@spacegraphjs/renderer"
-import type { ClusterBounds, GraphViewData, GraphNode, Position, ZoomLevel } from "@opencode/session-ui/graph"
+import type { ClusterBounds, GraphViewData, GraphNode, Layout, Position, ZoomLevel } from "@opencode/session-ui/graph"
 import { sessionGraphAdapter } from "./sessionGraphAdapter"
 import { escapeHtml } from "@spacegraphjs/adapter"
 
@@ -12,6 +12,8 @@ export type BandTemplate = (node: GraphNode, count: number, bounds: ClusterBound
 export type BuildRenderModelOptions = {
   level: ZoomLevel
   positions: ReadonlyMap<string, Position>
+  /** The layout being rendered; used by adapter for layout-aware node filtering. */
+  layout?: Layout
   /** Enables turn/phase swimlane bands (RF.5); their bounds wrap the members visible at the level. */
   bands?: boolean
   /** Emits edges; the ribbon/matrix representations are edge-free summaries (LE.8/LE.9). */
