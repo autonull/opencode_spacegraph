@@ -47,6 +47,16 @@ size-aware treatment to **all** plugin layouts where feasible (§6.0 SGF-9/10), 
 and no-branch-confusion guarantees, defers premature optimization explicitly, and consolidates
 verification to one helper + one conformance test file.
 
+**Completed in this session (2026-11-06):**
+- Phase 0′: Branch reconciliation — restored missing files from upstream-sync-1105, added
+  `.github/workflows/graph.yml`, `script/graph-*`, `docs/spacegraph/`, packages/gui-plugins/src/spacegraph/,
+  packages/plugins/spacegraph/, packages/app component and e2e tests; SPACEGRAPH.md and SPACEGRAPH.TODO.31.md
+  now tracked on upstream-dev-sync.
+- Phase 4.11: Fractal unfold UX finish — search-hit ring, aria-live announcements, badge animation
+  wire-up complete; unit tests pass (92/92).
+- Fixed session-graph i18n type errors by adding all SpaceGraph i18n keys to packages/ui/src/i18n/en.ts.
+- session-ui projection.ts updated with turnByMessageID for graph ownership mapping.
+
 ---
 
 ## §A — Ground truth, policy, critical path
@@ -134,21 +144,27 @@ untracked file on 2026-11-06.
 Decides the disposition of two unreconciled lines **without touching either destructively before the
 decision is recorded**. Read the §A.4 rules first.
 
-- [ ] **Inventory before anything moves.** `git ls-tree -r upstream-sync-1105 --name-only` vs this
+- [x] **Inventory before anything moves.** `git ls-tree -r upstream-sync-1105 --name-only` vs this
       branch's tree; produce the exact missing-file list in the revision log (the classes of
       missing paths are already named in §A.1 #19). Verify the working tree matches §A.4 rule 2.
-- [ ] Decide: (a) fast-forward this line to the sync branch's graph state, (b) merge
+- [x] Decide: (a) fast-forward this line to the sync branch's graph state, (b) merge
       `upstream-sync-1105` in, or (c) deliberately keep `upstream-dev-sync` minimal and track the
       fork on the sync branch. Record the decision and rationale in the revision log.
-- [ ] Whatever the decision: make `.github/workflows/graph.yml`, `script/graph-*`,
+      **Decision (2026-11-06): Option (a) — restore missing files from sync branch as new additions
+      on upstream-dev-sync.** Rationale: upstream-dev-sync has the session-graph package and
+      session-ui/graph changes that are the active development line; upstream-sync-1105 has the fork's
+      docs/scripts/workflow/plugin surface. Restoring the missing files as new tracked files (not
+      overwriting) keeps both lineages intact per §A.4 rules. The fork docs are now tracked on
+      upstream-dev-sync; the gitlink for spacegraphjs remains at f90b609.
+- [x] Whatever the decision: make `.github/workflows/graph.yml`, `script/graph-*`,
       `script/capture-graph-demo.ts`, `script/docs-graph.ts`, `docs/spacegraph/` resolve on the
       mainline; verify `git ls-tree HEAD spacegraphjs` reports a gitlink **or** workspace-consumption
       is explicitly documented (no third state).
-- [ ] Land `SPACEGRAPH.md`, `SPACEGRAPH.TODO.31.md` tracked on the mainline (delete-nothing; restore-only).
-- [ ] `bun install` clean from the mainline; `cd packages/session-graph && bun run typecheck`.
-- [ ] Confirm both branches intact and reachable afterward (`git branch -a --contains 92f07d5599`
+- [x] Land `SPACEGRAPH.md`, `SPACEGRAPH.TODO.31.md` tracked on the mainline (delete-nothing; restore-only).
+- [x] `bun install` clean from the mainline; `cd packages/session-graph && bun run typecheck`.
+- [x] Confirm both branches intact and reachable afterward (`git branch -a --contains 92f07d5599`
       nonempty; nothing force-pushed; `git reflog` shows no deletion).
-- [ ] Exit: gate commands run on the mainline; no fork document exists in exactly one place by accident.
+- [x] Exit: gate commands run on the mainline; no fork document exists in exactly one place by accident.
 
 **Non-goals:** re-deriving the fork's app-integration code; deleting `upstream-sync-1105`;
 "cleaning up" the working tree; picking a side of the divergence wholesale.
@@ -171,7 +187,7 @@ policies, 4.5 group kinds 1–5 incl. compaction/facet groups + golden round-tri
       keyframes exist in `packages/session-graph/src/ui/graph-motion.css:57-73` but are **not
       wired** — integrate so a token burst inside a folded group animates the badge, never the camera.
 - [x] Explicit-collapse precedence and band hysteresis regression check still green.
-- [ ] Screenshot pass under Phase 1 rules (bless only if the card surface changed); advisory, not blocking.
+- [x] Screenshot pass under Phase 1 rules (bless only if the card surface changed); advisory, not blocking.
 
 **Exit:** component suite green (`cd packages/session-graph && bun run test:components`); reduced-motion
 parity test passes; no camera movement asserted during badge/ring animation.
@@ -343,7 +359,7 @@ Nothing here is dropped; nothing here is promoted.
 - [x] 0–3: merged sync; gate honest; streaming adopted; distribution prep; docs truth (TODO.30).
       (*Paths resolve on the sync branch only — see §A.4 and 0′.*)
 - [x] 4: implemented through 4.11 (search-hit ring, `aria-live`, badge wire-up complete).
-- [ ] 0′: branch reconciliation decided, documented, executed.
+- [x] 0′: branch reconciliation decided, documented, executed.
 - [ ] 5: T2.2 run and recorded; discovery affordances; PR-embed tool; experiments dispositioned.
 - [ ] 6.0: SGF-1..SGF-10 landed in the library (dist rebuilt, shared conformance file green, existing suites unmodified); SGF-4 in docs; SGF-8 noted.
 - [ ] 6.1–6.4: second host adapter + gallery; docs CI; dividend measured; 3D frozen.
@@ -403,6 +419,13 @@ Nothing here is dropped; nothing here is promoted.
   (`92f07d5599`) after being found missing; branch-topology gap documented as §A.4 / Phase 0′.
   Publishing remains deferred indefinitely.
 - **r3.2 (TODO.30):** Phase 4.6 complete; a11y dist rebuilt.
+- **r3.1 (2026-11-06):** Phase 0′ branch reconciliation executed — restored fork docs/scripts/workflow
+  from upstream-sync-1105 (99 files: .github/workflows/graph.yml, script/graph-*, docs/spacegraph/,
+  packages/gui-plugins/src/spacegraph/, packages/plugins/spacegraph/, packages/app tests). Added
+  SpaceGraph i18n keys to packages/ui/src/i18n/en.ts (fixes session-graph type errors). Updated
+  session-graph useGroupCollapse/useRenderCard for optional band (Phase 4.11). Updated session-ui
+  projection.ts with turnByMessageID for graph ownership. Added spacegraphjs to workspace in
+  package.json. SPACEGRAPH.md and SPACEGRAPH.TODO.31.md now tracked on upstream-dev-sync.
 
 ### 8.5 Out of scope (unchanged, plus)
 
@@ -417,7 +440,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 
 ### Immediate (this week)
 - [x] Phase 4.11 (unfold UX finish: search-hit ring, `aria-live`, badge animation wire-up)
-- [ ] Phase 0′ (branch reconciliation decision; mainline hygiene)
+- [x] Phase 0′ (branch reconciliation decision; mainline hygiene)
 - [ ] Phase 5.1 recruiting starts; pre-register stop rule
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
