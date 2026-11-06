@@ -82,7 +82,17 @@ export const GraphSearch = (props: GraphSearchProps) => {
 
     if (event.key === "Enter") {
       const node = results()[active()]
-      if (node) props.onSelect(node)
+      if (node) {
+        // Add search hit ring animation to the selected node
+        if ((node as GraphNode & { className?: string }).className === undefined) {
+          const nodeWithClass = node as GraphNode & { className?: string }
+          nodeWithClass.className = "graph-search-hit"
+          setTimeout(() => {
+            delete nodeWithClass.className
+          }, 200)
+        }
+        props.onSelect(node)
+      }
     }
   }
 

@@ -6,7 +6,7 @@ import type { UseGraphSelectionReturn } from "./useGraphSelection"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGroupCollapseReturn } from "./useGroupCollapse"
 import type { UseEdgeKindsReturn } from "./useEdgeKinds"
-import type { GraphViewportTrackerReturn, GraphBand } from "./useGraphViewport"
+import type { GraphViewportTrackerReturn } from "./useGraphViewport"
 import type { GraphViewData, GraphNode, GraphEdge, DetailMode, Layout, ZoomLevel, EqualizerRuleSet } from "@opencode/session-ui/graph"
 import type { RenderModel } from "@spacegraphjs/renderer"
 import type { RenderTheme } from "@spacegraphjs/renderer"
@@ -83,6 +83,7 @@ export function useCanvasRegionProps(
     renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
     ordered: () => RenderModel
     viewAnnouncement: () => string
+    groupAnnouncement: () => string | undefined
     a11yInstructionsId: string
     announce: (message: string) => void
     i18n: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
@@ -90,7 +91,6 @@ export function useCanvasRegionProps(
     onViewportChange: (viewport: RendererViewport) => void
     setViewport: (vp: { zoom: number; center: number[] } | undefined) => void
     viewportTracker: GraphViewportTrackerReturn
-    band: () => GraphBand | undefined
     onRenderer: (r: GraphRenderer | undefined) => void
     onRendererMounted: (renderer: GraphRenderer, id: import("../canvas/renderer-registry").RendererID) => void
     onReady: (info: { fallback: boolean }) => void
@@ -109,7 +109,6 @@ export function useCanvasRegionProps(
     depth: depthSignal,
     layout: state.layout,
     level: state.level,
-    band: state.band,
 
     // Selection & navigation
     selection: state.selection,
@@ -201,6 +200,7 @@ export function useCanvasRegionProps(
     // A11y
     ordered: state.ordered,
     viewAnnouncement: state.viewAnnouncement,
+    groupAnnouncement: state.groupAnnouncement,
     a11yInstructionsId: state.a11yInstructionsId,
     announce: state.announce,
     i18n: state.i18n,

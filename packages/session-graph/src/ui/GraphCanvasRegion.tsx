@@ -95,7 +95,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         detailMode={props.detailMode()}
         effectiveDetailMode={props.effectiveDetailMode()}
         layout={props.layout()}
-        band={props.band()}
 
         // Selection & navigation
         selection={props.selection}
@@ -157,9 +156,9 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         renderSummary={props.renderSummary}
 
         // A11y
-        ordered={props.ordered()}
         renderModel={props.renderModel()}
         viewAnnouncement={props.viewAnnouncement()}
+        groupAnnouncement={props.groupAnnouncement()}
         a11yInstructionsId={props.a11yInstructionsId}
         announce={props.announce}
         i18n={props.i18n}

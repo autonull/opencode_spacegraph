@@ -521,13 +521,14 @@ export function copyableContent(node: GraphNode): string | undefined {
 export function createBandTemplate(
   theme: RenderTheme,
   rules?: EqualizerRuleSet,
-  options?: { copy?: CardCopy; collapsedGroups?: ReadonlySet<string>; band?: "overview" | "execution" | "detail" },
+  options?: { copy?: CardCopy; collapsedGroups?: ReadonlySet<string>; band?: "overview" | "execution" | "detail"; animatedGroups?: ReadonlySet<string> },
 ): BandTemplate {
   return (node: GraphNode, count: number, _bounds) => {
     const { solid, soft } = accentOf(node, rules)
     const label = safeEscapeHtml((node.label ?? "").replace(/\s+/g, " ").trim().slice(0, 48))
     const band = options?.band ?? "overview"
     const collapsed = options?.collapsedGroups?.has(node.id) === true
+    const isAnimating = options?.animatedGroups?.has(node.id) === true
 
     // Determine band state: folded (overview), summary (execution+explicit collapse), expanded (execution/detail+not collapsed)
     const bandState: "folded" | "summary" | "expanded" =
@@ -551,11 +552,13 @@ export function createBandTemplate(
       : ""
 
     const ariaLabel = safeEscapeHtml(`${label}, ${count} members, ${bandState}`)
+    // Phase 4.11: Add graph-badge-animating class when group has a token burst
+    const badgeClass = isAnimating ? ' class="graph-badge-animating"' : ''
     return `<div data-band="${node.kind}" data-group-members="${count}" data-band-state="${bandState}" data-cluster-id="${safeEscapeHtml(node.id)}" role="group" aria-label="${ariaLabel}" tabindex="0" style="width:100%;height:100%;box-sizing:border-box;border:1px solid ${solid};border-radius:16px;background:${soft};pointer-events:auto;position:relative;overflow:hidden;cursor:grab;font-family:${theme.fontFamily};outline:none">
 <div style="position:absolute;top:8px;left:10px;right:10px;display:flex;align-items:center;gap:6px;min-width:0;pointer-events:none">
 <span style="flex:none;width:6px;height:6px;border-radius:9999px;background:${solid}"></span>
 <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${theme.text};font-size:11px;font-weight:600;line-height:16px;letter-spacing:.04em;text-transform:uppercase">${label}</span>
-<span style="flex:none;color:${theme.textMuted};font-size:11px;font-weight:600;line-height:16px">${count}</span>
+<span${badgeClass} style="flex:none;color:${theme.textMuted};font-size:11px;font-weight:600;line-height:16px">${count}</span>
 ${toggle}
 </div>
 ${summaryRow}
