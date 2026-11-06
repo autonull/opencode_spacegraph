@@ -1,0 +1,38 @@
+import { diffKernels } from "@spacegraphjs/kernel"
+import type { GraphViewData } from "./model"
+import { graphModelToKernel, graphViewMeta, toGraphView } from "./view"
+import type { TurnStats } from "./selectors"
+
+export type ReviewChanges = {
+  added: readonly string[]
+  removed: readonly string[]
+  changed: readonly string[]
+  turnStats?: TurnStats[]
+}
+
+export const reviewChanges = (before: GraphViewData, after: GraphViewData): ReviewChanges => {
+  const diff = diffKernels(graphModelToKernel(before), graphModelToKernel(after))
+  return {
+    added: diff.nodes.added.map((node) => node.id),
+    removed: diff.nodes.removed.map((node) => node.id),
+    changed: diff.nodes.changed.map((change) => change.id),
+  }
+}
+
+export const reviewModel = (before: GraphViewData, after: GraphViewData): GraphViewData => {
+  const beforeKernel = graphModelToKernel(before)
+  const afterKernel = graphModelToKernel(after)
+  const diff = diffKernels(beforeKernel, afterKernel)
+  const ids = new Set<string>()
+  for (const node of diff.nodes.added) ids.add(node.id)
+  for (const change of diff.nodes.changed) ids.add(change.id)
+  for (const edge of diff.edges.added) {
+    ids.add(edge.source)
+    ids.add(edge.target)
+  }
+  for (const change of diff.edges.changed) {
+    ids.add(change.after.source)
+    ids.add(change.after.target)
+  }
+  return toGraphView(afterKernel.subgraph(ids), graphViewMeta(after))
+}

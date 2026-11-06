@@ -1,0 +1,305 @@
+import { expect, test } from "bun:test"
+import {
+  buildFixtureGraph,
+  buildGraph,
+  byProximity,
+  layoutGraph,
+  nodeSize,
+  nodesAtLevel,
+  type GraphViewData,
+  type ZoomLevel,
+} from "@opencode/session-ui/graph"
+import { buildRenderModel } from "./buildRenderModel"
+
+const model = buildFixtureGraph()
+const positions = layoutGraph(model).positions
+
+const at = (level: ZoomLevel, extra: { cardBudget?: number } = {}) =>
+  buildRenderModel(model, { level, positions, ...extra })
+
+const STRUCTURAL = new Set(["session", "turn", "phase", "error", "retry"])
+
+/** Activity cards consume the DOM budget; structural panels (LE.2) are chrome and never do. */
+const activityCards = (built: ReturnType<typeof at>) =>
+  built.nodes.filter((node) => node.html !== undefined && !STRUCTURAL.has(node.kind))
+
+const kindsAt = (level: ZoomLevel) => new Set(at(level).nodes.map((node) => node.kind))
+
+test("lane labels are a non-interactive gutter left of the content (LE.10)", () => {
+  const labels = [
+    { id: "explore", label: "Explore", y: 288 },
+    { id: "edit", label: "Edit", y: 384 },
+  ]
+  const built = buildRenderModel(model, { level: "execution", positions, laneLabels: labels })
+  const lanes = built.nodes.filter((node) => node.kind === "lane")
+
+  expect(lanes.length).toBe(2)
+  for (const lane of lanes) expect(lane.interactive).toBe(false)
+
+  const contentLeft = Math.min(
+    ...built.nodes.filter((node) => node.kind !== "lane" && node.kind !== "band").map((node) => node.position[0]),
+  )
+
+  for (const lane of lanes) expect(lane.position[0]).toBeLessThan(contentLeft)
+  // Chrome never consumes the activity card budget.
+  expect(activityCards(built).length).toBeLessThanOrEqual(40)
+})
+
+test("overview shows only session, turns, phase clusters, and subagents", () => {
+  const kinds = kindsAt("overview")
+
+  expect([...kinds].sort()).toEqual([
+    "error-group",
+    "file-group",
+    "message",
+    "phase",
+    "session",
+    "subagent",
+    "subagent-group",
+    "turn",
+  ])
+
+  const phases = at("overview").nodes.filter((node) => node.kind === "phase")
+
+  expect(phases.length).toBeGreaterThan(0)
+
+  for (const phase of phases) {
+    expect(phase.data?.expanded).toBe(false)
+    expect(Number(phase.data?.count)).toBeGreaterThan(0)
+  }
+})
+
+test("overview phase clusters render as counted cards within the DOM budget", () => {
+  const built = at("overview")
+  const phases = built.nodes.filter((node) => node.kind === "phase")
+
+  expect(phases.length).toBeGreaterThan(0)
+
+  const chips = phases.filter((node) => node.shape === "card")
+
+  expect(chips.length).toBeGreaterThan(0)
+
+  for (const chip of chips) {
+    expect(chip.html).toContain(String(chip.data?.count))
+    expect(chip.size?.[0]).toBeLessThan(220)
+  }
+
+  expect(activityCards(built).length).toBeLessThanOrEqual(12)
+})
+
+test("execution expands phase clusters into legible headers, not collapsed chips", () => {
+  const phases = at("execution").nodes.filter((node) => node.kind === "phase")
+
+  expect(phases.length).toBeGreaterThan(0)
+
+  for (const phase of phases) {
+    expect(phase.data?.expanded).toBe(true)
+    expect(phase.shape).toBe("card")
+    expect(phase.html).toBeDefined()
+  }
+})
+
+test("overview drops the root part-of wires and turn bands (LE.3/LE.6)", () => {
+  const built = buildRenderModel(model, { level: "overview", positions, bands: true })
+
+  expect(built.nodes.some((node) => node.kind === "band" && node.data?.band === "turn")).toBe(false)
+
+  for (const edge of built.edges) expect(edge.source).not.toBe(model.root)
+})
+
+test("execution adds tools, files, results, errors, and retries", () => {
+  const kinds = kindsAt("execution")
+
+  for (const kind of ["tool", "file", "result", "error", "retry"]) expect(kinds.has(kind)).toBe(true)
+  expect(kinds.has("reasoning")).toBe(false)
+})
+
+test("detail adds low-prominence notices", () => {
+  const kinds = kindsAt("detail")
+
+  expect(kinds.has("notice")).toBe(true)
+  expect(kinds.has("reasoning")).toBe(false)
+})
+
+test("failure statuses map onto the contract vocabulary", () => {
+  const statuses = at("execution").nodes.map((node) => node.status)
+
+  expect(statuses).toContain("error")
+  expect(statuses).not.toContain("failed")
+})
+
+test("cards are budgeted and degrade to labels above the cap", () => {
+  const model = at("execution", { cardBudget: 1 })
+  const demoted = model.nodes.filter((node) => node.shape === "dot" && node.html === undefined)
+
+  expect(activityCards(model).length).toBe(1)
+  expect(demoted.length).toBeGreaterThan(0)
+})
+
+test("card markup escapes host content", () => {
+  const synthetic: GraphViewData = {
+    root: "session",
+    nodes: [
+      { id: "session", kind: "session", label: "Session", status: "neutral" },
+      {
+        id: "tool:1",
+        kind: "tool",
+        label: 'read <script>alert("x")</script>',
+        summary: '<img src=x onerror="y">',
+        status: "failed",
+      },
+    ],
+    edges: [],
+    turns: [],
+    turnByMessageID: new Map(),
+  }
+
+  const html = buildRenderModel(synthetic, { level: "execution", positions: new Map() }).nodes.find(
+    (node) => node.id === "tool:1",
+  )!.html!
+
+  expect(html).toContain("&lt;script&gt;")
+  expect(html).toContain("&lt;img")
+  expect(html).not.toContain("<script>")
+  expect(html).not.toContain("<img")
+})
+
+test("edges never reference a node hidden at the level", () => {
+  for (const level of ["overview", "execution", "detail"] as const) {
+    const built = at(level)
+    const ids = new Set(built.nodes.map((node) => node.id))
+
+    for (const edge of built.edges) {
+      expect(ids.has(edge.source)).toBe(true)
+      expect(ids.has(edge.target)).toBe(true)
+    }
+  }
+})
+
+test("overview keeps only hierarchy edges", () => {
+  expect(new Set(at("overview").edges.map((edge) => edge.kind))).toEqual(new Set(["part-of"]))
+})
+
+test("model building is deterministic", () => {
+  expect(JSON.stringify(at("execution"))).toBe(JSON.stringify(at("execution")))
+})
+
+test("turn and phase swimlane bands wrap the members visible at the level (RF.5)", () => {
+  const built = buildRenderModel(model, { level: "execution", positions, bands: true })
+  const bands = built.nodes.filter((node) => node.kind === "band")
+
+  expect(bands.length).toBeGreaterThan(0)
+
+  for (const band of bands) {
+    expect(band.shape).toBe("group")
+    expect(band.interactive).toBe(true)
+    expect(band.html).toBeDefined()
+    expect(band.size?.[0]).toBeGreaterThan(0)
+    // T1.3: a group stays on the content plane facing the camera in a tilted depth treatment.
+    expect(band.position[2]).toBe(0)
+    expect(band.data?.billboard).toBe(true)
+    expect(Array.isArray(band.data?.members)).toBe(true)
+  }
+
+  // Execution draws a band per turn and per expanded phase.
+  const turnBands = bands.filter((band) => band.data?.band === "turn")
+  expect(turnBands.length).toBe(model.turns.length)
+})
+
+test("group members name their group so a drag carries them with it", () => {
+  const built = buildRenderModel(model, { level: "execution", positions, bands: true })
+  const content = built.nodes.filter((node) => node.kind !== "band" && node.kind !== "lane")
+
+  for (const node of content) {
+    const parent = node.parent
+    if (!parent) continue
+    const group = built.nodes.find((candidate) => candidate.id === parent)
+    expect(group?.shape).toBe("group")
+    expect((group?.data?.members as string[] | undefined)?.includes(node.id)).toBe(true)
+  }
+})
+
+test("a band encloses the cards it groups, so its header has a slot of its own (T1.17)", () => {
+  const built = buildRenderModel(model, { level: "execution", positions, bands: true })
+  const visible = new Set(nodesAtLevel(model, "execution").map((node) => node.id))
+
+  for (const band of built.nodes.filter((node) => node.kind === "band")) {
+    const cluster = band.data?.cluster as string
+    const members =
+      band.data?.band === "turn"
+        ? model.nodes.filter((node) => node.turnID === cluster)
+        : model.nodes.filter((node) => model.nodes.find((phase) => phase.id === cluster)?.clusterOf?.includes(node.id))
+
+    for (const member of members) {
+      if (!visible.has(member.id)) continue
+      const position = positions.get(member.id)
+      if (!position) continue
+      const [width, height] = nodeSize(member)
+
+      // The band is padded around the member's box, not around its centre.
+      expect(band.position[0] - band.size![0] / 2).toBeLessThanOrEqual(position.x - width / 2)
+      expect(band.position[0] + band.size![0] / 2).toBeGreaterThanOrEqual(position.x + width / 2)
+      expect(band.position[1] - band.size![1] / 2).toBeLessThanOrEqual(position.y - height / 2)
+      expect(band.position[1] + band.size![1] / 2).toBeGreaterThanOrEqual(position.y + height / 2)
+    }
+  }
+})
+
+test("provenance bundling rebases file edges onto their turn spine (LE.13)", () => {
+  const plain = at("execution")
+  const bundled = buildRenderModel(model, { level: "execution", positions, bundle: true })
+  const fileTargets = (built: ReturnType<typeof at>) =>
+    built.edges.filter((edge) => edge.target.startsWith("file:"))
+  const sources = (built: ReturnType<typeof at>) => new Set(fileTargets(built).map((edge) => edge.source))
+
+  // Every file edge now originates from a turn node, and there are fewer crossing wires than before.
+  expect([...sources(bundled)].every((source) => source.startsWith("turn:"))).toBe(true)
+  expect(sources(bundled).size).toBeLessThan(sources(plain).size)
+  expect(fileTargets(bundled).length).toBeLessThan(fileTargets(plain).length)
+  // Nothing that does not touch a file is rebased, so the sequence spine is untouched.
+  expect(bundled.edges.some((edge) => edge.kind === "sequence" && edge.source.startsWith("tool:"))).toBe(true)
+})
+
+test("hierarchy and inferred edges are dashed, provenance is solid (RF.4)", () => {
+  const built = at("detail")
+  const style = (kind: string, confidence?: string) =>
+    built.edges.find((edge) => edge.kind === kind && (!confidence || edge.confidence === confidence))?.style
+
+  expect(style("part-of")).toBe("dashed")
+  expect(style("sequence", "explicit")).toBe("solid")
+  expect(style("writes")).toBe("solid")
+})
+
+test("the render model carries the session identity of the root (T3.6)", () => {
+  const identified = buildGraph({ messages: [{ id: "m1", type: "user", text: "hi", time: { created: 1 } }], status: { type: "idle" }, sessionID: "ses_abc" })
+  const built = buildRenderModel(identified, { level: "overview", positions: layoutGraph(identified).positions })
+  const root = built.nodes.find((node) => node.kind === "session")
+
+  expect(root?.id).toBe("session")
+  expect(root?.data?.sessionID).toBe("ses_abc")
+})
+
+// T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
+// the model's nodes, so the order decides which nodes get a card and which fall back to a dot.
+test("the cards go to the nodes nearest the camera", () => {
+  const centre: [number, number, number] = [0, 0, 0]
+  const near = byProximity(model, positions, centre)
+  const built = buildRenderModel(near, { level: "execution", positions, cardBudget: 4 })
+
+  const cards = built.nodes.filter((node) => node.html !== undefined && !STRUCTURAL.has(node.kind))
+  const dots = built.nodes.filter((node) => node.shape === "dot")
+
+  expect(cards.length).toBe(4)
+  expect(dots.length).toBeGreaterThan(0)
+
+  // The four cards are the four nodes nearest the centre, in that order.
+  const distance = (id: string) => {
+    const point = positions.get(id)!
+    return Math.hypot(point.x - centre[0], point.y - centre[1])
+  }
+
+  const cardDistances = cards.map((node) => distance(node.id))
+  const dotDistances = dots.map((node) => distance(node.id))
+
+  expect(Math.max(...cardDistances)).toBeLessThanOrEqual(Math.min(...dotDistances))
+})
