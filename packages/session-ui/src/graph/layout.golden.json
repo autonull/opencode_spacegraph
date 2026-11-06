@@ -1564,285 +1564,285 @@
   "tree": [
     [
       "session",
-      1464,
+      1644,
       0,
       0
     ],
     [
       "turn:msg_user_1",
-      488,
+      548,
       -96,
       64
     ],
     [
       "msg:msg_user_1",
-      122,
+      146,
       -192,
       128
     ],
     [
       "file:src/auth/session.ts",
-      366,
+      414,
       -192,
       192
     ],
     [
       "file:src/auth/session.test.ts",
-      610,
+      682,
       -192,
       192
     ],
     [
       "msg_plan_1:text:0",
-      854,
+      950,
       -192,
       128
     ],
     [
       "tool:prt_tool_glob_1",
-      122,
+      146,
       -288,
       128
     ],
     [
       "phase:turn:msg_user_1:explore:1",
-      366,
+      414,
       -288,
       64
     ],
     [
       "tool:prt_tool_grep_1",
-      610,
+      682,
       -288,
       128
     ],
     [
       "tool:prt_tool_read_1",
-      854,
+      950,
       -288,
       128
     ],
     [
       "tool:prt_tool_read_2",
-      122,
+      146,
       -384,
       128
     ],
     [
       "tool:prt_tool_read_3",
-      366,
+      414,
       -384,
       128
     ],
     [
       "file:src/auth/store.ts",
-      610,
+      682,
       -384,
       192
     ],
     [
       "sub:ses_child_auth",
-      854,
+      950,
       -384,
       128
     ],
     [
       "phase:turn:msg_user_1:delegate:2",
-      122,
+      146,
       -480,
       64
     ],
     [
       "msg:msg_synthetic_1",
-      366,
+      414,
       -480,
       128
     ],
     [
       "tool:prt_tool_edit_1",
-      610,
+      682,
       -480,
       128
     ],
     [
       "phase:turn:msg_user_1:edit:3",
-      854,
+      950,
       -480,
       64
     ],
     [
       "tool:prt_tool_write_1",
-      122,
+      146,
       -576,
       128
     ],
     [
       "file:src/auth/token.ts",
-      366,
+      414,
       -576,
       192
     ],
     [
       "tool:prt_tool_patch_1",
-      610,
+      682,
       -576,
       128
     ],
     [
       "file:src/auth/guards.ts",
-      854,
+      950,
       -576,
       192
     ],
     [
       "tool:prt_tool_shell_1",
-      122,
+      146,
       -672,
       128
     ],
     [
       "phase:turn:msg_user_1:verify:4",
-      366,
+      414,
       -672,
       64
     ],
     [
       "result:prt_tool_shell_1",
-      610,
+      682,
       -672,
       192
     ],
     [
       "tool:prt_tool_shell_2",
-      854,
+      950,
       -672,
       128
     ],
     [
       "result:prt_tool_shell_2",
-      122,
+      146,
       -768,
       192
     ],
     [
       "tool:prt_tool_edit_2",
-      366,
+      414,
       -768,
       128
     ],
     [
       "phase:turn:msg_user_1:edit:5",
-      610,
+      682,
       -768,
       64
     ],
     [
       "err:msg_retry_1:assistant",
-      854,
+      950,
       -768,
       192
     ],
     [
       "retry:msg_retry_1:2",
-      122,
+      146,
       -864,
       192
     ],
     [
       "tool:prt_tool_shell_3",
-      366,
+      414,
       -864,
       128
     ],
     [
       "phase:turn:msg_user_1:verify:6",
-      610,
+      682,
       -864,
       64
     ],
     [
       "result:prt_tool_shell_3",
-      854,
+      950,
       -864,
       192
     ],
     [
       "diff:msg_idle_1",
-      122,
+      146,
       -960,
       192
     ],
     [
       "error-group:turn:msg_user_1",
-      366,
+      414,
       -960,
       128
     ],
     [
       "subagent-group:ses_child_auth",
-      610,
+      682,
       -960,
       128
     ],
     [
       "turn:msg_user_2",
-      1464,
+      1644,
       -96,
       64
     ],
     [
       "msg:msg_user_2",
-      1098,
+      1242,
       -192,
       128
     ],
     [
       "tool:prt_tool_edit_3",
-      1342,
+      1510,
       -192,
       128
     ],
     [
       "phase:turn:msg_user_2:edit:1",
-      1586,
+      1778,
       -192,
       64
     ],
     [
       "tool:prt_tool_shell_4",
-      1830,
+      2046,
       -192,
       128
     ],
     [
       "phase:turn:msg_user_2:verify:2",
-      1098,
+      1242,
       -288,
       64
     ],
     [
       "result:prt_tool_shell_4",
-      1342,
+      1510,
       -288,
       192
     ],
     [
       "diff:msg_idle_2",
-      1586,
+      1778,
       -288,
       192
     ],
     [
       "file-group:src:auth",
-      2440,
+      2740,
       -96,
       128
     ],
     [
-      122,
+      146,
       -960,
       0,
-      2440,
+      2740,
       0,
       192
     ]
