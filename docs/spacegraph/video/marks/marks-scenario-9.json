@@ -1,0 +1,18 @@
+[
+  {
+    "frame": "scenario-9-01-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "scenario-9-02-node-selected",
+    "elapsed": 0.864
+  },
+  {
+    "frame": "scenario-9-03-downstream-trace-active",
+    "elapsed": 2.014
+  },
+  {
+    "frame": "scenario-9-04-hold-outcome",
+    "elapsed": 6.031
+  }
+]
