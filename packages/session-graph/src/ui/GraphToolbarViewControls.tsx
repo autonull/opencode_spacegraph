@@ -45,6 +45,7 @@ export type GraphToolbarViewControlsProps = {
   onExport?: (format: "svg" | "json" | "html", model: any) => void
   renderModel?: any
   onCopyView?: () => void
+  onCopyPermalink?: () => void
   dispatchCommand?: (command: string) => void
   i18n: ReturnType<typeof import("@opencode/ui/context/i18n")["useI18n"]>
 }
@@ -150,6 +151,7 @@ function GraphToolbarCommandControlsInner(props: GraphToolbarViewControlsProps) 
           onExport={props.onExport}
           renderModel={props.renderModel}
           onCopyView={props.onCopyView}
+          onCopyPermalink={props.onCopyPermalink}
         />
       )}
     </>

@@ -788,6 +788,7 @@ const source = {
   "ui.sessionGraph.toolbar.exportHtml": "Export HTML",
   "ui.sessionGraph.toolbar.exportJson": "Export JSON",
   "ui.sessionGraph.toolbar.exportSvg": "Export SVG",
+  "ui.sessionGraph.toolbar.copyPermalink": "Copy permalink",
   "ui.sessionGraph.toolbar.files": "Files",
   "ui.sessionGraph.toolbar.filesystem": "Filesystem",
   "ui.sessionGraph.toolbar.fit": "Fit",
