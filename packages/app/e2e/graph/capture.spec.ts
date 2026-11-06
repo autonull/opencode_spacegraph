@@ -7,6 +7,13 @@ import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
 import { waitForGraphContent } from "../utils/waits"
 
+const test = base.extend({
+  page: async ({ page }, use) => {
+    await seedSessionGraph(page)
+    await use(page)
+  },
+})
+
 const directory = "C:/OpenCode/SessionGraph"
 const sessionID = "ses_session_graph"
 const canvasHost = '[data-slot="graph-canvas-host"]'
@@ -32,13 +39,6 @@ function shouldCapture(name: string): boolean {
   const frameNum = Number.parseInt(match[1], 10)
   return captureOnly.includes(frameNum)
 }
-
-const test = base.extend({
-  page: async ({ page }, use) => {
-    await seedSessionGraph(page)
-    await use(page)
-  },
-})
 
 test.use({
   viewport: { width: 1440, height: 900 },
