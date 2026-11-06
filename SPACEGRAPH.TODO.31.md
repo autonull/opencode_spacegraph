@@ -393,6 +393,7 @@ Nothing here is dropped; nothing here is promoted.
 
 ### 8.4 Revision log
 
+- **r10 (2026-11-06):** Golden file updated for session-ui layout test. The SGF-10 `TreePlacement` size-awareness changes (reading `item.width`) shifted tree layout positions; updated `packages/session-ui/src/graph/layout.golden.json` to reflect the new, correct positions. All 837 session-ui tests pass; all 92 session-graph tests pass; all 580 spacegraphjs tests pass.
 - **r9 (2026-11-06):** SGF-4, SGF-8, SGF-9, SGF-10 completed in spacegraphjs. Implemented:
   - SGF-4: Dual-loader docs added to `docs/host-integration.md` §11
   - SGF-8: Spec-vs-reality audit note added to `ROADMAP.md`
@@ -480,6 +481,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] One shared conformance file `spacegraphjs/test/layout-size-aware.test.ts` covers all size-aware layouts (AABB + nodePadding=20, heterogeneous 100×60/250×120/400×200, missing-size fallback)
 - [x] Existing suites stay green unmodified (`layout-plugins`, `spacegraph`, `integration`, `hardening`, `package-exports` extended)
 - [x] Per item: `pnpm vitest run test/layout-size-aware.test.ts test/layout-plugins.test.ts`; once at 6.0 exit: dist rebuild + root `bun run check` + component suite
+- [x] Golden file updated for session-ui layout test (tree strategy positions changed due to SGF-10 TreePlacement size-awareness)
 
 ### Medium-term
 - [ ] Discovery affordances (first-run demo map; "see map" prompts; command palette; PR-embed SVG)
