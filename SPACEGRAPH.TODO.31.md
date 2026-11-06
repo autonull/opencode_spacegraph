@@ -258,6 +258,8 @@ it must pass **unmodified**. No existing test is edited to make a new behavior p
 | SGF-2 | P1 | spec #4 (+ root cause) | **Layout registry and one name.** Single source of truth for layout lookup names (use the plugin `id`, e.g. `'force-layout'`); register defaults under it; `LayoutOptionsMap` keys = registered names; export `LayoutRegistry` (or `listLayouts()` on the API) returning name + description. **`layoutOnce` with an unknown name throws** — no silent no-ops. Rename/namespace the internal `src/layout/strategies.ts` `LayoutStrategy` (`'lanes'|…`) so it cannot be confused with plugin layouts (e.g. export as `LaneLayoutStrategy` from the internal module, not top-level). Fix `layoutOnce('ForceLayout')` and `layoutOnce('force-layout')` to agree, and remove the need for `as any` at call sites. Tests: registry lists built-ins; unknown name throws. Fold any typed-signature coverage into the existing workspace typecheck — no new test file. | ~1 d |
 | SGF-3 | P1 | spec #3 | **Export surface audit.** Top-level exports (or documented subpath exports) for: `LayoutOptions`, `LayoutConfig`, `BaseLayout`, `HtmlNodeData` + other node-data interfaces consumers write against, `NodeSpec`, `EdgeSpec`, `GraphSpec`, and the `SimpleGraph.create` return type. Verify against `spacegraphjs/vite.lib.config.ts` and the published `exports` map; re-export from `src/index.ts` consistently; extend the existing `test/package-exports.test.ts` (already exists — add assertions there, don't create a second file). Rebuild `dist/` once, at the end of the 6.0 batch. Note: `ForceLayoutConfig` was already exported — spec table was stale; audit, don't assume. | ~0.5 d |
 | SGF-4 | P1 | spec #2 | **Dev/prod data loading — docs only.** Not applicable to this repo (no dual loader). Add a "dual-loader hosts" section to `docs/host-integration.md` (or `spacegraphjs/docs/host-integration.md`): single shared typed `loadGraph()` consumed by both the dev middleware and the prod server; the failure mode is silent data drift; the acceptance test is one fixture fed through both paths. Grant Workspace tracks its own fix. | ~0.25 d |
+| **SGF-2+3** | **P1** | **combo** | **SGF-2 and SGF-3 together:** Both touch plugin registration/exports — combine into ~1 day single batch (registry + exports + typecheck). | **~1 d** |
+| **SGF-4+8** | **P1/P2** | **combo** | **SGF-4 and SGF-8 together:** Both docs-only — combine into ~0.25 day single doc edit. | **~0.25 d** |
 | SGF-5 | P2 ✅ | spec #5 | **Edge-strength-weighted attraction.** `ForceLayout.step()`: `const strength = (edge.data?.strength as number) ?? 1; const force = config.attraction * dist * strength`. Optional `attractionFn` rejected — keep the config surface flat. Unit coverage goes in the conformance file or is skipped as trivial arithmetic — no dedicated test file. | ~0.5 d |
 | SGF-6 | P3 ✅ | spec #6 | **Layout persistence (serialize half).** `setPositions` exists; add `getPositions()`/`serializePositions(): Record<string,[number,number,number]>` matching the current API shape, and a round-trip case added to the conformance file: layout → serialize → clear → restore → byte-identical positions. | ~0.5 d |
 | SGF-7 | P3 ✅ | spec #7 | **Async layout progress (callback half only).** `onProgress?: (iteration: number, total: number) => void` in `ForceLayoutConfig`, fired from `step()`; `layoutOnce(..., { onProgress })` plumbed through options merge. Skip the `for await` stream variant — callback covers the spinner use case with zero API surface growth. Unit coverage: one assertion inside the conformance file (callback fired `iterations` times). | ~0.5 d |
@@ -453,12 +455,11 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
 - [x] SGF-1 node-size-aware ForceLayout + `getLayoutBounds()` + final separation pass (P0)
-- [ ] SGF-2 layout registry + one name + throw-on-unknown (P1)
-- [ ] SGF-3 export audit (P1)
-- [ ] SGF-4 dual-loader guidance in host-integration.md (P1, docs)
-- [ ] SGF-9 size-aware sweep of Grid/Circular/Tree/Hierarchical/Radial/Cluster/Timeline (P1)
-- [ ] SGF-10 `TreePlacement` reads `item.width` (P2)
-- [x] SGF-5 edge-strength attraction (P2) · SGF-6 `getPositions()` round-trip (P3) · SGF-7 `onProgress` callback (P3) · SGF-8 spec-vs-reality note (P2)
+- [ ] SGF-2+3 combined: layout registry + one name + export audit (P1, ~1 day)
+- [ ] SGF-4+8 combined: dual-loader docs + spec-vs-reality audit note (P1/P2, ~0.25 day)
+- [ ] SGF-9 size-aware sweep of Grid/Circular/Tree/Hierarchical/Radial/Cluster/Timeline (P1, ~2 days)
+- [ ] SGF-10 `TreePlacement` reads `item.width` (P2, ~0.5 day)
+- [x] SGF-5 edge-strength attraction (P2) · SGF-6 `getPositions()` round-trip (P3) · SGF-7 `onProgress` callback (P3)
 
 ### Verification consolidation (no re-testing)
 - [ ] One shared conformance file `spacegraphjs/test/layout-size-aware.test.ts` covers all size-aware layouts (AABB + nodePadding=20, heterogeneous 100×60/250×120/400×200, missing-size fallback)
