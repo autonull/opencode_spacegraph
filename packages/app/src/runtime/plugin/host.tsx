@@ -39,6 +39,7 @@ import {
   type Links,
   type Live,
   type Messages,
+  type MountedSession,
   type Persisted,
   type PluginOptions,
   type Registry,
@@ -52,6 +53,7 @@ import {
 } from "@opencode/plugin/gui"
 import { OpenCode, type OpenCodeClient } from "@opencode/client/promise"
 import { useLanguage } from "@/runtime/i18n/language"
+import { orderedSessionSurfaces, selectSessionSurface, sessionSurfaceID } from "@/runtime/plugin/surfaces"
 import {
   createPluginDialogState,
   transitionPluginDialog,
@@ -876,6 +878,21 @@ function createHost(input: HostInput) {
 
         // SAFETY: a key the plugin's catalog lacks is one of the app's shared keys, such as `common.*`.
         return language.plural(key as Parameters<typeof language.plural>[0], count, params)
+      },
+      surfaces: {
+        items: () => orderedSessionSurfaces(
+          state.entries["session-surface"]?.map((e) => e.value) ?? [],
+          language.t("session.surface.transcript"),
+        ),
+        select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
+        current: (session: MountedSession) => {
+          const id = sessionSurfaceID(session)
+          const all = orderedSessionSurfaces(
+            state.entries["session-surface"]?.map((e) => e.value) ?? [],
+            language.t("session.surface.transcript"),
+          )
+          return all.find((s) => s.id === id) ?? all[0]
+        },
       },
     }
 
