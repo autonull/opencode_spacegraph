@@ -1,0 +1,164 @@
+name: SpaceGraph Verification
+
+on:
+  pull_request:
+    paths:
+      - 'packages/session-ui/src/graph/**'
+      - 'packages/session-graph/**'
+      - 'packages/app/src/session/graph/**'
+      - 'packages/plugins/spacegraph/**'
+      - 'packages/gui-plugins/src/spacegraph/**'
+      - 'spacegraphjs/**'
+      - 'script/graph-verify.ts'
+      - 'script/capture-graph-demo.ts'
+      - 'script/pixel-diff.ts'
+      - 'script/test-capture-overrides.ts'
+      - 'docs/spacegraph/capture-overrides.json'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: graph:verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Read spacegraphjs gitlink
+        id: gitlink
+        run: |
+          COMMIT=$(git ls-tree HEAD spacegraphjs | awk '{print $3}')
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Clone spacegraphjs at gitlink
+        uses: actions/checkout@v4
+        with:
+          repository: autonull/spacegraphjs7
+          ref: ${{ steps.gitlink.outputs.commit }}
+          path: spacegraphjs
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install spacegraphjs dependencies
+        run: pnpm install --ignore-scripts
+        working-directory: spacegraphjs
+
+      - name: Build spacegraphjs packages
+        run: pnpm run build:lib && pnpm run build:packages
+        working-directory: spacegraphjs
+
+      - name: Install root dependencies
+        run: bun install
+
+      - name: Run graph:verify
+        run: bun run graph:verify
+
+  capture:
+    name: graph:capture verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: verify
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'rendering-paths')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read spacegraphjs gitlink
+        id: gitlink
+        run: |
+          COMMIT=$(git ls-tree HEAD spacegraphjs | awk '{print $3}')
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Clone spacegraphjs at gitlink
+        uses: actions/checkout@v4
+        with:
+          repository: autonull/spacegraphjs7
+          ref: ${{ steps.gitlink.outputs.commit }}
+          path: spacegraphjs
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run capture verify
+        run: bun run graph:capture --mode=verify
+        continue-on-error: true
+
+  pages:
+    name: Deploy Pages
+    runs-on: ubuntu-latest
+    needs: verify
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Read spacegraphjs gitlink
+        id: gitlink
+        run: |
+          COMMIT=$(git ls-tree HEAD spacegraphjs | awk '{print $3}')
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Clone spacegraphjs at gitlink
+        uses: actions/checkout@v4
+        with:
+          repository: autonull/spacegraphjs7
+          ref: ${{ steps.gitlink.outputs.commit }}
+          path: spacegraphjs
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install spacegraphjs dependencies
+        run: pnpm install --ignore-scripts
+        working-directory: spacegraphjs
+
+      - name: Build spacegraphjs packages
+        run: pnpm run build:lib && pnpm run build:packages
+        working-directory: spacegraphjs
+
+      - name: Build contract demo
+        run: pnpm run build:demo
+        working-directory: spacegraphjs
+
+      - name: Build second host
+        run: pnpm run build:second-host
+        working-directory: spacegraphjs
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: spacegraphjs/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -50,7 +50,10 @@
     "./tools/ansi": "./src/tools/ansi.ts",
     "./tools/shell-output": "./src/tools/shell-output.ts",
     "./v2/*.css": "./src/v2/components/*.css",
-    "./v2/*": "./src/v2/components/*.tsx"
+    "./v2/*": "./src/v2/components/*.tsx",
+    "./graph": "./src/graph/index.ts",
+    "./graph/model": "./src/graph/model.ts",
+    "./graph/vocabulary": "./src/graph/vocabulary.ts"
   },
   "scripts": {
     "typecheck": "bun check --no-script -b",

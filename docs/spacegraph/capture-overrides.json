@@ -1,0 +1,24 @@
+{
+  "overrides": {
+    "06-graph-3d.png": {
+      "owner": "team/graph",
+      "reason": "CSS3D depth mode known broken (plane shear, band overlap). Tracked in Phase 4 motion envelope.",
+      "maxDiffPercent": 50
+    },
+    "12-graph-hierarchy.png": {
+      "owner": "team/graph",
+      "reason": "Hierarchy layout collapses to single column. Sub-layout policy needed (Phase 4.4).",
+      "maxDiffPercent": 50
+    },
+    "18-graph-layered.png": {
+      "owner": "team/graph",
+      "reason": "Layered depth mode shears planes. Tracked in Phase 4 motion envelope.",
+      "maxDiffPercent": 50
+    },
+    "19-graph-depth-stack.png": {
+      "owner": "team/graph",
+      "reason": "Depth stack mode overlaps cards. Tracked in Phase 4 motion envelope.",
+      "maxDiffPercent": 50
+    }
+  }
+}

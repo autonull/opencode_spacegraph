@@ -282,16 +282,21 @@ export namespace Timeline {
 
     const turns: Turn[] = []
     const turnByUserID = new Map<string, Turn>()
+    // The graph reads ownership from this single walk: message id -> owning turn id (execution
+    // opener). A steered prompt maps to the opener that began the execution it joined.
+    const turnByMessageID = new Map<string, string>()
     const leading: Notice[] = []
     let current: Turn | undefined
     // Everything since the last idle marker is one turn, including prompts steered in meanwhile.
     let execution: { opener: string; turn: Turn; files: Set<string> } | undefined
+    const owner = () => execution?.opener ?? (current && !current.shell ? current.id : undefined)
 
     messages.forEach((message) => {
       if (isNotice(message)) {
         if (current) current.entries.push({ type: "notice", message })
 
         if (!current) leading.push(message)
+        else turnByMessageID.set(message.id, owner() ?? current.id)
 
         return
       }
@@ -300,6 +305,7 @@ export namespace Timeline {
         const turn: Turn = { id: message.id, time: message.time, shell: message, entries: [] }
         turns.push(turn)
         current = turn
+        turnByMessageID.set(message.id, message.id)
 
         return
       }
@@ -314,11 +320,13 @@ export namespace Timeline {
         // Undelivered input has not joined the turn yet.
         if (!pendingInputIDs?.has(message.id))
           execution = { opener: execution?.opener ?? message.id, turn, files: execution?.files ?? new Set() }
+        turnByMessageID.set(message.id, owner() ?? message.id)
 
         return
       }
 
       if (message.type === "idle") {
+        turnByMessageID.set(message.id, execution?.opener ?? current?.id ?? message.id)
         appendIdle(message)
 
         // The summary follows the turn's last prompt, after any failure the marker reports.
@@ -336,6 +344,7 @@ export namespace Timeline {
       }
 
       if (message.type !== "assistant") return
+      turnByMessageID.set(message.id, execution?.opener ?? (current && !current.shell ? current.id : message.id))
       message.snapshot?.files?.forEach((file) => execution?.files.add(file))
       const existing = current?.user ? current : undefined
 
@@ -489,6 +498,7 @@ export namespace Timeline {
 
     return {
       activeMessageID,
+      turnByMessageID,
       turnPhaseByID,
       rows: detail
         ? groupMessages(
