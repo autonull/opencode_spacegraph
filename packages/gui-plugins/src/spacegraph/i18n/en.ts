@@ -39,6 +39,8 @@ export default {
   "command.exportJson": "Export map as JSON",
   "command.exportHtml": "Export map as HTML",
   "command.search": "Search graph",
+  "command.graph.hybrid": "Show transcript and map (hybrid)",
+  "command.graph.toggle": "Toggle session map",
   "turnMap.title": "This turn",
   "turnMap.open": "Open full map",
   "turnMap.close": "Close turn map",

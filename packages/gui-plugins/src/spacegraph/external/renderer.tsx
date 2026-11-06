@@ -270,6 +270,51 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     }
   })
 
+  // graph.hybrid - toggle hybrid view (transcript + map)
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session || !surfaces()) return undefined
+
+    return {
+      id: "graph.hybrid",
+      get title() {
+        return ctx.t("command.graph.hybrid")
+      },
+      get group() {
+        return ctx.t("command.group")
+      },
+      section: "session",
+      run: () => select(`${ctx.id}.hybrid`),
+    }
+  })
+
+  // graph.toggle - toggle between transcript and map
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session || !surfaces()) return undefined
+
+    return {
+      id: "graph.toggle",
+      get title() {
+        return ctx.t("command.graph.toggle")
+      },
+      get group() {
+        return ctx.t("command.group")
+      },
+      section: "session",
+      run: () => {
+        const current = surfaces().current(session)
+        if (current === `${ctx.id}.map`) {
+          select("transcript")
+        } else {
+          select(`${ctx.id}.map`)
+        }
+      },
+    }
+  })
+
   ctx.add(Command, (): Command | undefined => {
     const session = ctx.sessions.current()
 

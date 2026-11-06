@@ -126,6 +126,15 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.side = side
       })
     },
+    copyPermalink: (session: MountedSession) => {
+      const node = store(session).value?.focused
+
+      if (!node) return
+
+      const layout = store(session).value?.layout ?? prefs.value.layout ?? "lanes"
+      location.hash = `spacegraph:${layout}:${node}`
+      void session.server.api.copy(location.href)
+    },
     export: (session: MountedSession, format: "svg" | "json" | "html") => {
       const g = graph(session)()
       const level = store(session).value?.level ?? prefs.value.level ?? "execution"

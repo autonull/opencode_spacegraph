@@ -2,6 +2,8 @@ import { createMemo, type JSX } from "solid-js"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { FullMap } from "./full-map"
+import { GraphToolbarViewControls } from "@opencode/session-graph"
+import { useI18n } from "@opencode/ui/context/i18n"
 
 export function HybridSurface(props: {
   model: SpacegraphModel
@@ -9,6 +11,7 @@ export function HybridSurface(props: {
   screen: SessionScreen
   transcript: JSX.Element
 }) {
+  const i18n = useI18n()
   const arrangement = createMemo(() => props.model.arrangement(props.session))
   const side = createMemo(() => props.model.side(props.session))
   const floating = createMemo(() => arrangement() === "floating")
@@ -42,6 +45,12 @@ export function HybridSurface(props: {
           screen={props.screen}
           arrangement={arrangement()}
           arrangementSide={side()}
+        />
+        <GraphToolbarViewControls
+          i18n={i18n}
+          onExport={(format, model) => props.model.export(props.session, format)}
+          renderModel={props.model.graph(props.session)()}
+          onCopyPermalink={() => props.model.copyPermalink(props.session)}
         />
       </div>
     </div>

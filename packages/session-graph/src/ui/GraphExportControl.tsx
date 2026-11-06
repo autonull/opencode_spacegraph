@@ -35,6 +35,7 @@ export type GraphExportControlProps = {
   onExport?: (format: "svg" | "json" | "html", model: RenderModel) => void
   renderModel?: RenderModel
   onCopyView?: () => void
+  onCopyPermalink?: () => void
 }
 
 export const GraphExportControl = (props: GraphExportControlProps) => {
@@ -90,6 +91,12 @@ export const GraphExportControl = (props: GraphExportControlProps) => {
             onClick: () => props.onExport?.("html", props.renderModel!),
             slot: "graph-export-option",
             value: "html",
+          })}
+          {props.onCopyPermalink && option({
+            label: i18n.t("ui.sessionGraph.toolbar.copyPermalink"),
+            onClick: () => props.onCopyPermalink?.(),
+            slot: "graph-export-option",
+            value: "permalink",
           })}
         </ToolbarMenu>
       </Show>
