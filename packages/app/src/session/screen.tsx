@@ -15,7 +15,7 @@ import {
 } from "solid-js"
 import { createStore } from "solid-js/store"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
-import type { BackgroundTask, MountedSession, SessionScreen } from "@opencode/plugin/gui"
+import type { BackgroundTask, MountedSession, SessionScreen, TranscriptScreen } from "@opencode/plugin/gui"
 import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings } from "@/settings/model"
@@ -50,6 +50,8 @@ import { useServer } from "@/runtime/server/current"
 import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
 import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
+import { SessionSurfaceHost } from "./surface"
+import { selectSessionSurface } from "@/runtime/plugin/surfaces"
 
 export function SessionScreenView(props: { session: SessionModel }) {
   // Link handling for the rest of the screen; each cached timeline provides its own for its session.
@@ -62,6 +64,7 @@ export function SessionScreenView(props: { session: SessionModel }) {
         screen={mounted.screen}
         view={mounted.view}
         bindBackground={mounted.bindBackground}
+        bindTranscript={mounted.bindTranscript}
         bindPrompt={mounted.bindPrompt}
       />
     </PluginLinks>
@@ -74,6 +77,7 @@ function SessionScreenContent(props: {
   view: Accessor<MountedSession>
   screen: SessionScreen
   bindBackground: (tasks: () => readonly BackgroundTask[]) => void
+  bindTranscript: (transcript: TranscriptScreen) => void
   bindPrompt: (prompt: { quotable: () => boolean; focus: () => void; focused: () => boolean }) => void
 }) {
   const session = props.session
@@ -423,7 +427,14 @@ function SessionScreenContent(props: {
             <Show when={isDesktop() && !messagesReady()}>
               <SessionIdentityHeader sessionID={session.identity.params.id ?? ""} session={session.data.info()} />
             </Show>
-            <Show when={messagesReady() && session.identity.params.id}>{timelineView()}</Show>
+            <Show when={messagesReady() && session.identity.params.id}>
+              <SessionSurfaceHost
+                session={props.view()}
+                screen={props.screen}
+                transcript={(active) => <Show when={active()}>{timelineView()}</Show>}
+                composerInset={timeline.inset}
+              />
+            </Show>
           </Match>
         </Switch>
       </div>

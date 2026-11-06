@@ -961,6 +961,52 @@ export const MenuItem = Registry.define<MenuItem>("menu-item")
 export const Panel = Registry.define<Panel>("panel")
 
 /**
+ * A session surface: a full-screen view in the session (like transcript, map, hybrid).
+ * The host routes sessions to one surface at a time. Surfaces list in order, and the user
+ * can switch between them.
+ */
+export interface SessionSurface {
+  /** The surface's id, unique within the plugin. */
+  readonly id: string
+  /** The surface's title. */
+  readonly title: string
+  /** Surfaces list in ascending order. Defaults to 0. */
+  readonly order?: number
+  /** Renders the surface once; its own reactivity updates it. A render that throws renders nothing and records the error. */
+  render(props: { session: MountedSession; screen: SessionScreen; transcript: any }): JSX.Element
+  /**
+   * Layers that overlay the surface, e.g. a turn map layer. Each layer renders once and its own
+   * reactivity updates it.
+   */
+  layers?: readonly SessionSurfaceLayer[]
+}
+
+/**
+ * A layer that overlays a session surface.
+ */
+export interface SessionSurfaceLayer {
+  /** The layer's id, unique within the plugin. */
+  readonly id: string
+  /** Renders the layer once; its own reactivity updates it. A render that throws renders nothing and records the error. */
+  render(props: { session: MountedSession; screen: SessionScreen; surface: string }): JSX.Element
+}
+
+/**
+ * The registry of session surfaces: full-screen views in the session (like transcript, map, hybrid).
+ *
+ * @example
+ * ```ts
+ * ctx.add(SessionSurface, {
+ *   id: "map",
+ *   get title() { return ctx.t("surface.map") },
+ *   order: 10,
+ *   render: ({ session, screen, transcript }) => <MapSurface session={session} screen={screen} />,
+ * })
+ * ```
+ */
+export const SessionSurface = Registry.define<SessionSurface>("session-surface")
+
+/**
  * The registry of settings pages, sections on host pages, and rows in host sections.
  *
  * @example

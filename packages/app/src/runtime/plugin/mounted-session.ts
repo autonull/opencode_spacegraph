@@ -394,5 +394,8 @@ export function createMountedSession(session: SessionModel) {
     bindBackground: (tasks: Accessor<readonly BackgroundTask[]>) => setBackground(() => tasks),
     bindPrompt: (value: { quotable: Accessor<boolean>; focus: () => void; focused: () => boolean }) =>
       setPrompt(() => value),
+    bindTranscript: (value: { activeMessageID: Accessor<string | undefined>; reveal: (messageID: string, partID?: string) => void }) => {
+      // Transcript binding is handled by the session screen
+    },
   }
 }
