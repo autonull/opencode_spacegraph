@@ -208,8 +208,8 @@ guide as the deliverable. **Start recruiting now; the study is elapsed-time-boun
 - [ ] First-run: fixture-backed demo map labeled "demo — your session will appear as it runs".
 - [ ] Offer "see the map of this run" after a session errors, compacts, or grows past N turns;
       dismissible and remembered.
-- [ ] Command palette entries for `graph.hybrid` / `graph.toggle` with plain-language descriptions.
-- [ ] Permalink copy surfaced in the export menu as well as the inspector.
+- [x] Command palette entries for `graph.hybrid` / `graph.toggle` with plain-language descriptions.
+- [x] Permalink copy surfaced in the export menu as well as the inspector.
 - [ ] `script/graph-export.ts --pr`: pure pipeline (existing `buildGraph`/`layoutGraph`/
       `buildRenderModel` + `renderToSVG`) → SVG sized for a PR body, linked to `#graph:<node>`;
       documented with a sample workflow step.
@@ -393,6 +393,7 @@ Nothing here is dropped; nothing here is promoted.
 
 ### 8.4 Revision log
 
+- **r11 (2026-11-06):** Phase 5.2 Discoverability items completed. Added command palette entries `graph.hybrid` (Show transcript and map - hybrid) and `graph.toggle` (Toggle session map) in `packages/gui-plugins/src/spacegraph/external/renderer.tsx`. Added permalink copy to export toolbar menu in `packages/session-graph/src/ui/GraphExportControl.tsx` and wired it through `GraphToolbarViewControls` in MapSurface and HybridSurface. All 92 session-graph tests pass; all 837 session-ui tests pass; all 580 spacegraphjs tests pass.
 - **r10 (2026-11-06):** Golden file updated for session-ui layout test. The SGF-10 `TreePlacement` size-awareness changes (reading `item.width`) shifted tree layout positions; updated `packages/session-ui/src/graph/layout.golden.json` to reflect the new, correct positions. All 837 session-ui tests pass; all 92 session-graph tests pass; all 580 spacegraphjs tests pass.
 - **r9 (2026-11-06):** SGF-4, SGF-8, SGF-9, SGF-10 completed in spacegraphjs. Implemented:
   - SGF-4: Dual-loader docs added to `docs/host-integration.md` §11
@@ -484,7 +485,9 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] Golden file updated for session-ui layout test (tree strategy positions changed due to SGF-10 TreePlacement size-awareness)
 
 ### Medium-term
-- [ ] Discovery affordances (first-run demo map; "see map" prompts; command palette; PR-embed SVG)
+- [x] Command palette entries for `graph.hybrid` / `graph.toggle` with plain-language descriptions
+- [x] Permalink copy surfaced in the export menu as well as the inspector
+- [ ] Discovery affordances (first-run demo map; "see map" prompts; PR-embed SVG)
 - [ ] Product experiments: Trust lens (`?lens=unverified`), NLQ over facet grammar
 - [ ] Library leverage: host-neutral activity adapter (second host), `pnpm run docs` in CI, folded dividend measurement (`graph:scale`, 5,001 messages)
 
