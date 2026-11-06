@@ -51,6 +51,7 @@ import { createBudgetedModel, createDrawnModel } from "../canvas/buildRenderMode
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate } from "./cardTemplate"
+import { useGroupBadgeAnimation } from "./useGroupBadgeAnimation"
 import { createCardCopy } from "./card-copy"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
@@ -72,7 +73,6 @@ import { useComparison } from "./useComparison"
 import { useGroupCollapse } from "./useGroupCollapse"
 import { useEdgeKinds } from "./useEdgeKinds"
 import { useGraphKeyboard } from "./useGraphKeyboard"
-import { useGraphViewport, type GraphBand } from "./useGraphViewport"
 import { useGraphState } from "./useGraphState"
 import { useGraphSelection } from "./useGraphSelection"
 import { useGraphAnnotations } from "./useGraphAnnotations"
@@ -85,6 +85,7 @@ import { useGraphWindows } from "./useGraphWindows"
 import { useGraphDetailMode } from "./useGraphDetailMode"
 import { useGraphPermalink } from "./useGraphPermalink"
 import { useGraphNavigation } from "./useGraphNavigation"
+import { useGraphViewport } from "./useGraphViewport"
 import { renderInspectorPanel } from "./renderInspectorPanel"
 import { useBudgetCenter } from "./useBudgetCenter"
 import { useDebugMode } from "./useDebugMode"
@@ -399,14 +400,11 @@ export const GraphView = (props: GraphViewProps) => {
     nodeLookup,
   })
 
-  // Band signal - updated from viewport tracker once available
-  const [bandSignal, setBandSignal] = createSignal<GraphBand | undefined>()
 
   const groupCollapse = useGroupCollapse({
     model,
     selection: () => selection(),
     nodeLookup,
-    band: bandSignal,
     descendantSelected: () => {
       const sel = selection()
       if (sel.length === 0) return false
@@ -420,6 +418,35 @@ export const GraphView = (props: GraphViewProps) => {
       return false
     },
     draggingDescendant: () => false, // TODO: track dragging state
+  })
+
+  // Phase 4.11: Track group collapse/expand for a11y announcement
+  const [groupAnnouncement, setGroupAnnouncement] = createSignal<string | undefined>()
+  const [prevCollapsedGroups, setPrevCollapsedGroups] = createSignal<ReadonlySet<string>>(groupCollapse.collapsedGroups())
+  createEffect(() => {
+    const current = groupCollapse.collapsedGroups()
+    const previous = prevCollapsedGroups()
+    const added = new Set([...current].filter((id) => !previous.has(id)))
+    const removed = new Set([...previous].filter((id) => !current.has(id)))
+
+    for (const id of added) {
+      const node = model().nodes.find((n) => n.id === id)
+      if (node) {
+        const count = node.clusterOf?.length ?? 0
+        setGroupAnnouncement(`Group '${node.label}' collapsed, ${count} nodes`)
+        // Clear after announcement
+        setTimeout(() => setGroupAnnouncement(undefined), 100)
+      }
+    }
+    for (const id of removed) {
+      const node = model().nodes.find((n) => n.id === id)
+      if (node) {
+        const count = node.clusterOf?.length ?? 0
+        setGroupAnnouncement(`Group '${node.label}' expanded, ${count} nodes`)
+        setTimeout(() => setGroupAnnouncement(undefined), 100)
+      }
+    }
+    setPrevCollapsedGroups(current)
   })
 
   // T18.3: the auto detail mode threshold
@@ -541,8 +568,15 @@ export const GraphView = (props: GraphViewProps) => {
   // T11.3 — file card details
   const copy = createCardCopy(i18n)
 
+  // Phase 4.11: Track group badge animations for token bursts in folded groups
+  const animatedBadgeGroups = useGroupBadgeAnimation(model, groupCollapse.collapsedGroups)
+
   const renderBand = createMemo(() =>
-    createBandTemplate(theme(), undefined, { copy, collapsedGroups: groupCollapse.collapsedGroups(), band: bandSignal() }),
+    createBandTemplate(theme(), undefined, {
+      copy,
+      collapsedGroups: groupCollapse.collapsedGroups(),
+      animatedGroups: animatedBadgeGroups(),
+    }),
   )
 
   // Compute layout using extracted helper
@@ -580,7 +614,6 @@ export const GraphView = (props: GraphViewProps) => {
       collapsedGroups: groupCollapse.collapsedGroups,
       displayPositions,
       i18n,
-      band: bandSignal,
     },
   )
 
@@ -632,12 +665,6 @@ export const GraphView = (props: GraphViewProps) => {
     capabilities: () => capabilities(),
   })
 
-  // Update band signal from viewport tracker
-  createEffect(() => {
-    if (!viewportTracker) return
-    const band = viewportTracker.band()
-    if (band) setBandSignal(band)
-  })
 
   // Expose camera methods on testHarness for component tests
   createEffect(() => {
@@ -953,7 +980,6 @@ export const GraphView = (props: GraphViewProps) => {
     depth,
     layout,
     level,
-    band: bandSignal,
     selection: () => selection(),
     select,
     expandToGraph,
@@ -1019,8 +1045,9 @@ export const GraphView = (props: GraphViewProps) => {
     onOpenWindow: openWindow,
     onCopyView: copyView,
     renderSummary: props.renderSummary,
-    ordered,
     viewAnnouncement,
+    groupAnnouncement,
+    ordered,
     a11yInstructionsId,
     announce,
     i18n,

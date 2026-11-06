@@ -37,6 +37,16 @@ export const GraphFind = (props: GraphFindProps) => {
   const counts = createMemo(() => facetCounts(props.model, props.facets))
 
   const handleSelectResult = (node: GraphNode) => {
+    // Add search hit ring animation to the selected node
+    if (node && (node as GraphNode & { className?: string }).className === undefined) {
+      // Use a temporary className for the search hit animation
+      const nodeWithClass = node as GraphNode & { className?: string }
+      nodeWithClass.className = "graph-search-hit"
+      // Remove the class after animation completes (200ms)
+      setTimeout(() => {
+        delete nodeWithClass.className
+      }, 200)
+    }
     props.onSelect(node)
     props.onClose()
   }

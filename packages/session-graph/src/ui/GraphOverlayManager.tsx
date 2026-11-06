@@ -28,7 +28,6 @@ import { createGraphCamera } from "./graph-camera"
 import { createNodeAnchor } from "./graph-anchors"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
-import type { GraphBand } from "./useGraphViewport"
 
 export type GraphOverlayManagerProps = {
   // Model & theme
@@ -39,7 +38,6 @@ export type GraphOverlayManagerProps = {
   detailMode: DetailMode
   effectiveDetailMode: DetailMode
   layout: Layout
-  band?: GraphBand
 
   // Selection & navigation
   selection: () => readonly string[]
@@ -101,9 +99,9 @@ export type GraphOverlayManagerProps = {
   renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
 
   // A11y
-  ordered: RenderModel
   renderModel: RenderModel
   viewAnnouncement: string
+  groupAnnouncement: string | undefined
   a11yInstructionsId: string
   announce: (message: string) => void
   i18n: ReturnType<typeof useI18n>
@@ -122,10 +120,9 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
         selection={props.selection()}
         instructionsId={props.a11yInstructionsId}
         announcement={props.viewAnnouncement}
+        groupAnnouncement={props.groupAnnouncement}
         onSelect={props.select}
         onEscape={() => props.select(undefined)}
-        band={props.band}
-        collapsedGroups={props.groupCollapse.collapsedGroups()}
       />
       <Show when={props.peekFrame}>
         {(frame) => (

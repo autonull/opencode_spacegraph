@@ -118,6 +118,8 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       category: isPhase ? node.data?.category : undefined,
       count: isPhase ? clusterCount(node) : undefined,
       expanded: isPhase ? isClusterExpanded(level) : undefined,
+      // Search hit ring: allow temporary CSS class for emphasis
+      className: (node as GraphNode & { className?: string }).className,
     }
   }
 

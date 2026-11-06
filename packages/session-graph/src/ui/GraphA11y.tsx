@@ -10,10 +10,8 @@ export type GraphA11yProps = {
   instructionsId?: string
   /** T6.8: what the view changed (level, representation, depth); announced when it changes. */
   announcement?: string
-  /** Current zoom band for group state determination (folded/summary/expanded). */
-  band?: "overview" | "execution" | "detail"
-  /** Explicitly collapsed group IDs. */
-  collapsedGroups?: ReadonlySet<string>
+  /** Phase 4.11: group expand/collapse announcement */
+  groupAnnouncement?: string
   onSelect: (id: string) => void
   onEscape?: () => void
 }
@@ -27,8 +25,9 @@ export type GraphA11yProps = {
  * T4.7: the mirror also lists the connections and announces the ones of the selected node, so the
  * structure of the graph is reachable and not only its nodes.
  *
- * Phase 4.6: Groups are exposed as tree items with children when expanded, and aria-expanded
- * reflects the group state (folded/summary/expanded).
+ * Phase 4.6: groups render as tree items with children, and `aria-expanded` reflects whether their
+ * members are drawn (folding filters members out of the model, so presence in the model is parity
+ * with the canvas).
  */
 export const GraphA11y = (props: GraphA11yProps) => {
   const i18n = useI18n()
@@ -39,8 +38,6 @@ export const GraphA11y = (props: GraphA11yProps) => {
   const items = (): AccessibleItem[] => {
     const nodes = props.model.nodes.filter((node) => node.interactive !== false)
     const nodeMap = new Map(nodes.map((node) => [node.id, node]))
-    const band = props.band ?? "overview"
-    const collapsedGroups = props.collapsedGroups ?? new Set<string>()
 
     // Build parent -> children map from the `parent` field on nodes
     const childrenMap = new Map<string, string[]>()
@@ -52,41 +49,23 @@ export const GraphA11y = (props: GraphA11yProps) => {
       }
     }
 
-    // Determine group state for each group node
-    const isGroupNode = (node: typeof nodes[0]) =>
-      (node.kind === "phase" ||
-        node.kind === "file-group" ||
-        node.kind === "error-group" ||
-        node.kind === "subagent-group") &&
-      node.shape === "group"
-
-    const getGroupState = (node: typeof nodes[0]): "folded" | "summary" | "expanded" => {
-      if (!isGroupNode(node)) return "expanded"
-      const explicitlyCollapsed = collapsedGroups.has(node.id)
-      if (band === "overview") return "folded"
-      if (explicitlyCollapsed) return "summary"
-      return "expanded"
-    }
-
-    // Build tree recursively
+    // Build tree recursively. The mirror lists the drawn set, so children appear whenever their
+    // group exists in the model; folding is a model-level filter, not an a11y-level one.
     const buildTree = (nodeIds: string[]): AccessibleItem[] => {
       const result: AccessibleItem[] = []
       for (const id of nodeIds) {
         const node = nodeMap.get(id)
         if (!node) continue
 
-        const groupState = getGroupState(node)
-        const hasChildren = childrenMap.has(node.id)
-        const isExpanded = groupState === "expanded"
-
+        const children = childrenMap.get(node.id)
         const item: AccessibleItem = {
           id: node.id,
           label: node.label,
           kind: node.kind,
           status: node.status,
           interactive: true,
-          expanded: hasChildren ? isExpanded : undefined,
-          children: hasChildren && isExpanded ? buildTree(childrenMap.get(node.id)!) : undefined,
+          expanded: children ? true : undefined,
+          children: children ? buildTree(children) : undefined,
         }
         result.push(item)
       }
@@ -137,6 +116,15 @@ export const GraphA11y = (props: GraphA11yProps) => {
     const message = props.announcement
     if (!message || message === announced) return
     announced = message
+    layer?.announce(message)
+  })
+
+  // Phase 4.11: announce group expand/collapse
+  let groupAnnounced: string | undefined
+  createEffect(() => {
+    const message = props.groupAnnouncement
+    if (!message || message === groupAnnounced) return
+    groupAnnounced = message
     layer?.announce(message)
   })
 
