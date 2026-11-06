@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "target": "ESNext",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true,
+    "noEmit": false,
+    "types": ["vite/client", "bun"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["**/*.mdx", "dist", "node_modules"]
+}

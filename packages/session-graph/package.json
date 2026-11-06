@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@opencode/session-graph",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -b",
+    "test": "bun test src",
+    "test:components": "playwright test --config playwright.components.config.ts",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:skipped": "bun run script/lint-skipped-tests.ts"
+  },
+  "dependencies": {
+    "@opencode/session-ui": "workspace:*",
+    "@opencode/ui": "workspace:*",
+    "@spacegraphjs/adapter": "workspace:*",
+    "@spacegraphjs/a11y": "workspace:*",
+    "@spacegraphjs/controls": "workspace:*",
+    "@spacegraphjs/compare": "workspace:*",
+    "@spacegraphjs/diff": "workspace:*",
+    "@spacegraphjs/export": "workspace:*",
+    "@spacegraphjs/inspector": "workspace:*",
+    "@spacegraphjs/navigation": "workspace:*",
+    "@spacegraphjs/overlays": "workspace:*",
+    "@spacegraphjs/renderer": "workspace:*",
+    "@spacegraphjs/search": "workspace:*",
+    "@spacegraphjs/spacegraph-renderer": "workspace:*",
+    "@spacegraphjs/svg-renderer": "workspace:*",
+    "@spacegraphjs/toolbar": "workspace:*",
+    "@spacegraphjs/turn-map": "workspace:*",
+    "@spacegraphjs/window-manager": "workspace:*",
+    "@spacegraphjs/shared": "workspace:*",
+    "solid-js": "catalog:",
+    "spacegraphjs": "workspace:*"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "catalog:",
+    "@tsconfig/node22": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/three": "0.186.0",
+    "@typescript/native": "catalog:",
+    "eslint": "10.14.0",
+    "three": "0.186.1",
+    "typescript-eslint": "8.72.1",
+    "vite": "catalog:",
+    "vite-plugin-dts": "^5.1.0",
+    "vite-plugin-solid": "catalog:"
+  }
+}

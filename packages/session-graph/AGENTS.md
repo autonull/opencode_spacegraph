@@ -58,10 +58,9 @@ This rule is enforced by:
 
 ## Accessibility Projection Contract (ADR-22)
 
-The screen-reader tree (`GraphA11y`) must always reflect the **drawn** node set — so that keyboard and screen-reader users navigate exactly what the canvas shows.
+The screen-reader tree (`GraphA11y`) must always reflect the **drawn** node set — not the full model — so that keyboard and screen-reader users navigate exactly what the canvas shows.
 
-- The `GraphA11y` component receives `model={props.renderModel}` from `GraphOverlayManager` — the same render model the canvas draws.
-- Group members appear as nested items whenever they exist in the drawn model (folding filters members out of the model, so presence is parity); `aria-expanded` is true exactly when members are drawn.
+- The `GraphA11y` component receives `model={props.ordered}` from `GraphOverlayManager`, where `ordered` is the `createOrderedModel` output filtered to `contentIDs` (nodes actually rendered).
 - This ensures the a11y list updates on every render when the drawn set changes (level toggle, facet filter, group collapse, selection).
 - Roving tabindex (`tabindex="0"` on one item, `-1` on others) tracks the selected node; arrow keys move selection; `Enter` opens the inspector; `Escape` clears.
 - `aria-activedescendant` mirrors the selected node ID.

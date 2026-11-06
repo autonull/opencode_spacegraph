@@ -19,7 +19,7 @@ import type { GraphDiffSource } from "./GraphDiff"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGroupCollapseReturn } from "./useGroupCollapse"
 import type { UseEdgeKindsReturn } from "./useEdgeKinds"
-import type { GraphViewportTrackerReturn } from "./useGraphViewport"
+import type { GraphViewportTrackerReturn, GraphBand } from "./useGraphViewport"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
 import type { GraphCanvasReady } from "../canvas/GraphCanvas"
 import { createNodeAnchor } from "./graph-anchors"
@@ -34,6 +34,7 @@ export type GraphCanvasRegionProps = {
   depth: () => "flat" | "layered" | "depth-stack" | "orbit"
   layout: () => Layout
   level: () => ZoomLevel
+  band: () => GraphBand | undefined
 
   // Selection & navigation
   selection: () => readonly string[]
@@ -123,6 +124,7 @@ export type GraphCanvasRegionProps = {
   renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
 
   // A11y
+  ordered: () => RenderModel
   viewAnnouncement: () => string
   a11yInstructionsId: string
   announce: (message: string) => void
@@ -149,6 +151,7 @@ export interface BuildCanvasRegionPropsInput {
   depth: () => "flat" | "layered" | "depth-stack" | "orbit"
   layout: () => Layout
   level: () => ZoomLevel
+  band: () => GraphBand | undefined
 
   // Selection & navigation
   selection: () => readonly string[]
@@ -238,6 +241,7 @@ export interface BuildCanvasRegionPropsInput {
   renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined
 
   // A11y
+  ordered: () => RenderModel
   viewAnnouncement: () => string
   a11yInstructionsId: string
   announce: (message: string) => void
@@ -269,6 +273,7 @@ export function buildCanvasRegionProps(input: BuildCanvasRegionPropsInput): Grap
     depth: input.depth,
     layout: input.layout,
     level: input.level,
+    band: input.band,
 
     // Selection & navigation
     selection: input.selection,
@@ -358,6 +363,7 @@ export function buildCanvasRegionProps(input: BuildCanvasRegionPropsInput): Grap
     renderSummary: input.renderSummary,
 
     // A11y
+    ordered: input.ordered,
     viewAnnouncement: input.viewAnnouncement,
     a11yInstructionsId: input.a11yInstructionsId,
     announce: input.announce,
