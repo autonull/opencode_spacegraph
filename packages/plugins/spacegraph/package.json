@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@autonull/opencode-plugin-spacegraph",
+  "version": "0.1.0",
+  "description": "SpaceGraph session map for the OpenCode GUI",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    "./gui-experimental": "./dist/gui-experimental.cjs"
+  },
+  "scripts": {
+    "build": "bun build.ts",
+    "prepack": "bun run build",
+    "test": "bun test --conditions browser",
+    "typecheck": "bun check --no-script"
+  },
+  "peerDependencies": {
+    "@opencode/plugin": "*"
+  },
+  "devDependencies": {
+    "@opencode/gui-plugins": "workspace:*",
+    "@opencode/plugin": "workspace:*",
+    "@opencode/session-graph": "workspace:*",
+    "@opencode/session-ui": "workspace:*",
+    "@opencode/ui": "workspace:*",
+    "@happy-dom/global-registrator": "20.0.11",
+    "@tailwindcss/vite": "catalog:",
+    "@tsconfig/node22": "catalog:",
+    "@types/bun": "catalog:",
+    "effect": "catalog:",
+    "solid-js": "catalog:",
+    "tailwindcss": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:"
+  }
+}

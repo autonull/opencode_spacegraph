@@ -13,7 +13,7 @@ export type UseGroupCollapseOptions = {
   selection: () => readonly string[]
   nodeLookup?: NodeLookup
   /** Current zoom band from the renderer (overview | execution | detail). */
-  band: () => GraphBand | undefined
+  band?: () => GraphBand | undefined
   /** Whether a descendant of a group is currently selected. */
   descendantSelected?: () => boolean
   /** Whether a drag operation is in progress on a group descendant. */
@@ -61,7 +61,7 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
 
   // Compute ambient folded groups based on band
   const computeAmbientFolded = createMemo(() => {
-    const band = options.band()
+    const band = options.band?.()
     if (!band) return new Set<string>()
 
     // At overview band, all groups are ambient-folded

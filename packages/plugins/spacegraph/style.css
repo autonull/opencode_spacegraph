@@ -1,0 +1,9 @@
+/* The plugin ships its own CSS through `ctx.add(Style, css)`. Import the app's Tailwind theme and the session UI
+   component styles, then let Tailwind scan the graph sources the vendored UI renders from. */
+
+@import "../../ui/src/styles/tailwind/index.css";
+@import "../../session-ui/src/styles/index.css";
+
+@source "./";
+@source "../../gui-plugins/src/spacegraph";
+@source "../../session-graph/src";

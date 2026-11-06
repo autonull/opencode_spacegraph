@@ -38,7 +38,11 @@
       "packages/*",
       "packages/plugins/*",
       "services/*",
-      "packages/data/*"
+      "packages/console/*",
+      "packages/stats/*",
+      "packages/data/*",
+      "spacegraphjs",
+      "spacegraphjs/packages/*"
     ],
     "catalog": {
       "@effect/opentelemetry": "4.1.0",

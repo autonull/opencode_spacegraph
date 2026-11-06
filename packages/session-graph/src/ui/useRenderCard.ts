@@ -24,7 +24,7 @@ export function useRenderCard(
     collapsedGroups: () => ReadonlySet<string>
     displayPositions: () => Map<string, import("@opencode/session-ui/graph").Position>
     i18n: import("./useGraphState").UseGraphStateReturn["i18n"]
-    band: () => "overview" | "execution" | "detail" | undefined
+    band?: () => "overview" | "execution" | "detail" | undefined
   },
 ) {
   return createMemo(() => {
@@ -65,7 +65,7 @@ export function useRenderCard(
           diff: state.comparison(),
           collapsedGroups: state.collapsedGroups(),
           positions: state.displayPositions(),
-          band: state.band(),
+          band: state.band?.(),
         })
       })()
     )
