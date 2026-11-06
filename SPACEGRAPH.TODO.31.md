@@ -393,6 +393,14 @@ Nothing here is dropped; nothing here is promoted.
 
 ### 8.4 Revision log
 
+- **r9 (2026-11-06):** SGF-4, SGF-8, SGF-9, SGF-10 completed in spacegraphjs. Implemented:
+  - SGF-4: Dual-loader docs added to `docs/host-integration.md` §11
+  - SGF-8: Spec-vs-reality audit note added to `ROADMAP.md`
+  - SGF-9: Size-aware sweep of all 7 plugin layouts (Grid, Circular, Tree, Hierarchical, Radial, Cluster, Timeline) — explicit config stays exact override; defaults auto-compute from node sizes via `getLayoutBounds()`
+  - SGF-10: `TreePlacement` reads `item.width` from PlacementItem (leaf width = max(columnPitch, item.width + cellGap))
+  - New shared conformance test `test/layout-size-aware.test.ts` covering all 8 size-aware layouts
+  - All 580 spacegraphjs tests pass; layout-plugins, layout-size-aware, placement tests pass
+  - Dist rebuilt; spacegraphjs typecheck passes
 - **r8 (2026-11-06):** SGF-2, SGF-3 completed in spacegraphjs. Implemented:
   - Layout registry: layouts registered by plugin `id` (kebab-case) — single source of truth
   - `listLayouts()` and `getLayoutRegistry()` exported from `core/defaults.ts` and re-exported from `index.ts`
@@ -463,15 +471,15 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
 - [x] SGF-1 node-size-aware ForceLayout + `getLayoutBounds()` + final separation pass (P0)
 - [x] SGF-2+3 combined: layout registry + one name + export audit (P1, ~1 day)
-- [ ] SGF-4+8 combined: dual-loader docs + spec-vs-reality audit note (P1/P2, ~0.25 day)
-- [ ] SGF-9 size-aware sweep of Grid/Circular/Tree/Hierarchical/Radial/Cluster/Timeline (P1, ~2 days)
-- [ ] SGF-10 `TreePlacement` reads `item.width` (P2, ~0.5 day)
+- [x] SGF-4+8 combined: dual-loader docs + spec-vs-reality audit note (P1/P2, ~0.25 day)
+- [x] SGF-9 size-aware sweep of Grid/Circular/Tree/Hierarchical/Radial/Cluster/Timeline (P1, ~2 days)
+- [x] SGF-10 `TreePlacement` reads `item.width` (P2, ~0.5 day)
 - [x] SGF-5 edge-strength attraction (P2) · SGF-6 `getPositions()` round-trip (P3) · SGF-7 `onProgress` callback (P3)
 
 ### Verification consolidation (no re-testing)
-- [ ] One shared conformance file `spacegraphjs/test/layout-size-aware.test.ts` covers all size-aware layouts (AABB + nodePadding=20, heterogeneous 100×60/250×120/400×200, missing-size fallback)
-- [ ] Existing suites stay green unmodified (`layout-plugins`, `spacegraph`, `integration`, `hardening`, `package-exports` extended)
-- [ ] Per item: `pnpm vitest run test/layout-size-aware.test.ts test/layout-plugins.test.ts`; once at 6.0 exit: dist rebuild + root `bun run check` + component suite
+- [x] One shared conformance file `spacegraphjs/test/layout-size-aware.test.ts` covers all size-aware layouts (AABB + nodePadding=20, heterogeneous 100×60/250×120/400×200, missing-size fallback)
+- [x] Existing suites stay green unmodified (`layout-plugins`, `spacegraph`, `integration`, `hardening`, `package-exports` extended)
+- [x] Per item: `pnpm vitest run test/layout-size-aware.test.ts test/layout-plugins.test.ts`; once at 6.0 exit: dist rebuild + root `bun run check` + component suite
 
 ### Medium-term
 - [ ] Discovery affordances (first-run demo map; "see map" prompts; command palette; PR-embed SVG)
