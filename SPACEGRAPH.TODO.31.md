@@ -491,6 +491,16 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - Vision CI, ONNX, graph-guided compaction, D4, fractal ZUI, capture matrix, hybrid scroll e2e, force-layout perf
 - Grant Workspace dual-loader fix: Grant Workspace repo
 
+### Known Failures — to fix in future session
+| ID | Area | Symptom | Likely Cause | Fix Plan |
+|---|---|---|---|---|
+| F1 | e2e/session-graph | "split button not found" in session-graph.spec.ts | MapSurface toolbar lacks split button; spacegraph plugin's HybridSurface has it | Add split button to MapSurface toolbar or update test to use HybridSurface |
+| F2 | e2e/session-graph | "Maximum call stack size exceeded" after split click | Recursive layout switch in spacegraph plugin model | Audit `cycleArrangement`/`select` in model.ts for recursion |
+| F3 | e2e/capture | Frames 25, 26, 27, 29, 30, 31, 32, 33, 35 missing from capture | Tests use arrangements/levels not triggered by current test flow | Extend capture.spec.ts to exercise those states |
+| F4 | session-graph component tests | GraphCanvasRegionProps test fails | GraphCanvasRegionProps type needs accessor for renderModel | Fix component test harness to pass accessor |
+| F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
+| F6 | root | `bun run check` type errors in gui-plugins (unrelated to my changes) | Pre-existing type errors in spacegraph plugin | Fix gui-plugins spacegraph type errors separately |
+
 ### Quality gates (always)
 - `bun run check` passes · component + e2e coverage maintained · `SPACEGRAPH.md`/this file never deleted
 
