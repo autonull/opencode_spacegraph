@@ -26,7 +26,7 @@ story("the status bar names the verbs that act on the held set", async ({ mount 
     "true",
   )
 
-  await bar.getByRole("button", { name: "Clear the selection scope" }).click()
+  await bar.locator('[data-component="icon-button-v2"][aria-label="Clear"]').click()
   await expect(bar).toBeHidden()
 })
 
@@ -61,7 +61,7 @@ story("the comparison window names what changed and stays empty when nothing did
 
 story("the comparison window says when nothing changed", async ({ mount }) => {
   const root = await mount("session-graph-compare--empty")
-  await expect(root.locator('[data-slot="graph-compare-window"]')).toContainText("No changes")
+  await expect(root.locator('[data-slot="graph-compare-window"]')).toContainText("No comparison")
 })
 
 story("an edge peek names its kind, confidence, and label", async ({ mount }) => {
@@ -69,8 +69,8 @@ story("an edge peek names its kind, confidence, and label", async ({ mount }) =>
   const peek = root.locator('[data-slot="graph-peek"]')
 
   await expect(peek).toHaveAttribute("data-kind", "edge")
-  await expect(peek).toContainText("writes")
-  await expect(peek).toContainText("explicit")
+  await expect(peek).toContainText("Writes")
+  await expect(peek).toContainText("Explicit")
   await expect(peek).toContainText("src/auth/token.ts")
 })
 

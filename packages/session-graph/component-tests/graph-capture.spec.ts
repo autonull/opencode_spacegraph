@@ -114,7 +114,7 @@ story("captures a long session at the drawn window", async ({ mount, page }) => 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
   await expect(root.locator('[data-slot="graph-scale-notice"]')).toBeVisible()
   await page.evaluate(() => document.fonts.ready.then(() => undefined))
-  await root.getByRole("button", { name: "Fit to view", exact: true }).click()
+  await root.getByRole("button", { name: "Fit", exact: true }).click()
   await capture(page, "25-graph-scale-window.png")
 
   expect(errors).toEqual([])

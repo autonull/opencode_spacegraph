@@ -25,6 +25,10 @@ export type TurnMapOverlayProps = {
   onSelect?: (id: string | undefined) => void
   onOpenFullGraph?: (turnID: string) => void
   onClose: () => void
+  /** Whether the overlay is open. Controlled by the parent. */
+  open?: boolean
+  /** Called when the overlay should close. */
+  onOpenChange?: (open: boolean) => void
   /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
   reducedMotion?: boolean
 }
@@ -60,27 +64,35 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
     props.onSelect?.(id)
   }
 
+  const handleClose = () => {
+    props.onClose()
+    props.onOpenChange?.(false)
+  }
+
   onMount(() => {
     // Use capture phase to ensure focus trap works correctly when nested inside another dialog
-    overlay = new ScopedOverlay({ container: dialog, onClose: () => props.onClose(), useCapture: true })
+    overlay = new ScopedOverlay({ container: dialog, onClose: handleClose, useCapture: true })
   })
   onCleanup(() => {
     overlay?.dispose()
     overlay = undefined
   })
 
+  const isOpen = () => props.open ?? true
+
   return (
-    <div class="absolute inset-0 z-40 flex items-center justify-center p-4" data-component="session-graph-turn-map">
-      <div class="absolute inset-0 bg-background-base/60" aria-hidden="true" onClick={() => props.onClose()} />
-      <div
-        ref={dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-label={i18n.t("ui.sessionGraph.turnMap.label")}
-        tabindex="-1"
-        data-slot="graph-turn-map"
-        class="relative flex h-[min(520px,100%)] w-[min(760px,100%)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-lg"
-      >
+    <Show when={isOpen()}>
+      <div class="absolute inset-0 z-40 flex items-center justify-center p-4" data-component="session-graph-turn-map">
+        <div class="absolute inset-0 bg-background-base/60" aria-hidden="true" onClick={handleClose} />
+        <div
+          ref={dialog}
+          role="dialog"
+          aria-modal="true"
+          aria-label={i18n.t("ui.sessionGraph.turnMap.label")}
+          tabindex="-1"
+          data-slot="graph-turn-map"
+          class="relative flex h-[min(520px,100%)] w-[min(760px,100%)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-lg"
+        >
         <div class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-1.5">
           <span class="text-13-medium text-text-strong" style={{ "line-height": "var(--line-height-compact)" }}>
             {i18n.t("ui.sessionGraph.turnMap.title")}
@@ -122,5 +134,6 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
         </Show>
       </div>
     </div>
+    </Show>
   )
 }

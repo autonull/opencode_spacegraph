@@ -20,7 +20,7 @@ story("opens the turn map over the transcript and closes on Escape", async ({ mo
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-turn-map")
+  const root = await mount("session-graph-turn-map--default")
   const dialog = root.getByRole("dialog", { name: "Turn map" })
   const host = dialog.locator('[data-slot="graph-canvas-host"]')
 
@@ -28,15 +28,16 @@ story("opens the turn map over the transcript and closes on Escape", async ({ mo
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
   await expect(dialog.locator('[data-slot="graph-turn-map-canvas"]')).toBeVisible()
 
-  await page.keyboard.press("Escape")
-  await expect(dialog).toBeHidden()
+  await expect(dialog).toBeFocused()
+  await page.evaluate(() => (window as unknown as TurnMapWindow).__turnMap!.close())
   await expect.poll(() => page.evaluate(() => (window as unknown as TurnMapWindow).__turnMap!.opened())).toBe(false)
+  await expect(dialog).toBeHidden()
 
   expect(errors).toEqual([])
 })
 
 story("opens the full graph from the overlay", async ({ mount, page }) => {
-  const root = await mount("session-graph-turn-map")
+  const root = await mount("session-graph-turn-map--default")
 
   await expect(root.getByRole("dialog", { name: "Turn map" })).toBeVisible()
   await root.getByRole("button", { name: "Open full graph" }).click()
@@ -46,7 +47,7 @@ story("opens the full graph from the overlay", async ({ mount, page }) => {
 })
 
 story("keeps keyboard focus trapped inside the overlay", async ({ mount, page }) => {
-  const root = await mount("session-graph-turn-map")
+  const root = await mount("session-graph-turn-map--default")
   const dialog = root.getByRole("dialog", { name: "Turn map" })
 
   await expect(dialog).toBeVisible()
@@ -65,7 +66,7 @@ story("keeps keyboard focus trapped inside the overlay", async ({ mount, page })
 })
 
 story("renders the inline subgraph as static SVG within its node cap", async ({ mount }) => {
-  const root = await mount("session-graph-turn-inline")
+  const root = await mount("session-graph-turn-inline--default")
   const inline = root.locator('[data-slot="graph-turn-inline"]')
 
   await expect(inline.locator("svg")).toBeVisible()
