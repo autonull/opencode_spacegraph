@@ -16,7 +16,7 @@ story("mounts the SpaceGraph adapter behind the renderer contract", async ({ mou
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-adapter")
+  const root = await mount("session-graph-adapter--default")
   const host = root.locator('[data-component="session-graph-adapter"]')
 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })

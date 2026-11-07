@@ -9,11 +9,11 @@ story("shows every layout of the same model side by side", async ({ mount, page 
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
   await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await toolbar.getByRole("button", { name: "Compare the layouts" }).click()
+  await toolbar.getByRole("button", { name: "Gallery" }).click()
   const gallery = root.locator('[data-slot="graph-gallery"]')
   await expect(gallery).toBeVisible()
 

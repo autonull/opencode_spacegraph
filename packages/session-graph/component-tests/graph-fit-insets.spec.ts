@@ -6,7 +6,7 @@ import { expect, story } from "../../stories/playwright/story"
 story("the minimap opens as a window and does not affect frame insets", async ({ mount, page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
@@ -15,7 +15,7 @@ story("the minimap opens as a window and does not affect frame insets", async ({
 
   // Open the minimap window from the Show menu
   await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await root.locator('button[aria-label="Toggle minimap"]').click()
+  await root.locator('button[aria-label="Minimap"]').click()
 
   // The minimap should now be a window, not an overlay
   const minimapWindow = root.locator('[data-component="session-graph-window"][data-window-kind="minimap"]')

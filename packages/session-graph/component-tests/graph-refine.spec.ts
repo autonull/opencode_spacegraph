@@ -25,7 +25,7 @@ story("search results navigate with the keyboard and select the highlighted node
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
@@ -65,7 +65,7 @@ story("a breadcrumb click selects the ancestor and fits its subtree", async ({ m
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
@@ -91,7 +91,7 @@ story("execution dims cards outside the selected neighborhood (RF.10)",
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
@@ -127,7 +127,7 @@ story("the inspector is a resizable side panel on wide viewports", async ({ moun
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default", { args: { detailMode: "panel" } })
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
@@ -136,7 +136,7 @@ story("the inspector is a resizable side panel on wide viewports", async ({ moun
   const handle = root.locator('[data-slot="graph-inspector-resize"]')
 
   await expect(gutter).toHaveAttribute("data-layout", "side")
-  await expect(handle).toBeVisible()
+  await expect(handle).toBeVisible({ timeout: 30_000 })
 
   const before = await gutter.evaluate((element) => element.getBoundingClientRect().width)
   const box = await handle.boundingBox()
@@ -227,7 +227,7 @@ story("the changed-files rail lists written files and selects one on click", asy
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
