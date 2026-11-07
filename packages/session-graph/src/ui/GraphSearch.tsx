@@ -1,9 +1,11 @@
 import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import {
+  applyFacets,
   navigationHelp,
   navigationResults,
   rankedSearch,
 } from "@opencode/session-ui/graph"
+import { parseNLQ } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
@@ -20,19 +22,37 @@ export type GraphSearchProps = {
 /**
  * Label/tool/path search (U3.12). It reuses the model selector, so results are the same nodes the
  * inspector can describe; selecting one jumps the graph to it.
+ * Also supports natural language queries (NLQ) that compile to facet grammar.
  */
 export const GraphSearch = (props: GraphSearchProps) => {
   const i18n = useI18n()
   const [query, setQuery] = createSignal(props.initialQuery ?? "")
   const [active, setActive] = createSignal(0)
-  const results = createMemo(
-    () => {
-      const fullResults = navigationResults(props.model, query()) ?? rankedSearch(props.model, query())
-      if (props.contentIDs.length === 0) return fullResults
+  const [compiledQuery, setCompiledQuery] = createSignal<string>("")
+
+  const results = createMemo(() => {
+    const q = query().trim()
+
+    // Try NLQ compilation first - if it produces facet filters, use facet-based search
+    const { facets, queryString } = parseNLQ(q)
+    const hasFacetFilters = facets.kinds.size > 0 || facets.statuses.size > 0 || facets.domains.size > 1 // >1 because "session" is default
+
+    if (hasFacetFilters) {
+      setCompiledQuery(queryString)
+      const scopedModel = applyFacets(props.model, facets)
+      const filteredNodes = scopedModel.nodes.filter((node) => node.id !== scopedModel.root)
+      if (props.contentIDs.length === 0) return filteredNodes
       const contentIDSet = new Set(props.contentIDs)
-      return fullResults.filter((node) => contentIDSet.has(node.id))
-    },
-  )
+      return filteredNodes.filter((node) => contentIDSet.has(node.id))
+    }
+
+    // No facet filters from NLQ - fall back to existing search
+    setCompiledQuery("")
+    const fullResults = navigationResults(props.model, q) ?? rankedSearch(props.model, q)
+    if (props.contentIDs.length === 0) return fullResults
+    const contentIDSet = new Set(props.contentIDs)
+    return fullResults.filter((node) => contentIDSet.has(node.id))
+  })
   const navigationHint = createMemo(() =>
     query().trim().toLowerCase() === "g" ? navigationHelp() : [],
   )
@@ -127,6 +147,12 @@ export const GraphSearch = (props: GraphSearchProps) => {
           onClick={props.onClose}
         />
       </div>
+
+      <Show when={compiledQuery()}>
+        <div class="px-3 py-1.5 bg-accent-subtle border-b border-border-weaker-base text-11-regular text-text-weak">
+          <kbd class="rounded border border-border-weaker-base px-1">{compiledQuery()}</kbd>
+        </div>
+      </Show>
 
       <Show when={navigationHint().length > 0}>
         <div class="grid grid-cols-3 gap-x-3 gap-y-1 border-t border-border-weaker-base px-3 py-2">
