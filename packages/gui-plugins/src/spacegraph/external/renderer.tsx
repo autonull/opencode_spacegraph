@@ -1,6 +1,5 @@
 import {
   Command,
-  createKeyed,
   MenuItem,
   Panel,
   SessionSurface,
@@ -134,33 +133,33 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     return { node: value }
   }
 
-  createKeyed(
-    () => {
-      const session = ctx.sessions.current()
+  // Handle hash links on mount and on hashchange — avoid createKeyed/createEffect
+  // which caused synchronous reactive loops (Maximum call stack size exceeded).
+  const handleLink = () => {
+    const session = ctx.sessions.current()
+    if (!session) return
 
-      return session ? `${session.key}\u0000${model.surface(session) ?? ""}\u0000${hash()}` : undefined
-    },
-    () => {
-      const session = ctx.sessions.current()
+    const link = linked()
+    if (link) {
+      if (link.layout) model.setLayout(session, link.layout)
+      model.focus(session, link.node)
+      select(`${ctx.id}.map`)
+    }
+  }
 
-      if (!session) return
+  // Process initial hash on mount
+  onMount(handleLink)
 
-      const link = linked()
+  // Process hash changes
+  onMount(() => {
+    const update = () => {
+      setHash(location.hash)
+      handleLink()
+    }
 
-      if (link) {
-        if (link.layout) model.setLayout(session, link.layout)
-        model.focus(session, link.node)
-        select(`${ctx.id}.map`)
-
-        return
-      }
-
-      const surface = model.surface(session)
-      const available = surfaces()
-
-      if (surface && available) available.select(surface, session)
-    },
-  )
+    window.addEventListener("hashchange", update)
+    onCleanup(() => window.removeEventListener("hashchange", update))
+  })
 
   if (surfaces()) {
     ctx.add(SessionSurface, {
