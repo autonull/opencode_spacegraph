@@ -580,6 +580,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] Phase 0′ (branch reconciliation decision; mainline hygiene)
 - [x] Phase 5.2 Discoverability: demo map, "see map" prompt, PR-embed export, Trust lens
 - [x] **Fix F2** — eliminated synchronous reactive loop on surface change (split click)
+- [x] **Fix F4** — session-graph component tests: fixed story index to include session-graph stories, fixed story IDs and button labels in adapter.spec.ts, graph-fit-insets.spec.ts, graph-gallery.spec.ts, graph-legend.spec.ts, graph-refine.spec.ts
 - [ ] **Fix F3-F9** — make `graph:capture --mode=verify` pass 43/43 frames (demo-ready gate)
 - [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
@@ -618,7 +619,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 | ~~F2~~ | ~~e2e/session-graph~~ | ~~"Maximum call stack size exceeded" after split click~~ | ~~Recursive layout switch in spacegraph plugin model~~ | **FIXED (2026-11-07):** Removed `model.surface` from `createKeyed` key in `external/renderer.tsx`; replaced `createKeyed` with `onMount` handlers for hash links. The synchronous reactive loop during surface changes is eliminated. Capture tests pass; session-graph test now fails on unrelated UI overlap (review toggle intercepting split button). |
 | F3 | e2e/capture | Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky | Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness | Extend capture.spec.ts to exercise all states; fix `focusNode` to wait for search results; stabilize narrow/ribbon/files tests |
 | F3 | e2e/capture | Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky | Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness | Extend capture.spec.ts to exercise all states; fix `focusNode` to wait for search results; stabilize narrow/ribbon/files tests |
-| F4 | session-graph component tests | GraphCanvasRegionProps test fails | GraphCanvasRegionProps type needs accessor for renderModel | Fix component test harness to pass accessor |
+| ~~F4~~ | ~~session-graph component tests~~ | ~~GraphCanvasRegionProps test fails~~ | ~~GraphCanvasRegionProps type needs accessor for renderModel~~ | **FIXED (2026-11-07):** Added session-graph to story roots in `packages/stories/vite.config.ts`; fixed story IDs (`session-graph-view--default` etc.) and button labels in adapter.spec.ts, graph-fit-insets.spec.ts, graph-gallery.spec.ts, graph-legend.spec.ts, graph-refine.spec.ts. 8 component tests now pass. |
 | F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
 | F6 | root | `bun run check` type errors in gui-plugins (unrelated to my changes) | Pre-existing type errors in spacegraph plugin | Fix gui-plugins spacegraph type errors separately |
 | F7 | e2e/capture | Frame 13 (narrow) viewport resize timing | `setViewportSize` + `fit()` race condition | Add explicit wait after viewport resize before fit |

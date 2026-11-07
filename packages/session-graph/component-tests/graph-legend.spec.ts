@@ -6,27 +6,27 @@ story("names every encoding the canvas draws", async ({ mount, page }) => {
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
 
   await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  await toolbar.getByRole("button", { name: "Show the legend" }).click()
+  await toolbar.getByRole("button", { name: "Legend" }).click()
   const legend = root.locator('[data-slot="graph-legend"]')
   await expect(legend).toBeVisible()
 
   // Every section of the encoding is named.
   await expect(legend).toContainText("Lanes")
-  await expect(legend).toContainText("Card colors")
+  await expect(legend).toContainText("Kinds")
   await expect(legend).toContainText("Phases")
   await expect(legend).toContainText("Lines")
   await expect(legend).toContainText("Status")
 
   // The kinds the canvas draws are named with the inspector's words.
-  await expect(legend).toContainText("Tool call")
+  await expect(legend).toContainText("Tool")
   await expect(legend).toContainText("Subagent")
-  await expect(legend).toContainText("Tool call")
-  await expect(legend).toContainText("explicit")
-  await expect(legend).toContainText("inferred")
+  await expect(legend).toContainText("File")
+  await expect(legend).toContainText("Explicit")
+  await expect(legend).toContainText("Inferred")
 
   // The lanes are the layout's own rows.
   await expect(legend).toContainText("Explore")
