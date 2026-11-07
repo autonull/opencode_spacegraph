@@ -573,17 +573,24 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 - **T2.2** Run the study (n ≥ 5, counterbalanced, five tasks) — elapsed-time-bound, blocks Phase 8
 - **T5.3** NLQ over facet grammar — cheap experiment behind same evidence bar
 
-### 11.2 Phase 7 — Parked Items (recorded with unblock conditions)
-| Item | Unblock Condition |
-|------|-------------------|
-| npm publish / any release | Explicit user decision; never implied by this plan |
-| Grant Workspace dual-loader fix | Grant Workspace repo action |
-| Size-aware `SpectralLayout` (relax post-pass) | Dependent reports real-world overlap in spectral layouts, or T2.2 win |
-| Converge the two force engines | Grant Workspace reports using both, or semantics drift visibly |
-| Barnes-Hut wiring, spatial indexes, perf | `graph:scale` regression on real dependent fixture |
-| Vision as CI / ONNX / graph-guided compaction / cross-session memory / fractal ZUI / hybrid scroll e2e / capture matrix / further metrics | Unchanged unblock conditions (see TODO.30 §Phase 7) |
+### 11.2 Phase 7 — Addressable Improvements (no external blockers)
 
-Nothing here is dropped; nothing here is promoted.
+These are concrete technical improvements that can be tackled when capacity allows. No external dependencies or studies required.
+
+| Item | Status | Effort | Notes |
+|------|--------|--------|-------|
+| **npm publish / release workflow** | Ready when decided | ~0.5 d | Packages build clean; `test:publish` passes; version bump + ordered upload to npm |
+| **Dual-loader pattern docs** | ✅ Done | — | Documented in `spacegraphjs/docs/host-integration.md` §11; no code change needed |
+| **Size-aware `SpectralLayout` (relax post-pass)** | Planned | ~0.5 d | Add post-pass: rescale eigenvectors to fit viewport → run collision settle (30 passes, like `ForceLayout`). Makes spectral layouts overlap-free without changing eigenvector semantics. |
+| **Converge the two force engines** (`src/layout/force.ts` ↔ `src/plugins/layouts/ForceLayout.ts`) | Planned | ~1 d | Both are size-aware after 6.0. Extract shared core (`ForceCore` with separation pass, size-aware minDistance, edge-strength attraction, progress callback). `ForcePlacement` and `ForceLayout` become thin adapters. Eliminates drift risk, halves maintenance. |
+| **Barnes-Hut / spatial index for `ForceLayout`** | Planned | ~1 d | Add quadtree/octree acceleration to plugin `ForceLayout` (or shared core). Targets 20k+ node simulations. `ForcePlacement` already uses a grid; Barnes-Hut is the standard upgrade. |
+| **`ForceLayout` 3D positions opt-in** | Partial | ~0.25 d | `ForceConfig.depthStep` exists (default 64). Wire Z into initial placement + step() for size-aware 3D force. Already works in `ForcePlacement`. |
+| **Graph-guided compaction** | Research | ~2 d | Use graph structure (phase clusters, delegation edges) to drive LLM context compaction — keep "why" nodes, drop "what" nodes. Prototype in `spacegraphjs/vision/`. |
+| **Cross-session graph memory** (D4) | Research | ~2 d | Persist positions/selection across sessions via `serializePositions()` + stable IDs. Reuse layout for recurring patterns (same repo, similar tasks). |
+| **Vision CI integration** | Planned | ~1 d | Run `visionAssert.noOverlap()`, `.isLegible()`, `.expectedLayoutScore()` in CI. Requires ONNX models (dummy weights exist; real weights need training data). |
+| **Fractal ZUI / hybrid scroll e2e / capture matrix / further metrics** | Research | — | Platform-level seams documented in `spacegraphjs/ROADMAP.md` and `spacegraphjs/PLAN/`. |
+
+**Ordering by ROI:** force engine convergence → Barnes-Hut → SpectralLayout post-pass → 3D force → Vision CI → graph-guided compaction → cross-session memory → platform seams.
 
 ### 11.3 Phase 8 — Close-out
 - Update `SPACEGRAPH.md` §2/§6/§7 to reference TODO.31 (done)
