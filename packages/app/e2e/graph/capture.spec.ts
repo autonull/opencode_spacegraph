@@ -645,11 +645,12 @@ test("40 graph nlq code errors", async ({ page }) => {
   await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Search" }).click()
   const search = page.getByRole("dialog", { name: "Search" })
-  // Type natural language query for failed tools - compiles to kind:tool status:failed
-  await search.getByRole("combobox").fill("failed tools")
+  // Type natural language query "failed" - compiles to status:failed
+  // Matches both error nodes and failed tools; the failed tool is visible even when Verify group is folded
+  await search.getByRole("combobox").fill("failed")
   await expect(search.locator('[data-node-id="tool:prt_tool_shell_2"]')).toBeVisible()
   await still(page)
-  await capture(page, "40-graph-nlq-failed-tools.png")
+  await capture(page, "40-graph-nlq-code-errors.png")
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
