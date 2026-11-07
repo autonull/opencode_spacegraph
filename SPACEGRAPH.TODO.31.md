@@ -368,7 +368,10 @@ Nothing here is dropped; nothing here is promoted.
 - [x] 0′: branch reconciliation decided, documented, executed.
 - [ ] 5: T2.2 run and recorded; discovery affordances; PR-embed tool; experiments dispositioned.
 - [x] 6.0: SGF-1..SGF-10 landed in the library (dist rebuilt, shared conformance file green, existing suites unmodified); SGF-4 in docs; SGF-8 noted.
-- [ ] 6.1–6.4: second host adapter + gallery; docs CI; dividend measured; 3D frozen.
+- [x] 6.1: second host adapter + gallery — `test/second-host/` passes; `demo/second-host/` gallery implemented.
+- [x] 6.2: Library DX — `pnpm run docs` works (typedoc 0.28.20 + TS 5.9.2); `create-spacegraph` smoke test passes; publish check (`test:publish`) passes.
+- [ ] 6.3: Performance — `scale-bench.ts` runs on this branch; folded-vs-unfolded dividend measurement pending (requires dedicated benchmark of folded vs unfolded node counts on 5k-message fixture).
+- [ ] 6.4: 3D stays frozen — status to be confirmed.
 - [ ] 7: every parked item has its unblock condition recorded (incl. publish, dual-loader).
 - [ ] 8: `SPACEGRAPH.md` §2/§6/§7 updated to reference TODO.31; TODO.30 marked superseded;
       `SPACEGRAPH.md` and this file tracked on the mainline; this file's boxes dispositioned.
@@ -397,6 +400,11 @@ Nothing here is dropped; nothing here is promoted.
 
 ### 8.4 Revision log
 
+- **r13 (2026-11-06):** Phase 6.1 (second host adapter) and 6.2 (Library DX) completed. 
+  - 6.1: Second host (`test/second-host/second-host.test.ts` — 10/10 tests pass) and gallery (`demo/second-host/`) run every generic library module against a trace-driven model. No OpenCode/framework imports in host sources.
+  - 6.2: `pnpm run docs` fixed — typedoc 0.28.20 + TypeScript 5.9.2 (downgraded from 7.x for compatibility); `create-spacegraph` smoke test scaffolds a working project; `pnpm run test:publish` passes (packages consumable from packed tarballs outside monorepo).
+  - spacegraphjs: all 580 tests pass; docs generated to `docs/api/`; publish check passes.
+  - Dist rebuilt; full monorepo typecheck passes (0 errors).
 - **r12 (2026-11-06):** Phase 5.2 Discoverability completion + Phase 0' branch reconciliation fixes. Restored missing `Surfaces`, `SessionSurface`, `SessionLayer`, `TranscriptScreen` types to `@opencode/plugin/gui` (host-apis.ts, registries.ts, context.ts) from upstream-sync-1105. Fixed `mountSessionRegion` and added `mountSessionRegionWithSurfaces` test fixtures in `packages/app/component-tests/plugin-host.fixture.tsx`. Fixed `SessionScreen` to include `transcript` property in `packages/app/src/runtime/plugin/mounted-session.ts`. Updated `host-apis.tsx` to provide `surfaces` API. All 92 session-graph tests pass; all 837 session-ui tests pass; all 251 plugin-spacegraph tests pass; full monorepo typecheck passes.
 - **r11 (2026-11-06):** Phase 5.2 Discoverability items completed. Added command palette entries `graph.hybrid` (Show transcript and map - hybrid) and `graph.toggle` (Toggle session map) in `packages/gui-plugins/src/spacegraph/external/renderer.tsx`. Added permalink copy to export toolbar menu in `packages/session-graph/src/ui/GraphExportControl.tsx` and wired it through `GraphToolbarViewControls` in MapSurface and HybridSurface. All 92 session-graph tests pass; all 837 session-ui tests pass; all 580 spacegraphjs tests pass.
 - **r10 (2026-11-06):** Golden file updated for session-ui layout test. The SGF-10 `TreePlacement` size-awareness changes (reading `item.width`) shifted tree layout positions; updated `packages/session-ui/src/graph/layout.golden.json` to reflect the new, correct positions. All 837 session-ui tests pass; all 92 session-graph tests pass; all 580 spacegraphjs tests pass.
