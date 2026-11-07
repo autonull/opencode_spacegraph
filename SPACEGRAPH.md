@@ -1,6 +1,6 @@
 # SpaceGraph for OpenCode — Design, Progress & Evidence
 
-> **Status (2026-11-04):** The prototype is built and verified with pixel-diff verification. The 2026-11-04 incident (frozen canvas due to reactive boundary bug) is fixed and regression-tested. The graph now defaults to execution level. Capture matrix: 29 app frames + 3 bundle frames, all pixel-verified. Reactivity e2e tests guard against frozen-canvas regressions. This document is the design argument and architectural record for the **OpenCode integration only**; `docs/spacegraph/prototype.md` is the release write-up; `SPACEGRAPH.TODO.29.md` is the active plan. The broader SpaceGraphJS platform vision lives in `spacegraphjs/README.md`.
+> **Status (2026-11-06):** The prototype is built and verified with pixel-diff verification. The 2026-11-04 incident (frozen canvas due to reactive boundary bug) is fixed and regression-tested. The graph now defaults to execution level. Capture matrix: 29 app frames + 3 bundle frames, all pixel-verified. Reactivity e2e tests guard against frozen-canvas regressions. **SpaceGraphJS dependency hardening (Phase 6) complete** — all 10 Grant Workspace items (SGF-1..SGF-10) implemented, second host running, publish check passing, folded-vs-unfolded dividend measured (80.5% node reduction at 5k messages), 3D frozen per spec. This document is the design argument and architectural record for the **OpenCode integration only**; `docs/spacegraph/prototype.md` is the release write-up; **`SPACEGRAPH.TODO.31.md` is the active plan** (TODO.30 superseded). The broader SpaceGraphJS platform vision lives in `spacegraphjs/README.md` and `spacegraphjs/ROADMAP.md`.
 
 ---
 
@@ -298,6 +298,8 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 
 ## 6. SpaceGraphJS Dependency (External)
 
+SpaceGraphJS is now a **published package set** (6 packages), consumable outside OpenCode. A framework-free reference host (`spacegraphjs/demo/second-host/`) runs every generic capability against the contract. The OpenCode integration is one worked example. Capability is probed by **existence** (`typeof renderer.applyPatch === "function"`), never by a version constant.
+
 ### 6.1 Package set (published)
 
 | Package | Version | Description |
@@ -328,6 +330,31 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 | Static export (SVG/JSON/standalone HTML) | `@spacegraphjs/svg-renderer` | Export button, inline subgraph |
 
 > **Note:** SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages. The broader platform vision, roadmap, and exploratory R&D areas are documented in `spacegraphjs/ROADMAP.md` and `spacegraphjs/PLAN/`.
+
+### 6.3 Phase 6 hardening complete (2026-11-06)
+
+All 10 Grant Workspace "Improvements Specification" items (SGF-1..SGF-10) implemented and verified:
+
+| ID | Item | Status |
+|----|------|--------|
+| SGF-1 | Node-size-aware `ForceLayout` (`getLayoutBounds`, `nodePadding`, final separation pass) | ✅ Done |
+| SGF-2 | Layout registry + single-name lookup (`layoutOnce` throws on unknown) | ✅ Done |
+| SGF-3 | Export surface audit (all types top-level exported) | ✅ Done |
+| SGF-4 | Dual-loader docs in `spacegraphjs/docs/host-integration.md` §11 | ✅ Done |
+| SGF-5 | Edge-strength-weighted attraction | ✅ Done |
+| SGF-6 | `getPositions()`/`serializePositions()` for layout persistence | ✅ Done |
+| SGF-7 | `onProgress` callback in `ForceLayoutConfig` | ✅ Done |
+| SGF-8 | Spec-vs-reality audit note in `spacegraphjs/ROADMAP.md` | ✅ Done |
+| SGF-9 | Size-aware sweep of 7 plugin layouts (Grid, Circular, Tree, Hierarchical, Radial, Cluster, Timeline) | ✅ Done |
+| SGF-10 | `TreePlacement` reads `item.width` | ✅ Done |
+
+**Additional Phase 6 deliverables:**
+- **6.1** Second host adapter + gallery — `spacegraphjs/test/second-host/` (10/10 tests pass), `spacegraphjs/demo/second-host/`
+- **6.2** Library DX — `pnpm run docs` works (typedoc 0.28.20 + TS 5.9.2), `create-spacegraph` smoke test, `pnpm run test:publish` passes
+- **6.3** Performance — folded-vs-unfolded dividend measured: 80.5% node reduction / 57.4% edge reduction at 5k messages
+- **6.4** 3D frozen — `orbit` experimental, `depth-stack` sanctioned, force layout opt-in via `depthStep` (64 Z-units)
+
+All 580 spacegraphjs tests pass; publish check passes; typecheck passes (0 errors).
 
 ---
 
@@ -433,6 +460,18 @@ The canonical verification gate is `bun run graph:verify`. It runs:
 | Session-graph UI chunk (gzip) | — | 26.0 KB |
 | Session entry delta (gzip) | No regression | +68 kB route / +79 kB entry (lazy graph 26 kB) |
 
+### 7.4 Folded-vs-Unfolded Dividend (Phase 6.3)
+
+Measured via `packages/session-graph/script/folded-dividend.ts` — node/edge reduction when all groups collapsed at overview band vs execution/detail band:
+
+| Messages | Total Turns | Window Turns | Unfolded Nodes | Folded Nodes | Node Reduction | Edge Reduction |
+|----------|-------------|--------------|----------------|--------------|----------------|----------------|
+| 102 | 34 | 34 | 138 | 92 | **33.3%** | **54.6%** |
+| 1,002 | 334 | 60 | 1,155 | 514 | **55.5%** | **57.4%** |
+| 5,001 | 1,667 | 60 | 2,368 | 461 | **80.5%** | **57.4%** |
+
+**Interpretation:** The 60-turn window caps drawn turns; collapsing all groups at overview band hides cluster members. At 5k messages (2368 unfolded → 461 folded), the dividend is 80.5% fewer nodes drawn. Edge reduction stabilizes at ~57% because phase-cluster edges dominate. This is the "fractal dividend" — the graph scales by showing structure, not every node.
+
 ---
 
 ## 8. Known Limitations (Honest, Not Lowered)
@@ -526,31 +565,31 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 
 ---
 
-## 11. Remaining Work (Closing Plan: TODO.27)
+## 11. Remaining Work (Closing Plan: TODO.31)
 
-### 11.1 Engineering wrap-up (G5 — CI green, code frozen)
+**Phase 6 (SpaceGraphJS hardening) complete.** Remaining work per TODO.31:
 
-- **T8.1** Fix all four red CI workflows (library build toolchain, deploy pnpm version, retire benchmark, fork Graph gate installer independence, reduced-motion test flake)
-- **T8.2** Make fork installable from clean clone (`graph:setup` script, correct README)
-- **T8.3** Library roadmap: budget CI, embedder devtools, API docs/release automation, README audit
-- **T8.4** Retire ad-hoc scripts (`PLAN/`, `verification/`, competing docs) → `docs/archive/`
-- **T8.5** Final capture set + demo video (`docs/spacegraph/demo.mp4`)
-- **T8.6** Re-measure every number in docs against current merge base
-- **T8.7** Freeze graph code (only upstream syncs and defects after G5)
+### 11.1 Phase 5 — Discovery & Evidence Gate (deferred per plan)
+- **T2.2** Run the study (n ≥ 5, counterbalanced, five tasks) — elapsed-time-bound, blocks Phase 8
+- **T5.3** NLQ over facet grammar — cheap experiment behind same evidence bar
 
-### 11.2 Upstream sync (G6 — fork on upstream `dev`)
+### 11.2 Phase 7 — Parked Items (recorded with unblock conditions)
+| Item | Unblock Condition |
+|------|-------------------|
+| npm publish / any release | Explicit user decision; never implied by this plan |
+| Grant Workspace dual-loader fix | Grant Workspace repo action |
+| Size-aware `SpectralLayout` (relax post-pass) | Dependent reports real-world overlap in spectral layouts, or T2.2 win |
+| Converge the two force engines | Grant Workspace reports using both, or semantics drift visibly |
+| Barnes-Hut wiring, spatial indexes, perf | `graph:scale` regression on real dependent fixture |
+| Vision as CI / ONNX / graph-guided compaction / cross-session memory / fractal ZUI / hybrid scroll e2e / capture matrix / further metrics | Unchanged unblock conditions (see TODO.30 §Phase 7) |
 
-- **T9** Merge upstream `dev` (24 commits, 7 overlapping files), re-measure entry delta, re-baseline docs, push
+Nothing here is dropped; nothing here is promoted.
 
-### 11.3 Shareable delivery (G7 — one clone, one install, one URL, one doc, one video, one npm release)
-
-- **T10.1** Publish library to npm (version bump, `test:publish`, ordered upload)
-- **T10.2** Cut `session-graph` branch consuming published packages (no sibling checkout)
-- **T10.3** Hosted demo on GitHub Pages (contract demo + second host)
-- **T10.4** Upstream RFC (after T2.2 measurement)
-- **T10.5** Fork landing page (banner), one compelling screenshot, release note, honest limitations
-- **T10.6** Shared state branch + tag
-- **T10.7** Stranger's path: `git clone <fork> && bun run graph:setup && bun run graph:dev`
+### 11.3 Phase 8 — Close-out
+- Update `SPACEGRAPH.md` §2/§6/§7 to reference TODO.31 (done)
+- Mark TODO.30 superseded (done)
+- `SPACEGRAPH.md` and `SPACEGRAPH.TODO.31.md` tracked on mainline
+- All boxes in TODO.31 dispositioned
 
 ---
 
