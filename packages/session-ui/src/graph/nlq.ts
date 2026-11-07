@@ -37,7 +37,7 @@ const KIND_SYNONYMS: Record<NodeKind, string[]> = {
 const STATUS_SYNONYMS: Record<NodeStatus, string[]> = {
   pending: ["pending"],
   running: ["running", "active", "executing"],
-  success: ["success", "succeeded", "passed", "ok", "done", "complete", "completed"],
+  success: ["success", "succeeded", "passed", "ok", "done", "complete", "completed", "successful"],
   failed: ["failed", "failure", "error", "broken", "failing"],
   interrupted: ["interrupted", "cancelled", "canceled", "stopped"],
   neutral: ["neutral", "idle", "unknown"],
@@ -63,24 +63,41 @@ function matchSynonyms<T extends string>(
   tokens: string[],
   synonyms: Record<T, string[]>,
   validValues: readonly T[],
-): T[] {
+  options?: { exactOnly?: boolean; returnMatchedTokens?: boolean }
+): { matches: T[]; matchedTokens: string[] } {
   const matched: T[] = []
+  const matchedTokens: string[] = []
   const tokenSet = new Set(tokens)
 
   for (const canonical of validValues) {
     const alts = synonyms[canonical]
     if (!alts) continue
     for (const alt of alts) {
-      // Match exact token or token starting with synonym (for stems like "successful" -> "success")
-      // But not arbitrary substring (to avoid "ok" matching "token.ts")
-      if (tokenSet.has(alt) || tokens.some((t) => t === alt || t.startsWith(alt + "") && t.length > alt.length)) {
+      let tokenMatched = false
+      for (const t of tokens) {
+        if (options?.exactOnly) {
+          if (t === alt) {
+            tokenMatched = true
+            matchedTokens.push(t)
+          }
+        } else {
+          // Match exact token or token starting with synonym (for stems like "successful" -> "success")
+          // But not arbitrary substring (to avoid "ok" matching "token.ts")
+          if (t === alt || (t.startsWith(alt) && t.length > alt.length)) {
+            tokenMatched = true
+            matchedTokens.push(t)
+          }
+        }
+      }
+      if (tokenMatched || tokenSet.has(alt)) {
         matched.push(canonical)
+        if (tokenSet.has(alt)) matchedTokens.push(alt)
         break
       }
     }
   }
 
-  return [...new Set(matched)]
+  return { matches: [...new Set(matched)], matchedTokens: [...new Set(matchedTokens)] }
 }
 
 function extractFreeText(tokens: string[], consumed: Set<string>): string {
@@ -105,35 +122,17 @@ export function compileNLQ(input: string): GraphFacets {
   const statuses = new Set<NodeStatus>()
   const domains = new Set<Domain>(["session"])
 
-  const kindMatches = matchSynonyms(remainingTokens, KIND_SYNONYMS, NODE_KINDS)
-  for (const k of kindMatches) {
-    kinds.add(k)
-    for (const token of remainingTokens) {
-      if (Object.values(KIND_SYNONYMS).flat().includes(token) || KIND_SYNONYMS[k]?.includes(token)) {
-        consumed.add(token)
-      }
-    }
-  }
+  const { matches: kindMatches, matchedTokens: kindTokens } = matchSynonyms(remainingTokens, KIND_SYNONYMS, NODE_KINDS)
+  for (const k of kindMatches) kinds.add(k)
+  for (const t of kindTokens) consumed.add(t)
 
-  const statusMatches = matchSynonyms(remainingTokens, STATUS_SYNONYMS, NODE_STATUSES)
-  for (const s of statusMatches) {
-    statuses.add(s)
-    for (const token of remainingTokens) {
-      if (Object.values(STATUS_SYNONYMS).flat().includes(token) || STATUS_SYNONYMS[s]?.includes(token)) {
-        consumed.add(token)
-      }
-    }
-  }
+  const { matches: statusMatches, matchedTokens: statusTokens } = matchSynonyms(remainingTokens, STATUS_SYNONYMS, NODE_STATUSES, { exactOnly: true })
+  for (const s of statusMatches) statuses.add(s)
+  for (const t of statusTokens) consumed.add(t)
 
-  const domainMatches = matchSynonyms(remainingTokens, DOMAIN_SYNONYMS, DOMAINS)
-  for (const d of domainMatches) {
-    domains.add(d)
-    for (const token of remainingTokens) {
-      if (Object.values(DOMAIN_SYNONYMS).flat().includes(token) || DOMAIN_SYNONYMS[d]?.includes(token)) {
-        consumed.add(token)
-      }
-    }
-  }
+  const { matches: domainMatches, matchedTokens: domainTokens } = matchSynonyms(remainingTokens, DOMAIN_SYNONYMS, DOMAINS)
+  for (const d of domainMatches) domains.add(d)
+  for (const t of domainTokens) consumed.add(t)
 
   const query = extractFreeText(remainingTokens, consumed)
 
