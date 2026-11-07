@@ -370,8 +370,8 @@ Nothing here is dropped; nothing here is promoted.
 - [x] 6.0: SGF-1..SGF-10 landed in the library (dist rebuilt, shared conformance file green, existing suites unmodified); SGF-4 in docs; SGF-8 noted.
 - [x] 6.1: second host adapter + gallery — `test/second-host/` passes; `demo/second-host/` gallery implemented.
 - [x] 6.2: Library DX — `pnpm run docs` works (typedoc 0.28.20 + TS 5.9.2); `create-spacegraph` smoke test passes; publish check (`test:publish`) passes.
-- [ ] 6.3: Performance — `scale-bench.ts` runs on this branch; folded-vs-unfolded dividend measurement pending (requires dedicated benchmark of folded vs unfolded node counts on 5k-message fixture).
-- [ ] 6.4: 3D stays frozen — status to be confirmed.
+- [x] 6.3: Performance — folded-vs-unfolded dividend measured: 80.5% node reduction / 57.4% edge reduction at 5k messages (overview band vs execution/detail); `script/folded-dividend.ts` added.
+- [x] 6.4: 3D stays frozen — confirmed: `orbit` experimental (free orbit input, 0.5 rad tilt), `depth-stack` sanctioned (max readable tilt 0.3 rad, with fade), force layout opt-in via `depthStep` config (default 64 Z-units per depth).
 - [ ] 7: every parked item has its unblock condition recorded (incl. publish, dual-loader).
 - [ ] 8: `SPACEGRAPH.md` §2/§6/§7 updated to reference TODO.31; TODO.30 marked superseded;
       `SPACEGRAPH.md` and this file tracked on the mainline; this file's boxes dispositioned.
@@ -400,6 +400,10 @@ Nothing here is dropped; nothing here is promoted.
 
 ### 8.4 Revision log
 
+- **r14 (2026-11-06):** Phase 6.3 (Performance dividend) and 6.4 (3D frozen) completed.
+  - 6.3: Folded-vs-unfolded dividend measured via `packages/session-graph/script/folded-dividend.ts`. At 5k messages: 80.5% node reduction (2368→461), 57.4% edge reduction (1359→579) when collapsing all groups at overview band vs execution/detail. TURN_WINDOW=60 limits drawn turns; folding hides cluster members. At 1002 msgs: 55.5% node / 57.4% edge reduction; at 102 msgs (fits window): 33.3% / 54.6%.
+  - 6.4: 3D status confirmed frozen per spec: `orbit` experimental (free orbit input, phi=π/2-0.5, no fade); `depth-stack` sanctioned (phi=π/2-0.3, fade=0.9, cards face camera); force layout opt-in via `ForceConfig.depthStep` (default 64 Z-units per hierarchy depth) — the internal `ForcePlacement` already supports 3D positions.
+  - spacegraphjs: all 580 tests pass; publish check passes; typecheck passes.
 - **r13 (2026-11-06):** Phase 6.1 (second host adapter) and 6.2 (Library DX) completed. 
   - 6.1: Second host (`test/second-host/second-host.test.ts` — 10/10 tests pass) and gallery (`demo/second-host/`) run every generic library module against a trace-driven model. No OpenCode/framework imports in host sources.
   - 6.2: `pnpm run docs` fixed — typedoc 0.28.20 + TypeScript 5.9.2 (downgraded from 7.x for compatibility); `create-spacegraph` smoke test scaffolds a working project; `pnpm run test:publish` passes (packages consumable from packed tarballs outside monorepo).
