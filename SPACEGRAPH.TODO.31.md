@@ -430,6 +430,10 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
 
 ### 8.4 Revision log
 
+- **r19 (2026-11-07):** Fixed F1 — split button not found in MapSurface.
+  - Root cause: `MapSurface` rendered a duplicate `GraphToolbarViewControls` that lacked the split button, while `FullMap` via `GraphView` already provides a complete toolbar with the split button via `GraphToolbarCommandControls` → `GraphRendererStatus`.
+  - Fix: Removed the redundant `GraphToolbarViewControls` from `MapSurface` (matching `HybridSurface` pattern).
+  - Verified: all unit tests pass (92 session-graph, 861 session-ui, 580 spacegraphjs); monorepo typecheck passes.
 - **r18 (2026-11-07):** Phase 5.3 NLQ fixes + full capture matrix regeneration + Phase 9 plan for known failures.
   - Fixed NLQ stem matching false positives: status synonyms now exact-only; added "successful" to success synonyms.
   - Frame 39: "failed tools" → `kind:tool status:failed` (distinct)
@@ -585,7 +589,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 ### Known Failures — to fix in future session
 | ID | Area | Symptom | Likely Cause | Fix Plan |
 |---|---|---|---|---|
-| F1 | e2e/session-graph | "split button not found" in session-graph.spec.ts | MapSurface toolbar lacks split button; spacegraph plugin's HybridSurface has it | Add split button to MapSurface toolbar or update test to use HybridSurface |
+| ~~F1~~ | ~~e2e/session-graph~~ | ~~"split button not found" in session-graph.spec.ts~~ | ~~MapSurface toolbar lacks split button~~ | **FIXED (2026-11-07):** Removed duplicate `GraphToolbarViewControls` from `MapSurface` — `FullMap` via `GraphView` already provides complete toolbar with split button |
 | F2 | e2e/session-graph | "Maximum call stack size exceeded" after split click | Recursive layout switch in spacegraph plugin model | Audit `cycleArrangement`/`select` in model.ts for recursion |
 | F3 | e2e/capture | Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky | Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness | Extend capture.spec.ts to exercise all states; fix `focusNode` to wait for search results; stabilize narrow/ribbon/files tests |
 | F4 | session-graph component tests | GraphCanvasRegionProps test fails | GraphCanvasRegionProps type needs accessor for renderModel | Fix component test harness to pass accessor |
