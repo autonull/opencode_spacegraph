@@ -198,14 +198,21 @@ parity test passes; no camera movement asserted during badge/ring animation.
 
 ---
 
-## Phase 5 — Discovery and the evidence gate (critical path; unchanged from TODO.30)
+## Phase 5 — Discovery and the evidence gate
 
-### 5.1 T2.2 — run the study
+### 5.1 T2.2 — run the study (**DEFERRED until demo-ready**)
 
 n ≥ 5, counterbalanced, five tasks, canonical fixture; measure success, time, wrong turns,
 interactions, preference; pre-register the stop rule. Both outcomes pre-authored: win → RFC with
 hybrid-as-entry; loss → publish the negative result, keep the library and the host-integration
-guide as the deliverable. **Start recruiting now; the study is elapsed-time-bound and blocks 8.**
+guide as the deliverable.
+
+**Prerequisites before recruiting:**
+1. F2-F9 fixed — `graph:capture --mode=verify` passes 43/43
+2. Demo video generated and reviewed
+3. System polished for external evaluation
+
+The study is elapsed-time-bound but **recruiting starts only after the demo gate**. Blocking 8 is acceptable — a negative study on a broken system wastes everyone's time.
 
 ### 5.2 Discoverability
 
@@ -430,6 +437,10 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
 
 ### 8.4 Revision log
 
+- **r21 (2026-11-07):** T2.2 study deferred until demo-ready; priority reordered.
+  - Study recruiting **starts only after**: F2-F9 fixed (capture gate 43/43) + demo video generated.
+  - Critical path updated: F2-F9 fix → Demo video → T2.2 study → Phase 8 close-out.
+  - Rationale: Recruiting for a study on a system with known capture failures wastes participant time and yields unreliable results. The system must be impressive first.
 - **r20 (2026-11-07):** Rebasing onto upstream/dev (fdce6365bc) complete.
   - Resolved conflicts in package.json (added packages/console/* workspace) and bun.lock (took upstream version).
   - Fixed SDK docs mismatch in gui-plugins README.md (added spacegraph to builtins list).
@@ -562,7 +573,9 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] Phase 4.11 (unfold UX finish: search-hit ring, `aria-live`, badge animation wire-up)
 - [x] Phase 0′ (branch reconciliation decision; mainline hygiene)
 - [x] Phase 5.2 Discoverability: demo map, "see map" prompt, PR-embed export, Trust lens
-- [ ] Phase 5.1 recruiting starts; pre-register stop rule
+- [ ] **Fix F2-F9** — make `graph:capture --mode=verify` pass 43/43 frames (demo-ready gate)
+- [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
+- [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F2-F9, post-video)
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
 - [x] SGF-1 node-size-aware ForceLayout + `getLayoutBounds()` + final separation pass (P0)
