@@ -40,8 +40,8 @@ export function buildAxisLabels(
     const header = nodes.find((node) => node.kind === "turn" || node.kind === "session")
     const label = header
       ? header.kind === "session"
-        ? t("ui.sessionGraph.axis.session")
-        : t("ui.sessionGraph.axis.turn", { num: turnNumbers.get(header.id) ?? 0 })
+        ? translate("ui.sessionGraph.axis.session")
+        : translate("ui.sessionGraph.axis.turn", { num: turnNumbers.get(header.id) ?? 0 })
       : ""
 
     if (!label) return
@@ -53,7 +53,7 @@ export function buildAxisLabels(
     let cursor = 0
 
     for (const category of PHASE_CATEGORIES) {
-      labels.push({ id: `col:${category}`, label: t(`ui.sessionGraph.phase.${category}`), x: cursor, y: COLUMN_Y, role: "column" })
+      labels.push({ id: `col:${category}`, label: translate(`ui.sessionGraph.phase.${category}`), x: cursor, y: COLUMN_Y, role: "column" })
       cursor += COMPACT_SIZE[0] + GAP
     }
 
@@ -74,10 +74,10 @@ export function buildAxisLabels(
   columnWidth.forEach((width, column) => {
     const label =
       column === 0
-        ? t("ui.sessionGraph.axis.turn")
+        ? translate("ui.sessionGraph.axis.turn")
         : column <= PHASE_CATEGORIES.length
-          ? t(`ui.sessionGraph.phase.${PHASE_CATEGORIES[column - 1]}`)
-          : t("ui.sessionGraph.axis.signals")
+          ? translate(`ui.sessionGraph.phase.${PHASE_CATEGORIES[column - 1]}`)
+          : translate("ui.sessionGraph.axis.signals")
 
     labels.push({ id: `col:${column}`, label, x: x + width / 2, y: COLUMN_Y, role: "column" })
     x += width + GAP
