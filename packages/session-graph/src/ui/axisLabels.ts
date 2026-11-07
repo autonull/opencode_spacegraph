@@ -13,7 +13,7 @@ const ROW_X = -100
 const COLUMN_Y = -30
 
 export type Translate = (key: string, params?: Record<string, string | number | boolean>) => string
-
+ 
 /**
  * T1.11 — the row and column captions of the summary layouts. The ribbon and the matrix
  * have no labels of their own, so the host names their axes: a row is a turn, a column is a phase
@@ -27,10 +27,13 @@ export function buildAxisLabels(
   rows: GraphNode[][],
   layout: Layout,
   turnNumbers: ReadonlyMap<string, number>,
-  t: Translate,
+  t: Translate | undefined,
 ): AxisLabel[] | undefined {
   if (layout !== "ribbon" && layout !== "matrix") return undefined
-
+ 
+  // Safety: if i18n is not yet available, return labels with raw keys
+  const translate = t ?? ((key: string) => key)
+ 
   const labels: AxisLabel[] = []
 
   rows.forEach((nodes, rowIndex) => {

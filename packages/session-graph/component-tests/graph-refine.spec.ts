@@ -233,7 +233,7 @@ story("the changed-files rail lists written files and selects one on click", asy
 
   const toolbar = root.locator('[data-slot="graph-toolbar"]')
   await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  const toggle = toolbar.getByRole("button", { name: "Toggle changed files", exact: true })
+  const toggle = toolbar.getByRole("button", { name: "Files", exact: true })
   await expect(toggle).toHaveAttribute("aria-pressed", "false")
   await toggle.click()
 

@@ -164,9 +164,9 @@ async function setLevel(page: Page, level: "Overview" | "Execution" | "Detail") 
 async function fit(page: Page) {
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
   const compact = (await overflow.count()) > 0
-  if (compact) await overflow.getByLabel("More controls").click()
+  if (compact) await overflow.getByLabel("More").click()
   await page.locator(toolbar).getByRole("button", { name: "Fit", exact: true }).click()
-  if (compact) await overflow.getByLabel("More controls").click()
+  if (compact) await overflow.getByLabel("More").click()
 }
 
 async function zoomPercent(page: Page) {
@@ -213,11 +213,18 @@ async function zoomToMax(page: Page) {
 }
 
 async function focusNode(page: Page, nodeId: string, query: string) {
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Search" }).click()
+  // Focus canvas and open search with "/" shortcut (like component test)
+  await page.locator('[data-slot="graph-canvas-region"]').focus()
+  await page.keyboard.press("/")
   const search = page.getByRole("dialog", { name: "Search" })
-  await search.getByRole("combobox").fill(query)
-  await search.locator(`[data-node-id="${nodeId}"]`).click()
+  const input = search.getByRole("combobox")
+  await input.fill(query)
+  // Wait for search results to populate
+  await expect(search.locator(`[data-node-id="${nodeId}"]`)).toBeVisible({ timeout: 10000 })
+  // Select with Enter key
+  await input.press("Enter")
+  // Wait for selection to propagate to inspector
+  await page.waitForTimeout(500)
   await waitForStillCanvas(page)
 }
 
@@ -356,6 +363,8 @@ test("13 graph narrow", async ({ page }) => {
   await fit(page)
   await still(page)
   await page.setViewportSize({ width: 390, height: 900 })
+  // Wait for ResizeObserver to fire and update compact state (overflow menu appears)
+  await expect(page.locator('[data-slot="graph-toolbar-overflow"]')).toBeVisible({ timeout: 10000 })
   await fit(page)
   await still(page)
   await capture(page, "13-graph-narrow.png")
@@ -381,6 +390,8 @@ test("15 graph ribbon", async ({ page }) => {
   await openGraph(page)
   await setLevel(page, "Overview")
   await pickLayout(page, "ribbon")
+  // Wait for the ribbon layout to initialize and canvas to be ready
+  await waitForGraphContent(page)
   await still(page)
   await fit(page)
   await still(page)
@@ -407,7 +418,7 @@ test("17 graph files", async ({ page }) => {
   await openGraph(page)
   await setLevel(page, "Execution")
   await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Toggle changed files", exact: true }).click()
+  await page.locator(toolbar).getByRole("button", { name: "Files", exact: true }).click()
   await expect(page.locator('[data-slot="graph-file-rail"]')).toBeVisible()
   await fit(page)
   await still(page)
@@ -477,7 +488,9 @@ test("22 graph turn 1", async ({ page }) => {
   await fit(page)
   await still(page)
   await zoomToPercent(page, 150)
-  await focusNode(page, "turn:msg_user_1", "authentication test failures")
+  await still(page)
+  // Use navigation query "g t" to focus on turn 1
+  await focusNode(page, "turn:msg_user_1", "g t")
   await capture(page, "22-graph-turn-1.png")
   expect(filterKnownErrors(errors)).toEqual([])
 })
@@ -537,7 +550,7 @@ test("30 graph gallery", async ({ page }) => {
   await openGraph(page)
   await setLevel(page, "Execution")
   await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Compare the layouts", exact: true }).click()
+  await page.locator(toolbar).getByRole("button", { name: "Gallery", exact: true }).click()
   await expect(page.locator('[data-slot="graph-gallery"]')).toBeVisible()
   await capture(page, "30-graph-gallery.png")
   await page.keyboard.press("Escape")
@@ -579,7 +592,10 @@ test("36 graph trace overlay", async ({ page }) => {
   await setLevel(page, "Execution")
   await fit(page)
   await still(page)
-  await focusNode(page, "turn:msg_user_1", "authentication test failures")
+  // Focus on the failed result node which has a trace
+  await focusNode(page, "result:prt_tool_shell_2", "FAIL auth refresh token")
+  // Wait for inspector to show the selected result
+  await expect(page.locator(inspector).getByRole("heading", { name: "failed" })).toBeVisible({ timeout: 10000 })
   await page.locator(inspector).getByRole("button", { name: "Why?" }).click()
   await still(page)
   await capture(page, "36-graph-trace-overlay.png")

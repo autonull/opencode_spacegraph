@@ -28,6 +28,8 @@
     "typecheck:profile:packages": "bun script/profile-typecheck-packages.ts",
     "pack": "bun run script/pack.ts",
     "upgrade-opentui": "bun run script/upgrade-opentui.ts",
+    "graph:capture": "bun run script/capture-graph-demo.ts",
+    "graph:verify": "bun run script/graph-verify.ts",
     "postinstall": "bun run --cwd packages/core fix-node-pty",
     "prepare": "husky",
     "random": "echo 'Random script'",
