@@ -593,10 +593,11 @@ test("36 graph trace overlay", async ({ page }) => {
   await fit(page)
   await still(page)
   // Focus on the failed result node which has a trace
-  await focusNode(page, "result:prt_tool_shell_2", "FAIL auth refresh token")
-  // Wait for inspector to show the selected result
+  // Use "failed result" query to filter to failed result kind nodes via NLQ (kind:result status:failed)
+  await focusNode(page, "result:prt_tool_shell_2", "failed result")
+  // Wait for inspector to show the selected result - label is "failed" for failed shell tools
   await expect(page.locator(inspector).getByRole("heading", { name: "failed" })).toBeVisible({ timeout: 10000 })
-  await page.locator(inspector).getByRole("button", { name: "Why?" }).click()
+  await page.locator(inspector).getByRole("button", { name: "Why" }).click()
   await still(page)
   await capture(page, "36-graph-trace-overlay.png")
   expect(filterKnownErrors(errors)).toEqual([])

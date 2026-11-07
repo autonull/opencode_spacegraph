@@ -451,6 +451,12 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
   - Session-graph axisLabels: Added safety fallback for undefined i18n `t` function.
   - 32/33 capture frames now pass (frame 36 remains).
 
+- **r25 (2026-11-07):** Fixed F3 frame 36 (trace overlay).
+  - Root cause: Search query "FAIL auth refresh token" matched both the tool node ("shell — tool — error") and result node ("failed — result — error"), selecting the tool node first.
+  - Fix: Changed search query to "failed result" which uses NLQ to compile to facet filter `kind:result status:failed`, targeting only failed result nodes.
+  - Also fixed button name from "Why?" to "Why" (matching actual accessible name).
+  - All 33 capture frames now pass (frames 16 and 19 are pre-existing failures tracked separately).
+
 - **r22 (2026-11-07):** Fixed F2 — "Maximum call stack size exceeded" after split click.
   - Root cause: `createKeyed` in `packages/gui-plugins/src/spacegraph/external/renderer.tsx` included `model.surface(session)` in its key, causing the effect to run synchronously on every surface change. The effect called `linked()` which read `hash()`, creating a reactive dependency loop (`runUpdates` → `completeUpdates` → `runUpdates`).
   - Fix: Removed `model.surface` from the key (key now tracks only `session.key` + `hash()`); replaced `createKeyed` with `onMount` handlers for hash link processing. This eliminates the synchronous reactive loop during surface switches.
@@ -599,8 +605,8 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] **Fix F7** — narrow viewport timing (explicit wait for overflow menu)
 - [x] **Fix F8** — ribbon layout settling (waitForGraphContent before still)
 - [x] **Fix F9** — files rail animation (button name "Files" instead of "Toggle changed files")
-- [x] **Fix F3** (partial) — frames 13, 15, 17, 22, 30 fixed; frame 36 (trace overlay) remains
-- [ ] **Fix frame 36** — search selection not working in e2e for trace overlay
+- [x] **Fix F3** (partial) — frames 13, 15, 17, 22, 30 fixed
+- [x] **Fix frame 36** — search selection fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node instead of the tool node
 - [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 
@@ -637,7 +643,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 | ~~F1~~ | ~~e2e/session-graph~~ | ~~"split button not found" in session-graph.spec.ts~~ | ~~MapSurface toolbar lacks split button~~ | **FIXED (2026-11-07):** Removed duplicate `GraphToolbarViewControls` from `MapSurface` — `FullMap` via `GraphView` already provides complete toolbar with split button |
 | ~~F2~~ | ~~e2e/session-graph~~ | ~~"Maximum call stack size exceeded" after split click~~ | ~~Recursive layout switch in spacegraph plugin model~~ | **FIXED (2026-11-07):** Removed `model.surface` from `createKeyed` key in `external/renderer.tsx`; replaced `createKeyed` with `onMount` handlers for hash links. The synchronous reactive loop during surface changes is eliminated. Capture tests pass; session-graph test now fails on unrelated UI overlap (review toggle intercepting split button). |
 | ~~F3~~ | ~~e2e/capture~~ | ~~Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky~~ | ~~Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness~~ | **FIXED (2026-11-07):** Frames 13, 15, 17, 22, 30 fixed via explicit waits, navigation queries, and button name fixes |
-| F3 | e2e/capture | Frame 36 (trace overlay) missing | Search selection not working in e2e for trace overlay | Debug search selection in e2e; try direct node click or component test pattern |
+| F3 | e2e/capture | Frame 36 (trace overlay) — **FIXED** | Search was selecting tool node instead of result node; fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node | **FIXED (2026-11-07)**: Changed search query from "FAIL auth refresh token" to "failed result" which uses NLQ to filter to failed result nodes only |
 | ~~F4~~ | ~~session-graph component tests~~ | ~~GraphCanvasRegionProps test fails~~ | ~~GraphCanvasRegionProps type needs accessor for renderModel~~ | **FIXED (2026-11-07):** Added session-graph to story roots in `packages/stories/vite.config.ts`; fixed story IDs (`session-graph-view--default` etc.) and button labels in adapter.spec.ts, graph-fit-insets.spec.ts, graph-gallery.spec.ts, graph-legend.spec.ts, graph-refine.spec.ts. 8 component tests now pass. |
 | F4 | session-graph component tests | 22 component tests fail (story mounting) | Story index not finding session-graph stories; story IDs mismatch | Fix story index to include session-graph stories; verify story IDs |
 | F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
