@@ -31,6 +31,7 @@ import type {
   SessionRef,
   Sessions,
   Storage,
+  Surfaces,
   System,
   Tabs,
   Toasts,
@@ -120,6 +121,15 @@ export interface Context extends BaseContext {
    * ```
    */
   readonly screen: Screen
+  /**
+   * The session body views: the host's transcript and the surfaces plugins contribute.
+   *
+   * @example
+   * ```ts
+   * ctx.surfaces.select(`${ctx.id}.map`, session)
+   * ```
+   */
+  readonly surfaces: Surfaces
   /**
    * Stores for keys only known at runtime, and window-local memory. Declare `stores` for keys known up front.
    *

@@ -48,6 +48,7 @@ import {
   type IpcClient,
   type IpcSpec,
   type SessionRef,
+  type SessionSurface,
   type SetupContext,
   type Token,
 } from "@opencode/plugin/gui"
@@ -881,14 +882,14 @@ function createHost(input: HostInput) {
       },
       surfaces: {
         items: () => orderedSessionSurfaces(
-          state.entries["session-surface"]?.map((e) => e.value) ?? [],
+          (state.entries["session-surface"]?.map((e) => e.value()) ?? []) as readonly SessionSurface[],
           language.t("session.surface.transcript"),
         ),
         select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
         current: (session: MountedSession) => {
           const id = sessionSurfaceID(session)
           const all = orderedSessionSurfaces(
-            state.entries["session-surface"]?.map((e) => e.value) ?? [],
+            (state.entries["session-surface"]?.map((e) => e.value()) ?? []) as readonly SessionSurface[],
             language.t("session.surface.transcript"),
           )
           return all.find((s) => s.id === id) ?? all[0]
@@ -1030,6 +1031,22 @@ function createHost(input: HostInput) {
     },
     /** `next` replaces the definition, e.g. after a development hot update. */
     reload: (id: string, next?: Entry) => dispatch({ type: "reload", id, next }),
+    /** The session surfaces contributed by plugins, plus the host's transcript surface. */
+    surfaces: {
+      items: () => orderedSessionSurfaces(
+        (state.entries["session-surface"]?.map((e) => e.value()) ?? []) as readonly SessionSurface[],
+        language.t("session.surface.transcript"),
+      ),
+      select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
+      current: (session: MountedSession) => {
+        const id = sessionSurfaceID(session)
+        const all = orderedSessionSurfaces(
+          (state.entries["session-surface"]?.map((e) => e.value()) ?? []) as readonly SessionSurface[],
+          language.t("session.surface.transcript"),
+        )
+        return all.find((s) => s.id === id) ?? all[0]
+      },
+    },
   }
 }
 

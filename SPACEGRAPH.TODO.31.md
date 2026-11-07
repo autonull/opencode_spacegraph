@@ -213,7 +213,7 @@ guide as the deliverable. **Start recruiting now; the study is elapsed-time-boun
 - [ ] `script/graph-export.ts --pr`: pure pipeline (existing `buildGraph`/`layoutGraph`/
       `buildRenderModel` + `renderToSVG`) → SVG sized for a PR body, linked to `#graph:<node>`;
       documented with a sample workflow step.
-- [ ] Capture the Grant Workspace §2 lesson in `docs/host-integration.md` (§6.2): hosts with a dev
+- [x] Capture the Grant Workspace §2 lesson in `docs/host-integration.md` (§11): hosts with a dev
       middleware + a prod server must use **one shared graph loader**; document the pattern and its
       failure mode (silent data drift), since this repo has no such pair to fix.
 
@@ -393,6 +393,7 @@ Nothing here is dropped; nothing here is promoted.
 
 ### 8.4 Revision log
 
+- **r12 (2026-11-06):** Phase 5.2 Discoverability completion + Phase 0' branch reconciliation fixes. Restored missing `Surfaces`, `SessionSurface`, `SessionLayer`, `TranscriptScreen` types to `@opencode/plugin/gui` (host-apis.ts, registries.ts, context.ts) from upstream-sync-1105. Fixed `mountSessionRegion` and added `mountSessionRegionWithSurfaces` test fixtures in `packages/app/component-tests/plugin-host.fixture.tsx`. Fixed `SessionScreen` to include `transcript` property in `packages/app/src/runtime/plugin/mounted-session.ts`. Updated `host-apis.tsx` to provide `surfaces` API. All 92 session-graph tests pass; all 837 session-ui tests pass; all 251 plugin-spacegraph tests pass; full monorepo typecheck passes.
 - **r11 (2026-11-06):** Phase 5.2 Discoverability items completed. Added command palette entries `graph.hybrid` (Show transcript and map - hybrid) and `graph.toggle` (Toggle session map) in `packages/gui-plugins/src/spacegraph/external/renderer.tsx`. Added permalink copy to export toolbar menu in `packages/session-graph/src/ui/GraphExportControl.tsx` and wired it through `GraphToolbarViewControls` in MapSurface and HybridSurface. All 92 session-graph tests pass; all 837 session-ui tests pass; all 580 spacegraphjs tests pass.
 - **r10 (2026-11-06):** Golden file updated for session-ui layout test. The SGF-10 `TreePlacement` size-awareness changes (reading `item.width`) shifted tree layout positions; updated `packages/session-ui/src/graph/layout.golden.json` to reflect the new, correct positions. All 837 session-ui tests pass; all 92 session-graph tests pass; all 580 spacegraphjs tests pass.
 - **r9 (2026-11-06):** SGF-4, SGF-8, SGF-9, SGF-10 completed in spacegraphjs. Implemented:
