@@ -407,6 +407,14 @@ Nothing here is dropped; nothing here is promoted.
   - Dist rebuilt; full monorepo typecheck passes (0 errors).
 - **r12 (2026-11-06):** Phase 5.2 Discoverability completion + Phase 0' branch reconciliation fixes. Restored missing `Surfaces`, `SessionSurface`, `SessionLayer`, `TranscriptScreen` types to `@opencode/plugin/gui` (host-apis.ts, registries.ts, context.ts) from upstream-sync-1105. Fixed `mountSessionRegion` and added `mountSessionRegionWithSurfaces` test fixtures in `packages/app/component-tests/plugin-host.fixture.tsx`. Fixed `SessionScreen` to include `transcript` property in `packages/app/src/runtime/plugin/mounted-session.ts`. Updated `host-apis.tsx` to provide `surfaces` API. All 92 session-graph tests pass; all 837 session-ui tests pass; all 251 plugin-spacegraph tests pass; full monorepo typecheck passes.
 - **r11 (2026-11-06):** Phase 5.2 Discoverability items completed. Added command palette entries `graph.hybrid` (Show transcript and map - hybrid) and `graph.toggle` (Toggle session map) in `packages/gui-plugins/src/spacegraph/external/renderer.tsx`. Added permalink copy to export toolbar menu in `packages/session-graph/src/ui/GraphExportControl.tsx` and wired it through `GraphToolbarViewControls` in MapSurface and HybridSurface. All 92 session-graph tests pass; all 837 session-ui tests pass; all 580 spacegraphjs tests pass.
+- **r11 (2026-11-06):** HtmlNode scrollbar behavior fixed (user-reported issue). Implemented in spacegraphjs:
+  - Wrapper uses `overflow: hidden` with `minWidth/minHeight: 0` to prevent unwanted scrollbars during resize
+  - ContentWrapper handles scrolling with `overflow: auto` and `minWidth/minHeight: 0`
+  - Transform scaling uses `transform-origin: top left` with layout size adjusted to `(100/scale)%` so visual size matches layout size
+  - Scrollbars now correctly appear/disappear based on visual content size during zoom (contentScale)
+  - LOD scaling also adjusts layout size for consistent behavior
+  - Group nodes (`data.group=true`) continue to work with explicit `overflow: hidden`
+  - All 580 spacegraphjs tests pass; publish check passes; typecheck passes.
 - **r10 (2026-11-06):** Golden file updated for session-ui layout test. The SGF-10 `TreePlacement` size-awareness changes (reading `item.width`) shifted tree layout positions; updated `packages/session-ui/src/graph/layout.golden.json` to reflect the new, correct positions. All 837 session-ui tests pass; all 92 session-graph tests pass; all 580 spacegraphjs tests pass.
 - **r9 (2026-11-06):** SGF-4, SGF-8, SGF-9, SGF-10 completed in spacegraphjs. Implemented:
   - SGF-4: Dual-loader docs added to `docs/host-integration.md` §11
