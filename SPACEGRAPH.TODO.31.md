@@ -408,6 +408,13 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 
 ### 8.4 Revision log
 
+- **r17 (2026-11-07):** Phase 5.3 NLQ integrated into graph search UI + new screenshots captured.
+  - Modified `packages/session-graph/src/ui/GraphSearch.tsx` to use `parseNLQ` for natural language queries.
+  - When user types queries like "failed tools", "show errors in code", "running processes", the NLQ compiler converts them to facet grammar (e.g., "kind:tool status:failed") and filters results using `applyFacets`.
+  - Compiled facet query displayed as a chip above results for transparency.
+  - Falls back to existing navigation (`g <key>`) and ranked text search when no facet filters are detected.
+  - All unit tests pass (89 session-graph, 851 session-ui, 580 spacegraphjs); monorepo typecheck passes.
+  - **New capture frames added**: 39 (NLQ search "failed tools"), 40 (NLQ "failed tools" variant), 41 (Trust lens banner), 42 (Export menu with permalink copy), 43 (Demo map on first run). All screenshots captured and verified.
 - **r16 (2026-11-06):** Phase 5.3 NLQ integrated into graph search UI.
   - Modified `packages/session-graph/src/ui/GraphSearch.tsx` to use `parseNLQ` for natural language queries.
   - When user types queries like "failed tools", "show errors in code", "running processes", the NLQ compiler converts them to facet grammar (e.g., "kind:tool status:failed") and filters results using `applyFacets`.
@@ -562,6 +569,8 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 `bun run check` · `cd packages/session-graph && bun run test:components` · `bun run graph:scale` ·
 `bun run graph:capture --mode=verify` (advisory, sync branch) · clean-clone rehearsal of the
 mainline · merged PR review against the stop rule in `SPACEGRAPH.md` §10.
+
+**Capture matrix (43 frames)**: baseline (01), demo (02-06, 11-24, 28-31, 34, 36-38), NLQ (39-40), Trust lens (41), Export/permalink (42), Demo map (43), bundle (3 frames).
 
 ## References
 

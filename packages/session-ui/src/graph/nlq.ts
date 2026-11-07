@@ -71,7 +71,9 @@ function matchSynonyms<T extends string>(
     const alts = synonyms[canonical]
     if (!alts) continue
     for (const alt of alts) {
-      if (tokenSet.has(alt) || tokens.some((t) => t.includes(alt))) {
+      // Match exact token or token starting with synonym (for stems like "successful" -> "success")
+      // But not arbitrary substring (to avoid "ok" matching "token.ts")
+      if (tokenSet.has(alt) || tokens.some((t) => t === alt || t.startsWith(alt + "") && t.length > alt.length)) {
         matched.push(canonical)
         break
       }
