@@ -159,6 +159,7 @@ export {
   type FacetCounts,
   type GraphFacets,
 } from "./facets"
+export { compileNLQ, formatNLQResult, parseNLQ } from "./nlq"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
 export { DOM_BUDGET } from "./dom-budget"
