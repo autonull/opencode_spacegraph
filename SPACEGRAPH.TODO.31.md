@@ -383,6 +383,7 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 - [ ] 7: every parked item has its unblock condition recorded (incl. publish, dual-loader).
 - [ ] 8: `SPACEGRAPH.md` §2/§6/§7 updated to reference TODO.31; TODO.30 marked superseded;
       `SPACEGRAPH.md` and this file tracked on the mainline; this file's boxes dispositioned.
+- [ ] 9: all known failures F1–F9 fixed; `graph:capture --mode=verify` passes 43/43 frames; component tests green; typecheck clean.
 
 ### 8.3 Risks
 
@@ -402,12 +403,44 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 | **Branch confusion (files only on the other line)** | §A.1 #19 list is authoritative; missing paths resolve on the sync branch until 0′ unifies them; never copy-then-delete; never merge without the inventory step |
 | **Auto-sizing breaks exact-position tests** | explicit config = exact override (§6.0 rule); `test/layout-plugins.test.ts` must pass unmodified; auto-compute fills only unset values |
 | **Size-aware sweep (SGF-9) silently moves existing users' layouts** | default behavior improving is the point (no magic numbers is the goal); homogeneous graphs get the same positions as fixed spacing when defaults match; documented in SGF-8 audit note; explicit config is unchanged |
+| **Pre-existing e2e flakiness blocks capture matrix** | Phase 9: fix F1–F9; `graph:capture --mode=verify` must pass 43/43 frames |
+
+---
+
+## Phase 9 — Fix known failures (pre-existing, blocks capture gate)
+
+These are pre-existing issues that block a clean `graph:capture --mode=verify` run. They are not new regressions but must be fixed for the verification gate to pass.
+
+| ID | Area | Fix | Effort | Depends on |
+|---|---|---|---|---|
+| F1 | MapSurface toolbar | Add split button to MapSurface (mirror HybridSurface) | ~0.25 d | — |
+| F2 | spacegraph plugin model | Fix recursive `cycleArrangement`/`select` in model.ts | ~0.5 d | — |
+| F3 | capture.spec.ts | Add tests for missing frames 25, 26, 27, 29, 31, 32, 33, 35; stabilize frames 13, 15, 17, 22, 30 | ~1 d | F7, F8, F9 |
+| F4 | session-graph component tests | Pass `renderModel` accessor to component test harness | ~0.25 d | — |
+| F5 | app e2e component contract | Debug Storybook mount timeout in CI | ~0.5 d | upstream-sync-1105 |
+| F6 | gui-plugins | Fix pre-existing type errors in spacegraph plugin | ~0.5 d | — |
+| F7 | capture narrow test | Add explicit wait after `setViewportSize` before `fit()` | ~0.1 d | — |
+| F8 | capture ribbon test | Increase `still()` timeout or add ribbon-specific settle | ~0.1 d | — |
+| F9 | capture files test | Add explicit wait for file rail animation | ~0.1 d | — |
+
+**Exit (9):** `bun run graph:capture --mode=verify` passes all 43 frames; component tests green; typecheck clean.
 | **Test churn / re-testing across 8 layouts** | §6.0 verification: one conformance file covers all; targeted vitest during iteration; full check + component suite once at exit |
 | **Verification re-run per item wastes the budget** | once-at-exit rule (§6.0 verification step 4); component tests consume dist, so running them mid-batch tests nothing |
 | **Divergence between `ForcePlacement` and `ForceLayout` semantics** | SGF-1 mandates the same separation-pass shape; convergence explicitly parked in Phase 7, not improvised |
 
 ### 8.4 Revision log
 
+- **r18 (2026-11-07):** Phase 5.3 NLQ fixes + full capture matrix regeneration + Phase 9 plan for known failures.
+  - Fixed NLQ stem matching false positives: status synonyms now exact-only; added "successful" to success synonyms.
+  - Frame 39: "failed tools" → `kind:tool status:failed` (distinct)
+  - Frame 40: "failed" → `status:failed` (distinct from frame 39)
+  - Frame 41: Trust lens banner
+  - Frame 42: Export menu with permalink copy
+  - Frame 43: Demo map on first run
+  - All 5 new frames captured and verified distinct (39-43)
+  - Updated 02, 03, 11 screenshots
+  - Added Phase 9 to TODO with F1–F9 fix plan for pre-existing e2e flakiness blocking capture gate
+  - Definition of done updated: Phase 9 requires `graph:capture --mode=verify` passes 43/43 frames
 - **r17 (2026-11-07):** Phase 5.3 NLQ integrated into graph search UI + new screenshots captured.
   - Modified `packages/session-graph/src/ui/GraphSearch.tsx` to use `parseNLQ` for natural language queries.
   - When user types queries like "failed tools", "show errors in code", "running processes", the NLQ compiler converts them to facet grammar (e.g., "kind:tool status:failed") and filters results using `applyFacets`.
@@ -554,10 +587,13 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 |---|---|---|---|---|
 | F1 | e2e/session-graph | "split button not found" in session-graph.spec.ts | MapSurface toolbar lacks split button; spacegraph plugin's HybridSurface has it | Add split button to MapSurface toolbar or update test to use HybridSurface |
 | F2 | e2e/session-graph | "Maximum call stack size exceeded" after split click | Recursive layout switch in spacegraph plugin model | Audit `cycleArrangement`/`select` in model.ts for recursion |
-| F3 | e2e/capture | Frames 25, 26, 27, 29, 30, 31, 32, 33, 35 missing from capture | Tests use arrangements/levels not triggered by current test flow | Extend capture.spec.ts to exercise those states |
+| F3 | e2e/capture | Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky | Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness | Extend capture.spec.ts to exercise all states; fix `focusNode` to wait for search results; stabilize narrow/ribbon/files tests |
 | F4 | session-graph component tests | GraphCanvasRegionProps test fails | GraphCanvasRegionProps type needs accessor for renderModel | Fix component test harness to pass accessor |
 | F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
 | F6 | root | `bun run check` type errors in gui-plugins (unrelated to my changes) | Pre-existing type errors in spacegraph plugin | Fix gui-plugins spacegraph type errors separately |
+| F7 | e2e/capture | Frame 13 (narrow) viewport resize timing | `setViewportSize` + `fit()` race condition | Add explicit wait after viewport resize before fit |
+| F8 | e2e/capture | Frame 15 (ribbon) layout not settling | Ribbon layout async, `still()` may not wait long enough | Increase `still()` timeout or add ribbon-specific settle check |
+| F9 | e2e/capture | Frame 17 (files) rail not visible | Changed files toggle async, `expect().toBeVisible()` timeout | Add explicit wait for file rail animation |
 
 ### Quality gates (always)
 - `bun run check` passes · component + e2e coverage maintained · `SPACEGRAPH.md`/this file never deleted
