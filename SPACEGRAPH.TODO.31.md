@@ -228,6 +228,9 @@ guide as the deliverable. **Start recruiting now; the study is elapsed-time-boun
 - [x] **NLQ** over the facet grammar (`facets.ts`): natural phrase → `kind:`/`status:`/`domain:`
       query, compiled query shown, no model call. Implemented in `packages/session-ui/src/graph/nlq.ts`
       with synonyms for kinds, statuses, domains; exports `compileNLQ`, `formatNLQResult`, `parseNLQ`.
+      **Integrated into graph search UI** (`packages/session-graph/src/ui/GraphSearch.tsx`) — typing
+      natural language like "failed tools" or "show errors in code" compiles to facet query and filters
+      results; compiled query shown as a chip above results.
 
 ### 5.4 Exit
 
@@ -405,6 +408,12 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 
 ### 8.4 Revision log
 
+- **r16 (2026-11-06):** Phase 5.3 NLQ integrated into graph search UI.
+  - Modified `packages/session-graph/src/ui/GraphSearch.tsx` to use `parseNLQ` for natural language queries.
+  - When user types queries like "failed tools", "show errors in code", "running processes", the NLQ compiler converts them to facet grammar (e.g., "kind:tool status:failed") and filters results using `applyFacets`.
+  - Compiled facet query displayed as a chip above results for transparency.
+  - Falls back to existing navigation (`g <key>`) and ranked text search when no facet filters are detected.
+  - All unit tests pass (89 session-graph, 851 session-ui, 580 spacegraphjs); monorepo typecheck passes.
 - **r15 (2026-11-06):** Phase 5.3 NLQ experiment completed.
   - Implemented natural language query compiler over the facet grammar in `packages/session-ui/src/graph/nlq.ts`.
   - Supports synonyms for all node kinds (tool, file, error, message, etc.), statuses (pending, running, success, failed, interrupted, neutral), and domains (session, directories, history, code, verification, runtime, work).
