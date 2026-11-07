@@ -13,7 +13,7 @@ story.fixme(
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   const inspector = root.locator('[data-slot="graph-inspector"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
@@ -50,7 +50,7 @@ story.fixme(
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 

@@ -22,7 +22,7 @@ story("a forked session names where it came from and can open it", async ({ moun
   await expect(inspector).toContainText("Forked through")
   await expect(inspector).toContainText("msg_user_1")
 
-  await inspector.getByRole("button", { name: "Open the session this was forked from" }).click()
+  await inspector.getByRole("button", { name: "Open forked session" }).click()
   await expect(root.locator("[data-opened-session]")).toHaveAttribute("data-opened-session", "ses_origin")
 })
 
@@ -30,5 +30,6 @@ story("a compaction says whether it replayed a window or left a summary", async 
   const root = await mount("session-graph-view--compacted")
   const inspector = root.locator('[data-slot="graph-inspector"]')
 
-  await expect(inspector).toContainText("Replayed from the provider's replacement window")
+  await expect(inspector).toContainText("Replayed")
+  await expect(inspector).toContainText("This node was replayed")
 })

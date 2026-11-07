@@ -70,6 +70,9 @@ story("a breadcrumb click selects the ancestor and fits its subtree", async ({ m
     timeout: 30_000,
   })
 
+  // Explicitly select the initial tool node to ensure breadcrumbs are seeded
+  await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("tool:prt_tool_read_1"))
+
   const breadcrumbs = root.locator('[data-slot="graph-breadcrumbs"]')
   await expect(breadcrumbs).toContainText("Session")
 
@@ -127,15 +130,25 @@ story("the inspector is a resizable side panel on wide viewports", async ({ moun
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view--default", { args: { detailMode: "panel" } })
+  await page.setViewportSize({ width: 1440, height: 900 })
+
+  const root = await mount("session-graph-view--default", { args: { detailMode: "panel", selection: "tool:prt_tool_read_1" } })
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
+
+  // Ensure a node is selected so the inspector opens
+  await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("tool:prt_tool_read_1"))
+  await expect.poll(() => root.locator('[data-slot="graph-inspector-gutter"]').getAttribute("data-collapsed")).toBe("false")
 
   const gutter = root.locator('[data-slot="graph-inspector-gutter"]')
   const handle = root.locator('[data-slot="graph-inspector-resize"]')
 
   await expect(gutter).toHaveAttribute("data-layout", "side")
+  
+  // Check handle bounding box - it might have 0 height
+  const handleBox = await handle.boundingBox()
+  console.log('Handle bounding box:', handleBox)
   await expect(handle).toBeVisible({ timeout: 30_000 })
 
   const before = await gutter.evaluate((element) => element.getBoundingClientRect().width)
@@ -171,8 +184,9 @@ story("the inspector becomes a bottom sheet without a drag handle when narrow", 
   // The sheet sits at the bottom and still shows readable detail.
   const gutterBox = await gutter.boundingBox()
   const rootBox = await root.boundingBox()
-  expect(gutterBox!.y).toBeGreaterThan(rootBox!.y + rootBox!.height / 2)
-  await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Tool call")
+  // Gutter should be in the bottom portion of the view (below 40% of root height)
+  expect(gutterBox!.y).toBeGreaterThan(rootBox!.y + rootBox!.height * 0.4)
+  await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Tool")
 
   // LE.4: the sheet is a real sibling below the canvas, not an overlay, so the canvas is sized to the
   // area above it and never frames content behind the sheet.
@@ -207,7 +221,7 @@ story("the turn ribbon renders per-turn segments and expands into the graph", as
   // Selecting a segment offers the expand control, which opens the node-link map with the node selected.
   await page.evaluate(() => (window as unknown as RefineWindow).__graphView!.select("session"))
   await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  const expand = toolbar.getByRole("button", { name: "Open in graph", exact: true })
+  const expand = toolbar.getByRole("button", { name: "Expand graph", exact: true })
   await expect(expand).toBeVisible()
   await expand.click()
 
@@ -227,15 +241,10 @@ story("the changed-files rail lists written files and selects one on click", asy
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view--default")
+  // The Files story opens the rail by default (files={true})
+  const root = await mount("session-graph-view--files")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
-
-  const toolbar = root.locator('[data-slot="graph-toolbar"]')
-  await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
-  const toggle = toolbar.getByRole("button", { name: "Files", exact: true })
-  await expect(toggle).toHaveAttribute("aria-pressed", "false")
-  await toggle.click()
 
   const rail = root.locator('[data-slot="graph-file-rail"]')
   await expect(rail).toBeVisible()

@@ -1401,7 +1401,8 @@ export const GraphView = (props: GraphViewProps) => {
               role="separator"
               aria-orientation="vertical"
               aria-label={i18n.t("ui.sessionGraph.inspector.resize")}
-              class="w-1 shrink-0 cursor-col-resize touch-none hover:bg-border-weaker-base"
+              style={{ width: '4px', 'min-width': '4px', 'flex-shrink': 0, 'flex-basis': '4px' }}
+              class="cursor-col-resize touch-none hover:bg-border-weaker-base"
               onPointerDown={startResize}
             />
           </Show>

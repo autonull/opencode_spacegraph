@@ -42,7 +42,7 @@ story.skip(
   async ({ mount, page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
@@ -75,7 +75,7 @@ story.skip(
 story("the level is never disabled, whatever the layout (T17.1)", async ({ mount, page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
