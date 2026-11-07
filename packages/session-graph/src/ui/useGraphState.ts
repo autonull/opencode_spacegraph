@@ -1,6 +1,7 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createUniqueId } from "solid-js"
 import { createStore, produce, type SetStoreFunction } from "solid-js/store"
+import { createEffect } from "solid-js"
 import type {
   DepthMode,
   Projection,
@@ -91,6 +92,17 @@ interface GraphState {
   manualHistory: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
   manualFuture: { positions: Record<string, [number, number, number]>; sizes: Record<string, [number, number]> }[]
 
+  // Demo / first-run
+  demoSeen: boolean
+  demoDismissed: boolean
+
+  // See-map prompt
+  seeMapPromptVisible: boolean
+  seeMapPromptDismissed: boolean
+
+  // Trust lens
+  trustLens: boolean
+
   // Model
   notesStore: Annotations
 }
@@ -128,6 +140,11 @@ const initialState: GraphState = {
   manual: { positions: {}, sizes: {} },
   manualHistory: [],
   manualFuture: [],
+  demoSeen: false,
+  demoDismissed: false,
+  seeMapPromptVisible: false,
+  seeMapPromptDismissed: false,
+  trustLens: false,
   notesStore: {},
 }
 
@@ -211,6 +228,22 @@ export type UseGraphStateReturn = {
   canvasSize: () => { width: number; height: number }
   setCanvasSize: (size: { width: number; height: number } | ((prev: { width: number; height: number }) => { width: number; height: number })) => void
 
+  // Demo / first-run
+  demoSeen: () => boolean
+  setDemoSeen: (seen: boolean | ((prev: boolean) => boolean)) => void
+  demoDismissed: () => boolean
+  setDemoDismissed: (dismissed: boolean | ((prev: boolean) => boolean)) => void
+
+  // See-map prompt
+  seeMapPromptVisible: () => boolean
+  setSeeMapPromptVisible: (visible: boolean | ((prev: boolean) => boolean)) => void
+  seeMapPromptDismissed: () => boolean
+  setSeeMapPromptDismissed: (dismissed: boolean | ((prev: boolean) => boolean)) => void
+
+  // Trust lens
+  trustLens: () => boolean
+  setTrustLens: (enabled: boolean | ((prev: boolean) => boolean)) => void
+
   // Manual layout
   manual: GraphState["manual"]
   setManual: (key: "positions" | "sizes", idOrValue: string | Record<string, [number, number, number]> | Record<string, [number, number]>, value?: [number, number, number] | [number, number]) => void
@@ -261,7 +294,32 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     peek: props.peek ?? false,
     followLog: props.followLog ?? false,
     facets: facetsFromQuery(props.facetQuery ?? ""),
+    // Initialize from localStorage (client-side only)
+    demoSeen: typeof window !== "undefined" ? localStorage.getItem("sessionGraph.demoSeen") === "true" : false,
+    demoDismissed: typeof window !== "undefined" ? localStorage.getItem("sessionGraph.demoDismissed") === "true" : false,
+    seeMapPromptDismissed: typeof window !== "undefined" ? localStorage.getItem("sessionGraph.seeMapPromptDismissed") === "true" : false,
+    trustLens: typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("lens") === "unverified" : false,
   })
+
+  // Persist demo/prompt dismissal to localStorage
+  if (typeof window !== "undefined") {
+    const demoSeenKey = "sessionGraph.demoSeen"
+    const demoDismissedKey = "sessionGraph.demoDismissed"
+    const seeMapPromptDismissedKey = "sessionGraph.seeMapPromptDismissed"
+
+    // Track demo seen
+    createEffect(() => {
+      if (state.demoSeen) localStorage.setItem(demoSeenKey, "true")
+    })
+
+    createEffect(() => {
+      if (state.demoDismissed) localStorage.setItem(demoDismissedKey, "true")
+    })
+
+    createEffect(() => {
+      if (state.seeMapPromptDismissed) localStorage.setItem(seeMapPromptDismissedKey, "true")
+    })
+  }
 
   const announce = (message: string) => {
     const region = document.getElementById(a11yInstructionsId)
@@ -410,6 +468,22 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     setInspectorSheetOpen: createSetter(setState, "inspectorSheetOpen"),
     canvasSize: createGetter(state, "canvasSize"),
     setCanvasSize: createSetter(setState, "canvasSize"),
+
+    // Demo / first-run
+    demoSeen: createGetter(state, "demoSeen"),
+    setDemoSeen: createSetter(setState, "demoSeen"),
+    demoDismissed: createGetter(state, "demoDismissed"),
+    setDemoDismissed: createSetter(setState, "demoDismissed"),
+
+    // See-map prompt
+    seeMapPromptVisible: createGetter(state, "seeMapPromptVisible"),
+    setSeeMapPromptVisible: createSetter(setState, "seeMapPromptVisible"),
+    seeMapPromptDismissed: createGetter(state, "seeMapPromptDismissed"),
+    setSeeMapPromptDismissed: createSetter(setState, "seeMapPromptDismissed"),
+
+    // Trust lens
+    trustLens: createGetter(state, "trustLens"),
+    setTrustLens: createSetter(setState, "trustLens"),
 
     // Manual layout
     manual: state.manual,

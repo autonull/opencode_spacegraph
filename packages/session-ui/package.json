@@ -60,7 +60,8 @@
     "typecheck:tsc": "tsc -b",
     "test": "bun test src --only-failures",
     "test:components": "playwright test --config playwright.components.config.ts",
-    "test:components:ui": "playwright test --config playwright.components.config.ts --ui"
+    "test:components:ui": "playwright test --config playwright.components.config.ts --ui",
+    "graph:export": "bun run src/graph/export-cli.ts"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "20.0.11",
@@ -69,7 +70,8 @@
     "@types/bun": "catalog:",
     "@typescript/native": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-solid": "catalog:"
+    "vite-plugin-solid": "catalog:",
+    "@spacegraphjs/svg-renderer": "workspace:*"
   },
   "dependencies": {
     "@kitlangton/solid-motion": "0.2.2",

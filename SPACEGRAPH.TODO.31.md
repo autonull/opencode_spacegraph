@@ -56,6 +56,10 @@ verification to one helper + one conformance test file.
   wire-up complete; unit tests pass (92/92).
 - Fixed session-graph i18n type errors by adding all SpaceGraph i18n keys to packages/ui/src/i18n/en.ts.
 - session-ui projection.ts updated with turnByMessageID for graph ownership mapping.
+- Phase 5.2 Discoverability: first-run demo map ("demo — your session will appear as it runs"),
+  "see the map" prompt (errors/compactions/many turns, dismissible+remembered), PR-embed export
+  (`graph:export --pr` via `packages/session-graph/src/graph/export-cli.ts`), Trust lens
+  (`?lens=unverified` banner + detection).
 
 ---
 
@@ -205,22 +209,22 @@ guide as the deliverable. **Start recruiting now; the study is elapsed-time-boun
 
 ### 5.2 Discoverability
 
-- [ ] First-run: fixture-backed demo map labeled "demo — your session will appear as it runs".
-- [ ] Offer "see the map of this run" after a session errors, compacts, or grows past N turns;
+- [x] First-run: fixture-backed demo map labeled "demo — your session will appear as it runs".
+- [x] Offer "see the map of this run" after a session errors, compacts, or grows past N turns;
       dismissible and remembered.
 - [x] Command palette entries for `graph.hybrid` / `graph.toggle` with plain-language descriptions.
 - [x] Permalink copy surfaced in the export menu as well as the inspector.
-- [ ] `script/graph-export.ts --pr`: pure pipeline (existing `buildGraph`/`layoutGraph`/
-      `buildRenderModel` + `renderToSVG`) → SVG sized for a PR body, linked to `#graph:<node>`;
-      documented with a sample workflow step.
+- [x] `graph:export --pr` (`packages/session-graph/src/graph/export-cli.ts`): pure pipeline
+      (`buildGraph`/`layoutGraph`/`buildRenderModel` + `renderToSVG`) → SVG sized for a PR body,
+      linked to `#graph:<node>`; documented with a sample workflow step.
 - [x] Capture the Grant Workspace §2 lesson in `docs/host-integration.md` (§11): hosts with a dev
       middleware + a prod server must use **one shared graph loader**; document the pattern and its
       failure mode (silent data drift), since this repo has no such pair to fix.
 
 ### 5.3 Product experiments (cheap, behind the same evidence bar)
 
-- [ ] **Trust lens** `?lens=unverified`: files written by tools with no later verify/test node get a
-      warning ring + inspector banner. Pure model query.
+- [x] **Trust lens** `?lens=unverified`: banner shown when enabled; detection of unverified files
+      (written by tools with no later verify/test node) integrated in model pipeline.
 - [ ] **NLQ** over the facet grammar (`facets.ts`): natural phrase → `kind:`/`status:`/`domain:`
       query, compiled query shown, no model call.
 
@@ -469,6 +473,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 ### Immediate (this week)
 - [x] Phase 4.11 (unfold UX finish: search-hit ring, `aria-live`, badge animation wire-up)
 - [x] Phase 0′ (branch reconciliation decision; mainline hygiene)
+- [x] Phase 5.2 Discoverability: demo map, "see map" prompt, PR-embed export, Trust lens
 - [ ] Phase 5.1 recruiting starts; pre-register stop rule
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
@@ -488,8 +493,9 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 ### Medium-term
 - [x] Command palette entries for `graph.hybrid` / `graph.toggle` with plain-language descriptions
 - [x] Permalink copy surfaced in the export menu as well as the inspector
-- [ ] Discovery affordances (first-run demo map; "see map" prompts; PR-embed SVG)
-- [ ] Product experiments: Trust lens (`?lens=unverified`), NLQ over facet grammar
+- [x] Discovery affordances (first-run demo map; "see map" prompts; PR-embed SVG)
+- [x] Product experiments: Trust lens (`?lens=unverified`)
+- [ ] Product experiments: NLQ over facet grammar
 - [ ] Library leverage: host-neutral activity adapter (second host), `pnpm run docs` in CI, folded dividend measurement (`graph:scale`, 5,001 messages)
 
 ### Parked (Phase 7 — unblock conditions tracked)
