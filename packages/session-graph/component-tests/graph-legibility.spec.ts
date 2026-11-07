@@ -25,7 +25,7 @@ const pickLayout = async (root: import("@playwright/test").Locator, layout: stri
 story("a view too large for the frame keeps a legible scale", async ({ mount, page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
-  const root = await mount("session-graph-view")
+  const root = await mount("session-graph-view--default")
   const host = root.locator('[data-slot="graph-canvas-host"]')
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 

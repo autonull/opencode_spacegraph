@@ -2,6 +2,7 @@ import type { DepthMode, Projection, RenderTheme } from "@spacegraphjs/renderer"
 import {
   buildFixtureGraph,
   buildFixtureMessages,
+  buildFixtureSnapshot,
   buildGraph,
   type DetailFraming,
   type DetailMode,
@@ -208,6 +209,20 @@ const ViewHarness = (props: HarnessProps) => {
     zoomBy: (delta: number) => {},
     pending: () => false,
     getViewport: () => undefined,
+    // Window opening (for toolbar: filesystem, minimap, etc.)
+    onOpenWindow: (kind: string, nodeID?: string) => {
+      const window = {
+        id: `${kind}:${nodeID ?? windows().length}`,
+        kind,
+        nodeID,
+        left: 24 + windows().length * 24,
+        top: 24 + windows().length * 24,
+        width: 360,
+        height: 320,
+        z: windows().reduce((highest, w) => Math.max(highest, w.z), 0) + 1,
+      }
+      setWindows([...windows(), window])
+    },
   }
   // Expose unified harness on window for component tests
   ;(window as unknown as { __graph?: typeof testHarness }).__graph = testHarness
@@ -337,6 +352,11 @@ export const Matrix = {
 /** LE.12: the file-first lens — the changed-files rail with bundled provenance edges. */
 export const Files = {
   render: () => <ViewHarness files={true} selection="file:src/auth/token.ts" />,
+}
+
+/** Default with workspaceRoot for filesystem rail tests. */
+export const FilesDefault = {
+  render: () => <ViewHarness model={buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, snapshot: buildFixtureSnapshot() })} />,
 }
 
 export const Empty = {

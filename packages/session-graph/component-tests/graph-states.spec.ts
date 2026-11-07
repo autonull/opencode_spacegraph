@@ -12,7 +12,8 @@ story("shows the empty state when the session has no activity", async ({ mount, 
   const root = await mount("session-graph-view--empty")
 
   await expect(root.locator('[data-slot="graph-empty"]')).toBeVisible()
-  await expect(root.locator('[data-slot="graph-empty"]')).toContainText("Nothing to graph yet")
+  await expect(root.locator('[data-slot="graph-empty"]')).toContainText("Empty graph")
+  await expect(root.locator('[data-slot="graph-empty"]')).toContainText("No nodes to display")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "true", {
     timeout: 30_000,
   })
@@ -30,9 +31,10 @@ story("shows a recoverable error state when no renderer can mount", async ({ mou
 
   const error = root.locator('[data-slot="graph-error"]')
   await expect(error).toBeVisible({ timeout: 30_000 })
-  await expect(error).toContainText("The graph could not load")
+  await expect(error).toContainText("Failed to render graph")
+  await expect(error).toContainText("Try a different layout or zoom level")
   await expect(root.locator('[data-slot="graph-canvas-host"]')).toHaveAttribute("data-graph-ready", "false")
-  await expect(error.getByRole("button", { name: "Back to transcript" })).toBeVisible()
+  await expect(error.getByRole("button", { name: "Back" })).toBeVisible()
 
   expect(errors).toEqual([])
 })
@@ -68,7 +70,7 @@ story("explains a selection the current level hides and reveals it", async ({ mo
   await expect(breadcrumbs).toContainText("src/auth/token.ts")
 
   const hidden = root.locator('[data-slot="graph-selection-hidden"]')
-  await expect(hidden).toContainText("src/auth/token.ts")
+  await expect(hidden).toContainText("Hidden")
   await hidden.getByRole("button", { name: "Show" }).click()
 
   await root.locator('[data-slot="graph-toolbar-layers"] > summary').click()
@@ -88,9 +90,9 @@ story("fits a narrow mobile viewport without horizontal overflow", async ({ moun
   // RF.7: the narrow row collapses the secondary controls into an overflow menu.
   const overflow = root.locator('[data-slot="graph-toolbar-overflow"]').first()
   await expect(overflow).toBeVisible()
-  const minimap = overflow.locator('button[aria-label="Toggle minimap"]')
+  const minimap = overflow.locator('button[aria-label="Minimap"]')
   await expect(minimap).toBeHidden()
-  await overflow.locator('summary[aria-label="More controls"]').click()
+  await overflow.locator('summary[aria-label="More"]').click()
   await expect(minimap).toBeVisible()
 
   const width = await root.evaluate((element) => element.scrollWidth - element.clientWidth)
@@ -157,7 +159,7 @@ story("re-themes the same model in dark mode without reloading the renderer", as
     if (message.type() === "error") errors.push(message.text())
   })
 
-  const root = await mount("session-graph-view", { globals: { theme: "dark" } })
+  const root = await mount("session-graph-view--default", { globals: { theme: "dark" } })
   const host = root.locator('[data-slot="graph-canvas-host"]')
 
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })

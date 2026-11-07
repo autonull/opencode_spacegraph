@@ -28,7 +28,7 @@ export const GraphScaleNotice = (props: GraphScaleNoticeProps) => {
       class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-1 text-12-regular text-text-weak"
     >
       <span class="min-w-0 flex-1 truncate">
-        {i18n.t("ui.sessionGraph.scale.notice", { shown: scale.turns.size, total: scale.total })}
+        {i18n.t("ui.sessionGraph.scale.notice", { count: scale.turns.size, total: scale.total })}
       </span>
     </div>
   )
