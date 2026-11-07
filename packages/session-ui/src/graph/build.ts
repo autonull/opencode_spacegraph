@@ -17,6 +17,7 @@ export function buildGraph(input: BuildGraphInput): GraphViewData {
     input.lineage,
   )
   const session = builder.buildKernel()
+
   const kernel = input.snapshot
     ? runPipeline(workspaceDerivers(input.snapshot, input.diffByTurn), session, {
         workspace: input.snapshot,

@@ -225,8 +225,9 @@ guide as the deliverable. **Start recruiting now; the study is elapsed-time-boun
 
 - [x] **Trust lens** `?lens=unverified`: banner shown when enabled; detection of unverified files
       (written by tools with no later verify/test node) integrated in model pipeline.
-- [ ] **NLQ** over the facet grammar (`facets.ts`): natural phrase → `kind:`/`status:`/`domain:`
-      query, compiled query shown, no model call.
+- [x] **NLQ** over the facet grammar (`facets.ts`): natural phrase → `kind:`/`status:`/`domain:`
+      query, compiled query shown, no model call. Implemented in `packages/session-ui/src/graph/nlq.ts`
+      with synonyms for kinds, statuses, domains; exports `compileNLQ`, `formatNLQResult`, `parseNLQ`.
 
 ### 5.4 Exit
 
@@ -404,6 +405,11 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 
 ### 8.4 Revision log
 
+- **r15 (2026-11-06):** Phase 5.3 NLQ experiment completed.
+  - Implemented natural language query compiler over the facet grammar in `packages/session-ui/src/graph/nlq.ts`.
+  - Supports synonyms for all node kinds (tool, file, error, message, etc.), statuses (pending, running, success, failed, interrupted, neutral), and domains (session, directories, history, code, verification, runtime, work).
+  - Exports `compileNLQ`, `formatNLQResult`, `parseNLQ` for converting natural phrases like "failed tools" or "show errors in code" to facet query strings like "kind:tool status:failed" or "kind:error domain:code".
+  - 24 tests passing; full session-ui test suite (851 tests) and session-graph test suite (89 tests) pass; monorepo typecheck passes.
 - **r14 (2026-11-06):** Phase 6.3 (Performance dividend) and 6.4 (3D frozen) completed.
   - 6.3: Folded-vs-unfolded dividend measured via `packages/session-graph/script/folded-dividend.ts`. At 5k messages: 80.5% node reduction (2368→461), 57.4% edge reduction (1359→579) when collapsing all groups at overview band vs execution/detail. TURN_WINDOW=60 limits drawn turns; folding hides cluster members. At 1002 msgs: 55.5% node / 57.4% edge reduction; at 102 msgs (fits window): 33.3% / 54.6%.
   - 6.4: 3D status confirmed frozen per spec: `orbit` experimental (free orbit input, phi=π/2-0.5, no fade); `depth-stack` sanctioned (phi=π/2-0.3, fade=0.9, cards face camera); force layout opt-in via `ForceConfig.depthStep` (default 64 Z-units per hierarchy depth) — the internal `ForcePlacement` already supports 3D positions.
@@ -519,7 +525,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] Permalink copy surfaced in the export menu as well as the inspector
 - [x] Discovery affordances (first-run demo map; "see map" prompts; PR-embed SVG)
 - [x] Product experiments: Trust lens (`?lens=unverified`)
-- [ ] Product experiments: NLQ over facet grammar
+- [x] Product experiments: NLQ over facet grammar
 - [ ] Library leverage: host-neutral activity adapter (second host), `pnpm run docs` in CI, folded dividend measurement (`graph:scale`, 5,001 messages)
 
 ### Parked (Phase 7 — unblock conditions tracked)
