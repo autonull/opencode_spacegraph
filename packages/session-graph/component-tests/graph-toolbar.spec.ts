@@ -60,7 +60,7 @@ story.skip(
 
   // Where the camera is: zoom controls on the row.
   await expect(toolbar.getByRole("button", { name: "Zoom in" })).toBeVisible()
-  await expect(toolbar.getByRole("button", { name: "Fit to view" })).toBeVisible()
+  await expect(toolbar.getByRole("button", { name: "Fit" })).toBeVisible()
 
   // How it is drawn and what it says: one click away in the View menu.
   await expect(toolbar.locator('[data-slot="graph-toolbar-view"]')).toBeVisible()

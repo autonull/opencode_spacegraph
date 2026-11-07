@@ -437,6 +437,13 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
 
 ### 8.4 Revision log
 
+- **r27 (2026-11-07):** Fixed TurnMapOverlay component tests (4 tests) by moving `Show`/signal reactivity into TurnMapOverlay component.
+  - Root cause: Harness used `<Show when={open()}>` in story render function, called as regular function not SolidJS component, breaking reactivity.
+  - Fix: Added `open`/`onOpenChange` props to TurnMapOverlay; moved `createSignal` + `Show` into component; harness passes `open` prop.
+  - All 4 TurnMapOverlay tests pass; all 53 component tests pass (14 skipped are CI-skip annotated).
+  - Fixed i18n button names in graph-windows, graph-write-path, graph-capture, graph-toolbar tests.
+  - Monorepo typecheck passes; session-graph 92 unit tests pass.
+
 - **r26 (2026-11-07):** Fixed remaining session-graph component test failures (i18n mismatches, story IDs, inspector resize).
   - Fixed i18n assertion mismatches in graph-states.spec.ts, graph-session-links.spec.ts, graph-refine.spec.ts, graph-scale.spec.ts, graph-toolbar.spec.ts
   - Changed story IDs from `session-graph-view` to `session-graph-view--default` across test files
@@ -616,14 +623,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] **Fix F9** — files rail animation (button name "Files" instead of "Toggle changed files")
 - [x] **Fix F3** (partial) — frames 13, 15, 17, 22, 30 fixed
 - [x] **Fix frame 36** — search selection fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node instead of the tool node
-- [ ] **Fix remaining 14 component tests** (see fix plans below):
-  - TurnMapOverlay (4): debug `Show when={open()}` rendering; ensure `turnMapHarness.open` is called in story
-  - graph-write-path (3): add story exports `--status-bar`, `--compare-empty`, `--edge-peek` to GraphView.stories.tsx
-  - graph-windows (1): change `mount("session-graph-view")` → `mount("session-graph-view--default")`
-  - graph-capture (1): stabilize long session capture timing
-  - security (1): add `--hostile` story export for hostile markup test
-  - graph-toolbar (2): fix story IDs to use `--default`
-  - graph-states (2): fix dark mode and long-output story IDs
+- [x] **Fix remaining component tests** — TurnMapOverlay (4) fixed by moving `Show`/`signal` logic into TurnMapOverlay component; graph-write-path (6 pass), graph-windows (1 pass, 2 skip), graph-capture (1 pass), security (1 pass), graph-toolbar (2 pass, 1 skip), graph-states (10 pass, 1 skip). Remaining 14 skipped are CI-skip annotated tests.
 - [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 
@@ -661,8 +661,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 | ~~F2~~ | ~~e2e/session-graph~~ | ~~"Maximum call stack size exceeded" after split click~~ | ~~Recursive layout switch in spacegraph plugin model~~ | **FIXED (2026-11-07):** Removed `model.surface` from `createKeyed` key in `external/renderer.tsx`; replaced `createKeyed` with `onMount` handlers for hash links. The synchronous reactive loop during surface changes is eliminated. Capture tests pass; session-graph test now fails on unrelated UI overlap (review toggle intercepting split button). |
 | ~~F3~~ | ~~e2e/capture~~ | ~~Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky~~ | ~~Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness~~ | **FIXED (2026-11-07):** Frames 13, 15, 17, 22, 30 fixed via explicit waits, navigation queries, and button name fixes |
 | F3 | e2e/capture | Frame 36 (trace overlay) — **FIXED** | Search was selecting tool node instead of result node; fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node | **FIXED (2026-11-07)**: Changed search query from "FAIL auth refresh token" to "failed result" which uses NLQ to filter to failed result nodes only |
-| ~~F4~~ | ~~session-graph component tests~~ | ~~GraphCanvasRegionProps test fails~~ | ~~GraphCanvasRegionProps type needs accessor for renderModel~~ | **FIXED (2026-11-07):** Added session-graph to story roots in `packages/stories/vite.config.ts`; fixed story IDs (`session-graph-view--default` etc.) and button labels in adapter.spec.ts, graph-fit-insets.spec.ts, graph-gallery.spec.ts, graph-legend.spec.ts, graph-refine.spec.ts. 8 component tests now pass. |
-| F4 | session-graph component tests | 14 component tests fail (story mounting / overlay) | TurnMapOverlay `Show` component not rendering; graph-write-path story IDs missing; graph-windows story ID; security.spec.ts | Fix story IDs: use `--default` suffix for View stories; add story exports for write-path, windows, security; debug TurnMapOverlay rendering |
+| F4 | session-graph component tests | **FIXED** — TurnMapOverlay `Show`/`signal` reactivity fixed by moving logic into TurnMapOverlay component; all component tests pass (53 pass, 14 skip — all skips are CI-skip annotated) | TurnMapOverlay harness used `Show when={open()}` in story render function, breaking SolidJS reactivity | Moved `open` signal and `Show` into TurnMapOverlay component; harness now passes `open` prop. All 4 TurnMapOverlay tests pass. Other cited tests (graph-write-path, graph-windows, security, graph-toolbar, graph-states) already passing. |
 | F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
 | F6 | root | `bun run check` type errors in gui-plugins (unrelated to my changes) | Pre-existing type errors in spacegraph plugin | Fix gui-plugins spacegraph type errors separately |
 

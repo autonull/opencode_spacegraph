@@ -1,6 +1,6 @@
 import { buildFixtureGraph, turnNodeID } from "@opencode/session-ui/graph"
 import type { RenderTheme } from "@spacegraphjs/renderer"
-import { createSignal, Show } from "solid-js"
+import { createSignal } from "solid-js"
 import { resolveGraphTheme } from "./theme"
 import { TurnMapOverlay } from "./TurnMapOverlay"
 
@@ -14,7 +14,7 @@ type Harness = {
   openedFull: () => string | undefined
 }
 
-const OverlayHarness = (props: { theme?: RenderTheme; limit?: number }) => {
+const OverlayHarness = (props: { theme?: RenderTheme; limit?: number; open?: boolean; onOpenChange?: (open: boolean) => void }) => {
   const [open, setOpen] = createSignal(true)
   const [openedFull, setOpenedFull] = createSignal<string>()
   const turnMapHarness = {
@@ -30,17 +30,17 @@ const OverlayHarness = (props: { theme?: RenderTheme; limit?: number }) => {
   return (
     <div style={{ position: "relative", width: "1100px", height: "640px" }}>
       <div style={{ padding: "16px", "font-family": "system-ui, sans-serif" }}>Transcript stays here.</div>
-      <Show when={open()}>
-        <TurnMapOverlay
-          model={graph}
-          turnID={TURN}
-          theme={props.theme ?? resolveGraphTheme()}
-          limit={props.limit}
-          preferredRenderer={() => "spacegraph"}
-          onClose={() => setOpen(false)}
-          onOpenFullGraph={(turnID) => setOpenedFull(turnID)}
-        />
-      </Show>
+      <TurnMapOverlay
+        model={graph}
+        turnID={TURN}
+        theme={props.theme ?? resolveGraphTheme()}
+        limit={props.limit}
+        preferredRenderer={() => "spacegraph"}
+        onClose={() => setOpen(false)}
+        onOpenChange={(o) => setOpen(o)}
+        onOpenFullGraph={(turnID) => setOpenedFull(turnID)}
+        open={props.open ?? open()}
+      />
     </div>
   )
 }
@@ -49,12 +49,11 @@ export default {
   title: "OpenCode/Session graph/Turn map",
   id: "session-graph-turn-map",
   component: OverlayHarness,
+  args: { limit: 7 },
 }
 
-export const Default = {
-  render: () => <OverlayHarness />,
-}
+export const Default = {}
 
 export const SmallLimit = {
-  render: () => <OverlayHarness limit={3} />,
+  args: { limit: 3 },
 }

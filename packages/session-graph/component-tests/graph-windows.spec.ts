@@ -25,7 +25,7 @@ story.skip(
 
   const before = await camera()
 
-  await popover.getByRole("button", { name: "Open in a window" }).click()
+  await popover.getByRole("button", { name: "Open", exact: true }).click()
 
   const surface = root.locator('[data-slot="graph-window"]')
   await expect(surface).toBeVisible()
@@ -64,7 +64,7 @@ story("a window closes on Escape, and the map keeps its selection", async ({ mou
   })
 
   const popover = root.locator('[data-slot="graph-popover"]')
-  await popover.getByRole("button", { name: "Open in a window" }).click()
+  await popover.getByRole("button", { name: "Open", exact: true }).click()
 
   const surface = root.locator('[data-slot="graph-window"]')
   await expect(surface).toBeVisible()
