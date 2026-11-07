@@ -13,9 +13,40 @@
 - **What** changed after the failing test?
 - **Where** did the agent retry or change direction?
 
-**The shift:** Spatial navigation through relationships beats linear navigation through messages when agent activity gets complex.
+In a transcript, answering these requires scrolling, searching, and mentally reconstructing context. A graph makes these relationships **directly navigable**.
 
-**The hybrid is the bridge:** Transcript stays primary; the graph appears where it answers a question. Three semantic levels: Overview → Execution → Detail. Nodes collapse/expand across levels — progressive disclosure, not accordions.
+**The paradigm shift:** From reading to exploring.
+
+> **When agent activity becomes sufficiently complex, spatial navigation through relationships is more effective than linear navigation through messages.**
+
+This gives the project a clear success criterion: measured task performance on investigative questions, not visual appeal.
+
+**Why this matters beyond debugging:**
+
+| Dimension | Transcript UX | Graph UX |
+|-----------|---------------|----------|
+| **Cognitive load** | Scroll, search, mentally reconstruct context | Relationships visible at a glance; spatial memory replaces recall |
+| **Onboarding** | Intimidating terminal log for new users | Approachable visual map; see *how* the agent thinks, not just *what* it did |
+| **Orientation** | Lost in long sessions; "where am I?" | Stable spatial layout; minimap + breadcrumbs + zoom = always oriented |
+| **Exploration** | Linear, passive reading | Active navigation; follow edges, zoom into detail, compare layouts |
+| **Delight** | Functional but utilitarian | "Map of my work" feeling; animations, spatial transitions, layout variety |
+| **Collaboration** | Share logs, scroll together | Share decision links (`#graph:node`), export artifacts, annotate together |
+
+**The hybrid is the ergonomic bridge:** the transcript stays familiar; the graph appears where it answers a question. Users don't choose a mode — they choose a *question*, and the graph answers it.
+
+This is not just a better session viewer. It's a step toward making agentic development **accessible to non-experts**, **auditable by teams**, and **enjoyable for everyone**.
+
+**What the graph exposes that the transcript hides:**
+
+| Relationship type | Transcript | Graph |
+|-------------------|------------|-------|
+| **Sequence** | Implicit in scroll order | Explicit edges, navigable |
+| **Causality** | Inferred by reading | `evidence` edges from test failure → fix |
+| **Provenance** | Scattered across messages | `reads`/`writes` edges file ↔ tool |
+| **Delegation** | Nested in conversation | `delegates` edge turn → subagent |
+| **Retry/backtrack** | Buried in sequence | `retry` edge + `interrupted` status |
+
+Three semantic levels — Overview → Execution → Detail — with progressive disclosure (nodes collapse/expand across levels, not hidden behind accordions).
 
 ---
 
