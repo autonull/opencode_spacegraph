@@ -19,6 +19,7 @@ import type {
   Position,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
+import { buildFixtureGraph } from "@opencode/session-ui/graph"
 import { GraphActionTarget } from "./GraphActionTarget"
 import {
   CARD_SIZE,
@@ -344,6 +345,19 @@ export const GraphView = (props: GraphViewProps) => {
     canvasSize,
     setCanvasSize,
 
+    // Demo / first-run
+    demoDismissed,
+    setDemoDismissed,
+
+    // See-map prompt
+    seeMapPromptVisible,
+    setSeeMapPromptVisible,
+    seeMapPromptDismissed,
+    setSeeMapPromptDismissed,
+
+    // Trust lens
+    trustLens,
+
     announce,
   } = state
 
@@ -361,8 +375,31 @@ export const GraphView = (props: GraphViewProps) => {
   const [notesStore, setNotesStore] = createStore<Annotations>({})
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
 
+  // Demo model for first-run: uses canonical fixture when no session data
+  const demoModel = createMemo(() => {
+    if (demoDismissed()) return model()
+    if (props.model && props.model.nodes.length > 0) {
+      return model()
+    }
+    return buildFixtureGraph()
+  })
+
+  // See-map prompt: show when session has errors, compactions, or many turns (>10)
+  const showSeeMapPrompt = createMemo(() => {
+    if (seeMapPromptDismissed()) return false
+    if (!props.model) return false
+    const m = props.model
+    const hasErrors = m.nodes.some((n) => n.kind === "error" || n.status === "failed")
+    const hasCompactions = m.nodes.some((n) => n.kind === "compaction")
+    const manyTurns = (m.turns?.length ?? 0) > 10
+    return (hasErrors || hasCompactions || manyTurns) && !seeMapPromptVisible()
+  })
+
+  // Trust lens: highlight unverified files (written without later verify/test)
+  const trustLensActive = createMemo(() => trustLens())
+
   // Shared node lookup for hooks
-  const nodeLookup = useNodeLookup(model)
+  const nodeLookup = useNodeLookup(demoModel)
 
   // Hooks for modular state/logic
   const graphSelection = useGraphSelection({
@@ -449,6 +486,19 @@ export const GraphView = (props: GraphViewProps) => {
     setPrevCollapsedGroups(current)
   })
 
+  // See-map prompt: show when session has errors, compactions, or many turns (>10)
+  createEffect(() => {
+    if (seeMapPromptDismissed()) return
+    if (!props.model) return
+    const m = props.model
+    const hasErrors = m.nodes.some((n) => n.kind === "error" || n.status === "failed")
+    const hasCompactions = m.nodes.some((n) => n.kind === "compaction")
+    const manyTurns = (m.turns?.length ?? 0) > 10
+    if (hasErrors || hasCompactions || manyTurns) {
+      setSeeMapPromptVisible(true)
+    }
+  })
+
   // T18.3: the auto detail mode threshold
   const AUTO_DETAIL_THRESHOLD = 640
   const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
@@ -474,7 +524,7 @@ export const GraphView = (props: GraphViewProps) => {
     selectedTurn,
     selectedTurns,
   } = useGraphViewModel({
-    model,
+    model: demoModel,
     facets,
     graphSelection,
     groupCollapse,
@@ -569,7 +619,7 @@ export const GraphView = (props: GraphViewProps) => {
   const copy = createCardCopy(i18n)
 
   // Phase 4.11: Track group badge animations for token bursts in folded groups
-  const animatedBadgeGroups = useGroupBadgeAnimation(model, groupCollapse.collapsedGroups)
+  const animatedBadgeGroups = useGroupBadgeAnimation(demoModel, groupCollapse.collapsedGroups)
 
   const renderBand = createMemo(() =>
     createBandTemplate(theme(), undefined, {
@@ -581,18 +631,18 @@ export const GraphView = (props: GraphViewProps) => {
 
   // Compute layout using extracted helper
   const sessionKey = createMemo(() => {
-    const root = nodeIndex(model()).get(model().root)
+    const root = nodeIndex(demoModel()).get(demoModel().root)
     return root ? sessionID(root) ?? "session" : "session"
   })
 
   // Geometry
-  const geometry = useGeometry(model, layout, level, () => props.rules, scoped, props.positions, sessionKey)
+  const geometry = useGeometry(demoModel, layout, level, () => props.rules, scoped, props.positions, sessionKey)
 
   // Display positions
   const displayPositions = useDisplayPositions(geometry, manual) as () => Map<string, Position>
 
   // Merged trace overlay (explicit trace + focus dimming)
-  const mergedTrace = createMergedTraceOverlay(annotations, model, level, () => selection())
+  const mergedTrace = createMergedTraceOverlay(annotations, demoModel, level, () => selection())
 
   // Render card
   const renderCard = useRenderCard(
@@ -607,7 +657,7 @@ export const GraphView = (props: GraphViewProps) => {
       theme,
       tier,
       selection,
-      model,
+      model: demoModel,
       copy,
       mergedTrace,
       comparison,
@@ -629,7 +679,7 @@ export const GraphView = (props: GraphViewProps) => {
     }),
   )
   // T1.11: the summary layouts name their axes; the node-link graph names itself.
-  const turnNumbers = createMemo(() => new Map(model().turns.map((id, index) => [id, index + 1])))
+  const turnNumbers = createMemo(() => new Map(demoModel().turns.map((id, index) => [id, index + 1])))
   const axisLabels = createMemo(() => buildAxisLabels(scoped(), turnRows(scoped(), level()), layout(), turnNumbers(), i18n.t))
 
   // T17.2 — a summary draws the level's units, and a cluster yields to its members below the
@@ -745,7 +795,7 @@ export const GraphView = (props: GraphViewProps) => {
   // neither, so the map does not move under the reader when a node is selected.
   const selectedNode = createMemo(() => {
     const id = selection()[0]
-    return id ? nodeByID(model(), id) : undefined
+    return id ? nodeByID(demoModel(), id) : undefined
   })
 
   const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode() || (narrow() && inspectorSheetOpen()))
@@ -779,7 +829,7 @@ export const GraphView = (props: GraphViewProps) => {
 
   // Build render model using extracted helper
   const { renderModel, contentIDs, ordered } = useRenderModel({
-    model,
+    model: demoModel,
     layout,
     level,
     files,
@@ -846,14 +896,14 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
-  const changedFilesList = createMemo(() => changedFiles(model()))
+  const changedFilesList = createMemo(() => changedFiles(demoModel()))
 
   const { openSearch, toggleSearch, jumpTo } = useGraphSearch({
     searchOpen,
     setSearchOpen,
     searchInitial,
     setSearchInitial,
-    model,
+    model: demoModel,
     selectedNode,
     selection: graphSelection.selection,
     select: graphSelection.select,
@@ -1162,6 +1212,68 @@ export const GraphView = (props: GraphViewProps) => {
         compact={compact()}
         endInset={props.endInset}
       />
+      {/* Demo banner for first-run */}
+      <Show when={demoDismissed() === false && props.model && props.model.nodes.length === 0}>
+        <div
+          data-slot="graph-demo-banner"
+          class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-surface-base"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.demo.label")}</span>
+          <button
+            type="button"
+            class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
+            onClick={() => setDemoDismissed(true)}
+          >
+            {i18n.t("ui.sessionGraph.demo.dismiss")}
+          </button>
+        </div>
+      </Show>
+      {/* See-map prompt */}
+      <Show when={showSeeMapPrompt() && seeMapPromptDismissed() === false}>
+        <div
+          data-slot="graph-see-map-prompt"
+          class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-surface-base"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-12-medium text-text-strong">{i18n.t("ui.sessionGraph.prompt.seeMap")}</span>
+            <span class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.prompt.seeMapHint")}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={() => {
+                  // Switch to map surface via command event
+                  window.dispatchEvent(new CustomEvent("graph:command", { detail: { name: "map" } }))
+                }}
+            >
+              {i18n.t("ui.sessionGraph.prompt.seeMap")}
+            </button>
+            <button
+              type="button"
+              class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={() => setSeeMapPromptDismissed(true)}
+            >
+              {i18n.t("ui.sessionGraph.prompt.dismiss")}
+            </button>
+          </div>
+        </div>
+      </Show>
+      {/* Trust lens banner */}
+      <Show when={trustLensActive()}>
+        <div
+          data-slot="graph-trust-lens-banner"
+          class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-warning-bg"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="text-12-regular text-warning-fg">{i18n.t("ui.sessionGraph.trustLens.banner")}</span>
+        </div>
+      </Show>
       <GraphBreadcrumbs crumbs={graphSelection.crumbs()} onSelect={fitSubtree} />
       <GraphStatusBar
         count={selection().length}

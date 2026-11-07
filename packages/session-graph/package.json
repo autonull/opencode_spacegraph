@@ -19,7 +19,8 @@
     "test": "bun test src",
     "test:components": "playwright test --config playwright.components.config.ts",
     "lint": "eslint src --ext .ts,.tsx",
-    "lint:skipped": "bun run script/lint-skipped-tests.ts"
+    "lint:skipped": "bun run script/lint-skipped-tests.ts",
+    "graph:export": "bun run src/graph/export-cli.ts"
   },
   "dependencies": {
     "@opencode/session-ui": "workspace:*",
