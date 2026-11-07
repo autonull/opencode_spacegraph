@@ -3,14 +3,18 @@ import { DialogProvider, useDialog } from "@opencode/ui/context/dialog"
 import { Menu } from "@opencode/ui/menu"
 import { Toast } from "@opencode/ui/toast"
 import {
+  Command,
   Panel,
+  SessionSurface,
   type Appearance,
   type App,
   type Keybinds,
   type MountedSession,
   type Router,
   type Servers,
+  type SessionRef,
   type SessionScreen,
+  type Surfaces,
   type Ipc,
   type IpcClient,
   type IpcSpec,
@@ -22,6 +26,7 @@ import {
 import type { BuiltinLayout, BuiltinLocale } from "@opencode/plugin/gui/builtin"
 import {
   createComponent,
+  createEffect,
   createMemo,
   createRoot,
   createSignal,
@@ -46,6 +51,14 @@ import { createSessionScreenLayout } from "../src/session/screen-layout"
 import type { SessionModel } from "../src/session/model"
 import { createClosedTabs } from "../src/runtime/plugin/closed-tabs"
 import { PluginLinks, PluginSlot, PluginThemes } from "../src/runtime/plugin/render"
+import {
+  defaultSessionSurface,
+  orderedSessionSurfaces,
+  selectSessionSurface,
+  sessionSurfaceID,
+  transcriptSurfaceID,
+  resolveSessionSurface,
+} from "../src/runtime/plugin/surfaces"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { ThemeProvider, useTheme, type ColorScheme } from "@opencode/ui/theme/context"
 import { persistedHandle } from "../src/runtime/plugin/stores"
@@ -129,6 +142,12 @@ function fakeApis(storage: (plugin: string) => Storage): HostApiFactories {
     desktop: () => undefined,
     sessions: () => ({ list: () => [], current: () => undefined }),
     screen: () => ({ current: () => undefined }),
+    surfaces: () => ({
+      list: () => [],
+      items: () => [],
+      current: () => "transcript",
+      select: () => {},
+    }),
     layout: () => layout,
     storage,
     system: () => ({ copy: async () => {}, save: async () => false, openExternal() {} }),
@@ -378,6 +397,7 @@ function standIn(overrides: Partial<Interface>): Interface {
     current: () => undefined,
     tabs: { list: () => [], open() {}, focus() {}, move() {}, close() {} },
     screen: () => undefined,
+    surfaces: () => [],
     scope: () => ServerScope.local,
     scoped: () => undefined,
     layout: {
@@ -686,6 +706,31 @@ export function mountSessionRegion(input: {
     container,
   )
 
+  // Wait for the host to be ready (all plugins activated)
+  const waitForReady = async (timeout = 10000) => {
+    const start = performance.now()
+    while (performance.now() - start < timeout) {
+      const host = hosts[0]
+      if (host) {
+        const allActive = input.definitions.every(
+          (def) => host.status(def.id) === "active",
+        )
+        const anyFailed = input.definitions.some(
+          (def) => host.status(def.id) === "failed",
+        )
+        if (anyFailed) {
+          const failures = input.definitions
+            .filter((def) => host.status(def.id) === "failed")
+            .map((def) => `${def.id}: ${host.failure(def.id)?.error}`)
+          throw new Error(`Plugin(s) failed: ${failures.join(", ")}`)
+        }
+        if (allActive) return
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    throw new Error("Timed out waiting for host to be ready")
+  }
+
   return {
     container,
     /** Routes a session: the screen creates a new session object for it. */
@@ -695,6 +740,325 @@ export function mountSessionRegion(input: {
     /** The session each composer attachment reached, in order. */
     attached,
     status: (id: string) => hosts[0]?.status(id),
+    waitForReady,
+    /** Run a command by ID (e.g., "hybrid") by looking it up in the Command registry. */
+    runCommand: (id: string) => {
+      const host = hosts[0]
+      if (!host) return false
+      const commandItems = host.items(Command)
+      const command = commandItems.find((item) => item.value.id === id)?.value
+      if (!command) return false
+      try {
+        command.run?.()
+        return true
+      } catch {
+        return false
+      }
+    },
+    unmount: () => {
+      dispose()
+      container.remove()
+    },
+  }
+}
+
+/**
+ * A PluginHostProvider that includes the `surfaces` API in its HostApis.
+ */
+function RealHostWithSurfaces(props: ParentProps<{
+  definitions: readonly Entry[]
+  captured: Captured
+  mounted?: Interface
+  surfaces: Surfaces
+}>) {
+  const apis = createHostApis()
+  props.captured.apis = apis
+
+  if (props.mounted) onCleanup(apis.attach(props.mounted))
+
+  return (
+    <PluginHostProvider
+      definitions={() => props.definitions}
+      disabled={() => new Set<string>()}
+      // SAFETY: adding surfaces to the host APIs for testing
+      apis={{ ...apis.apis, surfaces: () => props.surfaces } as HostApiFactories & { surfaces: () => Surfaces }}
+      whenMounted={apis.whenMounted}
+    >
+      {props.children}
+    </PluginHostProvider>
+  )
+}
+
+/**
+ * Mounts the real host with `ctx.surfaces` API, and the session screen that renders plugin surfaces
+ * for the routed session. This is for testing plugins that contribute SessionSurface entries.
+ */
+export function mountSessionRegionWithSurfaces(input: {
+  definitions: readonly Entry[]
+  active: string
+  /** The routed session's messages, as its server holds them. */
+  messages?: readonly SessionMessageInfo[]
+}) {
+  const container = document.createElement("div")
+  document.body.appendChild(container)
+  const hosts: PluginHost[] = []
+  const captured: Captured = {}
+  const attached: string[] = []
+
+  const object = (id: string) => {
+    const value = {
+      key: `fixture\n${id}`,
+      id,
+      tab: id,
+      pending: false,
+      location: { directory: "/repo" },
+      visit: {},
+      server: {
+        data: {
+          session: {
+            message: { list: () => input.messages ?? [] },
+            status: () => "idle",
+            get: () => undefined,
+          },
+        },
+      },
+    }
+
+    // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
+    // server's message list.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+    return value as unknown as MountedSession
+  }
+
+  const [view, setView] = createSignal(object("a"))
+  const [routed, setRouted] = createSignal(true)
+
+  const route = {
+    composer: { attach: () => void attached.push(view().id), update() {}, detach() {} },
+  }
+
+  // SAFETY: the test's plugin reads only `composer.attach` of the screen.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+  const screen = route as unknown as SessionScreen
+
+  const sidebar = { opened: () => false, width: () => 0, transition: () => false, resize() {}, toggle() {} }
+
+  function Region() {
+    const host = usePluginHost()
+    hosts.push(host)
+    // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
+    const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
+
+    const region = createRegion({
+      region: "side",
+      view,
+      screen,
+      tabs: () => ({
+        tabs: () => ({ all: all(), active: input.active }),
+        all,
+        active: () => input.active,
+        setAll() {},
+        setActive() {},
+        close() {},
+        remap() {},
+      }),
+      closed: createClosedTabs(),
+      open() {},
+      side: () => ({ opened: () => true, toggle() {} }),
+    })
+
+    // Debug: log the region's pane entries
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("Pane entries:", pane.keys())
+      console.log("Pane selected:", pane.selected()?.key)
+    })
+
+    return (
+      <Show when={host.ready()}>
+        <PluginSlot
+          at="session.panel.end"
+          input={{
+            get session() {
+              return view()
+            },
+            screen,
+          }}
+        />
+        <RegionContent
+          pane={region.pane("side")}
+          view={view()}
+          screen={screen}
+          frame={{
+            shown: () => true,
+            present: () => true,
+            placement: () => "side",
+            reserve: () => false,
+            animate: () => false,
+            sidebar,
+          }}
+        />
+      </Show>
+    )
+  }
+
+  // Surfaces API - provides session surfaces for plugins using the real surfaces implementation
+  const language = { t: (key: string) => key }
+
+  const getSurfaces = () => {
+    const items = hosts[0]?.items(SessionSurface).map((item) => item.value) ?? []
+    console.log("Registered surfaces:", items.map(s => s.id))
+    return items
+  }
+
+  const surfaces: Surfaces = {
+    list: () => orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript")),
+    current: (session: SessionRef) => {
+      const surfaceItems = orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript"))
+      return resolveSessionSurface(surfaceItems, sessionSurfaceID(session)).id
+    },
+    select: (id: string, session: SessionRef) => {
+      selectSessionSurface(id, session)
+    },
+  }
+
+  // SessionSurfaceHost for the fixture - renders the selected surface by calling the plugin's render function
+  function FixtureSessionSurfaceHost() {
+    const host = usePluginHost()
+    const pluginId = "spacegraph-external"
+
+    // Wait for plugin to be active before accessing its context
+    const pluginActive = createMemo(() => host.status(pluginId) === "active")
+
+    // Reactively get the plugin's context and surfaces
+    const surfaces = createMemo(() => {
+      if (!pluginActive()) return undefined
+      const ctx = host.context(pluginId)
+      console.log("[FixtureSessionSurfaceHost] plugin context:", ctx ? "exists" : "undefined")
+      console.log("[FixtureSessionSurfaceHost] surfaces:", ctx?.surfaces)
+      return ctx?.surfaces
+    })
+
+    const surfaceItems = createMemo(() => {
+      const s = surfaces()
+      console.log("[FixtureSessionSurfaceHost] surfaces():", s)
+      if (!s) return [defaultSessionSurface(language.t("session.surface.transcript"))]
+      const items = s.list()
+      console.log("[FixtureSessionSurfaceHost] surface items:", items.map(i => i.id))
+      return items.length > 0 ? items : [defaultSessionSurface(language.t("session.surface.transcript"))]
+    })
+    const selectedId = createMemo(() => {
+      const id = surfaces()?.current(view()) ?? transcriptSurfaceID
+      console.log("[FixtureSessionSurfaceHost] selectedId:", id)
+      return id
+    })
+    const selectedSurface = createMemo(() => {
+      const surface = resolveSessionSurface(surfaceItems(), selectedId())
+      console.log("[FixtureSessionSurfaceHost] selectedSurface:", surface.id)
+      return surface
+    })
+    const isTranscript = createMemo(() => selectedSurface().id === transcriptSurfaceID)
+    const transcript = createMemo(() => <div data-slot="session-transcript">Transcript</div>)
+
+    const content = createMemo(() => {
+      const surface = selectedSurface()
+      if (isTranscript()) return transcript()
+
+      // Call the plugin's surface render function with the correct input
+      return surface.render({ session: view(), screen, transcript: transcript() })
+    })
+
+    return (
+      <ErrorBoundary fallback={(err) => {
+        console.error("Surface render error:", err)
+        return <div data-slot="surface-error">Error: {String(err)}</div>
+      }}>
+        <div class="flex h-full min-h-0 flex-col" data-slot="session-surface-host">
+          <Show when={isTranscript()}>
+            {transcript()}
+          </Show>
+          <Show when={() => !isTranscript()}>
+            {content()}
+          </Show>
+        </div>
+      </ErrorBoundary>
+    )
+  }
+
+  const dispose = render(
+    () => (
+      <LanguageProvider locale="en">
+        <PlatformProvider value={web}>
+          <DialogProvider>
+            <RealHostWithSurfaces
+              definitions={input.definitions}
+              captured={captured}
+              mounted={standIn({ current: () => (routed() ? view() : undefined), screen: () => screen })}
+              surfaces={surfaces}
+            >
+              <div class="flex h-full flex-col" style={{ height: "100vh" }}>
+                <FixtureSessionSurfaceHost />
+                <Region />
+              </div>
+            </RealHostWithSurfaces>
+          </DialogProvider>
+        </PlatformProvider>
+      </LanguageProvider>
+    ),
+    container,
+  )
+
+  // Wait for the host to be ready (all plugins activated)
+  const waitForReady = async (timeout = 10000) => {
+    const start = performance.now()
+    while (performance.now() - start < timeout) {
+      const host = hosts[0]
+      if (host) {
+        const allActive = input.definitions.every(
+          (def) => host.status(def.id) === "active",
+        )
+        const anyFailed = input.definitions.some(
+          (def) => host.status(def.id) === "failed",
+        )
+        if (anyFailed) {
+          const failures = input.definitions
+            .filter((def) => host.status(def.id) === "failed")
+            .map((def) => `${def.id}: ${host.failure(def.id)?.error}`)
+          throw new Error(`Plugin(s) failed: ${failures.join(", ")}`)
+        }
+        if (allActive) return
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    throw new Error("Timed out waiting for host to be ready")
+  }
+
+  return {
+    container,
+    /** Routes a session: the screen creates a new session object for it. */
+    route: (id: string) => setView(object(id)),
+    /** The route leaves while its old screen has not unmounted yet. */
+    leave: () => setRouted(false),
+    /** The session each composer attachment reached, in order. */
+    attached,
+    status: (id: string) => hosts[0]?.status(id),
+    waitForReady,
+    /** Select a session surface by id. */
+    selectSurface: (id: string) => surfaces.select(id, view()),
+    /** Run a command by ID (e.g., "hybrid") by looking it up in the Command registry. */
+    runCommand: (id: string) => {
+      const host = hosts[0]
+      if (!host) return false
+      const commandItems = host.items(Command)
+      const command = commandItems.find((item) => item.value.id === id)?.value
+      if (!command) return false
+      try {
+        command.run?.()
+        return true
+      } catch {
+        return false
+      }
+    },
     unmount: () => {
       dispose()
       container.remove()

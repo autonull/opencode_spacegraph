@@ -20,6 +20,7 @@ import type {
   ServerRef,
   MountedSession,
   SessionScreen,
+  TranscriptScreen,
 } from "@opencode/plugin/gui"
 import { useComments } from "@/composer/comments"
 import { createComposerEditorActions } from "@/composer/editor/actions"
@@ -342,11 +343,19 @@ export function createMountedSession(session: SessionModel) {
     return view
   }
 
+  const [transcriptData, setTranscriptData] = createSignal<{ activeMessageID: Accessor<string | undefined>; reveal: (messageID: string, partID?: string) => void }>()
+
+  const transcript: TranscriptScreen = {
+    activeMessageID: () => transcriptData()?.activeMessageID() ?? undefined,
+    reveal: (messageID: string, partID?: string) => transcriptData()?.reveal(messageID, partID),
+  }
+
   // One object while this screen is mounted, whichever session it routes: its models follow the route.
   const screen: SessionScreen = Object.freeze({
     file: files,
     comment,
     composer: composerRef,
+    transcript,
   })
 
   const owner = getOwner()
@@ -395,7 +404,7 @@ export function createMountedSession(session: SessionModel) {
     bindPrompt: (value: { quotable: Accessor<boolean>; focus: () => void; focused: () => boolean }) =>
       setPrompt(() => value),
     bindTranscript: (value: { activeMessageID: Accessor<string | undefined>; reveal: (messageID: string, partID?: string) => void }) => {
-      // Transcript binding is handled by the session screen
+      setTranscriptData(() => value)
     },
   }
 }

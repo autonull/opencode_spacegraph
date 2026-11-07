@@ -30,6 +30,7 @@ import {
   type ServerRef,
   type SessionRef,
   type SessionScreen,
+  type SessionSurface,
   type ShellTab,
   type Storage,
   type StorageScope,
@@ -55,6 +56,11 @@ import { useSettingsSurface } from "@/settings/surface"
 import { formatKeybindParts, useCommand } from "@/shell/commands/command"
 import { createMediaQuery } from "@solid-primitives/media"
 import { useIsRouting, useLocation } from "@solidjs/router"
+import {
+  selectSessionSurface,
+  sessionSurfaceID,
+  transcriptSurfaceID,
+} from "@/runtime/plugin/surfaces"
 import { useLanguage } from "@/runtime/i18n/language"
 import {
   createHostApiAttachState,
@@ -100,6 +106,7 @@ type Attached = {
   current: Accessor<MountedSession | undefined>
   tabs: Tabs
   screen: Accessor<SessionScreen | undefined>
+  surfaces: Accessor<readonly SessionSurface[]>
   scope: (server: string) => ServerScope
   /** Records a session-scoped store so layout pruning drops it with the session. */
   scoped: (name: string) => void
@@ -478,6 +485,13 @@ export function createHostApis() {
       project: (server, title) => write((value) => value.project(server, title)),
       draft: (input) => write((value) => value.draft(input)),
       command: (id) => write((value) => value.command(id)),
+    }),
+    surfaces: () => ({
+      list: () => current()?.surfaces() ?? [],
+      current: (session) => current()?.surfaces()
+        ? sessionSurfaceID(session)
+        : transcriptSurfaceID,
+      select: (id, session) => write((value) => selectSessionSurface(id, session)),
     }),
     embeds: () => embeds,
     ui: () => ui,
@@ -1143,6 +1157,7 @@ export function createPluginAttachment(apis: HostApis) {
     notify,
     mode: theme.mode,
     screen,
+    surfaces: () => host.surfaces?.items() ?? [],
     scope,
     scoped: layout.sessionState.track,
     project: (server, title) =>

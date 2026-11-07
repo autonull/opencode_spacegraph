@@ -305,7 +305,9 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       },
       section: "session",
       run: () => {
-        const current = surfaces().current(session)
+        const available = surfaces()
+        if (!available) return
+        const current = available.current(session)
         if (current === `${ctx.id}.map`) {
           select("transcript")
         } else {

@@ -51,7 +51,6 @@ import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-ac
 import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
 import { SessionSurfaceHost } from "./surface"
-import { selectSessionSurface } from "@/runtime/plugin/surfaces"
 
 export function SessionScreenView(props: { session: SessionModel }) {
   // Link handling for the rest of the screen; each cached timeline provides its own for its session.

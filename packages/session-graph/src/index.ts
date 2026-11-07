@@ -83,6 +83,7 @@ export { createGraphTheme, graphThemeFromTokens, resolveGraphTheme } from "./ui/
 
 // Re-exports from @spacegraphjs/export
 export { GraphExportControl, type GraphExportControlProps } from "@spacegraphjs/export"
+export { GraphToolbarViewControls, type GraphToolbarViewControlsProps } from "./ui/GraphToolbarViewControls"
 export { exportGraph, standaloneHtml, type ExportFormat, type ExportOptions } from "@spacegraphjs/export"
 
 export {

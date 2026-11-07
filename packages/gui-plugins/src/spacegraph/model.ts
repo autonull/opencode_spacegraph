@@ -133,7 +133,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
       const layout = store(session).value?.layout ?? prefs.value.layout ?? "lanes"
       location.hash = `spacegraph:${layout}:${node}`
-      void session.server.api.copy(location.href)
+      void navigator.clipboard.writeText(location.href)
     },
     export: (session: MountedSession, format: "svg" | "json" | "html") => {
       const g = graph(session)()
