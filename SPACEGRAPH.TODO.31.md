@@ -437,6 +437,12 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
 
 ### 8.4 Revision log
 
+- **r23 (2026-11-07):** Fixed session-ui layout golden file and dump function bug.
+  - The `dump` function in `packages/session-ui/src/graph/layout.test.ts` used spread operators (`...`) which flattened the 3-element array structure (positions, clusters, bounds) into a single flat array. This caused the golden position test to fail even though the golden file had the correct structure.
+  - Fixed the `dump` function to return proper nested arrays matching the golden file structure.
+  - Regenerated `packages/session-ui/src/graph/layout.golden.json` to match current layout output (tree strategy positions changed due to SGF-10 TreePlacement size-awareness).
+  - All 861 session-ui unit tests pass; all 92 session-graph unit tests pass; monorepo typecheck and lint pass.
+
 - **r22 (2026-11-07):** Fixed F2 — "Maximum call stack size exceeded" after split click.
   - Root cause: `createKeyed` in `packages/gui-plugins/src/spacegraph/external/renderer.tsx` included `model.surface(session)` in its key, causing the effect to run synchronously on every surface change. The effect called `linked()` which read `hash()`, creating a reactive dependency loop (`runUpdates` → `completeUpdates` → `runUpdates`).
   - Fix: Removed `model.surface` from the key (key now tracks only `session.key` + `hash()`); replaced `createKeyed` with `onMount` handlers for hash link processing. This eliminates the synchronous reactive loop during surface switches.

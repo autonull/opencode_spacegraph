@@ -49,8 +49,8 @@ function dump(layout: GraphLayout) {
   const round = (value: number) => Math.round(value * 100) / 100
 
   return [
-    ...[...layout.positions.entries()].map(([id, point]) => [id, round(point.x), round(point.y), round(point.z)]),
-    ...[...layout.clusters.entries()].map(([id, bounds]) => [
+    [...layout.positions.entries()].map(([id, point]) => [id, round(point.x), round(point.y), round(point.z)]),
+    [...layout.clusters.entries()].map(([id, bounds]) => [
       id,
       round(bounds.min.x),
       round(bounds.min.y),
