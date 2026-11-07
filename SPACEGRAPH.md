@@ -51,6 +51,21 @@ Session messages + status + turn diffs
 | `session-graph` | Host UI: `GraphView`, `GraphCanvas`, toolbar, inspector, breadcrumbs, search, minimap, a11y |
 | `packages/app/src/session/graph` | Integration: panel, mode branch, turn-map overlay, permalinks, commands |
 
+### Host Modules (`session-graph/src/`)
+
+| Module | What It Owns |
+|--------|--------------|
+| `ui/GraphView.tsx` | Surface: toolbar, canvas region, inspector, wiring; owns semantic level & layout |
+| `ui/graph-camera.ts` | Camera: frame, zoom, 100% reference readout |
+| `ui/graph-selection.ts` | Selection & path; mirrors `GraphController` state into signals |
+| `ui/graph-anchors.ts` | Screen anchor of a node (popover, peek, pinned window placement) |
+| `ui/graph-windows.tsx` | Windows over map: kinds offered, first placement; manager moves/stacks |
+| `ui/cardTemplate.ts` | Card markup: kind glyph, accent, tier, one distinguishing fact |
+| `ui/card-copy.ts` | Card words; host owns language, template never hardcodes English |
+| `ui/node-data.ts` | Readers over node's untyped `data`; card & inspector agree on fields |
+| `ui/GraphDetail.tsx` | Node detail: header + body, shared by every surface |
+| `canvas/` | Renderer seam: contract, registry, adapter, canvas; never imports concrete backend |
+
 The host imports **only** `@spacegraphjs/renderer` (contract). No renderer branches — differences are capability flags.
 
 ---
@@ -63,22 +78,31 @@ The host imports **only** `@spacegraphjs/renderer` (contract). No renderer branc
 |------|------------|------------|---------|
 | `session` | `"session"` | overview | Root |
 | `turn` | `turn:${messageID}` | overview | User prompt + assistant execution |
-| `phase` | `phase:${turnID}:${category}:${ordinal}` | execution | Consecutive tools of same category |
+| `phase` | `phase:${turnID}:${category}:${ordinal}` | execution | Consecutive tools of same category (explore/edit/verify/delegate/result) |
+| `message` | `msg:${messageID}` | execution | Assistant/user messages |
+| `reasoning` | `reasoning:${partID}` | detail | Assistant reasoning parts |
 | `tool` | `tool:${partID}` | execution | Tool calls with input/output |
 | `subagent` | `subagent:${childSessionID}` | execution | Delegation to child session |
 | `file` | `file:${path}` | execution | Files read/written (provenance) |
-| `error` | `error:${partID}` | execution | Errors (including `interrupted`) |
+| `result` | `result:${partID}` | execution | Tool results, test output |
+| `error` | `error:${partID}` | execution | Errors (including `interrupted` status) |
 | `retry` | `retry:${turnID}:${attempt}` | execution | Retry/backtrack chain |
-| ... | (+ `message`, `reasoning`, `result`, `diff`, `compaction`, `notice`) | | |
+| `diff` | `diff:${turnID}` | detail | File diffs/snapshots |
+| `compaction` | `compaction:${messageID}` | detail | Context compaction summary |
+| `notice` | `notice:${messageID}` | execution | Synthetic completion messages |
 
 ### Edge Kinds (confidence: `explicit` / `structural` / `inferred`)
 
 | Kind | Source → Target | Confidence | Meaning |
 |------|-----------------|------------|---------|
-| `part-of` | child → parent | structural | Hierarchy |
-| `sequence` | earlier → later | structural | Chronological order |
+| `part-of` | child → parent | structural | Hierarchy (message→turn, phase→turn, tool→phase) |
+| `sequence` | earlier → later | structural | Chronological order within a turn |
 | `delegates` | turn → subagent | explicit | Subtask delegation |
 | `reads` / `writes` | tool → file | explicit | File provenance |
+| `searches` | tool → file | explicit | Search/query operations |
+| `produces` | tool → result | explicit | Tool → output |
+| `references` | node → node | explicit | Cross-references (diff, compaction) |
+| `compacts` | compaction → messages | explicit | Compaction scope |
 | `evidence` | error/retry → tool | explicit | Failure → influencing action |
 | `inferred-cause` | **never emitted** | — | **Adjacency ≠ causality** |
 
@@ -93,6 +117,25 @@ The host imports **only** `@spacegraphjs/renderer` (contract). No renderer branc
 | Where did the agent retry/change direction? | `search` for `retry`/`error` nodes |
 
 Proven against canonical fixture in `selectors.test.ts`.
+
+### Semantic Levels (Host Policy: `levels.ts`)
+
+| Level | Nodes Visible | Edges Visible | Label Mode |
+|-------|---------------|---------------|------------|
+| `overview` | session, turn, phase (clusters) | `part-of` only | Cluster counts |
+| `execution` | All except `reasoning`, `diff`, `compaction` | All except `inferred-cause` | Full labels |
+| `detail` | All nodes | All edges | Full detail |
+
+DOM budget caps cards per level (overview 12, execution 40, detail 24); excess degrades to dots.
+
+### Deterministic Layout (`layout.ts`)
+
+- **X** = turn index × `turnGap` (320) + event ordinal × `step` (48)
+- **Y** = lane × `laneGap` (56); lanes: `prompt`, `narrative`, `explore`, `edit`, `verify`, `delegate`, `artifacts`
+- **Z** = hierarchy depth × `depthStep` (64)
+- Phase clusters at first member's X on phase's lane
+- File nodes near first write on artifacts lane
+- Append-only: new turns append right; existing positions never change
 
 ---
 
