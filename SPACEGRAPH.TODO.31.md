@@ -430,6 +430,11 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
 
 ### 8.4 Revision log
 
+- **r20 (2026-11-07):** Rebasing onto upstream/dev (fdce6365bc) complete.
+  - Resolved conflicts in package.json (added packages/console/* workspace) and bun.lock (took upstream version).
+  - Fixed SDK docs mismatch in gui-plugins README.md (added spacegraph to builtins list).
+  - All unit tests pass: 92 session-graph, 861 session-ui, 580 spacegraphjs; monorepo typecheck passes.
+  - SpaceGraph work now based on latest upstream/dev (91 upstream commits integrated).
 - **r19 (2026-11-07):** Fixed F1 — split button not found in MapSurface.
   - Root cause: `MapSurface` rendered a duplicate `GraphToolbarViewControls` that lacked the split button, while `FullMap` via `GraphView` already provides a complete toolbar with the split button via `GraphToolbarCommandControls` → `GraphRendererStatus`.
   - Fix: Removed the redundant `GraphToolbarViewControls` from `MapSurface` (matching `HybridSurface` pattern).
