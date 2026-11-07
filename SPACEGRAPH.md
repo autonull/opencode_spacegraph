@@ -668,6 +668,102 @@ bun run graph:scale            # performance budget
 
 ---
 
+## 16. Path to a Fully Plugin-Based SpaceGraph (Future Architecture)
+
+### 16.1 Current state: built-in plugin on a fork
+
+SpaceGraph today is a **built-in GUI plugin** (`packages/gui-plugins/src/spacegraph/`) on a fork of OpenCode. It uses the **public GUI Plugin API** (`@opencode/plugin/gui`) for all UI integration:
+- `SessionSurface` (map, hybrid surfaces)
+- `SessionLayer` (turn-map overlay)
+- `Panel` (side panel)
+- `Command` (palette, keybinds)
+- `Slot` (session.header, session.panel.end)
+- `SettingsPage`, `Theme`, `Style`, `LinkHandler`
+
+**But the data model lives outside the plugin API.** The plugin imports OpenCode-internal modules:
+```ts
+// Current: data access requires OpenCode internals
+import { buildGraph, layoutGraph } from "@opencode/session-ui/graph"
+import { buildRenderModel, exportGraph } from "@opencode/session-graph"
+import type { Data } from "@opencode/client/solid"  // Effect Data layer
+```
+
+### 16.2 What would need to change upstream for a portable plugin
+
+To make SpaceGraph a **fully external, portable plugin** (installable via `opencode plugin install spacegraph` on any OpenCode instance, and on other hosts like Hermes, Pi Agent), the GUI Plugin API would need **standardized data/model contracts**:
+
+| Contract | Purpose | Current State |
+|----------|---------|---------------|
+| `SessionDataProvider` | Standard access to messages, tool calls, file edits, with streaming updates (`message:added`, `tool:started`, `tool:completed`, `file:changed`) | ❌ OpenCode-internal (`Data`, `session.server.data.session.message`) |
+| `GraphModelBuilder` | Host-neutral transform: session data → graph spec (nodes/edges/groups) with stable IDs | ❌ In `session-ui/src/graph/build.ts` |
+| `RendererAdapter` | Plugin-contributed renderer backends (spacegraphjs, cytoscape, custom) via contract | ⚠️ Contract exists (`@spacegraphjs/renderer`) but not in plugin API |
+| `SessionEventBus` | Standard events for streaming graph updates | ❌ No standard event bus in plugin API |
+| `WorkspaceDataProvider` | Optional: file symbols, code structure for workspace lens (Rung 5) | ❌ Protocol endpoint only |
+
+### 16.3 The architecture inversion (inside-out)
+
+**Today (fork):**
+```
+OpenCode (host, owns data)
+  └── SpaceGraph plugin (UI + data transform)
+       └── spacegraphjs (library, pure rendering)
+```
+
+**Future (plugin-based):**
+```
+spacegraphjs (core library)
+  ├── @spacegraphjs/renderer (contract)
+  ├── @spacegraphjs/adapter (domain → RenderModel)
+  └── @spacegraphjs/plugin-api (NEW: data contracts)
+        ↑
+OpenCode plugin  │  Hermes plugin  │  Pi Agent plugin
+(provides data)  │  (provides data)  │  (provides data)
+```
+
+### 16.4 Upstream changes required (in priority order)
+
+| Change | Location | Effort | Blockers |
+|--------|----------|--------|----------|
+| 1. Add `SessionDataProvider` contract to `@opencode/plugin/gui` | `packages/plugin/src/gui/host-apis.ts` + registries | Medium | Design review; must not leak Effect internals |
+| 2. Add `GraphModelBuilder` contract + `RendererAdapter` registry | `packages/plugin/src/gui/registries.ts` | Medium | Depends on (1) |
+| 3. Standardize `SessionEventBus` for streaming updates | `packages/plugin/src/gui/host-apis.ts` | Low | Depends on (1) |
+| 4. Export data types from `@opencode/plugin/gui` (not internal) | `packages/plugin/src/gui/index.ts` | Low | Depends on (1) |
+| 5. OpenCode implements `SessionDataProvider` for its sessions | `packages/app/src/runtime/plugin/` | Medium | Requires (1) API design |
+| 6. SpaceGraph plugin migrates to external bundle | New repo / `packages/plugins/spacegraph/` | Low | Requires (1-5) |
+
+### 16.5 Why this hasn't been done yet
+
+1. **No external consumer demand** — OpenCode is the only host using SpaceGraph. The GUI Plugin API was designed for UI extension, not data-model standardization.
+2. **Phase 6.1 (Host-neutral activity adapter)** proves the concept **in the library** (`spacegraphjs/test/second-host/`), not in the plugin API. It shows the *pattern* works without requiring OpenCode changes.
+3. **Grant Workspace / other hosts** consume `spacegraphjs` directly with their own adapters — they don't need OpenCode's plugin API.
+4. **Fork velocity** — the fork moves faster than upstream review cycles. Standardizing contracts prematurely locks in designs before they're validated.
+
+### 16.6 Decision framework
+
+| Condition | Action |
+|-----------|--------|
+| **Another OpenCode-based host appears** (e.g., a fork wanting SpaceGraph) | Prioritize (1-4) upstream |
+| **Hermes / Pi Agent want OpenCode plugin compatibility** | Co-design (1-4) with them |
+| **OpenCode maintainers want to adopt SpaceGraph upstream** | Rungs 1-4 (model + host UI) don't require plugin API changes; Rung 5 (workspace lens) would benefit from (1) |
+| **SpaceGraph team wants external distribution** | Build external plugin bundle using current internals; migrate when (1-4) land |
+
+### 16.7 Current fork preserves the option
+
+The fork's architecture **already separates concerns** cleanly:
+- `session-ui/src/graph` — pure model (zero UI deps, portable)
+- `session-graph` — host UI (imports renderer contract only)
+- `packages/gui-plugins/src/spacegraph` — plugin shell (uses public GUI API)
+
+**Migrating to an external plugin** when the API supports it would be:
+1. Move `session-graph` UI components into the plugin bundle
+2. Replace internal imports with `SessionDataProvider` contract
+3. Register `RendererAdapter` for spacegraphjs
+4. Publish as `@spacegraph/opencode-plugin`
+
+The **core library (`spacegraphjs`)** and **model (`session-ui/graph`)** would be unchanged.
+
+---
+
 ## 15. License & Ownership
 
 This fork is experimental, community-built, and not an official OpenCode feature. The transcript remains the dependable baseline. The graph is opt-in, lazy-loaded, and reverts cleanly. SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages. OpenCode gets the first integration opportunity because it's the tool we use to develop; other agent tools (Hermes, competitors) will follow the same adapter pattern.
