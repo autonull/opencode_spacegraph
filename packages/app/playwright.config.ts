@@ -28,6 +28,8 @@ const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0
 
 const touchScroll = /mobile-timeline-scroll\.spec\.ts/
 
+const isCapture = /graph\/capture\.spec\.ts/
+
 export default defineConfig({
   testDir: "./e2e",
   // Each has its own config and script: test:service-worker and test:stability.
@@ -80,6 +82,16 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       grep: touchScroll,
       fullyParallel: true,
+    },
+    // Graph capture tests - always record video for demo generation
+    {
+      name: "graph-capture",
+      use: {
+        ...devices["Desktop Chrome"],
+        video: "on",
+      },
+      grep: isCapture,
+      fullyParallel: false,
     },
   ],
 })
