@@ -536,8 +536,11 @@ Layout Gallery view (removed from capture matrix).**
   - F11: Panel not rendered — fixed tab id check in renderer.tsx to match stored format ("map")
   - F12: Dialog not opening — fixed mountSessionRegionWithSurfaces to include session status/get in server object
 - [x] **Fix F10 map surface component test** — reactive loop in GraphView hooks when rendered through mountSessionRegionWithSurfaces fixture (pre-existing fixture infrastructure issue); **panel & dialog tests pass (2/3)** — **KNOWN FAILURE: documented as F10, not blocking**
-- [x] **Live demo video** — record with Playwright video during `graph:capture --mode=verify`, extract 5s hook clip (3D orbit spin → force layout explosion → auto-zoom → trace overlay), add TTS narration with frame-accurate timing, apply "kidnapper" voice effect (pitch -3 semitones + formant +12%) — **COMPLETED: demo.mp4, demo.webm, demo-kidnapper.mp4 generated in docs/spacegraph/video/**
-- [x] **Remove Layout Gallery** — deleted frame 30 from capture.spec.ts; users cycle layouts with `mod+shift+l`
+- [x] **Segment 1 live demo video** — record frames 01-06 (log through 3D orbit) with Playwright video, sync beacon, `capture-segment1.spec.ts` passes in ~36s
+- [x] **Improved video generator v2** — `generate-demo-video.ts` rewritten: single concatenated narration track (no overlapping amix), rubberband pitch=0.89 ratio, `-y` overwrite, sync beacon detection, frame-accurate timing from marks.json
+- [ ] **Segment 2+ live demo video** — record remaining segments (frames 07-43), sync beacon at each segment start, copy to `capture.webm`
+- [ ] **Full demo video generation** — run `generate-demo-video.ts` without `--draft` (crf 20, VP9 webm, kidnapper variant), clear narration aligned to visual activity
+- [ ] Remove Layout Gallery — deleted frame 30 from capture.spec.ts; users cycle layouts with `mod+shift+l`
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)

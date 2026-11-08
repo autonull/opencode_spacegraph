@@ -9,15 +9,24 @@ Video must hook viewers immediately with flashy action, showcase SpaceGraphJS fe
 - **Capture test suite** in `packages/app/e2e/graph/capture.spec.ts` - generates frames programmatically AND records video
 - **Test fixtures** - canonical session data via `buildFixtureMessages()`
 
-## Approach (Updated 2026-11-08)
+## Approach (Updated 2026-11-08, v2 pipeline)
 
-### Live Recording + Post-Processed Narration + Effects (Recommended)
-1. Run capture tests with Playwright video recording enabled → generates MP4 + PNG frames
-2. Use capture manifest for frame-accurate narration timing
-3. Generate narration via TTS (edge-tts, elevenlabs, or OpenAI TTS)
-4. **Apply "kidnapper" voice effect** (pitch shift + formant shift) for entertainment value
-5. **Prepend flashy hook sequence** (3-5s): rapid cuts of 3D orbit, force layout explosion, zoom-to-node
-6. Combine video + audio with ffmpeg, using frame timestamps for sync
+### Live Recording + Mark-Anchored Narration + Hook (improved pipeline)
+1. Run the single continuous live spec with video recording always on:
+   `cd packages/app && bun run test:e2e:built -- e2e/graph/capture-live.spec.ts`
+   (records one continuous 1440x900 webm; writes capture seconds per frame to
+   `docs/spacegraph/video/marks.json`)
+2. `bun run script/copy-capture-video.ts` copies the recording to
+   `docs/spacegraph/video/capture.webm`
+3. `bun run script/generate-demo-video.ts`:
+   - finds the white sync beacon the spec flashes at flow start and converts
+     the marks into exact video-timeline seconds (frame-accurate, no drifting)
+   - mixes edge-tts narration (+10% rate) into one track over a silent base;
+     no volume normalization, no 42-input `amix` roulette
+   - cuts the 5s hook montage from the same recording (3D transition, force
+     explosion, auto-zoom, trace overlay) between the hard cuts
+   - prepends a title card, appends an end card, renders
+     demo.mp4 / demo.webm / demo-kidnapper.mp4 at full quality (crf 20)
 
 ### Why Not Screenshot-Based Video?
 - Narration timing was out of sync with static frame durations
@@ -27,16 +36,17 @@ Video must hook viewers immediately with flashy action, showcase SpaceGraphJS fe
 
 ## Implementation Plan
 
-### Phase 1: Live Recording Setup + Hook Sequence
+### Live Recording Setup + Hook Sequence
 ```bash
-# 1. Run capture with video recording (already configured in capture.spec.ts)
-cd packages/app && GRAPH_CAPTURE_DIR=../../docs/spacegraph/screenshots bun run test:e2e:built -- e2e/graph/capture.spec.ts
+# 1. Record the continuous live demo (one spec, one video, frame marks written)
+cd packages/app && bun run test:e2e:built -- e2e/graph/capture-live.spec.ts
 
-# 2. Playwright produces: test-results/graph-capture-*/video.webm
+# 2. Playwright produces: test-results/graph-capture-live-*/video.webm
 #    Copy to docs/spacegraph/video/capture.webm
+bun run script/copy-capture-video.ts
 
-# 3. Generate hook clip from most impressive moments (auto-zoom, 3D orbit, force layout)
-#    Script extracts 3-5s highlight reel from capture video
+# 3. Build title card + hook + narrated body + end card
+bun run script/generate-demo-video.ts
 ```
 
 ### Phase 2: Enhanced Narration Script - 42 Frames + Hook (Gallery Removed)
@@ -99,14 +109,13 @@ Create `script/generate-demo-video.ts`:
 
 ## Technical Details
 
-### Frame Timing Manifest (`docs/spacegraph/demo-manifest.json`)
+### Frame Timing Marks (`docs/spacegraph/video/marks.json`, live pipeline)
 ```json
-[
-  { "frame": 1, "file": "01-log.png", "hold": 3.5, "transition": 1.0, "narration": "..." },
-  { "frame": 2, "file": "02-graph-overview.png", "hold": 4.0, "transition": 1.0, "narration": "..." },
-  ...
-]
+[ { "frame": "01-log.png", "elapsed": 1.42 }, { "frame": "02-graph-overview.png", "elapsed": 6.1 }, ... ]
 ```
+Written after each capture during the live run. `generate-demo-video.ts` anchors
+these wall-clock seconds against the recorded beacon, then starts each
+narration segment 150 ms into its frame.
 
 ### Voice Effect: "Kidnapper" Style (ffmpeg)
 ```bash

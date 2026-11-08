@@ -28,7 +28,7 @@ const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0
 
 const touchScroll = /mobile-timeline-scroll\.spec\.ts/
 
-const isCapture = /graph\/capture\.spec\.ts/
+const isCapture = /graph\/capture(-live)?\.spec\.ts/
 
 export default defineConfig({
   testDir: "./e2e",
