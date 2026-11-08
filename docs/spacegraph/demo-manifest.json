@@ -21,7 +21,6 @@
   { "frame": 24, "file": "24-graph-failure-chain.png", "hold": 4.0, "transition": 1.0, "narration": "Trace failure chains through the graph. Red edges show error propagation from tool to result to compaction." },
   { "frame": 28, "file": "28-graph-tree.png", "hold": 3.5, "transition": 1.0, "narration": "Tree layout organizes nodes hierarchically, perfect for delegation-heavy sessions." },
   { "frame": 29, "file": "29-graph-force.png", "hold": 3.5, "transition": 1.0, "narration": "Force-directed layout creates organic structure. Nodes repel, edges attract, revealing clusters naturally." },
-  { "frame": 30, "file": "30-graph-gallery.png", "hold": 4.0, "transition": 1.0, "narration": "The gallery compares all layouts side by side. Pick the one that matches your mental model." },
   { "frame": 31, "file": "31-graph-perspective.png", "hold": 3.5, "transition": 1.0, "narration": "3D perspective with card-facing keeps text readable even at extreme angles." },
   { "frame": 34, "file": "34-graph-surfaces.png", "hold": 4.0, "transition": 1.0, "narration": "Hybrid surface shows the map and transcript together: split view for context and detail simultaneously." },
   { "frame": 36, "file": "36-graph-trace-overlay.png", "hold": 4.0, "transition": 1.0, "narration": "Click 'Why?' on any node to see its causal trace: why this tool ran, what it produced, what followed." },

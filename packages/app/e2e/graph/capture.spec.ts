@@ -18,6 +18,10 @@ const test = base.extend({
   },
 })
 
+// Video recording is configured in playwright.config.ts for capture tests
+// Output goes to test-results/graph-capture-*/video.webm
+// Copy to docs/spacegraph/video/capture.webm for demo video generation
+
 const directory = "C:/OpenCode/SessionGraph"
 const sessionID = "ses_session_graph"
 const canvasHost = '[data-slot="graph-canvas-host"]'
@@ -541,20 +545,6 @@ test("29 graph force", async ({ page }) => {
   await fit(page)
   await still(page)
   await capture(page, "29-graph-force.png")
-  expect(filterKnownErrors(errors)).toEqual([])
-})
-
-test("30 graph gallery", async ({ page }) => {
-  const errors = trackPageErrors(page)
-  await page.emulateMedia({ reducedMotion: "reduce" })
-  await openGraph(page)
-  await setLevel(page, "Execution")
-  await openMenu(page)
-  await page.locator(toolbar).getByRole("button", { name: "Gallery", exact: true }).click()
-  await expect(page.locator('[data-slot="graph-gallery"]')).toBeVisible()
-  await capture(page, "30-graph-gallery.png")
-  await page.keyboard.press("Escape")
-  await expect(page.locator('[data-slot="graph-gallery"]')).toHaveCount(0)
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
