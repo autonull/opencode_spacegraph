@@ -595,7 +595,15 @@ export function mountSessionRegion(input: {
       pending: false,
       location: { directory: "/repo" },
       visit: {},
-      server: { data: { session: { message: { list: () => input.messages ?? [] } } } },
+      server: {
+        data: {
+          session: {
+            message: { list: () => input.messages ?? [] },
+            status: () => "idle",
+            get: () => undefined,
+          },
+        },
+      },
     }
 
     // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
@@ -620,8 +628,8 @@ export function mountSessionRegion(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
-    // Every panel's `main` tab is stored, and `active` selected, as a strip restored after a reload.
-    const all = () => host.items(Panel).map((item) => `${item.plugin}:main`)
+    // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
+    const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
 
     const region = createRegion({
       region: "side",
@@ -639,6 +647,25 @@ export function mountSessionRegion(input: {
       closed: createClosedTabs(),
       open() {},
       side: () => ({ opened: () => true, toggle() {} }),
+    })
+
+    // Debug: log the region's pane entries
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("[Region] Pane entries:", pane.keys())
+      console.log("[Region] Pane selected:", pane.selected()?.key)
+    })
+
+    // Debug: check panel items
+    createEffect(() => {
+      const items = host.items(Panel)
+      console.log("[Region] Panel items:", items.map(item => `${item.plugin}:${item.value.id}`))
+    })
+
+    // Debug: check tabs
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("[Region] Tabs - all:", pane.keys(), "selected:", pane.selected()?.key)
     })
 
     return (
@@ -905,10 +932,19 @@ export function mountSessionRegionWithSurfaces(input: {
   // Surfaces API - provides session surfaces for plugins using the real surfaces implementation
   const language = { t: (key: string) => key }
 
-  const getSurfaces = () => {
-    const items = hosts[0]?.items(SessionSurface).map((item) => item.value) ?? []
+  // Signal to hold the host once it's ready
+  const [hostForSurfaces, setHostForSurfaces] = createSignal<ReturnType<typeof usePluginHost> | undefined>()
+
+  // Ensure TypeScript knows the signals are used
+  void hostForSurfaces
+  void setHostForSurfaces
+
+  const getSurfaces = createMemo(() => {
+    const host = hostForSurfaces()
+    const items = host?.items(SessionSurface).map((item) => item.value) ?? []
+    console.log("[getSurfaces] items:", items.map(i => i.id))
     return items
-  }
+  })
 
   const surfaces: Surfaces = {
     list: () => {
@@ -924,6 +960,7 @@ export function mountSessionRegionWithSurfaces(input: {
     select: (id: string, session: SessionRef) => {
       console.log("[surfaces.select] id:", id, "session.key:", session.key)
       selectSessionSurface(id, session)
+      console.log("[surfaces.select] after select, sessionSurfaceID:", sessionSurfaceID(session))
     },
   }
 
