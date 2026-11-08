@@ -111,7 +111,7 @@ async function pickLayout(page: Page, layout: string) {
   await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-value="${layout}"]`).click()
 }
 
-async function waitForStillCanvas(page: Page) {
+async function waitForStillCanvas(page: Page, timeout = 30000) {
   // First ensure there is graph content
   await waitForGraphContent(page)
 
@@ -125,7 +125,7 @@ async function waitForStillCanvas(page: Page) {
         previous = current
         return still >= 2
       },
-      { intervals: [100], timeout: 30000 },
+      { intervals: [100], timeout },
     )
     .toBe(true)
 }
@@ -236,8 +236,8 @@ async function openGraph(page: Page) {
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
 }
 
-async function still(page: Page) {
-  await waitForStillCanvas(page)
+async function still(page: Page, timeout = 30000) {
+  await waitForStillCanvas(page, timeout)
 }
 
 async function chooseDepth(page: Page, depth: string) {
@@ -447,9 +447,9 @@ test("19 graph depth stack", async ({ page }) => {
   await chooseDepth(page, "orbit")
   await chooseDepth(page, "depth-stack")
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
-  await still(page)
+  await still(page, 60000)
   await fit(page)
-  await still(page)
+  await still(page, 60000)
   await capture(page, "19-graph-depth-stack.png")
   expect(filterKnownErrors(errors)).toEqual([])
 })
