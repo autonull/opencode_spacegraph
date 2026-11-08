@@ -35,6 +35,7 @@ import {
   onCleanup,
   runWithOwner,
   Show,
+  For,
   type ParentProps,
 } from "solid-js"
 import { createStore, produce } from "solid-js/store"
@@ -52,7 +53,6 @@ import type { SessionModel } from "../src/session/model"
 import { createClosedTabs } from "../src/runtime/plugin/closed-tabs"
 import { PluginLinks, PluginSlot, PluginThemes } from "../src/runtime/plugin/render"
 import {
-  defaultSessionSurface,
   orderedSessionSurfaces,
   selectSessionSurface,
   sessionSurfaceID,
@@ -907,48 +907,36 @@ export function mountSessionRegionWithSurfaces(input: {
 
   const getSurfaces = () => {
     const items = hosts[0]?.items(SessionSurface).map((item) => item.value) ?? []
-    console.log("Registered surfaces:", items.map(s => s.id))
     return items
   }
 
   const surfaces: Surfaces = {
-    list: () => orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript")),
+    list: () => {
+      const result = orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript"))
+      console.log("[surfaces.list] registered:", result.map(s => s.id))
+      return result
+    },
     current: (session: SessionRef) => {
-      const surfaceItems = orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript"))
-      return resolveSessionSurface(surfaceItems, sessionSurfaceID(session)).id
+      const id = sessionSurfaceID(session)
+      console.log("[surfaces.current] session.key:", session.key, "selected:", id)
+      return id
     },
     select: (id: string, session: SessionRef) => {
+      console.log("[surfaces.select] id:", id, "session.key:", session.key)
       selectSessionSurface(id, session)
     },
   }
 
-  // SessionSurfaceHost for the fixture - renders the selected surface by calling the plugin's render function
+  // SessionSurfaceHost for the fixture - mirrors the real SessionSurfaceHost in packages/app/src/session/surface.tsx
   function FixtureSessionSurfaceHost() {
-    const host = usePluginHost()
-    const pluginId = "spacegraph-external"
-
-    // Wait for plugin to be active before accessing its context
-    const pluginActive = createMemo(() => host.status(pluginId) === "active")
-
-    // Reactively get the plugin's context and surfaces
-    const surfaces = createMemo(() => {
-      if (!pluginActive()) return undefined
-      const ctx = host.context(pluginId)
-      console.log("[FixtureSessionSurfaceHost] plugin context:", ctx ? "exists" : "undefined")
-      console.log("[FixtureSessionSurfaceHost] surfaces:", ctx?.surfaces)
-      return ctx?.surfaces
-    })
-
+    // Use the fixture's surfaces API (which reads from registry, like the real app)
     const surfaceItems = createMemo(() => {
-      const s = surfaces()
-      console.log("[FixtureSessionSurfaceHost] surfaces():", s)
-      if (!s) return [defaultSessionSurface(language.t("session.surface.transcript"))]
-      const items = s.list()
-      console.log("[FixtureSessionSurfaceHost] surface items:", items.map(i => i.id))
-      return items.length > 0 ? items : [defaultSessionSurface(language.t("session.surface.transcript"))]
+      const items = surfaces.list()
+      console.log("[FixtureSessionSurfaceHost] surfaceItems:", items.map(i => i.id))
+      return items
     })
     const selectedId = createMemo(() => {
-      const id = surfaces()?.current(view()) ?? transcriptSurfaceID
+      const id = surfaces.current(view())
       console.log("[FixtureSessionSurfaceHost] selectedId:", id)
       return id
     })
@@ -957,16 +945,20 @@ export function mountSessionRegionWithSurfaces(input: {
       console.log("[FixtureSessionSurfaceHost] selectedSurface:", surface.id)
       return surface
     })
-    const isTranscript = createMemo(() => selectedSurface().id === transcriptSurfaceID)
+    const custom = createMemo(() => {
+      const result = selectedSurface().id === transcriptSurfaceID ? undefined : selectedSurface()
+      console.log("[FixtureSessionSurfaceHost] custom:", result?.id ?? "transcript")
+      return result
+    })
     const transcript = createMemo(() => <div data-slot="session-transcript">Transcript</div>)
 
-    const content = createMemo(() => {
-      const surface = selectedSurface()
-      if (isTranscript()) return transcript()
-
-      // Call the plugin's surface render function with the correct input
-      return surface.render({ session: view(), screen, transcript: transcript() })
-    })
+    // Render the selected surface's content - use a component to isolate reactivity
+    function SurfaceContent() {
+      const selected = custom()
+      if (!selected) return transcript()
+      console.log("[FixtureSessionSurfaceHost] rendering surface:", selected.id)
+      return selected.render({ session: view(), screen, transcript: transcript() })
+    }
 
     return (
       <ErrorBoundary fallback={(err) => {
@@ -974,12 +966,14 @@ export function mountSessionRegionWithSurfaces(input: {
         return <div data-slot="surface-error">Error: {String(err)}</div>
       }}>
         <div class="flex h-full min-h-0 flex-col" data-slot="session-surface-host">
-          <Show when={isTranscript()}>
-            {transcript()}
+          <Show when={custom()} fallback={<SurfaceContent />}>
+            <div class="flex h-full min-h-0 flex-col">
+              <SurfaceContent />
+            </div>
           </Show>
-          <Show when={() => !isTranscript()}>
-            {content()}
-          </Show>
+          <For each={custom()?.layers ?? []}>
+            {(layer) => layer.render({ session: view(), screen, surface: custom() ?? selectedSurface() })}
+          </For>
         </div>
       </ErrorBoundary>
     )
