@@ -651,7 +651,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
   - F11: Panel not rendered — fixed tab id check in renderer.tsx to match stored format ("map")
   - F12: Dialog not opening — fixed mountSessionRegionWithSurfaces to include session status/get in server object
 - [ ] **Fix F10 map surface component test** — reactive loop in GraphView hooks when rendered through mountSessionRegionWithSurfaces fixture (pre-existing fixture infrastructure issue); **panel & dialog tests pass (2/3)**
-- [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
+- [x] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md) — draft MP4/WebM at `docs/spacegraph/demo-output/`
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
