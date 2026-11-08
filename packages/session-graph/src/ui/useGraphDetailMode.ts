@@ -57,9 +57,10 @@ export function useGraphDetailMode(input: UseGraphDetailModeInput): UseGraphDeta
   }
 
   const changeDepth = (next: DepthMode) => {
-    setDepth(next)
-    // A depth treatment implies its projection; keep the coarse projection control in step.
+    // Set projection first so capability fallback sees the intended 3D projection
+    // when it evaluates the depth change, preventing inconsistent depth=flat/projection=3d state.
     setProjection(next === "flat" ? "2d" : "3d")
+    setDepth(next)
     onDepthChange?.(next)
   }
 

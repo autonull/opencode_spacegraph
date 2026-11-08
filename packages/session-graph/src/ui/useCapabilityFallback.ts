@@ -13,6 +13,11 @@ export function useCapabilityFallback(
     const current = capabilities()
     if (!current) return
     if (projection() === "3d" && !supports(current, "3d")) setProjection("2d")
-    if (!supportsDepth(current, depth())) setDepth("flat")
+    const d = depth()
+    if (!supportsDepth(current, d)) {
+      setDepth("flat")
+      // Revert projection for any non-flat depth that isn't supported
+      if (d !== "flat") setProjection("2d")
+    }
   })
 }

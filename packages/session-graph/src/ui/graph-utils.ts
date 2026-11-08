@@ -26,9 +26,12 @@ export function createWidthThresholdTracker(
 
     const check = () => {
       const width = el.clientWidth
-      const newFlags: WidthThresholdFlags = {}
-      if (width < thresholds.narrow) newFlags.narrow = true
-      if (width < thresholds.compact) newFlags.compact = true
+      // Emit both flags explicitly: growing back above a threshold must clear
+      // it, otherwise a short-then-wide window stays narrow forever.
+      const newFlags: WidthThresholdFlags = {
+        narrow: width < thresholds.narrow,
+        compact: width < thresholds.compact,
+      }
 
       const changed = newFlags.narrow !== currentFlags.narrow || newFlags.compact !== currentFlags.compact
       if (changed) {
