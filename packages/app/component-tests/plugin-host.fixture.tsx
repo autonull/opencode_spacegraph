@@ -35,7 +35,6 @@ import {
   onCleanup,
   runWithOwner,
   Show,
-  For,
   type ParentProps,
 } from "solid-js"
 import { createStore, produce } from "solid-js/store"
@@ -873,6 +872,7 @@ export function mountSessionRegionWithSurfaces(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
+    setHostForSurfaces(host)
     // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
     const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
 
@@ -966,36 +966,15 @@ export function mountSessionRegionWithSurfaces(input: {
 
   // SessionSurfaceHost for the fixture - mirrors the real SessionSurfaceHost in packages/app/src/session/surface.tsx
   function FixtureSessionSurfaceHost() {
-    // Use the fixture's surfaces API (which reads from registry, like the real app)
-    const surfaceItems = createMemo(() => {
-      const items = surfaces.list()
-      console.log("[FixtureSessionSurfaceHost] surfaceItems:", items.map(i => i.id))
-      return items
-    })
-    const selectedId = createMemo(() => {
-      const id = surfaces.current(view())
-      console.log("[FixtureSessionSurfaceHost] selectedId:", id)
-      return id
-    })
-    const selectedSurface = createMemo(() => {
-      const surface = resolveSessionSurface(surfaceItems(), selectedId())
-      console.log("[FixtureSessionSurfaceHost] selectedSurface:", surface.id)
-      return surface
-    })
-    const custom = createMemo(() => {
-      const result = selectedSurface().id === transcriptSurfaceID ? undefined : selectedSurface()
-      console.log("[FixtureSessionSurfaceHost] custom:", result?.id ?? "transcript")
-      return result
-    })
-    const transcript = createMemo(() => <div data-slot="session-transcript">Transcript</div>)
+    const transcript = <div data-slot="session-transcript">Transcript</div>
 
-    // Render the selected surface's content - use a component to isolate reactivity
-    function SurfaceContent() {
-      const selected = custom()
-      if (!selected) return transcript()
-      console.log("[FixtureSessionSurfaceHost] rendering surface:", selected.id)
-      return selected.render({ session: view(), screen, transcript: transcript() })
-    }
+    // Single memo for the selected surface to avoid reactive loops
+    const selectedSurface = createMemo(() => {
+      const surfaceItems = surfaces.list()
+      const selectedId = surfaces.current(view())
+      const surface = resolveSessionSurface(surfaceItems, selectedId)
+      return surface.id === transcriptSurfaceID ? undefined : surface
+    })
 
     return (
       <ErrorBoundary fallback={(err) => {
@@ -1003,14 +982,18 @@ export function mountSessionRegionWithSurfaces(input: {
         return <div data-slot="surface-error">Error: {String(err)}</div>
       }}>
         <div class="flex h-full min-h-0 flex-col" data-slot="session-surface-host">
-          <Show when={custom()} fallback={<SurfaceContent />}>
-            <div class="flex h-full min-h-0 flex-col">
-              <SurfaceContent />
-            </div>
-          </Show>
-          <For each={custom()?.layers ?? []}>
-            {(layer) => layer.render({ session: view(), screen, surface: custom() ?? selectedSurface() })}
-          </For>
+          {selectedSurface() ? (
+            <>
+              <div class="flex h-full min-h-0 flex-col">
+                {selectedSurface()!.render({ session: view(), screen, transcript })}
+              </div>
+              {selectedSurface()!.layers?.map((layer) =>
+                layer.render({ session: view(), screen, surface: selectedSurface()! })
+              )}
+            </>
+          ) : (
+            transcript
+          )}
         </div>
       </ErrorBoundary>
     )
