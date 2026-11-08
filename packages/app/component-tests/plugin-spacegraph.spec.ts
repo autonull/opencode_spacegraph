@@ -41,7 +41,9 @@ async function mount(
 ) {
   const errors: string[] = []
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text())
+    const text = message.text()
+    console.log(`[BROWSER ${message.type()}] ${text}`)
+    if (message.type() === "error") errors.push(text)
   })
 
   await page.evaluate(

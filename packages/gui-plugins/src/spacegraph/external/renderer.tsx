@@ -497,7 +497,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       kind: "menu",
       icon: "branch-out",
     },
-    list: (input) => (input.open.includes(`${ctx.id}:map`) ? [tab] : []),
+    list: (input) => (input.open.includes("map") ? [tab] : []),
     render: (input) => (
       <Scope>
         <Suspense>
