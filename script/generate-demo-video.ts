@@ -48,10 +48,15 @@ async function generateDemoVideo(options: {
   console.log(`📁 Input: ${INPUT_VIDEO}`);
   console.log(`📁 Output: ${OUTPUT_DIR}/${options.output}`);
   
-  // Step 1: Get input video duration
+  // Step 1: Get input video duration and check for audio stream
   const durationOutput = await $`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${INPUT_VIDEO}`.quiet();
   const videoDuration = parseFloat(durationOutput.stdout.toString().trim());
   console.log(`\n📏 Input video duration: ${videoDuration.toFixed(1)}s (${(videoDuration/60).toFixed(1)} min)`);
+  
+  // Check if input video has audio stream
+  const audioStreamOutput = await $`ffprobe -v error -select_streams a -show_entries stream=codec_type -of csv=p=0 ${INPUT_VIDEO}`.quiet();
+  const hasAudio = audioStreamOutput.stdout.toString().trim().length > 0;
+  console.log(`🔊 Input video has audio: ${hasAudio}`);
   
   // Step 2: Generate TTS audio for each frame's narration
   console.log("\n🔊 Generating narration audio segments...");
@@ -70,7 +75,7 @@ async function generateDemoVideo(options: {
   
   // Generate audio for each frame
   for (const timing of frameTimings) {
-    const audioFile = resolve(OUTPUT_DIR, `narration-${timing.frame.toString().padStart(2, "0")}.wav`);
+    const audioFile = resolve(OUTPUT_DIR, `narration-${timing.frame.toString().padStart(2, "0")}.mp3`);
     
     try {
       await $`python3 -m edge_tts --voice ${options.voice} --text "${timing.narration}" --write-media ${audioFile}`.quiet();
@@ -111,15 +116,20 @@ async function generateDemoVideo(options: {
     const narrationInputs = audioFiles.map((_, i) => `[a${i}]`).join("");
     filterParts.push(`${narrationInputs}amix=inputs=${audioFiles.length}:duration=longest[narration]`);
     
-    // Then mix with original video audio (lower original volume, keep narration clear)
-    filterParts.push(`[0:a]volume=0.3[orig];[narration][orig]amix=inputs=2:duration=first[outa]`);
+    // Then mix with original video audio (if it exists) - lower original volume, keep narration clear
+    if (hasAudio) {
+      filterParts.push(`[0:a]volume=0.3[orig];[narration][orig]amix=inputs=2:duration=first[outa]`);
+    } else {
+      // No original audio, just use narration
+      filterParts.push(`[narration]anull[outa]`);
+    }
     filterComplex = filterParts.join(";");
   }
   
   console.log(`   Filter: ${filterComplex.slice(0, 100)}...`);
   
   // Step 4: Build ffmpeg command with all audio inputs
-  const audioInputs = audioFiles.map(f => `-i ${f.file}`).join(" ");
+  const audioInputArgs = audioFiles.flatMap(f => ["-i", f.file]);
   const videoOutput = resolve(OUTPUT_DIR, options.output);
   
   const videoPreset = options.draft ? "ultrafast" : "medium";
@@ -128,7 +138,7 @@ async function generateDemoVideo(options: {
   console.log("\n🎥 Rendering final video with narration...");
   
   if (audioFiles.length > 0) {
-    await $`ffmpeg -y -i ${INPUT_VIDEO} ${audioInputs} \
+    await $`ffmpeg -y -i ${INPUT_VIDEO} ${audioInputArgs} \
       -filter_complex "${filterComplex}" \
       -map 0:v -map "[outa]" \
       -c:v libx264 -preset ${videoPreset} -crf ${videoCrf} -pix_fmt yuv420p \
@@ -145,7 +155,7 @@ async function generateDemoVideo(options: {
   const webmCrf = options.draft ? "35" : "25";
   
   if (audioFiles.length > 0) {
-    await $`ffmpeg -y -i ${INPUT_VIDEO} ${audioInputs} \
+    await $`ffmpeg -y -i ${INPUT_VIDEO} ${audioInputArgs} \
       -filter_complex "${filterComplex}" \
       -map 0:v -map "[outa]" \
       -c:v libvpx-vp9 -speed ${webmSpeed} -crf ${webmCrf} -pix_fmt yuva420p \

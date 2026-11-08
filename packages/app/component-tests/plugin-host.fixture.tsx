@@ -872,7 +872,6 @@ export function mountSessionRegionWithSurfaces(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
-    setHostForSurfaces(host)
     // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
     const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
 
@@ -932,23 +931,14 @@ export function mountSessionRegionWithSurfaces(input: {
   // Surfaces API - provides session surfaces for plugins using the real surfaces implementation
   const language = { t: (key: string) => key }
 
-  // Signal to hold the host once it's ready
-  const [hostForSurfaces, setHostForSurfaces] = createSignal<ReturnType<typeof usePluginHost> | undefined>()
-
-  // Ensure TypeScript knows the signals are used
-  void hostForSurfaces
-  void setHostForSurfaces
-
-  const getSurfaces = createMemo(() => {
-    const host = hostForSurfaces()
-    const items = host?.items(SessionSurface).map((item) => item.value) ?? []
-    console.log("[getSurfaces] items:", items.map(i => i.id))
-    return items
-  })
-
+  // The surfaces object - list() calls usePluginHost() at call time, which works because
+  // the plugin calls it during setup (inside a Solid owner) and FixtureSessionSurfaceHost
+  // calls it during render (also inside a Solid owner).
   const surfaces: Surfaces = {
     list: () => {
-      const result = orderedSessionSurfaces(getSurfaces(), language.t("session.surface.transcript"))
+      const host = usePluginHost()
+      const items = host?.items(SessionSurface).map((item) => item.value) ?? []
+      const result = orderedSessionSurfaces(items, language.t("session.surface.transcript"))
       console.log("[surfaces.list] registered:", result.map(s => s.id))
       return result
     },
@@ -966,11 +956,20 @@ export function mountSessionRegionWithSurfaces(input: {
 
   // SessionSurfaceHost for the fixture - mirrors the real SessionSurfaceHost in packages/app/src/session/surface.tsx
   function FixtureSessionSurfaceHost() {
+    const host = usePluginHost()
     const transcript = <div data-slot="session-transcript">Transcript</div>
+
+    // Memo for the surfaces list (like the real SessionSurfaceHost)
+    const surfacesList = createMemo(() =>
+      orderedSessionSurfaces(
+        host?.items(SessionSurface).map((item) => item.value) ?? [],
+        language.t("session.surface.transcript"),
+      ),
+    )
 
     // Single memo for the selected surface to avoid reactive loops
     const selectedSurface = createMemo(() => {
-      const surfaceItems = surfaces.list()
+      const surfaceItems = surfacesList()
       const selectedId = surfaces.current(view())
       const surface = resolveSessionSurface(surfaceItems, selectedId)
       return surface.id === transcriptSurfaceID ? undefined : surface
