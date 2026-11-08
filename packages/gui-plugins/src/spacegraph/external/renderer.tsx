@@ -111,12 +111,6 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
   }
 
   const [hash, setHash] = createSignal(location.hash)
-  onMount(() => {
-    const update = () => setHash(location.hash)
-
-    window.addEventListener("hashchange", update)
-    onCleanup(() => window.removeEventListener("hashchange", update))
-  })
 
   const linked = () => {
     const prefix = hash().startsWith("#spacegraph:") ? "#spacegraph:" : hash().startsWith("#graph:") ? "#graph:" : undefined
@@ -503,7 +497,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       kind: "menu",
       icon: "branch-out",
     },
-    list: (input) => (input.open.includes("map") ? [tab] : []),
+    list: (input) => (input.open.includes(`${ctx.id}:map`) ? [tab] : []),
     render: (input) => (
       <Scope>
         <Suspense>
