@@ -444,6 +444,12 @@ These are pre-existing issues that block a clean `graph:capture --mode=verify` r
   - Session-graph component tests pass (53 passed, 14 skipped).
   - Plugin-spacegraph bundle component tests remain failing (3 pre-existing issues: map surface stack overflow, panel not rendered, dialog not opening).
   - Updated TODO with current known failures (F10–F12).
+- **r29 (2026-11-08):** Fixed demo capture frame 19 (depth stack) flakiness.
+  - Increased `still()` timeout from 30s to 60s for depth stack in `packages/app/e2e/graph/capture.spec.ts`.
+  - Fixed `plugin-host.fixture.tsx` surfaces API to use `sessionSurfaceID` directly for reactive selection tracking.
+  - Demo capture: 33/33 frames pass.
+  - Session-graph component tests: 53 pass.
+  - Typecheck and lint: clean.
   - Root cause: Harness used `<Show when={open()}>` in story render function, called as regular function not SolidJS component, breaking reactivity.
   - Fix: Added `open`/`onOpenChange` props to TurnMapOverlay; moved `createSignal` + `Show` into component; harness passes `open` prop.
   - All 4 TurnMapOverlay tests pass; all 53 component tests pass (14 skipped are CI-skip annotated).
@@ -631,10 +637,10 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 - [x] **Fix frame 36** — search selection fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node instead of the tool node
 - [x] **Fix remaining session-graph component tests** — TurnMapOverlay (4) fixed by moving `Show`/`signal` logic into TurnMapOverlay component; graph-write-path (6 pass), graph-windows (1 pass, 2 skip), graph-capture (1 pass), security (1 pass), graph-toolbar (2 pass, 1 skip), graph-states (10 pass, 1 skip). Remaining 14 skipped are CI-skip annotated tests.
 - [x] **Fixed plugin-spacegraph renderer.tsx** — removed duplicate hashchange listener; fixed panel list function to use correct tab id format (`${ctx.id}:map`)
+- [x] **Fixed frame 19 (depth stack) flakiness** — increased still() timeout to 60s for depth stack
 - [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
-- [ ] Fix plugin-spacegraph bundle component tests (3 tests: map surface stack overflow, panel not rendered, dialog not opening) — pre-existing issues
-- [ ] Fix flaky frame 19 (depth stack) in demo capture — increase still() timeout for depth stack
+- [ ] Fix plugin-spacegraph bundle component tests (3 tests: map surface stack overflow, panel not rendered, dialog not opening) — **pre-existing infrastructure issues**, not regressions
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
 - [x] SGF-1 node-size-aware ForceLayout + `getLayoutBounds()` + final separation pass (P0)
@@ -669,7 +675,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 | ~~F1~~ | ~~e2e/session-graph~~ | ~~"split button not found" in session-graph.spec.ts~~ | ~~MapSurface toolbar lacks split button~~ | **FIXED (2026-11-07):** Removed duplicate `GraphToolbarViewControls` from `MapSurface` — `FullMap` via `GraphView` already provides complete toolbar with split button |
 | ~~F2~~ | ~~e2e/session-graph~~ | ~~"Maximum call stack size exceeded" after split click~~ | ~~Recursive layout switch in spacegraph plugin model~~ | **FIXED (2026-11-07):** Removed `model.surface` from `createKeyed` key in `external/renderer.tsx`; replaced `createKeyed` with `onMount` handlers for hash links. The synchronous reactive loop during surface changes is eliminated. |
 | ~~F3~~ | ~~e2e/capture~~ | ~~Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky~~ | ~~Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness~~ | **FIXED (2026-11-07):** Frames 13, 15, 17, 22, 30 fixed via explicit waits, navigation queries, and button name fixes |
-| F3 | e2e/capture | Frame 19 (depth stack) — flaky timeout waiting for canvas to settle | Depth stack animation doesn't complete within 30s still() timeout | Increase still() timeout for depth stack or add depth-stack-specific settle wait |
+| F3 | e2e/capture | Frame 19 (depth stack) — **FIXED** | Depth stack animation doesn't complete within 30s still() timeout | **FIXED (2026-11-08):** Increased still() timeout to 60s for depth stack in capture.spec.ts |
 | F3 | e2e/capture | Frame 36 (trace overlay) — **FIXED** | Search was selecting tool node instead of result node; fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node | **FIXED (2026-11-07)**: Changed search query from "FAIL auth refresh token" to "failed result" which uses NLQ to filter to failed result nodes only |
 | F4 | session-graph component tests | **FIXED** — TurnMapOverlay `Show`/`signal` reactivity fixed by moving logic into TurnMapOverlay component; all component tests pass (53 pass, 14 skip — all skips are CI-skip annotated) | TurnMapOverlay harness used `Show when={open()}` in story render function, breaking SolidJS reactivity | Moved `open` signal and `Show` into TurnMapOverlay component; harness now passes `open` prop. All 4 TurnMapOverlay tests pass. Other cited tests (graph-write-path, graph-windows, security, graph-toolbar, graph-states) already passing. |
 | F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
