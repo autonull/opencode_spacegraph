@@ -650,6 +650,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
   - F10: Map surface stack overflow — fixed FixtureSessionSurfaceHost to read SessionSurface from host registry with reactive getSurfaces memo
   - F11: Panel not rendered — fixed tab id check in renderer.tsx to match stored format ("map")
   - F12: Dialog not opening — fixed mountSessionRegionWithSurfaces to include session status/get in server object
+- [ ] **Fix F10 map surface component test** — reactive loop in GraphView hooks when rendered through mountSessionRegionWithSurfaces fixture (pre-existing fixture infrastructure issue); **panel & dialog tests pass (2/3)**
 - [ ] **Auto-generated demo video** from capture frames (DEMO_VIDEO_PLAN.md)
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 
@@ -691,7 +692,7 @@ Workspace dual-loader code fix (their repo); back-compat shims for the layout-na
 | F4 | session-graph component tests | **FIXED** — TurnMapOverlay `Show`/`signal` reactivity fixed by moving logic into TurnMapOverlay component; all component tests pass (53 pass, 14 skip — all skips are CI-skip annotated) | TurnMapOverlay harness used `Show when={open()}` in story render function, breaking SolidJS reactivity | Moved `open` signal and `Show` into TurnMapOverlay component; harness now passes `open` prop. All 4 TurnMapOverlay tests pass. Other cited tests (graph-write-path, graph-windows, security, graph-toolbar, graph-states) already passing. |
 | F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
 | F6 | root | `bun run check` type errors in gui-plugins (unrelated to my changes) | Pre-existing type errors in spacegraph plugin | Fix gui-plugins spacegraph type errors separately |
-| F10 | plugin-spacegraph component tests | **FIXED** — FixtureSessionSurfaceHost reads SessionSurface from host registry with reactive getSurfaces memo; map surface renders correctly | Reactive loop in GraphView when rendered through component test fixture (mountSessionRegionWithSurfaces) — **pre-existing, not a regression** | Fixed: getSurfaces memo reads from host.items(SessionSurface) and surfaces.list() returns ordered surfaces |
+| F10 | plugin-spacegraph component tests | Map surface test: GraphView reactive loop in fixture (useGraphViewport/useRenderModel hooks) | Fixture's mountSessionRegionWithSurfaces creates reactive coupling between GraphView and test host | Fix: isolate plugin reactivity from test fixture; or skip this bundle test until fixture refactored. **Panel & dialog tests pass (2/3)** |
 | F11 | plugin-spacegraph component tests | **FIXED** — panel list function in renderer.tsx checks for correct tab id format ("map") | Panel not rendered — tab id mismatch or layout stored tabs not including panel tab — **pre-existing** | Fixed: panel list function uses `input.open.includes("map")` matching stored tab format |
 | F12 | plugin-spacegraph component tests | **FIXED** — mountSessionRegionWithSurfaces includes session status/get in server object; hybrid command opens MapDialog | Hybrid command not opening MapDialog in no-surface fallback path — **pre-existing** | Fixed: fixture session object includes server.status and server.get |
 
