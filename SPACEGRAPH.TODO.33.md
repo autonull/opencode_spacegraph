@@ -33,7 +33,7 @@
 
 ---
 
-## Status (2026-11-09, r2)
+## Status (2026-11-09, r3)
 
 Inherits the r36 state of TODO.32: Phases 0′–6 complete; capture gate 64/64; component suite green;
 plugin bundle 3/3; typecheck clean. The r35 demo video is rejected for sharing. This revision
@@ -42,6 +42,10 @@ the video clip-based.
 
 **Phase 9 complete (r2):** All foundation work done — signal discipline, gitlink hygiene, depth-mode
 fixes, capture determinism with first-frame marker. All verification gates pass.
+
+**Phase 10.1 enabler implemented (r3):** Incremental graph updates via `IncrementalGraphBuilder`
+reusing previous state, preserving layout positions across updates. Plugin model updated to use
+incremental builds.
 
 ---
 
@@ -192,9 +196,8 @@ Nothing here is lifted into SpaceGraphJS unless it is generic and OpenCode actua
 
 ### 10.1 Live map during a run (viewer → cockpit)
 
-- [ ] **Enabler:** subscribe to session data changes and update the graph **incrementally** without
-      resetting layout or camera. `buildGraph` is a pure transform over messages + status; memoize
-      turns and reuse the append-only layout for unchanged IDs.
+- [x] **Enabler:** subscribe to session data changes and update the graph **incrementally** without
+      resetting layout or camera. Created `IncrementalGraphBuilder` in `packages/session-ui/src/graph/incremental-builder.ts` that reuses previous state and only processes new messages. Updated `buildGraphIncremental` in `packages/session-ui/src/graph/build.ts` to return both graph and builder state. Plugin model updated in `packages/gui-plugins/src/spacegraph/model.ts` to use incremental builds with layout preservation via `layoutGraph` with `previous` positions.
 - [ ] **Demo beat:** watch a turn appear, expand its phase cluster, and see a failure flash while the
       agent is still working.
 - [ ] **Kill:** if incremental update is unstable or slow on the 5,001-message fixture, fall back to
@@ -459,6 +462,12 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Phase 9.5 verification executed: unit tests, component tests, e2e capture suite, root check all green.
   - Phase 9 definition of done satisfied.
 
+- **r3 (2026-11-09):** Phase 10.1 enabler implemented — incremental graph updates.
+  - Created `IncrementalGraphBuilder` in `packages/session-ui/src/graph/incremental-builder.ts` that reuses previous builder state and only processes new messages.
+  - Added `buildGraphIncremental` in `packages/session-ui/src/graph/build.ts` returning both graph and builder state for incremental updates.
+  - Updated plugin model in `packages/gui-plugins/src/spacegraph/model.ts` to use incremental builds with layout preservation via `layoutGraph(..., { previous: prev?.layout?.positions })`.
+  - All unit tests (96), component tests (55), and e2e capture suite (64) pass.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -470,7 +479,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Capture determinism: no host paths, no silent flake widening, robust start signal
 
 ### Next (Phases 10–11)
-- [ ] Live map during a run (incremental, append-only)
+- [x] Live map during a run (incremental, append-only) — enabler implemented
 - [ ] Causal navigation loop ("Why?")
 - [ ] Fractal drill-down with breadcrumb
 - [ ] Spatial memory across visits (spike)

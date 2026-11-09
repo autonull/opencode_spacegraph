@@ -34,6 +34,7 @@ export {
 
 export {
   buildGraph,
+  buildGraphIncremental,
   buildSessionKernel,
   buildWorkspaceKernel,
   workspaceDeriver,
@@ -41,8 +42,14 @@ export {
   WORKSPACE_STAGES,
   type BuildGraphInput,
   type BuildSessionInput,
+  type IncrementalBuildGraphInput,
   type WorkspaceStage,
 } from "./build"
+
+export {
+  IncrementalGraphBuilder,
+  type IncrementalBuilderState,
+} from "./incremental-builder"
 
 export {
   CARD_SIZE,
