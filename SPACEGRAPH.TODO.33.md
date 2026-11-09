@@ -33,7 +33,7 @@
 
 ---
 
-## Status (2026-11-09, r6)
+## Status (2026-11-09, r7)
 
 Inherits the r36 state of TODO.32: Phases 0′–6 complete; capture gate 64/64; component suite green;
 plugin bundle 3/3; typecheck clean. The r35 demo video is rejected for sharing. This revision
@@ -72,6 +72,10 @@ suite (43 tests) passes; bundle builds successfully.
 
 **Phase 11.4 complete (r11):** Fork delta fully documented with 6 upstream proposals; plugin
 installs on upstream without fork packages; paradigm beats 10.1–10.6 verified on upstream.
+
+**Phase 12 complete (r12):** SpaceGraphJS boundary established — gitlink pinned at `8e6a18e`,
+library tests green (580/580), no OpenCode-specific code in library, TypeDoc auto-docs, dependent
+needs recorded only.
 
 ---
 
@@ -325,14 +329,15 @@ documented page; the fork is a development harness, not a requirement.
 
 SpaceGraphJS stays a separate repository. This phase is a boundary, not a build-out.
 
-- [ ] **Pin and record** the library commit the fork consumes (`4465f41…`, or its successor). One
-      gitlink bump per batch; host update in the same PR.
-- [ ] **Lift only what is generic and needed.** If Phase 10 produced a genuinely host-neutral
-      capability (e.g. an incremental-delta pattern), lift it to the library; otherwise keep it in the
-      host. Do not touch the library for OpenCode-specific policy.
-- [ ] **No hand-written API docs.** Keep `pnpm run docs` (TypeDoc) working; let the code speak.
-- [ ] **Anticipate Hermes/Pi, do not build for them.** Record their likely needs in this plan's table
-      below; do not add streaming contracts, third hosts, or dependent docs to the library.
+- [x] **Pin and record** the library commit the fork consumes (`8e6a18e`). Gitlink bumped in
+      `646b780`; host update in same PR.
+- [x] **Lift only what is generic and needed.** Phase 10 produced no genuinely host-neutral
+      capabilities requiring library changes. The library already provides append-only layout,
+      `getPositions`/`serializePositions`, and `ModelAdapter`. OpenCode-specific incremental
+      builder remains in the fork.
+- [x] **No hand-written API docs.** `pnpm run docs` (TypeDoc) works; code speaks.
+- [x] **Anticipate Hermes/Pi, do not build for them.** Likely needs recorded in table below;
+      no streaming contracts, third hosts, or dependent docs added to library.
 
 **Anticipated dependent needs (recorded, not built):**
 
@@ -344,7 +349,7 @@ SpaceGraphJS stays a separate repository. This phase is a boundary, not a build-
 | Host-owned detail UI | `@spacegraphjs/renderer` contract (already exists) | No — reuse |
 | Streaming deltas as a first-class API | Maybe a `GraphFeed` concept | No — only if a second host actually asks |
 
-**Exit:** library tests green; the fork consumes a pinned commit; no OpenCode-specific code or
+**Exit:** library tests green (580/580); the fork consumes pinned commit `8e6a18e`; no OpenCode-specific code or
 hand-written API docs landed in the library.
 
 ---
@@ -444,7 +449,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
       implemented; graph-guided compaction spiked with an honest result; shareable artifacts verified.
 - [x] 11: plugin installs on upstream without the fork (local dev config); delta documented;
       paradigm beats 10.1–10.6 verified on upstream component tests; fork demoted to dev harness.
-- [ ] 12: library separate, pinned, auto-documented; nothing OpenCode-specific added; dependent needs
+- [x] 12: library separate, pinned (8e6a18e), auto-documented (TypeDoc); nothing OpenCode-specific added; dependent needs
       recorded only.
 - [ ] 13: clip manifest; assembled cuts; captions; one voice; no music/SFX; review gate passed.
 - [ ] 14: study run and recorded, or re-deferred with the gate restated.
@@ -556,6 +561,13 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - No server changes needed; data path uses only public `server.data` (messages, status, workspace).
   - Plugin installs on upstream dev checkout without fork; component suite passes.
 
+- **r12 (2026-11-09):** Phase 12 complete — SpaceGraphJS boundary established.
+  - Gitlink pinned at `8e6a18e` (includes test fixes for camera-facing depth modes and hierarchy parentOfFn).
+  - No generic lifts needed — library already provides append-only layout, `getPositions`/`serializePositions`, `ModelAdapter`.
+  - OpenCode-specific incremental builder remains in fork; no library changes.
+  - TypeDoc auto-docs working; no hand-written API docs added.
+  - Dependent needs (Hermes/Pi) recorded only; no streaming contracts or third hosts added.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -580,7 +592,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Fork delta fully documented with upstream proposals
 
 ### Then (Phase 12)
-- [ ] Library boundary: pinned commit, generic lifts only, auto-docs
+- [x] Library boundary: pinned commit (8e6a18e), generic lifts only (none needed), auto-docs (TypeDoc)
 
 ### Then (Phase 13)
 - [ ] Clip manifest; independent clips; assembled cuts; title screens
