@@ -372,6 +372,21 @@ hand-written API docs landed in the library.
       arc — problem → explore → act/verify — or topic buckets. Still avoid a layout tour; layout
       cycling is B-roll at most.
 
+### 13.1.1 Sample clip gate (new)
+
+**Before recording the full clip set, produce 3–4 key clips for approval:**
+
+| Clip | Purpose | Payoff |
+|------|---------|--------|
+| 1. "Why this failed" | Click a failed test → follow evidence chain to root cause | Shows causal nav ("Why?") beats transcript scrolling |
+| 2. "Live while it runs" | Watch a turn appear, expand phase cluster, see failure flash | Demonstrates viewer → cockpit (live incremental updates) |
+| 3. "Drill into subagent" | Double-click subagent node → inspect its map → return to parent | Proves fractal drill-down preserves context |
+| 4. "Share the decision" | Copy permalink → paste in PR → reviewer lands on exact node | Validates shareable artifacts work end-to-end |
+
+- [ ] **Record sample clips** (3–4 beats, ~60–90s total) using capture script + narration
+- [ ] **Review gate:** you approve clips before full production continues
+- [ ] **Only after approval:** record remaining clips per manifest
+
 ### 13.2 Capture and camera
 
 - [ ] **Script the beats** through the renderer (`fit`, `focus`, `setViewport`, depth) so the camera
@@ -568,6 +583,15 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - TypeDoc auto-docs working; no hand-written API docs added.
   - Dependent needs (Hermes/Pi) recorded only; no streaming contracts or third hosts added.
 
+- **r13 (2026-11-09):** Phase 13 sample clip gate added.
+  - Before full clip production, produce 3–4 key clips for approval:
+    1. "Why this failed" — causal nav beats transcript scrolling
+    2. "Live while it runs" — viewer → cockpit (live incremental updates)
+    3. "Drill into subagent" — fractal drill-down preserves context
+    4. "Share the decision" — shareable artifacts work end-to-end
+  - Review gate: clips must be approved before remaining clips recorded.
+  - Continuous improvement focus updated with sample clip gate.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -595,7 +619,9 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Library boundary: pinned commit (8e6a18e), generic lifts only (none needed), auto-docs (TypeDoc)
 
 ### Then (Phase 13)
-- [ ] Clip manifest; independent clips; assembled cuts; title screens
+- [ ] Clip manifest (`docs/spacegraph/demo/clips.json`) authored
+- [ ] **Sample clip gate:** record 3–4 key clips (Why this failed; Live while it runs; Drill into subagent; Share the decision) → **await approval**
+- [ ] After approval: record remaining clips per manifest
 - [ ] One voice + captions; **no music, no SFX**
 - [ ] Review gate with ≥3 outsiders
 
