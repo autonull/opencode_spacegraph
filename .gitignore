@@ -39,3 +39,6 @@ tsconfig.tsbuildinfo
 
 # Legal drafts pending review are kept outside the repository; never copy them in.
 legal-drafts-private/
+
+# Demo video build intermediates (rebuilt by script/generate-demo-video.ts)
+docs/spacegraph/video/work/

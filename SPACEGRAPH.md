@@ -1,6 +1,14 @@
 # SpaceGraph for OpenCode — Fork README
 
-> **Status (2026-11-08):** Prototype complete, verified, rebased onto upstream/dev. Phase 6 (SpaceGraphJS hardening) done. Phase 4 close-out, Phase 5 discovery, Phase 6 library hardening complete. **Current priority:** Final verification — capture gate (42/42), component tests green, typecheck clean. See `SPACEGRAPH.TODO.32.md` for active plan. `SPACEGRAPH.TODO.31.md` is superseded.
+> **Status (2026-11-08):** Prototype complete, verified, rebased onto upstream/dev. Phase 6
+> (SpaceGraphJS hardening) done. Phase 4 close-out, Phase 5 discovery, Phase 6 library hardening
+> complete. Capture gate green (`graph/capture.spec.ts`: 64/64 across both projects, 42 frames);
+> session-graph component suite green (55 passed, 12 annotated skips); plugin-spacegraph bundle
+> tests green (3/3); typecheck clean. The depth-spectrum reactive loop (frames 18/19/31) and the
+> badge self-invalidation loop (F10) are fixed. The live demo was recorded continuously and rendered
+> to `demo.mp4` / `demo.webm` / `demo-kidnapper.*` (3:38, 1440×900). The T2.2 study remains deferred
+> by its own gate. See `SPACEGRAPH.TODO.32.md` for the active plan.
+> `SPACEGRAPH.TODO.31.md` is superseded.
 
 ---
 

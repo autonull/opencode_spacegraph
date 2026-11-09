@@ -278,7 +278,7 @@ const videoDir = fileURLToPath(new URL("../../../../docs/spacegraph/video", impo
  * This produces a smooth, continuous recording instead of disjointed per-test clips.
  */
 test("live demo recording — continuous flow through all frames", async ({ page }) => {
-  test.setTimeout(900_000) // 15 minutes for full flow
+  test.setTimeout(1_800_000) // 30 minutes for full flow
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await syncBeacon(page)
@@ -528,6 +528,10 @@ test("live demo recording — continuous flow through all frames", async ({ page
   await waitForStillCanvas(page)
   await capture(page, "40-graph-nlq-code-errors.png")
 
+  // Close the search dialog before the next flow; frame 42 opens its own.
+  await page.keyboard.press("Escape")
+  await expect(search2).toBeHidden()
+
   // ── FRAME 41: Trust lens ──
   const trustBanner = page.locator('[data-slot="graph-trust-banner"]')
   if (await trustBanner.count() > 0) {
@@ -538,6 +542,8 @@ test("live demo recording — continuous flow through all frames", async ({ page
   }
 
   // ── FRAME 42: Permalink copy ──
+  await page.keyboard.press("Control+Shift+M")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
   await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Search" }).click()
   const search3 = page.getByRole("dialog", { name: "Search" })

@@ -1,5 +1,8 @@
 # SpaceGraph for OpenCode — Development Plan (v31)
 
+> **Superseded by [`SPACEGRAPH.TODO.32.md`](SPACEGRAPH.TODO.32.md).** Open items from this file
+> live there; this file is retained for history only.
+>
 > **Goal:** Finish the graph. Close out Phase 4's remaining UX work, run the Phase 5 evidence
 > gate, land the remaining library-leverage items, and fold in the SpaceGraphJS dependency
 > hardening from the Grant Workspace review. Publishing/releasing remains **deferred indefinitely**.

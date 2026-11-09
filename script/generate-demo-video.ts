@@ -26,7 +26,7 @@
  */
 
 import { $ } from "bun"
-import { readFileSync, writeFileSync, existsSync } from "fs"
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { resolve } from "path"
 
 const VIDEO_DIR = resolve(import.meta.dir, "../docs/spacegraph/video")
@@ -256,43 +256,45 @@ async function body(
   crf: number,
   preset: string,
   kidnapper: boolean,
+  videoPath = INPUT_VIDEO,
 ) {
   const chain = kidnapper ? "rubberband=pitch=0.89:formant=1.12," : ""
   const silenceDur = 0.15 // 150ms gap between segments
 
-  // Build narration as single track: segment + silence + segment + silence...
-  const narrationParts: string[] = []
+  // Each entry is exactly one ffmpeg input. Silences are bounded at the input
+  // (`-t` before `-i`), so concat cannot stall on an endless lavfi source.
+  const audioInputs: string[][] = []
   let currentTime = 0
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]
+  for (const seg of segments) {
     const gap = seg.start - currentTime
     if (gap > 0.01) {
-      narrationParts.push(`-f lavfi -i anullsrc=r=48000:cl=stereo -t ${gap.toFixed(3)}`)
+      audioInputs.push(["-f", "lavfi", "-t", gap.toFixed(3), "-i", "anullsrc=r=48000:cl=stereo"])
     }
-    narrationParts.push(`-i ${seg.file}`)
-    // Get segment duration
+    audioInputs.push(["-i", seg.file])
     const durOut = await $`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${seg.file}`.quiet()
     const segDur = parseFloat(durOut.stdout.toString().trim())
     currentTime = seg.start + segDur + silenceDur
   }
-  // Pad to video duration
   if (currentTime < dims.duration) {
-    narrationParts.push(`-f lavfi -i anullsrc=r=48000:cl=stereo -t ${(dims.duration - currentTime).toFixed(3)}`)
+    audioInputs.push(["-f", "lavfi", "-t", (dims.duration - currentTime).toFixed(3), "-i", "anullsrc=r=48000:cl=stereo"])
   }
 
-  const narrationInputs = narrationParts.flatMap(p => p.split(" "))
-  const narrationCount = narrationParts.filter(p => p.startsWith("-i ")).length
+  const videoInput = audioInputs.length
+  // edge-tts emits 24 kHz mono; concat needs one sample rate and layout for every segment.
+  const normalize = audioInputs
+    .map((_, i) => `[${i}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a${i}]`)
+    .join(";")
+  const labels = audioInputs.map((_, i) => `[a${i}]`).join("")
+  const narrationConcat =
+    audioInputs.length > 1
+      ? `${normalize};${labels}concat=n=${audioInputs.length}:v=0:a=1[narration]`
+      : "[0:a]anull[narration]"
 
-  // Build filter: concat narration segments, apply kidnapper effect, then mix with video
-  const narrationConcat = narrationCount > 1
-    ? narrationParts.map((_, i) => `[${i}:a]`).join("") + `concat=n=${narrationCount}:v=0:a=1[narration]`
-    : "[0:a]anull[narration]"
-
-  const filter = `${narrationConcat};[narration]${chain}aformat=channel_layouts=stereo,aresample=48000[nar2];[1:v]fps=30,scale=${dims.w}:${dims.h},format=yuv420p,fade=t=out:st=${(dims.duration - 0.6).toFixed(2)}:d=0.6[vout];[nar2]anull[mix]`
+  const filter = `${narrationConcat};[narration]${chain}aformat=channel_layouts=stereo,aresample=48000[nar2];[${videoInput}:v]fps=30,scale=${dims.w}:${dims.h},format=yuv420p,fade=t=out:st=${(dims.duration - 0.6).toFixed(2)}:d=0.6[vout];[nar2]anull[mix]`
 
   await run([
-    ...narrationInputs,
-    "-i", INPUT_VIDEO,
+    ...audioInputs.flat(),
+    "-i", videoPath,
     "-filter_complex", filter,
     "-map", "[vout]",
     "-map", "[mix]",
@@ -300,6 +302,67 @@ async function body(
     ...ENCODE(crf, preset),
     out,
   ])
+}
+
+/**
+ * Turns the live recording into one clip per frame, paced so the narration for
+ * that frame fits: keep the real interaction for its window, then freeze the
+ * last frame for the remainder. Returns the clips in order and the narration
+ * start times on the new timeline.
+ */
+async function renderFrameClips(
+  marks: { frame: string; videoStart: number }[],
+  audioByFrame: Map<string, string>,
+  dims: { w: number; h: number; duration: number; fps: number },
+  crf: number,
+  preset: string,
+) {
+  const clipDir = resolve(WORK_DIR, "frames")
+  mkdirSync(clipDir, { recursive: true })
+  const clips: string[] = []
+  const segments: { start: number; file: string }[] = []
+  let clock = 0
+
+  for (let i = 0; i < marks.length; i++) {
+    const from = marks[i].videoStart
+    const until = i + 1 < marks.length ? marks[i + 1].videoStart : dims.duration
+    // Keep the action that happened before the next capture; cap very long gaps.
+    const window = Math.max(0.5, Math.min(until - from, 6))
+    const audio = audioByFrame.get(marks[i].frame)
+    const narr = audio
+      ? parseFloat(
+          (
+            await $`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${audio}`.quiet()
+          ).stdout
+            .toString()
+            .trim(),
+        )
+      : 0
+    const target = Math.max(window + 0.25, narr + 0.5)
+    const pad = Math.max(0, target - window)
+    const clip = resolve(clipDir, `${String(i).padStart(2, "0")}.mp4`)
+
+    await run([
+      "-ss", from.toFixed(3),
+      "-t", window.toFixed(3),
+      "-i", INPUT_VIDEO,
+      "-an",
+      "-vf", `fps=30,scale=${dims.w}:${dims.h},format=yuv420p,tpad=stop_mode=clone:stop_duration=${pad.toFixed(3)}`,
+      "-t", target.toFixed(3),
+      ...ENCODE(crf, preset),
+      clip,
+    ])
+    clips.push(clip)
+    if (audio) segments.push({ start: clock + 0.1, file: audio })
+    clock += target
+  }
+
+  const list = resolve(WORK_DIR, "frames.txt")
+  writeFileSync(list, clips.map((file) => `file '${file}'`).join("\n"))
+  const bodyVideo = resolve(WORK_DIR, "body-video.mp4")
+  await run(["-f", "concat", "-safe", "0", "-i", list, "-c", "copy", "-movflags", "+faststart", bodyVideo])
+
+  return { bodyVideo, segments, duration: clock }
 }
 
 function concatList(files: string[], out: string) {
@@ -371,7 +434,7 @@ async function main() {
 
   // ── narration TTS (cached by text hash so re-runs skip synthesis) ───
   console.log("\n🎙️  Generating narration segments…")
-  const segments: { start: number; file: string }[] = []
+  const audioByFrame = new Map<string, string>()
   for (const entry of manifest) {
     const start = byFrame.get(entry.frame)
     if (start === undefined) {
@@ -384,17 +447,21 @@ async function main() {
     if (!existsSync(audio)) {
       await Bun.$`python3 -m edge_tts --rate ${TTS_RATE} --voice ${voice} --text ${entry.narration} --write-media ${audio}`.quiet()
     }
-    segments.push({ start, file: audio })
+    audioByFrame.set(entry.frame, audio)
   }
-  console.log(`  ✅ ${segments.length} segments ready`)
+  console.log(`  ✅ ${audioByFrame.size} segments ready`)
 
-  // ── narrated body ──
-  console.log("\n🎬 Rendering narrated body…")
+  // ── paced body: real motion per frame, then a freeze long enough for its narration ──
+  console.log("\n🎬 Rendering paced frame clips…")
+  const paced = await renderFrameClips(marks, audioByFrame, { ...dims, w: W, h: H }, crf, preset)
+  console.log(`  ✅ ${paced.segments.length} clips, ${paced.duration.toFixed(1)}s body`)
+
   const bodyPath = resolve(WORK_DIR, "body.mp4")
   const kidnapperBodyPath = resolve(WORK_DIR, "body-kidnapper.mp4")
-  await body(bodyPath, segments, { ...dims, w: W, h: H }, crf, preset, false)
+  const pacedDims = { ...dims, duration: paced.duration }
+  await body(bodyPath, paced.segments, pacedDims, crf, preset, false, paced.bodyVideo)
   if (!skipKidnapper)
-    await body(kidnapperBodyPath, segments, { ...dims, w: W, h: H }, crf, preset, true)
+    await body(kidnapperBodyPath, paced.segments, pacedDims, crf, preset, true, paced.bodyVideo)
 
   // ── hook + cards ──
   const parts = [bodyPath]
@@ -440,7 +507,7 @@ async function main() {
     console.log(`✅ demo.webm`)
   }
 
-  console.log(`\n📊 body length ${dims.duration.toFixed(1)}s (${(dims.duration / 60).toFixed(1)} min)`)
+  console.log(`\n📊 body length ${paced.duration.toFixed(1)}s (${(paced.duration / 60).toFixed(1)} min)`)
   console.log(`   intermediate files under ${WORK_DIR} (delete freely, rebuilt on re-run)`)
 }
 
