@@ -13,10 +13,13 @@ import {
   type LayoutStrategy,
   type ZoomLevel,
   type DetailMode,
+  buildGraphIncremental,
+  layoutGraph,
+  type GraphLayout,
+  type IncrementalBuilderState,
 } from "@opencode/session-ui/graph"
-import type definition from "./index"
-import { buildGraphIncremental, layoutGraph, type GraphLayout, type IncrementalBuilderState } from "@opencode/session-ui/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
+import type definition from "./index"
 
 function next<T>(values: readonly T[], current: T) {
   const index = values.indexOf(current)

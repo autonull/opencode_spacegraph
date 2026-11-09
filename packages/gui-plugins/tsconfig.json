@@ -14,7 +14,11 @@
     "noEmit": true,
     "lib": ["es2023", "dom", "dom.iterable"],
     "strict": true,
-    "types": ["vite/client", "bun"]
+    "types": ["vite/client", "bun"],
+    "paths": {
+      "@opencode/session-ui/graph": ["./src/spacegraph/internal/graph"],
+      "@opencode/session-graph": ["./src/spacegraph/internal/host"]
+    }
   },
   "include": ["src"],
   "exclude": ["src/**/*.stories.tsx"]

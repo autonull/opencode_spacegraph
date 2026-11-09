@@ -264,17 +264,21 @@ is a plugin that installs on upstream OpenCode without the fork.
 
 ### 11.1 Inventory the delta
 
-- [ ] **Write `docs/spacegraph/fork-delta.md` (one page).** Every import of a fork-only package
+- [x] **Write `docs/spacegraph/fork-delta.md` (one page).** Every import of a fork-only package
       (`@opencode/session-ui/graph`, `@opencode/session-graph`) and every plugin-API gap that a real
       session exposes. This is the only place the fork's justification lives.
 
+**Completed:** Inventoried 9 files with fork imports, 2 private packages, 6 plugin API gaps. Data path uses only public `server.data`. No server changes needed for current features. Strategy: bundle private packages into plugin.
+
 ### 11.2 Package the graph for a plugin
 
-- [ ] **Make the plugin depend only on public APIs** — `@opencode/plugin/gui`,
+- [x] **Make the plugin depend only on public APIs** — `@opencode/plugin/gui`,
       `@opencode/client/solid`, and its own rendering packages. Bundle the pure model + host UI into
       the plugin package (or publish them), instead of resolving private monorepo packages.
 - [ ] **No server changes** unless a real session proves one is unavoidable; if so, propose the
       smallest upstream change and document it.
+
+**Completed:** Bundled `@opencode/session-ui/graph` and `@opencode/session-graph` into `packages/gui-plugins/src/spacegraph/internal/` with path aliases. Plugin now typechecks with only public dependencies. All unit tests pass (96 session-graph, 867 session-ui, 305 internal graph).
 
 ### 11.3 Prove it on upstream
 
@@ -500,6 +504,15 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - All unit tests (96 session-graph, 867 session-ui) and component tests (55) pass; root `bun run check` passes.
   - Phase 10 complete — all paradigm enablers implemented and verified.
 
+- **r8 (2026-11-09):** Phase 11.1 and 11.2 completed — fork delta documented and graph bundled for plugin.
+  - Wrote `docs/spacegraph/fork-delta.md` inventorying 9 files with fork imports, 2 private packages, 6 plugin API gaps.
+  - Bundled `@opencode/session-ui/graph` (pure model, selectors, layout, incremental builder) into `packages/gui-plugins/src/spacegraph/internal/graph/`.
+  - Bundled `@opencode/session-graph` (host UI, hooks, components, canvas) into `packages/gui-plugins/src/spacegraph/internal/host/`.
+  - Added path aliases in `packages/gui-plugins/tsconfig.json` to resolve `@opencode/session-ui/graph` and `@opencode/session-graph` to internal modules.
+  - Removed private package dependencies from `packages/gui-plugins/package.json`; added required `@spacegraphjs/*` workspace dependencies.
+  - Plugin typechecks with only public dependencies (`@opencode/plugin/gui`, `@opencode/client/solid`, `@spacegraphjs/*`, `solid-js`).
+  - All unit tests pass: 96 session-graph, 867 session-ui, 305 internal graph.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -517,7 +530,9 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Spatial memory across visits (spike) — enabler implemented
 - [x] Graph-guided compaction (research spike, honest kill) — enabler implemented
 - [x] Shareable artifacts (finish what exists)
-- [ ] Fork-delta inventory and plugin install on upstream
+- [x] Fork-delta inventory completed
+- [x] Graph bundled for plugin (pure model + host UI)
+- [ ] Plugin install on upstream
 
 ### Then (Phase 12)
 - [ ] Library boundary: pinned commit, generic lifts only, auto-docs
