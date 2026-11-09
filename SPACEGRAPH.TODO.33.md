@@ -10,6 +10,12 @@
 > 3. **Recruiting / human studies** — only after the code and video gates pass.
 >
 > Supersedes `SPACEGRAPH.TODO.32.md`.
+>
+> **⚠ PIVOT (2026-11-09):** Phase 13 video work paused. The clip-based video plan assumed the current
+> UI was demonstrable. Review revealed the current surfaces don't tell a coherent story because the
+> paradigm (separate panel, mode switch) is the problem. **See `SPACEGRAPH.TODO.34.md`** for the
+> unified component redesign that enables transcript-inline, popover, and fullscreen modes from one
+> configurable component — the actual prerequisite for a meaningful demo.
 
 **Directives:**
 
@@ -354,9 +360,11 @@ hand-written API docs landed in the library.
 
 ---
 
-## Phase 13 — Demo video, clip-based (P1)
+## Phase 13 — Demo video, clip-based (P1) — **SUPERSEDED by TODO.34**
 
 **Gate:** start only after Phases 9–11 pass. **Audio: one voice and captions; no music, no SFX.**
+
+**Status:** Sample clips recorded but **not demonstrative of a coherent paradigm**. The current surfaces (separate panel, mode switch) don't tell a story. Video work paused until unified component (TODO.34) enables transcript-inline + progressive disclosure paradigm. Clip manifest and recording infra preserved for reuse.
 
 ### 13.1 Clips, not one continuous tour
 
@@ -466,7 +474,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
       paradigm beats 10.1–10.6 verified on upstream component tests; fork demoted to dev harness.
 - [x] 12: library separate, pinned (8e6a18e), auto-documented (TypeDoc); nothing OpenCode-specific added; dependent needs
       recorded only.
-- [ ] 13: clip manifest; assembled cuts; captions; one voice; no music/SFX; review gate passed.
+- [ ] 13: **SUPERSEDED** — clip manifest authored, sample clips recorded, but paradigm not demonstrable. See TODO.34.
 - [ ] 14: study run and recorded, or re-deferred with the gate restated.
 - [ ] 15: `SPACEGRAPH.md` references TODO.33; TODO.32 marked superseded; both tracked on the mainline.
 
@@ -626,14 +634,24 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 ### Then (Phase 12)
 - [x] Library boundary: pinned commit (8e6a18e), generic lifts only (none needed), auto-docs (TypeDoc)
 
-### Then (Phase 13)
+### Then (Phase 13) — **SUPERSEDED by TODO.34**
 - [x] Clip manifest (`docs/spacegraph/demo/clips.json`) authored
 - [x] **Sample clip gate:** record 3–4 key clips (Why this failed; Live while it runs; Drill into subagent; Share the decision) → **await approval**
 - [ ] After approval: record remaining clips per manifest
 - [ ] One voice + captions; **no music, no SFX**
 - [ ] Review gate with ≥3 outsiders
 
-### Last (Phase 14)
+**Pivot:** Video paused. See `SPACEGRAPH.TODO.34.md` for unified component work that enables the paradigm worth demoing.
+
+### Next (TODO.34 — Unified Component & Multi-Paradigm)
+- [ ] Extract `SessionGraph` from `GraphView` (Phase 14.1)
+- [ ] HTMLNode Solid bridge (Phase 14.2)
+- [ ] Transcript inline integration (Phase 15)
+- [ ] Host surface unification (Phase 16)
+- [ ] Configuration & persistence (Phase 17)
+- [ ] Experiments & validation (Phase 18)
+
+### Last (Phase 14 → TODO.34 Phase 19+)
 - [ ] Readiness checklist
 - [ ] T2.2 study run and disposition
 
