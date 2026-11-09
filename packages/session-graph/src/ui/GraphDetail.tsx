@@ -87,9 +87,12 @@ export type GraphDetailProps = {
   snapshot?: { capabilities?: string[] }
   /** Trace overlay callbacks (A1). */
   traceKind?: "why" | "led-here" | "related" | null
+  traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
   onTraceWhy?: (nodeId: string) => void
   onTraceLedHere?: (nodeId: string) => void
   onTraceRelated?: (nodeId: string) => void
+  onTraceBack?: () => void
+  onTraceForward?: () => void
   onClearTrace?: () => void
   onCopyTraceOutline?: (text: string) => void
   /** C1: note actions for a reader-authored node. */
@@ -528,9 +531,12 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         onCopy={props.onActionCopy}
         onRun={props.onActionRun}
         traceKind={props.traceKind}
+        traceHistory={props.traceHistory}
         onTraceWhy={props.onTraceWhy}
         onTraceLedHere={props.onTraceLedHere}
         onTraceRelated={props.onTraceRelated}
+        onTraceBack={props.onTraceBack}
+        onTraceForward={props.onTraceForward}
         onClearTrace={props.onClearTrace}
         onCopyTraceOutline={props.onCopyTraceOutline}
       />
@@ -548,9 +554,12 @@ function GraphDetailActions(props: {
   onCopy?: (text: string) => void
   onRun?: (operation: ActionSpec["operation"]) => void
   traceKind?: "why" | "led-here" | "related" | null
+  traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
   onTraceWhy?: (nodeId: string) => void
   onTraceLedHere?: (nodeId: string) => void
   onTraceRelated?: (nodeId: string) => void
+  onTraceBack?: () => void
+  onTraceForward?: () => void
   onClearTrace?: () => void
   onCopyTraceOutline?: (text: string) => void
 }) {
@@ -610,31 +619,70 @@ function GraphDetailActions(props: {
   const traceActions = () =>
     props.traceKind
       ? [
-        {
-          id: "trace.copyOutline",
-          label: i18n.t("ui.sessionGraph.trace.copyOutline"),
-          onClick: () => {
-            // The outline is built in the host (GraphView) and passed via callback
-            // We'll use a custom event to request it
-            window.dispatchEvent(new CustomEvent("graph:copy-trace-outline", { detail: { nodeId: props.node.id } }))
+          {
+            id: "trace.copyOutline",
+            label: i18n.t("ui.sessionGraph.trace.copyOutline"),
+            onClick: () => {
+              window.dispatchEvent(new CustomEvent("graph:copy-trace-outline", { detail: { nodeId: props.node.id } }))
+            },
           },
-        },
-        {
-          id: "trace.clear",
-          label: i18n.t("ui.sessionGraph.trace.clear"),
-          onClick: () => props.onClearTrace?.(),
-        },
-      ]
-    : [
-        { id: "trace.why", label: i18n.t("ui.sessionGraph.trace.why"), onClick: () => handleTrace("why") },
-        { id: "trace.led-here", label: i18n.t("ui.sessionGraph.trace.ledHere"), onClick: () => handleTrace("led-here") },
-        { id: "trace.related", label: i18n.t("ui.sessionGraph.trace.related"), onClick: () => handleTrace("related") },
-      ]
+          {
+            id: "trace.clear",
+            label: i18n.t("ui.sessionGraph.trace.clear"),
+            onClick: () => props.onClearTrace?.(),
+          },
+        ]
+      : [
+          { id: "trace.why", label: i18n.t("ui.sessionGraph.trace.why"), onClick: () => handleTrace("why") },
+          { id: "trace.led-here", label: i18n.t("ui.sessionGraph.trace.ledHere"), onClick: () => handleTrace("led-here") },
+          { id: "trace.related", label: i18n.t("ui.sessionGraph.trace.related"), onClick: () => handleTrace("related") },
+        ]
+
+  const history = props.traceHistory ?? []
 
   return (
     <div class="mt-4" data-component="graph-detail-actions" data-slot="graph-detail-actions">
       <div class="text-12-regular text-text-weak mb-2">{i18n.t("ui.graph.actions.label")}</div>
       <div class="flex flex-col gap-1.5">
+        {/* Trace history breadcrumb trail */}
+        <Show when={history.length > 0}>
+          <div class="mb-2 flex flex-wrap items-center gap-1 text-11-regular text-text-weak">
+            <For each={history.slice(0, -1)}>
+              {(entry) => (
+                <span class="flex items-center gap-1">
+                  <span class="px-1.5 py-0.5 rounded-sm bg-surface-base-hover text-text-base">
+                    {i18n.t("ui.sessionGraph.trace." + entry.kind)}: {entry.label}
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </span>
+              )}
+            </For>
+            <span class="text-text-base font-medium">{i18n.t("ui.sessionGraph.trace." + history[history.length - 1].kind)}: {history[history.length - 1].label}</span>
+          </div>
+        </Show>
+        {/* Trace navigation buttons when in a trace */}
+        <Show when={props.traceKind && history.length > 0}>
+          <div class="flex items-center gap-1.5 mb-2">
+            <button
+              type="button"
+              class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              onClick={props.onTraceBack}
+              disabled={history.length <= 1}
+              aria-label={i18n.t("ui.sessionGraph.trace.back")}
+            >
+              <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.trace.back")}</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              onClick={props.onTraceForward}
+              disabled={true}
+              aria-label={i18n.t("ui.sessionGraph.trace.forward")}
+            >
+              <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.trace.forward")}</span>
+            </button>
+          </div>
+        </Show>
         <For each={actions}>
           {(action) => (
             <button
