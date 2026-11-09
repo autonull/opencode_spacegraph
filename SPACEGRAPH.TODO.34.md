@@ -379,7 +379,7 @@ explicit prop  >  surface preference  >  session preference  >  global preferenc
 Exit gate for everything else: two `SessionGraph` instances on one page share model but never
 interfere.
 
-### 14.1 Fix pre-extraction defects (behaviour-preserving)
+### 14.1 Fix pre-extraction defects
 
 - [ ] Fix spatial memory restore (G5): write the manual store that rendering reads; add a regression
       test that fails on the old wiring.
@@ -591,8 +591,12 @@ one off locally, use `OPENCODE_FLAGS="-graph_inline_preview"`; to exercise all a
 
 A flag makes a capability **available**; a preference decides whether it is **active by default**.
 An affordance renders only when both are on, which keeps the transcript quiet even in dev builds.
-The Phase 14 extraction is a behaviour-preserving refactor, so it gets **no** flag; the existing
-component suite is its gate.
+The Phase 14 extraction is a **rearchitecture**, not a compatibility shim. We have no users; there is no
+  backwards compatibility requirement. The existing component suite is the correctness gate, not
+  pixel identity. `GraphView` becomes a composition of `SessionGraph` + `GraphChrome`; if a prop
+  default or interaction improves, change it. What must not regress: the component suite (25 specs
+  green), the capture gate (32 frames), and the plugin install on upstream. Everything else is fair
+  game.
 
 ### 18.4 Keyboard
 
