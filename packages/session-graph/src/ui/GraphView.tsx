@@ -43,7 +43,6 @@ import {
   onCleanup,
   onMount,
   Show,
-  untrack,
   type JSX,
 } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -330,6 +329,7 @@ export const GraphView = (props: GraphViewProps) => {
     capabilities,
     setCapabilities,
     rendererReady,
+    setRendererReady,
     rendererID,
     setRendererID,
     error,
@@ -358,9 +358,6 @@ export const GraphView = (props: GraphViewProps) => {
 
     // Trust lens
     trustLens,
-
-    // Manual layout
-    setManual,
 
     announce,
   } = state
@@ -653,7 +650,7 @@ export const GraphView = (props: GraphViewProps) => {
     positions: displayPositions,
     selection: () => selection()[0],
     onRestore: (positions, sel) => {
-      setManual("positions", positions)
+      manualPositions.setManual("positions", positions)
       if (sel) select(sel, false)
     },
   })
@@ -1025,23 +1022,6 @@ export const GraphView = (props: GraphViewProps) => {
     fitOptions,
   )
 
-  // A structural change — the host moved the map into the hybrid, or the reader chose another
-  // arrangement — frames the content again: the pane is another shape now, and the old frame no
-  // longer says what the reader is looking at. A plain resize does not: the reader's own zoom and
-  // pan are theirs.
-  createEffect(() => {
-    props.refitKey
-    props.arrangement
-    const instance = renderer()
-    if (!instance) return
-    // The fit reports a viewport synchronously, which the camera and the host's zoom readout track.
-    // Fitting inside the effect's tracking scope would subscribe this effect to its own result and
-    // refit forever; the structural inputs above are the only things that may request a frame.
-    untrack(() =>
-      viewportTracker!.camera.request(() => instance.fit(untrack(contentIDs), untrack(fitOptions))),
-    )
-  })
-
   // Build context object for GraphCanvasRegion
   const canvasRegionProps = useCanvasRegionProps(props, {
     model,
@@ -1148,7 +1128,9 @@ export const GraphView = (props: GraphViewProps) => {
       props.onRenderer?.(renderer)
       props.onRendererMounted?.(renderer, id)
     },
-    onReady: (_info: { fallback: boolean }) => {},
+    onReady: () => {
+      setRendererReady(true)
+    },
     onError: setError,
     // Drill-down (Phase 10.3)
     exitDrillDown,

@@ -6,11 +6,7 @@ import type { GraphViewportTrackerReturn } from "./useGraphViewport"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
 import type { GraphRenderer } from "@spacegraphjs/renderer"
-
-const POPOVER_GAP = 8
-const POPOVER_WIDTH = 320
-const POPOVER_MAX_HEIGHT = 400
-const CARD_SIZE: [number, number] = [220, 72]
+import { POPOVER_GAP, POPOVER_WIDTH, POPOVER_MAX_HEIGHT, CARD_SIZE } from "./popover-constants"
 
 export interface UsePopoverInput {
   model: Accessor<GraphViewData>

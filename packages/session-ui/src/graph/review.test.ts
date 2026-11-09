@@ -27,6 +27,7 @@ describe("review profile", () => {
       added: [],
       removed: ["file:b"],
       changed: [],
+      turnStats: [],
     })
   })
 

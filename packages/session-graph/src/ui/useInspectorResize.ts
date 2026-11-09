@@ -29,7 +29,7 @@ export function useInspectorResize(options: UseInspectorResizeOptions): UseInspe
     const startX = event.clientX
     const startWidth = inspectorWidth()
     resizeMove = (moveEvent) => {
-      const max = Math.max(240, rootEl()?.clientWidth ?? 0 * 0.6)
+      const max = Math.max(240, (rootEl()?.clientWidth ?? 0) * 0.6)
       setInspectorWidth(Math.min(max, Math.max(220, startWidth - (moveEvent.clientX - startX))))
     }
     resizeEnd = stopResize

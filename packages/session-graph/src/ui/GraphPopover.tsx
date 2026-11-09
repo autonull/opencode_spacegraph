@@ -3,10 +3,7 @@ import type { GraphNode } from "@opencode/session-ui/graph"
 import { Show } from "solid-js"
 import { GraphDetailSurface, type GraphDetailProps } from "./GraphDetail"
 import { GraphIconButton } from "./GraphIconButton"
-
-export const POPOVER_WIDTH = 340
-export const POPOVER_MAX_HEIGHT = 420
-export const POPOVER_GAP = 16
+import { POPOVER_WIDTH, POPOVER_MAX_HEIGHT } from "./popover-constants"
 
 export type GraphPopoverProps = Omit<GraphDetailProps, "node"> & {
   node?: GraphNode
