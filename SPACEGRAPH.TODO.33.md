@@ -646,7 +646,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 capability plan that makes the paradigm worth demoing.
 
 ### Next (TODO.34 — Unified Component, Multi-Paradigm, Graph-Infused Development)
-- [ ] **Phase 14** — Core extraction and instance isolation (fix G5/G6 defects, scoped bus, `SessionGraph`)
+- [ ] **Phase 14** — Core rearchitecture and instance isolation (fix G5/G6 defects, scoped bus, `SessionGraph`)
 - [ ] **Phase 15** — Embedding bridge (node widget overlay, static HTML, fractal node, composer widget)
 - [ ] **Phase 16** — Graph in OpenCode UI (inline preview, graph transcript surface, subagent drill)
 - [ ] **Phase 17** — Surface unification and cross-surface linking
