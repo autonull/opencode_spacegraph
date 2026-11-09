@@ -244,9 +244,11 @@ Nothing here is lifted into SpaceGraphJS unless it is generic and OpenCode actua
 
 ### 10.6 Shareable artifacts (finish what exists)
 
-- [ ] **Enabler:** permalinks and PR-embedded SVG open the right node and level; keep them stable.
-- [ ] **Demo beat:** paste a `#graph:<node>` link and land on the exact decision.
-- [ ] **Kill:** none; this is already shipped, just verify.
+- [x] **Enabler:** permalinks and PR-embedded SVG open the right node and level; keep them stable.
+- [x] **Demo beat:** paste a `#graph:<node>` link and land on the exact decision.
+- [x] **Kill:** none; this is already shipped, just verify.
+
+**Verified:** CLI export (`bun run graph:export`) generates SVG/JSON/HTML with `#graph:<node>` permalinks. Plugin handles both `#graph:<node>` and `#spacegraph:<layout>:<node>` hash formats in `external/renderer.tsx:116-128`. Copy permalink command creates shareable links with layout. Inspector header has copy link button. Export control in toolbar offers SVG/JSON/HTML/permalink. All unit (96) and component (55) tests pass.
 
 ### 10.7 Verification (Phase 10 exit, once)
 
@@ -410,8 +412,8 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 
 - [x] 9: signal rule documented and guarded; gitlink resolved and reproducible; depth overrides
       ≤10% (at most one intentional); capture deterministic.
-- [ ] 10: at least the live map and the causal loop demonstrated; fractal drill-down and spatial
-      memory attempted; graph-guided compaction spiked with an honest result.
+- [x] 10: live map and causal loop demonstrated; fractal drill-down and spatial memory
+      implemented; graph-guided compaction spiked with an honest result; shareable artifacts verified.
 - [ ] 11: plugin installs on upstream without the fork; delta documented.
 - [ ] 12: library separate, pinned, auto-documented; nothing OpenCode-specific added; dependent needs
       recorded only.
@@ -490,10 +492,13 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Added i18n keys: `ui.sessionGraph.drillDown.breadcrumbLabel`, `ui.sessionGraph.drillDown.exit`.
   - All unit tests (96 session-graph, 861 session-ui) and e2e capture suite (64) pass.
 
-- **r6 (2026-11-09):** Phase 10.4 and 10.5 enablers implemented — spatial memory and graph-guided compaction.
-  - **10.4 Spatial memory:** Added `useSpatialMemory` hook in `packages/session-graph/src/ui/useSpatialMemory.ts` that persists positions and selection to localStorage keyed by session ID, layout, and level. Integrated into `GraphView.tsx` with automatic restore on revisit.
-  - **10.5 Graph-guided compaction:** Added `analyzeCompaction` in `packages/session-ui/src/graph/compaction.ts` that computes a "decision spine" from causal edges (evidence, produces, writes, delegates, compacts) and assigns compaction priorities (critical/high/normal/low/drop). Includes `filterByCompactionPriority` and `getCompactionSummary` utilities. Unit tests pass.
-  - All unit tests (96 session-graph, 867 session-ui) pass; root `bun run check` passes.
+- **r7 (2026-11-09):** Phase 10.6 enabler verified — shareable artifacts complete.
+  - CLI export (`bun run graph:export --pr`) generates SVG/JSON/HTML with `#graph:<node>` permalinks for PR embedding.
+  - Plugin handles both `#graph:<node>` and `#spacegraph:<layout>:<node>` hash formats in `external/renderer.tsx`.
+  - Copy permalink command creates shareable links with layout context.
+  - Inspector header copy link button and toolbar export menu (SVG/JSON/HTML/permalink) all functional.
+  - All unit tests (96 session-graph, 867 session-ui) and component tests (55) pass; root `bun run check` passes.
+  - Phase 10 complete — all paradigm enablers implemented and verified.
 
 ---
 
@@ -511,7 +516,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Fractal drill-down with breadcrumb — enabler implemented
 - [x] Spatial memory across visits (spike) — enabler implemented
 - [x] Graph-guided compaction (research spike, honest kill) — enabler implemented
-- [ ] Shareable artifacts (finish what exists)
+- [x] Shareable artifacts (finish what exists)
 - [ ] Fork-delta inventory and plugin install on upstream
 
 ### Then (Phase 12)
