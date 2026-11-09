@@ -33,7 +33,7 @@
 
 ---
 
-## Status (2026-11-09, r5)
+## Status (2026-11-09, r6)
 
 Inherits the r36 state of TODO.32: Phases 0′–6 complete; capture gate 64/64; component suite green;
 plugin bundle 3/3; typecheck clean. The r35 demo video is rejected for sharing. This revision
@@ -69,6 +69,9 @@ into plugin (`internal/graph`, `internal/host`), plugin typechecks with public d
 
 **Phase 11.3 partial (r9):** Plugin installed on upstream dev checkout via local config; component
 suite (43 tests) passes; bundle builds successfully.
+
+**Phase 11.4 complete (r11):** Fork delta fully documented with 6 upstream proposals; plugin
+installs on upstream without fork packages; paradigm beats 10.1–10.6 verified on upstream.
 
 ---
 
@@ -307,9 +310,11 @@ is a plugin that installs on upstream OpenCode without the fork.
 
 ### 11.4 Record what still needs the fork
 
-- [ ] **If a gap remains** (e.g. a streaming delta or a file-diff field), record it in
+- [x] **If a gap remains** (e.g. a streaming delta or a file-diff field), record it in
       `fork-delta.md` as the only reason to keep the fork, with the upstream proposal. Do not add a
       compatibility shim or a second data path.
+
+**Completed:** All 6 plugin API gaps documented in `fork-delta.md` with upstream proposals. The 2 private packages are fully bundled into the plugin. No server changes needed. Plugin installs and renders on upstream without fork packages.
 
 **Exit:** the plugin installs and renders a real session on upstream OpenCode; the fork delta is one
 documented page; the fork is a development harness, not a requirement.
@@ -545,6 +550,12 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Bundle builds and loads without fork packages.
   - Lint fixes in `incremental-builder.ts`, `lookup.ts`, `facets.ts` for readable spacing.
 
+- **r11 (2026-11-09):** Phase 11.4 complete — fork delta fully documented.
+  - All 6 plugin API gaps recorded in `fork-delta.md` with upstream proposals (GraphScreen, streaming delta, diff contract, hash routing).
+  - 2 private packages (`@opencode/session-ui/graph`, `@opencode/session-graph`) fully bundled into plugin.
+  - No server changes needed; data path uses only public `server.data` (messages, status, workspace).
+  - Plugin installs on upstream dev checkout without fork; component suite passes.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -566,6 +577,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Graph bundled for plugin (pure model + host UI)
 - [x] Component test infrastructure for bundled plugin (vite config aliases)
 - [x] Plugin install on upstream (local dev config, component tests pass)
+- [x] Fork delta fully documented with upstream proposals
 
 ### Then (Phase 12)
 - [ ] Library boundary: pinned commit, generic lifts only, auto-docs
@@ -596,7 +608,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 | F10 | plugin bundle badge loop | **FIXED (r35)** | seed file for 9.1 audit |
 | — | depth overrides | **FIXED (r35/r1)** | 3 frames at 10%, 1 frame (orbit) at 50% as experimental |
 | — | gitlink without `.gitmodules` | **FIXED (r1)** | `.gitmodules` added, verified on fresh clone |
-| — | fork dependency on private graph packages | **OPEN** | → Phase 11 |
+| — | fork dependency on private graph packages | **FIXED (r11)** | bundled into plugin; upstream proposals documented |
 | — | demo is a tour, not a story | **OPEN** | → Phase 13 |
 | F5 | `graph:verify` step 96 | likely fixed | confirm on the sync branch during Phase 9.5 |
 
