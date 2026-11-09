@@ -1,0 +1,137 @@
+[
+  {
+    "id": "why-this-failed",
+    "title": "Why this failed",
+    "purpose": "Click a failed test → follow evidence chain to root cause",
+    "payoff": "Shows causal nav (\"Why?\") beats transcript scrolling",
+    "captures": [
+      "24-graph-failure-chain.png",
+      "36-graph-trace-overlay.png"
+    ],
+    "narration": "When a test fails, don't scroll through logs. Click the failure, hit Why, and follow the evidence chain to the root cause.",
+    "titleCard": "Why this failed"
+  },
+  {
+    "id": "live-while-it-runs",
+    "title": "Live while it runs",
+    "purpose": "Watch a turn appear, expand its phase cluster, see failure flash",
+    "payoff": "Demonstrates viewer → cockpit (live incremental updates)",
+    "captures": [
+      "02-graph-overview.png",
+      "03-graph-execution.png",
+      "24-graph-failure-chain.png"
+    ],
+    "narration": "The map updates live as the agent works. Watch structure form, expand a phase cluster, see a failure flash — all while the agent is still running.",
+    "titleCard": "Live while it runs"
+  },
+  {
+    "id": "drill-into-subagent",
+    "title": "Drill into subagent",
+    "purpose": "Double-click subagent node → inspect its map → return to parent",
+    "payoff": "Proves fractal drill-down preserves context",
+    "captures": [
+      "12-graph-hierarchy.png",
+      "28-graph-tree.png",
+      "37-graph-collapsed-group.png"
+    ],
+    "narration": "Double-click any subagent to enter its own map. Inspect its work, then return to the parent at the exact same place. Context preserved.",
+    "titleCard": "Drill into subagent"
+  },
+  {
+    "id": "share-the-decision",
+    "title": "Share the decision",
+    "purpose": "Copy permalink → paste in PR → reviewer lands on exact node",
+    "payoff": "Validates shareable artifacts work end-to-end",
+    "captures": [
+      "42-graph-permalink-copy.png",
+      "43-graph-demo-map.png"
+    ],
+    "narration": "Copy a deep link to any decision. Paste it in a PR, and your reviewer lands on the exact node, at the exact layout level. No context lost.",
+    "titleCard": "Share the decision"
+  },
+  {
+    "id": "overview-to-execution",
+    "title": "Overview to execution",
+    "purpose": "Show the three levels: Overview → Execution → Detail",
+    "payoff": "Demonstrates spatial navigation across abstraction levels",
+    "captures": [
+      "02-graph-overview.png",
+      "03-graph-execution.png",
+      "04-graph-selected.png"
+    ],
+    "narration": "Three levels, one keystroke apart. Overview shows the whole session structure. Execution reveals turn-by-turn detail. Detail gives you the full diff without leaving the map.",
+    "titleCard": null
+  },
+  {
+    "id": "layout-tour",
+    "title": "Layout tour",
+    "purpose": "Quick tour of Timeline, Hierarchy, Tree, Force, Ribbon, Matrix layouts",
+    "payoff": "Shows each layout reveals different structure",
+    "captures": [
+      "11-graph-timeline.png",
+      "12-graph-hierarchy.png",
+      "15-graph-ribbon.png",
+      "16-graph-matrix.png",
+      "28-graph-tree.png",
+      "29-graph-force.png"
+    ],
+    "narration": "Each layout answers a different question. Timeline for temporal flow. Hierarchy for delegations. Tree for nested structure. Force for organic clusters. Ribbon for quick scanning. Matrix for tool patterns.",
+    "titleCard": "Layouts"
+  },
+  {
+    "id": "3d-depth-modes",
+    "title": "3D depth modes",
+    "purpose": "Show Orbit, Layered, Depth Stack 3D modes",
+    "payoff": "Demonstrates spatial exploration in 3D",
+    "captures": [
+      "06-graph-3d.png",
+      "18-graph-layered.png",
+      "19-graph-depth-stack.png",
+      "31-graph-perspective.png"
+    ],
+    "narration": "Three 3D modes for spatial exploration. Orbit for free rotation. Layered stacks turns by depth. Depth stack adds perspective fade with cards facing the camera. Perspective shows detail at extreme angles.",
+    "titleCard": "3D depth modes"
+  },
+  {
+    "id": "search-and-filter",
+    "title": "Search and filter",
+    "purpose": "Show keyword search, NLQ, and trust lens",
+    "payoff": "Demonstrates powerful query and filtering",
+    "captures": [
+      "22-graph-turn-1.png",
+      "23-graph-turn-2.png",
+      "39-graph-nlq-search.png",
+      "40-graph-nlq-code-errors.png",
+      "41-graph-trust-lens.png"
+    ],
+    "narration": "Search by keyword, or use natural language — \"failed tools\" compiles to the right filter. The trust lens flags outputs that were never verified by tests.",
+    "titleCard": "Search and filter"
+  },
+  {
+    "id": "files-and-hybrid",
+    "title": "Files and hybrid view",
+    "purpose": "Show changed files rail and hybrid split view",
+    "payoff": "Demonstrates file context and transcript+map together",
+    "captures": [
+      "17-graph-files.png",
+      "34-graph-surfaces.png",
+      "38-graph-hybrid.png"
+    ],
+    "narration": "Toggle the files rail to see every modification with diffs a click away. Hybrid view puts the transcript and map side by side, linked by selection.",
+    "titleCard": "Files and hybrid view"
+  },
+  {
+    "id": "responsive-and-themes",
+    "title": "Responsive and themes",
+    "purpose": "Show narrow viewport, light theme, zoom levels",
+    "payoff": "Demonstrates adaptive UI and accessibility",
+    "captures": [
+      "13-graph-narrow.png",
+      "14-graph-light.png",
+      "20-graph-zoom-150.png",
+      "21-graph-zoom-max.png"
+    ],
+    "narration": "Responsive design collapses the toolbar on narrow screens. Full light and dark theme support. Semantic zoom keeps labels crisp at 150%, and max zoom reveals full detail without leaving the map.",
+    "titleCard": "Responsive and themes"
+  }
+]

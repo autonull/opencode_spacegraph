@@ -360,7 +360,7 @@ hand-written API docs landed in the library.
 
 ### 13.1 Clips, not one continuous tour
 
-- [ ] **Author a tracked clip manifest** `docs/spacegraph/demo/clips.json`: each clip has
+- [x] **Author a tracked clip manifest** `docs/spacegraph/demo/clips.json`: each clip has
       `{ id, title, purpose, captures, narration, optional titleCard }`. Media under
       `docs/spacegraph/video/` stays gitignored.
 - [ ] **Record clips independently.** Each clip is a self-contained beat (≈8–20 s): a problem, a
@@ -383,7 +383,7 @@ hand-written API docs landed in the library.
 | 3. "Drill into subagent" | Double-click subagent node → inspect its map → return to parent | Proves fractal drill-down preserves context |
 | 4. "Share the decision" | Copy permalink → paste in PR → reviewer lands on exact node | Validates shareable artifacts work end-to-end |
 
-- [ ] **Record sample clips** (3–4 beats, ~60–90s total) using capture script + narration
+- [x] **Record sample clips** (3–4 beats, ~60–90s total) using capture script + narration
 - [ ] **Review gate:** you approve clips before full production continues
 - [ ] **Only after approval:** record remaining clips per manifest
 
@@ -592,6 +592,14 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Review gate: clips must be approved before remaining clips recorded.
   - Continuous improvement focus updated with sample clip gate.
 
+- **r14 (2026-11-09):** Phase 13 sample clips recorded — clip manifest authored and 4 sample clips captured.
+  - Created `docs/spacegraph/demo/clips.json` with 11 clips covering all paradigm beats.
+  - Created `packages/app/e2e/graph/capture-clips.spec.ts` with 4 Playwright tests for sample clips.
+  - Created `script/copy-capture-clips.ts` to copy clip videos to `docs/spacegraph/video/clips/`.
+  - Recorded 4 sample clips (why-this-failed, live-while-it-runs, drill-into-subagent, share-the-decision) via graph-capture project.
+  - All clip tests pass; videos copied to gitignored video directory with manifest.
+  - Ready for review gate approval before full clip production.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -619,8 +627,8 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Library boundary: pinned commit (8e6a18e), generic lifts only (none needed), auto-docs (TypeDoc)
 
 ### Then (Phase 13)
-- [ ] Clip manifest (`docs/spacegraph/demo/clips.json`) authored
-- [ ] **Sample clip gate:** record 3–4 key clips (Why this failed; Live while it runs; Drill into subagent; Share the decision) → **await approval**
+- [x] Clip manifest (`docs/spacegraph/demo/clips.json`) authored
+- [x] **Sample clip gate:** record 3–4 key clips (Why this failed; Live while it runs; Drill into subagent; Share the decision) → **await approval**
 - [ ] After approval: record remaining clips per manifest
 - [ ] One voice + captions; **no music, no SFX**
 - [ ] Review gate with ≥3 outsiders
