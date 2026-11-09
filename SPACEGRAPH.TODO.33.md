@@ -14,8 +14,9 @@
 > **⚠ PIVOT (2026-11-09):** Phase 13 video work paused. The clip-based video plan assumed the current
 > UI was demonstrable. Review revealed the current surfaces don't tell a coherent story because the
 > paradigm (separate panel, mode switch) is the problem. **See `SPACEGRAPH.TODO.34.md`** for the
-> unified component redesign that enables transcript-inline, popover, and fullscreen modes from one
-> configurable component — the actual prerequisite for a meaningful demo.
+> unified-component, multi-surface and capability plan — one `SessionGraph` across inline, popover,
+> panel, split and fullscreen surfaces, nine lenses, graph↔UI embedding, and the instance/performance
+> groundwork — the actual prerequisite for a meaningful demo.
 
 **Directives:**
 
@@ -641,17 +642,22 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [ ] One voice + captions; **no music, no SFX**
 - [ ] Review gate with ≥3 outsiders
 
-**Pivot:** Video paused. See `SPACEGRAPH.TODO.34.md` for unified component work that enables the paradigm worth demoing.
+**Pivot:** Video paused. See `SPACEGRAPH.TODO.34.md` (r1) for the unified component, multi-surface and
+capability plan that makes the paradigm worth demoing.
 
-### Next (TODO.34 — Unified Component & Multi-Paradigm)
-- [ ] Extract `SessionGraph` from `GraphView` (Phase 14.1)
-- [ ] HTMLNode Solid bridge (Phase 14.2)
-- [ ] Transcript inline integration (Phase 15)
-- [ ] Host surface unification (Phase 16)
-- [ ] Configuration & persistence (Phase 17)
-- [ ] Experiments & validation (Phase 18)
+### Next (TODO.34 — Unified Component, Multi-Paradigm, Graph-Infused Development)
+- [ ] **Phase 14** — Core extraction and instance isolation (fix G5/G6 defects, scoped bus, `SessionGraph`)
+- [ ] **Phase 15** — Embedding bridge (node widget overlay, static HTML, fractal node, composer widget)
+- [ ] **Phase 16** — Graph in OpenCode UI (inline preview, graph transcript surface, subagent drill)
+- [ ] **Phase 17** — Surface unification and cross-surface linking
+- [ ] **Phase 18** — Configuration, nine lenses, flags, keyboard
+- [ ] **Phase 19** — Latent capabilities C1–C18 (investigation, review, compaction, time travel, widgets, ...)
+- [ ] **Phase 20** — Performance and scale (lazy mount, patches, renderer strategy, strobe budgets)
+- [ ] **Phase 21** — Accessibility, theming, i18n, RTL
+- [ ] **Phase 22** — Experiments and validation (narrative fixture, counters, cohorts)
+- [ ] **Phase 23** — Docs, migration, flag graduation, SDK/library proposals
 
-### Last (Phase 14 → TODO.34 Phase 19+)
+### Last (TODO.33 Phase 14 → TODO.34 Phase 22)
 - [ ] Readiness checklist
 - [ ] T2.2 study run and disposition
 
