@@ -1,0 +1,10 @@
+/**
+ * V116 — micro-actions: hover-only copy icon on cards.
+ */
+[data-component="session-graph-view"] [data-kind]:hover .card-copy-btn {
+  opacity: 1 !important;
+}
+
+.card-copy-btn:hover {
+  color: var(--text-strong) !important;
+}

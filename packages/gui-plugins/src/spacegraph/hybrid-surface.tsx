@@ -48,7 +48,7 @@ export function HybridSurface(props: {
         />
         <GraphToolbarViewControls
           i18n={i18n}
-          onExport={(format, model) => props.model.export(props.session, format)}
+          onExport={(format: "svg" | "json" | "html", _model: unknown) => props.model.export(props.session, format)}
           renderModel={props.model.graph(props.session)()}
           onCopyPermalink={() => props.model.copyPermalink(props.session)}
         />

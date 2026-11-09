@@ -10,7 +10,7 @@ import {
   type SetupContext,
 } from "@opencode/plugin/gui"
 import { createSignal, lazy, onCleanup, onMount, Suspense, type ParentProps } from "solid-js"
-import { LAYOUTS } from "@opencode/session-ui/graph"
+import { LAYOUTS } from "../internal/graph"
 import definition from ".."
 import { createSpacegraph } from "../model"
 import { MapSurface } from "../map-surface"
@@ -120,7 +120,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     const value = hash().slice(prefix.length)
     const [head, ...rest] = value.split(":")
     // Check both layout strategies (node-link) and summary layouts (ribbon, matrix)
-    const layout = LAYOUTS.find((candidate) => candidate === head)
+    const layout = LAYOUTS.find((candidate: string) => candidate === head)
 
     if (rest.length && layout) return { layout, node: rest.join(":") }
 

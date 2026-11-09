@@ -20,13 +20,13 @@ export default function SpacegraphSettings() {
   const ctx = usePlugin<typeof definition>()
   const prefs = ctx.stores.prefs
 
-  const level = () => prefs.value.level ?? "overview"
-  const layout = () => prefs.value.layout ?? "lanes"
-  const depth = () => prefs.value.depth ?? "flat"
-  const arrangement = () => prefs.value.arrangement ?? "side"
-  const side = () => prefs.value.side ?? "end"
+  const level = () => (prefs.value.level ?? "overview") as ZoomLevel
+  const layout = () => (prefs.value.layout ?? "lanes") as Layout
+  const depth = () => (prefs.value.depth ?? "flat") as DepthMode
+  const arrangement = () => (prefs.value.arrangement ?? "side") as GraphArrangement
+  const side = () => (prefs.value.side ?? "end") as GraphSide
 
-  const levelLabel = (value: ZoomLevel) => {
+  const levelLabel = (value: ZoomLevel): string => {
     switch (value) {
       case "overview":
         return ctx.t("level.overview")
@@ -34,10 +34,12 @@ export default function SpacegraphSettings() {
         return ctx.t("level.execution")
       case "detail":
         return ctx.t("level.detail")
+      default:
+        return value satisfies never
     }
   }
 
-  const layoutLabel = (value: Layout) => {
+  const layoutLabel = (value: Layout): string => {
     switch (value) {
       case "lanes":
         return ctx.t("layout.lanes")
@@ -55,10 +57,12 @@ export default function SpacegraphSettings() {
         return ctx.t("layout.matrix")
       case "log":
         return ctx.t("layout.log")
+      default:
+        return value satisfies never
     }
   }
 
-  const depthLabel = (value: DepthMode) => {
+  const depthLabel = (value: DepthMode): string => {
     switch (value) {
       case "flat":
         return ctx.t("depth.flat")
@@ -68,10 +72,12 @@ export default function SpacegraphSettings() {
         return ctx.t("depth.depthStack")
       case "orbit":
         return ctx.t("depth.orbit")
+      default:
+        return value satisfies never
     }
   }
 
-  const arrangementLabel = (value: GraphArrangement) => {
+  const arrangementLabel = (value: GraphArrangement): string => {
     switch (value) {
       case "stacked":
         return ctx.t("arrangement.stacked")
@@ -79,10 +85,12 @@ export default function SpacegraphSettings() {
         return ctx.t("arrangement.side")
       case "floating":
         return ctx.t("arrangement.floating")
+      default:
+        return value satisfies never
     }
   }
 
-  const sideLabel = (value: GraphSide) => (value === "start" ? ctx.t("side.start") : ctx.t("side.end"))
+  const sideLabel = (value: GraphSide): string => (value === "start" ? ctx.t("side.start") : ctx.t("side.end"))
 
   const Row = (props: { label: string; value: () => string; act: () => void }) => (
     <div class="flex items-center justify-between gap-4">
