@@ -103,6 +103,7 @@ import { useDisplayPositions } from "./useDisplayPositions"
 import { useRenderCard } from "./useRenderCard"
 import { createManualPositions } from "./useManualPositions"
 import { useCanvasRegionProps } from "./useCanvasRegionProps"
+import { useSpatialMemory } from "./useSpatialMemory"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -357,6 +358,9 @@ export const GraphView = (props: GraphViewProps) => {
 
     // Trust lens
     trustLens,
+
+    // Manual layout
+    setManual,
 
     announce,
   } = state
@@ -640,6 +644,19 @@ export const GraphView = (props: GraphViewProps) => {
 
   // Display positions
   const displayPositions = useDisplayPositions(geometry, manual) as () => Map<string, Position>
+
+  // Spatial memory: persist/restore positions and selection across visits
+  useSpatialMemory({
+    model: demoModel,
+    layout,
+    level,
+    positions: displayPositions,
+    selection: () => selection()[0],
+    onRestore: (positions, sel) => {
+      setManual("positions", positions)
+      if (sel) select(sel, false)
+    },
+  })
 
   // Merged trace overlay (explicit trace + focus dimming)
   const mergedTrace = createMergedTraceOverlay(annotations, demoModel, level, () => selection())
