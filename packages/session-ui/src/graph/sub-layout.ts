@@ -88,7 +88,7 @@ export function errorSubLayout(
 ): Map<string, AdapterPosition> {
   const idx = nodeIndex(model)
   const group = idx.get(groupID)
-  if (!group || group.kind !== "error" || !group.clusterOf) return positions
+  if (!group || group.kind !== "error-group" || !group.clusterOf) return positions
 
   const newPositions = new Map(positions)
   const members = group.clusterOf
@@ -131,7 +131,7 @@ export function fileSubLayout(
 ): Map<string, AdapterPosition> {
   const idx = nodeIndex(model)
   const group = idx.get(groupID)
-  if (!group || group.kind !== "file" || !group.clusterOf) return positions
+  if (!group || group.kind !== "file-group" || !group.clusterOf) return positions
 
   const newPositions = new Map(positions)
   const members = group.clusterOf

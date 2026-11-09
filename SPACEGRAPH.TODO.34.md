@@ -82,7 +82,7 @@
 | G16 | **Group kinds never created.** `compaction-group` and `facet-group` exist in vocabulary; no builder emits them, so two sub-layouts are unreachable. | `vocabulary.ts:189-223`, builders |
 | G17 | **`adaptive.zoomModel` is unused.** An alternative zoom model exists with no consumer. | `adaptive.ts:15-33` |
 | G18 | **Duplicate pure package.** `internal/graph` is a near-verbatim copy; every vocabulary change must be applied twice. | `packages/gui-plugins/src/spacegraph/internal/graph` |
-| G19 | **Two `reviewChanges` with different signatures.** `selectors.ts` variant returns `turnStats`; `review.ts` variant is the exported one. | `selectors.ts:543`, `review.ts:13` |
+| G19 | **Two dead `reviewChanges` with different signatures.** `selectors.ts` variant returns `turnStats`; `review.ts` variant is the exported one. | `selectors.ts:543`, `review.ts:13` |
 | G20 | **`export-cli.ts` referenced but missing.** | `packages/session-ui/package.json:56` |
 | G21 | **`bandChange` is dead through the adapter.** Renderer mounts with `chrome:false`, so zoom bands never register. | `packages/spacegraph-renderer/src/index.ts:59,184-196` |
 | G22 | **Cytoscape renderer is unused.** Registry exposes only `spacegraph`; radius 300 recommended vs cytoscape 1000. | `renderer-registry.ts:5-15` |
@@ -381,18 +381,18 @@ interfere.
 
 ### 14.1 Fix pre-extraction defects
 
-- [ ] Fix spatial memory restore (G5): write the manual store that rendering reads; add a regression
+- [x] Fix spatial memory restore (G5): write the manual store that rendering reads; add a regression
       test that fails on the old wiring.
-- [ ] Raise `rendererReady` from `GraphCanvas.onReady` (G6); un-dead follow-log framing and
+- [x] Raise `rendererReady` from `GraphCanvas.onReady` (G6); un-dead follow-log framing and
       `detailFraming: "card"`. Add a component test.
-- [ ] Remove the duplicate structural refit (G7); keep the one in `useFitEffects`.
-- [ ] Align popover constants (G8); single source for gap/width/height.
-- [ ] Delete duplicate manual/notes state in `useGraphState` (G9) or make GraphView use it; pick one.
-- [ ] Fix `useInspectorResize` max-width math (G11).
-- [ ] Fix dead sub-layout guards (G15) — compare against `error-group`/`file-group`.
-- [ ] Resolve duplicate `reviewChanges` (G19) — keep one, re-export the other as deprecated alias.
-- [ ] Add the missing `export-cli.ts` or remove the stale script (G20).
-- [ ] Document `compaction-group`/`facet-group` as reserved or create them (G16).
+- [x] Remove the duplicate structural refit (G7); keep the one in `useFitEffects`.
+- [x] Align popover constants (G8); single source for gap/width/height.
+- [x] Delete duplicate manual/notes state in `useGraphState` (G9) or make GraphView use it; pick one.
+- [x] Fix `useInspectorResize` max-width math (G11).
+- [x] Fix dead sub-layout guards (G15) — compare against `error-group`/`file-group`.
+- [x] Resolve duplicate `reviewChanges` (G19) — keep one, re-export the other as deprecated alias.
+- [x] Add the missing `export-cli.ts` or remove the stale script (G20).
+- [x] Document `compaction-group`/`facet-group` as reserved or create them (G16).
 
 ### 14.2 Introduce the instance context and bus
 
@@ -592,11 +592,11 @@ one off locally, use `OPENCODE_FLAGS="-graph_inline_preview"`; to exercise all a
 A flag makes a capability **available**; a preference decides whether it is **active by default**.
 An affordance renders only when both are on, which keeps the transcript quiet even in dev builds.
 The Phase 14 extraction is a **rearchitecture**, not a compatibility shim. We have no users; there is no
-  backwards compatibility requirement. The existing component suite is the correctness gate, not
-  pixel identity. `GraphView` becomes a composition of `SessionGraph` + `GraphChrome`; if a prop
-  default or interaction improves, change it. What must not regress: the component suite (25 specs
-  green), the capture gate (32 frames), and the plugin install on upstream. Everything else is fair
-  game.
+backwards compatibility requirement. The existing component suite is the correctness gate, not
+pixel identity. `GraphView` becomes a composition of `SessionGraph` + `GraphChrome`; if a prop
+default or interaction improves, change it. What must not regress: the component suite (25 specs
+green), the capture gate (32 frames), and the plugin install on upstream. Everything else is fair
+game.
 
 ### 18.4 Keyboard
 

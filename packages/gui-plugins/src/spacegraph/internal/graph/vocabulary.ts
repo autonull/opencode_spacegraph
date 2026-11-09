@@ -214,7 +214,7 @@ export const NODE_KINDS = [
   "issue",
   // C1 — reader-authored note (a node like any other).
   "note",
-  // Group kinds for fractal unfold (Phase 4.5)
+  // Group kinds for fractal unfold (Phase 4.5) — RESERVED: not yet created by builders
   "file-group",
   "error-group",
   "subagent-group",
