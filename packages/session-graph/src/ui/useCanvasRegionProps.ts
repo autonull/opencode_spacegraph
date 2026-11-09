@@ -97,8 +97,11 @@ export function useCanvasRegionProps(
     onError: (error: string | undefined) => void
   },
 ): BuildCanvasRegionPropsInput {
-  const projectionSignal = createMemo(() => state.projection())
-  const depthSignal = createMemo(() => state.depth())
+  // state.projection and state.depth are already accessors (getters) that read from the store.
+  // Wrapping them in createMemo breaks reactivity because the memo calls the getter
+  // which doesn't create a proper dependency on the store property.
+  const projectionSignal = state.projection
+  const depthSignal = state.depth
 
   return {
     // Core rendering

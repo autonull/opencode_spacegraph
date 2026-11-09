@@ -1,6 +1,6 @@
 # SpaceGraph for OpenCode — Fork README
 
-> **Status (2026-11-07):** Prototype complete, verified, rebased onto upstream/dev. Phase 6 (SpaceGraphJS hardening) done. **Current priority:** Fix F2-F9 e2e failures → demo video → T2.2 study. See `SPACEGRAPH.TODO.31.md` for active plan.
+> **Status (2026-11-08):** Prototype complete, verified, rebased onto upstream/dev. Phase 6 (SpaceGraphJS hardening) done. Phase 4 close-out, Phase 5 discovery, Phase 6 library hardening complete. **Current priority:** Final verification — capture gate (42/42), component tests green, typecheck clean. See `SPACEGRAPH.TODO.32.md` for active plan. `SPACEGRAPH.TODO.31.md` is superseded.
 
 ---
 
@@ -250,7 +250,7 @@ Detail: [`SPACEGRAPH.md §16`](SPACEGRAPH.md#16-path-to-a-fully-plugin-based-spa
 
 **SpaceGraphJS library:** [`spacegraphjs/README.md`](../spacegraphjs/README.md), [`spacegraphjs/docs/`](../spacegraphjs/docs/), [`spacegraphjs/ROADMAP.md`](../spacegraphjs/ROADMAP.md)
 
-**Active plan:** [`SPACEGRAPH.TODO.31.md`](SPACEGRAPH.TODO.31.md)
+**Active plan:** [`SPACEGRAPH.TODO.32.md`](SPACEGRAPH.TODO.32.md)
 
 ---
 

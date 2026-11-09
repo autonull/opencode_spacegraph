@@ -268,13 +268,17 @@ function createGetter<K extends keyof GraphState>(state: GraphState, key: K): ()
 }
 
 function createSetter<K extends keyof GraphState>(setStateFn: SetStoreFunction<GraphState>, key: K): (value: GraphState[K] | ((prev: GraphState[K]) => GraphState[K])) => void {
-  return (value) => {
+  const fn = (value: GraphState[K] | ((prev: GraphState[K]) => GraphState[K])) => {
+    console.log('[createSetter] Called with', { key, value, valueType: typeof value })
     if (typeof value === "function") {
       setStateFn(key, value)
     } else {
       setStateFn(key, value)
     }
+    console.log('[createSetter] After setStateFn')
   }
+  console.log('[createSetter] Created setter for', key)
+  return fn
 }
 
 export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {

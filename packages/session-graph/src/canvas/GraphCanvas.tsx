@@ -302,9 +302,13 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   })
   createEffect(() => {
     const projection = typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
-    const value = typeof props.depth === "function" ? props.depth() : (props.depth ?? (projection === "3d" ? "orbit" : "flat"))
+    // Only default depth from projection when depth is not explicitly provided (undefined).
+    // If depth is explicitly set (even to "flat"), use that value.
+    const depthProp = typeof props.depth === "function" ? props.depth() : props.depth
+    const value = depthProp ?? (projection === "3d" ? "orbit" : "flat")
 
     if (!mounted) return
+    console.log('[GraphCanvas] Depth effect running', { depthProp, projection, value, depthType: typeof props.depth })
     mounted.renderer.setDepth(value)
     host.dataset.graphDepth = value
   })
