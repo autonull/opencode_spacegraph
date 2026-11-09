@@ -4,6 +4,7 @@ import {
   GRAPH_ARRANGEMENTS,
   GRAPH_SIDES,
   LAYOUTS,
+  LAYOUT_STRATEGIES,
   ZOOM_LEVELS,
   type DepthMode,
   type GraphArrangement,
@@ -14,13 +15,17 @@ import {
   type DetailMode,
 } from "@opencode/session-ui/graph"
 import type definition from "./index"
-import { buildGraph, layoutGraph } from "@opencode/session-ui/graph"
+import { buildGraphIncremental, layoutGraph, type GraphLayout, type IncrementalBuilderState } from "@opencode/session-ui/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 
 function next<T>(values: readonly T[], current: T) {
   const index = values.indexOf(current)
 
   return values[(index + 1) % values.length] ?? current
+}
+
+function toLayoutStrategy(layout: Layout): LayoutStrategy {
+  return LAYOUT_STRATEGIES.includes(layout as LayoutStrategy) ? (layout as LayoutStrategy) : "lanes"
 }
 
 export function createSpacegraph(ctx: SetupContext<typeof definition>) {
@@ -30,13 +35,38 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const sessionValue = (session: MountedSession) => store(session).value
   const prefValue = () => prefs.value
 
-  /** Shared graph memo - built once per session, reused by panel, full-map, hybrid, etc. */
+  /** Incremental graph builder state per session. */
+  const graphState = new Map<string, { builderState: IncrementalBuilderState; layout: GraphLayout }>()
+
+  /** Shared graph memo - built incrementally per session, reused by panel, full-map, hybrid, etc. */
   const graph = (session: MountedSession) =>
     createMemo(() => {
       const status: { type: "busy" | "idle" } =
         session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
 
-      return buildGraph({ messages: session.server.data.session.message.list(session.id), status })
+      const key = session.id
+      const prev = graphState.get(key)
+
+      const { graph: builtGraph, state } = buildGraphIncremental({
+        messages: session.server.data.session.message.list(session.id),
+        status,
+        snapshot: prev?.builderState.snapshot,
+        sessionID: prev?.builderState.sessionID,
+        lineage: prev?.builderState.lineage,
+        diffByTurn: prev?.builderState.diffByTurn,
+        previousState: prev?.builderState,
+      })
+
+      // Compute incremental layout preserving previous positions
+      const layout = layoutGraph(builtGraph, {
+        strategy: toLayoutStrategy(sessionValue(session)?.layout ?? prefValue().layout ?? "lanes"),
+        previous: prev?.layout?.positions,
+      })
+
+      // Store the new state for next incremental update
+      graphState.set(key, { builderState: state, layout })
+
+      return builtGraph
     })
 
   return {
