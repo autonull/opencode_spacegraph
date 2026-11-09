@@ -5,10 +5,10 @@
 > complete. Capture gate green (`graph/capture.spec.ts`: 64/64 across both projects, 42 frames);
 > session-graph component suite green (55 passed, 12 annotated skips); plugin-spacegraph bundle
 > tests green (3/3); typecheck clean. The depth-spectrum reactive loop (frames 18/19/31) and the
-> badge self-invalidation loop (F10) are fixed. The live demo was recorded continuously and rendered
-> to `demo.mp4` / `demo.webm` / `demo-kidnapper.*` (3:38, 1440×900). The T2.2 study remains deferred
-> by its own gate. See `SPACEGRAPH.TODO.32.md` for the active plan.
-> `SPACEGRAPH.TODO.31.md` is superseded.
+> badge self-invalidation loop (F10) are fixed. The live demo was recorded continuously and rendered;
+> the first cut is **not shareable** and needs a storyboard-first re-cut (TODO.32 §6.5). Generated
+> media is gitignored and never committed. The T2.2 study remains deferred by its own gate. See
+> `SPACEGRAPH.TODO.32.md` for the active plan. `SPACEGRAPH.TODO.31.md` is superseded.
 
 ---
 
