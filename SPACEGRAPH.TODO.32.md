@@ -89,8 +89,8 @@ by its own gate.
 - **Demo video rendered.** `generate-demo-video.ts` now renders one paced clip per frame (real
   interaction window, then a freeze long enough for that frame's narration) instead of concatenating
   narration back-to-back, so narration no longer runs past the picture. Output: `demo.mp4`,
-  `demo.webm`, `demo-kidnapper.mp4`, `demo-kidnapper.webm` (218s, 1440×900). Build intermediates are
-  gitignored.
+  `demo.webm`, `demo-kidnapper.mp4`, `demo-kidnapper.webm` (218s, 1440×900). **r36: quality rejected
+  for sharing; media is gitignored and the re-cut plan lives in §6.5.**
 
 ---
 
@@ -240,7 +240,7 @@ guide as the deliverable.
 
 **Prerequisites before recruiting:**
 1. F2-F9 fixed — `graph/capture.spec.ts` passes 64/64 across both projects (42 frames; gallery frame 30 removed). ✅ 2026-11-08 r35
-2. Live demo video generated and reviewed (5s hook + narrated capture with stylized voice) — ✅ rendered 2026-11-08 r35 (`demo.mp4` / `demo.webm`, 3:38); external review still to do
+2. Live demo video generated and reviewed (5s hook + narrated capture with stylized voice) — pipeline + first cut exist (2026-11-08 r35). **Quality rejected 2026-11-09 (r36): re-cut from a storyboard first — see §6.5.**
 3. System polished for external evaluation — capture/component/typecheck gates green ✅
 
 The study is elapsed-time-bound but **recruiting starts only after the demo gate**. Blocking 8 is acceptable — a negative study on a broken system wastes everyone's time.
@@ -370,6 +370,48 @@ host-integration doc complete (incl. dual-loader pattern); folded dividend measu
 consumer confirmed unblocked against the new gitlink f90b609 + SGF commit (they pin; they do not
 get a release).
 
+### 6.5 Demo video quality — future session (r36)
+
+The r35 render proves the pipeline but is **not shareable**: it is a paced walk through layouts, not a
+story, and the pacing is visible as frozen frames. Treat the video as a product surface with its own
+script and review gate; do not ship it as-is.
+
+**Diagnosis of the r35 cut**
+- No narrative. It cycles layout modes; a viewer never learns what question the map answers.
+- Freeze-frame pacing (`tpad` after each real window) reads as stutter, not emphasis.
+- The camera never performs: no intentional push-in, depth transition, or auto-zoom at a beat.
+- No cursor/click affordance, so actions look like the UI changed by itself.
+- Narration is dense and runs the full scene; no captions, music, or sound design.
+- Source is 1440×900 at 25 fps with dev chrome; encode is 30 fps H.264 crf 20.
+
+**Next-session plan**
+1. **Storyboard first (half day).** Two cuts: a 30 s teaser and a 3–4 min full tour. Fixed arc:
+   the problem (agent changed a file, test failed) → open the map → follow the failure chain →
+   "Why?" trace → fix/verify → compaction or subagent contribution → close. Every scene answers a
+   question from `SPACEGRAPH.md` §1; layout cycling is a B-roll, never the story.
+2. **Scripted capture, not a UI tour.** Record a real or canonical task with deliberate pauses. Drive
+   beats through the renderer (`fit`, `focus`, `setViewport`, depth) so the camera moves on purpose.
+3. **Show the input.** Add a cursor ring/click ripple overlay and short affordance captions
+   ("click to inspect", "why did this run?"). Keep the transcript and the map in frame when the
+   relationship is the point.
+4. **Replace freezes with motion.** Either pause during capture (preferred) or apply a slow
+   push-in/pan to held scenes; no static `tpad` holds in the final cut.
+5. **Capture spec.** 1920×1080 (or 2560×1440 downscaled) at 60 fps, clean profile: fixed dark theme,
+   no dev banners/warnings, stable fonts, no notifications. Keep `reducedMotion: false` only where a
+   transition is the subject.
+6. **Audio.** One voice, 1–2 sentences per scene, loudness-normalized to −14 LUFS. Add a quiet music
+   bed and transition SFX. Drop the "kidnapper" pitch effect for external cuts — it reads as a gimmick;
+   keep it only as an alternate. Ship burned-in captions or an SRT.
+7. **Output ladder.** 30 s teaser (H.264 crf 18 + AV1/VP9), 90 s social cut, full tour. Host as a
+   release/PR asset or a static page. **Media assets stay gitignored** (`docs/spacegraph/video/`);
+   attach them to the PR or release, never commit them.
+8. **Review gate.** Before publishing, watch-through with ≥3 people outside the project; ask "would
+   you try this / what did it do?". Iterate the storyboard, not the encode. Keep source clips, the
+   manifest, and the scene script so a re-cut is cheap.
+
+**Unblock:** r35 capture flow and generator are in place; the next session only needs the storyboard,
+a clean recording profile, and the motion/audio pass. No product code is blocked on it.
+
 ---
 
 ## Phase 7 — Addressable improvements (no external blockers)
@@ -450,6 +492,15 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 
 ### 8.4 Revision log
 
+- **r36 (2026-11-09):** Demo media review and asset policy.
+  - The r35 video is **not shareable**: it is a paced layout tour with freeze-frame holds, no task
+    story, no camera performance, no cursor affordance, and dense narration. Keep the pipeline,
+    re-cut from a storyboard next session — see §6.5.
+  - **Video/audio assets are no longer tracked.** All generated media under
+    `docs/spacegraph/video/` (captures, narration, TTS cache, renders, timing manifests) is removed
+    from the index and gitignored; files remain on disk. Attach renders to a PR/release instead.
+    History still contains earlier media commits; purging them needs a history rewrite and force-push
+    (explicit approval required, not done here).
 - **r35 (2026-11-08):** Verification gate closed — depth spectrum and badge loops fixed.
   - **F3 frames 18/19/31 (layered, depth-stack, perspective) fixed.** The canvas committed depth
     from an effect that also read `projection`; every camera commit emitted `viewportChange`, the
@@ -606,7 +657,8 @@ Layout Gallery view (removed from capture matrix).**
 - [x] **Segment 1 live demo video** — record frames 01-06 (log through 3D orbit) with Playwright video, sync beacon, `capture-segment1.spec.ts` passes in ~36s
 - [x] **Improved video generator v2** — `generate-demo-video.ts` rewritten: single concatenated narration track (no overlapping amix), rubberband pitch=0.89 ratio, `-y` overwrite, sync beacon detection, frame-accurate timing from marks.json
 - [x] **Segment 2+ live demo video** — capture flow fixed in r35 (close NLQ dialog after frame 40, return to map before frame 42, 30-minute budget); continuous recording passes (30 marks) and is copied to `capture.webm`
-- [x] **Full demo video generation** — `generate-demo-video.ts` rendered `demo.mp4` / `demo.webm` / `demo-kidnapper.*` (218s, crf 20, VP9 webm) with paced frame clips and per-frame narration
+- [x] **Full demo video generation** — `generate-demo-video.ts` rendered `demo.mp4` / `demo.webm` / `demo-kidnapper.*` (218s, crf 20, VP9 webm) with paced frame clips and per-frame narration. **Pipeline proof only; quality rejected r36.**
+- [ ] **Demo video re-cut (storyboard-first)** — 30 s teaser + 3–4 min story, scripted camera, cursor/click overlay, no freeze holds, 60 fps clean profile, sound design and captions; review with outsiders. See §6.5. Assets stay gitignored.
 - [x] Remove Layout Gallery — frame 30 deleted from capture matrix; users cycle layouts with `mod+shift+l`
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 

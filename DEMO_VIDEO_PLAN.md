@@ -16,7 +16,26 @@ Video must hook viewers immediately with flashy action, showcase SpaceGraphJS fe
 - **Rendered output (2026-11-08 r35):** `generate-demo-video.ts` produces one paced clip per frame
   (real motion, then a freeze sized to that frame's narration) plus a single narration track on the
   new timeline. `demo.mp4` / `demo.webm` / `demo-kidnapper.mp4` / `demo-kidnapper.webm`: 218s, 1440×900,
-  crf 20. Build intermediates live in the gitignored `docs/spacegraph/video/work/`.
+  crf 20.
+- **Quality decision (2026-11-09 r36):** the r35 cut is **not shareable** — it is a paced layout tour,
+  not a story, with visible freeze-frame holds and no camera/cursor performance. Keep it only as a
+  pipeline proof. The re-cut plan is `SPACEGRAPH.TODO.32.md` §6.5.
+- **Asset policy (2026-11-09 r36):** generated media is **gitignored** (`docs/spacegraph/video/`).
+  Never commit captures, narration, TTS caches, renders, or timing manifests; attach them to a PR or
+  release.
+
+## Next iteration (storyboard-first)
+
+1. **Storyboard before recording.** 30 s teaser + 3–4 min full tour: failing test → open map →
+   failure chain → "Why?" trace → fix/verify → compaction/subagent → close. Layouts are B-roll.
+2. **Scripted capture with camera beats.** Drive `fit`/`focus`/`setViewport`/depth transitions
+   deliberately; show a cursor ring and click ripple so actions are legible.
+3. **Kill the freezes.** Pause during capture, or use a slow push-in on held scenes.
+4. **Clean 60 fps profile.** 1920×1080 or 2560×1440, dark theme, no dev warnings, stable fonts.
+5. **Shorter narration + sound.** 1–2 sentences per scene, −14 LUFS, quiet music bed, captions.
+   Drop the "kidnapper" effect for external cuts.
+6. **Output ladder.** 30 s teaser, 90 s social cut, full tour; H.264 crf 18 + AV1/VP9.
+7. **Review gate.** Watch-through with ≥3 outsiders before publishing; iterate the storyboard.
 
 ## Approach (Updated 2026-11-08, v2 pipeline)
 
