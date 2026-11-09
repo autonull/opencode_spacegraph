@@ -46,7 +46,7 @@ export function renderInspectorPanel(props: RenderInspectorPanelProps): JSX.Elem
 
   const node = selectedNode()
   return (
-    <Show when={node} keyed fallback={<GraphInspectorPanel sheet={sheet} title={title} onClose={onClose} i18n={i18n} model={model()} node={undefined} diffSource={diffSource} renderSummary={renderSummary} link={link} onCopyView={onCopyView} onSelect={onSelect} onOpenTranscript={onOpenTranscript ? openInTranscript : undefined} onOpenSession={onOpenSession} traceKind={annotations.traceKind()} onTraceWhy={annotations.traceWhy} onTraceLedHere={annotations.traceLedHere} onTraceRelated={annotations.traceRelated} onClearTrace={annotations.clearTrace} onCopyTraceOutline={annotations.copyTraceOutline} onEditNote={annotations.editNote} onDeleteNote={annotations.deleteNote} onCopyNote={annotations.copyNote} />}>
+    <Show when={node} keyed fallback={<GraphInspectorPanel sheet={sheet} title={title} onClose={onClose} i18n={i18n} model={model()} node={undefined} diffSource={diffSource} renderSummary={renderSummary} link={link} onCopyView={onCopyView} onSelect={onSelect} onOpenTranscript={onOpenTranscript ? openInTranscript : undefined} onOpenSession={onOpenSession} traceKind={annotations.traceKind()} onTraceWhy={annotations.traceWhy} onTraceLedHere={annotations.traceLedHere} onTraceRelated={annotations.traceRelated} onTraceBack={annotations.traceBack} onTraceForward={annotations.traceForward} onClearTrace={annotations.clearTrace} onCopyTraceOutline={annotations.copyTraceOutline} onEditNote={annotations.editNote} onDeleteNote={annotations.deleteNote} onCopyNote={annotations.copyNote} traceHistory={annotations.traceHistory()} />}>
       {(node) => (
         <GraphInspectorPanel
           sheet={sheet}
@@ -66,11 +66,14 @@ export function renderInspectorPanel(props: RenderInspectorPanelProps): JSX.Elem
           onTraceWhy={annotations.traceWhy}
           onTraceLedHere={annotations.traceLedHere}
           onTraceRelated={annotations.traceRelated}
+          onTraceBack={annotations.traceBack}
+          onTraceForward={annotations.traceForward}
           onClearTrace={annotations.clearTrace}
           onCopyTraceOutline={annotations.copyTraceOutline}
           onEditNote={annotations.editNote}
           onDeleteNote={annotations.deleteNote}
           onCopyNote={annotations.copyNote}
+          traceHistory={annotations.traceHistory()}
         />
       )}
     </Show>

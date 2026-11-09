@@ -17,9 +17,12 @@ export type GraphInspectorPanelProps = {
   onOpenTranscript: ((id: string) => void) | undefined
   onOpenSession: ((sessionID: string) => void) | undefined
   traceKind: "why" | "led-here" | "related" | null
+  traceHistory: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
   onTraceWhy: UseGraphAnnotationsReturn["traceWhy"]
   onTraceLedHere: UseGraphAnnotationsReturn["traceLedHere"]
   onTraceRelated: UseGraphAnnotationsReturn["traceRelated"]
+  onTraceBack: UseGraphAnnotationsReturn["traceBack"]
+  onTraceForward: UseGraphAnnotationsReturn["traceForward"]
   onClearTrace: UseGraphAnnotationsReturn["clearTrace"]
   onCopyTraceOutline: UseGraphAnnotationsReturn["copyTraceOutline"]
   onEditNote: UseGraphAnnotationsReturn["editNote"]

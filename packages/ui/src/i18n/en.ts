@@ -833,6 +833,10 @@ const source = {
   "ui.sessionGraph.trace.relatedAnnouncement": "Traced related nodes",
   "ui.sessionGraph.trace.why": "Why",
   "ui.sessionGraph.trace.whyAnnouncement": "Traced why this happened",
+  "ui.sessionGraph.trace.back": "Back",
+  "ui.sessionGraph.trace.backAnnouncement": "Traced back to {label}",
+  "ui.sessionGraph.trace.forward": "Forward",
+  "ui.sessionGraph.trace.forwardAnnouncement": "Traced forward to {label}",
 
   "ui.sessionGraph.turnMap.close": "Close",
   "ui.sessionGraph.turnMap.label": "Turn map",

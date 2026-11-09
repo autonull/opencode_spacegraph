@@ -33,7 +33,7 @@
 
 ---
 
-## Status (2026-11-09, r3)
+## Status (2026-11-09, r4)
 
 Inherits the r36 state of TODO.32: Phases 0′–6 complete; capture gate 64/64; component suite green;
 plugin bundle 3/3; typecheck clean. The r35 demo video is rejected for sharing. This revision
@@ -46,6 +46,10 @@ fixes, capture determinism with first-frame marker. All verification gates pass.
 **Phase 10.1 enabler implemented (r3):** Incremental graph updates via `IncrementalGraphBuilder`
 reusing previous state, preserving layout positions across updates. Plugin model updated to use
 incremental builds.
+
+**Phase 10.2 enabler implemented (r4):** Causal navigation loop ("Why?") via trace history stack
+with back/forward navigation and breadcrumb trail in inspector. Trace history persisted in
+`useGraphAnnotations`, breadcrumbs shown in `GraphDetailActions`, i18n keys added.
 
 ---
 
@@ -205,8 +209,10 @@ Nothing here is lifted into SpaceGraphJS unless it is generic and OpenCode actua
 
 ### 10.2 Causal navigation loop ("Why?")
 
-- [ ] **Enabler:** make "Why?" the primary action on an error/retry; walk evidence edges; keep a
-      breadcrumb of the chain; return to the start. Use the existing `forwardChain`/`why` selectors.
+- [x] **Enabler:** make "Why?" the primary action on an error/retry; walk evidence edges; keep a
+      breadcrumb of the chain; return to the start. Used the existing `forwardChain`/`why` selectors.
+      Added trace history and back/forward navigation in `useGraphAnnotations.ts`, trace breadcrumbs
+      in `GraphDetailActions`, i18n keys for trace navigation.
 - [ ] **Demo beat:** click a failed test, follow the evidence chain to the tool call, then to the fix.
 - [ ] **Kill:** if the chain is ambiguous on the canonical fixture, show the ambiguity instead of
       pretending; keep the trace as an inspection aid.
@@ -468,6 +474,13 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Updated plugin model in `packages/gui-plugins/src/spacegraph/model.ts` to use incremental builds with layout preservation via `layoutGraph(..., { previous: prev?.layout?.positions })`.
   - All unit tests (96), component tests (55), and e2e capture suite (64) pass.
 
+- **r4 (2026-11-09):** Phase 10.2 enabler implemented — causal navigation loop ("Why?").
+  - Added trace history stack with back/forward navigation in `useGraphAnnotations.ts`.
+  - Added trace breadcrumbs display in `GraphDetailActions` (inspector actions).
+  - Added trace navigation i18n keys: `trace.back`, `trace.forward`, `trace.backAnnouncement`, `trace.forwardAnnouncement`.
+  - Updated `GraphDetailProps` and `GraphInspectorPanelProps` with `traceHistory`, `onTraceBack`, `onTraceForward`.
+  - All unit tests (96), component tests (55), and e2e capture suite (64) pass.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -480,7 +493,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 
 ### Next (Phases 10–11)
 - [x] Live map during a run (incremental, append-only) — enabler implemented
-- [ ] Causal navigation loop ("Why?")
+- [x] Causal navigation loop ("Why?") — enabler implemented
 - [ ] Fractal drill-down with breadcrumb
 - [ ] Spatial memory across visits (spike)
 - [ ] Graph-guided compaction (research spike, honest kill)

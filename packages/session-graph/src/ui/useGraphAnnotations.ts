@@ -29,10 +29,13 @@ export type UseGraphAnnotationsReturn = {
   traceKind: () => TraceKind | null
   traceSource: () => string | null
   traceOverlay: () => TraceOverlay | null
+  traceHistory: () => readonly { kind: TraceKind; source: string; label: string }[]
   startTrace: (kind: TraceKind, source?: string) => void
   traceWhy: (nodeId: string) => void
   traceLedHere: (nodeId: string) => void
   traceRelated: (nodeId: string) => void
+  traceBack: () => void
+  traceForward: () => void
   clearTrace: () => void
   copyTraceOutline: () => void
   stepLitNode: (direction: 1 | -1) => string | undefined
@@ -53,6 +56,8 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
 
   const [traceKind, setTraceKind] = createSignal<TraceKind | null>(null)
   const [traceSource, setTraceSource] = createSignal<string | null>(null)
+  const [traceHistory, setTraceHistory] = createSignal<{ kind: TraceKind; source: string; label: string }[]>([])
+  const [historyIndex, setHistoryIndex] = createSignal(-1)
 
   const traceOverlay = createMemo<TraceOverlay | null>(() => {
     const kind = traceKind()
@@ -120,6 +125,14 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     options.onAnnounce(i18n.t("ui.sessionGraph.note.copied"))
   }
 
+  const pushHistory = (kind: TraceKind, source: string, label: string) => {
+    setTraceHistory((prev) => {
+      const truncated = prev.slice(0, historyIndex() + 1)
+      return [...truncated, { kind, source, label }]
+    })
+    setHistoryIndex((i) => i + 1)
+  }
+
   const clearTrace = () => {
     setTraceKind(null)
     setTraceSource(null)
@@ -132,12 +145,37 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     setTraceSource(from)
     const node = nodeLookup()(from)
     const label = node?.label ?? from
+    pushHistory(kind, from, label)
     const messages: Record<TraceKind, string> = {
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
       "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
       related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
     }
     options.onAnnounce(messages[kind])
+  }
+
+  const traceBack = () => {
+    if (historyIndex() <= 0) return
+    const newIndex = historyIndex() - 1
+    setHistoryIndex(newIndex)
+    const entry = traceHistory()[newIndex]
+    setTraceKind(entry.kind)
+    setTraceSource(entry.source)
+    const node = nodeLookup()(entry.source)
+    const label = node?.label ?? entry.source
+    options.onAnnounce(i18n.t("ui.sessionGraph.trace.backAnnouncement", { label }))
+  }
+
+  const traceForward = () => {
+    if (historyIndex() >= traceHistory().length - 1) return
+    const newIndex = historyIndex() + 1
+    setHistoryIndex(newIndex)
+    const entry = traceHistory()[newIndex]
+    setTraceKind(entry.kind)
+    setTraceSource(entry.source)
+    const node = nodeLookup()(entry.source)
+    const label = node?.label ?? entry.source
+    options.onAnnounce(i18n.t("ui.sessionGraph.trace.forwardAnnouncement", { label }))
   }
 
   const copyTraceOutline = () => {
@@ -196,10 +234,13 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     traceKind,
     traceSource,
     traceOverlay,
+    traceHistory: () => traceHistory(),
     startTrace,
     traceWhy,
     traceLedHere,
     traceRelated,
+    traceBack,
+    traceForward,
     clearTrace,
     copyTraceOutline,
     stepLitNode: step,
