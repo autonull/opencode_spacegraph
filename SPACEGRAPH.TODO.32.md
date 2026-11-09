@@ -42,10 +42,14 @@
 >     gallery is somewhat broken and not worth fixing. Users can cycle layouts normally with
 >     `mod+shift+l` and see results directly.
 
-**Status (2026-11-08, v32):** Supersedes `SPACEGRAPH.TODO.31.md`. Phases 0–4
+**Status (2026-11-08, r35):** Supersedes `SPACEGRAPH.TODO.31.md`. Phases 0–4
 are implemented (Phase 4.6 a11y complete 2026-11-06; Phase 4.9 publish deferred indefinitely).
 This revision: (a) carries forward the remaining work unchanged, (b) updates video strategy to
 live recording, (c) removes Layout Gallery from capture matrix, (d) updates video output path.
+**r35 closes the verification gate:** capture 64/64 across both projects (42 frames), component
+suite green, plugin bundle 3/3, typecheck clean. The live demo recording and narrated render are
+also complete (`demo.mp4`, `demo.webm`, `demo-kidnapper.*`, ~3:38). The T2.2 study remains deferred
+by its own gate.
 
 **Completed in this session (2026-11-08):**
 - Phase 0′: Branch reconciliation — restored missing files from upstream-sync-1105, added
@@ -62,6 +66,31 @@ live recording, (c) removes Layout Gallery from capture matrix, (d) updates vide
   (`?lens=unverified` banner + detection).
 - Plugin-spacegraph bundle component tests: panel & dialog pass (2/3); map surface has known F10 issue.
 - Demo video pipeline created but **deprecated** in favor of live recording approach.
+
+**Completed in this session (2026-11-08, r35):**
+- **F3 frames 18/19/31 fixed.** Root cause: `GraphCanvas` applied depth from an effect that both read
+  and committed camera state; each camera commit emitted `viewportChange`, which wrote host signals
+  and re-entered the effect synchronously (`runUpdates → completeUpdates` recursion). The loop
+  prevented `setProjection("3d")` from returning, so `changeDepth` never reached `setDepth`.
+  Fixed with applied-value guards for projection/depth/card-facing and by applying depth before
+  projection. Enabled the two previously `fixme`'d 3d component tests.
+- **F10 fixed.** `useGroupBadgeAnimation` stored `prevCounts` in a signal and wrote it on every run
+  (fresh `Map` each time), invalidating its own effect. Replaced with plain bookkeeping and timer
+  cleanup. Plugin-spacegraph bundle tests now 3/3.
+- Removed debug logging from `useGraphState`, `useCapabilityFallback`, `useGraphDetailMode`,
+  `GraphCanvas`, `GraphView`.
+- Re-enabled `graph-3d.spec.ts` depth tests (2 pass, 1 annotated skip); refreshed the stale
+  inspector-content assertion to the fixture's current tool input.
+- Verification: `packages/session-graph` typecheck clean, 92 unit tests pass, 55 component tests
+  pass (12 annotated skips), plugin bundle 3/3, `graph/capture.spec.ts` 64/64 across both projects.
+- Live capture flow (segment 2+) repaired: close the NLQ search dialog after frame 40, return to the
+  map before frame 42, raise the live-test budget to 30 minutes. Continuous capture now passes
+  (30 marks); per-frame live capture completes in ~59s.
+- **Demo video rendered.** `generate-demo-video.ts` now renders one paced clip per frame (real
+  interaction window, then a freeze long enough for that frame's narration) instead of concatenating
+  narration back-to-back, so narration no longer runs past the picture. Output: `demo.mp4`,
+  `demo.webm`, `demo-kidnapper.mp4`, `demo-kidnapper.webm` (218s, 1440×900). Build intermediates are
+  gitignored.
 
 ---
 
@@ -210,9 +239,9 @@ hybrid-as-entry; loss → publish the negative result, keep the library and the 
 guide as the deliverable.
 
 **Prerequisites before recruiting:**
-1. F2-F9 fixed — `graph:capture --mode=verify` passes 42/42 (gallery frame 30 removed)
-2. Live demo video generated and reviewed (5s hook + narrated capture with stylized voice)
-3. System polished for external evaluation
+1. F2-F9 fixed — `graph/capture.spec.ts` passes 64/64 across both projects (42 frames; gallery frame 30 removed). ✅ 2026-11-08 r35
+2. Live demo video generated and reviewed (5s hook + narrated capture with stylized voice) — ✅ rendered 2026-11-08 r35 (`demo.mp4` / `demo.webm`, 3:38); external review still to do
+3. System polished for external evaluation — capture/component/typecheck gates green ✅
 
 The study is elapsed-time-bound but **recruiting starts only after the demo gate**. Blocking 8 is acceptable — a negative study on a broken system wastes everyone's time.
 
@@ -390,9 +419,11 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 - [x] 6.3: Performance — folded-vs-unfolded dividend measured: 80.5% node reduction / 57.4% edge reduction at 5k messages (overview band vs execution/detail); `script/folded-dividend.ts` added.
 - [x] 6.4: 3D stays frozen — confirmed: `orbit` experimental (free orbit input, 0.5 rad tilt), `depth-stack` sanctioned (max readable tilt 0.3 rad, with fade), force layout opt-in via `depthStep` config (default 64 Z-units per depth).
 - [x] 7: every parked item has its unblock condition recorded (incl. publish, dual-loader).
-- [ ] 8: `SPACEGRAPH.md` §2/§6/§7 updated to reference TODO.32; TODO.31 marked superseded;
+- [x] 8: `SPACEGRAPH.md` §2/§6/§7 updated to reference TODO.32; TODO.31 marked superseded;
       `SPACEGRAPH.md` and this file tracked on the mainline; this file's boxes dispositioned.
-- [ ] 9: all known failures F1–F9 fixed; `graph:capture --mode=verify` passes 42/42 frames; component tests green; typecheck clean.
+- [x] 9: all known failures F1–F9 fixed; capture gate green (42 frames; 64/64 across both projects);
+      component tests green; typecheck clean. F10 also fixed (plugin bundle 3/3). F5's component
+      contract now passes; `graph:verify` step 96 still needs a sync-branch confirmation run.
 
 ### 8.3 Risks
 
@@ -419,6 +450,32 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 
 ### 8.4 Revision log
 
+- **r35 (2026-11-08):** Verification gate closed — depth spectrum and badge loops fixed.
+  - **F3 frames 18/19/31 (layered, depth-stack, perspective) fixed.** The canvas committed depth
+    from an effect that also read `projection`; every camera commit emitted `viewportChange`, the
+    host handler wrote signals, and the resulting nested `runUpdates → completeUpdates` re-ran the
+    effect before `setProjection` returned. That blocked `changeDepth` before it reached
+    `setDepth`, so the store stayed `flat`. Fix: applied-value guards in `GraphCanvas` for
+    projection/depth/card-facing, `cardFacing` accepts an accessor, depth applied before projection,
+    and the r34 accessor regressions in `GraphCanvasRegion` / `useCanvasRegionProps` corrected
+    (typecheck clean again). `graph-3d.spec.ts` depth tests re-enabled (2 pass, 1 annotated skip).
+  - **F10 fixed.** `useGroupBadgeAnimation` kept `prevCounts` in a signal, read it in its own effect,
+    and wrote a fresh `Map` back every run — a self-invalidating loop that overflowed in the deeper
+    reactive host fixture. Rewritten with plain bookkeeping plus timer cleanup. Plugin-spacegraph
+    bundle tests: 3/3 pass.
+  - Removed the r34 debug `console.log` traces from `useGraphState`, `useCapabilityFallback`,
+    `useGraphDetailMode`, `GraphCanvas`, and `GraphView`.
+  - **Verification (2026-11-08):** `packages/session-graph` typecheck clean; 92 unit tests pass;
+    55 component tests pass (12 annotated skips); plugin bundle 3/3;
+    `graph/capture.spec.ts` 64/64 across both projects (42 frames).
+  - **Live demo recording:** close the NLQ dialog after frame 40, switch back to the map before
+    frame 42, and raise the live-test budget to 30 minutes. The continuous capture now passes
+    (30 marks, ~59s) and `capture.webm` is refreshed.
+  - **Demo render:** `generate-demo-video.ts` rewritten to emit one paced clip per frame (real
+    interaction window plus a freeze sized to that frame's narration) and one narration track placed
+    on the new timeline. Fixed the narration input/video-index mismatch and the endless
+    `anullsrc` concat inputs. Outputs: `demo.mp4`, `demo.webm`, `demo-kidnapper.mp4`,
+    `demo-kidnapper.webm` (218s, 1440×900, crf 20). `docs/spacegraph/video/work/` is gitignored.
 - **r34 (2026-11-08):** Depth control reactivity bug blocking capture gate.
   - **Status:** 58/64 capture frames pass (90.6%). 6 tests fail (3 unique frames × 2 projects).
   - **Failed frames:** 18 "graph layered", 19 "graph depth stack", 31 "graph perspective" — all expect non-flat depth but receive "flat".
@@ -548,9 +605,9 @@ Layout Gallery view (removed from capture matrix).**
 - [x] **Fix F10 map surface component test** — reactive loop in GraphView hooks when rendered through mountSessionRegionWithSurfaces fixture (pre-existing fixture infrastructure issue); **panel & dialog tests pass (2/3)** — **KNOWN FAILURE: documented as F10, not blocking**
 - [x] **Segment 1 live demo video** — record frames 01-06 (log through 3D orbit) with Playwright video, sync beacon, `capture-segment1.spec.ts` passes in ~36s
 - [x] **Improved video generator v2** — `generate-demo-video.ts` rewritten: single concatenated narration track (no overlapping amix), rubberband pitch=0.89 ratio, `-y` overwrite, sync beacon detection, frame-accurate timing from marks.json
-- [ ] **Segment 2+ live demo video** — record remaining segments (frames 07-43), sync beacon at each segment start, copy to `capture.webm`
-- [ ] **Full demo video generation** — run `generate-demo-video.ts` without `--draft` (crf 20, VP9 webm, kidnapper variant), clear narration aligned to visual activity
-- [ ] Remove Layout Gallery — deleted frame 30 from capture.spec.ts; users cycle layouts with `mod+shift+l`
+- [x] **Segment 2+ live demo video** — capture flow fixed in r35 (close NLQ dialog after frame 40, return to map before frame 42, 30-minute budget); continuous recording passes (30 marks) and is copied to `capture.webm`
+- [x] **Full demo video generation** — `generate-demo-video.ts` rendered `demo.mp4` / `demo.webm` / `demo-kidnapper.*` (218s, crf 20, VP9 webm) with paced frame clips and per-frame narration
+- [x] Remove Layout Gallery — frame 30 deleted from capture matrix; users cycle layouts with `mod+shift+l`
 - [ ] Phase 5.1 T2.2 study — **DEFERRED** until system is demo-ready (post-F3-F9, post-video)
 
 ### Short bursts, interleaved (all in `spacegraphjs/`, one dist rebuild at the end)
@@ -586,12 +643,12 @@ Layout Gallery view (removed from capture matrix).**
 | ~~F1~~ | ~~e2e/session-graph~~ | ~~"split button not found" in session-graph.spec.ts~~ | ~~MapSurface toolbar lacks split button~~ | **FIXED (2026-11-07):** Removed duplicate `GraphToolbarViewControls` from `MapSurface` — `FullMap` via `GraphView` already provides complete toolbar with split button |
 | ~~F2~~ | ~~e2e/session-graph~~ | ~~"Maximum call stack size exceeded" after split click~~ | ~~Recursive layout switch in spacegraph plugin model~~ | **FIXED (2026-11-07):** Removed `model.surface` from `createKeyed` key in `external/renderer.tsx`; replaced `createKeyed` with `onMount` handlers for hash links. The synchronous reactive loop during surface changes is eliminated. |
 | ~~F3~~ | ~~e2e/capture~~ | ~~Frames 13, 15, 17, 22, 25, 26, 27, 29, 30, 31, 32, 33, 35 missing/flaky~~ | ~~Tests use arrangements/levels not triggered by current test flow; viewport/resize timing; focusNode search flakiness~~ | **FIXED (2026-11-07):** Frames 13, 15, 17, 22, 30 fixed via explicit waits, navigation queries, and button name fixes |
-| F3 | e2e/capture | Frame 19 (depth stack) — **FIXED** | Depth stack animation doesn't complete within 30s still() timeout | **FIXED (2026-11-08):** Increased still() timeout to 60s for depth stack in capture.spec.ts |
+| F3 | e2e/capture | Frames 18 (layered), 19 (depth stack), 31 (perspective) — **FIXED** | Depth/projection effect re-entered on every camera commit (viewportChange → host signal → re-run), so `changeDepth` blocked before `setDepth` | **FIXED (2026-11-08, r35):** applied-value guards in `GraphCanvas` for projection/depth/card-facing; apply depth before projection; enabled the two 3d component tests. Capture 64/64. |
 | F3 | e2e/capture | Frame 36 (trace overlay) — **FIXED** | Search was selecting tool node instead of result node; fixed by using NLQ facet query "failed result" (kind:result status:failed) to target the result node | **FIXED (2026-11-07)**: Changed search query from "FAIL auth refresh token" to "failed result" which uses NLQ to filter to failed result nodes only |
 | F4 | session-graph component tests | **FIXED** — TurnMapOverlay `Show`/`signal` reactivity fixed by moving logic into TurnMapOverlay component; all component tests pass (53 pass, 14 skip — all skips are CI-skip annotated) | TurnMapOverlay harness used `Show when={open()}` in story render function, breaking SolidJS reactivity | Moved `open` signal and `Show` into TurnMapOverlay component; harness now passes `open` prop. All 4 TurnMapOverlay tests pass. Other cited tests (graph-write-path, graph-windows, security, graph-toolbar, graph-states) already passing. |
-| F5 | app e2e | `graph:verify` step 96 (session-graph component contract) times out | Component test infrastructure hangs on Storybook mount | Investigate component test setup vs. upstream-sync-1105 |
+| F5 | app e2e | `graph:verify` step 96 (session-graph component contract) — **likely fixed, re-run gate** | Component contract timed out on a Storybook mount; the badge self-invalidation loop (r35) overflowed under the host fixture | Contract suite now passes 55/55 (12 annotated skips); re-run `bun run graph:verify` on the sync branch to confirm step 96 |
 | ~~F6~~ | ~~root~~ | ~~`bun run check` type errors in gui-plugins (unrelated to my changes)~~ | ~~Pre-existing type errors in spacegraph plugin~~ | **FIXED (2026-11-08):** Typecheck now passes cleanly across all packages |
-| F10 | plugin-spacegraph component tests | Map surface test: GraphView reactive loop in fixture (useGraphViewport/useRenderModel hooks) | Fixture's mountSessionRegionWithSurfaces creates reactive coupling between GraphView and test host | Fix: isolate plugin reactivity from test fixture; or skip this bundle test until fixture refactored. **Panel & dialog tests pass (2/3)** |
+| F10 | plugin-spacegraph component tests | **FIXED (2026-11-08, r35):** `useGroupBadgeAnimation` wrote a fresh `Map` into a signal it also read, re-invalidating its own effect on every run; the reactive host fixture deepened the stack until overflow | Self-invalidating badge effect | Replaced the `prevCounts` signal with plain bookkeeping and cleaned up the animation timer on disposal. Bundle tests now 3/3. |
 | F11 | plugin-spacegraph component tests | **FIXED** — panel list function in renderer.tsx checks for correct tab id format ("map") | Panel not rendered — tab id mismatch or layout stored tabs not including panel tab — **pre-existing** | Fixed: panel list function uses `input.open.includes("map")` matching stored tab format |
 | F12 | plugin-spacegraph component tests | **FIXED** — mountSessionRegionWithSurfaces includes session status/get in server object; hybrid command opens MapDialog | Hybrid command not opening MapDialog in no-surface fallback path — **pre-existing** | Fixed: fixture session object includes server.status and server.get |
 

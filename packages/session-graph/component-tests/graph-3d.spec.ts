@@ -4,9 +4,8 @@ const toolbar = '[data-slot="graph-toolbar"]'
 
 // U3.15/LE.14: the depth spectrum changes the camera, not the graph. Identity, selection, and readable
 // detail survive a round trip, and returning to flat leaves the surface usable with no console errors.
-story.fixme(
+story(
   "changes depth without changing node identity or inspector content",
-  { annotation: { type: "issue", description: "Projection not syncing with depth in test harness; changeDepth updates depth store but projection store not propagating to canvas. Investigating reactivity across component boundaries.", url: "https://github.com/opencode/opencode/issues?q=projection+depth" } },
   async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {
@@ -19,7 +18,7 @@ story.fixme(
   await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
-  await expect(inspector).toContainText("Tool call")
+  await expect(inspector).toContainText("export function session() {}")
   await expect(inspector).toContainText("src/auth/session.ts")
 
   await root.locator('[data-slot="graph-toolbar-layers"] > summary').click()
@@ -27,23 +26,22 @@ story.fixme(
   await expect(host).toHaveAttribute("data-graph-depth", "orbit")
   await expect(host).toHaveAttribute("data-graph-projection", "3d")
   // Detail is depth-independent: the same node, breadcrumbs, and inspector content remain.
-  await expect(inspector).toContainText("Tool call")
+  await expect(inspector).toContainText("export function session() {}")
   await expect(inspector).toContainText("src/auth/session.ts")
   await expect(root.locator('[data-slot="graph-breadcrumbs"]')).toContainText("Session")
 
   await root.locator('[data-slot="graph-layers-depth"]').selectOption("flat")
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
-  await expect(inspector).toContainText("Tool call")
+  await expect(inspector).toContainText("export function session() {}")
 
   expect(errors).toEqual([])
 })
 
 // LE.14: depth is a spectrum, not a toggle. The chooser applies a treatment and keeps the coarse
 // projection in step.
-story.fixme(
+story(
   "switches the depth treatment through the spectrum",
-  { annotation: { type: "issue", description: "Projection not syncing with depth in test harness; changeDepth updates depth store but projection store not propagating to canvas. Investigating reactivity across component boundaries.", url: "https://github.com/opencode/opencode/issues?q=projection+depth" } },
   async ({ mount, page }) => {
   const errors: string[] = []
   page.on("console", (message) => {
@@ -66,7 +64,7 @@ story.fixme(
   await root.locator('[data-slot="graph-layers-depth"]').selectOption("flat")
   await expect(host).toHaveAttribute("data-graph-depth", "flat")
   await expect(host).toHaveAttribute("data-graph-projection", "2d")
-  await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Tool call")
+  await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("export function session() {}")
 
   expect(errors).toEqual([])
 })

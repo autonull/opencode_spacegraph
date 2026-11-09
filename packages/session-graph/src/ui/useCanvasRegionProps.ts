@@ -1,4 +1,3 @@
-import { createMemo } from "solid-js"
 import type { BuildCanvasRegionPropsInput } from "./GraphCanvasRegionProps"
 import type { GraphViewProps } from "./GraphView"
 import type { GraphRenderer, RendererViewport } from "@spacegraphjs/renderer"

@@ -19,7 +19,7 @@ export type GraphCanvasProps = {
   projection?: Projection | (() => Projection)
   /** LE.14: depth treatment applied after mount; unsupported modes are the host's to gate. */
   depth?: DepthMode | (() => DepthMode)
-  cardFacing?: "plane" | "camera"
+  cardFacing?: "plane" | "camera" | (() => "plane" | "camera")
   selection?: readonly string[]
   preferredRenderer?: () => RendererID
   /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
@@ -84,11 +84,17 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   // Streaming state
   let previousModel: RenderModel | null = null
   let patchTimeout: number | null = null
+  // Last treatment handed to the renderer. The renderer reports a viewport change for every camera
+  // commit, and that report writes host signals; without these guards the reporting effect would
+  // re-enter its own update and loop forever.
+  let appliedProjection: Projection | undefined
+  let appliedDepth: DepthMode | undefined
+  let appliedCardFacing: "plane" | "camera" | undefined
   const PATCH_DEBOUNCE_MS = 80
 
   const getProjection = () => typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
   const getDepth = () => typeof props.depth === "function" ? props.depth() : (props.depth ?? (getProjection() === "3d" ? "orbit" : "flat"))
-  const cardFacing = () => props.cardFacing ?? "plane"
+  const cardFacing = () => typeof props.cardFacing === "function" ? props.cardFacing() : (props.cardFacing ?? "plane")
 
   /** Check if we can apply an incremental patch instead of a full model rebuild. */
   function canPatch(prev: RenderModel, next: RenderModel): boolean {
@@ -180,6 +186,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     props.onRenderer?.(undefined)
     mounted?.renderer.dispose()
     mounted = undefined
+    appliedProjection = undefined
+    appliedDepth = undefined
+    appliedCardFacing = undefined
     setReady(false)
     previousModel = null
   }
@@ -219,12 +228,15 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         previousModel = null
         applyModel(props.model)
         result.renderer.setSelection(props.selection ?? [])
-        result.renderer.setDepth(getDepth())
-        result.renderer.setCardFacing?.(cardFacing())
+        appliedDepth = getDepth()
+        result.renderer.setDepth(appliedDepth)
+        appliedCardFacing = cardFacing()
+        result.renderer.setCardFacing?.(appliedCardFacing)
         host.dataset.graphRenderer = result.id
-        host.dataset.graphProjection = getProjection()
-        host.dataset.graphDepth = getDepth()
-        host.dataset.graphCardFacing = cardFacing()
+        appliedProjection = getProjection()
+        host.dataset.graphProjection = appliedProjection
+        host.dataset.graphDepth = appliedDepth
+        host.dataset.graphCardFacing = appliedCardFacing
         host.dataset.graphReady = "true"
         setReady(true)
         props.onRenderer?.(result.renderer)
@@ -296,9 +308,11 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   createEffect(() => {
     const projection = typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
 
-    if (!mounted || !projection) return
-    mounted.renderer.setProjection(projection)
+    if (!mounted) return
     host.dataset.graphProjection = projection
+    if (projection === appliedProjection) return
+    appliedProjection = projection
+    mounted.renderer.setProjection(projection)
   })
   createEffect(() => {
     const projection = typeof props.projection === "function" ? props.projection() : (props.projection ?? "2d")
@@ -308,16 +322,19 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     const value = depthProp ?? (projection === "3d" ? "orbit" : "flat")
 
     if (!mounted) return
-    console.log('[GraphCanvas] Depth effect running', { depthProp, projection, value, depthType: typeof props.depth })
-    mounted.renderer.setDepth(value)
     host.dataset.graphDepth = value
+    if (value === appliedDepth) return
+    appliedDepth = value
+    mounted.renderer.setDepth(value)
   })
   createEffect(() => {
     const value = cardFacing()
 
     if (!mounted) return
-    mounted.renderer.setCardFacing?.(value)
     host.dataset.graphCardFacing = value
+    if (value === appliedCardFacing) return
+    appliedCardFacing = value
+    mounted.renderer.setCardFacing?.(value)
   })
 
   onCleanup(() => {

@@ -57,17 +57,10 @@ export function useGraphDetailMode(input: UseGraphDetailModeInput): UseGraphDeta
   }
 
   const changeDepth = (next: DepthMode) => {
-    // Set projection first so capability fallback sees the intended 3D projection
-    // when it evaluates the depth change, preventing inconsistent depth=flat/projection=3d state.
-    console.log('[changeDepth] Called with', next)
+    // Apply the treatment first; the projection follows from it. The canvas applies both through
+    // guarded effects, so the order cannot leave the two out of step or re-enter itself.
+    setDepth(next)
     setProjection(next === "flat" ? "2d" : "3d")
-    console.log('[changeDepth] After setProjection, calling setDepth')
-    try {
-      setDepth(next)
-      console.log('[changeDepth] After setDepth - success')
-    } catch (e) {
-      console.error('[changeDepth] setDepth threw:', e)
-    }
     onDepthChange?.(next)
   }
 

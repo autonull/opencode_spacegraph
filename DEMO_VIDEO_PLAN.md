@@ -8,6 +8,15 @@ Video must hook viewers immediately with flashy action, showcase SpaceGraphJS fe
 - **42 capture frames** in `docs/spacegraph/screenshots/` (01-log.png through 43-graph-demo.png, frame 30 gallery removed)
 - **Capture test suite** in `packages/app/e2e/graph/capture.spec.ts` - generates frames programmatically AND records video
 - **Test fixtures** - canonical session data via `buildFixtureMessages()`
+- **Verified gates (2026-11-08):** per-frame capture 64/64 across both projects; session-graph components
+  55 passed / 12 annotated skips; plugin-spacegraph bundle 3/3; typecheck clean
+- **Live flow status (2026-11-08 r35):** `capture-live.spec.ts` closes the NLQ dialog after frame 40,
+  returns to the map before frame 42, and has a 30-minute budget. The continuous recording passes
+  (30 marks, ~59s) and `capture.webm` is refreshed.
+- **Rendered output (2026-11-08 r35):** `generate-demo-video.ts` produces one paced clip per frame
+  (real motion, then a freeze sized to that frame's narration) plus a single narration track on the
+  new timeline. `demo.mp4` / `demo.webm` / `demo-kidnapper.mp4` / `demo-kidnapper.webm`: 218s, 1440×900,
+  crf 20. Build intermediates live in the gitignored `docs/spacegraph/video/work/`.
 
 ## Approach (Updated 2026-11-08, v2 pipeline)
 

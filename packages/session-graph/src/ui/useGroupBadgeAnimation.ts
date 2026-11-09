@@ -1,4 +1,4 @@
-import { createSignal, createEffect } from "solid-js"
+import { createSignal, createEffect, onCleanup } from "solid-js"
 import type { GraphViewData } from "@opencode/session-ui/graph"
 import type { UseGroupCollapseReturn } from "./useGroupCollapse"
 
@@ -11,7 +11,13 @@ export function useGroupBadgeAnimation(
   collapsedGroups: UseGroupCollapseReturn["collapsedGroups"],
 ): () => ReadonlySet<string> {
   const [animatedGroups, setAnimatedGroups] = createSignal<Set<string>>(new Set())
-  const [prevCounts, setPrevCounts] = createSignal<Map<string, number>>(new Map())
+  // Bookkeeping only: this map is written by the effect, so it must not be reactive or the effect
+  // would invalidate itself on every run.
+  let previousCounts = new Map<string, number>()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  onCleanup(() => {
+    if (timer) clearTimeout(timer)
+  })
 
   createEffect(() => {
     const currentModel = model()
@@ -25,30 +31,30 @@ export function useGroupBadgeAnimation(
       }
     }
 
-    const previous = prevCounts()
     const toAnimate = new Set<string>()
 
     // Check for count increases (token bursts)
     for (const [id, count] of newCounts) {
-      const prev = previous.get(id) ?? 0
-      if (count > prev) {
+      if (count > (previousCounts.get(id) ?? 0)) {
         toAnimate.add(id)
       }
     }
 
-    if (toAnimate.size > 0) {
-      setAnimatedGroups(toAnimate)
-      // Clear animation after it completes (200ms)
-      setTimeout(() => {
-        setAnimatedGroups((prev) => {
-          const next = new Set(prev)
-          for (const id of toAnimate) next.delete(id)
-          return next
-        })
-      }, 200)
-    }
+    previousCounts = newCounts
 
-    setPrevCounts(newCounts)
+    if (toAnimate.size === 0) return
+
+    setAnimatedGroups(toAnimate)
+    // Clear animation after it completes (200ms)
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      timer = undefined
+      setAnimatedGroups((prev) => {
+        const next = new Set(prev)
+        for (const id of toAnimate) next.delete(id)
+        return next
+      })
+    }, 200)
   })
 
   return animatedGroups

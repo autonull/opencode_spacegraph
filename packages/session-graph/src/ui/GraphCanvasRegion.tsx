@@ -1,5 +1,5 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js"
+import { createEffect, createSignal, onCleanup } from "solid-js"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import { GraphOverlayManager } from "./GraphOverlayManager"
 import { attachTouchGestures } from "./graph-utils"
@@ -86,11 +86,11 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         // Model & theme
         model={props.model}
         theme={props.theme()}
-        projection={props.projection}
-        depth={props.depth}
-        detailMode={props.detailMode}
-        effectiveDetailMode={props.effectiveDetailMode}
-        layout={props.layout}
+        projection={props.projection()}
+        depth={props.depth()}
+        detailMode={props.detailMode()}
+        effectiveDetailMode={props.effectiveDetailMode()}
+        layout={props.layout()}
 
         // Selection & navigation
         selection={props.selection}
