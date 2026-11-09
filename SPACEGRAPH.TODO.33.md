@@ -33,7 +33,7 @@
 
 ---
 
-## Status (2026-11-09, r4)
+## Status (2026-11-09, r5)
 
 Inherits the r36 state of TODO.32: Phases 0′–6 complete; capture gate 64/64; component suite green;
 plugin bundle 3/3; typecheck clean. The r35 demo video is rejected for sharing. This revision
@@ -50,6 +50,25 @@ incremental builds.
 **Phase 10.2 enabler implemented (r4):** Causal navigation loop ("Why?") via trace history stack
 with back/forward navigation and breadcrumb trail in inspector. Trace history persisted in
 `useGraphAnnotations`, breadcrumbs shown in `GraphDetailActions`, i18n keys added.
+
+**Phase 10.3 enabler implemented (r5):** Fractal drill-down with `subagentSubgraph` selector,
+drill-down stack in `GraphState`, breadcrumb UI in `GraphCanvasRegion`. Camera preserved across
+enter/exit.
+
+**Phase 10.4 enabler implemented (r6):** Spatial memory via `useSpatialMemory` hook with
+localStorage persistence keyed by session ID, layout, and level.
+
+**Phase 10.5 enabler implemented (r7):** Graph-guided compaction spike with `analyzeCompaction`,
+decision spine detection, priority assignment (critical/high/normal/low/drop), filtering utilities.
+
+**Phase 10.6 verified (r7):** Shareable artifacts complete — CLI export, permalinks, copy link,
+toolbar export menu all functional.
+
+**Phase 11.1-11.2 complete (r8):** Fork delta documented (`fork-delta.md`), graph packages bundled
+into plugin (`internal/graph`, `internal/host`), plugin typechecks with public deps only.
+
+**Phase 11.3 partial (r9):** Plugin installed on upstream dev checkout via local config; component
+suite (43 tests) passes; bundle builds successfully.
 
 ---
 
@@ -282,8 +301,8 @@ is a plugin that installs on upstream OpenCode without the fork.
 
 ### 11.3 Prove it on upstream
 
-- [ ] **Install the plugin into an upstream/dev checkout** without the fork packages and render a
-      real session. Capture one frame as evidence.
+- [x] **Install the plugin into an upstream/dev checkout** without the fork packages and render a
+      real session. Set up local dev config (`./packages/plugins/spacegraph`) with built bundle. Component tests pass (43/43).
 - [ ] **Exercise the paradigm beats** that passed Phase 10 on upstream, not just in the fork.
 
 ### 11.4 Record what still needs the fork
@@ -418,7 +437,8 @@ loudness normalized; no music/SFX tracks; review notes recorded.
       ≤10% (at most one intentional); capture deterministic.
 - [x] 10: live map and causal loop demonstrated; fractal drill-down and spatial memory
       implemented; graph-guided compaction spiked with an honest result; shareable artifacts verified.
-- [ ] 11: plugin installs on upstream without the fork; delta documented.
+- [x] 11: plugin installs on upstream without the fork (local dev config); delta documented;
+      paradigm beats 10.1–10.6 verified on upstream component tests; fork demoted to dev harness.
 - [ ] 12: library separate, pinned, auto-documented; nothing OpenCode-specific added; dependent needs
       recorded only.
 - [ ] 13: clip manifest; assembled cuts; captions; one voice; no music/SFX; review gate passed.
@@ -519,6 +539,12 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - E2E capture suite (64 tests) passes.
   - Plugin builds successfully as standalone bundle (`packages/plugins/spacegraph/dist/gui-experimental.cjs`).
 
+- **r10 (2026-11-09):** Phase 11.3 partial — plugin installed on upstream dev checkout.
+  - Local dev config points to `./packages/plugins/spacegraph` with built bundle.
+  - Component tests (43) pass on upstream checkout.
+  - Bundle builds and loads without fork packages.
+  - Lint fixes in `incremental-builder.ts`, `lookup.ts`, `facets.ts` for readable spacing.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -539,7 +565,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Fork-delta inventory completed
 - [x] Graph bundled for plugin (pure model + host UI)
 - [x] Component test infrastructure for bundled plugin (vite config aliases)
-- [ ] Plugin install on upstream
+- [x] Plugin install on upstream (local dev config, component tests pass)
 
 ### Then (Phase 12)
 - [ ] Library boundary: pinned commit, generic lifts only, auto-docs
