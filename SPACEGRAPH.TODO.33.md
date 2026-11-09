@@ -278,7 +278,7 @@ is a plugin that installs on upstream OpenCode without the fork.
 - [ ] **No server changes** unless a real session proves one is unavoidable; if so, propose the
       smallest upstream change and document it.
 
-**Completed:** Bundled `@opencode/session-ui/graph` and `@opencode/session-graph` into `packages/gui-plugins/src/spacegraph/internal/` with path aliases. Plugin now typechecks with only public dependencies. All unit tests pass (96 session-graph, 867 session-ui, 305 internal graph).
+**Completed:** Bundled `@opencode/session-ui/graph` and `@opencode/session-graph` into `packages/gui-plugins/src/spacegraph/internal/` with path aliases. Plugin now typechecks with only public dependencies. All unit tests pass (96 session-graph, 867 session-ui, 305 internal graph). Added vite config aliases in `packages/stories/vite.config.ts` for component tests.
 
 ### 11.3 Prove it on upstream
 
@@ -513,6 +513,12 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Plugin typechecks with only public dependencies (`@opencode/plugin/gui`, `@opencode/client/solid`, `@spacegraphjs/*`, `solid-js`).
   - All unit tests pass: 96 session-graph, 867 session-ui, 305 internal graph.
 
+- **r9 (2026-11-09):** Component test infrastructure fixed for bundled plugin.
+  - Added path aliases in `packages/stories/vite.config.ts` for `@opencode/session-ui/graph` and `@opencode/session-graph` to resolve to the bundled internal modules.
+  - All component tests pass: `plugin-graph` (built-in activation), `plugin-spacegraph` (bundle renders surface, panel, dialog), `plugin-host` (host API contracts).
+  - E2E capture suite (64 tests) passes.
+  - Plugin builds successfully as standalone bundle (`packages/plugins/spacegraph/dist/gui-experimental.cjs`).
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -532,6 +538,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Shareable artifacts (finish what exists)
 - [x] Fork-delta inventory completed
 - [x] Graph bundled for plugin (pure model + host UI)
+- [x] Component test infrastructure for bundled plugin (vite config aliases)
 - [ ] Plugin install on upstream
 
 ### Then (Phase 12)
