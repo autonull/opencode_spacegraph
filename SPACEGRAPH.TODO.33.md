@@ -219,7 +219,7 @@ Nothing here is lifted into SpaceGraphJS unless it is generic and OpenCode actua
 
 ### 10.3 Fractal drill-down (overview → detail as a spatial move)
 
-- [ ] **Enabler:** double-click a turn or subagent to enter its subgraph (use `turnSubgraph`), with a
+- [x] **Enabler:** double-click a turn or subagent to enter its subgraph (use `turnSubgraph`/`subagentSubgraph`), with a
       breadcrumb and a stable return. Preserve camera and selection across the move.
 - [ ] **Demo beat:** enter a subagent's own map, inspect it, and return to the parent at the same
       place.
@@ -481,6 +481,15 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Updated `GraphDetailProps` and `GraphInspectorPanelProps` with `traceHistory`, `onTraceBack`, `onTraceForward`.
   - All unit tests (96), component tests (55), and e2e capture suite (64) pass.
 
+- **r5 (2026-11-09):** Phase 10.3 enabler implemented — fractal drill-down.
+  - Added `subagentSubgraph` selector in `packages/session-ui/src/graph/selectors.ts` for subagent drill-down.
+  - Added drill-down stack to `GraphState` in `useGraphState.ts` with `enterDrillDown`, `exitDrillDown`, `canDrillDown`.
+  - Updated `useGraphNavigation.expandToGraph` to enter drill-down on double-click for turn and subagent nodes.
+  - Added drill-down breadcrumb UI in `GraphCanvasRegion.tsx` showing the drill-down path with exit button.
+  - Camera position preserved and restored when entering/exiting drill-down.
+  - Added i18n keys: `ui.sessionGraph.drillDown.breadcrumbLabel`, `ui.sessionGraph.drillDown.exit`.
+  - All unit tests (96 session-graph, 861 session-ui) and e2e capture suite (64) pass.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -494,7 +503,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 ### Next (Phases 10–11)
 - [x] Live map during a run (incremental, append-only) — enabler implemented
 - [x] Causal navigation loop ("Why?") — enabler implemented
-- [ ] Fractal drill-down with breadcrumb
+- [x] Fractal drill-down with breadcrumb — enabler implemented
 - [ ] Spatial memory across visits (spike)
 - [ ] Graph-guided compaction (research spike, honest kill)
 - [ ] Fork-delta inventory and plugin install on upstream

@@ -105,6 +105,13 @@ interface GraphState {
 
   // Model
   notesStore: Annotations
+
+  // Drill-down (Phase 10.3: fractal drill-down)
+  drillDownStack: {
+    model: GraphViewData
+    selection: string | undefined
+    camera: { zoom: number; center: number[] } | undefined
+  }[]
 }
 
 const initialState: GraphState = {
@@ -146,6 +153,7 @@ const initialState: GraphState = {
   seeMapPromptDismissed: false,
   trustLens: false,
   notesStore: {},
+  drillDownStack: [],
 }
 
 const MAX_HISTORY = 50
@@ -255,6 +263,12 @@ export type UseGraphStateReturn = {
   undoManual: () => void
   redoManual: () => void
 
+  // Drill-down (Phase 10.3: fractal drill-down)
+  drillDownStack: () => GraphState["drillDownStack"]
+  enterDrillDown: (subgraph: GraphViewData, sourceId: string, camera: { zoom: number; center: number[] } | undefined) => void
+  exitDrillDown: () => void
+  canDrillDown: () => boolean
+
   // Model
   notesStore: Annotations
   model: () => GraphViewData
@@ -327,7 +341,6 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     turns: [],
     turnByMessageID: new Map(),
   }
-  const model = () => (props.model ? { ...props.model, annotations: state.notesStore } : emptyModel)
 
   const captureManualState = () => ({
     positions: { ...state.manual.positions },
@@ -490,9 +503,34 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     undoManual,
     redoManual,
 
+    // Drill-down (Phase 10.3: fractal drill-down)
+    drillDownStack: createGetter(state, "drillDownStack"),
+    enterDrillDown: (subgraph: GraphViewData, sourceId: string, camera: { zoom: number; center: number[] } | undefined) => {
+      setState("drillDownStack", produce((stack) => {
+        stack.push({
+          model: subgraph,
+          selection: sourceId,
+          camera,
+        })
+      }))
+    },
+    exitDrillDown: () => {
+      setState("drillDownStack", produce((stack) => {
+        if (stack.length > 0) stack.pop()
+      }))
+    },
+    canDrillDown: () => state.drillDownStack.length > 0,
+
     // Model
     notesStore: state.notesStore,
-    model,
+    model: () => {
+      const stack = state.drillDownStack
+      if (stack.length > 0) {
+        const top = stack[stack.length - 1]
+        return { ...top.model, annotations: state.notesStore }
+      }
+      return props.model ? { ...props.model, annotations: state.notesStore } : emptyModel
+    },
 
     // Functions
     announce,

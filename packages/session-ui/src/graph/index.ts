@@ -128,6 +128,7 @@ export {
   sessionProgress,
   sessionOutline,
   subagentContributions,
+  subagentSubgraph,
   subtree,
   turnSubgraph,
   why,

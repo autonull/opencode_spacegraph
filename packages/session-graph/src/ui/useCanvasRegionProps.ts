@@ -12,6 +12,7 @@ import type { RenderTheme } from "@spacegraphjs/renderer"
 import type { Projection } from "@spacegraphjs/renderer"
 import type { JSX } from "solid-js"
 import { createNodeAnchor } from "./graph-anchors"
+import type { UseGraphStateReturn } from "./useGraphState"
 
 export function useCanvasRegionProps(
   props: GraphViewProps,
@@ -94,6 +95,10 @@ export function useCanvasRegionProps(
     onRendererMounted: (renderer: GraphRenderer, id: import("../canvas/renderer-registry").RendererID) => void
     onReady: (info: { fallback: boolean }) => void
     onError: (error: string | undefined) => void
+    // Drill-down (Phase 10.3)
+    exitDrillDown: UseGraphStateReturn["exitDrillDown"]
+    canDrillDown: UseGraphStateReturn["canDrillDown"]
+    drillDownStack: UseGraphStateReturn["drillDownStack"]
   },
 ): BuildCanvasRegionPropsInput {
   // state.projection and state.depth are already accessors (getters) that read from the store.
@@ -217,5 +222,10 @@ export function useCanvasRegionProps(
 
     // Reduced motion
     reducedMotion: state.reducedMotion,
+
+    // Drill-down (Phase 10.3)
+    exitDrillDown: state.exitDrillDown,
+    canDrillDown: state.canDrillDown,
+    drillDownStack: state.drillDownStack,
   }
 }

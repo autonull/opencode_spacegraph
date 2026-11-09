@@ -141,6 +141,11 @@ export type GraphCanvasRegionProps = {
 
   // Reduced motion
   reducedMotion: () => boolean
+
+  // Drill-down (Phase 10.3: fractal drill-down)
+  exitDrillDown: () => void
+  canDrillDown: () => boolean
+  drillDownStack: () => { model: GraphViewData; selection: string | undefined; camera: { zoom: number; center: number[] } | undefined }[]
 }
 
 export interface BuildCanvasRegionPropsInput {
@@ -259,6 +264,11 @@ export interface BuildCanvasRegionPropsInput {
 
   // Reduced motion
   reducedMotion: () => boolean
+
+  // Drill-down (Phase 10.3: fractal drill-down)
+  exitDrillDown: () => void
+  canDrillDown: () => boolean
+  drillDownStack: () => { model: GraphViewData; selection: string | undefined; camera: { zoom: number; center: number[] } | undefined }[]
 }
 
 /**
@@ -381,5 +391,10 @@ export function buildCanvasRegionProps(input: BuildCanvasRegionPropsInput): Grap
 
     // Reduced motion
     reducedMotion: input.reducedMotion,
+
+    // Drill-down (Phase 10.3: fractal drill-down)
+    exitDrillDown: input.exitDrillDown,
+    canDrillDown: input.canDrillDown,
+    drillDownStack: input.drillDownStack,
   }
 }
