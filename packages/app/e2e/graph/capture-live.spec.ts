@@ -40,6 +40,28 @@ function graphFixture() {
   }
 }
 
+let firstFrameMarkerAdded = false
+
+async function addFirstFrameMarker(page: Page) {
+  if (firstFrameMarkerAdded) return
+  await page.evaluate(() => {
+    const marker = document.createElement("div")
+    marker.id = "graph-first-frame-marker"
+    marker.style.cssText = "position:fixed;top:0;left:0;width:10px;height:10px;background:#ff0000;z-index:2147483647;pointer-events:none"
+    document.body.append(marker)
+  })
+  firstFrameMarkerAdded = true
+}
+
+async function removeFirstFrameMarker(page: Page) {
+  if (!firstFrameMarkerAdded) return
+  await page.evaluate(() => {
+    const marker = document.getElementById("graph-first-frame-marker")
+    marker?.remove()
+  })
+  firstFrameMarkerAdded = false
+}
+
 async function capture(page: Page, name: string) {
   recordMark(page, name)
   if (!captureDir) return
@@ -60,6 +82,10 @@ async function capture(page: Page, name: string) {
   })
   mkdirSync(captureDir, { recursive: true })
   await page.screenshot({ path: resolve(captureDir, name) })
+  // Remove the first-frame marker after the first capture
+  if (name === "01-log.png") {
+    await removeFirstFrameMarker(page)
+  }
 }
 
 async function waitForStillCanvas(page: Page, timeout = 30000) {
@@ -281,7 +307,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
   test.setTimeout(1_800_000) // 30 minutes for full flow
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-  await syncBeacon(page)
+  await addFirstFrameMarker(page)
   flowWallStart = Date.now()
 
   // ── FRAME 01: Log view ──
