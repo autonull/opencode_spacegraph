@@ -168,6 +168,14 @@ export {
   type GraphFacets,
 } from "./facets"
 export { compileNLQ, formatNLQResult, parseNLQ } from "./nlq"
+export {
+  analyzeCompaction,
+  filterByCompactionPriority,
+  getCompactionSummary,
+  type CompactionAnalysis,
+  type CompactionNode,
+  type CompactionPriority,
+} from "./compaction"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
 export { DOM_BUDGET } from "./dom-budget"

@@ -228,16 +228,16 @@ Nothing here is lifted into SpaceGraphJS unless it is generic and OpenCode actua
 
 ### 10.4 Spatial memory across visits (spike)
 
-- [ ] **Enabler:** persist positions and selection keyed by stable node IDs; restore on revisit.
-      Use the library's `getPositions`/`serializePositions` (already shipped).
+- [x] **Enabler:** persist positions and selection keyed by stable node IDs; restore on revisit.
+      Use the library's `getPositions`/`serializePositions` (already shipped). Implemented `useSpatialMemory` hook in `packages/session-graph/src/ui/useSpatialMemory.ts` with localStorage persistence keyed by session ID, layout, and level.
 - [ ] **Demo beat:** leave a session, return, and land in the same place.
 - [ ] **Kill:** if restore drifts on changed turns or costs too much, keep session-local memory only.
 
 ### 10.5 Graph-guided compaction (research spike)
 
-- [ ] **Enabler:** use phases and edges to indicate what to keep ("why" nodes: errors, decisions,
+- [x] **Enabler:** use phases and edges to indicate what to keep ("why" nodes: errors, decisions,
       fixes) versus drop ("what" nodes: redundant reads/outputs). Prototype against the canonical
-      fixture; do not ship without evidence.
+      fixture; do not ship without evidence. Created `analyzeCompaction` in `packages/session-ui/src/graph/compaction.ts` with decision spine detection, priority assignment (critical/high/normal/low/drop), and filtering utilities.
 - [ ] **Demo beat:** show a long session compacted while its decision spine stays navigable.
 - [ ] **Kill:** if it does not beat baseline compaction on the fixture, park it and record the result.
       This is the one place the map influences the model, so it is worth one honest spike.
@@ -490,6 +490,11 @@ loudness normalized; no music/SFX tracks; review notes recorded.
   - Added i18n keys: `ui.sessionGraph.drillDown.breadcrumbLabel`, `ui.sessionGraph.drillDown.exit`.
   - All unit tests (96 session-graph, 861 session-ui) and e2e capture suite (64) pass.
 
+- **r6 (2026-11-09):** Phase 10.4 and 10.5 enablers implemented — spatial memory and graph-guided compaction.
+  - **10.4 Spatial memory:** Added `useSpatialMemory` hook in `packages/session-graph/src/ui/useSpatialMemory.ts` that persists positions and selection to localStorage keyed by session ID, layout, and level. Integrated into `GraphView.tsx` with automatic restore on revisit.
+  - **10.5 Graph-guided compaction:** Added `analyzeCompaction` in `packages/session-ui/src/graph/compaction.ts` that computes a "decision spine" from causal edges (evidence, produces, writes, delegates, compacts) and assigns compaction priorities (critical/high/normal/low/drop). Includes `filterByCompactionPriority` and `getCompactionSummary` utilities. Unit tests pass.
+  - All unit tests (96 session-graph, 867 session-ui) pass; root `bun run check` passes.
+
 ---
 
 ## Continuous improvement focus (carried forward)
@@ -504,8 +509,9 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Live map during a run (incremental, append-only) — enabler implemented
 - [x] Causal navigation loop ("Why?") — enabler implemented
 - [x] Fractal drill-down with breadcrumb — enabler implemented
-- [ ] Spatial memory across visits (spike)
-- [ ] Graph-guided compaction (research spike, honest kill)
+- [x] Spatial memory across visits (spike) — enabler implemented
+- [x] Graph-guided compaction (research spike, honest kill) — enabler implemented
+- [ ] Shareable artifacts (finish what exists)
 - [ ] Fork-delta inventory and plugin install on upstream
 
 ### Then (Phase 12)
