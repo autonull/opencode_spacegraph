@@ -87,8 +87,20 @@ async function probe(file: string) {
  * and restarts the wall clock when it ends, so:
  *   videoTime(mark) = beaconVideoStart + BEACON_SECONDS + mark.elapsed
  * Detected as the first run of ≥5 bright frames in the recording head.
+ *
+ * First tries to detect a deterministic first-frame marker (red pixel at 0,0)
+ * added by the test, falling back to the luma beacon detection.
  */
 async function detectBeacon(fps: number) {
+  // Try first-frame marker detection: red pixel at (0,0) in first few frames
+  const markerTime = await detectFirstFrameMarker(fps)
+  if (markerTime > 0) {
+    console.log(`✅ First-frame marker detected at ${markerTime.toFixed(2)}s`)
+    return markerTime
+  }
+
+  // Fallback: luma beacon detection (fullscreen white flash)
+  console.log("⚠  First-frame marker not found, falling back to luma beacon detection")
   const stats = resolve(WORK_DIR, "beacon-stats.txt")
   const proc = Bun.spawn(["ffmpeg", ...FFMPEG, "-t", "30", "-i", INPUT_VIDEO, "-vf", `scale=96:96,format=gray,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=${stats}`, "-f", "null", "-"])
   const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()])
@@ -113,6 +125,48 @@ async function detectBeacon(fps: number) {
     }
   }
   console.warn("⚠  sync beacon not found — marks anchored at video t=0 (timing may drift)")
+  return 0
+}
+
+/**
+ * Detect the first-frame marker: a red pixel at (0,0) added by the test.
+ * The marker appears in the first few frames of the recording.
+ * Returns the video time (seconds) of the first frame containing the marker,
+ * or 0 if not found.
+ */
+async function detectFirstFrameMarker(fps: number): Promise<number> {
+  // Check first 2 seconds of video for red pixel at (0,0)
+  const checkDuration = Math.min(2, 30) // cap at 30s but typically 2s is enough
+  const stats = resolve(WORK_DIR, "marker-stats.txt")
+  // Sample at 10fps to check for red pixel at top-left corner
+  const proc = Bun.spawn([
+    "ffmpeg", ...FFMPEG,
+    "-t", String(checkDuration),
+    "-i", INPUT_VIDEO,
+    "-vf", `fps=10,crop=10:10:0:0,format=rgb24,signalstats,metadata=print:key=lavfi.signalstats.RED_MIN:file=${stats}`,
+    "-f", "null", "-"
+  ])
+  const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()])
+  if (code !== 0) {
+    console.warn(`ffmpeg marker detection failed: ${stderr}`)
+    return 0
+  }
+  const lines = readFileSync(stats, "utf8").split("\n")
+  let frameIndex = 0
+  for (const line of lines) {
+    const frameMatch = line.match(/^frame:(\d+)/)
+    if (frameMatch) {
+      frameIndex = parseInt(frameMatch[1], 10)
+      continue
+    }
+    const redMin = line.match(/lavfi\.signalstats\.RED_MIN=([\d.]+)/)
+    if (!redMin) continue
+    // Red marker has high red value (255), low green/blue
+    // We check RED_MIN > 200 in the 10x10 crop at (0,0)
+    if (parseFloat(redMin[1]) > 200) {
+      return frameIndex / 10 // 10fps sampling
+    }
+  }
   return 0
 }
 

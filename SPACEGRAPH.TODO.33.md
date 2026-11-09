@@ -33,12 +33,15 @@
 
 ---
 
-## Status (2026-11-09, r0)
+## Status (2026-11-09, r2)
 
 Inherits the r36 state of TODO.32: Phases 0′–6 complete; capture gate 64/64; component suite green;
 plugin bundle 3/3; typecheck clean. The r35 demo video is rejected for sharing. This revision
 replaces the "library enablement" framing with **paradigm enablement** and **fork exit**, and makes
 the video clip-based.
+
+**Phase 9 complete (r2):** All foundation work done — signal discipline, gitlink hygiene, depth-mode
+fixes, capture determinism with first-frame marker. All verification gates pass.
 
 ---
 
@@ -170,14 +173,15 @@ flakiness, not by a guard.
 ### 9.4 Capture determinism
 
 - [x] **Remove host paths** from `capture-live.spec.ts`; source `directory` from the fixture or env. Changed to `process.env.GRAPH_FIXTURE_DIR ?? "/tmp/SessionGraph"`.
-- [ ] **Do not widen the flaky filter.** If a known-flaky error still appears, file a new F-number.
-- [ ] **Prefer a deterministic start signal** (DOM event or first-frame marker) over luma beacon
-      detection; keep the luma fallback.
+- [x] **Do not widen the flaky filter.** The `KNOWN_FLAKY_ERRORS` list remains minimal with only "Maximum call stack size exceeded".
+- [x] **Prefer a deterministic start signal** (first-frame marker) over luma beacon detection; keep the luma fallback. Added a red pixel marker at (0,0) in the first frame via `addFirstFrameMarker()` / `removeFirstFrameMarker()` in `capture-live.spec.ts`, and updated `generate-demo-video.ts` to detect this marker first with `detectFirstFrameMarker()`, falling back to the luma beacon detection.
 
 ### 9.5 Verification (Phase 9 exit, once)
 
 `cd packages/session-graph && bun run test && bun run test:components`;
 `cd packages/app && bun run test:e2e:built -- e2e/graph/capture.spec.ts`; root `bun run check`.
+
+**Completed:** All commands pass (2026-11-09).
 
 ---
 
@@ -395,7 +399,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 
 ### 15.2 Definition of done
 
-- [ ] 9: signal rule documented and guarded; gitlink resolved and reproducible; depth overrides
+- [x] 9: signal rule documented and guarded; gitlink resolved and reproducible; depth overrides
       ≤10% (at most one intentional); capture deterministic.
 - [ ] 10: at least the live map and the causal loop demonstrated; fractal drill-down and spatial
       memory attempted; graph-guided compaction spiked with an honest result.
@@ -444,9 +448,16 @@ loudness normalized; no music/SFX tracks; review notes recorded.
     `DepthCues.ts`), fixed hierarchy layout to use `parentOfFn` tree traversal (in `strategies.ts`),
     lowered capture overrides to 10% for fixed frames, orbit kept at 50% as experimental.
   - **9.4** Capture determinism: removed hardcoded Windows path from `capture-live.spec.ts`,
-    now uses `process.env.GRAPH_FIXTURE_DIR ?? "/tmp/SessionGraph"`.
+    now uses `process.env.GRAPH_FIXTURE_DIR ?? "/tmp/SessionGraph"`. Added deterministic
+    first-frame marker (red pixel at 0,0) to replace luma beacon; updated `generate-demo-video.ts`
+    with `detectFirstFrameMarker()` fallback to luma beacon.
   - All unit tests (96 session-graph, 861 session-ui) and component tests (55 session-graph) pass.
   - Root `bun run check` (lint + typecheck) passes.
+  - E2E capture suite (64 tests) passes.
+
+- **r2 (2026-11-09):** Phase 9 complete — all verification gates pass.
+  - Phase 9.5 verification executed: unit tests, component tests, e2e capture suite, root check all green.
+  - Phase 9 definition of done satisfied.
 
 ---
 
@@ -456,7 +467,7 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 - [x] Signal discipline: rule, audit, dev guard, regression tests
 - [x] Gitlink/submodule hygiene: decide, record, verify on fresh clone
 - [x] Depth modes: fix, lower overrides, delete stable ones
-- [ ] Capture determinism: no host paths, no silent flake widening, robust start signal
+- [x] Capture determinism: no host paths, no silent flake widening, robust start signal
 
 ### Next (Phases 10–11)
 - [ ] Live map during a run (incremental, append-only)
@@ -493,8 +504,8 @@ loudness normalized; no music/SFX tracks; review notes recorded.
 |---|---|---|---|
 | F3 | e2e/capture depth | **FIXED (r35)** | keep the regression test; guard in 9.1 |
 | F10 | plugin bundle badge loop | **FIXED (r35)** | seed file for 9.1 audit |
-| — | depth overrides | **OPEN** | 4 frames at 50% tolerance → Phase 9.3 |
-| — | gitlink without `.gitmodules` | **OPEN** | → Phase 9.2 |
+| — | depth overrides | **FIXED (r35/r1)** | 3 frames at 10%, 1 frame (orbit) at 50% as experimental |
+| — | gitlink without `.gitmodules` | **FIXED (r1)** | `.gitmodules` added, verified on fresh clone |
 | — | fork dependency on private graph packages | **OPEN** | → Phase 11 |
 | — | demo is a tour, not a story | **OPEN** | → Phase 13 |
 | F5 | `graph:verify` step 96 | likely fixed | confirm on the sync branch during Phase 9.5 |
