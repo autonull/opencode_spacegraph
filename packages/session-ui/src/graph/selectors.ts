@@ -612,6 +612,20 @@ export function turnSubgraph(model: GraphViewData, turnID: string, limit = 7): S
 }
 
 /**
+ * The subgraph for a subagent: the subagent node plus all its `part-of` descendants.
+ * Used for fractal drill-down (Phase 10.3) when double-clicking a subagent node.
+ */
+export function subagentSubgraph(model: GraphViewData, subagentID: string): Subgraph {
+  const scope = extractSubgraph(model, subagentID, {
+    limit: 100,
+    childEdgeKind: "part-of",
+    rankFn: () => 0,
+  })
+
+  return { nodes: [...scope.nodes], edges: [...scope.edges] }
+}
+
+/**
  * The trace kinds the host exposes. Each trace answers one question.
  */
 export type TraceKind = "why" | "led-here" | "related"

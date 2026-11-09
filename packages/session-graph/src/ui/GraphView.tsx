@@ -878,7 +878,7 @@ export const GraphView = (props: GraphViewProps) => {
   })
 
   // Graph navigation hook
-  const { expandToGraph, toggleFiles, togglePeek, dismissDetail, openInTranscript, fitSubtree } = useGraphNavigation({
+  const { expandToGraph, toggleFiles, togglePeek, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
     model,
     layout,
     setLayout,
@@ -893,6 +893,10 @@ export const GraphView = (props: GraphViewProps) => {
     popoverVisible,
     setPopoverDismissed,
     fitOptions,
+    enterDrillDown: state.enterDrillDown,
+    exitDrillDown: state.exitDrillDown,
+    canDrillDown: state.canDrillDown,
+    state,
   })
 
   // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
@@ -1129,6 +1133,10 @@ export const GraphView = (props: GraphViewProps) => {
     },
     onReady: (_info: { fallback: boolean }) => {},
     onError: setError,
+    // Drill-down (Phase 10.3)
+    exitDrillDown,
+    canDrillDown,
+    drillDownStack: state.drillDownStack,
   })
 
   return (

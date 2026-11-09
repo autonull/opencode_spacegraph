@@ -1,9 +1,10 @@
 import { type Accessor } from "solid-js"
 import type { GraphViewData, GraphNode, Layout } from "@opencode/session-ui/graph"
-import { isSummaryLayout, subtree, nodeByID } from "@opencode/session-ui/graph"
+import { isSummaryLayout, subtree, nodeByID, turnSubgraph, subagentSubgraph } from "@opencode/session-ui/graph"
 import { Metrics } from "@opencode/session-ui/graph"
 import type { GraphViewportTrackerReturn } from "./useGraphViewport"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
+import type { UseGraphStateReturn } from "./useGraphState"
 
 export interface UseGraphNavigationInput {
   model: Accessor<GraphViewData>
@@ -20,6 +21,11 @@ export interface UseGraphNavigationInput {
   popoverVisible: Accessor<GraphNode | undefined>
   setPopoverDismissed: (dismissed: boolean) => void
   fitOptions: Accessor<{ minScale: number; insets: undefined }>
+  // Drill-down (Phase 10.3)
+  enterDrillDown: UseGraphStateReturn["enterDrillDown"]
+  exitDrillDown: UseGraphStateReturn["exitDrillDown"]
+  canDrillDown: UseGraphStateReturn["canDrillDown"]
+  state: UseGraphStateReturn
 }
 
 export interface UseGraphNavigationReturn {
@@ -29,6 +35,9 @@ export interface UseGraphNavigationReturn {
   dismissDetail: () => void
   openInTranscript: (id: string) => void
   fitSubtree: (id: string) => void
+  // Drill-down
+  exitDrillDown: () => void
+  canDrillDown: () => boolean
 }
 
 export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavigationReturn {
@@ -47,6 +56,11 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     popoverVisible,
     setPopoverDismissed,
     fitOptions,
+    enterDrillDown,
+    exitDrillDown: exitDrillDownState,
+    canDrillDown: canDrillDownState,
+    // Drill-down state access for exitDrillDown
+    state,
   } = input
 
   // LE.8/LE.9: a segment/cell expands into the node-link graph with that node selected and framed.
@@ -55,6 +69,33 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
 
     if (!node) return
     Metrics.count("expand")
+
+    // Phase 10.3: Fractal drill-down for turns and subagents
+    if (node.kind === "turn") {
+      const subgraph = turnSubgraph(model(), node.id, 20)
+      const camera = viewportTracker.viewport()
+      enterDrillDown(
+        { ...model(), nodes: subgraph.nodes, edges: subgraph.edges, turns: [node.id], root: node.id },
+        node.id,
+        camera ? { zoom: camera.zoom, center: camera.center } : undefined
+      )
+      // Select the turn node in the subgraph
+      select(node.id)
+      return
+    }
+
+    if (node.kind === "subagent") {
+      const subgraph = subagentSubgraph(model(), node.id)
+      const camera = viewportTracker.viewport()
+      enterDrillDown(
+        { ...model(), nodes: subgraph.nodes, edges: subgraph.edges, turns: [], root: node.id },
+        node.id,
+        camera ? { zoom: camera.zoom, center: camera.center } : undefined
+      )
+      select(node.id)
+      return
+    }
+
     if (isSummaryLayout(layout())) setLayout("lanes")
     subtree(model(), id).map((node) => node.id)
     viewportTracker.camera.fitContent()
@@ -101,6 +142,29 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     )
   }
 
+  // Drill-down exit
+  const exitDrillDown = () => {
+    // Get the camera from the previous stack entry before popping
+    const stack = state.drillDownStack()
+    const previousEntry = stack.length > 1 ? stack[stack.length - 2] : null
+    const previousCamera = previousEntry?.camera
+    
+    exitDrillDownState()
+    
+    // Restore camera from previous entry after the model switches back
+    if (previousCamera) {
+      // Use a small timeout to let the model switch complete
+      setTimeout(() => {
+        viewportTracker.setViewport({ 
+          zoom: previousCamera.zoom, 
+          center: previousCamera.center as [number, number, number] 
+        })
+      }, 0)
+    }
+  }
+
+  const canDrillDown = () => canDrillDownState()
+
   return {
     expandToGraph,
     toggleFiles,
@@ -108,5 +172,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     dismissDetail,
     openInTranscript,
     fitSubtree,
+    exitDrillDown,
+    canDrillDown,
   }
 }

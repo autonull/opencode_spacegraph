@@ -838,6 +838,9 @@ const source = {
   "ui.sessionGraph.trace.forward": "Forward",
   "ui.sessionGraph.trace.forwardAnnouncement": "Traced forward to {label}",
 
+  "ui.sessionGraph.drillDown.breadcrumbLabel": "Drill-down:",
+  "ui.sessionGraph.drillDown.exit": "Exit",
+
   "ui.sessionGraph.turnMap.close": "Close",
   "ui.sessionGraph.turnMap.label": "Turn map",
   "ui.sessionGraph.turnMap.openFull": "Open full graph",

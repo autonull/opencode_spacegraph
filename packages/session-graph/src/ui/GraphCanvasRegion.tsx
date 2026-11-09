@@ -1,5 +1,5 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, createSignal, onCleanup } from "solid-js"
+import { createEffect, createSignal, onCleanup, For, Show } from "solid-js"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import { GraphOverlayManager } from "./GraphOverlayManager"
 import { attachTouchGestures } from "./graph-utils"
@@ -32,7 +32,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   return (
     <div
       ref={setCanvasRegionEl}
-      class="relative min-w-0 flex-1"
+      class="relative min-w-0 flex-1 flex flex-col"
       data-slot="graph-canvas-region"
       role="group"
       aria-label={i18n.t("ui.sessionGraph.canvas.label")}
@@ -40,7 +40,37 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
       tabindex="0"
       onKeyDown={props.handleRegionKeyDown}
     >
-      <GraphCanvas
+      {/* Drill-down breadcrumbs (Phase 10.3) */}
+      <Show when={props.canDrillDown()}>
+        <div class="flex items-center gap-1 px-2 py-1 border-b border-border-weaker-base bg-background-base/95 backdrop-blur-sm">
+          <span class="text-11-regular text-text-weak">{i18n.t("ui.sessionGraph.drillDown.breadcrumbLabel")}</span>
+          <For each={props.drillDownStack()}>
+            {(entry, index) => (
+              <span class="flex items-center gap-1">
+                <span class="text-11-regular text-text-base px-1.5 py-0.5 rounded-sm bg-surface-base-hover">
+                  {props.model().nodes.find((n) => n.id === entry.selection)?.label ?? entry.selection ?? "Session"}
+                </span>
+                <Show when={index() < props.drillDownStack().length - 1}>
+                  <span class="text-text-weaker" aria-hidden="true">›</span>
+                </Show>
+              </span>
+            )}
+          </For>
+          <button
+            type="button"
+            class="flex items-center gap-1 ml-2 rounded-sm px-2 py-1 text-11-regular text-text-base hover:bg-surface-base-hover"
+            onClick={props.exitDrillDown}
+            aria-label={i18n.t("ui.sessionGraph.drillDown.exit")}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 12l-4-4 4-4" />
+            </svg>
+            <span>{i18n.t("ui.sessionGraph.drillDown.exit")}</span>
+          </button>
+        </div>
+      </Show>
+      <div class="relative min-w-0 flex-1">
+        <GraphCanvas
         model={props.renderModel()}
         theme={props.theme()}
         projection={props.projection}
@@ -159,6 +189,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         announce={props.announce}
         i18n={props.i18n}
       />
+      </div>
     </div>
   )
 }
