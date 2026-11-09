@@ -419,7 +419,17 @@ Nothing here is dropped. Items are ordered by ROI: force engine convergence ✅ 
 
 ### 8.4 Revision log
 
-- **r33 (2026-11-08):** Enhanced demo video plan.
+- **r34 (2026-11-08):** Depth control reactivity bug blocking capture gate.
+  - **Status:** 58/64 capture frames pass (90.6%). 6 tests fail (3 unique frames × 2 projects).
+  - **Failed frames:** 18 "graph layered", 19 "graph depth stack", 31 "graph perspective" — all expect non-flat depth but receive "flat".
+  - **Root cause:** Depth signal flow broken in reactive chain:
+    `GraphLayersControl.selectOption()` → `changeDepth()` → `setDepth()` → store ✓ → `useCapabilityFallback` ✓ reads "layered" → `GraphCanvas` ✗ reads stale "flat".
+  - **Debug findings:** Memos in `useCanvasRegionProps` and `GraphCanvasRegion` were calling getters (breaking SolidJS tracking). Fixed to pass accessors directly. But GraphCanvas effect still fires repeatedly with stale value.
+  - **Next steps (fresh session):** 
+    1. Rewrite depth propagation cleanly — avoid multiple effects fighting over same state. Consider single source of truth + derived signals.
+    2. Or simplify: make depth a derived signal from projection when not explicitly set, remove `useCapabilityFallback` complexity.
+    3. Verify component tests still pass (53/53).
+  - Document rewrite approach in plan for fresh session.
   - Added 5s hook sequence: rapid cuts of 3D orbit spin → force layout explosion → auto-zoom → trace overlay reveal.
   - Added "kidnapper" voice effect for narration: pitch shift -3 semitones + formant shift +12% via ffmpeg rubberband.
   - Updated DEMO_VIDEO_PLAN.md with hook design, SpaceGraphJS auto-zoom highlight, voice effect specs.

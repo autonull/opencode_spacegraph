@@ -11,13 +11,23 @@ export function useCapabilityFallback(
 ) {
   createEffect(() => {
     const current = capabilities()
-    if (!current) return
-    if (projection() === "3d" && !supports(current, "3d")) setProjection("2d")
+    if (!current) {
+      console.log('[useCapabilityFallback] No capabilities yet')
+      return
+    }
+    const proj = projection()
     const d = depth()
+    console.log('[useCapabilityFallback] Running', { capabilities: current.depths, projection: proj, depth: d })
+    if (proj === "3d" && !supports(current, "3d")) {
+      console.log('[useCapabilityFallback] 3d not supported, setting projection to 2d')
+      setProjection("2d")
+    }
     if (!supportsDepth(current, d)) {
+      console.log('[useCapabilityFallback] Depth not supported, falling back to flat', { depth: d })
       setDepth("flat")
-      // Revert projection for any non-flat depth that isn't supported
       if (d !== "flat") setProjection("2d")
+    } else {
+      console.log('[useCapabilityFallback] Depth supported, keeping', { depth: d })
     }
   })
 }

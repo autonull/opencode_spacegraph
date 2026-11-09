@@ -16,10 +16,6 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
   const [canvasRegionEl, setCanvasRegionEl] = createSignal<HTMLDivElement | undefined>()
   const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
 
-  // Subscribe to projection/depth getters so this component re-renders when they change
-  const projection = createMemo(() => props.projection())
-  const depth = createMemo(() => props.depth())
-
   // V117: Touch gestures for mobile - set up when renderer and canvas are available
   createEffect(() => {
     const r = renderer()
@@ -47,9 +43,9 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
       <GraphCanvas
         model={props.renderModel()}
         theme={props.theme()}
-        projection={projection()}
-        depth={depth()}
-        cardFacing={props.cardFacing()}
+        projection={props.projection}
+        depth={props.depth}
+        cardFacing={props.cardFacing}
         selection={props.selection()}
         preferredRenderer={props.preferredRenderer}
         overrides={props.rendererOverrides}
@@ -90,11 +86,11 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         // Model & theme
         model={props.model}
         theme={props.theme()}
-        projection={props.projection()}
-        depth={props.depth()}
-        detailMode={props.detailMode()}
-        effectiveDetailMode={props.effectiveDetailMode()}
-        layout={props.layout()}
+        projection={props.projection}
+        depth={props.depth}
+        detailMode={props.detailMode}
+        effectiveDetailMode={props.effectiveDetailMode}
+        layout={props.layout}
 
         // Selection & navigation
         selection={props.selection}
