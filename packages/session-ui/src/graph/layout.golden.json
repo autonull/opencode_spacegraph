@@ -1295,289 +1295,289 @@
     [
       [
         "session",
-        110,
+        66,
         0,
         0
       ],
       [
-        "file:src/auth/session.ts",
-        470,
-        84,
-        192
-      ],
-      [
-        "file:src/auth/session.test.ts",
-        470,
-        168,
-        192
-      ],
-      [
-        "file:src/auth/store.ts",
-        470,
-        252,
-        192
-      ],
-      [
-        "file:src/auth/token.ts",
-        470,
-        336,
-        192
-      ],
-      [
-        "file:src/auth/guards.ts",
-        470,
-        420,
-        192
-      ],
-      [
-        "file-group:src:auth",
-        350,
-        504,
-        128
-      ],
-      [
-        "error-group:turn:msg_user_1",
-        350,
-        588,
-        128
-      ],
-      [
-        "subagent-group:ses_child_auth",
-        350,
-        672,
-        128
-      ],
-      [
         "turn:msg_user_1",
-        978,
-        0,
+        186,
+        84,
         64
       ],
       [
         "msg:msg_user_1",
-        1098,
-        84,
-        128
-      ],
-      [
-        "msg_plan_1:text:0",
-        1098,
+        350,
         168,
         128
       ],
       [
-        "tool:prt_tool_glob_1",
-        1098,
+        "file:src/auth/session.ts",
+        350,
         252,
         128
       ],
       [
-        "phase:turn:msg_user_1:explore:1",
-        978,
+        "file:src/auth/session.test.ts",
+        350,
         336,
-        64
+        128
       ],
       [
-        "tool:prt_tool_grep_1",
-        1098,
+        "msg_plan_1:text:0",
+        350,
         420,
         128
       ],
       [
-        "tool:prt_tool_read_1",
-        1098,
+        "tool:prt_tool_glob_1",
+        350,
         504,
         128
       ],
       [
-        "tool:prt_tool_read_2",
-        1098,
+        "phase:turn:msg_user_1:explore:1",
+        306,
         588,
         128
       ],
       [
-        "tool:prt_tool_read_3",
-        1098,
+        "tool:prt_tool_grep_1",
+        350,
         672,
         128
       ],
       [
-        "sub:ses_child_auth",
-        1098,
+        "tool:prt_tool_read_1",
+        350,
         756,
         128
       ],
       [
-        "phase:turn:msg_user_1:delegate:2",
-        978,
+        "tool:prt_tool_read_2",
+        350,
         840,
-        64
+        128
+      ],
+      [
+        "tool:prt_tool_read_3",
+        350,
+        924,
+        128
+      ],
+      [
+        "file:src/auth/store.ts",
+        350,
+        1008,
+        128
+      ],
+      [
+        "sub:ses_child_auth",
+        350,
+        1092,
+        128
+      ],
+      [
+        "phase:turn:msg_user_1:delegate:2",
+        1054,
+        0,
+        128
       ],
       [
         "msg:msg_synthetic_1",
         1098,
-        924,
+        84,
         128
       ],
       [
         "tool:prt_tool_edit_1",
         1098,
-        1008,
-        128
-      ],
-      [
-        "phase:turn:msg_user_1:edit:3",
-        978,
-        1092,
-        64
-      ],
-      [
-        "tool:prt_tool_write_1",
-        1846,
-        0,
-        128
-      ],
-      [
-        "tool:prt_tool_patch_1",
-        1846,
-        84,
-        128
-      ],
-      [
-        "tool:prt_tool_shell_1",
-        1846,
         168,
         128
       ],
       [
-        "phase:turn:msg_user_1:verify:4",
-        1726,
+        "phase:turn:msg_user_1:edit:3",
+        1054,
         252,
-        64
+        128
+      ],
+      [
+        "tool:prt_tool_write_1",
+        1098,
+        336,
+        128
+      ],
+      [
+        "file:src/auth/token.ts",
+        1098,
+        420,
+        128
+      ],
+      [
+        "tool:prt_tool_patch_1",
+        1098,
+        504,
+        128
+      ],
+      [
+        "file:src/auth/guards.ts",
+        1098,
+        588,
+        128
+      ],
+      [
+        "tool:prt_tool_shell_1",
+        1098,
+        672,
+        128
+      ],
+      [
+        "phase:turn:msg_user_1:verify:4",
+        1054,
+        756,
+        128
       ],
       [
         "result:prt_tool_shell_1",
-        1966,
-        336,
-        192
+        1098,
+        840,
+        128
       ],
       [
         "tool:prt_tool_shell_2",
+        1098,
+        924,
+        128
+      ],
+      [
+        "result:prt_tool_shell_2",
+        1098,
+        1008,
+        128
+      ],
+      [
+        "tool:prt_tool_edit_2",
+        1098,
+        1092,
+        128
+      ],
+      [
+        "phase:turn:msg_user_1:edit:5",
+        1802,
+        0,
+        128
+      ],
+      [
+        "err:msg_retry_1:assistant",
+        1802,
+        84,
+        128
+      ],
+      [
+        "retry:msg_retry_1:2",
+        1802,
+        168,
+        128
+      ],
+      [
+        "tool:prt_tool_shell_3",
+        1846,
+        252,
+        128
+      ],
+      [
+        "phase:turn:msg_user_1:verify:6",
+        1802,
+        336,
+        128
+      ],
+      [
+        "result:prt_tool_shell_3",
         1846,
         420,
         128
       ],
       [
-        "result:prt_tool_shell_2",
-        1966,
+        "diff:msg_idle_1",
+        1846,
         504,
-        192
+        128
       ],
       [
-        "tool:prt_tool_edit_2",
+        "error-group:turn:msg_user_1",
         1846,
         588,
         128
       ],
       [
-        "phase:turn:msg_user_1:edit:5",
-        1726,
+        "subagent-group:ses_child_auth",
+        1846,
         672,
+        128
+      ],
+      [
+        "turn:msg_user_2",
+        1682,
+        756,
         64
       ],
       [
-        "err:msg_retry_1:assistant",
-        1966,
-        756,
-        192
-      ],
-      [
-        "retry:msg_retry_1:2",
-        1966,
+        "msg:msg_user_2",
+        1846,
         840,
-        192
+        128
       ],
       [
-        "tool:prt_tool_shell_3",
+        "tool:prt_tool_edit_3",
         1846,
         924,
         128
       ],
       [
-        "phase:turn:msg_user_1:verify:6",
-        1726,
-        1008,
-        64
-      ],
-      [
-        "result:prt_tool_shell_3",
-        1966,
-        1092,
-        192
-      ],
-      [
-        "diff:msg_idle_1",
-        2714,
-        0,
-        192
-      ],
-      [
-        "turn:msg_user_2",
-        3222,
-        0,
-        64
-      ],
-      [
-        "msg:msg_user_2",
-        3342,
-        84,
-        128
-      ],
-      [
-        "tool:prt_tool_edit_3",
-        3342,
-        168,
-        128
-      ],
-      [
         "phase:turn:msg_user_2:edit:1",
-        3222,
-        252,
-        64
+        1802,
+        1008,
+        128
       ],
       [
         "tool:prt_tool_shell_4",
-        3342,
-        336,
+        1846,
+        1092,
         128
       ],
       [
         "phase:turn:msg_user_2:verify:2",
-        3222,
-        420,
-        64
+        2550,
+        0,
+        128
       ],
       [
         "result:prt_tool_shell_4",
-        3462,
-        504,
-        192
+        2594,
+        84,
+        128
       ],
       [
         "diff:msg_idle_2",
-        3462,
-        588,
-        192
+        2594,
+        168,
+        128
+      ],
+      [
+        "file-group:src:auth",
+        2474,
+        252,
+        64
       ]
     ],
     [],
     [
-      110,
+      66,
       0,
       0,
-      3462,
+      2594,
       1092,
-      192
+      128
     ]
   ],
   "tree": [
