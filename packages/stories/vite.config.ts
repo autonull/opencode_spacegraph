@@ -65,6 +65,9 @@ export default defineConfig({
         replacement: path.resolve(mocks, "app/components/dialog-select-model-unpaid.tsx"),
       },
       { find: "@", replacement: app },
+      // Fork-only packages bundled into gui-plugins
+      { find: "@opencode/session-ui/graph", replacement: path.resolve(packages, "gui-plugins/src/spacegraph/internal/graph") },
+      { find: "@opencode/session-graph", replacement: path.resolve(packages, "gui-plugins/src/spacegraph/internal/host") },
     ],
   },
   worker: {
