@@ -19,7 +19,7 @@ const test = base.extend({
   },
 })
 
-const directory = "C:/OpenCode/SessionGraph"
+const directory = process.env.GRAPH_FIXTURE_DIR ?? "/tmp/SessionGraph"
 const sessionID = "ses_session_graph"
 const canvasHost = '[data-slot="graph-canvas-host"]'
 const toolbar = '[data-slot="graph-toolbar"]'

@@ -50,6 +50,23 @@ This rule is enforced by:
 1. The `GraphCanvasRegionProps` type requiring `renderModel: () => RenderModel` (not `RenderModel`)
 2. A unit test in `src/ui/GraphCanvasRegionProps.test.ts` verifying the accessor is tracked
 
+## Reactive Signal Discipline (ADR-23)
+
+The two worst bugs in this package were self-invalidating SolidJS effects:
+
+- **F10** — `useGroupBadgeAnimation`: an effect wrote `animatedGroups` signal that it read via `setAnimatedGroups`, causing an infinite loop on every model change.
+- **F3** — `GraphCanvas`: a `viewportChange` effect wrote host signals that re-entered through `onViewportChange`, creating a camera feedback loop.
+
+**Rule:** An effect never writes a signal it reads. Prefer `createMemo` for derived state. Every timer/subscription registers `onCleanup`. Extract pure reactive logic and unit-test it in isolation.
+
+**Dev-only guard:** A development-mode tracker logs once when an effect writes a signal during its own run. No production cost; uses Solid's internal tracker if available.
+
+**Regression tests:**
+- `useGroupBadgeAnimation` runs once per count change (not per effect re-run)
+- Depth applies once per projection change (not per viewport report)
+
+These extend existing coverage; do not duplicate tests.
+
 ## Checks
 
 - Typecheck: `bun run typecheck` from this directory.
