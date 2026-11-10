@@ -1,10 +1,10 @@
 import { usePlugin, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, createMemo, For, Show, type JSX } from "solid-js"
 import { navigationResults, rankedSearch, type GraphNode as SessionGraphNode, type GraphViewData as SessionGraphViewData } from "@opencode/session-ui/graph"
 import { formatProvenance, text } from "@opencode/session-graph"
 import type { SpacegraphModel } from "./model"
-import { SessionGraph } from "@opencode/session-graph"
+import { SessionGraph, ComposerNodeWidget, type ComposerNodeWidgetProps } from "@opencode/session-graph"
 import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
@@ -52,7 +52,7 @@ export default function SpacegraphPanel(props: {
   screen: SessionScreen
   onOpenTranscript?: (id: string) => void
 }) {
-  const ctx = usePlugin()
+  const ctx = usePlugin<typeof import("./index").default>()
   const i18n = useI18n()
 
   const [windows, setWindows] = createSignal<WindowState[]>([])
@@ -134,6 +134,37 @@ export default function SpacegraphPanel(props: {
   const explicitlyCollapsedGroups = () => props.model.explicitlyCollapsedGroups(props.session)
   const notes = () => props.model.notes(props.session)
 
+  // Widgets enabled check (Phase 15 - ComposerNodeWidget)
+  const widgetsEnabled = createMemo(() => {
+    const prefs = ctx.stores.prefs.value
+    return prefs.widgets?.enabled === true
+  })
+
+  // Get the composer from the screen
+  const composer = createMemo(() => props.screen.composer)
+
+  // Render node widget for the session root node when widgets are enabled
+  const renderNodeWidget = createMemo(() => {
+    if (!widgetsEnabled()) return undefined
+
+    return (node: SessionGraphNode): JSX.Element | undefined => {
+      // Only show widget on the session root node
+      if (node.kind !== "session" || node.id !== "session") return undefined
+
+      const composerInstance = composer()
+      if (!composerInstance) return undefined
+
+      const widgetProps: ComposerNodeWidgetProps = {
+        node,
+        composer: composerInstance,
+        readOnly: false,
+        maxHeight: 140,
+      }
+
+      return <ComposerNodeWidget {...widgetProps} />
+    }
+  })
+
   return (
     <div class="flex size-full min-h-0 flex-col bg-v2-background-bg-base" data-slot="spacegraph-panel">
       <div class="flex shrink-0 items-center justify-between gap-2 border-b border-v2-border-border-base px-4 py-2.5">
@@ -213,6 +244,8 @@ export default function SpacegraphPanel(props: {
           // Shared notes state
           notes={notes()}
           onNotesChange={(notes: Annotations) => props.model.setNotes(props.session, notes)}
+          // Node widget (Phase 15 - ComposerNodeWidget)
+          renderNodeWidget={renderNodeWidget()}
         />
         <Windows
           windows={windows()}

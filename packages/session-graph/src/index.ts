@@ -123,5 +123,7 @@ export { GraphCompareBar, type GraphCompareBarProps } from "@spacegraphjs/compar
 
 export { DEFAULT_THEME } from "@spacegraphjs/renderer"
 
+export { ComposerNodeWidget, type ComposerNodeWidgetProps } from "./ui/ComposerNodeWidget"
+
 // Adapters
 export * from "./adapters/spacegraphjs"

@@ -113,7 +113,9 @@
     "./ui/GraphIconButton": "./src/ui/GraphIconButton.tsx",
     "./ui/conditional": "./src/ui/conditional.tsx",
     "./ui/dev-effect-guard": "./src/ui/dev-effect-guard.ts",
-    "./ui/dev-effect-guard.test": "./src/ui/dev-effect-guard.test.ts"
+    "./ui/dev-effect-guard.test": "./src/ui/dev-effect-guard.test.ts",
+    "./ui/ComposerNodeWidget": "./src/ui/ComposerNodeWidget.tsx",
+    "./ui/composer-node-widget.css": "./src/ui/composer-node-widget.css"
   },
   "scripts": {
     "typecheck": "tsc -b",

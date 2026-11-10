@@ -1,0 +1,60 @@
+.composer-node-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--v2-background-bg-base);
+  border: 1px solid var(--v2-border-border-base);
+  border-radius: 6px;
+  min-width: 220px;
+  max-width: 280px;
+  box-shadow: var(--v2-shadow-md);
+}
+
+.composer-node-widget-input-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.composer-node-widget-input-wrapper :global(.text-input-v2) {
+  width: 100%;
+}
+
+.composer-node-widget-input-wrapper :global(.text-input-v2-input) {
+  font-size: 12px;
+  line-height: 16px;
+  padding: 6px 8px;
+}
+
+.composer-node-widget-input-wrapper :global(.text-input-v2-leading-icon) {
+  color: var(--v2-text-text-weak);
+  margin-right: 6px;
+}
+
+.composer-node-widget-actions {
+  display: flex;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.composer-node-widget-actions :global(.button) {
+  font-size: 11px;
+  padding: 4px 8px;
+  height: 24px;
+}
+
+.composer-node-widget-readonly {
+  padding: 4px 0;
+  border-top: 1px solid var(--v2-border-border-weaker-base);
+}
+
+.composer-node-widget-unavailable {
+  padding: 4px 0;
+  text-align: center;
+  opacity: 0.6;
+}
+
+.composer-node-widget-readonly-label,
+.composer-node-widget-unavailable-label {
+  font-size: 11px;
+}
