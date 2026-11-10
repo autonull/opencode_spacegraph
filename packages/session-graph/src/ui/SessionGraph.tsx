@@ -317,6 +317,17 @@ export const SessionGraph = (props: SessionGraphProps) => {
   const [isActiveInstance, setIsActiveInstance] = createSignal(false)
   const bus = createGraphBus(instanceId)
 
+  // Reduced motion: track prefers-reduced-motion media query
+  const [reducedMotion, setReducedMotion] = createSignal(false)
+  onMount(() => {
+    if (typeof window === "undefined") return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReducedMotion(media.matches)
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+    media.addEventListener("change", handler)
+    onCleanup(() => media.removeEventListener("change", handler))
+  })
+
   // Register bus with router and track active instance
   onMount(() => {
     const unregister = registerGraphBus(bus)
@@ -1093,7 +1104,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     applyModel,
     preferredRenderer: props.preferredRenderer as () => "spacegraph" | undefined,
     rendererOverrides: props.rendererOverrides,
-    reducedMotion: () => props.reducedMotion ?? false,
+    reducedMotion: () => reducedMotion(),
     detailMode,
     effectiveDetailMode,
     files,
