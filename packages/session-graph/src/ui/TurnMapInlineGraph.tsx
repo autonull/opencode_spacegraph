@@ -27,6 +27,7 @@ export type TurnMapInlineGraphProps = {
  */
 export const TurnMapInlineGraph = (props: TurnMapInlineGraphProps) => {
   const i18n = useI18n()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let host!: HTMLDivElement
   let graph: InlineGraph | undefined
 

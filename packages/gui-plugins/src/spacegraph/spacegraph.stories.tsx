@@ -42,7 +42,7 @@ function createMockModel() {
 
   return {
     focused,
-    focus: (session: unknown, id: string) => setFocused(id),
+    focus: (_session: unknown, id: string) => setFocused(id),
     level: () => level(),
     layout: () => layout(),
     depth: () => depth(),
@@ -52,18 +52,18 @@ function createMockModel() {
     setArrangement: (_: unknown, a: "stacked" | "side" | "floating") => setArrangement(a),
     setSide: (_: unknown, s: "start" | "end") => setSide(s),
     turnMap: () => turnMap(),
-    toggleTurnMap: (_: unknown) => setTurnMap((t) => !t),
-    closeTurnMap: (_: unknown) => setTurnMap(false),
-    cycleLevel: (_: unknown) => setLevel((l) => (l === "overview" ? "execution" : l === "execution" ? "detail" : "overview")),
-    cycleLayout: (_: unknown) => setLayout((l) => {
+    toggleTurnMap: () => setTurnMap((t) => !t),
+    closeTurnMap: () => setTurnMap(false),
+    cycleLevel: () => setLevel((l) => (l === "overview" ? "execution" : l === "execution" ? "detail" : "overview")),
+    cycleLayout: () => setLayout((l) => {
       const order = ["lanes", "timeline", "hierarchy", "tree", "force"]
       return order[(order.indexOf(l) + 1) % order.length]
     }),
-    cycleArrangement: (_: unknown) => setArrangement((a) => {
+    cycleArrangement: () => setArrangement((a) => {
       const order = ["stacked", "side", "floating"] as const
       return order[(order.indexOf(a) + 1) % order.length]
     }),
-    toggleSide: (_: unknown) => setSide((s) => (s === "start" ? "end" : "start")),
+    toggleSide: () => setSide((s) => (s === "start" ? "end" : "start")),
     surface: () => "spacegraph.map",
     select: (_: unknown, id: string) => setFocused(id),
     export: () => {},

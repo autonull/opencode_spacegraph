@@ -17,6 +17,7 @@ export type GraphNoteComposerProps = {
 export const GraphNoteComposer = (props: GraphNoteComposerProps) => {
   const i18n = useI18n()
   const [value, setValue] = createSignal(props.initialValue ?? "")
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let input!: HTMLTextAreaElement
 
   onMount(() => input.focus())

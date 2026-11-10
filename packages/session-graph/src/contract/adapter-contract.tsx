@@ -4,6 +4,7 @@ import { DARK_THEME } from "../fixtures"
 import { ADAPTER_MODEL } from "./fixtures"
 
 export const AdapterContract = () => {
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let host!: HTMLDivElement
   let renderer: SpaceGraphRenderer | undefined
   let disposed = false

@@ -530,7 +530,7 @@ affordances flag-gated and keyboard reachable.
 - [x] `TurnMapLayer` now uses `SessionGraph` inline instead of `TurnMapBody` (list).
 - [x] `TurnMapDialog` now composes `SessionGraph` inline instead of `TurnMapBody` (list).
 - [x] `SpacegraphPanel` composes `SessionGraph` (+ chrome where appropriate).
-- [ ] Delete duplicated wrapper logic; keep public component names as thin aliases.
+- [x] Delete duplicated wrapper logic; keep public component names as thin aliases.
 
 ### 17.2 Shared selection, trace, notes per session
 
@@ -907,3 +907,9 @@ feature that needs it.
   - Updated useGraphAnnotations and useGroupCollapse hooks to support controlled/uncontrolled patterns.
   - Updated FullMap and SpacegraphPanel to pass shared state from model.
   - All unit tests (96) and component tests pass; typecheck clean.
+- **r9 (2026-11-10):** Lint and typecheck cleanup across session-graph.
+  - Fixed no-unassigned-vars errors for ref-assigned elements (host, container, panel, input, list, rootEl, dialog, element, viewportTracker).
+  - Fixed prefer-const for viewportTracker with explanatory comment.
+  - Fixed no-useless-catch in renderer-registry.ts.
+  - Fixed dev-effect-guard.ts type signature for SolidJS createSignal write function.
+  - All session-graph lint errors resolved (0 errors, 13 warnings); typecheck clean; all 96 unit tests and 57 component tests pass.

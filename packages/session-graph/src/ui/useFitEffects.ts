@@ -56,8 +56,8 @@ export function useFitEffects(
 
   // Structural refit (refitKey, arrangement change)
   createEffect(() => {
-    props.refitKey
-    props.arrangement
+    void props.refitKey
+    void props.arrangement
     const instance = state.renderer()
     if (!instance) return
     const vt = state.viewportTracker

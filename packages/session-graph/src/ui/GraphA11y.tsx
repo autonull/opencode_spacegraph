@@ -31,6 +31,7 @@ export type GraphA11yProps = {
  */
 export const GraphA11y = (props: GraphA11yProps) => {
   const i18n = useI18n()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let container!: HTMLDivElement
   let layer: AccessibilityLayer | undefined
   let announced: string | undefined
