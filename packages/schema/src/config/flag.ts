@@ -19,5 +19,14 @@ export const registry = {
     "Watch Slack threads, GitHub pull requests, issues, commits and Actions runs, and the workspace's MCP servers' events through OpenCode Console, and wake sessions when they change.",
   mcp_events:
     "Enable experimental MCP Events, a draft MCP extension: declare support to MCP servers and read the events of servers that offer them.",
+  codemode_vm: "Run the Code Mode execute tool on the experimental bytecode VM instead of the legacy interpreter.",
+  graph_surface_transcript: "Enable the graph transcript surface (own rows with per-turn affordances).",
+  graph_node_widgets: "Enable node widget overlay (interactive UI inside graph nodes).",
+  graph_inline_preview: "Enable inline graph preview (static SVG with lazy interactive expand).",
+  graph_multi_surface: "Enable shared selection/trace/notes across multiple graph surfaces.",
+  graph_library_renderers: "Enable alternative renderer strategies (Cytoscape, etc.).",
+  graph_time_travel: "Enable time travel scrubber through incremental builder snapshots.",
+  graph_compaction_advisor: "Enable compaction preview advisor.",
+  graph_cost_lens: "Enable cost/budget lens.",
 } as const satisfies Record<string, string>
 export type Key = keyof typeof registry

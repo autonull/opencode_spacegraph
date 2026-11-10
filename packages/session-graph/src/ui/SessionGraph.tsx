@@ -180,6 +180,10 @@ export type SessionGraphProps = {
   /** Optional host renderer for a node's summary (for example MarkDown); falls back to plain text. */
   renderSummary?: (node: GraphNode) => JSX.Element | undefined
   renderCard?: CardTemplate
+  /** Optional host renderer for an interactive widget inside a node. Flag-gated (graph_node_widgets). */
+  renderNodeWidget?: (node: GraphNode) => JSX.Element | undefined
+  /** Optional host renderer for custom HTML content inside a node's card. The HTML is sanitized by the host. */
+  renderNodeHTML?: (node: GraphNode) => string | undefined
   /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
   endInset?: string
   /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
@@ -691,6 +695,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   const renderCard = useRenderCard(
     {
       renderCard: props.renderCard,
+      renderNodeHTML: props.renderNodeHTML,
       rules: () => props.rules,
       activeTurn: props.activeTurn,
       diffSource: props.diffSource,
@@ -1606,7 +1611,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
               onSelect={(id) => select(id)}
             />
           </Show>
-          <GraphCanvasRegion {...canvasRegionProps} />
+          <GraphCanvasRegion {...canvasRegionProps} renderNodeWidget={props.renderNodeWidget} />
           <GraphWindowManager
             windows={props.windows ?? []}
             onWindowsChange={props.onWindowsChange ?? (() => {})}
