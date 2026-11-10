@@ -137,5 +137,10 @@ export default {
   "ui.sessionGraph.trace.relatedAnnouncement": "Tracing related from {label}",
   "ui.sessionGraph.trace.backAnnouncement": "Back to {label}",
   "ui.sessionGraph.trace.forwardAnnouncement": "Forward to {label}",
-  "ui.sessionGraph.trace.copied": "Trace outline copied"
+  "ui.sessionGraph.trace.copied": "Trace outline copied",
+  "ui.sessionGraph.subagentWidget.previewLabel": "Subagent preview: {label}",
+  "ui.sessionGraph.subagentWidget.drillDownLabel": "Open subagent map for {label}",
+  "ui.sessionGraph.subagentWidget.nodeCount": "{count} nodes",
+  "ui.sessionGraph.subagentWidget.edgeCount": "{count} edges",
+  "ui.sessionGraph.subagentWidget.clickToExpand": "Click to expand"
 }

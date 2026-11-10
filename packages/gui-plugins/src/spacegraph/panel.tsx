@@ -4,7 +4,7 @@ import { createSignal, createMemo, For, Show, type JSX } from "solid-js"
 import { navigationResults, rankedSearch, type GraphNode as SessionGraphNode, type GraphViewData as SessionGraphViewData } from "@opencode/session-ui/graph"
 import { formatProvenance, text } from "@opencode/session-graph"
 import type { SpacegraphModel } from "./model"
-import { SessionGraph, ComposerNodeWidget, type ComposerNodeWidgetProps } from "@opencode/session-graph"
+import { SessionGraph, ComposerNodeWidget, SubagentNodeWidget, type ComposerNodeWidgetProps } from "@opencode/session-graph"
 import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
@@ -143,25 +143,45 @@ export default function SpacegraphPanel(props: {
   // Get the composer from the screen
   const composer = createMemo(() => props.screen.composer)
 
-  // Render node widget for the session root node when widgets are enabled
+  // Render node widget for the session root node and subagent nodes when widgets are enabled
   const renderNodeWidget = createMemo(() => {
     if (!widgetsEnabled()) return undefined
 
     return (node: SessionGraphNode): JSX.Element | undefined => {
-      // Only show widget on the session root node
-      if (node.kind !== "session" || node.id !== "session") return undefined
+      // Composer widget on session root node
+      if (node.kind === "session" && node.id === "session") {
+        const composerInstance = composer()
+        if (!composerInstance) return undefined
 
-      const composerInstance = composer()
-      if (!composerInstance) return undefined
+        const widgetProps: ComposerNodeWidgetProps = {
+          node,
+          composer: composerInstance,
+          readOnly: false,
+          maxHeight: 140,
+        }
 
-      const widgetProps: ComposerNodeWidgetProps = {
-        node,
-        composer: composerInstance,
-        readOnly: false,
-        maxHeight: 140,
+        return <ComposerNodeWidget {...widgetProps} />
       }
 
-      return <ComposerNodeWidget {...widgetProps} />
+      // Subagent widget on subagent nodes
+      if (node.kind === "subagent") {
+        const handleDrillDown = (subagentID: string) => {
+          props.model.focus(props.session, subagentID)
+          // The expandToGraph navigation will be triggered by the widget's onDrillDown
+        }
+
+        return (
+          <SubagentNodeWidget
+            node={node}
+            model={graph()}
+            onDrillDown={handleDrillDown}
+            maxDepth={1}
+            inPopover={false}
+          />
+        )
+      }
+
+      return undefined
     }
   })
 

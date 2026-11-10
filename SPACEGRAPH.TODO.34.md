@@ -475,9 +475,9 @@ component suite green; the two-instance spec proves isolation.
 
 ### 15.4 Fractal node (proof)
 
-- [ ] `SubagentNodeWidget` renders a depth-1 `SessionGraph` (static preview) inside a subagent node on
+- [x] `SubagentNodeWidget` renders a depth-1 `SessionGraph` (static preview) inside a subagent node on
       focus; click opens the full drill.
-- [ ] Guard against recursion: max depth 1 in widgets, 2 in popovers.
+- [x] Guard against recursion: max depth 1 in widgets, 2 in popovers.
 
 ### 15.5 Library ask (recorded, not built)
 
@@ -1014,3 +1014,10 @@ feature that needs it.
   - Updated internal graph copy in `@opencode/gui-plugins` for plugin bundle compatibility.
   - Added i18n keys: `ui.sessionGraph.trace.downstream`, `ui.sessionGraph.trace.downstreamAnnouncement`.
   - All typechecks pass; unit tests (305 session-ui, 96 session-graph) pass; component tests (56) pass.
+- **r22 (2026-11-10):** Phase 15.4 SubagentNodeWidget implementation complete.
+  - Created `SubagentNodeWidget` component in `@opencode/session-graph` rendering a static depth-1 preview of a subagent's graph using `TurnMapInlineGraph`.
+  - Clicking the widget triggers drill-down via `onDrillDown` callback (opens full subagent map).
+  - Added recursion guard: max depth 1 in widgets, 2 in popovers (via `maxDepth` and `inPopover` props).
+  - Added i18n keys: `ui.sessionGraph.subagentWidget.previewLabel`, `ui.sessionGraph.subagentWidget.drillDownLabel`, `ui.sessionGraph.subagentWidget.nodeCount`, `ui.sessionGraph.subagentWidget.edgeCount`, `ui.sessionGraph.subagentWidget.clickToExpand`.
+  - Integrated widget into `SpacegraphPanel` via `renderNodeWidget` prop, shown on `kind: "subagent"` nodes when widgets enabled.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
