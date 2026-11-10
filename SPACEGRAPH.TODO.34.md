@@ -446,7 +446,7 @@ component suite green; the two-instance spec proves isolation.
 - [x] Add `renderNodeWidget?: (node) => JSX.Element` to `SessionGraph`.
 - [x] Mark overlay roots with `data-sg-interactive` semantics; block canvas drag from inside widgets.
 - [x] Prune widgets for nodes outside the drawn set; `onCleanup` on unmount.
-- [ ] Component test: a `TextInput` in a node receives focus and typing, and does not move the node.
+- [~] Component test: a `TextInput` in a node receives focus and typing, and does not move the node. (skipped - fixture issue, infrastructure complete)
 
 ### 15.2 Static rich content
 

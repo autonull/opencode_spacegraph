@@ -13,11 +13,12 @@ import {
   type Layout,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
-import { createEffect, createSignal } from "solid-js"
+import { createEffect, createSignal, type JSX } from "solid-js"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphView } from "./GraphView"
 import type { GraphWindowState } from "./GraphWindows"
+import { TextInput } from "@opencode/ui/text-input"
 
 const graph = buildFixtureGraph()
 
@@ -152,6 +153,8 @@ type HarnessProps = {
   windows?: GraphWindowState[]
   /** T15.4: the equalizer's rules, edited in the panel. */
   rules?: EqualizerRuleSet
+  /** Optional renderNodeWidget for interactive widgets in nodes. */
+  renderNodeWidget?: (node: GraphNode) => JSX.Element | undefined
   /** Test harness for component tests. */
   testHarness?: {
     selected: () => string | undefined
@@ -636,6 +639,35 @@ export const TwoInstances = {
           />
         </div>
       </div>
+    )
+  },
+}
+
+/**
+ * Graph with a node widget (TextInput) - for testing interactive widgets in nodes.
+ * The widget appears on the tool node and should receive focus/typing without moving the node.
+ */
+export const WithNodeWidget = {
+  render: () => {
+    const [widgetValue, setWidgetValue] = createSignal("")
+
+    return (
+      <ViewHarness
+        selection={INITIAL_SELECTION}
+        renderNodeWidget={(node: GraphNode) => {
+          if (node.id === "tool:prt_tool_read_1") {
+            return (
+              <TextInput
+                placeholder="Type here..."
+                value={widgetValue()}
+                onInput={(e: Event) => setWidgetValue((e.currentTarget as HTMLInputElement).value)}
+                style={{ width: "200px" }}
+              />
+            )
+          }
+          return undefined
+        }}
+      />
     )
   },
 }
