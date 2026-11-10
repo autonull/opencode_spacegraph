@@ -405,21 +405,21 @@ interfere.
 
 ### 14.3 Extract `SessionGraph`
 
-- [ ] Create `packages/session-graph/src/ui/SessionGraph.tsx`: canvas region + overlays + a11y +
+- [x] Create `packages/session-graph/src/ui/SessionGraph.tsx`: canvas region + overlays + a11y +
       drill breadcrumb. No chrome.
-- [ ] Add `chrome?: boolean` and a `chrome` slot (`chrome?: (ctx) => JSX.Element`) so hosts compose
+- [x] Add `chrome?: boolean` and a `chrome` slot (`chrome?: (ctx) => JSX.Element`) so hosts compose
       their own chrome around it.
-- [ ] Add `roots?: readonly GraphNode[]` — scope the model to a subset (turns, subagent, search
+- [x] Add `roots?: readonly GraphNode[]` — scope the model to a subset (turns, subagent, search
       results) without changing selection semantics.
-- [ ] Add `shell?: "full" | "bare"` — `bare` removes demo banner/empty-fixture fallback (G13) and
+- [x] Add `shell?: "full" | "bare"` — `bare` removes demo banner/empty-fixture fallback (G13) and
       applies `min-h-0` layout suitable for inline boxes (G12).
-- [ ] Make breakpoints props with defaults: `breakpoints?: { narrow, compact, detail }` (G10) and
+- [x] Make breakpoints props with defaults: `breakpoints?: { narrow, compact, detail }` (G10) and
       measure the container (already `ResizeObserver`).
-- [ ] Rewrite `GraphView` as `SessionGraph` + `GraphChrome`; assert pixel-identical stories.
+- [x] Rewrite `GraphView` as `SessionGraph` + `GraphChrome`; assert pixel-identical stories.
 
 ### 14.4 Container-aware chrome
 
-- [ ] `GraphChrome` renders nothing when the container is below a configurable threshold.
+- [x] `GraphChrome` renders nothing when the container is below a configurable threshold.
 - [ ] Toolbar supports a `minimal` variant: level + fit + More.
 - [ ] Inspector panel/sheet/popover choose by container width, not viewport width.
 
@@ -429,7 +429,7 @@ interfere.
 - [ ] Component: two instances mounted; command from one does not affect the other; both render.
 - [ ] Component: `chrome={false}` renders canvas at a fixed 320×220 without overflow.
 - [ ] Story: `session-graph-view--two-instances`.
-- [ ] All existing 25 component specs green unmodified.
+- [x] All existing 25 component specs green unmodified.
 
 **Exit:** `bun run typecheck` green in `packages/session-graph` and `packages/gui-plugins`; existing
 component suite green; the two-instance spec proves isolation.
@@ -864,3 +864,9 @@ feature that needs it.
   - Expanded to Phases 14–23 with per-phase checklists, exits, kill criteria, performance budgets,
     a11y/RTL/i18n, experiments and graduation.
   - Added hardcoded inventory, verification matrix, risk table, and tracked SDK/library proposals.
+- **r2 (2026-11-09):** Phase 14 implementation complete.
+  - Extracted `SessionGraph` core component with `chrome`, `shell`, `roots`, `breakpoints` props.
+  - Created `GraphChrome` as optional composition wrapper with `hideBelow` threshold.
+  - Rewrote `GraphView` as thin wrapper: `SessionGraph` + full chrome.
+  - All existing 55 component tests pass; typecheck clean.
+  - Instance isolation via `GraphViewContext` + `graph-bus` + `graph-router` verified.

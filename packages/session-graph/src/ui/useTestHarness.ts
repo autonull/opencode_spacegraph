@@ -1,9 +1,9 @@
 import { type RendererID } from "../canvas/renderer-registry"
-import type { GraphViewProps } from "./GraphView"
+import type { SessionGraphProps } from "./SessionGraph"
 import { createSignal } from "solid-js"
 
 export function useTestHarness(
-  props: GraphViewProps,
+  props: SessionGraphProps,
   selection: { selection: () => readonly string[]; select: (id: string | undefined) => void },
   setRendererID: (id: RendererID) => void,
 ) {
