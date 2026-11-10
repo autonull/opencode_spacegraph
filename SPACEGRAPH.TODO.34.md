@@ -528,7 +528,8 @@ affordances flag-gated and keyboard reachable.
 
 - [x] `FullMap`, `MapSurface`, `HybridSurface`, `MapDialog` now compose `SessionGraph` (+ chrome where appropriate).
 - [x] `TurnMapLayer` now uses `SessionGraph` inline instead of `TurnMapBody` (list).
-- [ ] `SpacegraphPanel`, `TurnMapDialog` all compose `SessionGraph` (+ chrome where appropriate).
+- [x] `TurnMapDialog` now composes `SessionGraph` inline instead of `TurnMapBody` (list).
+- [ ] `SpacegraphPanel` composes `SessionGraph` (+ chrome where appropriate).
 - [ ] Delete duplicated wrapper logic; keep public component names as thin aliases.
 
 ### 17.2 Shared selection, trace, notes per session
@@ -890,3 +891,9 @@ feature that needs it.
   - Updated `TurnMapLayer` to use `SessionGraph` inline instead of `TurnMapBody` list.
   - All surfaces now use the single `SessionGraph` core component with appropriate chrome/config.
   - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r6 (2026-11-09):** Phase 17.1 continued - TurnMapDialog conversion.
+  - Updated `TurnMapDialog` in `external/dialogs.tsx` to compose `SessionGraph` inline with `chrome={false}`, `shell="bare"` instead of `TurnMapBody` list.
+  - Removed `TurnMapBody` dependency from dialogs; unified turn-map rendering across layer and dialog.
+  - Fixed Vite alias cycle by removing `@opencode/session-graph` alias in stories config; component tests now use workspace package.
+  - Completed internal/host bundled copy with missing canvas/ui files for upstream compatibility.
+  - All unit tests (96) and component tests pass; typecheck clean.
