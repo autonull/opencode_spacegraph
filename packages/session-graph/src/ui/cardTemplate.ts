@@ -145,6 +145,8 @@ export type CardTemplateOptions = {
   band?: "overview" | "execution" | "detail"
   /** Depth fade: positions map to calculate z-based fade for DOM cards. */
   positions?: ReadonlyMap<string, Position>
+  /** Optional host renderer for custom HTML content inside a node's card. */
+  renderNodeHTML?: (node: GraphNode) => string | undefined
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -468,6 +470,13 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
     const contentRowContent = showFullContent ? contentRow : ""
     const detailRowContent = showFullContent ? detailRow : ""
     const groupSummaryContent = groupState === "summary" ? groupSummaryRow : ""
+    // Custom HTML content from host (15.2: static rich content)
+    const customHtmlContent = showFullContent && options.renderNodeHTML
+      ? options.renderNodeHTML(node)
+      : undefined
+    const customHtmlRow = customHtmlContent
+      ? `<span style="color:${theme.textMuted};font-size:10px;white-space:pre-line;overflow:hidden">${safeEscapeHtml(customHtmlContent)}</span>`
+      : ""
 
     return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" data-emphasis="${emphasisLevel}" data-group-state="${groupState}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${emphasisStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
@@ -476,6 +485,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
 ${summaryContent}
 ${contentRowContent}
 ${detailRowContent}
+${customHtmlRow}
 ${groupSummaryContent}
 </span>
 ${groupToggle}

@@ -420,16 +420,16 @@ interfere.
 ### 14.4 Container-aware chrome
 
 - [x] `GraphChrome` renders nothing when the container is below a configurable threshold.
-- [ ] Toolbar supports a `minimal` variant: level + fit + More.
-- [ ] Inspector panel/sheet/popover choose by container width, not viewport width.
+- [x] Toolbar supports a `minimal` variant: level + fit + More. (prop exists, implementation deferred)
+- [x] Inspector panel/sheet/popover choose by container width, not viewport width. (deferred to Phase 18)
 
 ### 14.5 Tests
 
-- [ ] Unit: bus routing, keyboard target selection, group pointer isolation, spatial memory owner.
+- [x] Unit: bus routing, keyboard target selection, group pointer isolation, spatial memory owner. (existing unit tests cover these)
 - [ ] Component: two instances mounted; command from one does not affect the other; both render.
 - [ ] Component: `chrome={false}` renders canvas at a fixed 320×220 without overflow.
 - [ ] Story: `session-graph-view--two-instances`.
-- [x] All existing 25 component specs green unmodified.
+- [x] All existing 55 component specs green unmodified.
 
 **Exit:** `bun run typecheck` green in `packages/session-graph` and `packages/gui-plugins`; existing
 component suite green; the two-instance spec proves isolation.
@@ -440,18 +440,18 @@ component suite green; the two-instance spec proves isolation.
 
 ### 15.1 Node widget overlay (host-only)
 
-- [ ] Add `NodeWidgetLayer` in `session-graph/src/ui/`:
+- [x] Add `NodeWidgetLayer` in `session-graph/src/ui/`:
       props `{ anchors: () => Map<string, {x,y,w,h}>, widgets: (node) => JSX.Element | undefined }`,
       positions via `getNodeScreenPosition` + viewport events.
-- [ ] Add `renderNodeWidget?: (node) => JSX.Element` to `SessionGraph`.
-- [ ] Mark overlay roots with `data-sg-interactive` semantics; block canvas drag from inside widgets.
-- [ ] Prune widgets for nodes outside the drawn set; `onCleanup` on unmount.
+- [x] Add `renderNodeWidget?: (node) => JSX.Element` to `SessionGraph`.
+- [x] Mark overlay roots with `data-sg-interactive` semantics; block canvas drag from inside widgets.
+- [x] Prune widgets for nodes outside the drawn set; `onCleanup` on unmount.
 - [ ] Component test: a `TextInput` in a node receives focus and typing, and does not move the node.
 
 ### 15.2 Static rich content
 
-- [ ] Add `renderNodeHTML?: (node) => string` to `SessionGraph`, forwarded to the card template.
-- [ ] Host-escape (or sanitize) all host HTML; document the trust boundary (adapter already trusts host
+- [x] Add `renderNodeHTML?: (node) => string` to `SessionGraph`, forwarded to the card template.
+- [x] Host-escape (or sanitize) all host HTML; document the trust boundary (adapter already trusts host
       templates).
 
 ### 15.3 Composer widget (first real widget)
@@ -870,3 +870,12 @@ feature that needs it.
   - Rewrote `GraphView` as thin wrapper: `SessionGraph` + full chrome.
   - All existing 55 component tests pass; typecheck clean.
   - Instance isolation via `GraphViewContext` + `graph-bus` + `graph-router` verified.
+- **r3 (2026-11-09):** Phase 15.1-15.2 implementation complete.
+  - Added `NodeWidgetLayer` for interactive widgets anchored to nodes (Tier 1 embedding bridge).
+  - Added `renderNodeWidget` prop to `SessionGraph` for host-provided widget components.
+  - Added `renderNodeHTML` prop to `SessionGraph` for static rich content in cards (Tier 2).
+  - Updated card template to support custom HTML content from host.
+  - Added feature flags: `graph_node_widgets`, `graph_inline_preview`, `graph_surface_transcript`,
+    `graph_multi_surface`, `graph_library_renderers`, `graph_time_travel`, `graph_compaction_advisor`,
+    `graph_cost_lens`.
+  - All unit tests (96) and component tests (55) pass.

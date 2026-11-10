@@ -2,16 +2,21 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createSignal, onCleanup, For, Show } from "solid-js"
 import { GraphCanvas } from "../canvas/GraphCanvas"
 import { GraphOverlayManager } from "./GraphOverlayManager"
+import { NodeWidgetLayer } from "./NodeWidgetLayer"
 import { attachTouchGestures } from "./graph-utils"
 import type { GraphCanvasRegionProps } from "./GraphCanvasRegionProps"
 import type { GraphRenderer, RendererViewport } from "@spacegraphjs/renderer"
 import type { RendererID } from "../canvas/renderer-registry"
+import type { GraphNode } from "@opencode/session-ui/graph"
+import type { JSX } from "solid-js"
 
 /**
  * The canvas region of the graph view — the renderer, overlays, and all interactive surfaces
  * that live on or above the canvas.
  */
-export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
+export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
+  renderNodeWidget?: (node: GraphNode) => JSX.Element | undefined
+}) => {
   const i18n = useI18n()
   const [canvasRegionEl, setCanvasRegionEl] = createSignal<HTMLDivElement | undefined>()
   const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
@@ -111,6 +116,13 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps) => {
         onError={props.onError}
         reducedMotion={props.reducedMotion()}
         global={props.global()}
+      />
+      <NodeWidgetLayer
+        renderer={() => renderer()}
+        contentIDs={props.contentIDs}
+        renderWidget={props.renderNodeWidget ?? (() => undefined)}
+        model={props.model}
+        container={canvasRegionEl}
       />
       <GraphOverlayManager
         // Model & theme

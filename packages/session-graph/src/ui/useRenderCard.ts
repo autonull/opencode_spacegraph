@@ -8,6 +8,7 @@ import { fileRelations } from "@opencode/session-ui/graph"
 export function useRenderCard(
   props: {
     renderCard?: CardTemplate
+    renderNodeHTML?: (node: GraphNode) => string | undefined
     rules: () => EqualizerRuleSet | undefined
     activeTurn?: string
     diffSource?: any
@@ -66,6 +67,7 @@ export function useRenderCard(
           collapsedGroups: state.collapsedGroups(),
           positions: state.displayPositions(),
           band: state.band?.(),
+          renderNodeHTML: props.renderNodeHTML,
         })
       })()
     )
