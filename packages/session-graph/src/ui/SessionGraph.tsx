@@ -3,7 +3,6 @@ import type {
   Projection,
   RenderTheme,
 } from "@spacegraphjs/renderer"
-import { DEPTH_MODES } from "@spacegraphjs/renderer"
 import type { DepthMode } from "@opencode/session-ui/graph"
 import type {
   DetailFraming,
@@ -52,21 +51,15 @@ import { createStore, type SetStoreFunction } from "solid-js/store"
 import { type CardTemplate } from "../canvas/buildRenderModel"
 import { createBudgetedModel, createDrawnModel } from "../canvas/buildRenderModelHelpers"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
-import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { createBandTemplate } from "./cardTemplate"
 import { useGroupBadgeAnimation } from "./useGroupBadgeAnimation"
 import { createCardCopy } from "./card-copy"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import type { GraphDiffSource } from "./GraphDiff"
 import { GraphFileRail } from "./GraphFileRail"
-import { GraphStatusBar } from "./GraphStatusBar"
-import { GraphToolbar } from "./GraphToolbar"
-import { GraphCompareBar } from "./GraphCompareBar"
-import { GraphScaleNotice } from "./GraphScaleNotice"
-import { GraphHiddenSelection } from "./GraphHiddenSelection"
-import { GraphFallback } from "./GraphFallback"
 import { GraphCanvasRegion } from "./GraphCanvasRegion"
 import { GraphWindowManager } from "./GraphWindowManager"
+import { GraphChrome } from "./GraphChrome"
 import "./graph-cards.css"
 import "./graph-motion.css"
 import { buildAxisLabels } from "./axisLabels"
@@ -1027,7 +1020,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   })
 
   // B1 — the selection verbs. frameSelection and exportSelection need camera/ordered (defined later).
-  const frameSelection = () => viewportTracker!.camera.frame(selection())
+  // B1 — the selection verbs. exportSelection needs camera/ordered (defined later).
   const keepOnlySelection = graphSelection.keepOnlySelection
   const copySelectedPaths = graphSelection.copySelectedPaths
   const clearSelection = graphSelection.clearSelection
@@ -1546,194 +1539,105 @@ export const SessionGraph = (props: SessionGraphProps) => {
         classList={{ "min-h-0": props.shell === "bare" }}
       >
         {showChrome && (
-          <>
-            <GraphToolbar
-              capabilities={capabilities()}
-              renderer={rendererID()}
-              level={level()}
-              onLevel={setLevel}
-              facets={facets()}
-              facetCounts={counts()}
-              onFacetsChange={setFacets}
-              depth={depth()}
-              onDepth={changeDepth}
-              depthModes={DEPTH_MODES}
-              checkpoint={props.checkpoint}
-              turnCount={props.turnCount}
-              onCheckpoint={props.onCheckpoint}
-              model={props.liveModel ?? model()}
-              onFit={viewportTracker!.camera.fitContent}
-              zoomPercent={zoomPercent()}
-              onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
-              onZoomIn={() => viewportTracker!.camera.zoomBy(1)}
-              zoomOutDisabled={level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min}
-              zoomInDisabled={(viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max}
-              onSearch={toggleSearch}
-              onCopyView={copyView}
-              legend={legendOpen()}
-              onToggleLegend={() => setLegendOpen((open) => !open)}
-              gallery={galleryOpen()}
-              onToggleGallery={() => setGalleryOpen((open) => !open)}
-              billboard={cardFacing() === "camera"}
-              onToggleBillboard={toggleBillboard}
-              detailFraming={detailFraming()}
-              onDetailFramingChange={changeDetailFraming}
-              layout={layout()}
-              onLayoutChange={changeLayout}
-              files={files()}
-              onToggleFiles={toggleFiles}
-              arrangement={props.arrangement}
-              onArrangementChange={props.onArrangementChange}
-              arrangementSide={props.arrangementSide}
-              onArrangementSideChange={props.onArrangementSideChange}
-              onOpenEqualizer={props.onRulesChange ? () => openWindow("equalizer") : undefined}
-              onOpenWindow={openWindow}
-              detailMode={detailMode()}
-              onDetailModeChange={changeDetailMode}
-              peek={peek()}
-              onTogglePeek={togglePeek}
-              followLog={followLog()}
-              onFollowLogChange={setFollowLog}
-              manualHistoryLength={history().length}
-              manualFutureLength={future().length}
-              onUndoManual={undoManual}
-              onRedoManual={redoManual}
-              onTurnMap={
-                props.onTurnMap
-                  ? () => {
-                      const turnID = selectedTurn()
-                      if (!turnID) return
-                      Metrics.count("turn-map")
-                      props.onTurnMap?.(turnID)
-                    }
-                  : undefined
-              }
-              onExpandGraph={
-                isSummaryLayout(layout()) && selection().length > 0
-                  ? () => expandToGraph(selection()[0]!)
-                  : undefined
-              }
-              onExport={handleExport}
-              renderModel={ordered()}
-              onBack={props.onBack}
-              onSplitView={props.onSplitView}
-              searching={searchOpen()}
-              compact={compact()}
-              endInset={props.endInset}
-            />
-            {/* Demo banner for first-run */}
-            <Show when={props.shell !== "bare" && demoDismissed() === false && props.model && props.model.nodes.length === 0}>
-              <div
-                data-slot="graph-demo-banner"
-                class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-surface-base"
-                role="status"
-                aria-live="polite"
-              >
-                <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.demo.label")}</span>
-                <button
-                  type="button"
-                  class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
-                  onClick={() => setDemoDismissed(true)}
-                >
-                  {i18n.t("ui.sessionGraph.demo.dismiss")}
-                </button>
-              </div>
-            </Show>
-            {/* See-map prompt */}
-            <Show when={showSeeMapPrompt() && seeMapPromptDismissed() === false}>
-              <div
-                data-slot="graph-see-map-prompt"
-                class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-surface-base"
-                role="status"
-                aria-live="polite"
-              >
-                <div class="flex items-center gap-2">
-                  <span class="text-12-medium text-text-strong">{i18n.t("ui.sessionGraph.prompt.seeMap")}</span>
-                  <span class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.prompt.seeMapHint")}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
-                    onClick={() => {
-                        // Switch to map surface via command event
-                        window.dispatchEvent(new CustomEvent("graph:command", { detail: { name: "map" } }))
-                      }}
-                  >
-                    {i18n.t("ui.sessionGraph.prompt.seeMap")}
-                  </button>
-                  <button
-                    type="button"
-                    class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
-                    onClick={() => setSeeMapPromptDismissed(true)}
-                  >
-                    {i18n.t("ui.sessionGraph.prompt.dismiss")}
-                  </button>
-                </div>
-              </div>
-            </Show>
-            {/* Trust lens banner */}
-            <Show when={trustLensActive()}>
-              <div
-                data-slot="graph-trust-lens-banner"
-                class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-warning-bg"
-                role="status"
-                aria-live="polite"
-              >
-                <span class="text-12-regular text-warning-fg">{i18n.t("ui.sessionGraph.trustLens.banner")}</span>
-              </div>
-            </Show>
-            <GraphBreadcrumbs crumbs={graphSelection.crumbs()} onSelect={fitSubtree} />
-            <GraphStatusBar
-              count={selection().length}
-              onFrame={frameSelection}
-              onKeepOnly={keepOnlySelection}
-              onCopyPaths={copySelectedPaths}
-              onExportSubset={exportSelection}
-              onClear={clearSelection}
-              onAddNote={annotations.openNoteComposer}
-              compare={
-                selectedTurns().length >= 2 || comparisonHook.comparedTurns()
-                  ? {
-                      active: comparisonHook.comparedTurns() !== null,
-                      onCompare: compareSelectedTurns,
-                      onClear: clearComparison,
-                    }
-                  : undefined
-              }
-              group={
-                groupCollapse.selectedGroup()
-                  ? {
-                      collapsed: groupCollapse.collapsedGroups().has(groupCollapse.selectedGroup()!.id),
-                      onToggle: groupCollapse.toggleGroup,
-                      onCollapseOthers: groupCollapse.collapseOtherGroups,
-                    }
-                  : undefined
-              }
-            />
-            <GraphCompareBar
-              diff={comparison()}
-              onOpenWindow={() => openWindow("compare")}
-              onClear={() => {
-                clearComparison()
-                props.onCheckpoint?.(props.turnCount === undefined ? 0 : props.turnCount - 1)
-              }}
-            />
-            <GraphScaleNotice
-              model={model}
-              selectedTurn={selectedTurn}
-              frameTurn={() => props.frame}
-              followLog={followLog()}
-              activeTurn={props.activeTurn}
-            />
-            <GraphHiddenSelection
-              model={model}
-              selection={() => selection()}
-              level={level}
-              onJumpTo={jumpTo}
-            />
-            <GraphFallback error={error()} rendererID={rendererID()} />
-          </>
+          <GraphChrome
+            show={true}
+            hideBelow={0}
+            checkpoint={props.checkpoint}
+            turnCount={props.turnCount}
+            onCheckpoint={props.onCheckpoint}
+            liveModel={props.liveModel}
+            onOpenWindow={openWindow}
+            onRulesChange={props.onRulesChange}
+            onTurnMap={props.onTurnMap ? () => {
+              const turnID = selectedTurn()
+              if (!turnID) return
+              Metrics.count("turn-map")
+              props.onTurnMap?.(turnID)
+            } : undefined}
+            onExpandGraph={
+              isSummaryLayout(layout()) && selection().length > 0
+                ? () => expandToGraph(selection()[0]!)
+                : undefined
+            }
+            onExport={handleExport}
+            renderModel={ordered()}
+            onBack={props.onBack}
+            onSplitView={props.onSplitView}
+            searching={searchOpen()}
+            compact={compact()}
+            endInset={props.endInset}
+            arrangement={props.arrangement}
+            onArrangementChange={props.onArrangementChange}
+            arrangementSide={props.arrangementSide}
+            onArrangementSideChange={props.onArrangementSideChange}
+            detailMode={detailMode()}
+            onDetailModeChange={changeDetailMode}
+            peek={peek()}
+            onPeekChange={setPeek}
+            followLog={followLog()}
+            onFollowLogChange={setFollowLog}
+            manualHistoryLength={history().length}
+            manualFutureLength={future().length}
+            onUndoManual={undoManual}
+            onRedoManual={redoManual}
+            zoomPercent={zoomPercent()}
+            onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
+            onZoomIn={() => viewportTracker!.camera.zoomBy(1)}
+            zoomOutDisabled={level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min}
+            zoomInDisabled={(viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max}
+            onFit={viewportTracker!.camera.fitContent}
+            onCopyView={copyView}
+            legend={legendOpen()}
+            onToggleLegend={() => setLegendOpen((open) => !open)}
+            gallery={galleryOpen()}
+            onToggleGallery={() => setGalleryOpen((open) => !open)}
+            billboard={cardFacing() === "camera"}
+            onToggleBillboard={toggleBillboard}
+            detailFraming={detailFraming()}
+            onDetailFramingChange={changeDetailFraming}
+            layout={layout()}
+            onLayoutChange={changeLayout}
+            files={files()}
+            onFilesChange={toggleFiles}
+            onSearch={toggleSearch}
+            frame={props.frame}
+            activeTurn={props.activeTurn}
+            model={model()}
+            selectedTurn={selectedTurn}
+            selection={() => selection()}
+            comparisonHook={{
+              comparedTurns: () => comparisonHook.comparedTurns(),
+              comparison: () => comparison(),
+              compareSelectedTurns,
+              clearComparison,
+            }}
+            groupCollapse={{
+              selectedGroup: () => groupCollapse.selectedGroup(),
+              collapsedGroups: () => groupCollapse.collapsedGroups(),
+              toggleGroup: groupCollapse.toggleGroup,
+              collapseOtherGroups: groupCollapse.collapseOtherGroups,
+            }}
+            graphSelection={{
+              crumbs: () => graphSelection.crumbs(),
+              keepOnlySelection,
+              copySelectedPaths,
+              clearSelection,
+            }}
+            annotations={{
+              openNoteComposer: annotations.openNoteComposer,
+            }}
+            error={error() as string | undefined}
+            demoDismissed={demoDismissed()}
+            seeMapPromptDismissed={seeMapPromptDismissed()}
+            showSeeMapPrompt={showSeeMapPrompt()}
+            trustLensActive={trustLensActive()}
+            i18n={i18n}
+            shell={props.shell}
+            followLogForScale={followLog()}
+            frameTurn={() => props.frame}
+            onDismissSeeMapPrompt={() => setSeeMapPromptDismissed(true)}
+            onDismissDemo={() => setDemoDismissed(true)}
+          />
         )}
         <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
           <Show when={files() && !isSummaryLayout(layout()) && !narrow()}>

@@ -12,6 +12,7 @@ import type {
 import type { RendererID } from "../canvas/renderer-registry"
 import type { RenderModel } from "@spacegraphjs/renderer"
 import { createMemo, type JSX } from "solid-js"
+import { Show } from "solid-js"
 import { useGraphViewContext } from "./GraphViewContext"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { GraphCompareBar } from "./GraphCompareBar"
@@ -30,7 +31,7 @@ export type GraphChromeProps = {
   show?: boolean
   /** When true, renders a minimal toolbar variant: level + fit + More. */
   minimal?: boolean
-  /** Container width threshold below which chrome is hidden. Default: 640 */
+  /** Container width threshold below which chrome is hidden. Default: 0 (never hide by default). */
   hideBelow?: number
   /** Custom chrome renderer. Receives the GraphViewContext value. */
   children?: (ctx: ReturnType<typeof useGraphViewContext>) => JSX.Element
@@ -148,11 +149,65 @@ export type GraphChromeProps = {
   frame?: string
   /** The active turn ID. */
   activeTurn?: string
+  /** The model for scale notice. */
+  model?: GraphViewData | (() => GraphViewData)
+  /** Selected turn accessor. */
+  selectedTurn?: () => string | undefined
+  /** Selection accessor. */
+  selection?: () => readonly string[]
+  /** Comparison hook. */
+  comparisonHook?: {
+    comparedTurns: () => any
+    comparison: () => any
+    compareSelectedTurns: () => void
+    clearComparison: () => void
+  }
+  /** Group collapse state. */
+  groupCollapse?: {
+    selectedGroup: () => any
+    collapsedGroups: () => ReadonlySet<string>
+    toggleGroup: (id: string) => void
+    collapseOtherGroups: () => void
+  }
+  /** Graph selection methods. */
+  graphSelection?: {
+    crumbs: () => readonly { id: string; label: string }[]
+    keepOnlySelection: () => void
+    copySelectedPaths: () => void
+    clearSelection: () => void
+  }
+  /** Annotations methods. */
+  annotations?: {
+    openNoteComposer: () => void
+  }
+  /** Error state. */
+  error?: string | null
+  /** Whether demo is dismissed. */
+  demoDismissed?: boolean
+  /** Whether see-map prompt is dismissed. */
+  seeMapPromptDismissed?: boolean
+  /** Whether to show see-map prompt. */
+  showSeeMapPrompt?: boolean
+  /** Trust lens active. */
+  trustLensActive?: boolean
+  /** I18n function (from context). */
+  i18n?: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
+  /** Shell mode. */
+  shell?: "full" | "bare"
+  /** Whether followLog is enabled (for scale notice). */
+  followLogForScale?: boolean
+  /** Frame turn accessor (for scale notice). */
+  frameTurn?: () => string | undefined
+  /** On dismiss see-map prompt. */
+  onDismissSeeMapPrompt?: () => void
+  /** On dismiss demo. */
+  onDismissDemo?: () => void
 }
 
 /**
  * GraphChrome is the optional chrome wrapper around SessionGraph.
- * It renders toolbar, breadcrumbs, status bar, compare bar, scale notice, hidden selection, fallback.
+ * It renders toolbar, breadcrumbs, status bar, compare bar, scale notice, hidden selection, fallback,
+ * demo banner, see-map prompt, and trust lens banner.
  * 
  * By default, it renders the full chrome. When `minimal` is true, it renders a
  * minimal toolbar variant. When container width is below `hideBelow`, it renders nothing.
@@ -160,9 +215,10 @@ export type GraphChromeProps = {
 export const GraphChrome = (props: GraphChromeProps) => {
   const ctx = useGraphViewContext()
   const containerWidth = createMemo(() => ctx.canvasSize().width)
+  const i18n = ctx.i18n()
   
   const showChrome = props.show ?? true
-  const hideBelow = props.hideBelow ?? 640
+  const hideBelow = props.hideBelow ?? 0
   
   const shouldRender = showChrome && containerWidth() >= hideBelow
   
@@ -175,6 +231,40 @@ export const GraphChrome = (props: GraphChromeProps) => {
   if (!shouldRender) return null
   
   const capabilities = ctx.capabilities()
+  const model = (typeof props.model === "function" ? props.model() : props.model) ?? ctx.model()
+  const selectedTurn = props.selectedTurn ?? ctx.selectedTurn
+  const selection = props.selection ?? ctx.selection
+  const comparisonHook = props.comparisonHook ?? {
+    comparedTurns: () => ctx.comparisonHook.comparedTurns(),
+    comparison: () => ctx.comparison(),
+    compareSelectedTurns: ctx.compareSelectedTurns,
+    clearComparison: ctx.clearComparison,
+  }
+  const groupCollapse = props.groupCollapse ?? {
+    selectedGroup: () => ctx.groupCollapse.selectedGroup(),
+    collapsedGroups: () => ctx.groupCollapse.collapsedGroups(),
+    toggleGroup: ctx.groupCollapse.toggleGroup,
+    collapseOtherGroups: ctx.groupCollapse.collapseOtherGroups,
+  }
+  const graphSelection = props.graphSelection ?? {
+    crumbs: () => ctx.graphSelection.crumbs(),
+    keepOnlySelection: ctx.graphSelection.keepOnlySelection,
+    copySelectedPaths: ctx.graphSelection.copySelectedPaths,
+    clearSelection: ctx.graphSelection.clearSelection,
+  }
+  const annotations = props.annotations ?? {
+    openNoteComposer: ctx.annotations.openNoteComposer,
+  }
+  const error = props.error ?? ctx.error()
+  const demoDismissed = props.demoDismissed ?? false
+  const seeMapPromptDismissed = props.seeMapPromptDismissed ?? false
+  const showSeeMapPrompt = props.showSeeMapPrompt ?? false
+  const trustLensActive = props.trustLensActive ?? false
+  const shell = props.shell ?? "full"
+  const followLogForScale = props.followLogForScale ?? ctx.followLog()
+  const frameTurn = props.frameTurn ?? (() => props.frame)
+  const onDismissSeeMapPrompt = props.onDismissSeeMapPrompt ?? (() => {})
+  const onDismissDemo = props.onDismissDemo ?? (() => {})
   
   return (
     <>
@@ -238,56 +328,121 @@ export const GraphChrome = (props: GraphChromeProps) => {
         compact={props.compact ?? ctx.compact()}
         endInset={props.endInset}
       />
-      <GraphBreadcrumbs crumbs={ctx.graphSelection.crumbs()} onSelect={ctx.fitSubtree} />
+      {/* Demo banner for first-run */}
+      <Show when={shell !== "bare" && demoDismissed === false && model && model.nodes.length === 0}>
+        <div
+          data-slot="graph-demo-banner"
+          class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-surface-base"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.demo.label")}</span>
+          <button
+            type="button"
+            class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
+            onClick={onDismissDemo}
+          >
+            {i18n.t("ui.sessionGraph.demo.dismiss")}
+          </button>
+        </div>
+      </Show>
+      {/* See-map prompt */}
+      <Show when={showSeeMapPrompt && seeMapPromptDismissed === false}>
+        <div
+          data-slot="graph-see-map-prompt"
+          class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-surface-base"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-12-medium text-text-strong">{i18n.t("ui.sessionGraph.prompt.seeMap")}</span>
+            <span class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.prompt.seeMapHint")}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={() => {
+                // Switch to map surface via command event
+                window.dispatchEvent(new CustomEvent("graph:command", { detail: { name: "map" } }))
+              }}
+            >
+              {i18n.t("ui.sessionGraph.prompt.seeMap")}
+            </button>
+            <button
+              type="button"
+              class="flex h-6 items-center gap-1 rounded-sm px-2 text-12-regular text-text-base hover:bg-surface-base-hover"
+              onClick={onDismissSeeMapPrompt}
+            >
+              {i18n.t("ui.sessionGraph.prompt.dismiss")}
+            </button>
+          </div>
+        </div>
+      </Show>
+      {/* Trust lens banner */}
+      <Show when={trustLensActive}>
+        <div
+          data-slot="graph-trust-lens-banner"
+          class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-warning-bg"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="text-12-regular text-warning-fg">{i18n.t("ui.sessionGraph.trustLens.banner")}</span>
+        </div>
+      </Show>
+      <GraphBreadcrumbs crumbs={graphSelection.crumbs()} onSelect={ctx.fitSubtree} />
       <GraphStatusBar
-        count={ctx.selection().length}
+        count={selection().length}
         onFrame={ctx.onFit}
-        onKeepOnly={ctx.graphSelection.keepOnlySelection}
-        onCopyPaths={ctx.graphSelection.copySelectedPaths}
+        onKeepOnly={graphSelection.keepOnlySelection}
+        onCopyPaths={graphSelection.copySelectedPaths}
         onExportSubset={ctx.exportSelection}
-        onClear={ctx.graphSelection.clearSelection}
-        onAddNote={ctx.annotations.openNoteComposer}
+        onClear={graphSelection.clearSelection}
+        onAddNote={annotations.openNoteComposer}
         compare={
-          ctx.selectedTurns().length >= 2 || ctx.comparisonHook.comparedTurns()
+          (props.comparisonHook?.comparedTurns?.() ?? comparisonHook.comparedTurns()) !== null || (selection().length >= 2)
             ? {
-                active: ctx.comparisonHook.comparedTurns() !== null,
-                onCompare: ctx.compareSelectedTurns,
-                onClear: ctx.clearComparison,
+                active: comparisonHook.comparedTurns() !== null,
+                onCompare: comparisonHook.compareSelectedTurns,
+                onClear: comparisonHook.clearComparison,
               }
             : undefined
         }
         group={
-          ctx.groupCollapse.selectedGroup()
+          groupCollapse.selectedGroup()
             ? {
-                collapsed: ctx.groupCollapse.collapsedGroups().has(ctx.groupCollapse.selectedGroup()!.id),
-                onToggle: ctx.groupCollapse.toggleGroup,
-                onCollapseOthers: ctx.groupCollapse.collapseOtherGroups,
+                collapsed: groupCollapse.collapsedGroups().has(groupCollapse.selectedGroup()!.id),
+                onToggle: () => {
+                  const group = groupCollapse.selectedGroup()
+                  if (group) groupCollapse.toggleGroup(group.id)
+                },
+                onCollapseOthers: groupCollapse.collapseOtherGroups,
               }
             : undefined
         }
       />
       <GraphCompareBar
-        diff={ctx.comparison()}
+        diff={comparisonHook.comparison()}
         onOpenWindow={() => ctx.onOpenWindow?.("compare")}
         onClear={() => {
-          ctx.clearComparison()
+          comparisonHook.clearComparison()
           props.onCheckpoint?.(props.turnCount === undefined ? 0 : props.turnCount - 1)
         }}
       />
       <GraphScaleNotice
-        model={ctx.model}
-        selectedTurn={ctx.selectedTurn}
-        frameTurn={() => props.frame}
-        followLog={ctx.followLog()}
+        model={() => model}
+        selectedTurn={selectedTurn}
+        frameTurn={frameTurn}
+        followLog={followLogForScale}
         activeTurn={props.activeTurn}
       />
       <GraphHiddenSelection
-        model={ctx.model}
-        selection={() => ctx.selection()}
+        model={() => model}
+        selection={selection}
         level={ctx.level}
         onJumpTo={ctx.jumpTo}
       />
-      <GraphFallback error={ctx.error()} rendererID={ctx.rendererID()} />
+      <GraphFallback error={error as string | undefined} rendererID={ctx.rendererID()} />
     </>
   )
 }
