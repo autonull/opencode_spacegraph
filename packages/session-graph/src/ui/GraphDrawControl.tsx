@@ -11,7 +11,10 @@ export type GraphDrawControlProps = {
   onToggleFiles?: () => void
   trustLens?: boolean
   onToggleTrustLens?: () => void
+  compactionAdvisor?: boolean
+  onToggleCompactionAdvisor?: () => void
   onOpenEqualizer?: () => void
+  onOpenWindow?: (kind: string, nodeID?: string) => void
   arrangement?: GraphArrangement
   onArrangementChange?: (arrangement: GraphArrangement) => void
   arrangementSide?: GraphSide
@@ -90,6 +93,18 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
           onClick: () => props.onToggleTrustLens?.(),
           pressed: props.trustLens,
           slot: "graph-trust-lens-option",
+          keepOpen: true,
+        })}
+      </Show>
+      <Show when={props.onToggleCompactionAdvisor}>
+        {option({
+          label: i18n.t("ui.sessionGraph.toolbar.compactionAdvisor"),
+          onClick: () => {
+            props.onToggleCompactionAdvisor?.()
+            props.onOpenWindow?.("compactionAdvisor")
+          },
+          pressed: props.compactionAdvisor,
+          slot: "graph-compaction-advisor-option",
           keepOpen: true,
         })}
       </Show>

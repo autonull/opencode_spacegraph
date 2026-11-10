@@ -16,6 +16,8 @@ export interface UseGraphNavigationInput {
   onPeekChange: ((peek: boolean) => void) | undefined
   setTrustLens: (trustLens: boolean | ((prev: boolean) => boolean)) => void
   onTrustLensChange: ((trustLens: boolean) => void) | undefined
+  setCompactionAdvisor: (compactionAdvisor: boolean | ((prev: boolean) => boolean)) => void
+  onCompactionAdvisorChange: ((compactionAdvisor: boolean) => void) | undefined
   select: UseGraphSelectionReturn["select"]
   viewportTracker: GraphViewportTrackerReturn
   renderer: Accessor<any>
@@ -35,6 +37,7 @@ export interface UseGraphNavigationReturn {
   toggleFiles: () => void
   togglePeek: () => void
   toggleTrustLens: () => void
+  toggleCompactionAdvisor: () => void
   dismissDetail: () => void
   openInTranscript: (id: string) => void
   fitSubtree: (id: string) => void
@@ -54,6 +57,8 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     onPeekChange,
     setTrustLens,
     onTrustLensChange,
+    setCompactionAdvisor,
+    onCompactionAdvisorChange,
     select,
     viewportTracker,
     renderer,
@@ -123,6 +128,13 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     })
   }
 
+  const toggleCompactionAdvisor = () => {
+    setCompactionAdvisor((open: boolean) => {
+      onCompactionAdvisorChange?.(!open)
+      return !open
+    })
+  }
+
   const togglePeek = () => {
     setPeek((open: boolean) => {
       onPeekChange?.(!open)
@@ -182,6 +194,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     toggleFiles,
     togglePeek,
     toggleTrustLens,
+    toggleCompactionAdvisor,
     dismissDetail,
     openInTranscript,
     fitSubtree,

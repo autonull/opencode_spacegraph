@@ -227,6 +227,7 @@ export type SessionGraphProps = {
   onLayoutChange?: (layout: Layout) => void
   onFilesChange?: (files: boolean) => void
   onTrustLensChange?: (trustLens: boolean) => void
+  onCompactionAdvisorChange?: (compactionAdvisor: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
   /** T17.4: the camera frames the selected node (the "card" framing behavior). */
   detailFraming?: DetailFraming
@@ -427,6 +428,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
 
     // Trust lens
     trustLens,
+    compactionAdvisor,
 
     announce,
   } = state
@@ -952,6 +954,15 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setPopoverDismissed,
   })
 
+  // Sync compactionAdvisor state with windows array
+  createEffect(() => {
+    const windows = props.windows ?? []
+    const hasCompactionAdvisor = windows.some((w) => w.kind === "compactionAdvisor")
+    if (hasCompactionAdvisor !== compactionAdvisor()) {
+      state.setCompactionAdvisor(hasCompactionAdvisor)
+    }
+  })
+
   // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
   // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
   // Gate budget recalculation on selection change or camera rest (not every viewport update).
@@ -1056,7 +1067,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   })
 
   // Graph navigation hook
-  const { expandToGraph, toggleFiles, togglePeek, toggleTrustLens, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
+  const { expandToGraph, toggleFiles, togglePeek, toggleTrustLens, toggleCompactionAdvisor, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
     model,
     layout,
     setLayout,
@@ -1066,6 +1077,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
     onPeekChange: props.onPeekChange,
     setTrustLens: state.setTrustLens,
     onTrustLensChange: props.onTrustLensChange,
+    setCompactionAdvisor: state.setCompactionAdvisor,
+    onCompactionAdvisorChange: props.onCompactionAdvisorChange,
     select,
     viewportTracker: viewportTracker!,
     renderer,
@@ -1330,6 +1343,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setFiles,
     trustLens,
     setTrustLens,
+    compactionAdvisor,
+    setCompactionAdvisor: state.setCompactionAdvisor,
     detailMode,
     setDetailMode,
     detailFraming,
@@ -1458,6 +1473,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     toggleFiles,
     togglePeek,
     toggleTrustLens,
+    toggleCompactionAdvisor,
     dismissDetail,
     openInTranscript,
     raiseLevelForFrame,
@@ -1608,6 +1624,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
             onFilesChange={toggleFiles}
             trustLens={trustLens()}
             onTrustLensChange={toggleTrustLens}
+            compactionAdvisor={compactionAdvisor()}
+            onCompactionAdvisorChange={toggleCompactionAdvisor}
             onSearch={toggleSearch}
             frame={props.frame}
             activeTurn={props.activeTurn}

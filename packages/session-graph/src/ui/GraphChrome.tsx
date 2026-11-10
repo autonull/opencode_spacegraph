@@ -194,6 +194,10 @@ export type GraphChromeProps = {
   onTrustLensChange?: () => void
   /** Trust lens active (deprecated, use trustLens). */
   trustLensActive?: boolean
+  /** Compaction advisor active. */
+  compactionAdvisor?: boolean
+  /** Compaction advisor change handler. */
+  onCompactionAdvisorChange?: () => void
   /** I18n function (from context). */
   i18n?: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
   /** Shell mode. */
@@ -308,6 +312,8 @@ export const GraphChrome = (props: GraphChromeProps) => {
         onToggleFiles={ctx.toggleFiles}
         trustLens={trustLensActive}
         onToggleTrustLens={ctx.toggleTrustLens}
+        compactionAdvisor={props.compactionAdvisor ?? ctx.compactionAdvisor()}
+        onToggleCompactionAdvisor={props.onCompactionAdvisorChange ?? ctx.toggleCompactionAdvisor}
         arrangement={props.arrangement}
         onArrangementChange={props.onArrangementChange}
         arrangementSide={props.arrangementSide}

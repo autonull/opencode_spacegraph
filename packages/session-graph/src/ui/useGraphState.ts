@@ -103,6 +103,9 @@ interface GraphState {
   // Trust lens
   trustLens: boolean
 
+  // Compaction advisor
+  compactionAdvisor: boolean
+
   // Model
   notesStore: Annotations
 
@@ -152,6 +155,7 @@ const initialState: GraphState = {
   seeMapPromptVisible: false,
   seeMapPromptDismissed: false,
   trustLens: false,
+  compactionAdvisor: false,
   notesStore: {},
   drillDownStack: [],
 }
@@ -251,6 +255,10 @@ export type UseGraphStateReturn = {
   // Trust lens
   trustLens: () => boolean
   setTrustLens: (enabled: boolean | ((prev: boolean) => boolean)) => void
+
+  // Compaction advisor
+  compactionAdvisor: () => boolean
+  setCompactionAdvisor: (enabled: boolean | ((prev: boolean) => boolean)) => void
 
   // Manual layout
   manual: GraphState["manual"]
@@ -491,6 +499,10 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     // Trust lens
     trustLens: createGetter(state, "trustLens"),
     setTrustLens: createSetter(setState, "trustLens"),
+
+    // Compaction advisor
+    compactionAdvisor: createGetter(state, "compactionAdvisor"),
+    setCompactionAdvisor: createSetter(setState, "compactionAdvisor"),
 
     // Manual layout
     manual: state.manual,
