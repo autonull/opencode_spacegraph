@@ -47,9 +47,11 @@ export function createTrackedSignal<T>(value: T, name?: string): [() => T, (v: T
           `that it read during this execution. This causes an infinite loop (F10/F3 pattern).`
       )
     }
-    // Solid's write expects ((prev: T) => T) | Exclude<T, Function>
-    // We need to cast to satisfy the type checker while preserving runtime behavior
-    return write(v as ((prev: T) => T) | Exclude<T, Function>)
+    // SAFETY: Solid's write accepts T | ((prev: T) => T); the Exclude<T, Function> in its signature
+    // is a type-level artifact to disambiguate updater functions from function values. At runtime
+    // both forms work identically. We cast through unknown to satisfy both lint and typecheck.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- Function in Exclude is required by Solid's types
+    return write(v as unknown as ((prev: T) => T) | Exclude<T, Function>)
   }
 
   return [trackedRead, trackedWrite]
