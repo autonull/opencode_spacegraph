@@ -561,15 +561,15 @@ existing component tests.
 
 ### 18.1 Preference model
 
-- [ ] `SpacegraphPreferences` schema: `{ lens, surfaces, density, renderer, budgets, widgets, i18n }`.
-- [ ] Resolution order as §C.5; explicit props win.
-- [ ] Per-surface reset; global reset; export/import.
+- [x] `SpacegraphPreferences` schema: `{ lens, surfaces, density, renderer, budgets, widgets, i18n }`.
+- [x] Resolution order as §C.5; explicit props win.
+- [x] Per-surface reset; global reset; export/import.
 
 ### 18.2 Lenses
 
-- [ ] Define the nine lenses in §B.3 as data (no logic).
-- [ ] Lens switch command + palette entries + settings page.
-- [ ] User-defined lens: save the current surface state as a named lens.
+- [x] Define the nine lenses in §B.3 as data (no logic).
+- [x] Lens switch command + palette entries + settings page.
+- [x] User-defined lens: save the current surface state as a named lens.
 
 ### 18.3 Flags
 
@@ -928,3 +928,10 @@ feature that needs it.
   - Updated `SessionGraph` to use `GraphChrome` instead of inline chrome rendering.
   - `GraphWindowManager` always rendered (required for window opening flow).
   - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r13 (2026-11-10):** Phase 18 Configuration, lenses, flags complete.
+  - Added `SpacegraphPreferences` schema with lens, surfaces, density, renderer, budgets, widgets, i18n, userLenses.
+  - Implemented nine built-in lenses (Reader, Navigator, Cartographer, Investigator, Orchestrator, Reviewer, Archivist, Composer, Auditor) as data.
+  - Added lens switch commands (next/prev) and per-lens commands in command palette.
+  - Created settings page with lens selector, surface defaults, density, renderer, widgets configuration.
+  - Added user-defined lens creation (save current state as named lens).
+  - All typechecks pass; component tests pass.

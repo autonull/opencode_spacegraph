@@ -85,6 +85,16 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     layout: (session: MountedSession): Layout => sessionValue(session)?.layout ?? prefValue().layout ?? "lanes",
     depth: (session: MountedSession): DepthMode => sessionValue(session)?.depth ?? prefValue().depth ?? "flat",
     detailMode: (session: MountedSession): DetailMode => sessionValue(session)?.detailMode ?? prefValue().detailMode ?? "panel",
+    setLevel: (session: MountedSession, level: ZoomLevel) => {
+      store(session).update((draft) => {
+        draft.level = level
+      })
+    },
+    setLayout: (session: MountedSession, layout: Layout) => {
+      store(session).update((draft) => {
+        draft.layout = layout
+      })
+    },
     setDepth: (session: MountedSession, depth: DepthMode) => {
       store(session).update((draft) => {
         draft.depth = depth
@@ -123,11 +133,6 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
       store(session).update((draft) => {
         draft.level = level
-      })
-    },
-    setLayout: (session: MountedSession, layout: Layout) => {
-      store(session).update((draft) => {
-        draft.layout = layout
       })
     },
     cycleLayout: (session: MountedSession) => {

@@ -11,7 +11,7 @@ import {
 } from "@opencode/plugin/gui"
 import { createSignal, lazy, onCleanup, onMount, Suspense, type ParentProps } from "solid-js"
 import { LAYOUTS } from "../internal/graph"
-import definition from ".."
+import definition, { BUILTIN_LENSES, type BuiltinLensId } from ".."
 import { createSpacegraph } from "../model"
 import { MapSurface } from "../map-surface"
 import { HybridSurface } from "../hybrid-surface"
@@ -420,6 +420,133 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         run: () => command.run(session),
       }
     })
+  }
+
+  // Lens commands
+  for (const lens of BUILTIN_LENSES) {
+    ctx.add(Command, (): Command | undefined => {
+      const session = ctx.sessions.current()
+
+      if (!session) return undefined
+
+      return {
+        id: `lens.${lens.id}`,
+        get title() {
+          return ctx.t(`command.lens.${lens.id}`)
+        },
+        get group() {
+          return ctx.t("command.group")
+        },
+        section: "session",
+        run: () => applyLens(ctx, model, session, lens.id),
+      }
+    })
+  }
+
+  // Lens cycle commands
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "lens.next",
+      get title() {
+        return ctx.t("command.lens.next")
+      },
+      get group() {
+        return ctx.t("command.group")
+      },
+      section: "session",
+      run: () => cycleLens(ctx, model, session, "next"),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    const session = ctx.sessions.current()
+
+    if (!session) return undefined
+
+    return {
+      id: "lens.prev",
+      get title() {
+        return ctx.t("command.lens.prev")
+      },
+      get group() {
+        return ctx.t("command.group")
+      },
+      section: "session",
+      run: () => cycleLens(ctx, model, session, "prev"),
+    }
+  })
+
+  // Helper functions for lens application
+  function applyLens(
+    ctx: SetupContext<typeof definition>,
+    model: ReturnType<typeof createSpacegraph>,
+    session: MountedSession,
+    lensId: BuiltinLensId
+  ) {
+    const lensDef = BUILTIN_LENSES.find((l) => l.id === lensId)
+    if (!lensDef) return
+
+    const prefs = ctx.stores.prefs
+    prefs.update((draft) => {
+      const newSurfaces = { ...(draft.surfaces ?? {}) }
+      if (lensDef.surface === "map" || lensDef.surface === "hybrid") {
+        newSurfaces["map"] = {
+          layout: lensDef.layout,
+          depth: lensDef.depth,
+          level: lensDef.level,
+          detailMode: lensDef.detailMode,
+          files: lensDef.files,
+          trace: lensDef.trace ?? undefined,
+          persist: true,
+        }
+        if (lensDef.surface === "hybrid") {
+          newSurfaces["hybrid"] = {
+            layout: lensDef.layout,
+            depth: lensDef.depth,
+            level: lensDef.level,
+            detailMode: lensDef.detailMode,
+            files: lensDef.files,
+            trace: lensDef.trace ?? undefined,
+            persist: true,
+          }
+        }
+      }
+      const newRenderer = { ...(draft.renderer ?? {}), strategy: lensDef.widgets ? "spacegraph" : "spacegraph" }
+      const newWidgets = { ...(draft.widgets ?? {}), enabled: lensDef.widgets }
+      const newDensity = { ...(draft.density ?? {}), profile: "comfortable" }
+      
+      draft.lens = lensId
+      draft.surfaces = newSurfaces
+      draft.renderer = newRenderer
+      draft.widgets = newWidgets
+      draft.density = newDensity
+    })
+
+    // Apply immediately to current session
+    model.setLevel(session, lensDef.level)
+    model.setLayout(session, lensDef.layout)
+    model.setDepth(session, lensDef.depth)
+    model.setDetailMode(session, lensDef.detailMode)
+    model.setArrangement(session, lensDef.surface === "hybrid" ? "side" : "stacked")
+  }
+
+  function cycleLens(
+    ctx: SetupContext<typeof definition>,
+    model: ReturnType<typeof createSpacegraph>,
+    session: MountedSession,
+    direction: "next" | "prev"
+  ) {
+    const prefs = ctx.stores.prefs
+    const currentLens = (prefs.value.lens ?? "navigator") as string
+    const currentIndex = BUILTIN_LENSES.findIndex((l) => l.id === currentLens)
+    const nextIndex = direction === "next"
+      ? (currentIndex + 1) % BUILTIN_LENSES.length
+      : (currentIndex - 1 + BUILTIN_LENSES.length) % BUILTIN_LENSES.length
+    applyLens(ctx, model, session, BUILTIN_LENSES[nextIndex].id)
   }
 
   ctx.add(Command, (): Command | undefined => {
