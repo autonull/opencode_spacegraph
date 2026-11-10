@@ -4,6 +4,8 @@ import type { GraphViewData } from "@opencode/session-ui/graph"
 import { neighborStep } from "@opencode/session-ui/graph"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
+import { registerGraphBus, setActiveGraphInstance } from "./graph-router"
+import { createGraphBus } from "./graph-bus"
 
 export type UseGraphKeyboardOptions = {
   model: () => GraphViewData
@@ -23,6 +25,12 @@ export type UseGraphKeyboardOptions = {
   undoManual: () => void
   redoManual: () => void
   onGroupToggle: (id: string) => void
+  /** Unique instance ID for this graph. */
+  instanceId: string
+  /** Whether this instance is the active one (has pointer/focus). */
+  isActiveInstance: () => boolean
+  /** Set whether this instance is active. */
+  setActiveInstance: (active: boolean) => void
 }
 
 export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
@@ -43,13 +51,76 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
     undoManual,
     redoManual,
     onGroupToggle,
+    instanceId,
+    isActiveInstance,
+    setActiveInstance,
   } = options
 
+  // Create and register the bus for this instance
+  const bus = createGraphBus(instanceId)
+  onMount(() => {
+    const unregister = registerGraphBus(bus)
+    onCleanup(unregister)
+  })
+
+  // Track pointer/focus to become active instance
+  onMount(() => {
+    const handlePointerDown = () => {
+      if (!isActiveInstance()) {
+        setActiveGraphInstance(instanceId)
+        setActiveInstance(true)
+      }
+    }
+    const handleFocus = () => {
+      if (!isActiveInstance()) {
+        setActiveGraphInstance(instanceId)
+        setActiveInstance(true)
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown, true)
+    document.addEventListener("focusin", handleFocus, true)
+    onCleanup(() => {
+      document.removeEventListener("pointerdown", handlePointerDown, true)
+      document.removeEventListener("focusin", handleFocus, true)
+    })
+  })
+
+  // Subscribe to bus commands (only active instance receives them)
+  onMount(() => {
+    const unsubscribe = bus.on((name, payload) => {
+      // Only handle commands if we're the active instance
+      if (!isActiveInstance()) return
+
+      if (name === "why" || name === "led-here" || name === "related") {
+        annotations.startTrace(name, payload?.source)
+        return
+      }
+      if (name === "compare") {
+        // compareSelectedTurns would need to be passed in
+        return
+      }
+      if (name === "note") {
+        annotations.openNoteComposer()
+        return
+      }
+      if (name === "failureProgress") {
+        openWindow("failureProgress")
+        return
+      }
+      if (name === "find") {
+        openWindow("find")
+        return
+      }
+    })
+    onCleanup(unsubscribe)
+  })
+
+  // Global shortcuts (Shift+F, Shift+O, Alt+f) - only work when this instance is active
   onMount(() => {
     const cleanupShortcuts = attachKeyboardShortcuts([
-      { key: "F", shift: true, handler: () => openWindow("failureProgress") },
-      { key: "O", shift: true, handler: () => { setFindInitialTab("outline"); openWindow("find") } },
-      { key: "f", alt: true, handler: () => { setFindInitialTab("filters"); openWindow("find") } },
+      { key: "F", shift: true, handler: () => { if (isActiveInstance()) openWindow("failureProgress") } },
+      { key: "O", shift: true, handler: () => { if (isActiveInstance()) { setFindInitialTab("outline"); openWindow("find") } } },
+      { key: "f", alt: true, handler: () => { if (isActiveInstance()) { setFindInitialTab("filters"); openWindow("find") } } },
     ])
     onCleanup(cleanupShortcuts)
   })

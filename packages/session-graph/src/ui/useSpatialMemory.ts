@@ -21,6 +21,9 @@ export interface SpatialMemoryConfig {
   onRestore?: (positions: Record<string, [number, number, number]>, selection: string | undefined) => void
   /** Called when positions are saved. */
   onSave?: (positions: Record<string, [number, number, number]>, selection: string | undefined) => void
+  /** Whether this instance owns the spatial memory (writes). Default true.
+   *  Secondary instances (inline previews, popovers) should set to false to read but not write. */
+  owner?: boolean
 }
 
 const STORAGE_PREFIX = "sessionGraph.spatialMemory."
@@ -91,6 +94,7 @@ function saveSpatialMemory(key: string, positions: Record<string, [number, numbe
 
 export function useSpatialMemory(config: SpatialMemoryConfig) {
   let restored = false
+  const isOwner = config.owner ?? true
 
   // Restore positions when model/layout/level are ready
   createEffect(() => {
@@ -111,13 +115,15 @@ export function useSpatialMemory(config: SpatialMemoryConfig) {
     }
   })
 
-  // Save positions when they change (debounced)
+  // Save positions when they change (debounced) - only if owner
   let saveTimeout: ReturnType<typeof setTimeout> | undefined
   onCleanup(() => {
     if (saveTimeout) clearTimeout(saveTimeout)
   })
 
   createEffect(() => {
+    if (!isOwner) return
+
     const positions = config.positions()
     const selection = config.selection()
 
