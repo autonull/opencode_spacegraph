@@ -86,12 +86,13 @@ export type GraphDetailProps = {
   /** Snapshot for capability filtering. */
   snapshot?: { capabilities?: string[] }
   /** Trace overlay callbacks (A1). */
-  traceKind?: "why" | "led-here" | "related" | null
-  traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  traceKind?: "why" | "led-here" | "related" | "downstream" | null
+  traceHistory?: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]
   traceHistoryIndex?: number
   onTraceWhy?: (nodeId: string) => void
   onTraceLedHere?: (nodeId: string) => void
   onTraceRelated?: (nodeId: string) => void
+  onTraceDownstream?: (nodeId: string) => void
   onTraceBack?: () => void
   onTraceForward?: () => void
   onClearTrace?: () => void
@@ -555,12 +556,13 @@ function GraphDetailActions(props: {
   onReveal?: (target: ActionSpec["target"]) => void
   onCopy?: (text: string) => void
   onRun?: (operation: ActionSpec["operation"]) => void
-  traceKind?: "why" | "led-here" | "related" | null
-  traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  traceKind?: "why" | "led-here" | "related" | "downstream" | null
+  traceHistory?: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]
   traceHistoryIndex?: number
   onTraceWhy?: (nodeId: string) => void
   onTraceLedHere?: (nodeId: string) => void
   onTraceRelated?: (nodeId: string) => void
+  onTraceDownstream?: (nodeId: string) => void
   onTraceBack?: () => void
   onTraceForward?: () => void
   onClearTrace?: () => void
@@ -604,7 +606,7 @@ function GraphDetailActions(props: {
     }
   }
 
-  const handleTrace = (kind: "why" | "led-here" | "related") => {
+  const handleTrace = (kind: "why" | "led-here" | "related" | "downstream") => {
     switch (kind) {
       case "why":
         props.onTraceWhy?.(props.node.id)
@@ -614,6 +616,9 @@ function GraphDetailActions(props: {
         break
       case "related":
         props.onTraceRelated?.(props.node.id)
+        break
+      case "downstream":
+        props.onTraceDownstream?.(props.node.id)
         break
     }
   }
@@ -639,6 +644,7 @@ function GraphDetailActions(props: {
           { id: "trace.why", label: i18n.t("ui.sessionGraph.trace.why"), onClick: () => handleTrace("why") },
           { id: "trace.led-here", label: i18n.t("ui.sessionGraph.trace.ledHere"), onClick: () => handleTrace("led-here") },
           { id: "trace.related", label: i18n.t("ui.sessionGraph.trace.related"), onClick: () => handleTrace("related") },
+          { id: "trace.downstream", label: i18n.t("ui.sessionGraph.trace.downstream"), onClick: () => handleTrace("downstream") },
         ]
 
   const history = props.traceHistory ?? []

@@ -16,11 +16,12 @@ export type GraphInspectorPanelProps = {
   onSelect: GraphSelection["select"]
   onOpenTranscript: ((id: string) => void) | undefined
   onOpenSession: ((sessionID: string) => void) | undefined
-  traceKind: "why" | "led-here" | "related" | null
-  traceHistory: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  traceKind: "why" | "led-here" | "related" | "downstream" | null
+  traceHistory: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]
   onTraceWhy: UseGraphAnnotationsReturn["traceWhy"]
   onTraceLedHere: UseGraphAnnotationsReturn["traceLedHere"]
   onTraceRelated: UseGraphAnnotationsReturn["traceRelated"]
+  onTraceDownstream: UseGraphAnnotationsReturn["traceDownstream"]
   onTraceBack: UseGraphAnnotationsReturn["traceBack"]
   onTraceForward: UseGraphAnnotationsReturn["traceForward"]
   onClearTrace: UseGraphAnnotationsReturn["clearTrace"]

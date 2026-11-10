@@ -87,6 +87,7 @@ const GraphWindowManager = (props: GraphWindowManagerProps) => {
             onTraceWhy={annotations.traceWhy}
             onTraceLedHere={annotations.traceLedHere}
             onTraceRelated={annotations.traceRelated}
+            onTraceDownstream={annotations.traceDownstream}
             onClearTrace={annotations.clearTrace}
             onCopyTraceOutline={annotations.copyTraceOutline}
             onEditNote={annotations.editNote}

@@ -833,6 +833,8 @@ const source = {
   "ui.sessionGraph.trace.relatedAnnouncement": "Traced related nodes",
   "ui.sessionGraph.trace.why": "Why",
   "ui.sessionGraph.trace.whyAnnouncement": "Traced why this happened",
+  "ui.sessionGraph.trace.downstream": "Downstream",
+  "ui.sessionGraph.trace.downstreamAnnouncement": "Traced downstream impact from {label}",
   "ui.sessionGraph.trace.back": "Back",
   "ui.sessionGraph.trace.backAnnouncement": "Traced back to {label}",
   "ui.sessionGraph.trace.forward": "Forward",
