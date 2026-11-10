@@ -59,6 +59,49 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     openPanel(session)
   }
 
+  // Phase 17.3: restore last used surface when session becomes active
+  const restoreSurface = (session: MountedSession) => {
+    if (!surfaces()) return
+
+    const storedSurface = model.surface(session)
+    // Valid surfaces: transcript, ${ctx.id}.map, ${ctx.id}.hybrid
+    const validSurfaces = ["transcript", `${ctx.id}.map`, `${ctx.id}.hybrid`]
+
+    if (storedSurface && validSurfaces.includes(storedSurface)) {
+      // Surface is stored, select it
+      ctx.surfaces.select(storedSurface, session)
+    } else {
+      // No valid stored surface, default to transcript
+      ctx.surfaces.select("transcript", session)
+    }
+  }
+
+  // Restore surface on mount
+  onMount(() => {
+    const session = ctx.sessions.current()
+    if (session) {
+      // Small delay to let surfaces register
+      setTimeout(() => restoreSurface(session), 0)
+    }
+  })
+
+  // Phase 17.2: reveal from graph - switch to transcript surface first, then reveal
+  const handleOpenTranscript = (messageId: string) => {
+    const session = ctx.sessions.current()
+    if (!session) return
+
+    // If surfaces are available, switch to transcript surface first
+    if (surfaces()) {
+      select("transcript")
+    }
+
+    // Then reveal the message in the transcript
+    const screen = ctx.screen.current()
+    if (screen) {
+      screen.transcript.reveal(messageId)
+    }
+  }
+
   const tab: PanelTab = {
     id: "map",
     get title() {
@@ -79,7 +122,14 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
 
     ctx.dialogs.open(() => (
       <Scope>
-        <MapDialog ctx={ctx} model={model} session={session} screen={screen} title={title} />
+        <MapDialog
+          ctx={ctx}
+          model={model}
+          session={session}
+          screen={screen}
+          title={title}
+          onOpenTranscript={handleOpenTranscript}
+        />
       </Scope>
     ))
   }
@@ -106,6 +156,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             dialog.close()
             openPanel(session)
           }}
+          onOpenTranscript={handleOpenTranscript}
         />
       </Scope>
     ))
@@ -170,6 +221,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             session={session}
             screen={screen}
             onSplitView={() => select(`${ctx.id}.hybrid`)}
+            onOpenTranscript={handleOpenTranscript}
           />
         </Scope>
       ),
@@ -190,6 +242,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
                   close: ctx.t("turnMap.close"),
                   empty: ctx.t("turnMap.empty"),
                 }}
+                onOpenTranscript={handleOpenTranscript}
               />
             </Scope>
           ),
@@ -205,7 +258,13 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       order: 20,
       render: ({ session, screen, transcript }) => (
         <Scope>
-          <HybridSurface model={model} session={session} screen={screen} transcript={transcript} />
+          <HybridSurface
+            model={model}
+            session={session}
+            screen={screen}
+            transcript={transcript}
+            onOpenTranscript={handleOpenTranscript}
+          />
         </Scope>
       ),
     })
@@ -502,7 +561,12 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     render: (input) => (
       <Scope>
         <Suspense>
-          <SpacegraphPanel model={model} session={input.session} screen={input.screen} />
+          <SpacegraphPanel
+            model={model}
+            session={input.session}
+            screen={input.screen}
+            onOpenTranscript={handleOpenTranscript}
+          />
         </Suspense>
       </Scope>
     ),

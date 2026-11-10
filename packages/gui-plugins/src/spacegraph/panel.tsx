@@ -50,6 +50,7 @@ export default function SpacegraphPanel(props: {
   model: SpacegraphModel
   session: MountedSession
   screen: SessionScreen
+  onOpenTranscript?: (id: string) => void
 }) {
   const ctx = usePlugin()
   const i18n = useI18n()
@@ -192,6 +193,7 @@ export default function SpacegraphPanel(props: {
           preferredRenderer={props.model.renderer}
           chrome={true}
           shell="full"
+          onOpenTranscript={props.onOpenTranscript}
           // Shared trace state
           traceKind={traceKind()}
           onTraceKindChange={(kind) => props.model.setTraceKind(props.session, kind)}

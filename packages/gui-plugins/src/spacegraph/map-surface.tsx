@@ -9,6 +9,7 @@ export function MapSurface(props: {
   session: MountedSession
   screen: SessionScreen
   onSplitView?: () => void
+  onOpenTranscript?: (id: string) => void
 }) {
   const graph = props.model.graph(props.session)
 
@@ -46,6 +47,7 @@ export function MapSurface(props: {
         preferredRenderer={preferredRenderer}
         chrome={true}
         shell="full"
+        onOpenTranscript={props.onOpenTranscript}
       />
     </div>
   )

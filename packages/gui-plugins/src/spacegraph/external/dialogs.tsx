@@ -19,6 +19,7 @@ export function MapDialog(props: {
   session: MountedSession
   screen: SessionScreen
   title: string
+  onOpenTranscript?: (id: string) => void
 }): JSX.Element {
   const graph = props.model.graph(props.session)
 
@@ -56,6 +57,7 @@ export function MapDialog(props: {
           preferredRenderer={preferredRenderer}
           chrome={true}
           shell="full"
+          onOpenTranscript={props.onOpenTranscript}
         />
       </div>
     </props.ctx.ui.Dialog>
@@ -69,6 +71,7 @@ export function TurnMapDialog(props: {
   screen: SessionScreen
   labels: { title: string; open: string; close: string; empty: string }
   openFull: () => void
+  onOpenTranscript?: (id: string) => void
 }): JSX.Element {
   const graph = props.model.graph(props.session)
 
@@ -164,6 +167,7 @@ export function TurnMapDialog(props: {
               chrome={false}
               shell="bare"
               reducedMotion={true}
+              onOpenTranscript={props.onOpenTranscript}
             />
           </div>
           <div class="flex shrink-0 justify-end border-t border-v2-border-border-base px-4 py-3">

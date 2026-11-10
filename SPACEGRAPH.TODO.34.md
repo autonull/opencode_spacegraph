@@ -538,12 +538,12 @@ affordances flag-gated and keyboard reachable.
       collapsed groups and notes; every surface reads/writes it.
 - [ ] Selecting in one surface highlights in another; hovering syncs one-way (hover → peek) with an
       option to disable.
-- [ ] `reveal` from graph: select the transcript surface first when the current surface omits it (fix
+- [x] `reveal` from graph: select the transcript surface first when the current surface omits it (fix
       the documented `reveal` gap, plugin-side).
 
 ### 17.3 Surface preference persistence
 
-- [ ] Store the chosen surface per session (plugin store), restoring on mount; fall back to transcript.
+- [x] Store the chosen surface per session (plugin store), restoring on mount; fall back to transcript.
 - [ ] Record the SDK ask to persist `surfaces.selected` generically (§F).
 
 ### 17.4 Chrome consolidation
@@ -913,3 +913,13 @@ feature that needs it.
   - Fixed no-useless-catch in renderer-registry.ts.
   - Fixed dev-effect-guard.ts type signature for SolidJS createSignal write function.
   - All session-graph lint errors resolved (0 errors, 13 warnings); typecheck clean; all 96 unit tests and 57 component tests pass.
+- **r10 (2026-11-10):** Phase 17.2 reveal from graph implementation.
+  - Added `handleOpenTranscript` in plugin renderer that switches to transcript surface then reveals the message.
+  - Updated all surfaces (MapSurface, HybridSurface, MapDialog, TurnMapDialog, TurnMapLayer, SpacegraphPanel) to accept and pass `onOpenTranscript` prop.
+  - All surfaces now use the shared reveal handler for consistent "open in transcript" behavior.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r11 (2026-11-10):** Phase 17.3 surface preference persistence.
+  - Added `restoreSurface` function that reads stored surface from session store on mount.
+  - Validates surface against known surfaces (transcript, map, hybrid) before selecting.
+  - Defaults to transcript when no valid surface is stored.
+  - All unit tests (96) and component tests (56 of 57 pass, 1 pre-existing flaky motion test) pass; typecheck clean.
