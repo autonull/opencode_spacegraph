@@ -12,6 +12,7 @@ export function TurnMapLayer(props: {
   surface: SessionSurface
   labels: { title: string; open: string; close: string; empty: string }
   openFull: () => void
+  onOpenTranscript?: (id: string) => void
 }) {
   let panel: HTMLDivElement | undefined
 
@@ -100,6 +101,7 @@ export function TurnMapLayer(props: {
             chrome={false}
             shell="bare"
             reducedMotion={true}
+            onOpenTranscript={props.onOpenTranscript}
           />
         </div>
         <div class="flex shrink-0 justify-end border-t border-v2-border-border-base px-4 py-3">

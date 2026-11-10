@@ -12,6 +12,7 @@ export function HybridSurface(props: {
   session: MountedSession
   screen: SessionScreen
   transcript: JSX.Element
+  onOpenTranscript?: (id: string) => void
 }) {
   const i18n = useI18n()
   const arrangement = createMemo(() => props.model.arrangement(props.session))
@@ -71,6 +72,7 @@ export function HybridSurface(props: {
           preferredRenderer={preferredRenderer}
           chrome={true}
           shell="full"
+          onOpenTranscript={props.onOpenTranscript}
         />
         <GraphToolbarViewControls
           i18n={i18n}
