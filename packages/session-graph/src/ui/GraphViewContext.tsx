@@ -14,6 +14,12 @@ import type { UseGroupCollapseReturn } from "./useGroupCollapse"
 import type { UseEdgeKindsReturn } from "./useEdgeKinds"
 
 export interface GraphViewContextValue {
+  // Instance identity
+  instanceId: string
+  bus: import("./graph-bus").GraphBus
+  isActiveInstance: () => boolean
+  setActiveInstance: (active: boolean) => void
+
   // Model & theme
   model: () => GraphViewData
   theme: () => RenderTheme
@@ -83,22 +89,22 @@ export interface GraphViewContextValue {
   redoManual: () => void
 
   // Viewport
-  viewport: { zoom: number; center: number[] } | undefined
+  viewport: () => ({ zoom: number; center: number[] } | undefined)
   setViewport: (vp: { zoom: number; center: number[] } | undefined) => void
-  camera: GraphViewportTrackerReturn["camera"]
-  viewportTracker: GraphViewportTrackerReturn
+  camera: () => GraphViewportTrackerReturn["camera"]
+  viewportTracker: () => GraphViewportTrackerReturn
 
   // Overlays
-  peekFrame: { node: GraphNode; left: number; top: number } | undefined
-  peekEdge: GraphEdge | undefined
+  peekFrame: () => ({ node: GraphNode; left: number; top: number } | undefined)
+  peekEdge: () => GraphEdge | undefined
   noteTargetNode: () => GraphNode | undefined
-  noteAnchor: ReturnType<typeof import("./graph-anchors").createNodeAnchor>
-  effectiveDetailMode: DetailMode
-  popoverPlacement: { left: number; top: number }
-  popoverVisible: GraphNode | undefined
-  popoverNode: GraphNode | undefined
+  noteAnchor: ReturnType<typeof import("./graph-anchors").createNodeAnchor> | undefined
+  effectiveDetailMode: () => DetailMode
+  popoverPlacement: () => ({ left: number; top: number })
+  popoverVisible: () => GraphNode | undefined
+  popoverNode: () => GraphNode | undefined
   setPopoverDismissed: (dismissed: boolean) => void
-  groupMenu: { id: string; x: number; y: number } | undefined
+  groupMenu: () => ({ id: string; x: number; y: number } | undefined)
   setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
   toggleGroupByID: (id: string) => void
   selectedTurn: () => string | undefined
@@ -106,41 +112,41 @@ export interface GraphViewContextValue {
   cardFacing: () => "plane" | "camera"
 
   // Render model
-  renderModel: RenderModel
-  ordered: RenderModel
+  renderModel: () => RenderModel
+  ordered: () => RenderModel
 
   // Computed values
   displayPositions: () => ReadonlyMap<string, Position>
-  geometry: any
-  layoutHistory: Map<string, ReadonlyMap<string, Position>>
+  geometry: () => any
+  layoutHistory: () => Map<string, ReadonlyMap<string, Position>>
   sessionKey: () => string
-  viewKey: string
+  viewKey: () => string
   sizedCard: (node: GraphNode) => readonly [number, number]
-  rulesKey: string
-  needsFit: boolean
+  rulesKey: () => string
+  needsFit: () => boolean
   setNeedsFit: (needsFit: boolean) => void
-  turnNumbers: Map<string, number>
-  axisLabels: any
-  drawn: GraphViewData
-  resting: [number, number, number] | undefined
-  budget: any
+  turnNumbers: () => Map<string, number>
+  axisLabels: () => any
+  drawn: () => GraphViewData
+  resting: () => [number, number, number] | undefined
+  budget: () => any
   applyManualLayout: (model: RenderModel) => RenderModel
   contentIDs: () => string[]
   fitOptions: () => { minScale: number; insets: undefined }
-  inspectorOpen: boolean
-  cardScreenWidth: number
-  peekNode: GraphNode | undefined
-  peekAnchor: ReturnType<typeof import("./graph-anchors").createNodeAnchor>
-  peekPlacement: { left: number; top: number } | undefined
-  changedFilesList: any
+  inspectorOpen: () => boolean
+  cardScreenWidth: () => number
+  peekNode: () => GraphNode | undefined
+  peekAnchor: ReturnType<typeof import("./graph-anchors").createNodeAnchor> | undefined
+  peekPlacement: () => ({ left: number; top: number } | undefined)
+  changedFilesList: () => any
   fitSubtree: (id: string) => void
-  windowAnchor: string | undefined
-  activeTurn: string | undefined
+  windowAnchor: () => string | undefined
+  activeTurn: () => string | undefined
   scopeBase: (source: GraphViewData) => GraphViewData
   turnOf: (id: string | undefined) => string | undefined
-  scoped: GraphViewData
-  counts: any
-  comparison: any
+  scoped: () => GraphViewData
+  counts: () => any
+  comparison: () => any
   compareSelectedTurns: () => void
   clearComparison: () => void
 
@@ -157,50 +163,50 @@ export interface GraphViewContextValue {
   jumpTo: (node: GraphNode) => void
   raiseLevelForFrame: () => boolean
   focusFrame: (instance: GraphRenderer | undefined) => void
-  framed: string | undefined
+  framed: () => string | undefined
   setFramed: (id: string) => void
   openInTranscript: (id: string) => void
   openSearch: (initial?: string) => void
   toggleSearch: () => void
-  searchOpen: boolean
+  searchOpen: () => boolean
   setSearchOpen: (open: boolean) => void
-  searchInitial: string
+  searchInitial: () => string
   setSearchInitial: (initial: string) => void
-  legendOpen: boolean
+  legendOpen: () => boolean
   setLegendOpen: (open: boolean) => void
-  galleryOpen: boolean
+  galleryOpen: () => boolean
   setGalleryOpen: (open: boolean) => void
-  findInitialTab: "search" | "filters" | "outline"
+  findInitialTab: () => "search" | "filters" | "outline"
   setFindInitialTab: (tab: "search" | "filters" | "outline") => void
-  a11yInstructionsId: string
+  a11yInstructionsId: () => string
   announce: (message: string) => void
-  i18n: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
-  refitKey: string | undefined
-  arrangement: GraphArrangement | undefined
+  i18n: () => ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
+  refitKey: () => string | undefined
+  arrangement: () => GraphArrangement | undefined
   handleRegionKeyDown: (event: KeyboardEvent) => void
   setHovered: (id: string | undefined) => void
   setEdgeHovered: (id: string | undefined) => void
   onZoomOut: () => void
   onZoomIn: () => void
-  zoomPercent: number
-  zoomOutDisabled: boolean
-  zoomInDisabled: boolean
+  zoomPercent: () => number
+  zoomOutDisabled: () => boolean
+  zoomInDisabled: () => boolean
   onFit: () => void
   onCopyView: () => void
   onExport: (format: "svg" | "json" | "html", model: RenderModel) => void
   onBack: (() => void) | undefined
   onSplitView: (() => void) | undefined
-  endInset: string | undefined
-  sessionTitle: string | undefined
-  testedCommit: string | undefined
+  endInset: () => string | undefined
+  sessionTitle: () => string | undefined
+  testedCommit: () => string | undefined
   canvasRegionRef: (el: HTMLDivElement | undefined) => void
-  rendererOverrides: Partial<Record<RendererID, RendererFactory>> | undefined
-  preferredRenderer: RendererID | undefined
+  rendererOverrides: () => Partial<Record<RendererID, RendererFactory>> | undefined
+  preferredRenderer: () => RendererID | undefined
   onRenderer: ((renderer: GraphRenderer | undefined) => void) | undefined
-  renderCard: CardTemplate | undefined
-  renderSummary: ((node: GraphNode) => any) | undefined
-  diffSource: GraphDiffSource | undefined
-  link: string | undefined
+  renderCard: () => CardTemplate | undefined
+  renderSummary: () => ((node: GraphNode) => any) | undefined
+  diffSource: () => GraphDiffSource | undefined
+  link: () => string | undefined
   onOpenTranscript: ((id: string) => void) | undefined
   onOpenSession: ((sessionID: string) => void) | undefined
   onActionNavigate: ((target: GraphActionTarget) => void) | undefined
@@ -208,7 +214,7 @@ export interface GraphViewContextValue {
   onActionCopy: ((text: string) => void) | undefined
   onActionRun: ((operation: { id: string; params: Record<string, unknown> }) => void) | undefined
   onOpenWindow: ((kind: string, nodeID?: string) => void) | undefined
-  rules: EqualizerRuleSet | undefined
+  rules: () => EqualizerRuleSet | undefined
   onRulesChange: ((rules: any[]) => void) | undefined
   onSelect: ((id: string | undefined) => void) | undefined
   onProjectionChange: ((projection: Projection) => void) | undefined
@@ -222,8 +228,8 @@ export interface GraphViewContextValue {
   applyModel: (instance: GraphRenderer) => void
   selectedTurns: () => any[]
   scale: () => any
-  viewportTrackerRef: { current: GraphViewportTrackerReturn | undefined }
-  cardScreenWidthSignal: { get: () => number; set: (v: number) => void }
+  viewportTrackerRef: () => ({ current: GraphViewportTrackerReturn | undefined })
+  cardScreenWidthSignal: () => ({ get: () => number; set: (v: number) => void })
 }
 
 const GraphViewContext = createContext<GraphViewContextValue | undefined>(undefined)

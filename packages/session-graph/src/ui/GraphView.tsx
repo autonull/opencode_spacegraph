@@ -36,6 +36,9 @@ import {
   nodeIndex,
   turnRows,
 } from "@opencode/session-ui/graph"
+import { createGraphBus } from "./graph-bus"
+import { registerGraphBus } from "./graph-router"
+import { createUniqueId } from "solid-js"
 import {
   createEffect,
   createMemo,
@@ -103,6 +106,8 @@ import { useRenderCard } from "./useRenderCard"
 import { createManualPositions } from "./useManualPositions"
 import { useCanvasRegionProps } from "./useCanvasRegionProps"
 import { useSpatialMemory } from "./useSpatialMemory"
+import { GraphViewProvider } from "./GraphViewContext"
+import type { RenderModel } from "@spacegraphjs/renderer"
 
 /**
  * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
@@ -277,6 +282,17 @@ export type GraphViewProps = {
  */
 export const GraphView = (props: GraphViewProps) => {
   const state = useGraphState(props)
+
+  // Instance identity for multi-graph isolation
+  const instanceId = createUniqueId()
+  const [isActiveInstance, setIsActiveInstance] = createSignal(false)
+  const bus = createGraphBus(instanceId)
+
+  // Register bus with router and track active instance
+  onMount(() => {
+    const unregister = registerGraphBus(bus)
+    onCleanup(unregister)
+  })
 
   const {
     i18n,
@@ -456,6 +472,7 @@ export const GraphView = (props: GraphViewProps) => {
       return false
     },
     draggingDescendant: () => false, // TODO: track dragging state
+    instanceId,
   })
 
   // Phase 4.11: Track group collapse/expand for a11y announcement
@@ -572,24 +589,6 @@ export const GraphView = (props: GraphViewProps) => {
     const handleCopyTraceOutline = () => annotations.copyTraceOutline()
     window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
     onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
-
-    const handleCommand = (event: Event) => {
-      const detail = (event as CustomEvent<{ name?: string; source?: string }>).detail
-      const name = detail?.name
-      if (name === "why" || name === "led-here" || name === "related") {
-        annotations.startTrace(name, detail?.source)
-        return
-      }
-      if (name === "compare") {
-        compareSelectedTurns()
-        return
-      }
-      if (name === "note") annotations.openNoteComposer()
-      if (name === "failureProgress") openWindow("failureProgress")
-      if (name === "find") openWindow("find")
-    }
-    window.addEventListener("graph:command", handleCommand)
-    onCleanup(() => window.removeEventListener("graph:command", handleCommand))
   })
 
   // Canvas region size tracking
@@ -649,6 +648,7 @@ export const GraphView = (props: GraphViewProps) => {
     level,
     positions: displayPositions,
     selection: () => selection()[0],
+    owner: true,
     onRestore: (positions, sel) => {
       manualPositions.setManual("positions", positions)
       if (sel) select(sel, false)
@@ -875,6 +875,9 @@ export const GraphView = (props: GraphViewProps) => {
     peekEdge,
     noteTargetNode,
     noteAnchor,
+    peekAnchor,
+    peekNode,
+    peekPlacement,
   } = usePopover({
     model,
     peek,
@@ -959,6 +962,9 @@ export const GraphView = (props: GraphViewProps) => {
     undoManual,
     redoManual,
     onGroupToggle: toggleGroupByID,
+    instanceId,
+    isActiveInstance,
+    setActiveInstance: setIsActiveInstance,
   })
 
   // Copy view URL with current query parameters
@@ -1138,13 +1144,234 @@ export const GraphView = (props: GraphViewProps) => {
     drillDownStack: state.drillDownStack,
   })
 
+  // Build context value for GraphViewProvider
+  const contextValue = {
+    // Instance identity
+    instanceId,
+    bus,
+    isActiveInstance,
+    setActiveInstance: setIsActiveInstance,
+
+    // Model & theme
+    model,
+    theme,
+    level,
+    setLevel,
+    projection,
+    setProjection,
+    depth,
+    setDepth,
+    layout,
+    setLayout,
+    files,
+    setFiles,
+    detailMode,
+    setDetailMode,
+    detailFraming,
+    setDetailFraming,
+    peek,
+    setPeek,
+    followLog,
+    setFollowLog,
+    facets,
+    setFacets,
+
+    // Renderer
+    renderer: renderer(),
+    setRenderer,
+    rendererID: rendererID(),
+    setRendererID,
+    rendererReady,
+    setRendererReady,
+    fallback: () => false,
+    setFallback: () => {},
+    error,
+    setError,
+
+    // Responsive
+    narrow,
+    setNarrow,
+    compact,
+    setCompact,
+    inspectorWidth,
+    setInspectorWidth,
+    inspectorSheetOpen,
+    setInspectorSheetOpen,
+    canvasSize,
+    setCanvasSize,
+
+    // Selection & navigation
+    selection: graphSelection.selection,
+    select: graphSelection.select,
+    graphSelection,
+    annotations,
+    edgeKinds,
+    groupCollapse,
+    comparisonHook,
+
+    // Manual layout
+    manual: manualPositions.manual,
+    setManual: manualPositions.setManual,
+    manualHistory: manualPositions.history,
+    setManualHistory: () => {},
+    manualFuture: manualPositions.future,
+    setManualFuture: () => {},
+    pushHistory: manualPositions.pushHistory,
+    undoManual: manualPositions.undoManual,
+    redoManual: manualPositions.redoManual,
+
+    // Viewport
+    viewport: () => viewportTracker!.viewport(),
+    setViewport,
+    camera: () => viewportTracker!.camera,
+    viewportTracker: () => viewportTracker!,
+
+    // Overlays
+    peekFrame: () => peekFrame(),
+    peekEdge: () => peekEdge(),
+    noteTargetNode: () => noteTargetNode(),
+    noteAnchor,
+    effectiveDetailMode: () => effectiveDetailMode(),
+    popoverPlacement: () => popoverPlacement(),
+    popoverVisible: () => popoverVisible(),
+    popoverNode: () => popoverNode(),
+    setPopoverDismissed,
+    groupMenu: () => groupMenu(),
+    setGroupMenu,
+    toggleGroupByID,
+    selectedTurn: () => selectedTurn(),
+    toggleBillboard,
+    cardFacing,
+
+    // Render model
+    renderModel,
+    ordered,
+
+    // Computed values
+    displayPositions,
+    geometry: () => geometry(),
+    layoutHistory: () => new Map(),
+    sessionKey,
+    viewKey: () => instanceId,
+    sizedCard: (_node: GraphNode) => [CARD_SIZE[0], CARD_SIZE[1]] as const,
+    rulesKey: () => "",
+    needsFit: () => needsFit(),
+    setNeedsFit,
+    turnNumbers: () => turnNumbers(),
+    axisLabels: () => axisLabels(),
+    drawn: () => drawn(),
+    resting: () => viewportTracker!.resting(),
+    budget: () => budget(),
+    applyManualLayout: (m: RenderModel) => m,
+    contentIDs,
+    fitOptions,
+    inspectorOpen: () => inspectorOpen(),
+    cardScreenWidth: () => cardScreenWidth(),
+    peekNode: () => peekNode(),
+    peekAnchor,
+    peekPlacement: () => peekPlacement(),
+    changedFilesList: () => changedFilesList(),
+    fitSubtree,
+    windowAnchor: () => windowAnchor(),
+    activeTurn: () => props.activeTurn,
+    scopeBase: (source: GraphViewData) => source,
+    turnOf: (id: string | undefined) => id ? nodeByID(demoModel(), id)?.turnID : undefined,
+    scoped: () => scoped(),
+    counts: () => counts(),
+    comparison: () => comparison(),
+    compareSelectedTurns,
+    clearComparison,
+
+    // Handlers
+    changeDetailMode,
+    changeDetailFraming,
+    changeProjection: setProjection,
+    changeDepth,
+    changeLayout,
+    expandToGraph,
+    toggleFiles,
+    togglePeek,
+    dismissDetail,
+    openInTranscript,
+    raiseLevelForFrame,
+    focusFrame: (r: GraphRenderer | undefined) => r,
+    framed: () => undefined,
+    setFramed: () => {},
+    openSearch,
+    toggleSearch,
+    searchOpen,
+    setSearchOpen,
+    searchInitial,
+    setSearchInitial,
+    legendOpen,
+    setLegendOpen,
+    galleryOpen,
+    setGalleryOpen,
+    findInitialTab,
+    setFindInitialTab,
+    a11yInstructionsId: () => a11yInstructionsId,
+    announce,
+    i18n: () => i18n,
+    refitKey: () => props.refitKey,
+    arrangement: () => props.arrangement,
+    handleRegionKeyDown,
+    setHovered,
+    setEdgeHovered,
+    onZoomOut: () => viewportTracker!.camera.zoomBy(-1),
+    onZoomIn: () => viewportTracker!.camera.zoomBy(1),
+    zoomPercent: () => zoomPercent(),
+    zoomOutDisabled: () => level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min,
+    zoomInDisabled: () => (viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max,
+    onFit: () => viewportTracker!.camera.fitContent(),
+    onCopyView: copyView,
+    onExport: handleExport,
+    onBack: props.onBack,
+    onSplitView: props.onSplitView,
+    endInset: () => props.endInset,
+    sessionTitle: () => props.sessionTitle,
+    testedCommit: () => props.testedCommit,
+    canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
+    rendererOverrides: () => props.rendererOverrides,
+    preferredRenderer: props.preferredRenderer as () => "spacegraph" | undefined,
+    onRenderer: props.onRenderer,
+    renderCard: () => props.renderCard,
+    renderSummary: () => props.renderSummary,
+    diffSource: () => props.diffSource,
+    link: () => props.link,
+    onOpenTranscript: props.onOpenTranscript,
+    onOpenSession: props.onOpenSession,
+    onActionNavigate: props.onActionNavigate,
+    onActionReveal: props.onActionReveal,
+    onActionCopy: props.onActionCopy,
+    onActionRun: props.onActionRun,
+    onOpenWindow: openWindow,
+    rules: () => props.rules,
+    onRulesChange: props.onRulesChange,
+    onSelect: props.onSelect,
+    onProjectionChange: props.onProjectionChange,
+    onDepthChange: props.onDepthChange,
+    onLayoutChange: props.onLayoutChange,
+    onFilesChange: props.onFilesChange,
+    onDetailModeChange: props.onDetailModeChange,
+    onDetailFramingChange: props.onDetailFramingChange,
+    onPeekChange: props.onPeekChange,
+    onTurnMap: props.onTurnMap,
+    applyModel,
+    selectedTurns: () => selectedTurns(),
+    scale: () => ({ x: 1, y: 1, z: 1 }),
+    viewportTrackerRef: () => ({ current: viewportTracker }),
+    cardScreenWidthSignal: () => ({ get: () => cardScreenWidth(), set: (_v: number) => {} }),
+    jumpTo,
+  }
+
   return (
-    <div
-      ref={rootEl}
-      data-component="session-graph-view"
-      data-slot="graph-view"
-      class="flex h-full w-full flex-col overflow-hidden"
-    >
+    <GraphViewProvider value={contextValue}>
+      <div
+        ref={rootEl}
+        data-component="session-graph-view"
+        data-slot="graph-view"
+        class="flex h-full w-full flex-col overflow-hidden"
+      >
       <GraphToolbar
         capabilities={capabilities()}
         renderer={rendererID()}
@@ -1443,5 +1670,6 @@ export const GraphView = (props: GraphViewProps) => {
         </Show>
       </div>
     </div>
+  </GraphViewProvider>
   )
 }

@@ -396,12 +396,12 @@ interfere.
 
 ### 14.2 Introduce the instance context and bus
 
-- [ ] Implement `GraphViewContext` provider (G1) with `{ instanceId, bus, selection, scopeBase }`.
-- [ ] Add `graph-bus.ts`; route `graph:command` through one host router (G2).
-- [ ] Scope `useGraphKeyboard` global shortcuts through the router (G3).
-- [ ] Move `pointerDownOnGroup` into instance state (G4).
-- [ ] Add `owner` to spatial memory; secondary instances read-only (G5).
-- [ ] Prefix a11y/section ids per instance (already mostly done) and audit for duplicate ids.
+- [x] Implement `GraphViewContext` provider (G1) with `{ instanceId, bus, selection, scopeBase }`.
+- [x] Add `graph-bus.ts`; route `graph:command` through one host router (G2).
+- [x] Scope `useGraphKeyboard` global shortcuts through the router (G3).
+- [x] Move `pointerDownOnGroup` into instance state (G4).
+- [x] Add `owner` to spatial memory; secondary instances read-only (G5).
+- [x] Prefix a11y/section ids per instance (already mostly done) and audit for duplicate ids.
 
 ### 14.3 Extract `SessionGraph`
 

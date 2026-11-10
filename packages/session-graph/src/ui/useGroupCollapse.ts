@@ -5,9 +5,6 @@ import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 /** Band identifier from the renderer's ZoomBandsPlugin. */
 export type GraphBand = "overview" | "execution" | "detail"
 
-/** Tracks whether the pointer is currently down on a group or its descendants. */
-let pointerDownOnGroup = false
-
 export type UseGroupCollapseOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
@@ -18,6 +15,8 @@ export type UseGroupCollapseOptions = {
   descendantSelected?: () => boolean
   /** Whether a drag operation is in progress on a group descendant. */
   draggingDescendant?: () => boolean
+  /** Unique instance ID for isolating pointer state across multiple graphs. */
+  instanceId?: string
 }
 
 export type UseGroupCollapseReturn = {
@@ -46,6 +45,7 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
   const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
   const [explicitlyCollapsed, setExplicitlyCollapsed] = createSignal<ReadonlySet<string>>(new Set())
   const [ambientFolded, setAmbientFolded] = createSignal<ReadonlySet<string>>(new Set())
+  const [pointerDownOnGroup, setPointerDownOnGroup] = createSignal(false)
   let dwellTimer: ReturnType<typeof setTimeout> | null = null
 
   onCleanup(() => {
@@ -98,7 +98,7 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
     const dragging = options.draggingDescendant?.() ?? false
 
     // Never fold while pointer is down on a group, a descendant is selected, or dragging
-    if (pointerDownOnGroup || descendantSel || dragging) {
+    if (pointerDownOnGroup() || descendantSel || dragging) {
       return explicit // Only explicit collapse respected during interaction
     }
 
@@ -136,11 +136,11 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
   }
 
   const onPointerDown = () => {
-    pointerDownOnGroup = true
+    setPointerDownOnGroup(true)
   }
 
   const onPointerUp = () => {
-    pointerDownOnGroup = false
+    setPointerDownOnGroup(false)
   }
 
   return {
