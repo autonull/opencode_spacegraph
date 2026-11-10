@@ -125,4 +125,17 @@ export default {
   "ui.sessionGraph.transcript.share.label": "Share",
   "ui.sessionGraph.transcript.share.tooltip": "Copy permalink to this turn",
   "ui.sessionGraph.transcript.affordances.label": "Graph affordances",
+  "ui.sessionGraph.trace.why": "Why?",
+  "ui.sessionGraph.trace.ledHere": "Led here",
+  "ui.sessionGraph.trace.related": "Related",
+  "ui.sessionGraph.trace.back": "Back",
+  "ui.sessionGraph.trace.forward": "Forward",
+  "ui.sessionGraph.trace.copyOutline": "Copy trace outline",
+  "ui.sessionGraph.trace.clear": "Clear trace",
+  "ui.sessionGraph.trace.whyAnnouncement": "Tracing why from {label}",
+  "ui.sessionGraph.trace.ledHereAnnouncement": "Tracing what led here from {label}",
+  "ui.sessionGraph.trace.relatedAnnouncement": "Tracing related from {label}",
+  "ui.sessionGraph.trace.backAnnouncement": "Back to {label}",
+  "ui.sessionGraph.trace.forwardAnnouncement": "Forward to {label}",
+  "ui.sessionGraph.trace.copied": "Trace outline copied"
 }

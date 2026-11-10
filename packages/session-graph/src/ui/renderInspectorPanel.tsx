@@ -74,6 +74,7 @@ export function renderInspectorPanel(props: RenderInspectorPanelProps): JSX.Elem
           onDeleteNote={annotations.deleteNote}
           onCopyNote={annotations.copyNote}
           traceHistory={annotations.traceHistory()}
+          traceHistoryIndex={annotations.historyIndex?.()}
         />
       )}
     </Show>

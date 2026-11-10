@@ -39,6 +39,7 @@ export type UseGraphAnnotationsReturn = {
   traceSource: () => string | null
   traceOverlay: () => TraceOverlay | null
   traceHistory: () => readonly { kind: TraceKind; source: string; label: string }[]
+  historyIndex: () => number
   startTrace: (kind: TraceKind, source?: string) => void
   traceWhy: (nodeId: string) => void
   traceLedHere: (nodeId: string) => void
@@ -275,6 +276,7 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     traceSource,
     traceOverlay,
     traceHistory: () => traceHistory(),
+    historyIndex,
     startTrace,
     traceWhy,
     traceLedHere,

@@ -9,9 +9,10 @@
 > **Status (2026-11-10):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
 > config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.5 **complete** — GraphTranscriptSurface
 > implemented and flag-gated in spacegraph plugin, affordance rules done, subagent drill implemented via double-click + drill-down,
-> session.header slot and ComposerPill added for host integration, SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete. Phases 19–28 are experimental with kill criteria.
+> session.header slot and ComposerPill added for host integration, SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete.
+> Phase 19.1 **Trace breadcrumbs + back/forward** complete. Phases 19.2–28 are experimental with kill criteria.
 >
-> **r19 (2026-11-10):** Phase 16.3 Host integration complete — transcript-graph command, session.header slot, ComposerPill.
+> **r20 (2026-11-10):** Phase 19.1 Trace breadcrumbs complete — unified across all surfaces.
 >
 > **Priority ladder (hard ordering):**
 > 1. **Code** — extraction, isolation, embedding, multi-surface, configuration.
@@ -639,7 +640,7 @@ Implement in the order below; each item is independently shippable and revertibl
 
 ### 19.1 Investigation
 
-- [ ] **Trace breadcrumbs + back/forward** unified across surfaces.
+- [x] **Trace breadcrumbs + back/forward** unified across surfaces.
 - [ ] **Downstream impact** — from a node, follow `sequence`/`produces`/`writes` forward; label
       confidence (`explicit`/`structural`/`inferred`).
 - [ ] **Ambiguity display** — when the chain forks, show the fork instead of guessing (kill criterion
@@ -999,4 +1000,10 @@ feature that needs it.
   - Added `ComposerPill` with "Map this turn" action for the active turn.
   - Added i18n keys for transcript graph surface, command, and all transcript affordance labels.
   - Graph transcript surface now fully integrated with host transcript via command palette, header slot, and composer pill.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r20 (2026-11-10):** Phase 19.1 Trace breadcrumbs + back/forward unified across surfaces.
+  - Added `traceHistoryIndex` to `GraphDetailProps` and `UseGraphAnnotationsReturn` for forward navigation.
+  - Fixed forward button in trace breadcrumb UI to enable/disable based on history index.
+  - Added missing i18n keys for trace actions (why, led-here, related, back, forward, copyOutline, clear) and announcements.
+  - Trace breadcrumb trail and back/forward navigation now work consistently across all surfaces (MapSurface, HybridSurface, MapDialog, TurnMapLayer, TurnMapDialog, SpacegraphPanel, GraphTranscriptSurface).
   - All unit tests (96) and component tests (57) pass; typecheck clean.
