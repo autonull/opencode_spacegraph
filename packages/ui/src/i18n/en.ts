@@ -411,6 +411,10 @@ const source = {
   "ui.sessionGraph.compare.turnStats": "{{turns}} turns, {{errors}} errors, {{retries}} retries",
   "ui.sessionGraph.compare.twoTurns": "Turn {{a}} vs {{b}}",
   "ui.sessionGraph.compare.window": "Window",
+  "ui.sessionGraph.compare.textTab": "Text",
+  "ui.sessionGraph.compare.visualTab": "Visual",
+  "ui.sessionGraph.compare.visualTitle": "Graph diff ({{count}} nodes)",
+  "ui.sessionGraph.compare.edges": "{{count}} edges",
 
   "ui.sessionGraph.confidence.explicit": "Explicit",
   "ui.sessionGraph.confidence.inferred": "Inferred",
