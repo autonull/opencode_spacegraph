@@ -45,6 +45,7 @@ export default {
   "turnMap.open": "Open full map",
   "turnMap.close": "Close turn map",
   "turnMap.empty": "No turn to show yet",
+  "turnMap.subagent": "Subagent map",
   "level.overview": "Overview",
   "level.execution": "Execution",
   "level.detail": "Detail",
