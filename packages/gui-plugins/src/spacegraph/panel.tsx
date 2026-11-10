@@ -4,9 +4,11 @@ import { createSignal, For, Show } from "solid-js"
 import { navigationResults, rankedSearch, type GraphNode as SessionGraphNode, type GraphViewData as SessionGraphViewData } from "@opencode/session-ui/graph"
 import { formatProvenance, text } from "@opencode/session-graph"
 import type { SpacegraphModel } from "./model"
-import { FullMap } from "./full-map"
+import { SessionGraph } from "@opencode/session-graph"
 import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
+import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 
 function convertGraphData(data: SessionGraphViewData): InspectorGraphViewData {
   return {
@@ -118,6 +120,11 @@ export default function SpacegraphPanel(props: {
     return { width: el?.clientWidth ?? 800, height: el?.clientHeight ?? 600 }
   }
 
+  const focused = () => props.model.focused(props.session)
+  const detailMode = () => props.model.detailMode(props.session)
+  const arrangement = () => props.model.arrangement(props.session)
+  const arrangementSide = () => props.model.side(props.session)
+
   return (
     <div class="flex size-full min-h-0 flex-col bg-v2-background-bg-base" data-slot="spacegraph-panel">
       <div class="flex shrink-0 items-center justify-between gap-2 border-b border-v2-border-border-base px-4 py-2.5">
@@ -151,7 +158,33 @@ export default function SpacegraphPanel(props: {
         </div>
       </div>
       <div class="min-h-0 flex-1 relative">
-        <FullMap model={props.model} session={props.session} screen={props.screen} />
+        <SessionGraph
+          model={graph()}
+          level={props.model.level(props.session)}
+          layout={props.model.layout(props.session)}
+          depth={props.model.depth(props.session)}
+          detailMode={detailMode()}
+          selection={focused()}
+          frame={focused()}
+          activeTurn={graph().activeTurn}
+          onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
+          onLayoutChange={(next: string) => {
+            const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
+
+            if (layout) props.model.setLayout(props.session, layout)
+          }}
+          onDepthChange={(next: DepthMode) => props.model.setDepth(props.session, next)}
+          onDetailModeChange={(next: DetailMode) => props.model.setDetailMode(props.session, next)}
+          arrangement={arrangement()}
+          arrangementSide={arrangementSide()}
+          refitKey={arrangement()}
+          onArrangementChange={(next: GraphArrangement) => props.model.setArrangement(props.session, next)}
+          onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
+          onSplitView={() => {}}
+          preferredRenderer={props.model.renderer}
+          chrome={true}
+          shell="full"
+        />
         <Windows
           windows={windows()}
           onChange={(windows) => setWindows(windows)}
