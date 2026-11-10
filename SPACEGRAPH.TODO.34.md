@@ -481,10 +481,10 @@ flag-gated.
 
 ### 16.1 Inline preview primitive
 
-- [ ] `GraphPreview` — wraps `TurnMapInlineGraph` (static SVG) with theme and size, used at L1.
-- [ ] `GraphInline` — lazy-mounts `SessionGraph` (`chrome={false}`, explicit height, `persist={false}`)
+- [x] `GraphPreview` — wraps `TurnMapInlineGraph` (static SVG) with theme and size, used at L1.
+- [x] `GraphInline` — lazy-mounts `SessionGraph` (`chrome={false}`, explicit height, `persist={false}`)
       on expand; shows the preview until ready; `Suspense` fallback sized to the preview.
-- [ ] Require `reducedMotion` respect and no camera animation on first mount.
+- [x] Require `reducedMotion` respect and no camera animation on first mount.
 
 ### 16.2 Graph transcript surface (own rows)
 

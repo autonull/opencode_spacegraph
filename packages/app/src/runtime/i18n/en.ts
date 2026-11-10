@@ -28,6 +28,12 @@ export const dict = {
   "session.rewind.toast.undo": "Undo",
   "session.location.moving": "Moving session…",
   "session.location.moveFailed": "Failed to move session",
+
+  "ui.sessionGraph.inline.label": "Turn map preview",
+  "ui.sessionGraph.inline.loading": "Loading interactive graph…",
+  "ui.sessionGraph.inline.expand": "Expand",
+  "ui.sessionGraph.inline.collapse": "Collapse",
+  "ui.sessionGraph.inline.region": "Turn map",
   "server.action.authenticate": "Authenticate",
   "server.status.connecting": "Connecting over SSH…",
   "server.thisComputer": "This computer",
