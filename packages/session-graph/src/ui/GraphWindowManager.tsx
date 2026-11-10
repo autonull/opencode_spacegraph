@@ -19,6 +19,7 @@ import { GraphFailureProgress } from "./GraphFailureProgress"
 import { GraphFind } from "./GraphFind"
 import { GraphLegendBody } from "./GraphLegend"
 import { GraphMinimap } from "./GraphMinimap"
+import { GraphCompactionAdvisor } from "./GraphCompactionAdvisor"
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import { GraphWindows, type GraphWindowState } from "./GraphWindows"
 import { windowKind, type GraphWindowKind } from "./graph-windows"
@@ -138,6 +139,11 @@ const GraphWindowManager = (props: GraphWindowManagerProps) => {
         }
         return <GraphCompare model={model()} changes={compareChanges} />
       },
+    },
+    {
+      name: "compactionAdvisor",
+      title: () => i18n.t("ui.sessionGraph.compactionAdvisor.title"),
+      render: () => <GraphCompactionAdvisor model={model()} />,
     },
     {
       name: "equalizer",

@@ -656,8 +656,8 @@ Implement in the order below; each item is independently shippable and revertibl
 
 ### 19.3 Compaction advisor
 
-- [ ] Preview `analyzeCompaction` on the live fixture: decision spine, drop candidates, token estimate.
-- [ ] Show it as an overlay on the map and as a dialog before compaction.
+- [x] Preview `analyzeCompaction` on the live fixture: decision spine, drop candidates, token estimate.
+- [x] Show it as an overlay on the map and as a dialog before compaction.
 - [ ] **Kill:** if it does not beat baseline compaction on the fixture, park it and record the numbers.
 
 ### 19.4 Time travel
@@ -1027,4 +1027,11 @@ feature that needs it.
   - Enhanced `GraphCompare` component with a tabbed view: "Text" (existing) and "Visual" (new graph diff).
   - Visual diff renders nodes with kind-coded dots and edges list, using the diff subgraph from `reviewModel`.
   - Added i18n keys: `ui.sessionGraph.compare.textTab`, `ui.sessionGraph.compare.visualTab`, `ui.sessionGraph.compare.visualTitle`, `ui.sessionGraph.compare.edges`.
+  - All typechecks pass; unit tests (96) and component tests (57) pass.
+- **r24 (2026-11-10):** Phase 19.3 Compaction advisor — core UI complete.
+  - Added `GraphCompactionAdvisor` component in `@opencode/session-graph` showing decision spine, keep/drop candidates by priority, and token estimates using `analyzeCompaction` from `@opencode/session-ui/graph`.
+  - Added compaction advisor state to `useGraphState`, `useGraphNavigation`, `GraphViewContext` with toggle action.
+  - Added toolbar button in `GraphDrawControl` (Draw group) gated by `graph_compaction_advisor` flag.
+  - Integrated as a window kind `compactionAdvisor` in `GraphWindowManager` with sync to host windows array.
+  - Added i18n keys: `ui.sessionGraph.toolbar.compactionAdvisor`, `ui.sessionGraph.compactionAdvisor.title`, `ui.sessionGraph.compactionAdvisor.decisionSpine`, `ui.sessionGraph.compactionAdvisor.keep`, `ui.sessionGraph.compactionAdvisor.drop`, `ui.sessionGraph.compactionAdvisor.tokens`, priority labels, `ui.sessionGraph.compactionAdvisor.banner`, `ui.sessionGraph.compactionAdvisor.noModel`.
   - All typechecks pass; unit tests (96) and component tests (57) pass.

@@ -60,6 +60,9 @@ export type GraphToolbarProps = {
   /** Trust lens: highlight unverified writes; default off. */
   trustLens?: boolean
   onToggleTrustLens?: () => void
+  /** Compaction advisor: preview what would be kept or dropped during compaction. */
+  compactionAdvisor?: boolean
+  onToggleCompactionAdvisor?: () => void
   /**
    * How the map and the log meet in the hybrid. The host owns the geometry; the toolbar only names
    * the choice, so the reader can move the map without leaving the map.
