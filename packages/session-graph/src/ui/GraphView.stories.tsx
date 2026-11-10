@@ -127,6 +127,7 @@ const PENDING: Partial<Record<RendererID, RendererFactory>> = {
 type HarnessProps = {
   model?: GraphViewData
   selection?: string
+  onSelect?: (id: string | undefined) => void
   level?: ZoomLevel
   projection?: Projection
   depth?: DepthMode
@@ -151,6 +152,30 @@ type HarnessProps = {
   windows?: GraphWindowState[]
   /** T15.4: the equalizer's rules, edited in the panel. */
   rules?: EqualizerRuleSet
+  /** Test harness for component tests. */
+  testHarness?: {
+    selected: () => string | undefined
+    select: (id: string | undefined) => void
+    setRenderer: (id: RendererID) => void
+    searchOpen: () => boolean
+    setSearchOpen: (open: boolean) => void
+    legendOpen: () => boolean
+    setLegendOpen: (open: boolean) => void
+    galleryOpen: () => boolean
+    setGalleryOpen: (open: boolean) => void
+    groupMenu: () => { id: string; x: number; y: number } | undefined
+    setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
+    detailMode: () => DetailMode
+    setDetailMode: (mode: DetailMode) => void
+    level: () => ZoomLevel
+    setLevel: (level: ZoomLevel) => void
+    fitContent: () => void
+    frameReadable: (id: string) => void
+    zoomBy: (delta: number) => void
+    pending: () => boolean
+    getViewport: () => { zoom: number; center: number[]; extent?: { width: number; height: number } } | undefined
+    onOpenWindow: (kind: string, nodeID?: string) => void
+  }
 }
 
 // A selected tool node on load so the story and its component test see a populated inspector
@@ -539,4 +564,78 @@ const HostileHarness = () => {
 
 export const Hostile = {
   render: () => <HostileHarness />,
+}
+
+/**
+ * Two SessionGraph instances on one page - proves instance isolation.
+ * Commands from one instance must not affect the other.
+ */
+export const TwoInstances = {
+  render: () => {
+    const [selection1, setSelection1] = createSignal<string | undefined>(INITIAL_SELECTION)
+    const [selection2, setSelection2] = createSignal<string | undefined>()
+
+    return (
+      <div style={{ display: "flex", "flex-direction": "column", gap: "24px" }}>
+        <div style={{ width: "1100px", height: "400px", border: "1px solid #ccc" }}>
+          <ViewHarness
+            selection={selection1()}
+            onSelect={setSelection1}
+            testHarness={{
+              selected: () => selection1(),
+              select: setSelection1,
+              setRenderer: () => {},
+              searchOpen: () => false,
+              setSearchOpen: () => {},
+              legendOpen: () => false,
+              setLegendOpen: () => {},
+              galleryOpen: () => false,
+              setGalleryOpen: () => {},
+              groupMenu: () => undefined,
+              setGroupMenu: () => {},
+              detailMode: () => "panel" as DetailMode,
+              setDetailMode: () => {},
+              level: () => "execution" as ZoomLevel,
+              setLevel: () => {},
+              fitContent: () => {},
+              frameReadable: () => {},
+              zoomBy: () => {},
+              pending: () => false,
+              getViewport: () => undefined,
+              onOpenWindow: () => {},
+            }}
+          />
+        </div>
+        <div style={{ width: "1100px", height: "400px", border: "1px solid #ccc" }}>
+          <ViewHarness
+            selection={selection2()}
+            onSelect={setSelection2}
+            testHarness={{
+              selected: () => selection2(),
+              select: setSelection2,
+              setRenderer: () => {},
+              searchOpen: () => false,
+              setSearchOpen: () => {},
+              legendOpen: () => false,
+              setLegendOpen: () => {},
+              galleryOpen: () => false,
+              setGalleryOpen: () => {},
+              groupMenu: () => undefined,
+              setGroupMenu: () => {},
+              detailMode: () => "panel" as DetailMode,
+              setDetailMode: () => {},
+              level: () => "execution" as ZoomLevel,
+              setLevel: () => {},
+              fitContent: () => {},
+              frameReadable: () => {},
+              zoomBy: () => {},
+              pending: () => false,
+              getViewport: () => undefined,
+              onOpenWindow: () => {},
+            }}
+          />
+        </div>
+      </div>
+    )
+  },
 }
