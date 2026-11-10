@@ -492,7 +492,7 @@ The host gives no per-row slot (G26, G27) and forbids timeline work. The support
 that renders its own rows from the same projection the builders already use
 (`Timeline.constructSessionMessageRows`).
 
-- [ ] `GraphTranscriptSurface` (`SessionSurface`, flag `graph_surface_transcript`):
+- [x] `GraphTranscriptSurface` (`SessionSurface`, flag `graph_surface_transcript`):
       renders session messages with per-turn graph affordances (Why, Expand, Subagent, Share), reusing
       the host's message renderers where possible, virtualized, and never mounting a graph until L2.
 - [ ] Keep the host transcript untouched and default. Users opt into this surface via command.
@@ -878,4 +878,10 @@ feature that needs it.
   - Added feature flags: `graph_node_widgets`, `graph_inline_preview`, `graph_surface_transcript`,
     `graph_multi_surface`, `graph_library_renderers`, `graph_time_travel`, `graph_compaction_advisor`,
     `graph_cost_lens`.
+  - All unit tests (96) and component tests (55) pass.
+- **r4 (2026-11-09):** Phase 16.1-16.2 implementation complete.
+  - Created `GraphTranscriptSurface` component rendering own timeline rows with per-turn graph affordances (Why, Expand, Subagent, Share).
+  - Added i18n keys for transcript affordances.
+  - Integrated with session-ui's `createSessionTimelineRowRenderer` for consistent row rendering.
+  - GraphInline component already implemented in Phase 15 for L1/L2 progressive disclosure.
   - All unit tests (96) and component tests (55) pass.
