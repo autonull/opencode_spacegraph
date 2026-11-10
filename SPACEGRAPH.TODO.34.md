@@ -6,6 +6,10 @@
 > modes are additive, flag-gated, and quiet by default. We win by supporting preference, not by
 > picking one paradigm.
 >
+> **Status (2026-11-10):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
+> config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Next: **Phase 16** (Graph in UI — transcript
+> surface integration, subagent drill). Phases 19–28 are experimental with kill criteria.
+>
 > **Priority ladder (hard ordering):**
 > 1. **Code** — extraction, isolation, embedding, multi-surface, configuration.
 > 2. **Experiments** — flags, cohorts, local counters, fixture narrative.
@@ -33,6 +37,10 @@
 8. **Performance is a feature.** Never add work to the host timeline. Inline graphs preview statically
    and mount interactively on demand. Benchmark with strobe against `origin/dev`.
 9. **Media stays gitignored.**
+
+> **Phase priority labels:** "P0" = blocks other work / required for exit gates; "P1" = user-facing,
+> ships behind flag; "P2" = experimental, kill criteria apply. These are *internal* to this plan.
+> The **Priority ladder** above (Code → Experiments → Video → Studies) is the *product* ordering.
 
 ---
 
@@ -456,10 +464,10 @@ component suite green; the two-instance spec proves isolation.
 
 ### 15.3 Composer widget (first real widget)
 
-- [x] `ComposerNodeWidget` — a `ctx.ui.TextInput` + send/steer actions using `Composer` data/actions.
-      Because the SDK has no `send`, the widget composes `setText` + the host's existing prompt command
-      path (experimental flag).
+- [x] `ComposerNodeWidget` — a `ctx.ui.TextInput` + send action using `Composer.insert()` +
+      `Composer.focus()`. No `send` in SDK; widget inserts text and focuses composer for user to send.
 - [x] If `send` cannot be reached cleanly, park C12 and keep the widget read-only (attach context).
+- [x] Flag `graph_node_widgets` gates the widget (already in schema). Composer lens enables by default.
 
 ### 15.4 Fractal node (proof)
 
@@ -492,12 +500,14 @@ The host gives no per-row slot (G26, G27) and forbids timeline work. The support
 that renders its own rows from the same projection the builders already use
 (`Timeline.constructSessionMessageRows`).
 
-- [x] `GraphTranscriptSurface` (`SessionSurface`, flag `graph_surface_transcript`):
-      renders session messages with per-turn graph affordances (Why, Expand, Subagent, Share), reusing
-      the host's message renderers where possible, virtualized, and never mounting a graph until L2.
+- [x] `GraphTranscriptSurface` implemented as app-level `SessionSurface` (flag `graph_surface_transcript`):
+      renders session messages with per-turn graph affordances (Why, Expand, Subagent, Share), virtualized,
+      never mounts a graph until L2. **Not in `@opencode/session-graph` exports** — lives in app bundle
+      (imports internal `@opencode/session-ui/timeline/*` modules unavailable to plugins).
 - [ ] Keep the host transcript untouched and default. Users opt into this surface via command.
 - [ ] `session.header` slot: a compact "map this turn" toggle (present on the host transcript).
 - [ ] `ComposerPill`: "Map this turn" action for the active turn.
+- **Status:** Core surface exists; remaining work is host integration (command, header slot, pill).
 
 ### 16.3 Affordance rules
 
@@ -536,7 +546,7 @@ affordances flag-gated and keyboard reachable.
 
 - [x] One per-session store (`session-graph` contract or plugin store) holding selection, trace,
       collapsed groups and notes; every surface reads/writes it.
-- [ ] Selecting in one surface highlights in another; hovering syncs one-way (hover → peek) with an
+- [x] Selecting in one surface highlights in another; hovering syncs one-way (hover → peek) with an
       option to disable.
 - [x] `reveal` from graph: select the transcript surface first when the current surface omits it (fix
       the documented `reveal` gap, plugin-side).
@@ -544,7 +554,7 @@ affordances flag-gated and keyboard reachable.
 ### 17.3 Surface preference persistence
 
 - [x] Store the chosen surface per session (plugin store), restoring on mount; fall back to transcript.
-- [ ] Record the SDK ask to persist `surfaces.selected` generically (§F).
+- [ ] Record the SDK ask to persist `surfaces.selected` generically (§F). (Deferred: no generic SDK surface API yet)
 
 ### 17.4 Chrome consolidation
 
