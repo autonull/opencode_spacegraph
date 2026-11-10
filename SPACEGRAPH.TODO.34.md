@@ -513,11 +513,11 @@ that renders its own rows from the same projection the builders already use
 
 ### 16.3 Affordance rules
 
-- [ ] Chips are text + icon, 13px, using `--line-height-compact`; no layout shift on hover.
-- [ ] Failed turns show a single "Why?" chip; delegation turns show one "Expand"; never both unless a
+- [x] Chips are text + icon, 13px, using `--line-height-compact`; no layout shift on hover.
+- [x] Failed turns show a single "Why?" chip; delegation turns show one "Expand"; never both unless a
       lens asks.
-- [ ] Share copies `#spacegraph:<layout>:<node>` and announces success.
-- [ ] Keyboard: chips are in the tab order only when the row is focused (roving), not global stops.
+- [x] Share copies `#spacegraph:<layout>:<node>` and announces success.
+- [x] Keyboard: chips are in the tab order only when the row is focused (roving), not global stops.
 
 ### 16.4 Subagent drill
 
@@ -613,9 +613,9 @@ game.
 
 ### 18.4 Keyboard
 
-- [ ] Every action gets a stable command id; binds are configurable through Settings › Shortcuts.
-- [ ] No new global bind without an instance-scoped handler.
-- [ ] Document the conflict policy.
+- [x] Every action gets a stable command id; binds are configurable through Settings › Shortcuts.
+- [x] No new global bind without an instance-scoped handler.
+- [x] Document the conflict policy.
 
 **Exit:** preferences persist across reload; lenses switch; flags gate every new default.
 
@@ -965,3 +965,12 @@ feature that needs it.
   - Registered `GraphTranscriptSurface` as a flag-gated `SessionSurface` in spacegraph plugin (`graph_surface_transcript` flag).
   - Added i18n key `surface.transcriptGraph` for the surface title.
   - All typechecks pass; all session-graph unit tests (96) pass; component tests pass.
+- **r17 (2026-11-10):** Phase 16.3 Affordance rules complete.
+  - Implemented `GraphTranscriptRow` with roving tabindex for keyboard navigation (chips only in tab order when row focused).
+  - Added `graph-transcript.css` with styling for affordance chips (13px, `--line-height-compact`, no layout shift).
+  - Implemented four affordance chips: Why (failed turns), Expand (delegation turns), Subagent (nested subagents), Share (always shown).
+  - Share copies `#spacegraph:<layout>:<node>` permalink to clipboard.
+  - Added `session.header` slot with "Map this turn" toggle button in spacegraph plugin renderer.
+  - Added i18n keys for all affordance labels and tooltips.
+  - Updated GraphTranscriptSurface integration in spacegraph plugin with handlers for all affordance actions.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.

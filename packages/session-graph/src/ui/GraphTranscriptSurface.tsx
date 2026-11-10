@@ -8,6 +8,7 @@ import { createReactiveTimelineProjection, TimelineRow, type ReasoningMode } fro
 import { createSessionTimelineRowRenderer } from "@opencode/session-ui/timeline/row"
 import { createStore } from "solid-js/store"
 import type { MountedSession } from "@opencode/plugin/gui"
+import "./graph-transcript.css"
 
 export type GraphTranscriptSurfaceProps = {
   /** The full session graph model */
@@ -310,6 +311,39 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
   const i18n = useI18n()
   const { row, rowRenderer, expanded, hasAffordance } = props
   const turnID = row.userMessageID
+  const [isRowFocused, setIsRowFocused] = createSignal(false)
+  const [chipTabIndex, setChipTabIndex] = createSignal(-1)
+
+  // Roving tabindex: chips are only in tab order when row is focused
+  const handleRowFocus = () => {
+    setIsRowFocused(true)
+    setChipTabIndex(0)
+  }
+
+  const handleRowBlur = () => {
+    setIsRowFocused(false)
+    setChipTabIndex(-1)
+  }
+
+  const handleChipKeyDown = (e: KeyboardEvent, index: number, total: number) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault()
+      setChipTabIndex((index + 1) % total)
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault()
+      setChipTabIndex((index - 1 + total) % total)
+    } else if (e.key === "Home") {
+      e.preventDefault()
+      setChipTabIndex(0)
+    } else if (e.key === "End") {
+      e.preventDefault()
+      setChipTabIndex(total - 1)
+    } else if (e.key === "Escape") {
+      // Return focus to row
+      const rowEl = document.querySelector(`[data-turn-id="${turnID}"]`) as HTMLElement
+      rowEl?.focus()
+    }
+  }
 
   const affordanceChips = () => {
     const chips: JSX.Element[] = []
@@ -322,6 +356,8 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
           class="graph-affordance-chip"
           onClick={() => props.onWhyClick(turnID)}
           title={i18n.t("ui.sessionGraph.transcript.why.tooltip")}
+          tabIndex={chipTabIndex() === 0 && isRowFocused() ? 0 : -1}
+          onKeyDown={(e) => handleChipKeyDown(e, 0, chips.length)}
         >
           <svg class="w-3 h-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM7 5v3h2v-3H7zm0 5h2v2H7v-2z" />
@@ -338,6 +374,8 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
           class="graph-affordance-chip"
           onClick={() => props.onExpandDelegationClick(turnID)}
           title={i18n.t("ui.sessionGraph.transcript.expand.tooltip")}
+          tabIndex={chipTabIndex() === chips.length && isRowFocused() ? 0 : -1}
+          onKeyDown={(e) => handleChipKeyDown(e, chips.length, chips.length + 1)}
         >
           <svg class="w-3 h-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M4 4h8v8H4V4zm1 1v6h6V5H5zm5 5H6v-1h4v1z" />
@@ -365,6 +403,8 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
             }
           }}
           title={i18n.t("ui.sessionGraph.transcript.subagent.tooltip")}
+          tabIndex={chipTabIndex() === chips.length && isRowFocused() ? 0 : -1}
+          onKeyDown={(e) => handleChipKeyDown(e, chips.length, chips.length + 1)}
         >
           <svg class="w-3 h-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM8 5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm0 8a5 5 0 0 1 5-5h-2a3 3 0 0 0-6 0H3a5 5 0 0 1 5 5z" />
@@ -379,8 +419,10 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
       <button
         type="button"
         class="graph-affordance-chip"
-        onClick={() => props.onShareClick(turnID)}
+        onClick={() => handleShareClick()}
         title={i18n.t("ui.sessionGraph.transcript.share.tooltip")}
+        tabIndex={chipTabIndex() === chips.length && isRowFocused() ? 0 : -1}
+        onKeyDown={(e) => handleChipKeyDown(e, chips.length, chips.length + 1)}
       >
         <svg class="w-3 h-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <path d="M4 4h8v8H4V4zm1 1v6h6V5H5zm5 5H6v-1h4v1z" />
@@ -390,6 +432,10 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
     )
 
     return chips
+  }
+
+  const handleShareClick = () => {
+    props.onShareClick(turnID)
   }
 
   // Use the row renderer from session-ui to render the actual row
@@ -402,7 +448,13 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
   )
 
   return (
-    <div class="graph-transcript-row" data-turn-id={turnID}>
+    <div
+      class="graph-transcript-row"
+      data-turn-id={turnID}
+      tabIndex={0}
+      onFocus={handleRowFocus}
+      onBlur={handleRowBlur}
+    >
       {renderedRow}
 
       {/* Graph affordance chips - shown on hover/focus or when expanded */}
