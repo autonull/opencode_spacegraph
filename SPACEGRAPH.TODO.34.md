@@ -649,10 +649,10 @@ Implement in the order below; each item is independently shippable and revertibl
 
 ### 19.2 Review
 
-- [ ] **Compare** two turns/checkpoints with `reviewChanges` (per-turn stats, duration) and a graph
-      diff; render side-by-side or overlaid.
-- [ ] **Trust lens** — unverified writes, missing tests, stale evidence; banner + per-node badges.
-- [ ] **Files rail** as an optional lens, not a permanent column.
+- [~] **Compare** two turns/checkpoints with `reviewChanges` (per-turn stats, duration) and a graph
+      diff; render side-by-side or overlaid. (text compare window done; graph diff pending)
+- [x] **Trust lens** — unverified writes, missing tests, stale evidence; banner + per-node badges.
+- [x] **Files rail** as an optional lens, not a permanent column.
 
 ### 19.3 Compaction advisor
 

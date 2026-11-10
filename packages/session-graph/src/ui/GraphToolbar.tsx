@@ -57,6 +57,9 @@ export type GraphToolbarProps = {
   /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
   files?: boolean
   onToggleFiles?: () => void
+  /** Trust lens: highlight unverified writes; default off. */
+  trustLens?: boolean
+  onToggleTrustLens?: () => void
   /**
    * How the map and the log meet in the hybrid. The host owns the geometry; the toolbar only names
    * the choice, so the reader can move the map without leaving the map.

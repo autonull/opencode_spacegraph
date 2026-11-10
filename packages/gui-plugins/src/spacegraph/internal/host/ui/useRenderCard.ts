@@ -3,7 +3,7 @@ import type { GraphNode, GraphViewData, DetailTier, EqualizerRuleSet } from "@op
 import type { CardTemplate } from "../canvas/buildRenderModel"
 import { createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
-import { fileRelations } from "@opencode/session-ui/graph"
+import { fileRelations, unverifiedFiles } from "@opencode/session-ui/graph"
 
 export function useRenderCard(
   props: {
@@ -30,13 +30,14 @@ export function useRenderCard(
   return createMemo(() => {
     const now = Date.now()
     const selectedId = state.selection()[0]
+    const model = state.model()
+    const unverified = createMemo(() => new Set(unverifiedFiles(model).map((f) => f.id)))
 
     return (
       props.renderCard ??
       (() => {
         const theme = state.theme()
         const tier = state.tier()
-        const model = state.model()
         const copy = state.copy
         const relations = createMemo(() => fileRelations(model))
         const relatedDetail = (node: GraphNode) => {
@@ -66,6 +67,7 @@ export function useRenderCard(
           collapsedGroups: state.collapsedGroups(),
           positions: state.displayPositions(),
           band: state.band?.(),
+          unverifiedFiles: unverified(),
         })
       })()
     )

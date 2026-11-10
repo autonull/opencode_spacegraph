@@ -33,6 +33,8 @@ export interface GraphViewContextValue {
   setLayout: (layout: Layout) => void
   files: () => boolean
   setFiles: (files: boolean) => void
+  trustLens: () => boolean
+  setTrustLens: (trustLens: boolean) => void
   detailMode: () => DetailMode
   setDetailMode: (mode: DetailMode) => void
   detailFraming: () => DetailFraming
@@ -160,6 +162,7 @@ export interface GraphViewContextValue {
   expandToGraph: (id: string) => void
   toggleFiles: () => void
   togglePeek: () => void
+  toggleTrustLens: () => void
   dismissDetail: () => void
   jumpTo: (node: GraphNode) => void
   raiseLevelForFrame: () => boolean

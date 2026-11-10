@@ -392,6 +392,60 @@ export function changedFiles(model: GraphViewData): ChangedFile[] {
   return order.map((id) => byID.get(id)!)
 }
 
+/**
+ * Files that were written (have incoming `writes`/`produces` edges) but not read by any
+ * node in a "verify" phase cluster. These are "unverified writes" — files created or
+ * modified without subsequent test/verification runs.
+ */
+export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
+  const nodes = nodeIndex(model)
+  const byID = new Map<string, ChangedFile>()
+  const order: string[] = []
+
+  // Find all "verify" phase nodes
+  const verifyPhaseNodes = model.nodes.filter(
+    (node) => node.kind === "phase" && node.data?.category === "verify",
+  )
+
+  // Collect all node IDs in verify phase clusters
+  const verifyClusterNodeIDs = new Set<string>()
+  for (const phase of verifyPhaseNodes) {
+    if (phase.clusterOf) {
+      for (const id of phase.clusterOf) verifyClusterNodeIDs.add(id)
+    }
+  }
+
+  // First pass: collect files that were written (have writes/produces edges)
+  for (const edge of model.edges) {
+    if (nodes.get(edge.target)?.kind !== "file") continue
+
+    if (edge.kind !== "writes" && edge.kind !== "produces") continue
+
+    let entry = byID.get(edge.target)
+
+    if (!entry) {
+      const node = nodes.get(edge.target)
+      entry = { id: edge.target, path: dataString(node?.data?.path) ?? node?.label ?? edge.target, writers: [], readers: [] }
+      byID.set(edge.target, entry)
+      order.push(edge.target)
+    }
+
+    entry.writers.push(edge.source)
+  }
+
+  // Second pass: collect readers from verify phase nodes only
+  for (const edge of model.edges) {
+    if (nodes.get(edge.target)?.kind !== "file" || !READ_EDGE_KINDS.has(edge.kind)) continue
+    if (!verifyClusterNodeIDs.has(edge.source)) continue
+    byID.get(edge.target)?.readers.push(edge.source)
+  }
+
+  // Return only files that have writers but no readers from verify phases
+  return order
+    .map((id) => byID.get(id)!)
+    .filter((file) => file.writers.length > 0 && file.readers.length === 0)
+}
+
 /** The message/part a node points back to in the transcript, when it has one. */
 export function openInTranscript(model: GraphViewData, id: string): TranscriptRef | undefined {
   const node = nodeByID(model, id)

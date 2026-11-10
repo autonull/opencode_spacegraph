@@ -16,6 +16,8 @@ export type GraphToolbarViewControlsProps = {
   onDetailFramingChange?: (framing: DetailFraming) => void
   files?: boolean
   onToggleFiles?: () => void
+  trustLens?: boolean
+  onToggleTrustLens?: () => void
   onOpenEqualizer?: () => void
   arrangement?: GraphArrangement
   onArrangementChange?: (arrangement: GraphArrangement) => void
@@ -90,6 +92,8 @@ function GraphToolbarViewControlsInner(props: GraphToolbarViewControlsProps) {
           onDetailFramingChange={props.onDetailFramingChange}
           files={props.files}
           onToggleFiles={props.onToggleFiles}
+          trustLens={props.trustLens}
+          onToggleTrustLens={props.onToggleTrustLens}
           onOpenEqualizer={props.onOpenEqualizer}
           arrangement={props.arrangement}
           onArrangementChange={props.onArrangementChange}

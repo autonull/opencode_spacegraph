@@ -189,6 +189,10 @@ export type GraphChromeProps = {
   /** Whether to show see-map prompt. */
   showSeeMapPrompt?: boolean
   /** Trust lens active. */
+  trustLens?: boolean
+  /** Trust lens change handler. */
+  onTrustLensChange?: () => void
+  /** Trust lens active (deprecated, use trustLens). */
   trustLensActive?: boolean
   /** I18n function (from context). */
   i18n?: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
@@ -259,7 +263,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
   const demoDismissed = props.demoDismissed ?? false
   const seeMapPromptDismissed = props.seeMapPromptDismissed ?? false
   const showSeeMapPrompt = props.showSeeMapPrompt ?? false
-  const trustLensActive = props.trustLensActive ?? false
+  const trustLensActive = props.trustLens ?? props.trustLensActive ?? false
   const shell = props.shell ?? "full"
   const followLogForScale = props.followLogForScale ?? ctx.followLog()
   const frameTurn = props.frameTurn ?? (() => props.frame)
@@ -302,6 +306,8 @@ export const GraphChrome = (props: GraphChromeProps) => {
         onLayoutChange={ctx.changeLayout}
         files={ctx.files()}
         onToggleFiles={ctx.toggleFiles}
+        trustLens={trustLensActive}
+        onToggleTrustLens={ctx.toggleTrustLens}
         arrangement={props.arrangement}
         onArrangementChange={props.onArrangementChange}
         arrangementSide={props.arrangementSide}

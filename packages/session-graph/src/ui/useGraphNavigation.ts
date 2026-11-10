@@ -14,6 +14,8 @@ export interface UseGraphNavigationInput {
   setPeek: (peek: boolean | ((prev: boolean) => boolean)) => void
   onFilesChange: ((files: boolean) => void) | undefined
   onPeekChange: ((peek: boolean) => void) | undefined
+  setTrustLens: (trustLens: boolean | ((prev: boolean) => boolean)) => void
+  onTrustLensChange: ((trustLens: boolean) => void) | undefined
   select: UseGraphSelectionReturn["select"]
   viewportTracker: GraphViewportTrackerReturn
   renderer: Accessor<any>
@@ -32,6 +34,7 @@ export interface UseGraphNavigationReturn {
   expandToGraph: (id: string) => void
   toggleFiles: () => void
   togglePeek: () => void
+  toggleTrustLens: () => void
   dismissDetail: () => void
   openInTranscript: (id: string) => void
   fitSubtree: (id: string) => void
@@ -49,6 +52,8 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     setPeek,
     onFilesChange,
     onPeekChange,
+    setTrustLens,
+    onTrustLensChange,
     select,
     viewportTracker,
     renderer,
@@ -111,6 +116,13 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     })
   }
 
+  const toggleTrustLens = () => {
+    setTrustLens((open: boolean) => {
+      onTrustLensChange?.(!open)
+      return !open
+    })
+  }
+
   const togglePeek = () => {
     setPeek((open: boolean) => {
       onPeekChange?.(!open)
@@ -169,6 +181,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     expandToGraph,
     toggleFiles,
     togglePeek,
+    toggleTrustLens,
     dismissDetail,
     openInTranscript,
     fitSubtree,
