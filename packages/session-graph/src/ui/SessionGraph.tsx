@@ -48,7 +48,7 @@ import {
   Show,
   type JSX,
 } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createStore, type SetStoreFunction } from "solid-js/store"
 import { type CardTemplate } from "../canvas/buildRenderModel"
 import { createBudgetedModel, createDrawnModel } from "../canvas/buildRenderModelHelpers"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
@@ -303,6 +303,24 @@ export type SessionGraphProps = {
    * Responsive breakpoints. Defaults match current GraphView behavior.
    */
   breakpoints?: { narrow?: number; compact?: number; detail?: number }
+
+  /** Controlled trace state (Phase 17.2 shared state). */
+  traceKind?: "why" | "led-here" | "related" | null
+  onTraceKindChange?: (kind: "why" | "led-here" | "related" | null) => void
+  traceSource?: string | null
+  onTraceSourceChange?: (source: string | null) => void
+  traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  onTraceHistoryChange?: (history: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]) => void
+  traceHistoryIndex?: number
+  onTraceHistoryIndexChange?: (index: number) => void
+
+  /** Controlled group collapse state (Phase 17.2 shared state). */
+  explicitlyCollapsedGroups?: ReadonlySet<string>
+  onExplicitlyCollapsedGroupsChange?: (groups: ReadonlySet<string>) => void
+
+  /** Controlled notes/annotations state (Phase 17.2 shared state). */
+  notes?: Annotations
+  onNotesChange?: (notes: Annotations) => void
 }
 
 /**
@@ -430,7 +448,9 @@ export const SessionGraph = (props: SessionGraphProps) => {
     turnByMessageID: new Map(),
   }
   const [notesStore, setNotesStore] = createStore<Annotations>({})
-  const model = createMemo(() => (props.model ? withAnnotations(props.model, notesStore) : emptyModel))
+  // Use controlled notes when provided, otherwise local store
+  const notesSource = props.notes ?? notesStore
+  const model = createMemo(() => (props.model ? withAnnotations(props.model, notesSource) : emptyModel))
 
   // Demo model for first-run: uses canonical fixture when no session data
   const demoModel = createMemo(() => {
@@ -476,13 +496,109 @@ export const SessionGraph = (props: SessionGraphProps) => {
   // Test harness for component tests
   const { groupMenu, setGroupMenu } = useTestHarness(props, selectionObj, setRendererID)
 
+  // Create signals for controlled trace state (Phase 17.2 shared state)
+  // When controlled props are provided, create signals that mirror them
+  // Otherwise use local signals
+  const [localTraceKind, setLocalTraceKind] = createSignal<"why" | "led-here" | "related" | null>(null)
+  const [localTraceSource, setLocalTraceSource] = createSignal<string | null>(null)
+  const [localTraceHistory, setLocalTraceHistory] = createSignal<readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]>([])
+  const [localHistoryIndex, setLocalHistoryIndex] = createSignal(-1)
+
+  const traceKind = createMemo(() => props.traceKind ?? localTraceKind())
+  const setTraceKind = (kind: "why" | "led-here" | "related" | null) => {
+    if (props.onTraceKindChange) props.onTraceKindChange(kind)
+    else setLocalTraceKind(kind)
+  }
+  const traceSource = createMemo(() => props.traceSource ?? localTraceSource())
+  const setTraceSource = (source: string | null) => {
+    if (props.onTraceSourceChange) props.onTraceSourceChange(source)
+    else setLocalTraceSource(source)
+  }
+  const traceHistory = createMemo(() => props.traceHistory ?? localTraceHistory())
+  const setTraceHistory = (history: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]) => {
+    if (props.onTraceHistoryChange) props.onTraceHistoryChange(history)
+    else setLocalTraceHistory(history)
+  }
+  const historyIndex = createMemo(() => props.traceHistoryIndex ?? localHistoryIndex())
+  const setHistoryIndex = (index: number) => {
+    if (props.onTraceHistoryIndexChange) props.onTraceHistoryIndexChange(index)
+    else setLocalHistoryIndex(index)
+  }
+
+  // Create signals for controlled group collapse state
+  const [localExplicitlyCollapsed, setLocalExplicitlyCollapsed] = createSignal<ReadonlySet<string>>(new Set())
+  const explicitlyCollapsedGroups = createMemo(() => 
+    props.explicitlyCollapsedGroups ? new Set(props.explicitlyCollapsedGroups) : localExplicitlyCollapsed()
+  )
+  const setExplicitlyCollapsedGroups = (groups: ReadonlySet<string>) => {
+    if (props.onExplicitlyCollapsedGroupsChange) props.onExplicitlyCollapsedGroupsChange(groups)
+    else setLocalExplicitlyCollapsed(groups)
+  }
+
+  // Create signals for controlled notes state
+  const controlledNotes = createMemo(() => props.notes ?? notesStore)
+  
+  // Create a SetStoreFunction wrapper for controlled notes
+  // This mimics the solid-js/store SetStoreFunction signature
+  const setControlledNotes: SetStoreFunction<Annotations> = ((...args: any[]) => {
+    if (!props.onNotesChange) {
+      // Fall back to local store
+      return (setNotesStore as any)(...args)
+    }
+    
+    // Handle different SetStoreFunction call signatures:
+    // 1. setNotes(produceFn) - functional update
+    // 2. setNotes(id, key, value) - path update  
+    // 3. setNotes(id, newValue) - object update
+    // 4. setNotes(newState) - full state replacement
+    
+    const currentNotes = props.notes ?? notesStore
+    let newNotes: Annotations
+    
+    if (typeof args[0] === "function") {
+      // Functional update: setNotes(produceFn)
+      const produceFn = args[0]
+      const draft = JSON.parse(JSON.stringify(currentNotes)) as Annotations
+      produceFn(draft)
+      newNotes = draft
+    } else if (args.length === 1) {
+      // Full state replacement: setNotes(newState)
+      newNotes = args[0] as Annotations
+    } else if (args.length === 2) {
+      // Object update: setNotes(id, newValue)
+      const [id, value] = args
+      newNotes = { ...currentNotes, [id]: value } as Annotations
+    } else if (args.length >= 3) {
+      // Path update: setNotes(id, key, value)
+      const [id, key, value] = args
+      const existing = currentNotes[id] || ({} as Annotations[string])
+      newNotes = {
+        ...currentNotes,
+        [id]: { ...existing, [key]: value }
+      } as Annotations
+    } else {
+      return
+    }
+    
+    props.onNotesChange(newNotes)
+  }) as SetStoreFunction<Annotations>
+
   const annotations = useGraphAnnotations({
     model,
     selection,
     onAnnounce: announce,
-    notes: notesStore,
-    setNotes: setNotesStore,
+    notes: controlledNotes(),
+    setNotes: setControlledNotes,
     nodeLookup,
+    // Controlled trace state (Phase 17.2 shared state)
+    traceKind: traceKind,
+    onTraceKindChange: setTraceKind,
+    traceSource: traceSource,
+    onTraceSourceChange: setTraceSource,
+    traceHistory: traceHistory,
+    onTraceHistoryChange: setTraceHistory,
+    traceHistoryIndex: historyIndex,
+    onTraceHistoryIndexChange: setHistoryIndex,
   })
 
   const edgeKinds = useEdgeKinds({ model })
@@ -514,6 +630,9 @@ export const SessionGraph = (props: SessionGraphProps) => {
     },
     draggingDescendant: () => false, // TODO: track dragging state
     instanceId,
+    // Controlled group collapse state (Phase 17.2 shared state)
+    explicitlyCollapsedGroups: explicitlyCollapsedGroups,
+    onExplicitlyCollapsedGroupsChange: setExplicitlyCollapsedGroups,
   })
 
   // Phase 4.11: Track group collapse/expand for a11y announcement

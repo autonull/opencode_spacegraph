@@ -17,6 +17,9 @@ export type UseGroupCollapseOptions = {
   draggingDescendant?: () => boolean
   /** Unique instance ID for isolating pointer state across multiple graphs. */
   instanceId?: string
+  // Controlled group collapse state (Phase 17.2 shared state)
+  explicitlyCollapsedGroups?: () => ReadonlySet<string>
+  onExplicitlyCollapsedGroupsChange?: (groups: ReadonlySet<string>) => void
 }
 
 export type UseGroupCollapseReturn = {
@@ -43,7 +46,7 @@ const DWELL_MS = 150
 
 export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupCollapseReturn {
   const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
-  const [explicitlyCollapsed, setExplicitlyCollapsed] = createSignal<ReadonlySet<string>>(new Set())
+  const [localExplicitlyCollapsed, setLocalExplicitlyCollapsed] = createSignal<ReadonlySet<string>>(new Set())
   const [ambientFolded, setAmbientFolded] = createSignal<ReadonlySet<string>>(new Set())
   const [pointerDownOnGroup, setPointerDownOnGroup] = createSignal(false)
   let dwellTimer: ReturnType<typeof setTimeout> | null = null
@@ -51,6 +54,17 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
   onCleanup(() => {
     if (dwellTimer) clearTimeout(dwellTimer)
   })
+
+  // Internal setter that resolves functional updates before calling the callback
+  const setExplicitlyCollapsedInternal = (updater: ReadonlySet<string> | ((prev: ReadonlySet<string>) => ReadonlySet<string>)) => {
+    const newGroups = typeof updater === "function" ? updater(localExplicitlyCollapsed()) : updater
+    setLocalExplicitlyCollapsed(newGroups)
+    options.onExplicitlyCollapsedGroupsChange?.(newGroups)
+  }
+
+  // Use controlled explicitlyCollapsedGroups when provided, otherwise local state
+  const explicitlyCollapsed = options.explicitlyCollapsedGroups ?? localExplicitlyCollapsed
+  const setExplicitlyCollapsed = setExplicitlyCollapsedInternal
 
   const selectedGroup = createMemo(() => {
     const id = options.selection()[0]

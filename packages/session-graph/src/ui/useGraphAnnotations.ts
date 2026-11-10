@@ -13,6 +13,15 @@ export type UseGraphAnnotationsOptions = {
   notes: Annotations
   setNotes: SetStoreFunction<Annotations>
   nodeLookup?: NodeLookup
+  // Controlled trace state (Phase 17.2 shared state)
+  traceKind?: () => TraceKind | null
+  onTraceKindChange?: (kind: TraceKind | null) => void
+  traceSource?: () => string | null
+  onTraceSourceChange?: (source: string | null) => void
+  traceHistory?: () => readonly { kind: TraceKind; source: string; label: string }[]
+  onTraceHistoryChange?: (history: readonly { kind: TraceKind; source: string; label: string }[]) => void
+  traceHistoryIndex?: () => number
+  onTraceHistoryIndexChange?: (index: number) => void
 }
 
 export type UseGraphAnnotationsReturn = {
@@ -54,10 +63,41 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
 
   const nodeLookup = options.nodeLookup ?? useNodeLookup(options.model)
 
-  const [traceKind, setTraceKind] = createSignal<TraceKind | null>(null)
-  const [traceSource, setTraceSource] = createSignal<string | null>(null)
-  const [traceHistory, setTraceHistory] = createSignal<{ kind: TraceKind; source: string; label: string }[]>([])
-  const [historyIndex, setHistoryIndex] = createSignal(-1)
+  // Use controlled trace state when provided, otherwise local state
+  const [localTraceKind, setLocalTraceKind] = createSignal<TraceKind | null>(null)
+  const [localTraceSource, setLocalTraceSource] = createSignal<string | null>(null)
+  const [localTraceHistory, setLocalTraceHistory] = createSignal<readonly { kind: TraceKind; source: string; label: string }[]>([])
+  const [localHistoryIndex, setLocalHistoryIndex] = createSignal(-1)
+
+  // Internal setters that resolve functional updates before calling the callback
+  const setTraceHistoryInternal = (updater: readonly { kind: TraceKind; source: string; label: string }[] | ((prev: readonly { kind: TraceKind; source: string; label: string }[]) => readonly { kind: TraceKind; source: string; label: string }[])) => {
+    const newHistory = typeof updater === "function" ? updater(localTraceHistory()) : updater
+    setLocalTraceHistory(newHistory)
+    options.onTraceHistoryChange?.(newHistory)
+  }
+  const setHistoryIndexInternal = (updater: number | ((prev: number) => number)) => {
+    const newIndex = typeof updater === "function" ? updater(localHistoryIndex()) : updater
+    setLocalHistoryIndex(newIndex)
+    options.onTraceHistoryIndexChange?.(newIndex)
+  }
+  const setTraceKindInternal = (kind: TraceKind | null) => {
+    setLocalTraceKind(kind)
+    options.onTraceKindChange?.(kind)
+  }
+  const setTraceSourceInternal = (source: string | null) => {
+    setLocalTraceSource(source)
+    options.onTraceSourceChange?.(source)
+  }
+
+  // Exposed accessors (always return current value)
+  const traceKind: () => TraceKind | null = options.traceKind ?? localTraceKind
+  const setTraceKind: (kind: TraceKind | null) => void = setTraceKindInternal
+  const traceSource: () => string | null = options.traceSource ?? localTraceSource
+  const setTraceSource: (source: string | null) => void = setTraceSourceInternal
+  const traceHistory: () => readonly { kind: TraceKind; source: string; label: string }[] = options.traceHistory ?? localTraceHistory
+  const setTraceHistory: (history: readonly { kind: TraceKind; source: string; label: string }[] | ((prev: readonly { kind: TraceKind; source: string; label: string }[]) => readonly { kind: TraceKind; source: string; label: string }[])) => void = setTraceHistoryInternal
+  const historyIndex: () => number = options.traceHistoryIndex ?? localHistoryIndex
+  const setHistoryIndex: (index: number | ((prev: number) => number)) => void = setHistoryIndexInternal
 
   const traceOverlay = createMemo<TraceOverlay | null>(() => {
     const kind = traceKind()

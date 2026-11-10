@@ -8,7 +8,7 @@ import { SessionGraph } from "@opencode/session-graph"
 import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
-import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
+import type { DepthMode, DetailMode, GraphArrangement, GraphSide, Annotations } from "@opencode/session-ui/graph"
 
 function convertGraphData(data: SessionGraphViewData): InspectorGraphViewData {
   return {
@@ -125,6 +125,14 @@ export default function SpacegraphPanel(props: {
   const arrangement = () => props.model.arrangement(props.session)
   const arrangementSide = () => props.model.side(props.session)
 
+  // Shared state from model (Phase 17.2)
+  const traceKind = () => props.model.traceKind(props.session)
+  const traceSource = () => props.model.traceSource(props.session)
+  const traceHistory = () => props.model.traceHistory(props.session)
+  const traceHistoryIndex = () => props.model.traceHistoryIndex(props.session)
+  const explicitlyCollapsedGroups = () => props.model.explicitlyCollapsedGroups(props.session)
+  const notes = () => props.model.notes(props.session)
+
   return (
     <div class="flex size-full min-h-0 flex-col bg-v2-background-bg-base" data-slot="spacegraph-panel">
       <div class="flex shrink-0 items-center justify-between gap-2 border-b border-v2-border-border-base px-4 py-2.5">
@@ -184,6 +192,25 @@ export default function SpacegraphPanel(props: {
           preferredRenderer={props.model.renderer}
           chrome={true}
           shell="full"
+          // Shared trace state
+          traceKind={traceKind()}
+          onTraceKindChange={(kind) => props.model.setTraceKind(props.session, kind)}
+          traceSource={traceSource()}
+          onTraceSourceChange={(source) => props.model.setTraceSource(props.session, source)}
+          traceHistory={traceHistory()}
+          onTraceHistoryChange={(history) => {
+            // Note: trace history is updated via pushTraceHistory and setTraceHistoryIndex
+          }}
+          traceHistoryIndex={traceHistoryIndex()}
+          onTraceHistoryIndexChange={(index) => props.model.setTraceHistoryIndex(props.session, index)}
+          // Shared group collapse state
+          explicitlyCollapsedGroups={explicitlyCollapsedGroups()}
+          onExplicitlyCollapsedGroupsChange={(groups) => {
+            // The model handles this via toggleExplicitlyCollapsedGroup
+          }}
+          // Shared notes state
+          notes={notes()}
+          onNotesChange={(notes: Annotations) => props.model.setNotes(props.session, notes)}
         />
         <Windows
           windows={windows()}
