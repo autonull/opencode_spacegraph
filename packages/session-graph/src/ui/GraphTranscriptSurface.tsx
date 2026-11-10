@@ -5,19 +5,15 @@ import { turnSubgraph, buildGraphIncremental } from "@opencode/session-ui/graph"
 import { GraphInline, type GraphInlineProps } from "./GraphInline"
 import type { SessionGraphProps } from "./SessionGraph"
 import { createReactiveTimelineProjection, TimelineRow, type ReasoningMode } from "@opencode/session-ui/timeline/projection"
-import type { SessionMessageInfo, SessionStatus } from "@opencode/client/promise"
 import { createSessionTimelineRowRenderer } from "@opencode/session-ui/timeline/row"
 import { createStore } from "solid-js/store"
+import type { MountedSession } from "@opencode/plugin/gui"
 
 export type GraphTranscriptSurfaceProps = {
   /** The full session graph model */
   model: GraphViewData
-  /** Session messages for the timeline */
-  sessionMessages: SessionMessageInfo[]
-  /** Session status for timeline projection */
-  status: SessionStatus
-  /** Session ID */
-  sessionID: string
+  /** The mounted session to get messages from */
+  session: MountedSession
   /** Called when user wants to expand a turn's inline graph */
   onTurnExpand?: (turnID: string) => void
   /** Called when user clicks "Why?" on a failed turn */
@@ -91,11 +87,23 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
     set: (key: string, open: boolean) => setDisclosureStore(key, open),
   }
 
+  // Get session messages and status from the server data
+  const sessionMessages = createMemo(() => props.session.server.data.session.message.list(props.session.id))
+  const sessionStatus = createMemo(() => props.session.server.data.session.status(props.session.id))
+
+  // Convert string status to SessionStatus union type
+  const sessionStatusTyped = createMemo(() => {
+    const s: string = sessionStatus()
+    if (s === "running") return { type: "busy" as const }
+    if (s === "retry") return { type: "retry" as const, attempt: 1, message: "", next: Date.now() + 1000 }
+    return { type: "idle" as const }
+  })
+
   // Create timeline projection from session messages
   const timelineProjection = createMemo(() =>
     createReactiveTimelineProjection({
-      sessionMessages: () => props.sessionMessages,
-      status: () => props.status,
+      sessionMessages,
+      status: sessionStatusTyped,
       reasoningMode: () => "compact" as ReasoningMode,
       turnDiffs: () => true,
     })
@@ -103,10 +111,9 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
 
   // Build the graph model incrementally (same as other surfaces)
   const graphModel = createMemo(() => {
-    const status = props.status.type === "busy" ? { type: "busy" as const } : { type: "idle" as const }
     const { graph: builtGraph } = buildGraphIncremental({
-      messages: props.sessionMessages,
-      status,
+      messages: sessionMessages(),
+      status: sessionStatusTyped(),
     })
     return builtGraph
   })
@@ -199,8 +206,8 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
   // Create the row renderer using session-ui's renderer
   const rowRenderer = createMemo(() =>
     createSessionTimelineRowRenderer({
-      sessionID: () => props.sessionID,
-      status: () => props.status,
+      sessionID: () => props.session.id,
+      status: sessionStatusTyped,
       projection: timelineProjection(),
       presentation: () => undefined,
       reasoningMode: () => "compact" as ReasoningMode,

@@ -368,6 +368,104 @@ export function createHostApis() {
       font: () => current()?.font() ?? terminalFontFamily(undefined),
       mode: () => current()?.mode() ?? (systemDark() ? "dark" : "light"),
     }),
+    flags: () => {
+      const [flags, setFlags] = createSignal<Record<string, boolean>>({})
+      const [loading, setLoading] = createSignal(true)
+
+      // Fetch config and resolve flags on mount
+      createEffect(() => {
+        const attachedState = attached()
+        const session = attachedState?.current()
+        if (!session) {
+          setLoading(false)
+          return
+        }
+
+        const serverId = session.server.id
+        const serverRef = current()?.server(serverId)
+        if (!serverRef?.client) {
+          setLoading(false)
+          return
+        }
+
+        // Use the server's client to fetch config
+        const api = serverRef.client
+        const location = { directory: session.directory }
+
+        api.config.get({ location }).then((entries) => {
+          // Resolve flags from experimental config
+          const experimental = entries.find(
+            (e): e is { type: "document"; info: { experimental?: Record<string, boolean | undefined> } } =>
+              e.type === "document" && e.info?.experimental !== undefined
+          )?.info.experimental
+
+          const resolved: Record<string, boolean> = {}
+          if (experimental) {
+            // all_flags turns everything on unless explicitly opted out
+            const allFlags = experimental.all_flags === true
+
+            // Check each known flag
+            const knownFlags = [
+              "graph_surface_transcript",
+              "graph_node_widgets",
+              "graph_inline_preview",
+              "graph_multi_surface",
+              "graph_library_renderers",
+              "graph_time_travel",
+              "graph_compaction_advisor",
+              "graph_cost_lens",
+              "todo",
+              "background_compaction",
+              "media_blob",
+              "schedules",
+              "artifacts",
+              "codemode_vm",
+            ]
+
+            for (const flag of knownFlags) {
+              const override = experimental[flag]
+              // Flags default to on in local/dev builds
+              const isDev = import.meta.env.VITE_OPENCODE_CHANNEL === "local" ||
+                import.meta.env.VITE_OPENCODE_CHANNEL === "dev"
+              resolved[flag] = override ?? allFlags ?? isDev
+            }
+          } else {
+            // No experimental config, use defaults based on channel
+            const isDev = import.meta.env.VITE_OPENCODE_CHANNEL === "local" ||
+              import.meta.env.VITE_OPENCODE_CHANNEL === "dev"
+            const knownFlags = [
+              "graph_surface_transcript",
+              "graph_node_widgets",
+              "graph_inline_preview",
+              "graph_multi_surface",
+              "graph_library_renderers",
+              "graph_time_travel",
+              "graph_compaction_advisor",
+              "graph_cost_lens",
+              "todo",
+              "background_compaction",
+              "media_blob",
+              "schedules",
+              "artifacts",
+              "codemode_vm",
+            ]
+            for (const flag of knownFlags) {
+              resolved[flag] = isDev
+            }
+          }
+
+          setFlags(resolved)
+          setLoading(false)
+        }).catch(() => {
+          setLoading(false)
+        })
+      })
+
+      return {
+        enabled: (key: string) => flags()[key] ?? false,
+        loading: () => loading(),
+      }
+    },
     router: () => ({
       routing: () => current()?.routing() ?? false,
       path: () => current()?.path() ?? "",

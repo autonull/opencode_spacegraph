@@ -1204,6 +1204,31 @@ export interface PickOptions {
   readonly extensions?: readonly string[]
 }
 
+/** Feature flag access. */
+export interface Flags {
+  /**
+   * Checks if a feature flag is enabled.
+   * Flags are on in local and dev builds and off in releases.
+   * `OPENCODE_FLAGS` env var and `experimental.<key>` in config override the default.
+   *
+   * @param key - The flag key (e.g., "graph_surface_transcript", "graph_node_widgets")
+   * @returns True if the flag is enabled, false otherwise.
+   *
+   * @example
+   * ```ts
+   * if (ctx.flags.enabled("graph_surface_transcript")) {
+   *   // Register the graph transcript surface
+   * }
+   * ```
+   */
+  enabled(key: string): boolean
+  /**
+   * Whether the flags are still loading from the server.
+   * Returns true while the initial config fetch is in progress.
+   */
+  loading(): boolean
+}
+
 /** The interface language and its writing direction. */
 export interface Locale {
   /** BCP 47 locale of the interface language, for Intl formatting. Reactive. */
