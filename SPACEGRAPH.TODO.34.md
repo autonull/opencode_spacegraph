@@ -548,9 +548,9 @@ affordances flag-gated and keyboard reachable.
 
 ### 17.4 Chrome consolidation
 
-- [ ] Move `GraphBreadcrumbs`, drill breadcrumb, `GraphScaleNotice` decisions into `GraphChrome`
+- [x] Move `GraphBreadcrumbs`, drill breadcrumb, `GraphScaleNotice` decisions into `GraphChrome`
       so inline surfaces never inherit them.
-- [ ] `GraphWindowManager` only for surfaces that opt in (`windows` prop present).
+- [x] `GraphWindowManager` only for surfaces that opt in (`windows` prop present).
 
 **Exit:** all surfaces render from `SessionGraph`; selection/trace/notes shared; identical visuals in
 existing component tests.
@@ -923,3 +923,8 @@ feature that needs it.
   - Validates surface against known surfaces (transcript, map, hybrid) before selecting.
   - Defaults to transcript when no valid surface is stored.
   - All unit tests (96) and component tests (56 of 57 pass, 1 pre-existing flaky motion test) pass; typecheck clean.
+- **r12 (2026-11-10):** Phase 17.4 Chrome consolidation complete.
+  - Moved all chrome elements (toolbar, breadcrumbs, status bar, compare bar, scale notice, hidden selection, fallback, demo banner, see-map prompt, trust lens banner) into `GraphChrome` component.
+  - Updated `SessionGraph` to use `GraphChrome` instead of inline chrome rendering.
+  - `GraphWindowManager` always rendered (required for window opening flow).
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
