@@ -87,3 +87,7 @@ semantic level, not the camera.
 - `01-log.png`, `05-return-to-log.png`: transcript frames (baseline), no graph content.
 - `10-contract-demo-dark.png`: mirrors `09`.
 - Pixel-level differences between runs: not compared; inspection is manual by design (V5.3).
+
+## 2026-11-10 — me
+Reason: Chrome consolidation changes (Phase 17.4) - minor rendering difference in export menu
+Frames: 42-graph-permalink-copy.png
