@@ -80,6 +80,8 @@ export { TurnMapInlineGraph, type TurnMapInlineGraphProps } from "@spacegraphjs/
 export { TurnMapOverlay, type TurnMapOverlayProps } from "@spacegraphjs/turn-map"
 export { buildTurnRenderModel, turnGraphModel } from "@spacegraphjs/turn-map"
 
+export { GraphPreview, type GraphPreviewProps, GraphInline, type GraphInlineProps } from "./ui/GraphInline"
+
 export { createGraphTheme, graphThemeFromTokens, resolveGraphTheme } from "./ui/theme"
 
 // Re-exports from @spacegraphjs/export
