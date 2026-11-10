@@ -1,5 +1,6 @@
 import {
   Command,
+  ComposerPill,
   MenuItem,
   Panel,
   SessionSurface,
@@ -135,6 +136,27 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     draggable: false,
     closable: "compact",
   }
+
+  // Phase 16.3: ComposerPill - "Map this turn" action for active turn
+  ctx.add(ComposerPill, {
+    id: "map-turn",
+    show: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
+      const session = input.session
+      if (!session) return undefined
+
+      // Show only when there's an active turn to map
+      // We can check if there are messages in the session
+      const messages = session.server.data.session.message.list(session.id)
+      if (!messages.length) return undefined
+
+      return {
+        label: ctx.t("session.header.mapTurn.label"),
+        icon: "branch-out" as const,
+        tone: "success" as const,
+        run: () => select(`${ctx.id}.map`),
+      }
+    },
+  })
 
   const openMapDialog = (session: MountedSession, title: string) => {
     const screen = ctx.screen.current()
@@ -391,6 +413,22 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       bind: "mod+shift+t",
       section: "session",
       run: () => select("transcript"),
+    }
+  })
+
+  ctx.add(Command, (): Command | undefined => {
+    if (!ctx.sessions.current() || !surfaces()) return undefined
+
+    return {
+      id: "transcript-graph",
+      get title() {
+        return ctx.t("command.transcriptGraph")
+      },
+      get group() {
+        return ctx.t("command.group")
+      },
+      section: "session",
+      run: () => select(`${ctx.id}.transcript-graph`),
     }
   })
 
