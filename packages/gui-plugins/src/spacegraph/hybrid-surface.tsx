@@ -1,7 +1,9 @@
 import { createMemo, type JSX } from "solid-js"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
-import { FullMap } from "./full-map"
+import { SessionGraph } from "@opencode/session-graph"
+import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 import { GraphToolbarViewControls } from "@opencode/session-graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 
@@ -35,21 +37,45 @@ export function HybridSurface(props: {
     return `w-2/5 shrink-0 border-v2-border-border-base ${side() === "start" ? "order-first border-r" : "order-last border-l"}`
   })
 
+  const graph = props.model.graph(props.session)
+  const focused = () => props.model.focused(props.session)
+  const preferredRenderer = () => props.model.renderer()
+  const detailMode = () => props.model.detailMode(props.session)
+
   return (
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
       <div class={transcriptClass()}>{props.transcript}</div>
       <div class={mapClass()}>
-        <FullMap
-          model={props.model}
-          session={props.session}
-          screen={props.screen}
+        <SessionGraph
+          model={graph()}
+          level={props.model.level(props.session)}
+          layout={props.model.layout(props.session)}
+          depth={props.model.depth(props.session)}
+          detailMode={detailMode()}
+          selection={focused()}
+          frame={focused()}
+          activeTurn={graph().activeTurn}
+          onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
+          onLayoutChange={(next: string) => {
+            const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
+
+            if (layout) props.model.setLayout(props.session, layout)
+          }}
+          onDepthChange={(next: DepthMode) => props.model.setDepth(props.session, next)}
+          onDetailModeChange={(next: DetailMode) => props.model.setDetailMode(props.session, next)}
           arrangement={arrangement()}
           arrangementSide={side()}
+          refitKey={arrangement()}
+          onArrangementChange={(next: GraphArrangement) => props.model.setArrangement(props.session, next)}
+          onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
+          preferredRenderer={preferredRenderer}
+          chrome={true}
+          shell="full"
         />
         <GraphToolbarViewControls
           i18n={i18n}
           onExport={(format: "svg" | "json" | "html", _model: unknown) => props.model.export(props.session, format)}
-          renderModel={props.model.graph(props.session)()}
+          renderModel={graph()}
           onCopyPermalink={() => props.model.copyPermalink(props.session)}
         />
       </div>

@@ -1,4 +1,4 @@
-import { GraphView } from "@opencode/session-graph"
+import { SessionGraph } from "@opencode/session-graph"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
@@ -19,7 +19,7 @@ export function FullMap(props: {
   const detailMode = () => props.model.detailMode(props.session)
 
   return (
-    <GraphView
+    <SessionGraph
       model={graph()}
       level={props.model.level(props.session)}
       layout={props.model.layout(props.session)}
@@ -43,6 +43,8 @@ export function FullMap(props: {
       onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
       onSplitView={props.onSplitView}
       preferredRenderer={preferredRenderer}
+      chrome={true}
+      shell="full"
     />
   )
 }

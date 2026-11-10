@@ -1,7 +1,9 @@
 import { Show, onMount } from "solid-js"
 import type { MountedSession, SessionScreen, SessionSurface } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
-import { TurnMapBody } from "./turn-map-body"
+import { SessionGraph } from "@opencode/session-graph"
+import { turnSubgraph } from "@opencode/session-ui/graph"
+import type { GraphNode } from "@opencode/session-ui/graph"
 
 export function TurnMapLayer(props: {
   model: SpacegraphModel
@@ -50,6 +52,19 @@ export function TurnMapLayer(props: {
     }
   }
 
+  const graph = props.model.graph(props.session)
+
+  const turn = () => {
+    const messageID = props.screen.transcript.activeMessageID()
+
+    return (messageID ? graph().turnByMessageID.get(messageID) : undefined) ?? graph().activeTurn
+  }
+
+  const roots = () => {
+    const id = turn()
+    return id ? turnSubgraph(graph(), id, 7).nodes : ([] as readonly GraphNode[])
+  }
+
   return (
     <Show when={props.model.turnMap(props.session)}>
     <div
@@ -74,8 +89,18 @@ export function TurnMapLayer(props: {
             {props.labels.close}
           </button>
         </div>
-        <div class="min-h-0 flex-1 overflow-y-auto p-4" data-scrollable>
-          <TurnMapBody model={props.model} session={props.session} screen={props.screen} empty={props.labels.empty} />
+        <div class="min-h-0 flex-1 overflow-hidden p-4" data-scrollable style="height: 320px;">
+          <SessionGraph
+            model={graph()}
+            roots={roots()}
+            layout="tree"
+            depth="flat"
+            detailMode="popover"
+            level="execution"
+            chrome={false}
+            shell="bare"
+            reducedMotion={true}
+          />
         </div>
         <div class="flex shrink-0 justify-end border-t border-v2-border-border-base px-4 py-3">
           <button
