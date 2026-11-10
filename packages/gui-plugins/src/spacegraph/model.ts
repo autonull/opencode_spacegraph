@@ -17,9 +17,11 @@ import {
   layoutGraph,
   type GraphLayout,
   type IncrementalBuilderState,
+  type Annotations,
 } from "@opencode/session-ui/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 import type definition from "./index"
+import type { State } from "./index"
 
 function next<T>(values: readonly T[], current: T) {
   const index = values.indexOf(current)
@@ -35,7 +37,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const store = (session: MountedSession) => ctx.stores.session(session)
   const prefs = ctx.stores.prefs
 
-  const sessionValue = (session: MountedSession) => store(session).value
+  const sessionValue = (session: MountedSession) => store(session).value as State
   const prefValue = () => prefs.value
 
   /** Incremental graph builder state per session. */
@@ -183,6 +185,99 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     },
     /** The shared graph memo for this session. */
     graph,
+
+    // Shared state accessors (Phase 17.2)
+    /** Get the trace kind for the session. */
+    traceKind: (session: MountedSession) => sessionValue(session)?.traceKind,
+    /** Set the trace kind for the session. */
+    setTraceKind: (session: MountedSession, kind: "why" | "led-here" | "related" | null) => {
+      store(session).update((draft) => {
+        draft.traceKind = kind ?? undefined
+      })
+    },
+    /** Get the trace source for the session. */
+    traceSource: (session: MountedSession) => sessionValue(session)?.traceSource,
+    /** Set the trace source for the session. */
+    setTraceSource: (session: MountedSession, source: string | null) => {
+      store(session).update((draft) => {
+        draft.traceSource = source ?? undefined
+      })
+    },
+    /** Get the trace history for the session. */
+    traceHistory: (session: MountedSession) => sessionValue(session)?.traceHistory ?? [],
+    /** Get the trace history index for the session. */
+    traceHistoryIndex: (session: MountedSession) => sessionValue(session)?.traceHistoryIndex ?? -1,
+    /** Push a trace history entry. */
+    pushTraceHistory: (session: MountedSession, entry: { kind: "why" | "led-here" | "related"; source: string; label: string }, index: number) => {
+      store(session).update((draft) => {
+        const history = draft.traceHistory ?? []
+        const truncated = history.slice(0, index + 1)
+        draft.traceHistory = [...truncated, entry]
+        draft.traceHistoryIndex = index + 1
+      })
+    },
+    /** Set trace history index. */
+    setTraceHistoryIndex: (session: MountedSession, index: number) => {
+      store(session).update((draft) => {
+        draft.traceHistoryIndex = index
+      })
+    },
+    /** Get explicitly collapsed groups for the session. */
+    explicitlyCollapsedGroups: (session: MountedSession) => new Set(sessionValue(session)?.explicitlyCollapsedGroups ?? []) as ReadonlySet<string>,
+    /** Toggle explicit collapse state for a group. */
+    toggleExplicitlyCollapsedGroup: (session: MountedSession, groupId: string) => {
+      store(session).update((draft) => {
+        const groups = new Set(draft.explicitlyCollapsedGroups ?? [])
+        if (groups.has(groupId)) {
+          groups.delete(groupId)
+        } else {
+          groups.add(groupId)
+        }
+        draft.explicitlyCollapsedGroups = [...groups]
+      })
+    },
+    /** Collapse all other groups explicitly. */
+    collapseOtherGroupsExplicit: (session: MountedSession, currentGroupId: string, allGroupIds: string[]) => {
+      store(session).update((draft) => {
+        draft.explicitlyCollapsedGroups = allGroupIds.filter((id) => id !== currentGroupId)
+      })
+    },
+    /** Get notes for the session. */
+    notes: (session: MountedSession) => (sessionValue(session)?.notes as Annotations) ?? ({} as Annotations),
+    /** Set notes for the session. */
+    setNotes: (session: MountedSession, notes: Annotations) => {
+      store(session).update((draft) => {
+        draft.notes = notes as any
+      })
+    },
+    /** Update a single note. */
+    updateNote: (session: MountedSession, noteId: string, body: string) => {
+      store(session).update((draft) => {
+        const notes = { ...(draft.notes ?? {}) } as Annotations
+        if (body.trim().length === 0) {
+          delete notes[noteId]
+        } else {
+          notes[noteId] = { ...notes[noteId], body } as any
+        }
+        draft.notes = notes as any
+      })
+    },
+    /** Delete a note. */
+    deleteNote: (session: MountedSession, noteId: string) => {
+      store(session).update((draft) => {
+        const notes = { ...(draft.notes ?? {}) } as Annotations
+        delete notes[noteId]
+        draft.notes = notes as any
+      })
+    },
+    /** Add a new note. */
+    addNote: (session: MountedSession, note: { id: string; target: string; body: string; createdAt: number }) => {
+      store(session).update((draft) => {
+        const notes = { ...(draft.notes ?? {}) } as Annotations
+        notes[note.id] = note as any
+        draft.notes = notes as any
+      })
+    },
   }
 }
 

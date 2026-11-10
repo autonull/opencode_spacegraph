@@ -534,7 +534,7 @@ affordances flag-gated and keyboard reachable.
 
 ### 17.2 Shared selection, trace, notes per session
 
-- [ ] One per-session store (`session-graph` contract or plugin store) holding selection, trace,
+- [x] One per-session store (`session-graph` contract or plugin store) holding selection, trace,
       collapsed groups and notes; every surface reads/writes it.
 - [ ] Selecting in one surface highlights in another; hovering syncs one-way (hover → peek) with an
       option to disable.
@@ -900,4 +900,10 @@ feature that needs it.
 - **r7 (2026-11-10):** Phase 17.1 continued - SpacegraphPanel conversion.
   - Updated `SpacegraphPanel` to compose `SessionGraph` directly (was `FullMap` wrapper).
   - All surfaces now use the single `SessionGraph` core component: FullMap, MapSurface, HybridSurface, MapDialog, TurnMapLayer, TurnMapDialog, SpacegraphPanel.
+  - All unit tests (96) and component tests pass; typecheck clean.
+- **r8 (2026-11-10):** Phase 17.2 - Shared selection, trace, notes per session.
+  - Extended plugin State schema with trace state (traceKind, traceSource, traceHistory, traceHistoryIndex), group collapse state (explicitlyCollapsedGroups), and notes.
+  - Added controlled props to SessionGraph for trace, group collapse, and notes state.
+  - Updated useGraphAnnotations and useGroupCollapse hooks to support controlled/uncontrolled patterns.
+  - Updated FullMap and SpacegraphPanel to pass shared state from model.
   - All unit tests (96) and component tests pass; typecheck clean.

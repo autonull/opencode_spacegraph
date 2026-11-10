@@ -14,6 +14,12 @@ const Prefs = Schema.Struct({
   detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
 })
 
+const TraceHistoryEntry = Schema.Struct({
+  kind: Schema.Literals(["why", "led-here", "related"]),
+  source: Schema.String,
+  label: Schema.String,
+})
+
 const State = Schema.Struct({
   focused: Schema.optional(Schema.String),
   level: Schema.optional(Schema.Literals(ZOOM_LEVELS)),
@@ -24,7 +30,18 @@ const State = Schema.Struct({
   detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
+  /** Shared trace state across surfaces. */
+  traceKind: Schema.optional(Schema.Literals(["why", "led-here", "related"])),
+  traceSource: Schema.optional(Schema.String),
+  traceHistory: Schema.optional(Schema.Array(TraceHistoryEntry)),
+  traceHistoryIndex: Schema.optional(Schema.Number),
+  /** Shared group collapse state across surfaces. */
+  explicitlyCollapsedGroups: Schema.optional(Schema.Array(Schema.String)),
+  /** Shared notes across surfaces. */
+  notes: Schema.optional(Schema.Unknown),
 })
+
+export type State = Schema.Schema.Type<typeof State>
 
 export default Plugin.define({
   stores: {
