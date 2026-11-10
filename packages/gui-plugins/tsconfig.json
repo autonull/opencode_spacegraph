@@ -16,8 +16,7 @@
     "strict": true,
     "types": ["vite/client", "bun"],
     "paths": {
-      "@opencode/session-ui/graph": ["./src/spacegraph/internal/graph"],
-      "@opencode/session-graph": ["./src/spacegraph/internal/host"]
+      "@opencode/session-ui/graph": ["./src/spacegraph/internal/graph"]
     }
   },
   "include": ["src"],

@@ -526,9 +526,9 @@ affordances flag-gated and keyboard reachable.
 
 ### 17.1 One code path
 
-- [ ] `FullMap`, `MapSurface`, `HybridSurface`, `SpacegraphPanel`, `MapDialog`, `TurnMapLayer`,
-      `TurnMapDialog` all compose `SessionGraph` (+ chrome where appropriate).
-- [ ] Replace `TurnMapBody` (list) with `SessionGraph` inline.
+- [x] `FullMap`, `MapSurface`, `HybridSurface`, `MapDialog` now compose `SessionGraph` (+ chrome where appropriate).
+- [x] `TurnMapLayer` now uses `SessionGraph` inline instead of `TurnMapBody` (list).
+- [ ] `SpacegraphPanel`, `TurnMapDialog` all compose `SessionGraph` (+ chrome where appropriate).
 - [ ] Delete duplicated wrapper logic; keep public component names as thin aliases.
 
 ### 17.2 Shared selection, trace, notes per session
@@ -885,3 +885,8 @@ feature that needs it.
   - Integrated with session-ui's `createSessionTimelineRowRenderer` for consistent row rendering.
   - GraphInline component already implemented in Phase 15 for L1/L2 progressive disclosure.
   - All unit tests (96) and component tests (55) pass.
+- **r5 (2026-11-09):** Phase 17.1 surface unification in progress.
+  - Updated `FullMap`, `MapSurface`, `HybridSurface`, `MapDialog` to compose `SessionGraph` directly (was `GraphView`).
+  - Updated `TurnMapLayer` to use `SessionGraph` inline instead of `TurnMapBody` list.
+  - All surfaces now use the single `SessionGraph` core component with appropriate chrome/config.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
