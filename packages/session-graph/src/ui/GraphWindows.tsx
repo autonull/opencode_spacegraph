@@ -59,6 +59,7 @@ const GraphWindowItem = (props: {
   render: () => JSX.Element
 }) => {
   const i18n = useI18n()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let element!: HTMLDivElement
   let focusTrapCleanup: (() => void) | undefined
 

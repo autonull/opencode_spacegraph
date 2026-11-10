@@ -46,6 +46,7 @@ export const TurnMapOverlay = (props: TurnMapOverlayProps) => {
   const i18n = useI18n()
   const resolvedTheme = createGraphTheme()
   const [selection, setSelection] = createSignal<readonly string[]>([])
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let dialog!: HTMLDivElement
   let overlay: ScopedOverlay | undefined
 

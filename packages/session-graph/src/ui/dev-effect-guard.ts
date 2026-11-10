@@ -47,7 +47,9 @@ export function createTrackedSignal<T>(value: T, name?: string): [() => T, (v: T
           `that it read during this execution. This causes an infinite loop (F10/F3 pattern).`
       )
     }
-    return write(v as Exclude<T, Function> | ((prev: T) => T))
+    // Solid's write expects ((prev: T) => T) | Exclude<T, Function>
+    // We need to cast to satisfy the type checker while preserving runtime behavior
+    return write(v as ((prev: T) => T) | Exclude<T, Function>)
   }
 
   return [trackedRead, trackedWrite]

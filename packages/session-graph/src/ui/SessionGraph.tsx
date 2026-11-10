@@ -681,6 +681,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   // T18.3: the auto detail mode threshold
   const AUTO_DETAIL_THRESHOLD = props.breakpoints?.detail ?? 640
   const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let rootEl!: HTMLDivElement
   let canvasRegionEl: HTMLDivElement | undefined
   let controllerBound = false
@@ -872,6 +873,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   }))
 
   // Viewport tracker - initialized early so memos below can use it
+  // eslint-disable-next-line prefer-const -- initialized after cardScreenWidth memo which reads it
   let viewportTracker: ReturnType<typeof useGraphViewport> | undefined
   // Card screen width memo - reacts to viewport changes
   const cardScreenWidth = createMemo(() => {

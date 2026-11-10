@@ -56,7 +56,9 @@ export const GraphSearch = (props: GraphSearchProps) => {
   const navigationHint = createMemo(() =>
     query().trim().toLowerCase() === "g" ? navigationHelp() : [],
   )
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let input!: HTMLInputElement
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let list!: HTMLDivElement
 
   createEffect(() => {

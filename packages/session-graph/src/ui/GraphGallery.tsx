@@ -30,6 +30,7 @@ export type GraphGalleryProps = {
  */
 export const GraphGallery = (props: GraphGalleryProps) => {
   const i18n = useI18n()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let panel!: HTMLDivElement
 
   onMount(() => panel.focus())

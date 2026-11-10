@@ -63,18 +63,14 @@ export async function mountRenderer(
   overrides: Partial<Record<RendererID, RendererFactory>> = {},
 ): Promise<MountedRenderer> {
   const id = "spacegraph"
-  try {
-    const renderer = await (overrides[id] ?? FACTORIES[id])()
-    // Verify contract version compatibility
-    checkContractVersion(renderer.capabilities)
-    await renderer.mount(container, {
-      theme: options.theme,
-      projection: options.projection,
-      reducedMotion: options.reducedMotion,
-      global: options.global,
-    } as { theme: RenderTheme; projection: Projection; reducedMotion?: boolean; global?: boolean })
-    return { id, renderer, fallback: false }
-  } catch (error) {
-    throw error
-  }
+  const renderer = await (overrides[id] ?? FACTORIES[id])()
+  // Verify contract version compatibility
+  checkContractVersion(renderer.capabilities)
+  await renderer.mount(container, {
+    theme: options.theme,
+    projection: options.projection,
+    reducedMotion: options.reducedMotion,
+    global: options.global,
+  } as { theme: RenderTheme; projection: Projection; reducedMotion?: boolean; global?: boolean })
+  return { id, renderer, fallback: false }
 }

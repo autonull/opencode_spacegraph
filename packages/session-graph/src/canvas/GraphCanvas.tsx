@@ -72,6 +72,7 @@ const groupIDOf = (target: EventTarget | null) => {
  * out of it; it speaks only the contract and the registry.
  */
 export const GraphCanvas = (props: GraphCanvasProps) => {
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let host!: HTMLDivElement
   let mounted: MountedRenderer | undefined
   let unsubscribers: (() => void)[] = []

@@ -223,6 +223,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
  */
 export const GraphLegend = (props: GraphLegendProps) => {
   const i18n = useI18n()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let panel!: HTMLDivElement
 
   onMount(() => panel.focus())

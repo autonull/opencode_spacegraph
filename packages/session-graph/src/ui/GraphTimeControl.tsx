@@ -17,6 +17,7 @@ export const GraphTimeControl = (props: GraphTimeControlProps) => {
     props.checkpoint !== undefined && props.turnCount !== undefined && props.checkpoint < props.turnCount - 1
   const timeShown = () => timeOpen() ?? offLive()
 
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let rootEl!: HTMLDivElement
   onMount(() => {
     const handleCommand = (event: Event) => {
