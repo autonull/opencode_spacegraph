@@ -99,6 +99,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
           labels={{
             title: ctx.t("turnMap.title"),
             open: ctx.t("turnMap.open"),
+            close: ctx.t("turnMap.close"),
             empty: ctx.t("turnMap.empty"),
           }}
           openFull={() => {

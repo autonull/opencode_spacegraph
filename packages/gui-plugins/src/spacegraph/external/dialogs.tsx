@@ -1,13 +1,15 @@
 // Fallbacks for hosts that do not provide `ctx.surfaces`. The map and the hybrid arrangement open as dialogs there;
 // the side Panel remains the primary map.
 
+import { Show, onMount, createMemo } from "solid-js"
 import type { JSX } from "solid-js"
 import type { MountedSession, SessionScreen, SetupContext } from "@opencode/plugin/gui"
 import definition from ".."
 import { SessionGraph } from "@opencode/session-graph"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import { turnSubgraph } from "@opencode/session-ui/graph"
+import type { GraphNode } from "@opencode/session-ui/graph"
 import type { SpacegraphModel } from "../model"
-import { TurnMapBody } from "../turn-map-body"
 
 type Ctx = SetupContext<typeof definition>
 
@@ -65,22 +67,117 @@ export function TurnMapDialog(props: {
   model: SpacegraphModel
   session: MountedSession
   screen: SessionScreen
-  labels: { title: string; open: string; empty: string }
+  labels: { title: string; open: string; close: string; empty: string }
   openFull: () => void
 }): JSX.Element {
+  const graph = props.model.graph(props.session)
+
+  const turn = createMemo(() => {
+    const messageID = props.screen.transcript.activeMessageID()
+
+    return (messageID ? graph().turnByMessageID.get(messageID) : undefined) ?? graph().activeTurn
+  })
+
+  const roots = createMemo(() => {
+    const id = turn()
+    return id ? turnSubgraph(graph(), id, 7).nodes : ([] as readonly GraphNode[])
+  })
+
+  const close = () => props.model.closeTurnMap(props.session)
+
+  const openFull = () => {
+    close()
+    props.openFull()
+  }
+
+  onMount(() => panel?.querySelector<HTMLElement>("button")?.focus())
+
+  const keydown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      close()
+
+      return
+    }
+
+    if (event.key !== "Tab" || !panel) return
+
+    const focusable = panel.querySelectorAll<HTMLElement>(
+      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+    )
+
+    const first = focusable.item(0)
+    const last = focusable.item(focusable.length - 1)
+
+    if (!(first instanceof HTMLElement) || !(last instanceof HTMLElement)) return
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  let panel: HTMLDivElement | undefined
+
   return (
+    <Show when={props.model.turnMap(props.session)}>
     <props.ctx.ui.Dialog
       title={props.labels.title}
       size="normal"
       footer={
-        <props.ctx.ui.Button variant="ghost" onClick={props.openFull}>
+        <props.ctx.ui.Button variant="ghost" onClick={openFull}>
           {props.labels.open}
         </props.ctx.ui.Button>
       }
     >
       <div class="flex flex-col gap-2">
-        <TurnMapBody model={props.model} session={props.session} screen={props.screen} empty={props.labels.empty} />
+        <div
+          ref={panel}
+          role="dialog"
+          aria-modal="true"
+          aria-label={props.labels.title}
+          class="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-xl border border-v2-border-border-base bg-v2-background-bg-base shadow-xl"
+          data-slot="spacegraph-turn-map"
+          onKeyDown={keydown}
+        >
+          <div class="flex shrink-0 items-center justify-between gap-3 border-b border-v2-border-border-base px-4 py-3">
+            <span class="text-13-medium text-text-base">{props.labels.title}</span>
+            <button
+              type="button"
+              class="rounded-md px-2 py-1 text-13-regular text-text-weak hover:bg-v2-overlay-simple-overlay-hover hover:text-text-base"
+              onClick={close}
+            >
+              {props.labels.close}
+            </button>
+          </div>
+          <div class="min-h-0 flex-1 overflow-hidden p-4" data-scrollable style="height: 320px;">
+            <SessionGraph
+              model={graph()}
+              roots={roots()}
+              layout="tree"
+              depth="flat"
+              detailMode="popover"
+              level="execution"
+              chrome={false}
+              shell="bare"
+              reducedMotion={true}
+            />
+          </div>
+          <div class="flex shrink-0 justify-end border-t border-v2-border-border-base px-4 py-3">
+            <button
+              type="button"
+              class="rounded-md border border-v2-border-border-base px-3 py-1.5 text-13-regular text-text-base hover:bg-v2-overlay-simple-overlay-hover"
+              onClick={openFull}
+            >
+              {props.labels.open}
+            </button>
+          </div>
+        </div>
       </div>
     </props.ctx.ui.Dialog>
+    </Show>
   )
 }
