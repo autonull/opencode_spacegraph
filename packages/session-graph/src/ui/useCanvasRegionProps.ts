@@ -1,5 +1,5 @@
 import type { BuildCanvasRegionPropsInput } from "./GraphCanvasRegionProps"
-import type { GraphViewProps } from "./GraphView"
+import type { SessionGraphProps } from "./SessionGraph"
 import type { GraphRenderer, RendererViewport } from "@spacegraphjs/renderer"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
@@ -15,7 +15,7 @@ import { createNodeAnchor } from "./graph-anchors"
 import type { UseGraphStateReturn } from "./useGraphState"
 
 export function useCanvasRegionProps(
-  props: GraphViewProps,
+  props: SessionGraphProps,
   state: {
     model: () => GraphViewData
     theme: () => RenderTheme
@@ -37,7 +37,7 @@ export function useCanvasRegionProps(
     cardFacing: () => "plane" | "camera"
     applyModel: (instance: GraphRenderer) => void
     preferredRenderer: () => import("../canvas/renderer-registry").RendererID | undefined
-    rendererOverrides: GraphViewProps["rendererOverrides"]
+    rendererOverrides: SessionGraphProps["rendererOverrides"]
     reducedMotion: () => boolean
     detailMode: () => DetailMode
     effectiveDetailMode: () => DetailMode
@@ -74,10 +74,10 @@ export function useCanvasRegionProps(
     handleRegionKeyDown: (event: KeyboardEvent) => void
     error: () => string | undefined
     onBack: (() => void) | undefined
-    diffSource: GraphViewProps["diffSource"]
-    link: GraphViewProps["link"]
-    onOpenTranscript: GraphViewProps["onOpenTranscript"]
-    onOpenSession: GraphViewProps["onOpenSession"]
+    diffSource: SessionGraphProps["diffSource"]
+    link: SessionGraphProps["link"]
+    onOpenTranscript: SessionGraphProps["onOpenTranscript"]
+    onOpenSession: SessionGraphProps["onOpenSession"]
     onOpenWindow: ((kind: string, nodeID?: string) => void) | undefined
     onCopyView: () => void
     renderSummary: ((node: GraphNode) => JSX.Element | undefined) | undefined

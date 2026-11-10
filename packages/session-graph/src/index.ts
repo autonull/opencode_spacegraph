@@ -72,7 +72,8 @@ export { GraphQuestionsControl, type GraphQuestionsControlProps } from "@spacegr
 export { ToolbarMenu, type ToolbarMenuProps } from "@spacegraphjs/toolbar"
 export { useToolbarState } from "@spacegraphjs/toolbar"
 
-export { GraphView, type GraphViewProps, MIN_CARD_HEIGHT_PX, READABLE_CARD_WIDTH } from "./ui/GraphView"
+export { GraphView } from "./ui/GraphView"
+export { SessionGraph, type SessionGraphProps, MIN_CARD_HEIGHT_PX, READABLE_CARD_WIDTH } from "./ui/SessionGraph"
 
 // Re-exports from @spacegraphjs/turn-map
 export { TurnMapInlineGraph, type TurnMapInlineGraphProps } from "@spacegraphjs/turn-map"

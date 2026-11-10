@@ -47,7 +47,7 @@ export interface GraphViewContextValue {
   // Renderer
   renderer: GraphRenderer | undefined
   setRenderer: (renderer: GraphRenderer | undefined) => void
-  rendererID: RendererID | undefined
+  rendererID: () => RendererID | undefined
   setRendererID: (id: RendererID | undefined) => void
   rendererReady: () => boolean
   setRendererReady: (ready: boolean) => void
@@ -55,6 +55,7 @@ export interface GraphViewContextValue {
   setFallback: (fallback: boolean) => void
   error: () => string | undefined
   setError: (error: string | undefined) => void
+  capabilities: () => import("@spacegraphjs/renderer").RendererCapabilities | undefined
 
   // Responsive
   narrow: () => boolean
@@ -230,6 +231,9 @@ export interface GraphViewContextValue {
   scale: () => any
   viewportTrackerRef: () => ({ current: GraphViewportTrackerReturn | undefined })
   cardScreenWidthSignal: () => ({ get: () => number; set: (v: number) => void })
+  // Additional handlers for GraphChrome
+  exportSelection: () => void
+  onSearch: () => void
 }
 
 const GraphViewContext = createContext<GraphViewContextValue | undefined>(undefined)
