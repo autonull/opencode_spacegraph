@@ -7,8 +7,9 @@
 > picking one paradigm.
 >
 > **Status (2026-11-10):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
-> config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Next: **Phase 16** (Graph in UI — transcript
-> surface integration, subagent drill). Phases 19–28 are experimental with kill criteria.
+> config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.2 **GraphTranscriptSurface**
+> implemented and flag-gated in spacegraph plugin. Next: Phase 16.3-16.5 (affordance rules, subagent drill,
+> SDK asks), Phase 17-18 complete. Phases 19–28 are experimental with kill criteria.
 >
 > **Priority ladder (hard ordering):**
 > 1. **Code** — extraction, isolation, embedding, multi-surface, configuration.
@@ -504,10 +505,11 @@ that renders its own rows from the same projection the builders already use
       renders session messages with per-turn graph affordances (Why, Expand, Subagent, Share), virtualized,
       never mounts a graph until L2. **Not in `@opencode/session-graph` exports** — lives in app bundle
       (imports internal `@opencode/session-ui/timeline/*` modules unavailable to plugins).
+- [x] Core surface integrated in spacegraph plugin with flag-gated registration.
 - [ ] Keep the host transcript untouched and default. Users opt into this surface via command.
 - [ ] `session.header` slot: a compact "map this turn" toggle (present on the host transcript).
 - [ ] `ComposerPill`: "Map this turn" action for the active turn.
-- **Status:** Core surface exists; remaining work is host integration (command, header slot, pill).
+- **Status:** Core surface implemented and registered in spacegraph plugin; remaining work is host integration (command, header slot, pill).
 
 ### 16.3 Affordance rules
 
@@ -957,3 +959,9 @@ feature that needs it.
   - Integrated widget into `SpacegraphPanel` via `renderNodeWidget` prop, shown on session root node when widgets enabled (Composer lens or prefs).
   - Widget only renders on `kind: "session"` node with `id: "session"` when `widgets.enabled` is true.
   - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r16 (2026-11-10):** Phase 16.2 GraphTranscriptSurface integration in spacegraph plugin complete.
+  - Added `Flags` API to GUI plugin SDK (`ctx.flags.enabled(key)` and `ctx.flags.loading()`) for feature flag access in plugins.
+  - Implemented flags API in app runtime (`packages/app/src/runtime/plugin/host-apis.tsx`) fetching config from server and resolving flags per build channel and experimental config.
+  - Registered `GraphTranscriptSurface` as a flag-gated `SessionSurface` in spacegraph plugin (`graph_surface_transcript` flag).
+  - Added i18n key `surface.transcriptGraph` for the surface title.
+  - All typechecks pass; all session-graph unit tests (96) pass; component tests pass.

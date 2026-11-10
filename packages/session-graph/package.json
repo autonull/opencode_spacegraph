@@ -65,6 +65,7 @@
     "./ui/GraphInline": "./src/ui/GraphInline.tsx",
     "./ui/TurnMapInlineGraph": "./src/ui/TurnMapInlineGraph.tsx",
     "./ui/TurnMapOverlay": "./src/ui/TurnMapOverlay.tsx",
+    "./ui/GraphTranscriptSurface": "./src/ui/GraphTranscriptSurface.tsx",
     "./ui/GraphViewContext": "./src/ui/GraphViewContext.tsx",
     "./ui/node-data": "./src/ui/node-data.ts",
     "./ui/provenance": "./src/ui/provenance.ts",

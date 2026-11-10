@@ -21,6 +21,7 @@ import type {
   Desktop,
   Dialogs,
   Embeds,
+  Flags,
   Keybinds,
   Layout,
   Links,
@@ -158,6 +159,17 @@ export interface Context extends BaseContext {
    * ```
    */
   readonly desktop: Desktop | undefined
+  /**
+   * Feature flag access. Available on all platforms.
+   *
+   * @example
+   * ```ts
+   * if (ctx.flags.enabled("graph_surface_transcript")) {
+   *   // Register flag-gated feature
+   * }
+   * ```
+   */
+  readonly flags: Flags
   /**
    * Dialogs that close with the owner that opened them, else when the plugin goes away.
    *

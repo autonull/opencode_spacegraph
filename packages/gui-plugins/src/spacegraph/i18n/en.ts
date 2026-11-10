@@ -2,6 +2,7 @@ export default {
   "surface.map": "Map",
   "surface.hybrid": "Hybrid",
   "surface.transcript": "Transcript",
+  "surface.transcriptGraph": "Transcript (Graph)",
   "panel.title": "Session map",
   "panel.inspectorTitle": "Details",
   "panel.inspectorEmpty": "No node selected",

@@ -268,6 +268,29 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         </Scope>
       ),
     })
+
+    // Phase 16.2: Graph transcript surface (flag-gated)
+    if (surfaces() && ctx.flags.enabled("graph_surface_transcript")) {
+      const GraphTranscriptSurface = lazy(() =>
+        import("@opencode/session-graph/ui/GraphTranscriptSurface").then((m) => ({ default: m.GraphTranscriptSurface }))
+      )
+      ctx.add(SessionSurface, {
+        id: `${ctx.id}.transcript-graph`,
+        get title() {
+          return ctx.t("surface.transcriptGraph")
+        },
+        order: 5,
+        render: ({ session }) => (
+          <Scope>
+            <GraphTranscriptSurface
+              model={model.graph(session)()}
+              session={session}
+              onOpenTranscript={handleOpenTranscript}
+            />
+          </Scope>
+        ),
+      })
+    }
   }
 
   ctx.add(Command, (): Command | undefined => {
