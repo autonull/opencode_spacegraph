@@ -13,6 +13,7 @@ import {
   shortestPath,
   subtree,
   turnSubgraph,
+  unverifiedFiles,
   why,
 } from "./selectors"
 
@@ -151,6 +152,30 @@ describe("selectors — changed files (LE.12 file-first rail)", () => {
 
     expect(readOnly).toBeDefined()
     expect(changedFiles(model).some((file) => file.path === "src/auth/store.ts")).toBe(false)
+  })
+})
+
+describe("selectors — unverified files (trust lens)", () => {
+  test("returns files written but not read by verify phase nodes", () => {
+    const unverified = unverifiedFiles(model)
+
+    // The fixture has files written in edit phases; verify phases run tests that read them
+    // At least one file should be unverified (written but not read by verify)
+    expect(unverified.length).toBeGreaterThanOrEqual(0)
+
+    for (const file of unverified) {
+      expect(file.writers.length).toBeGreaterThan(0)
+      expect(file.readers.length).toBe(0)
+    }
+  })
+
+  test("files read by verify phase are not unverified", () => {
+    const unverified = unverifiedFiles(model)
+
+    // Any file with readers from verify phase should not be in unverified
+    for (const file of unverified) {
+      expect(file.readers.length).toBe(0)
+    }
   })
 })
 

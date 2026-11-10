@@ -24,5 +24,6 @@ export const registry = {
   graph_time_travel: "Enable time travel scrubber through incremental builder snapshots.",
   graph_compaction_advisor: "Enable compaction preview advisor.",
   graph_cost_lens: "Enable cost/budget lens.",
+  graph_trust_lens: "Enable trust lens (highlight unverified writes).",
 } as const satisfies Record<string, string>
 export type Key = keyof typeof registry

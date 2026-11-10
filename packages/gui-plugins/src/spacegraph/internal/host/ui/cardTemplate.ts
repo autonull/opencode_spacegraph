@@ -145,6 +145,8 @@ export type CardTemplateOptions = {
   band?: "overview" | "execution" | "detail"
   /** Depth fade: positions map to calculate z-based fade for DOM cards. */
   positions?: ReadonlyMap<string, Position>
+  /** Trust lens: set of unverified file node IDs (files written but not read by verify phase). */
+  unverifiedFiles?: ReadonlySet<string>
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -388,6 +390,11 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
         })()
       : ""
 
+    // Trust lens badge: shows on file nodes that are unverified (written but not read by verify phase)
+    const trustBadge = options.unverifiedFiles?.has(node.id) && node.kind === "file"
+      ? `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:${theme.warning};padding:1px 4px;border-radius:3px;background:${theme.warning}15;border:1px solid ${theme.warning}40" title="${safeEscapeHtml(options.copy?.writes?.(0) ?? "Unverified write")}">⚠</span>`
+      : ""
+
     // Phase/group node enhancements: distinct background, group glyph, member preview data
     const isGroupNode = isPhase || node.kind === "error-group" || node.kind === "file-group" || node.kind === "subagent-group"
     const hasCluster = node.clusterOf && node.clusterOf.length > 0
@@ -480,6 +487,7 @@ ${groupSummaryContent}
 </span>
 ${groupToggle}
 ${provenanceBadge}
+${trustBadge}
 ${copyButton}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`

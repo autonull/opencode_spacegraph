@@ -9,6 +9,8 @@ export type GraphDrawControlProps = {
   onDetailFramingChange?: (framing: "off" | "card") => void
   files?: boolean
   onToggleFiles?: () => void
+  trustLens?: boolean
+  onToggleTrustLens?: () => void
   onOpenEqualizer?: () => void
   arrangement?: GraphArrangement
   onArrangementChange?: (arrangement: GraphArrangement) => void
@@ -79,6 +81,15 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
           onClick: () => props.onToggleFiles?.(),
           pressed: props.files,
           slot: "graph-files-option",
+          keepOpen: true,
+        })}
+      </Show>
+      <Show when={props.onToggleTrustLens}>
+        {option({
+          label: i18n.t("ui.sessionGraph.toolbar.trustLens"),
+          onClick: () => props.onToggleTrustLens?.(),
+          pressed: props.trustLens,
+          slot: "graph-trust-lens-option",
           keepOpen: true,
         })}
       </Show>

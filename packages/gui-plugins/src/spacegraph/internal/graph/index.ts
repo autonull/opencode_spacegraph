@@ -134,6 +134,7 @@ export {
   subagentSubgraph,
   subtree,
   turnSubgraph,
+  unverifiedFiles,
   why,
   // Trace overlay types and functions
   classifyTrace,

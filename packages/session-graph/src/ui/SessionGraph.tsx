@@ -226,6 +226,7 @@ export type SessionGraphProps = {
   onDepthChange?: (depth: DepthMode) => void
   onLayoutChange?: (layout: Layout) => void
   onFilesChange?: (files: boolean) => void
+  onTrustLensChange?: (trustLens: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
   /** T17.4: the camera frames the selected node (the "card" framing behavior). */
   detailFraming?: DetailFraming
@@ -360,6 +361,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setLayout,
     files,
     setFiles,
+    setTrustLens,
     detailMode,
     setDetailMode,
     detailFraming,
@@ -1054,7 +1056,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   })
 
   // Graph navigation hook
-  const { expandToGraph, toggleFiles, togglePeek, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
+  const { expandToGraph, toggleFiles, togglePeek, toggleTrustLens, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
     model,
     layout,
     setLayout,
@@ -1062,6 +1064,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setPeek,
     onFilesChange: props.onFilesChange,
     onPeekChange: props.onPeekChange,
+    setTrustLens: state.setTrustLens,
+    onTrustLensChange: props.onTrustLensChange,
     select,
     viewportTracker: viewportTracker!,
     renderer,
@@ -1324,6 +1328,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setLayout,
     files,
     setFiles,
+    trustLens,
+    setTrustLens,
     detailMode,
     setDetailMode,
     detailFraming,
@@ -1451,6 +1457,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     expandToGraph,
     toggleFiles,
     togglePeek,
+    toggleTrustLens,
     dismissDetail,
     openInTranscript,
     raiseLevelForFrame,
@@ -1599,6 +1606,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
             onLayoutChange={changeLayout}
             files={files()}
             onFilesChange={toggleFiles}
+            trustLens={trustLens()}
+            onTrustLensChange={toggleTrustLens}
             onSearch={toggleSearch}
             frame={props.frame}
             activeTurn={props.activeTurn}
