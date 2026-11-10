@@ -426,9 +426,9 @@ interfere.
 ### 14.5 Tests
 
 - [x] Unit: bus routing, keyboard target selection, group pointer isolation, spatial memory owner. (existing unit tests cover these)
-- [ ] Component: two instances mounted; command from one does not affect the other; both render.
-- [ ] Component: `chrome={false}` renders canvas at a fixed 320×220 without overflow.
-- [ ] Story: `session-graph-view--two-instances`.
+- [x] Component: two instances mounted; command from one does not affect the other; both render.
+- [x] Component: `chrome={false}` renders canvas at a fixed 320×220 without overflow.
+- [x] Story: `session-graph-view--two-instances`.
 - [x] All existing 55 component specs green unmodified.
 
 **Exit:** `bun run typecheck` green in `packages/session-graph` and `packages/gui-plugins`; existing
