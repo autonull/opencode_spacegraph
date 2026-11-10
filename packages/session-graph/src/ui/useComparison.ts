@@ -1,5 +1,5 @@
 import { createSignal, createMemo } from "solid-js"
-import { scopeToTurns, reviewChanges, type GraphViewData, type GraphNode, type TurnStats } from "@opencode/session-ui/graph"
+import { scopeToTurns, reviewChanges, reviewModel, type GraphViewData, type GraphNode, type TurnStats } from "@opencode/session-ui/graph"
 import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
 export type ComparisonChanges = {
@@ -9,6 +9,7 @@ export type ComparisonChanges = {
   counts: { added: number; removed: number; changed: number }
   label: "turns" | "parked"
   turnStats?: TurnStats[]
+  diffModel?: GraphViewData
 }
 
 export type UseComparisonOptions = {
@@ -55,6 +56,7 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
         },
         turnStats: changes.turnStats,
         label: "turns" as const,
+        diffModel: reviewModel(before, after),
       }
     }
     const checkpoint = options.checkpoint()
@@ -76,6 +78,7 @@ export function useComparison(options: UseComparisonOptions): UseComparisonRetur
       },
       turnStats: changes.turnStats,
       label: "parked" as const,
+      diffModel: reviewModel(parked, current),
     }
   })
 

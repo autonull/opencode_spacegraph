@@ -649,8 +649,8 @@ Implement in the order below; each item is independently shippable and revertibl
 
 ### 19.2 Review
 
-- [~] **Compare** two turns/checkpoints with `reviewChanges` (per-turn stats, duration) and a graph
-      diff; render side-by-side or overlaid. (text compare window done; graph diff pending)
+- [x] **Compare** two turns/checkpoints with `reviewChanges` (per-turn stats, duration) and a graph
+      diff; render side-by-side or overlaid. (text compare window + visual graph diff complete)
 - [x] **Trust lens** — unverified writes, missing tests, stale evidence; banner + per-node badges.
 - [x] **Files rail** as an optional lens, not a permanent column.
 
@@ -1021,3 +1021,10 @@ feature that needs it.
   - Added i18n keys: `ui.sessionGraph.subagentWidget.previewLabel`, `ui.sessionGraph.subagentWidget.drillDownLabel`, `ui.sessionGraph.subagentWidget.nodeCount`, `ui.sessionGraph.subagentWidget.edgeCount`, `ui.sessionGraph.subagentWidget.clickToExpand`.
   - Integrated widget into `SpacegraphPanel` via `renderNodeWidget` prop, shown on `kind: "subagent"` nodes when widgets enabled.
   - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r23 (2026-11-10):** Phase 19.2 Compare — Graph diff visualization complete.
+  - Added `reviewModel` function in `@opencode/session-ui/graph/review.ts` returning a `GraphViewData` diff subgraph.
+  - Extended `useComparison` hook to include `diffModel` in `ComparisonChanges` using `reviewModel`.
+  - Enhanced `GraphCompare` component with a tabbed view: "Text" (existing) and "Visual" (new graph diff).
+  - Visual diff renders nodes with kind-coded dots and edges list, using the diff subgraph from `reviewModel`.
+  - Added i18n keys: `ui.sessionGraph.compare.textTab`, `ui.sessionGraph.compare.visualTab`, `ui.sessionGraph.compare.visualTitle`, `ui.sessionGraph.compare.edges`.
+  - All typechecks pass; unit tests (96) and component tests (57) pass.
