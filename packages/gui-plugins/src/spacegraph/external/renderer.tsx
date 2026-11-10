@@ -4,6 +4,7 @@ import {
   Panel,
   SessionSurface,
   SettingsPage,
+  Slot,
   type MountedSession,
   type PanelTab,
   type Plugin,
@@ -101,6 +102,30 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       screen.transcript.reveal(messageId)
     }
   }
+
+  // Phase 16.3: session.header slot - "Map this turn" toggle
+  ctx.add(Slot, {
+    at: "session.header",
+    order: 30,
+    render: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
+      return (
+        <div class="flex items-center gap-2" data-slot="session-header-graph-toggle">
+          <button
+            type="button"
+            class="text-13-regular leading-[var(--line-height-compact)] text-v2-text-text-muted hover:text-v2-text-text-base transition-colors"
+            onClick={() => select(`${ctx.id}.map`)}
+            title={ctx.t("session.header.mapTurn.tooltip")}
+            aria-label={ctx.t("session.header.mapTurn.tooltip")}
+          >
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M4 4h8v8H4V4zm1 1v6h6V5H5zm5 5H6v-1h4v1z" />
+            </svg>
+            <span>{ctx.t("session.header.mapTurn.label")}</span>
+          </button>
+        </div>
+      )
+    },
+  })
 
   const tab: PanelTab = {
     id: "map",
@@ -286,6 +311,29 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
               model={model.graph(session)()}
               session={session}
               onOpenTranscript={handleOpenTranscript}
+              onTurnExpand={(turnID) => {
+                // Expand is handled by the inline graph toggle
+              }}
+              onTurnWhy={(turnID) => {
+                // Open the why panel/popover for this turn
+                model.focus(session, turnID)
+                model.setDetailMode(session, "popover")
+              }}
+              onTurnExpandDelegation={(turnID) => {
+                // Expand delegation - focus the turn and open detail
+                model.focus(session, turnID)
+                model.setDetailMode(session, "popover")
+              }}
+              onTurnSubagent={(turnID, subagentID) => {
+                // Open subagent map
+                model.focus(session, subagentID)
+                model.setDetailMode(session, "popover")
+              }}
+              onTurnShare={(turnID, layout, nodeID) => {
+                // Permalink copied - could show a toast
+                const permalink = `#spacegraph:${layout}:${nodeID}`
+                navigator.clipboard.writeText(permalink)
+              }}
             />
           </Scope>
         ),

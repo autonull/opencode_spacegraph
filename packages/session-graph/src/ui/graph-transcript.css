@@ -1,0 +1,156 @@
+/*
+ * Graph transcript surface affordance chips (Phase 16.3)
+ * Chips are text + icon, 13px, using --line-height-compact; no layout shift on hover.
+ */
+
+.graph-affordance-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  margin-top: 4px;
+}
+
+.graph-affordance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 13px;
+  line-height: var(--line-height-compact);
+  font-weight: 440;
+  color: var(--v2-text-text-base);
+  background: var(--v2-background-bg-button-neutral);
+  border: 1px solid var(--v2-border-border-base);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  white-space: nowrap;
+}
+
+.graph-affordance-chip:hover {
+  background: var(--v2-overlay-simple-overlay-hover);
+  border-color: var(--v2-border-border-hover);
+  color: var(--v2-text-text-base);
+}
+
+.graph-affordance-chip:focus-visible {
+  outline: 2px solid var(--v2-border-border-focus);
+  outline-offset: 2px;
+}
+
+.graph-affordance-chip:active {
+  background: var(--v2-overlay-simple-overlay-pressed);
+}
+
+.graph-affordance-chip svg {
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.graph-affordance-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--v2-icon-icon-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.graph-affordance-toggle:hover {
+  background: var(--v2-overlay-simple-overlay-hover);
+  color: var(--v2-icon-icon-base);
+}
+
+.graph-affordance-toggle:focus-visible {
+  outline: 2px solid var(--v2-border-border-focus);
+  outline-offset: 2px;
+}
+
+.graph-affordance-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Transcript row */
+.graph-transcript-row {
+  border-bottom: 1px solid var(--v2-border-border-weaker-base);
+}
+
+/* Inline graph container */
+.graph-inline-container {
+  margin-top: 8px;
+  border-top: 1px solid var(--v2-border-border-base);
+  padding-top: 8px;
+}
+
+.graph-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.graph-inline-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: var(--line-height-compact);
+  font-weight: 440;
+  color: var(--v2-text-text-muted);
+  background: var(--v2-background-bg-button-neutral);
+  border: 1px solid var(--v2-border-border-base);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.graph-inline-trigger:hover {
+  background: var(--v2-overlay-simple-overlay-hover);
+  border-color: var(--v2-border-border-hover);
+  color: var(--v2-text-text-base);
+}
+
+.graph-inline-trigger:focus-visible {
+  outline: 2px solid var(--v2-border-border-focus);
+  outline-offset: 2px;
+}
+
+.graph-inline-trigger-label {
+  white-space: nowrap;
+}
+
+.graph-inline-content {
+  overflow: hidden;
+}
+
+.graph-inline-placeholder {
+  opacity: 0.6;
+}
+
+/* Inline preview (static SVG) */
+.graph-inline-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--v2-background-bg-layer-01);
+  border: 1px solid var(--v2-border-border-weaker-base);
+  border-radius: 4px;
+}
+
+/* Roving tabindex for keyboard navigation */
+.graph-transcript-row:focus-within .graph-affordance-chip {
+  /* When row is focused, chips become reachable */
+}
+
+.graph-transcript-row:not(:focus-within) .graph-affordance-chip {
+  /* When row is not focused, remove from tab order */
+  /* This is handled by JS roving tabindex */
+}

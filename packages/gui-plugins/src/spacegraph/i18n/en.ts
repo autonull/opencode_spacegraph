@@ -113,4 +113,6 @@ export default {
   "composerWidget.readOnlyPlaceholder": "Composer unavailable",
   "composerWidget.readOnlyLabel": "Read-only: widgets disabled",
   "composerWidget.unavailable": "Composer not available",
+  "session.header.mapTurn.label": "Map this turn",
+  "session.header.mapTurn.tooltip": "Open this turn in the session map",
 }
