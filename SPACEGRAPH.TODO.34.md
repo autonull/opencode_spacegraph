@@ -9,7 +9,9 @@
 > **Status (2026-11-10):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
 > config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.5 **complete** — GraphTranscriptSurface
 > implemented and flag-gated in spacegraph plugin, affordance rules done, subagent drill implemented via double-click + drill-down,
-> SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete. Phases 19–28 are experimental with kill criteria.
+> session.header slot and ComposerPill added for host integration, SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete. Phases 19–28 are experimental with kill criteria.
+>
+> **r19 (2026-11-10):** Phase 16.3 Host integration complete — transcript-graph command, session.header slot, ComposerPill.
 >
 > **Priority ladder (hard ordering):**
 > 1. **Code** — extraction, isolation, embedding, multi-surface, configuration.
@@ -506,10 +508,10 @@ that renders its own rows from the same projection the builders already use
       never mounts a graph until L2. **Not in `@opencode/session-graph` exports** — lives in app bundle
       (imports internal `@opencode/session-ui/timeline/*` modules unavailable to plugins).
 - [x] Core surface integrated in spacegraph plugin with flag-gated registration.
-- [ ] Keep the host transcript untouched and default. Users opt into this surface via command.
-- [ ] `session.header` slot: a compact "map this turn" toggle (present on the host transcript).
-- [ ] `ComposerPill`: "Map this turn" action for the active turn.
-- **Status:** Core surface implemented and registered in spacegraph plugin; remaining work is host integration (command, header slot, pill).
+- [x] Keep the host transcript untouched and default. Users opt into this surface via command.
+- [x] `session.header` slot: a compact "map this turn" toggle (present on the host transcript).
+- [x] `ComposerPill`: "Map this turn" action for the active turn.
+- **Status:** Core surface implemented and registered in spacegraph plugin; host integration complete (command, header slot, pill).
 
 ### 16.3 Affordance rules
 
@@ -990,4 +992,11 @@ feature that needs it.
   - Added `session.header` slot with "Map this turn" toggle button in spacegraph plugin renderer.
   - Added i18n keys for all affordance labels and tooltips.
   - Updated GraphTranscriptSurface integration in spacegraph plugin with handlers for all affordance actions.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r19 (2026-11-10):** Phase 16.3 Host integration complete.
+  - Added command `transcript-graph` to switch to the graph transcript surface.
+  - Added `session.header` slot with "Map this turn" toggle button (existing, now fully wired).
+  - Added `ComposerPill` with "Map this turn" action for the active turn.
+  - Added i18n keys for transcript graph surface, command, and all transcript affordance labels.
+  - Graph transcript surface now fully integrated with host transcript via command palette, header slot, and composer pill.
   - All unit tests (96) and component tests (57) pass; typecheck clean.
