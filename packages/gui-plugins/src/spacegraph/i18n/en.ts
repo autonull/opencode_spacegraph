@@ -106,4 +106,10 @@ export default {
   "lens.archivist.description": "Time travel, spatial memory, notes, permalinks",
   "lens.composer.description": "Node widgets, prompt injection, attach context",
   "lens.auditor.description": "Cost, budget, provenance, export",
+  "composerWidget.placeholder": "Type a prompt…",
+  "composerWidget.send": "Send",
+  "composerWidget.attach": "Attach",
+  "composerWidget.readOnlyPlaceholder": "Composer unavailable",
+  "composerWidget.readOnlyLabel": "Read-only: widgets disabled",
+  "composerWidget.unavailable": "Composer not available",
 }

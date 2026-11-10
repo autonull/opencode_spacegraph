@@ -456,10 +456,10 @@ component suite green; the two-instance spec proves isolation.
 
 ### 15.3 Composer widget (first real widget)
 
-- [ ] `ComposerNodeWidget` — a `ctx.ui.TextInput` + send/steer actions using `Composer` data/actions.
+- [x] `ComposerNodeWidget` — a `ctx.ui.TextInput` + send/steer actions using `Composer` data/actions.
       Because the SDK has no `send`, the widget composes `setText` + the host's existing prompt command
       path (experimental flag).
-- [ ] If `send` cannot be reached cleanly, park C12 and keep the widget read-only (attach context).
+- [x] If `send` cannot be reached cleanly, park C12 and keep the widget read-only (attach context).
 
 ### 15.4 Fractal node (proof)
 
@@ -940,3 +940,10 @@ feature that needs it.
   - The component is an app-level surface (SessionSurface), not a plugin-level component, so it shouldn't be in the public session-graph API.
   - Removed export from `packages/session-graph/src/index.ts` and `packages/session-graph/package.json`.
   - All unit tests (96) and component tests (57 session-graph, 3 plugin-spacegraph) pass; typecheck clean.
+- **r15 (2026-11-10):** Phase 15.1-15.2 ComposerNodeWidget implementation complete.
+  - Created `ComposerNodeWidget` component in `@opencode/session-graph` with `ctx.ui.TextInput` + send action using Composer's insert.
+  - Added read-only fallback when Composer is unavailable (widget shows read-only state).
+  - Added i18n keys for widget placeholder, send button, read-only, and unavailable states.
+  - Integrated widget into `SpacegraphPanel` via `renderNodeWidget` prop, shown on session root node when widgets enabled (Composer lens or prefs).
+  - Widget only renders on `kind: "session"` node with `id: "session"` when `widgets.enabled` is true.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
