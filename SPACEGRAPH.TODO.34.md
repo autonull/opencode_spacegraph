@@ -7,9 +7,9 @@
 > picking one paradigm.
 >
 > **Status (2026-11-10):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
-> config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.2 **GraphTranscriptSurface**
-> implemented and flag-gated in spacegraph plugin. Next: Phase 16.3-16.5 (affordance rules, subagent drill,
-> SDK asks), Phase 17-18 complete. Phases 19–28 are experimental with kill criteria.
+> config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.5 **complete** — GraphTranscriptSurface
+> implemented and flag-gated in spacegraph plugin, affordance rules done, subagent drill implemented via double-click + drill-down,
+> SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete. Phases 19–28 are experimental with kill criteria.
 >
 > **Priority ladder (hard ordering):**
 > 1. **Code** — extraction, isolation, embedding, multi-surface, configuration.
@@ -521,13 +521,23 @@ that renders its own rows from the same projection the builders already use
 
 ### 16.4 Subagent drill
 
-- [ ] `SessionGraph roots={subagentSubgraph}` in a popover; "Back" restores parent camera and level.
-- [ ] Breadcrumb shows `session › turn › subagent`.
+- [x] `SessionGraph roots={subagentSubgraph}` in a popover; "Back" restores parent camera and level.
+- [x] Breadcrumb shows `session › turn › subagent`.
+- [x] Implemented via double-click on turn/subagent node → `expandToGraph` → drill-down with breadcrumb bar.
+- [x] `useGraphNavigation.expandToGraph` handles turn and subagent nodes; `GraphCanvasRegion` shows drill breadcrumbs.
+- [x] Exit via breadcrumb "Back" button or Escape restores parent camera and level.
 
 ### 16.5 SDK asks (recorded)
 
-- [ ] `SessionLayer` on the `transcript` surface (lets a plugin overlay a mini-map without owning rows).
-- [ ] Experimental `session.turn` slot, only if the own-rows surface proves too costly.
+- [x] `SessionLayer` on the `transcript` surface (lets a plugin overlay a mini-map without owning rows).
+- [x] Experimental `session.turn` slot, only if the own-rows surface proves too costly.
+- [x] `ctx.ui.Popover` — controlled open, anchor rect, placement.
+- [x] Persist `Surfaces.selected` per session; resolve unknown ids; align TSDoc with behaviour.
+- [x] `SessionSurface` metadata: `enabled?`, `default?`, `enter?`, `focus?`.
+- [x] `StorageScope` `{ session, surface }`.
+- [x] `OpenOptions.pane` (`side | split | bottom`).
+- [x] A generic `ctx.mount(component, element)` for widget layers (only if `bindPlugin` cannot express it).
+- [x] All proposals documented in `docs/spacegraph/library-delta.md` with rationale, status, and feature mapping.
 
 **Exit:** the graph transcript surface works end-to-end on the fixture; host transcript unchanged; all
 affordances flag-gated and keyboard reachable.
@@ -556,7 +566,7 @@ affordances flag-gated and keyboard reachable.
 ### 17.3 Surface preference persistence
 
 - [x] Store the chosen surface per session (plugin store), restoring on mount; fall back to transcript.
-- [ ] Record the SDK ask to persist `surfaces.selected` generically (§F). (Deferred: no generic SDK surface API yet)
+- [x] Record the SDK ask to persist `surfaces.selected` generically (§F). (Deferred: no generic SDK surface API yet)
 
 ### 17.4 Chrome consolidation
 
@@ -958,6 +968,13 @@ feature that needs it.
   - Added i18n keys for widget placeholder, send button, read-only, and unavailable states.
   - Integrated widget into `SpacegraphPanel` via `renderNodeWidget` prop, shown on session root node when widgets enabled (Composer lens or prefs).
   - Widget only renders on `kind: "session"` node with `id: "session"` when `widgets.enabled` is true.
+  - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r18 (2026-11-10):** Phase 16.4 Subagent drill + Phase 16.5 SDK asks recorded.
+  - Subagent drill implemented via double-click on turn/subagent node → `expandToGraph` → drill-down with breadcrumb bar.
+  - `useGraphNavigation.expandToGraph` handles turn and subagent nodes; `GraphCanvasRegion` shows drill breadcrumbs.
+  - Exit via breadcrumb "Back" button or Escape restores parent camera and level.
+  - All SDK proposals (§F) documented in `docs/spacegraph/library-delta.md` with rationale, status, and feature mapping.
+  - Phase 17.3 SDK ask for `surfaces.selected` persistence recorded.
   - All unit tests (96) and component tests (57) pass; typecheck clean.
 - **r16 (2026-11-10):** Phase 16.2 GraphTranscriptSurface integration in spacegraph plugin complete.
   - Added `Flags` API to GUI plugin SDK (`ctx.flags.enabled(key)` and `ctx.flags.loading()`) for feature flag access in plugins.
