@@ -88,6 +88,7 @@ export type GraphDetailProps = {
   /** Trace overlay callbacks (A1). */
   traceKind?: "why" | "led-here" | "related" | null
   traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  traceHistoryIndex?: number
   onTraceWhy?: (nodeId: string) => void
   onTraceLedHere?: (nodeId: string) => void
   onTraceRelated?: (nodeId: string) => void
@@ -532,6 +533,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         onRun={props.onActionRun}
         traceKind={props.traceKind}
         traceHistory={props.traceHistory}
+        traceHistoryIndex={props.traceHistoryIndex}
         onTraceWhy={props.onTraceWhy}
         onTraceLedHere={props.onTraceLedHere}
         onTraceRelated={props.onTraceRelated}
@@ -555,6 +557,7 @@ function GraphDetailActions(props: {
   onRun?: (operation: ActionSpec["operation"]) => void
   traceKind?: "why" | "led-here" | "related" | null
   traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  traceHistoryIndex?: number
   onTraceWhy?: (nodeId: string) => void
   onTraceLedHere?: (nodeId: string) => void
   onTraceRelated?: (nodeId: string) => void
@@ -676,7 +679,7 @@ function GraphDetailActions(props: {
               type="button"
               class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
               onClick={props.onTraceForward}
-              disabled={true}
+              disabled={props.traceHistoryIndex !== undefined && props.traceHistoryIndex >= history.length - 1}
               aria-label={i18n.t("ui.sessionGraph.trace.forward")}
             >
               <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.trace.forward")}</span>

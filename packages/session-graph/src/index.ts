@@ -112,7 +112,8 @@ export { GraphPeek, type GraphPeekProps } from "@spacegraphjs/overlays"
 export { GraphPopover, type GraphPopoverProps, POPOVER_WIDTH, POPOVER_MAX_HEIGHT, POPOVER_GAP } from "@spacegraphjs/overlays"
 export { GraphOverlayManager, type GraphOverlayManagerProps } from "@spacegraphjs/overlays"
 export { ScopedOverlay, type ScopedOverlayOptions } from "@spacegraphjs/overlays"
-export { type GraphDetailProps, type GraphDetailSurfaceProps } from "@spacegraphjs/overlays"
+// GraphDetailProps is defined locally in ui/GraphDetail.tsx with trace extensions
+export { type GraphDetailSurfaceProps } from "@spacegraphjs/overlays"
 
 // Re-exports from @spacegraphjs/controls
 export { GraphStatusBar, type GraphStatusBarProps } from "@spacegraphjs/controls"

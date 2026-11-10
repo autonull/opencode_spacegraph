@@ -18,6 +18,7 @@ export type GraphInspectorPanelProps = {
   onOpenSession: ((sessionID: string) => void) | undefined
   traceKind: "why" | "led-here" | "related" | null
   traceHistory: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
+  traceHistoryIndex?: number
   onTraceWhy: UseGraphAnnotationsReturn["traceWhy"]
   onTraceLedHere: UseGraphAnnotationsReturn["traceLedHere"]
   onTraceRelated: UseGraphAnnotationsReturn["traceRelated"]

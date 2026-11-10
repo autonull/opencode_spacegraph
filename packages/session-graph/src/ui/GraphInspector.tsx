@@ -6,6 +6,7 @@ import { GraphDetailSurface, type GraphDetailProps } from "./GraphDetail"
 export type GraphInspectorProps = Omit<GraphDetailProps, "node"> & {
   node?: GraphNode
   traceKind?: GraphDetailProps["traceKind"]
+  traceHistoryIndex?: GraphDetailProps["traceHistoryIndex"]
   onTraceWhy?: GraphDetailProps["onTraceWhy"]
   onTraceLedHere?: GraphDetailProps["onTraceLedHere"]
   onTraceRelated?: GraphDetailProps["onTraceRelated"]
