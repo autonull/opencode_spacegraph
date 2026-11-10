@@ -935,3 +935,8 @@ feature that needs it.
   - Created settings page with lens selector, surface defaults, density, renderer, widgets configuration.
   - Added user-defined lens creation (save current state as named lens).
   - All typechecks pass; component tests pass.
+- **r14 (2026-11-10):** Fixed plugin bundle build by removing `GraphTranscriptSurface` from public `@opencode/session-graph` exports.
+  - `GraphTranscriptSurface` imports from `@opencode/session-ui/timeline/projection` and `@opencode/session-ui/timeline/row` which are internal modules not available to plugin bundles.
+  - The component is an app-level surface (SessionSurface), not a plugin-level component, so it shouldn't be in the public session-graph API.
+  - Removed export from `packages/session-graph/src/index.ts` and `packages/session-graph/package.json`.
+  - All unit tests (96) and component tests (57 session-graph, 3 plugin-spacegraph) pass; typecheck clean.

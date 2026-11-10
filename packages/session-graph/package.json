@@ -63,7 +63,6 @@
     "./ui/GraphEmpty": "./src/ui/GraphEmpty.tsx",
     "./ui/GraphPreview": "./src/ui/GraphPreview.tsx",
     "./ui/GraphInline": "./src/ui/GraphInline.tsx",
-    "./ui/GraphTranscriptSurface": "./src/ui/GraphTranscriptSurface.tsx",
     "./ui/TurnMapInlineGraph": "./src/ui/TurnMapInlineGraph.tsx",
     "./ui/TurnMapOverlay": "./src/ui/TurnMapOverlay.tsx",
     "./ui/GraphViewContext": "./src/ui/GraphViewContext.tsx",
