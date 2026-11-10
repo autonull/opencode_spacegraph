@@ -641,7 +641,7 @@ Implement in the order below; each item is independently shippable and revertibl
 ### 19.1 Investigation
 
 - [x] **Trace breadcrumbs + back/forward** unified across surfaces.
-- [ ] **Downstream impact** — from a node, follow `sequence`/`produces`/`writes` forward; label
+- [x] **Downstream impact** — from a node, follow `sequence`/`produces`/`writes` forward; label
       confidence (`explicit`/`structural`/`inferred`).
 - [ ] **Ambiguity display** — when the chain forks, show the fork instead of guessing (kill criterion
       for C2).
@@ -1007,3 +1007,10 @@ feature that needs it.
   - Added missing i18n keys for trace actions (why, led-here, related, back, forward, copyOutline, clear) and announcements.
   - Trace breadcrumb trail and back/forward navigation now work consistently across all surfaces (MapSurface, HybridSurface, MapDialog, TurnMapLayer, TurnMapDialog, SpacegraphPanel, GraphTranscriptSurface).
   - All unit tests (96) and component tests (57) pass; typecheck clean.
+- **r21 (2026-11-10):** Phase 19.1 Downstream impact trace implemented.
+  - Added `traceDownstream` trace kind in `@opencode/session-ui/graph` selectors with confidence labeling.
+  - Added `downstreamChain` function following `sequence`/`produces`/`writes` edges forward.
+  - Integrated into `useGraphAnnotations` hook, `GraphDetail` actions, `GraphInspectorPanel`, `GraphPopover`.
+  - Updated internal graph copy in `@opencode/gui-plugins` for plugin bundle compatibility.
+  - Added i18n keys: `ui.sessionGraph.trace.downstream`, `ui.sessionGraph.trace.downstreamAnnouncement`.
+  - All typechecks pass; unit tests (305 session-ui, 96 session-graph) pass; component tests (56) pass.

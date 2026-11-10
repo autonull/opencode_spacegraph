@@ -137,6 +137,8 @@ export {
   traceWhy,
   traceLedHere,
   traceRelated,
+  traceDownstream,
+  downstreamChain,
   litNodeIds,
   stepLitNode,
   copyTraceAsOutline,

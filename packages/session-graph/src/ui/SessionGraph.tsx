@@ -298,12 +298,12 @@ export type SessionGraphProps = {
   breakpoints?: { narrow?: number; compact?: number; detail?: number }
 
   /** Controlled trace state (Phase 17.2 shared state). */
-  traceKind?: "why" | "led-here" | "related" | null
-  onTraceKindChange?: (kind: "why" | "led-here" | "related" | null) => void
+  traceKind?: "why" | "led-here" | "related" | "downstream" | null
+  onTraceKindChange?: (kind: "why" | "led-here" | "related" | "downstream" | null) => void
   traceSource?: string | null
   onTraceSourceChange?: (source: string | null) => void
-  traceHistory?: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]
-  onTraceHistoryChange?: (history: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]) => void
+  traceHistory?: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]
+  onTraceHistoryChange?: (history: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]) => void
   traceHistoryIndex?: number
   onTraceHistoryIndexChange?: (index: number) => void
 
@@ -492,13 +492,13 @@ export const SessionGraph = (props: SessionGraphProps) => {
   // Create signals for controlled trace state (Phase 17.2 shared state)
   // When controlled props are provided, create signals that mirror them
   // Otherwise use local signals
-  const [localTraceKind, setLocalTraceKind] = createSignal<"why" | "led-here" | "related" | null>(null)
+  const [localTraceKind, setLocalTraceKind] = createSignal<"why" | "led-here" | "related" | "downstream" | null>(null)
   const [localTraceSource, setLocalTraceSource] = createSignal<string | null>(null)
-  const [localTraceHistory, setLocalTraceHistory] = createSignal<readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]>([])
+  const [localTraceHistory, setLocalTraceHistory] = createSignal<readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]>([])
   const [localHistoryIndex, setLocalHistoryIndex] = createSignal(-1)
 
   const traceKind = createMemo(() => props.traceKind ?? localTraceKind())
-  const setTraceKind = (kind: "why" | "led-here" | "related" | null) => {
+  const setTraceKind = (kind: "why" | "led-here" | "related" | "downstream" | null) => {
     if (props.onTraceKindChange) props.onTraceKindChange(kind)
     else setLocalTraceKind(kind)
   }
@@ -508,7 +508,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     else setLocalTraceSource(source)
   }
   const traceHistory = createMemo(() => props.traceHistory ?? localTraceHistory())
-  const setTraceHistory = (history: readonly { kind: "why" | "led-here" | "related"; source: string; label: string }[]) => {
+  const setTraceHistory = (history: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]) => {
     if (props.onTraceHistoryChange) props.onTraceHistoryChange(history)
     else setLocalTraceHistory(history)
   }

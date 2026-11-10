@@ -195,7 +195,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     /** Get the trace kind for the session. */
     traceKind: (session: MountedSession) => sessionValue(session)?.traceKind,
     /** Set the trace kind for the session. */
-    setTraceKind: (session: MountedSession, kind: "why" | "led-here" | "related" | null) => {
+    setTraceKind: (session: MountedSession, kind: "why" | "led-here" | "related" | "downstream" | null) => {
       store(session).update((draft) => {
         draft.traceKind = kind ?? undefined
       })
@@ -213,7 +213,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     /** Get the trace history index for the session. */
     traceHistoryIndex: (session: MountedSession) => sessionValue(session)?.traceHistoryIndex ?? -1,
     /** Push a trace history entry. */
-    pushTraceHistory: (session: MountedSession, entry: { kind: "why" | "led-here" | "related"; source: string; label: string }, index: number) => {
+    pushTraceHistory: (session: MountedSession, entry: { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }, index: number) => {
       store(session).update((draft) => {
         const history = draft.traceHistory ?? []
         const truncated = history.slice(0, index + 1)

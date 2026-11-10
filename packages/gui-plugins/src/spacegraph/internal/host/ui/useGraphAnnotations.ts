@@ -34,6 +34,7 @@ export type UseGraphAnnotationsReturn = {
   traceWhy: (nodeId: string) => void
   traceLedHere: (nodeId: string) => void
   traceRelated: (nodeId: string) => void
+  traceDownstream: (nodeId: string) => void
   traceBack: () => void
   traceForward: () => void
   clearTrace: () => void
@@ -150,6 +151,7 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
       "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
       related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
+      downstream: i18n.t("ui.sessionGraph.trace.downstreamAnnouncement", { label }),
     }
     options.onAnnounce(messages[kind])
   }
@@ -220,6 +222,7 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
   const traceWhy = (nodeId: string) => startTrace("why", nodeId)
   const traceLedHere = (nodeId: string) => startTrace("led-here", nodeId)
   const traceRelated = (nodeId: string) => startTrace("related", nodeId)
+  const traceDownstream = (nodeId: string) => startTrace("downstream", nodeId)
 
   return {
     notes,
@@ -239,6 +242,7 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     traceWhy,
     traceLedHere,
     traceRelated,
+    traceDownstream,
     traceBack,
     traceForward,
     clearTrace,

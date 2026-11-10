@@ -265,6 +265,48 @@ export function forwardChain(model: GraphViewData, id: string): GraphNode[] {
   return result
 }
 
+/**
+ * Downstream impact: nodes reachable by following `sequence`/`produces`/`writes` edges forward.
+ * Returns nodes in traversal order with their edge confidence.
+ * Used for the "What happened after this?" trace.
+ */
+export function downstreamChain(
+  model: GraphViewData,
+  from: string,
+): Array<{ node: GraphNode; edge: GraphEdge; confidence: "explicit" | "structural" | "inferred" }> {
+  const result: Array<{ node: GraphNode; edge: GraphEdge; confidence: "explicit" | "structural" | "inferred" }> = []
+  const seen = new Set([from])
+  const nodes = nodeIndex(model)
+  const downstreamKinds = new Set<GraphEdge["kind"]>(["sequence", "produces", "writes"])
+
+  let current = from
+
+  for (;;) {
+    // Find outgoing edges of the relevant kinds
+    const edges = model.edges.filter(
+      (edge) => edge.source === current && downstreamKinds.has(edge.kind),
+    )
+
+    if (edges.length === 0) break
+
+    // For now, follow the first edge (like forwardChain)
+    // In the future, this could handle forks (ambiguity display)
+    const edge = edges[0]
+    const nextId = edge.target
+
+    if (seen.has(nextId)) break
+
+    const node = nodes.get(nextId)
+    if (!node) break
+
+    seen.add(nextId)
+    result.push({ node, edge, confidence: edge.confidence })
+    current = nextId
+  }
+
+  return result
+}
+
 const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))
 
 /** The text a search matches against: the label, the summary, and the tool's name, path, and command. */
@@ -628,7 +670,7 @@ export function subagentSubgraph(model: GraphViewData, subagentID: string): Subg
 /**
  * The trace kinds the host exposes. Each trace answers one question.
  */
-export type TraceKind = "why" | "led-here" | "related"
+export type TraceKind = "why" | "led-here" | "related" | "downstream"
 
 /** The result of classifying a trace overlay over the model. */
 export type TraceOverlay = {
@@ -663,6 +705,12 @@ function traceAnswerIds(model: GraphViewData, kind: TraceKind, from: string): Se
       const result = new Set<string>()
       for (const edge of incoming(model, from)) result.add(edge.source)
       for (const edge of outgoing(model, from)) result.add(edge.target)
+      return result
+    }
+    case "downstream": {
+      const result = new Set<string>()
+      const chain = downstreamChain(model, from)
+      for (const { node } of chain) result.add(node.id)
       return result
     }
   }
@@ -829,6 +877,13 @@ export function traceLedHere(model: GraphViewData, from: string): TraceOverlay {
  */
 export function traceRelated(model: GraphViewData, from: string): TraceOverlay {
   return classifyTrace(model, "related", from)
+}
+
+/**
+ * Build a trace overlay for "Downstream impact" — follow sequence/produces/writes edges forward.
+ */
+export function traceDownstream(model: GraphViewData, from: string): TraceOverlay {
+  return classifyTrace(model, "downstream", from)
 }
 
 /**

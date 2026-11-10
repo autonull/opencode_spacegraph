@@ -13,6 +13,7 @@ export type GraphPopoverProps = Omit<GraphDetailProps, "node"> & {
   onTraceWhy?: GraphDetailProps["onTraceWhy"]
   onTraceLedHere?: GraphDetailProps["onTraceLedHere"]
   onTraceRelated?: GraphDetailProps["onTraceRelated"]
+  onTraceDownstream?: GraphDetailProps["onTraceDownstream"]
   onClearTrace?: GraphDetailProps["onClearTrace"]
   onCopyTraceOutline?: GraphDetailProps["onCopyTraceOutline"]
 }
@@ -60,6 +61,7 @@ export const GraphPopover = (props: GraphPopoverProps) => {
             onTraceWhy={props.onTraceWhy}
             onTraceLedHere={props.onTraceLedHere}
             onTraceRelated={props.onTraceRelated}
+            onTraceDownstream={props.onTraceDownstream}
             onClearTrace={props.onClearTrace}
             onCopyTraceOutline={props.onCopyTraceOutline}
             onEditNote={props.onEditNote}

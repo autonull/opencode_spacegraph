@@ -241,7 +241,7 @@ export const BUILTIN_LENSES: readonly {
 ]
 
 const TraceHistoryEntry = Schema.Struct({
-  kind: Schema.Literals(["why", "led-here", "related"]),
+  kind: Schema.Literals(["why", "led-here", "related", "downstream"]),
   source: Schema.String,
   label: Schema.String,
 })
@@ -257,7 +257,7 @@ const State = Schema.Struct({
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
   /** Shared trace state across surfaces. */
-  traceKind: Schema.optional(Schema.Literals(["why", "led-here", "related"])),
+  traceKind: Schema.optional(Schema.Literals(["why", "led-here", "related", "downstream"])),
   traceSource: Schema.optional(Schema.String),
   traceHistory: Schema.optional(Schema.Array(TraceHistoryEntry)),
   traceHistoryIndex: Schema.optional(Schema.Number),
