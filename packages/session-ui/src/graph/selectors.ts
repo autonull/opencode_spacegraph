@@ -2,7 +2,7 @@ import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
-import type { GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
+import type { Confidence, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
 import { PROVENANCE_EDGE_KINDS, READ_EDGE_KINDS } from "./vocabulary"
 
@@ -263,46 +263,84 @@ export function forwardChain(model: GraphViewData, id: string): GraphNode[] {
   return result
 }
 
+/** One step of a downstream trace: the node reached and the edge that reached it. */
+export type DownstreamStep = { node: GraphNode; edge: GraphEdge; confidence: Confidence }
+
+/** A downstream node with more than one forward branch. */
+export type DownstreamFork = {
+  /** The node where the chain splits. */
+  node: GraphNode
+  /** One step per distinct branch target, in model edge order. */
+  branches: DownstreamStep[]
+}
+
+const downstreamKinds = new Set<GraphEdge["kind"]>(["sequence", "produces", "writes"])
+
 /**
- * Downstream impact: nodes reachable by following `sequence`/`produces`/`writes` edges forward.
- * Returns nodes in traversal order with their edge confidence.
- * Used for the "What happened after this?" trace.
+ * Downstream impact: every node reachable by following `sequence`/`produces`/`writes` edges
+ * forward, in breadth-first order with the edge that first reached it. Branches stay visible
+ * instead of picking one edge, so a forked chain never reads as a single confident path.
  */
-export function downstreamChain(
-  model: GraphViewData,
-  from: string,
-): Array<{ node: GraphNode; edge: GraphEdge; confidence: "explicit" | "structural" | "inferred" }> {
-  const result: Array<{ node: GraphNode; edge: GraphEdge; confidence: "explicit" | "structural" | "inferred" }> = []
+export function downstreamChain(model: GraphViewData, from: string): DownstreamStep[] {
+  const result: DownstreamStep[] = []
   const seen = new Set([from])
   const nodes = nodeIndex(model)
-  const downstreamKinds = new Set<GraphEdge["kind"]>(["sequence", "produces", "writes"])
+  const queue = [from]
 
-  let current = from
+  for (let index = 0; index < queue.length; index++) {
+    const current = queue[index]
 
-  for (;;) {
-    // Find outgoing edges of the relevant kinds
-    const edges = model.edges.filter(
-      (edge) => edge.source === current && downstreamKinds.has(edge.kind),
-    )
+    for (const edge of model.edges) {
+      if (edge.source !== current || !downstreamKinds.has(edge.kind)) continue
 
-    if (edges.length === 0) break
+      if (seen.has(edge.target)) continue
 
-    // For now, follow the first edge (like forwardChain)
-    // In the future, this could handle forks (ambiguity display)
-    const edge = edges[0]
-    const nextId = edge.target
+      const node = nodes.get(edge.target)
 
-    if (seen.has(nextId)) break
+      if (!node) continue
 
-    const node = nodes.get(nextId)
-    if (!node) break
-
-    seen.add(nextId)
-    result.push({ node, edge, confidence: edge.confidence })
-    current = nextId
+      seen.add(node.id)
+      queue.push(node.id)
+      result.push({ node, edge, confidence: edge.confidence })
+    }
   }
 
   return result
+}
+
+/**
+ * The fork points inside a downstream trace. A fork is a reachable node with at least two distinct
+ * forward targets; parallel edges to the same target are not a fork. The caller renders the
+ * branches instead of guessing which one the reader meant.
+ */
+export function downstreamForks(model: GraphViewData, from: string): DownstreamFork[] {
+  const nodes = nodeIndex(model)
+  const reachable = [from, ...downstreamChain(model, from).map((step) => step.node.id)]
+  const forks: DownstreamFork[] = []
+
+  for (const id of reachable) {
+    const node = nodes.get(id)
+
+    if (!node) continue
+
+    const branches: DownstreamStep[] = []
+    const targets = new Set<string>()
+
+    for (const edge of model.edges) {
+      if (edge.source !== id || !downstreamKinds.has(edge.kind) || targets.has(edge.target)) continue
+
+      const target = nodes.get(edge.target)
+
+      if (!target) continue
+
+      targets.add(edge.target)
+      branches.push({ node: target, edge, confidence: edge.confidence })
+    }
+
+    if (branches.length > 1) forks.push({ node, branches })
+  }
+
+  return forks
 }
 
 const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))

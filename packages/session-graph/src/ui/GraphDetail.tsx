@@ -9,7 +9,7 @@ import {
   subagentContributions,
   type ActionSpec,
 } from "@opencode/session-ui/graph"
-import { nodeByID, openInTranscript, why } from "@opencode/session-ui/graph"
+import { nodeByID, openInTranscript, why, downstreamForks } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, createMemo, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
@@ -538,10 +538,12 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
         onTraceWhy={props.onTraceWhy}
         onTraceLedHere={props.onTraceLedHere}
         onTraceRelated={props.onTraceRelated}
+        onTraceDownstream={props.onTraceDownstream}
         onTraceBack={props.onTraceBack}
         onTraceForward={props.onTraceForward}
         onClearTrace={props.onClearTrace}
         onCopyTraceOutline={props.onCopyTraceOutline}
+        onSelect={props.onSelect}
       />
     </div>
   )
@@ -567,6 +569,7 @@ function GraphDetailActions(props: {
   onTraceForward?: () => void
   onClearTrace?: () => void
   onCopyTraceOutline?: (text: string) => void
+  onSelect: (id: string) => void
 }) {
   const i18n = useI18n()
 
@@ -648,6 +651,11 @@ function GraphDetailActions(props: {
         ]
 
   const history = props.traceHistory ?? []
+  const forkPoints = createMemo(() => {
+    if (props.traceKind !== "downstream") return []
+    const source = history[history.length - 1]?.source
+    return source ? downstreamForks(props.model, source) : []
+  })
 
   return (
     <div class="mt-4" data-component="graph-detail-actions" data-slot="graph-detail-actions">
@@ -690,6 +698,41 @@ function GraphDetailActions(props: {
             >
               <span class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.trace.forward")}</span>
             </button>
+          </div>
+        </Show>
+        <Show when={forkPoints().length > 0}>
+          <div
+            class="mb-2 rounded-sm border border-border-weak p-2"
+            data-component="graph-trace-forks"
+            data-slot="graph-trace-forks"
+          >
+            <div class="text-11-regular text-text-weak">
+              {i18n.plural("ui.sessionGraph.trace.fork", forkPoints().length)}
+            </div>
+            <div class="mt-0.5 text-11-regular text-text-weaker">
+              {i18n.t("ui.sessionGraph.trace.forkHint")}
+            </div>
+            <For each={forkPoints()}>
+              {(fork) => (
+                <div class="mt-2">
+                  <div class="text-12-regular text-text-base">{i18n.t("ui.sessionGraph.trace.forkAt", { label: fork.node.label })}</div>
+                  <div class="mt-1 flex flex-col gap-1">
+                    <For each={fork.branches}>
+                      {(branch) => (
+                        <button
+                          type="button"
+                          class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left hover:bg-surface-base-hover transition-colors"
+                          onClick={() => props.onSelect(branch.node.id)}
+                        >
+                          <span class="min-w-0 flex-1 truncate text-12-regular text-text-base">{branch.node.label}</span>
+                          <span class="text-11-regular text-text-weaker">{i18n.t(VOCABULARY_KEYS.confidence[branch.confidence])}</span>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              )}
+            </For>
           </div>
         </Show>
         <For each={actions}>
