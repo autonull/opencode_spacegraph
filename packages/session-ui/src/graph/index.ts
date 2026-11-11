@@ -187,12 +187,29 @@ export {
 export { compileNLQ, formatNLQResult, parseNLQ } from "./nlq"
 export {
   analyzeCompaction,
+  estimateNodeTokens,
   filterByCompactionPriority,
   getCompactionSummary,
+  measureCompaction,
   type CompactionAnalysis,
+  type CompactionMeasurement,
   type CompactionNode,
   type CompactionPriority,
 } from "./compaction"
+export {
+  clearAllSpatialMemory,
+  clearSpatialMemory,
+  decodeSpatialMemory,
+  graphContentHash,
+  readSpatialMemory,
+  spatialMemoryKey,
+  writeSpatialMemory,
+  SPATIAL_MEMORY_PREFIX,
+  type SpatialMemoryCamera,
+  type SpatialMemoryKey,
+  type SpatialMemoryRecord,
+  type SpatialMemoryStore,
+} from "./memory"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
 export { DOM_BUDGET } from "./dom-budget"

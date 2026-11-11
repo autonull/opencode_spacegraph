@@ -1,14 +1,26 @@
 import { createEffect, onCleanup } from "solid-js"
-import type { Position } from "@opencode/session-ui/graph"
+import {
+  graphContentHash,
+  readSpatialMemory,
+  writeSpatialMemory,
+  type Position,
+  type SpatialMemoryCamera,
+  type SpatialMemoryRecord,
+  type SpatialMemoryStore,
+} from "@opencode/session-ui/graph"
 import { sessionID } from "./node-data"
 
 /**
- * Persists and restores graph positions and selection per session.
- * Uses localStorage keyed by session ID and layout/level combination.
+ * Persists and restores graph positions, selection, camera, and collapsed groups per session.
+ * The key carries a structural content hash, so a changed session never restores a stale frame.
  */
 export interface SpatialMemoryConfig {
-  /** Get the current session's graph model to extract session ID. */
-  model: () => { root: string; nodes: { id: string; data?: Record<string, unknown> }[] }
+  /** Get the current session's graph model to extract session ID and content hash. */
+  model: () => {
+    root: string
+    nodes: { id: string; kind: string; turnID?: string; clusterOf?: string[]; data?: Record<string, unknown> }[]
+    turns?: readonly string[]
+  }
   /** Get current layout. */
   layout: () => string
   /** Get current zoom level. */
@@ -17,151 +29,110 @@ export interface SpatialMemoryConfig {
   positions: () => ReadonlyMap<string, Position> | undefined
   /** Get current selection. */
   selection: () => string | undefined
-  /** Called when positions should be restored (after model/layout ready). */
-  onRestore?: (positions: Record<string, [number, number, number]>, selection: string | undefined) => void
-  /** Called when positions are saved. */
-  onSave?: (positions: Record<string, [number, number, number]>, selection: string | undefined) => void
+  /** Get the renderer's current viewport, when it has reported one. */
+  camera?: () => SpatialMemoryCamera | undefined
+  /** Get the groups the reader collapsed. */
+  collapsedGroups?: () => ReadonlySet<string>
+  /** Called when a stored frame matches the current session structure. */
+  onRestore?: (record: SpatialMemoryRecord) => void
+  /** Called when a frame is saved. */
+  onSave?: (record: SpatialMemoryRecord) => void
   /** Whether this instance owns the spatial memory (writes). Default true.
-   *  Secondary instances (inline previews, popovers) should set to false to read but not write. */
+   *  Secondary instances (inline previews, popovers) read but do not write. */
   owner?: boolean
 }
 
-const STORAGE_PREFIX = "sessionGraph.spatialMemory."
-const MAX_STORAGE_ENTRIES = 50
-
-function getSessionKey(model: { root: string; nodes: { id: string; data?: Record<string, unknown> }[] }): string {
-  const rootNode = model.nodes.find((n) => n.id === model.root)
-  return rootNode ? sessionID(rootNode) ?? "unknown" : "unknown"
-}
-
-function getStorageKey(config: SpatialMemoryConfig): string {
-  const sessionKey = getSessionKey(config.model())
-  return `${STORAGE_PREFIX}${sessionKey}:${config.layout()}:${config.level()}`
-}
-
-function loadSpatialMemory(key: string): { positions: Record<string, [number, number, number]>; selection: string | undefined } | null {
-  if (typeof window === "undefined") return null
-  try {
-    const stored = localStorage.getItem(key)
-    if (!stored) return null
-    const parsed = JSON.parse(stored)
-    if (!parsed.positions || typeof parsed.positions !== "object") return null
-    return {
-      positions: parsed.positions,
-      selection: parsed.selection,
-    }
-  } catch {
-    return null
-  }
-}
-
-function saveSpatialMemory(key: string, positions: Record<string, [number, number, number]>, selection: string | undefined): void {
-  if (typeof window === "undefined") return
-  try {
-    // Prune old entries if we're at capacity
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith(STORAGE_PREFIX))
-    if (keys.length >= MAX_STORAGE_ENTRIES) {
-      // Remove oldest entries (by timestamp in value)
-      const entries = keys
-        .map((k) => {
-          try {
-            const v = JSON.parse(localStorage.getItem(k) ?? "{}")
-            return { key: k, timestamp: v.timestamp ?? 0 }
-          } catch {
-            return { key: k, timestamp: 0 }
-          }
-        })
-        .sort((a, b) => a.timestamp - b.timestamp)
-      // Remove oldest 10%
-      const toRemove = Math.ceil(keys.length * 0.1)
-      for (let i = 0; i < toRemove && i < entries.length; i++) {
-        localStorage.removeItem(entries[i].key)
-      }
-    }
-
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        positions,
-        selection,
-        timestamp: Date.now(),
-      })
-    )
-  } catch {
-    // Ignore storage errors (quota exceeded, etc.)
-  }
-}
+const SAVE_DEBOUNCE_MS = 1000
 
 export function useSpatialMemory(config: SpatialMemoryConfig) {
   let restored = false
+  let saveTimeout: ReturnType<typeof setTimeout> | undefined
   const isOwner = config.owner ?? true
 
-  // Restore positions when model/layout/level are ready
   createEffect(() => {
     if (restored) return
 
-    const positions = config.positions()
     const model = config.model()
-    const hasModel = model.nodes.length > 0
+    const positions = config.positions()
+    if (model.nodes.length === 0 || !positions) return
 
-    if (hasModel && positions) {
-      const key = getStorageKey(config)
-      const memory = loadSpatialMemory(key)
+    // The first complete model is the one a stored frame belongs to. Do not let a later streaming
+    // model match an older key and restore over the map that is already on screen.
+    restored = true
 
-      if (memory && Object.keys(memory.positions).length > 0) {
-        config.onRestore?.(memory.positions, memory.selection)
-        restored = true
-      }
-    }
-  })
+    const store = memoryStore()
+    if (!store) return
 
-  // Save positions when they change (debounced) - only if owner
-  let saveTimeout: ReturnType<typeof setTimeout> | undefined
-  onCleanup(() => {
-    if (saveTimeout) clearTimeout(saveTimeout)
+    const record = readSpatialMemory(store, memoryParts(model, config))
+    if (record) config.onRestore?.(record)
   })
 
   createEffect(() => {
     if (!isOwner) return
 
     const positions = config.positions()
-    const selection = config.selection()
-
     if (!positions || positions.size === 0) return
 
-    // Convert Map to Record
-    const positionsRecord: Record<string, [number, number, number]> = {}
-    for (const [id, pos] of positions) {
-      positionsRecord[id] = [pos.x, pos.y, pos.z]
-    }
+    // Track the cheap values every frame; serialize the map and hash only after the reader rests.
+    config.selection()
+    config.camera?.()
+    config.collapsedGroups?.()
 
-    // Debounce saves
     if (saveTimeout) clearTimeout(saveTimeout)
     saveTimeout = setTimeout(() => {
-      const key = getStorageKey(config)
-      saveSpatialMemory(key, positionsRecord, selection)
-      config.onSave?.(positionsRecord, selection)
-    }, 1000)
+      saveTimeout = undefined
+      const current = config.positions()
+      if (!current || current.size === 0) return
+
+      const record: SpatialMemoryRecord = {
+        positions: Object.fromEntries(
+          [...current].map(([id, point]) => [id, [point.x, point.y, point.z] as [number, number, number]]),
+        ),
+        selection: config.selection(),
+        camera: config.camera?.(),
+        collapsedGroups: [...(config.collapsedGroups?.() ?? [])],
+      }
+      const store = memoryStore()
+      if (!store) return
+      writeSpatialMemory(store, memoryParts(config.model(), config), record)
+      config.onSave?.(record)
+    }, SAVE_DEBOUNCE_MS)
+  })
+
+  onCleanup(() => {
+    if (saveTimeout) clearTimeout(saveTimeout)
   })
 }
 
-/**
- * Clears spatial memory for a specific session/layout/level.
- */
-export function clearSpatialMemory(sessionKey: string, layout: string, level: string): void {
-  if (typeof window === "undefined") return
-  const key = `${STORAGE_PREFIX}${sessionKey}:${layout}:${level}`
-  localStorage.removeItem(key)
+function memoryParts(
+  model: ReturnType<SpatialMemoryConfig["model"]>,
+  config: SpatialMemoryConfig,
+) {
+  return {
+    sessionKey: getSessionKey(model),
+    layout: config.layout(),
+    level: config.level(),
+    hash: graphContentHash(model),
+  }
 }
 
-/**
- * Clears all spatial memory for a session.
- */
-export function clearAllSpatialMemory(sessionKey: string): void {
-  if (typeof window === "undefined") return
-  const prefix = `${STORAGE_PREFIX}${sessionKey}:`
-  const keys = Object.keys(localStorage).filter((k) => k.startsWith(prefix))
-  for (const key of keys) {
-    localStorage.removeItem(key)
+function getSessionKey(model: { root: string; nodes: { id: string; data?: Record<string, unknown> }[] }): string {
+  const rootNode = model.nodes.find((node) => node.id === model.root)
+  return rootNode ? sessionID(rootNode) ?? "unknown" : "unknown"
+}
+
+function memoryStore(): SpatialMemoryStore | undefined {
+  if (typeof window === "undefined") return undefined
+
+  try {
+    const storage = window.localStorage
+    return {
+      getItem: (key) => storage.getItem(key),
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem(key),
+      keys: () => Object.keys(storage),
+    }
+  } catch {
+    return undefined
   }
 }

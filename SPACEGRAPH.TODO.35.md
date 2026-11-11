@@ -1,19 +1,22 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-11):** M0 foundation repair is complete (M0.1–M0.10). One canonical capture
-> gate and suite tags are in place. Phases 14–19.4 are complete. `SPACEGRAPH.TODO.34.md` is the
-> frozen design and history reference; this file is the single source of truth for remaining work.
+> **Status (2026-11-11):** M0 foundation repair and M1 memory/decisions are complete
+> (M0.1–M0.10, M1.1–M1.2). One canonical capture gate and suite tags are in place. Phases 14–19.4 are
+> complete. `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the
+> single source of truth for remaining work.
 >
-> **Baseline:** through Phase 19.4, commit `56e99f4cdd`, plus the M0 foundation and gate commits.
-> Canonical local suites: `packages/session-ui` `bun test src/graph` 324 tests / 30 files,
+> **Baseline:** through Phase 19.4, commit `56e99f4cdd`, plus the M0 foundation, M1 memory, and gate
+> commits. Canonical local suites: `packages/session-ui` `bun test src/graph` 335 tests / 32 files,
 > `packages/session-graph` `bun test src` 96 / 12, `packages/gui-plugins` `bun run test` 1,160 / 115
-> (1 skip, includes the 20 parity tests), and root `bun run check` green (53/53, 0 lint errors).
+> (1 skip, includes the 8-test parity file), and root `bun run check` green (53/53, 0 lint errors).
 >
-> **Next:** M1.1 (19.5 spatial memory v2) and M1.2 (19.3 compaction-advisor measurement).
+> **Next:** M2.1 (19.6 notes and pins) and M2.2 (19.7 orchestration).
 
 ### Session handoff
 
-- All M0 work is done. Start with **M1.1** and **M1.2**.
+- M0 and M1 are done. Start with **M2.1**, **M2.2**, then the deferred gaps in M2.3/M2.4.
+- The compaction advisor is **parked** (M1.2): it does not beat the keep-all baseline on the
+  canonical fixture. Keep the component and the `graph_compaction_advisor` flag; do not foreground it.
 - The bundled graph copy is generated: edit `packages/session-ui/src/graph`, then run
   `bun run sync:graph` in `packages/gui-plugins`. `bun run check:graph` (also run by `bun test`)
   fails on drift, and `packages/gui-plugins/src/spacegraph/graph-parity.test.ts` proves behavior
@@ -161,23 +164,48 @@ commands published in M0.7.
 
 ### M1.1 — 19.5 Spatial memory v2
 
-- [ ] Key positions by `session + layout + level` plus a content hash so changed turns do not restore a
-      stale frame.
-- [ ] Restore selection, camera, and collapsed groups.
-- [ ] Keep secondary inline graphs read-only for memory (owner rule from Phase 14).
-- [ ] **Kill:** drift on changed turns. Then keep session-local memory only.
-- [ ] Test: changed-turn fixture restores the same frame only when the hash matches.
+- [x] Key positions by `session + layout + level` plus a content hash so changed turns do not restore a
+      stale frame. **Done.** `packages/session-ui/src/graph/memory.ts` owns the key, the FNV-1a
+      structural hash, record validation, pruning, and clearing. The hash covers node ids, kinds,
+      turns, and group membership; streaming labels do not change it. `useSpatialMemory` delegates to
+      it and stops after the first complete model, so a later streaming key cannot restore over the
+      visible map.
+- [x] Restore selection, camera, and collapsed groups. **Done.** The record carries positions,
+      selection, camera (`zoom` plus a 3-axis centre), and explicit collapsed groups. The camera is
+      popped once by the structural fit effect after the renderer mounts, so the mount fit cannot
+      overwrite it. Selection restores only when the node still exists.
+- [x] Keep secondary inline graphs read-only for memory (owner rule from Phase 14). **Done.**
+      `SessionGraph` gains `spatialMemoryOwner` (default true). `GraphInline`, the turn-map layer,
+      and the turn-map dialog pass `false`; they read the session frame and never write it.
+- [x] **Kill:** drift on changed turns. **Result:** no drift. A changed structure produces a different
+      key and no record is read. Keep session-local `localStorage` memory only.
+- [x] Test: changed-turn fixture restores the same frame only when the hash matches. **Done.**
+      `memory.test.ts` proves the same fixture restores the record, a layout/level mismatch does not,
+      a removed node changes the hash, and malformed records are rejected.
 
 ### M1.2 — 19.3 Compaction-advisor kill measurement
 
-- [ ] Define the baseline: the existing compaction path on the canonical fixture.
-- [ ] Measure decision-spine retention, dropped tokens, advisor latency, and whether the reader can
-      name the decision without opening the transcript.
-- [ ] Compare advisor policy against baseline and record the numbers here.
-- [ ] **Decision:** keep, tune, or park. If parked, hide the affordance behind the flag default and keep
-      the component for research.
+- [x] Define the baseline: the existing compaction path on the canonical fixture. **Done.** Baseline
+      is the current keep-all path with the advisor off: all 46 fixture nodes visible.
+- [x] Measure decision-spine retention, dropped tokens, advisor latency, and whether the reader can
+      name the decision without opening the transcript. **Done.** The token proxy is content length at
+      four characters per token (label + summary + data), exposed by `measureCompaction`.
+- [x] Compare advisor policy against baseline and record the numbers here. **Done.**
+      - Fixture: 46 nodes, 31 decision-spine nodes, 855 estimated tokens.
+      - Baseline keep-all: 46 kept, 855 tokens, 0 dropped (0%), spine 31/31 (100%).
+      - Advisor at `normal`: 46 kept, 855 tokens, 0 dropped (0%), spine 31/31 (100%).
+      - No fixture node reaches `low` or `drop`, so the advisor saves nothing.
+      - Advisor latency: ~0.18 ms per analyze+measure on this machine (test budget < 5 ms).
+      - Reader check: yes. The spine carries `FAIL auth refresh token`, `Expected refresh token to be
+        stored`, `fixed refresh path`, and `3 pass 0 fail`.
+- [x] **Decision:** **park.** The advisor does not beat the keep-all baseline on the fixture. Keep
+      `GraphCompactionAdvisor`, keep `graph_compaction_advisor` default-off in releases, and do not
+      foreground the affordance. The token row now reports the content-derived kept count instead of
+      `nodes × 100`. Revisit only when a fixture or real session produces `low`/`drop` candidates; the
+      measurement is locked by `compaction-measure.test.ts`.
 
 **Exit:** memory restores correctly; compaction advisor has a recorded keep/tune/park decision.
+**Met:** M1.1 keep (session-local), M1.2 park.
 
 ---
 
@@ -382,8 +410,8 @@ commands published in M0.7.
 
 | Capability | Decision needed | Evidence |
 |---|---|---|
-| 19.3 Compaction advisor | Keep / tune / park | Baseline comparison on fixture |
-| 19.5 Spatial memory | Keep session-local only | Drift test on changed turns |
+| 19.3 Compaction advisor | **Parked** | 0 of 46 nodes dropped, 0 tokens saved, spine 31/31; ~0.18 ms latency (M1.2) |
+| 19.5 Spatial memory | **Keep session-local only** | Hash miss on changed structure; same structure restores (M1.1) |
 | 19.6 Notes and pins | Foreground or keep quiet | Study usage |
 | 19.8 Palette | Keep or `/` only | Time-to-action vs typing `/` |
 | 19.9 Widgets | Per-widget pass/park | Saved click or context switch |
@@ -398,7 +426,7 @@ commands published in M0.7.
 
 | Decision | Needed by | Default if unresolved |
 |---|---|---|
-| Compaction baseline definition | M1.2 | Current compaction path on canonical fixture |
+| ~~Compaction baseline definition~~ | ~~M1.2~~ | Resolved: keep-all path, 46 nodes / 855 tokens |
 | Palette speed metric | M5.1 | Median time-to-node vs `/` |
 | Per-widget success metric | M3.1 | One saved click or context switch |
 | Renderer strategy thresholds | M5.3 | Keep SpaceGraph only |
@@ -491,3 +519,19 @@ this file's revision log and leave the v34 archive unchanged.
   - Verified: root `bun run check` 53/53; `graph-legend` component spec passes under the tagged
     config; `capture-clips` reports 4 skipped without the demo env; `playwright test --list` assigns
     the capture files only to `graph-capture`.
+- **r4 (2026-11-11):** Completed M1.1 and M1.2.
+  - Spatial memory v2: `session-ui/src/graph/memory.ts` adds the structural FNV-1a hash, the
+    `session:layout:level:hash` key, record validation, pruning, and clearing. The hook restores
+    positions, selection, camera, and explicit collapsed groups in one record. The camera is applied
+    by the structural fit effect after mount instead of before it, and `spatialMemoryOwner` keeps
+    inline and turn-map instances read-only. Old hash-less keys are ignored once.
+  - Tests: `memory.test.ts` covers same-structure restore, layout/level mismatch, changed-turn hash
+    miss, clearing across hashes, malformed records, and key shape. `session-ui` graph suite is now
+    335 tests / 32 files.
+  - Compaction measurement: added `measureCompaction` and `estimateNodeTokens`; the advisor token row
+    now shows the content-derived kept count. `compaction-measure.test.ts` locks the fixture numbers
+    and the decision narrative. Result: 46 nodes / 855 estimated tokens, 0 dropped, spine 31/31,
+    ~0.18 ms latency. Decision: **park**; flag stays default-off in releases.
+  - Regenerated the bundled graph copy (`sync:graph`, 42 modules) and updated the parity/export set.
+  - Verified: `bun test src/graph` 335/32, `bun test src` 96/12 in `session-graph`, `bun run test`
+    1,160/115 in `gui-plugins`, root `bun run check` 53/53, and `check:graph` clean.

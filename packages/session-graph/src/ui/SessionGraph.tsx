@@ -16,6 +16,7 @@ import type {
   GraphSide,
   Layout,
   Position,
+  SpatialMemoryCamera,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { buildFixtureGraph } from "@opencode/session-ui/graph"
@@ -312,6 +313,12 @@ export type SessionGraphProps = {
   /** Controlled group collapse state (Phase 17.2 shared state). */
   explicitlyCollapsedGroups?: ReadonlySet<string>
   onExplicitlyCollapsedGroupsChange?: (groups: ReadonlySet<string>) => void
+
+  /**
+   * Whether this instance writes spatial memory. Secondary inline graphs read the session's frame
+   * but never overwrite it. Defaults to true for the primary surface.
+   */
+  spatialMemoryOwner?: boolean
 
   /** Controlled notes/annotations state (Phase 17.2 shared state). */
   notes?: Annotations
@@ -802,17 +809,36 @@ export const SessionGraph = (props: SessionGraphProps) => {
   // Display positions
   const displayPositions = useDisplayPositions(geometry, manual) as () => Map<string, Position>
 
-  // Spatial memory: persist/restore positions and selection across visits
+  // Spatial memory: restore the frame the reader left, when the map still has the same structure.
+  // The camera is applied by the fit effects after the renderer mounts, so the mount fit does not
+  // overwrite the stored view.
+  let pendingCamera: SpatialMemoryCamera | undefined
+  const takeRestoredCamera = () => {
+    const camera = pendingCamera
+    pendingCamera = undefined
+    return camera
+  }
   useSpatialMemory({
     model: demoModel,
     layout,
     level,
     positions: displayPositions,
     selection: () => selection()[0],
-    owner: true,
-    onRestore: (positions, sel) => {
-      manualPositions.setManual("positions", positions)
-      if (sel) select(sel, false)
+    camera: () => {
+      const viewport = viewportTracker?.viewport()
+      if (!viewport) return undefined
+      return {
+        zoom: viewport.zoom,
+        center: [viewport.center[0], viewport.center[1], viewport.center[2] ?? 0],
+      }
+    },
+    collapsedGroups: () => groupCollapse.explicitlyCollapsedGroups(),
+    owner: props.spatialMemoryOwner ?? true,
+    onRestore: (record) => {
+      manualPositions.setManual("positions", record.positions)
+      if (record.selection && nodeByID(demoModel(), record.selection)) select(record.selection, false)
+      setExplicitlyCollapsedGroups(new Set(record.collapsedGroups))
+      pendingCamera = record.camera
     },
   })
 
@@ -1190,6 +1216,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
       selection: selectionObj,
       rendererReady,
       inspectorOpen,
+      takeRestoredCamera,
     },
   )
 

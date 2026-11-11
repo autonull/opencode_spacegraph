@@ -1,7 +1,7 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show } from "solid-js"
 import type { CompactionAnalysis, CompactionNode } from "@opencode/session-ui/graph"
-import { analyzeCompaction, filterByCompactionPriority, getCompactionSummary } from "@opencode/session-ui/graph"
+import { analyzeCompaction, filterByCompactionPriority, getCompactionSummary, measureCompaction } from "@opencode/session-ui/graph"
 import type { GraphViewData } from "@opencode/session-ui/graph"
 
 export type GraphCompactionAdvisorProps = {
@@ -35,6 +35,7 @@ const PRIORITY_COLORS = {
 export const GraphCompactionAdvisor = (props: GraphCompactionAdvisorProps) => {
   const i18n = useI18n()
   const analysis = analyzeCompaction(props.model)
+  const measurement = measureCompaction(analysis)
 
   const nodesByPriority = (priority: CompactionNode["compactionPriority"]) =>
     filterByCompactionPriority(analysis, priority)
@@ -49,7 +50,7 @@ export const GraphCompactionAdvisor = (props: GraphCompactionAdvisorProps) => {
           {i18n.t("ui.sessionGraph.compactionAdvisor.title")}
         </div>
         <span class="text-11-regular text-text-weak tabular-nums">
-          {i18n.t("ui.sessionGraph.compactionAdvisor.tokens", { count: Math.round(totalNodes * 100) })}
+          {i18n.t("ui.sessionGraph.compactionAdvisor.tokens", { count: measurement.keptTokens })}
         </span>
       </div>
 
