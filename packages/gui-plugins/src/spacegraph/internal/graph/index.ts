@@ -55,6 +55,13 @@ export {
 } from "./incremental-builder"
 
 export {
+  TIME_TRAVEL_LIMIT,
+  captureTimeTravel,
+  graphAtCheckpoint,
+  type TimeTravelSnapshot,
+} from "./time-travel"
+
+export {
   CARD_SIZE,
   COMPACT_SIZE,
   DETAIL_MODES,
@@ -136,6 +143,8 @@ export {
   turnSubgraph,
   unverifiedFiles,
   why,
+  downstreamForks,
+  evidenceFor,
   // Trace overlay types and functions
   classifyTrace,
   traceWhy,
@@ -149,6 +158,11 @@ export {
   isAnswer,
   isEdgeVisible,
   isAnswerEdge,
+  type DownstreamFork,
+  type DownstreamStep,
+  type EvidenceGroup,
+  type EvidenceItem,
+  type EvidenceKind,
   type TraceKind,
   type TraceOverlay,
   type ChangedFile,

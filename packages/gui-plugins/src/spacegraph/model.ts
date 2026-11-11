@@ -14,9 +14,13 @@ import {
   type ZoomLevel,
   type DetailMode,
   buildGraphIncremental,
+  captureTimeTravel,
+  graphAtCheckpoint,
   layoutGraph,
   type GraphLayout,
+  type GraphViewData,
   type IncrementalBuilderState,
+  type TimeTravelSnapshot,
   type Annotations,
 } from "@opencode/session-ui/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
@@ -42,6 +46,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
   /** Incremental graph builder state per session. */
   const graphState = new Map<string, { builderState: IncrementalBuilderState; layout: GraphLayout }>()
+
+  /** Bounded per-session checkpoints for the time-travel scrubber. */
+  const timeTravel = new Map<string, TimeTravelSnapshot[]>()
+
+  const timeTravelEnabled = () => ctx.flags.enabled("graph_time_travel")
 
   /** Shared graph memo - built incrementally per session, reused by panel, full-map, hybrid, etc. */
   const graph = (session: MountedSession) =>
@@ -70,6 +79,9 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
       // Store the new state for next incremental update
       graphState.set(key, { builderState: state, layout })
+
+      // Phase 19.4: capture the new turn checkpoints while the model still describes that turn.
+      if (timeTravelEnabled()) timeTravel.set(key, captureTimeTravel(builtGraph, timeTravel.get(key)))
 
       return builtGraph
     })
@@ -190,6 +202,37 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     },
     /** The shared graph memo for this session. */
     graph,
+    /** Whether the host exposes the time-travel scrubber. */
+    timeTravelEnabled,
+    /** The parked checkpoint index, or undefined for live. */
+    checkpoint: (session: MountedSession) => sessionValue(session)?.checkpoint,
+    /** Whether the session is parked away from live. */
+    parked: (session: MountedSession) => sessionValue(session)?.checkpoint !== undefined,
+    /** The checkpoint shown by the scrubber: the last turn when live, otherwise the parked index. */
+    checkpointIndex: (session: MountedSession, model: GraphViewData) => {
+      if (model.turns.length === 0) return undefined
+
+      const checkpoint = sessionValue(session)?.checkpoint
+
+      if (checkpoint === undefined) return model.turns.length - 1
+
+      return Math.max(0, Math.min(checkpoint, model.turns.length - 1))
+    },
+    /** Park at a turn, or return to live when the final turn is selected. */
+    setCheckpoint: (session: MountedSession, index: number, turnCount: number) => {
+      const checkpoint = turnCount <= 1 || index >= turnCount - 1 ? undefined : Math.max(0, Math.trunc(index))
+      store(session).update((draft) => {
+        draft.checkpoint = checkpoint
+      })
+    },
+    /** The graph at the parked checkpoint, or the supplied live model when live. */
+    graphAt: (session: MountedSession, model: GraphViewData) => {
+      const checkpoint = sessionValue(session)?.checkpoint
+
+      if (checkpoint === undefined || !timeTravelEnabled()) return model
+
+      return graphAtCheckpoint(model, timeTravel.get(session.id) ?? [], checkpoint)
+    },
 
     // Shared state accessors (Phase 17.2)
     /** Get the trace kind for the session. */

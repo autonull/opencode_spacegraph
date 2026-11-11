@@ -60,7 +60,10 @@ export default function SpacegraphPanel(props: {
   const [searchResults, setSearchResults] = createSignal<SessionGraphNode[]>([])
   const [searchIndex, setSearchIndex] = createSignal(0)
 
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = createMemo(() => props.model.graphAt(props.session, live()))
+  const timeTravel = () => props.model.timeTravelEnabled()
+  const turnCount = () => live().turns.length
 
   const search = (query: string) => {
     const results = navigationResults(graph(), query) ?? rankedSearch(graph(), query)
@@ -156,7 +159,7 @@ export default function SpacegraphPanel(props: {
         const widgetProps: ComposerNodeWidgetProps = {
           node,
           composer: composerInstance,
-          readOnly: false,
+          readOnly: props.model.parked(props.session),
           maxHeight: 140,
         }
 
@@ -227,6 +230,12 @@ export default function SpacegraphPanel(props: {
           selection={focused()}
           frame={focused()}
           activeTurn={graph().activeTurn}
+          liveModel={timeTravel() ? live() : undefined}
+          checkpoint={timeTravel() ? props.model.checkpointIndex(props.session, live()) : undefined}
+          turnCount={timeTravel() ? turnCount() : undefined}
+          onCheckpoint={
+            timeTravel() ? (index: number) => props.model.setCheckpoint(props.session, index, turnCount()) : undefined
+          }
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
             const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)

@@ -1,6 +1,7 @@
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { SessionGraph } from "@opencode/session-graph"
+import { createMemo } from "solid-js"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 
@@ -11,7 +12,10 @@ export function MapSurface(props: {
   onSplitView?: () => void
   onOpenTranscript?: (id: string) => void
 }) {
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = createMemo(() => props.model.graphAt(props.session, live()))
+  const timeTravel = () => props.model.timeTravelEnabled()
+  const turnCount = () => live().turns.length
 
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer()
@@ -30,6 +34,12 @@ export function MapSurface(props: {
         selection={focused()}
         frame={focused()}
         activeTurn={graph().activeTurn}
+        liveModel={timeTravel() ? live() : undefined}
+        checkpoint={timeTravel() ? props.model.checkpointIndex(props.session, live()) : undefined}
+        turnCount={timeTravel() ? turnCount() : undefined}
+        onCheckpoint={
+          timeTravel() ? (index: number) => props.model.setCheckpoint(props.session, index, turnCount()) : undefined
+        }
         onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
         onLayoutChange={(next: string) => {
           const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)

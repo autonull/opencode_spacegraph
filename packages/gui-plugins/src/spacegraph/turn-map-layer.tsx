@@ -53,7 +53,8 @@ export function TurnMapLayer(props: {
     }
   }
 
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = () => props.model.graphAt(props.session, live())
 
   const turn = () => {
     const messageID = props.screen.transcript.activeMessageID()
