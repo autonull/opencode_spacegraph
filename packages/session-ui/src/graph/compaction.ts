@@ -223,12 +223,65 @@ export function filterByCompactionPriority(
   })
 }
 
+export type CompactionMeasurement = {
+  totalNodes: number
+  keptNodes: number
+  droppedNodes: number
+  /** Content-derived token proxy: label, summary and data at four characters per token. */
+  totalTokens: number
+  keptTokens: number
+  droppedTokens: number
+  droppedShare: number
+  decisionSpine: number
+  decisionSpineRetained: number
+  decisionSpineRetention: number
+}
+
+/** The graph has no tokenizer; content length at four characters per token is the stable proxy. */
+export function estimateNodeTokens(node: GraphNode): number {
+  const content = `${node.label}\n${node.summary ?? ""}\n${node.data ? JSON.stringify(node.data) : ""}`
+  return Math.max(1, Math.ceil(content.length / 4))
+}
+
+/**
+ * Measures the advisor against the existing keep-all baseline: what the spine retains and what the
+ * drop set saves. The canonical fixture locks the numbers so a policy change cannot drift silently.
+ */
+export function measureCompaction(
+  analysis: CompactionAnalysis,
+  minPriority: CompactionPriority = "normal",
+): CompactionMeasurement {
+  const kept = new Set(filterByCompactionPriority(analysis, minPriority).map((node) => node.id))
+  const totalTokens = analysis.nodes.reduce((sum, node) => sum + estimateNodeTokens(node), 0)
+  const keptTokens = analysis.nodes.reduce(
+    (sum, node) => (kept.has(node.id) ? sum + estimateNodeTokens(node) : sum),
+    0,
+  )
+  const decisionSpineRetained = analysis.decisionSpine.filter((id) => kept.has(id)).length
+  const droppedTokens = totalTokens - keptTokens
+
+  return {
+    totalNodes: analysis.nodes.length,
+    keptNodes: kept.size,
+    droppedNodes: analysis.nodes.length - kept.size,
+    totalTokens,
+    keptTokens,
+    droppedTokens,
+    droppedShare: totalTokens === 0 ? 0 : droppedTokens / totalTokens,
+    decisionSpine: analysis.decisionSpine.length,
+    decisionSpineRetained,
+    decisionSpineRetention:
+      analysis.decisionSpine.length === 0 ? 1 : decisionSpineRetained / analysis.decisionSpine.length,
+  }
+}
+
 /**
  * Get a summary of what would be kept/dropped at each priority level.
  */
 export function getCompactionSummary(analysis: CompactionAnalysis): string {
   const { stats, decisionSpine } = analysis
   const total = stats.critical + stats.high + stats.normal + stats.low + stats.drop
+  const measurement = measureCompaction(analysis)
 
   return (
     `Compaction Analysis:\n` +
@@ -240,6 +293,8 @@ export function getCompactionSummary(analysis: CompactionAnalysis): string {
     `  Low (drop candidate): ${stats.low}\n` +
     `  Drop: ${stats.drop}\n` +
     `  Would keep at "normal": ${stats.critical + stats.high + stats.normal} (${Math.round(((stats.critical + stats.high + stats.normal) / total) * 100)}%)\n` +
-    `  Would keep at "high": ${stats.critical + stats.high} (${Math.round(((stats.critical + stats.high) / total) * 100)}%)`
+    `  Would keep at "high": ${stats.critical + stats.high} (${Math.round(((stats.critical + stats.high) / total) * 100)}%)\n` +
+    `  Estimated tokens: ${measurement.totalTokens}; keep at "normal": ${measurement.keptTokens} (drop ${measurement.droppedTokens}, ${Math.round(measurement.droppedShare * 100)}%)\n` +
+    `  Decision spine retained: ${measurement.decisionSpineRetained}/${measurement.decisionSpine} (${Math.round(measurement.decisionSpineRetention * 100)}%)`
   )
 }

@@ -1,6 +1,6 @@
 import { createEffect, createSignal, untrack } from "solid-js"
 import type { GraphRenderer } from "@spacegraphjs/renderer"
-import type { Layout, GraphArrangement } from "@opencode/session-ui/graph"
+import type { Layout, GraphArrangement, SpatialMemoryCamera } from "@opencode/session-ui/graph"
 
 export function useFitEffects(
   props: {
@@ -24,6 +24,8 @@ export function useFitEffects(
     selection: { selection: () => readonly string[] }
     rendererReady: () => boolean
     inspectorOpen: () => boolean
+    /** Pops a stored camera exactly once, on the renderer that should receive it. */
+    takeRestoredCamera?: () => SpatialMemoryCamera | undefined
   },
 ) {
   // LE.1: frame the drawn content on first load, renderer/level/projection/layout change, inspector toggle
@@ -62,6 +64,19 @@ export function useFitEffects(
     if (!instance) return
     const vt = state.viewportTracker
     if (!vt) return
+
+    const restored = state.takeRestoredCamera?.()
+    if (restored && instance.setViewport) {
+      instance.setViewport({ zoom: restored.zoom, center: restored.center })
+      vt.setViewport({
+        zoom: restored.zoom,
+        center: [...restored.center],
+        extent: vt.viewport()?.extent,
+        band: vt.viewport()?.band,
+      })
+      return
+    }
+
     untrack(() =>
       vt.camera.request(() => instance.fit(untrack(state.contentIDs), untrack(state.fitOptions))),
     )

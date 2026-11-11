@@ -177,6 +177,7 @@ export function TurnMapDialog(props: {
               chrome={false}
               shell="bare"
               reducedMotion={true}
+              spatialMemoryOwner={false}
               onOpenTranscript={props.onOpenTranscript}
             />
           </div>

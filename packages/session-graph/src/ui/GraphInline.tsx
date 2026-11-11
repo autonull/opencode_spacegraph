@@ -48,7 +48,7 @@ export const GraphPreview = (props: GraphPreviewProps) => {
  * - shell: "bare" removes demo banner and applies min-h-0 layout
  * - chrome: false to hide all chrome (toolbar, inspector, etc.)
  * - height: explicit height for the inline box (required for WebGL mount)
- * - persist: false to disable spatial memory writes for inline instances
+ * - The inline instance reads spatial memory but never writes it (`spatialMemoryOwner={false}`)
  * - reducedMotion: respect reduced motion preference
  */
 export interface GraphInlineProps {
@@ -201,6 +201,7 @@ export const GraphInline = (props: GraphInlineProps) => {
           endInset={props.endInset}
           reducedMotion={props.reducedMotion ?? true}
           breakpoints={props.breakpoints}
+          spatialMemoryOwner={false}
           onRendererMounted={handleSessionGraphReady}
         />
       </div>
