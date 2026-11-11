@@ -3,6 +3,8 @@ language: typescript
 severity: error
 message: GUI plugins keep state in ctx, Storage, or setup closures, never at module level.
 note: Module state survives disable and reload and leaks across windows. Create it inside setup or a component.
+ignores:
+  - "packages/gui-plugins/src/*/internal/**/*.ts"
 files:
   - "packages/gui-plugins/src/*/**/*.ts"
 rule:

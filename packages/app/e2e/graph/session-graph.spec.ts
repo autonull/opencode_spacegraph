@@ -3,6 +3,7 @@ import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
+import { graphCanvasHost, graphToolbar, waitForGraphContent } from "../utils/waits"
 
 // The graph is a contributed session surface. This keeper proves the surface, the toolbar controls,
 // the hybrid layout, the turn-map layer, and a node permalink against the canonical fixture.
@@ -14,9 +15,10 @@ const test = base.extend({
 })
 
 const directory = "C:/OpenCode/SessionGraph"
+
 const sessionID = "ses_session_graph"
-const canvasHost = '[data-slot="graph-canvas-host"]'
-const toolbar = '[data-slot="graph-toolbar"]'
+
+
 
 function graphFixture() {
   return {
@@ -36,11 +38,13 @@ async function openGraph(page: Page) {
     window.location.hash = "#graph:file:src/auth/token.ts"
   })
   await expect(page.locator('[data-slot="spacegraph-surface-map"]')).toBeVisible()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+  await waitForGraphContent(page)
 }
 
 async function openMenu(page: Page, slot: string) {
-  const menu = page.locator(`${toolbar} [data-slot="${slot}"]`)
+  const menu = graphToolbar(page).locator(`[data-slot="${slot}"]`)
+
+  // SAFETY: every toolbar menu slot is a <details>; the read only inspects its open state.
   if (!(await menu.evaluate((element) => (element as HTMLDetailsElement).open))) {
     await menu.locator(":scope > summary").click()
   }
@@ -50,8 +54,8 @@ test("the graph surface cycles its reading controls, splits with the transcript,
   const errors = trackPageErrors(page)
   await openGraph(page)
 
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
-  await expect(page.locator(toolbar)).toBeVisible()
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await expect(graphToolbar(page)).toBeVisible()
 
   // The level is a reading control on the Layers menu, not a layout side effect.
   await openMenu(page, "graph-toolbar-layers")
@@ -64,7 +68,7 @@ test("the graph surface cycles its reading controls, splits with the transcript,
   await expect(page.locator('[data-slot="graph-layout-name"]')).toHaveText("Timeline")
 
   // The map and the transcript share the screen, and the reader chooses how they meet.
-  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
+  await graphToolbar(page).locator('[data-slot="graph-toolbar-split"]').click()
   const hybrid = page.locator('[data-slot="spacegraph-surface-hybrid"]')
   await expect(hybrid).toBeVisible()
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
@@ -72,7 +76,7 @@ test("the graph surface cycles its reading controls, splits with the transcript,
   await openMenu(page, "graph-toolbar-view")
   await page.locator('[data-slot="graph-arrangement-option"][data-value="side"]').click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "side")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
+  await waitForGraphContent(page)
 
   // The turn-map layer opens over the map and closes without disturbing it.
   await page.keyboard.press("Control+Shift+P")
@@ -83,7 +87,7 @@ test("the graph surface cycles its reading controls, splits with the transcript,
   await expect(turnMap).toBeVisible()
   await turnMap.getByRole("button", { name: "Close turn map" }).click()
   await expect(turnMap).toBeHidden()
-  await expect(page.locator(toolbar)).toBeVisible()
+  await expect(graphToolbar(page)).toBeVisible()
 
   // A shared link names a node and frames it after a cold load.
   const location = page.getByRole("navigation", { name: "Graph location" })
@@ -92,7 +96,7 @@ test("the graph surface cycles its reading controls, splits with the transcript,
   })
   await expect(location.getByRole("button", { name: "src/auth/token.ts" })).toBeVisible()
   await page.reload()
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+  await waitForGraphContent(page)
   await expect(location.getByRole("button", { name: "src/auth/token.ts" })).toBeVisible()
 
   expect(errors).toEqual([])

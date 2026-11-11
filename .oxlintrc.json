@@ -110,7 +110,7 @@
                 "message": "GUI plugins never import app internals. Use the SDK."
               },
               {
-                "group": ["../*/*", "!../*/contract"],
+                "group": ["../*/*", "!../*/contract", "!../internal/*"],
                 "message": "Import another built-in plugin only through its contract.ts."
               },
               {
@@ -120,6 +120,12 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "files": ["packages/gui-plugins/src/spacegraph/internal/graph/**"],
+      "rules": {
+        "no-restricted-imports": "off"
       }
     },
     {

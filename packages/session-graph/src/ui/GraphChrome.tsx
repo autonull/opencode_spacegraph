@@ -29,8 +29,6 @@ import { DEPTH_MODES } from "@spacegraphjs/renderer"
 export type GraphChromeProps = {
   /** When true, renders the full chrome. Default: true */
   show?: boolean
-  /** When true, renders a minimal toolbar variant: level + fit + More. */
-  minimal?: boolean
   /** Container width threshold below which chrome is hidden. Default: 0 (never hide by default). */
   hideBelow?: number
   /** Custom chrome renderer. Receives the GraphViewContext value. */
@@ -217,8 +215,8 @@ export type GraphChromeProps = {
  * It renders toolbar, breadcrumbs, status bar, compare bar, scale notice, hidden selection, fallback,
  * demo banner, see-map prompt, and trust lens banner.
  * 
- * By default, it renders the full chrome. When `minimal` is true, it renders a
- * minimal toolbar variant. When container width is below `hideBelow`, it renders nothing.
+ * By default, it renders the full chrome. When container width is below `hideBelow`, it renders
+ * nothing.
  */
 export const GraphChrome = (props: GraphChromeProps) => {
   const ctx = useGraphViewContext()

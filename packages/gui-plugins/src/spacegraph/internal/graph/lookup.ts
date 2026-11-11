@@ -82,9 +82,7 @@ export function sequenceIndex(model: { edges: readonly GraphEdge[] }): SequenceI
     const previous = new Map<string, string>()
     for (const edge of model.edges) {
       if (edge.kind !== "sequence") continue
-
       if (!next.has(edge.source)) next.set(edge.source, edge.target)
-
       if (!previous.has(edge.target)) previous.set(edge.target, edge.source)
     }
     return { next, previous }

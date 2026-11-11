@@ -25,11 +25,15 @@ const packages = [
   "packages/session-ui/",
 ]
 // oxlint skips declaration files and prints a non-JSON message when given only those.
+// The bundled graph copy is generated from packages/session-ui/src/graph and guarded by
+// `bun run check:graph` plus src/spacegraph/graph-parity.test.ts; it is never edited by hand.
+const generated = "packages/gui-plugins/src/spacegraph/internal/graph/"
 const files = [...new Set([...tracked, ...untracked])].filter(
   (file) =>
     /\.(ts|tsx)$/.test(file) &&
     !file.endsWith(".d.ts") &&
     packages.some((prefix) => file.startsWith(prefix)) &&
+    !file.startsWith(generated) &&
     Bun.file(file).size > 0,
 )
 
