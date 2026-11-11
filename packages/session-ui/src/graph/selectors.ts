@@ -343,6 +343,113 @@ export function downstreamForks(model: GraphViewData, from: string): DownstreamF
   return forks
 }
 
+/** The groups an evidence panel shows, in reading order. */
+export type EvidenceKind = "tools" | "files" | "results"
+
+/** One node that supports a claim, with the edge that connects it. */
+export type EvidenceItem = { node: GraphNode; edge: GraphEdge }
+
+/** Evidence for a claim, grouped by what the supporting node is. */
+export type EvidenceGroup = { kind: EvidenceKind; items: EvidenceItem[] }
+
+const EVIDENCE_EDGE_KINDS = new Set<GraphEdge["kind"]>([
+  "evidence",
+  "produces",
+  "writes",
+  "reads",
+  "searches",
+  "references",
+  "covers",
+  "executes",
+])
+
+const evidenceKindOf = (node: GraphNode): EvidenceKind | undefined => {
+  if (node.kind === "tool" || node.kind === "subagent") return "tools"
+
+  if (
+    node.kind === "file" ||
+    node.kind === "directory" ||
+    node.kind === "package" ||
+    node.kind === "commit" ||
+    node.kind === "branch"
+  )
+    return "files"
+
+  if (
+    node.kind === "result" ||
+    node.kind === "error" ||
+    node.kind === "test-run" ||
+    node.kind === "test" ||
+    node.kind === "issue"
+  )
+    return "results"
+
+  return undefined
+}
+
+/**
+ * The tool calls, files, and results that support a claim, grouped for the inspector. A claim's
+ * direct causal parents are evidence; when a parent is a tool, its own produced, written, and read
+ * facts join the panel one hop out. The first edge that reaches a node wins, so model order decides
+ * confidence and ties stay stable.
+ */
+export function evidenceFor(model: GraphViewData, claimID: string): EvidenceGroup[] {
+  const nodes = nodeIndex(model)
+  const claim = nodes.get(claimID)
+
+  if (!claim) return []
+
+  const groups: Record<EvidenceKind, Map<string, EvidenceItem>> = {
+    tools: new Map(),
+    files: new Map(),
+    results: new Map(),
+  }
+
+  const add = (node: GraphNode, edge: GraphEdge) => {
+    const kind = evidenceKindOf(node)
+
+    if (!kind || node.id === claimID) return
+
+    const group = groups[kind]
+
+    if (!group.has(node.id)) group.set(node.id, { node, edge })
+  }
+
+  for (const edge of model.edges) {
+    if (edge.target !== claimID || !EVIDENCE_EDGE_KINDS.has(edge.kind)) continue
+
+    const source = nodes.get(edge.source)
+
+    if (!source) continue
+
+    add(source, edge)
+
+    if (evidenceKindOf(source) !== "tools") continue
+
+    for (const product of model.edges) {
+      if (product.source !== source.id || !EVIDENCE_EDGE_KINDS.has(product.kind)) continue
+
+      const node = nodes.get(product.target)
+
+      if (node) add(node, product)
+    }
+  }
+
+  for (const edge of model.edges) {
+    if (edge.source !== claimID || !EVIDENCE_EDGE_KINDS.has(edge.kind)) continue
+
+    const node = nodes.get(edge.target)
+
+    if (node) add(node, edge)
+  }
+
+  return (["tools", "files", "results"] as const).flatMap((kind) => {
+    const items = [...groups[kind].values()]
+
+    return items.length > 0 ? [{ kind, items }] : []
+  })
+}
+
 const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))
 
 /** The text a search matches against: the label, the summary, and the tool's name, path, and command. */

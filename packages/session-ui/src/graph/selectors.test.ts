@@ -7,6 +7,7 @@ import {
   changedFiles,
   downstreamChain,
   downstreamForks,
+  evidenceFor,
   forwardChain,
   neighborStep,
   openInTranscript,
@@ -313,5 +314,95 @@ describe("downstream trace — ambiguity display", () => {
   test("the downstream trace lights every branch", () => {
     const overlay = traceDownstream(forked, "a")
     expect([...overlay.answerIds].sort()).toEqual(["b", "c", "d", "e"])
+  })
+})
+
+describe("evidence panel — support for a claim", () => {
+  const node = (id: string, kind: GraphNode["kind"]): GraphNode => ({
+    id,
+    kind,
+    label: id,
+    status: "neutral",
+  })
+
+  const edge = (
+    source: string,
+    target: string,
+    kind: GraphEdge["kind"] = "produces",
+    confidence: GraphEdge["confidence"] = "explicit",
+  ): GraphEdge => ({ id: `${kind}:${source}->${target}`, kind, source, target, confidence })
+
+  const makeModel = (nodes: GraphNode[], edges: GraphEdge[]): GraphViewData => ({
+    root: "session",
+    nodes,
+    edges,
+    turns: [],
+    turnByMessageID: new Map(),
+  })
+
+  test("groups the tool, files, and results behind an error", () => {
+    const model = makeModel(
+      [
+        node("error:e1", "error"),
+        node("tool:t1", "tool"),
+        node("file:f1", "file"),
+        node("file:f2", "file"),
+        node("result:r1", "result"),
+      ],
+      [
+        edge("tool:t1", "error:e1"),
+        edge("tool:t1", "file:f1", "writes"),
+        edge("tool:t1", "file:f2", "reads"),
+        edge("tool:t1", "result:r1"),
+      ],
+    )
+
+    const groups = evidenceFor(model, "error:e1")
+
+    expect(groups.map((group) => group.kind)).toEqual(["tools", "files", "results"])
+    expect(groups[0].items.map((item) => item.node.id)).toEqual(["tool:t1"])
+    expect(groups[1].items.map((item) => item.node.id)).toEqual(["file:f1", "file:f2"])
+    expect(groups[2].items.map((item) => item.node.id)).toEqual(["result:r1"])
+  })
+
+  test("a tool claim shows its own products", () => {
+    const model = makeModel(
+      [node("tool:t1", "tool"), node("file:f1", "file"), node("result:r1", "result")],
+      [edge("tool:t1", "file:f1", "writes"), edge("tool:t1", "result:r1")],
+    )
+
+    const groups = evidenceFor(model, "tool:t1")
+
+    expect(groups.map((group) => group.kind)).toEqual(["files", "results"])
+    expect(groups[0].items.map((item) => item.node.id)).toEqual(["file:f1"])
+    expect(groups[1].items.map((item) => item.node.id)).toEqual(["result:r1"])
+  })
+
+  test("drops non-causal edges and the claim itself", () => {
+    const model = makeModel(
+      [node("tool:t1", "tool"), node("error:e1", "error")],
+      [edge("tool:t1", "error:e1", "part-of"), edge("error:e1", "error:e1", "writes")],
+    )
+
+    expect(evidenceFor(model, "error:e1")).toEqual([])
+  })
+
+  test("keeps the first edge that reaches a node", () => {
+    const model = makeModel(
+      [node("tool:t1", "tool"), node("result:r1", "result")],
+      [
+        edge("tool:t1", "result:r1", "produces", "explicit"),
+        edge("tool:t1", "result:r1", "writes", "inferred"),
+      ],
+    )
+
+    const groups = evidenceFor(model, "tool:t1")
+
+    expect(groups[0].items).toHaveLength(1)
+    expect(groups[0].items[0].edge.confidence).toBe("explicit")
+  })
+
+  test("an unknown claim has no evidence", () => {
+    expect(evidenceFor(makeModel([node("tool:t1", "tool")], []), "missing")).toEqual([])
   })
 })

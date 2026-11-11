@@ -10,12 +10,13 @@
 > config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.5 **complete** — GraphTranscriptSurface
 > implemented and flag-gated in spacegraph plugin, affordance rules done, subagent drill implemented via double-click + drill-down,
 > session.header slot and ComposerPill added for host integration, SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete.
-> Phase 19.1 **Trace breadcrumbs + back/forward**, **downstream impact**, and **ambiguity display** complete.
+> Phase 19.1 **Trace breadcrumbs + back/forward**, **downstream impact**, **ambiguity display**, and
+> the **evidence panel** complete.
 > Phases 19.2–28 are experimental with kill criteria.
 >
-> **Current position (r25):** Phase 19.1 is one item from complete. **Next:** the evidence panel (19.1),
-> then choose between the 19.3 kill-criterion measurement and 19.4 time travel. 19.3 UI is complete but
-> its baseline comparison is still unmeasured.
+> **Current position (r26):** Phase 19.1 is **complete**. **Next:** choose between the 19.3
+> kill-criterion measurement (UI complete, baseline comparison unmeasured) and 19.4 time travel.
+> 19.5 spatial memory is blocked on the G5 fixes already landed in Phase 14; 19.6–19.12 remain.
 >
 > **r20 (2026-11-10):** Phase 19.1 Trace breadcrumbs complete — unified across all surfaces.
 >
@@ -652,7 +653,9 @@ Implement in the order below; each item is independently shippable and revertibl
       for C2). `downstreamChain` now walks every branch breadth-first; `downstreamForks` names each
       split and the detail panel lists branches for inspection. Unit coverage in
       `selectors.test.ts`; no fork is collapsed to a single path.
-- [ ] **Evidence panel** — group tool calls, files and results that support a claim.
+- [x] **Evidence panel** — group tool calls, files and results that support a claim. `evidenceFor`
+      groups direct causal parents and expands a tool parent's produced, written, and read facts.
+      The inspector lists each group with edge confidence; unit coverage in `selectors.test.ts`.
 
 ### 19.2 Review
 
@@ -1051,3 +1054,11 @@ feature that needs it.
   - Added six unit tests covering branch retention, confidence, fork detection, parallel edges, missing targets, and overlay lighting.
   - `packages/session-ui` and `packages/session-graph` typecheck clean; unit tests pass (session-ui graph 96, session-graph 313).
   - **Next:** evidence panel (19.1), then the 19.3 baseline measurement or 19.4 time travel.
+- **r26 (2026-11-11):** Phase 19.1 Evidence panel complete; Phase 19.1 finished.
+  - Added `evidenceFor` in `@opencode/session-ui/graph`; it groups a claim's causal parents into tools, files, and results, and expands a tool parent's produced, written, and read facts one hop out.
+  - Deduplicates by node ID, keeps the first edge for confidence, skips the claim itself, and drops non-causal edges.
+  - `GraphDetail` renders a grouped evidence section above Connections; every item is selectable and labelled with its edge kind and confidence.
+  - Added i18n keys for the evidence heading and the three groups.
+  - Added five unit tests covering grouping, tool claims, ignored edges, deduplication, and unknown claims.
+  - `packages/session-ui`, `packages/session-graph`, and `packages/ui` typecheck clean; unit tests pass (session-ui graph 96, session-graph 318).
+  - **Next:** pick 19.3 baseline measurement or 19.4 time travel.
