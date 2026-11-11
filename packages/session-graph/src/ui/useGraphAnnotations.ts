@@ -2,7 +2,7 @@ import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo } from "solid-js"
 import { produce, type SetStoreFunction } from "solid-js/store"
 import { breadcrumbs, type GraphViewData, type GraphNode, type Annotations } from "@opencode/session-ui/graph"
-import { classifyTrace, copyTraceAsOutline, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
+import { classifyTrace, copyTraceAsOutline, downstreamForks, stepLitNode, type TraceKind, type TraceOverlay } from "./overlay"
 import { noteData } from "./node-data"
 import { useNodeLookup, type NodeLookup } from "./useNodeLookup"
 
@@ -188,11 +188,15 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     const node = nodeLookup()(from)
     const label = node?.label ?? from
     pushHistory(kind, from, label)
+    const forks = kind === "downstream" ? downstreamForks(options.model(), from) : []
     const messages: Record<TraceKind, string> = {
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
       "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
       related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
-      downstream: i18n.t("ui.sessionGraph.trace.downstreamAnnouncement", { label }),
+      downstream:
+        forks.length > 0
+          ? i18n.plural("ui.sessionGraph.trace.downstreamForkAnnouncement", forks.length, { label })
+          : i18n.t("ui.sessionGraph.trace.downstreamAnnouncement", { label }),
     }
     options.onAnnounce(messages[kind])
   }

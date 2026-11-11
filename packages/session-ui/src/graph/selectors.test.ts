@@ -5,6 +5,8 @@ import {
   ancestors,
   breadcrumbs,
   changedFiles,
+  downstreamChain,
+  downstreamForks,
   forwardChain,
   neighborStep,
   openInTranscript,
@@ -12,10 +14,12 @@ import {
   search,
   shortestPath,
   subtree,
+  traceDownstream,
   turnSubgraph,
   unverifiedFiles,
   why,
 } from "./selectors"
+import type { GraphEdge, GraphNode, GraphViewData } from "./model"
 
 const model = buildFixtureGraph()
 
@@ -228,5 +232,86 @@ describe("selectors — subtree (U3.11 breadcrumb fit)", () => {
 
   test("a node without edges has no neighbor step", () => {
     expect(neighborStep(model, "missing", 1)).toBeUndefined()
+  })
+})
+
+describe("downstream trace — ambiguity display", () => {
+  const node = (id: string, kind: GraphNode["kind"] = "tool"): GraphNode => ({
+    id,
+    kind,
+    label: id,
+    status: "neutral",
+  })
+
+  const edge = (
+    source: string,
+    target: string,
+    options: { kind?: GraphEdge["kind"]; confidence?: GraphEdge["confidence"] } = {},
+  ): GraphEdge => ({
+    id: `${options.kind ?? "sequence"}:${source}->${target}`,
+    kind: options.kind ?? "sequence",
+    source,
+    target,
+    confidence: options.confidence ?? "explicit",
+  })
+
+  const makeModel = (nodes: GraphNode[], edges: GraphEdge[]): GraphViewData => ({
+    root: "session",
+    nodes,
+    edges,
+    turns: [],
+    turnByMessageID: new Map(),
+  })
+
+  const forked = makeModel(
+    ["a", "b", "c", "d", "e"].map((id) => node(id)),
+    [
+      edge("a", "b"),
+      edge("a", "c", { kind: "produces", confidence: "structural" }),
+      edge("b", "d", { kind: "writes" }),
+      edge("c", "d", { kind: "writes" }),
+      edge("d", "e"),
+      edge("e", "a"),
+    ],
+  )
+
+  test("every branch stays in the chain instead of picking one edge", () => {
+    expect(downstreamChain(forked, "a").map((step) => step.node.id)).toEqual(["b", "c", "d", "e"])
+  })
+
+  test("the chain keeps the edge that reached each branch and its confidence", () => {
+    const steps = downstreamChain(forked, "a")
+    expect(steps.find((step) => step.node.id === "c")?.confidence).toBe("structural")
+    expect(steps.find((step) => step.node.id === "d")?.edge.source).toBe("b")
+  })
+
+  test("fork points name every distinct branch", () => {
+    const forks = downstreamForks(forked, "a")
+    expect(forks.map((fork) => fork.node.id)).toEqual(["a"])
+    expect(forks[0].branches.map((branch) => branch.node.id)).toEqual(["b", "c"])
+  })
+
+  test("parallel edges to one target are not a fork", () => {
+    const model = makeModel(
+      [node("a"), node("b")],
+      [edge("a", "b"), edge("a", "b", { kind: "writes" })],
+    )
+
+    expect(downstreamForks(model, "a")).toEqual([])
+  })
+
+  test("a missing target does not become a branch", () => {
+    const model = makeModel(
+      [node("a"), node("b")],
+      [edge("a", "b"), edge("a", "missing")],
+    )
+
+    expect(downstreamChain(model, "a").map((step) => step.node.id)).toEqual(["b"])
+    expect(downstreamForks(model, "a")).toEqual([])
+  })
+
+  test("the downstream trace lights every branch", () => {
+    const overlay = traceDownstream(forked, "a")
+    expect([...overlay.answerIds].sort()).toEqual(["b", "c", "d", "e"])
   })
 })
