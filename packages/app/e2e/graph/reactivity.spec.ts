@@ -181,7 +181,7 @@ async function closeHybridView(page: Page) {
   await expect(page.locator('[data-slot="spacegraph-surface-hybrid"]')).toBeHidden()
 }
 
-test.describe("Graph reactivity", () => {
+test.describe("Graph reactivity @graph", () => {
   test("level toggle re-renders the canvas", async ({ page }) => {
     const errors = trackPageErrors(page)
     await page.emulateMedia({ reducedMotion: "reduce" })

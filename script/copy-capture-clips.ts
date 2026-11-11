@@ -3,7 +3,7 @@
  * Copy clip recordings produced by `e2e/graph/capture-clips.spec.ts` into
  * docs/spacegraph/video/clips/ for demo assembly.
  *
- * Run after: cd packages/app && bun run test:e2e:built -- e2e/graph/capture-clips.spec.ts -p graph-capture
+ * Run after: cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-clips.spec.ts -p graph-capture
  */
 
 import { readdirSync, copyFileSync, mkdirSync, statSync, writeFileSync, existsSync } from "fs"

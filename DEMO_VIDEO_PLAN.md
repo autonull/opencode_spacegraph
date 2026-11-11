@@ -41,7 +41,7 @@ Video must hook viewers immediately with flashy action, showcase SpaceGraphJS fe
 
 ### Live Recording + Mark-Anchored Narration + Hook (improved pipeline)
 1. Run the single continuous live spec with video recording always on:
-   `cd packages/app && bun run test:e2e:built -- e2e/graph/capture-live.spec.ts`
+   `cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts`
    (records one continuous 1440x900 webm; writes capture seconds per frame to
    `docs/spacegraph/video/marks.json`)
 2. `bun run script/copy-capture-video.ts` copies the recording to
@@ -67,7 +67,7 @@ Video must hook viewers immediately with flashy action, showcase SpaceGraphJS fe
 ### Live Recording Setup + Hook Sequence
 ```bash
 # 1. Record the continuous live demo (one spec, one video, frame marks written)
-cd packages/app && bun run test:e2e:built -- e2e/graph/capture-live.spec.ts
+cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts
 
 # 2. Playwright produces: test-results/graph-capture-live-*/video.webm
 #    Copy to docs/spacegraph/video/capture.webm

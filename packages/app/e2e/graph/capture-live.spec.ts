@@ -6,7 +6,7 @@ import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
-import { waitForGraphContent } from "../utils/waits"
+import { graphCanvasHost, waitForGraphContent } from "../utils/waits"
 
 const KNOWN_FLAKY_ERRORS = [
   "Maximum call stack size exceeded",
@@ -19,9 +19,11 @@ const test = base.extend({
   },
 })
 
+// Demo recordings are opt-in so the default e2e run stays a bounded gate.
+test.skip(!process.env.GRAPH_CAPTURE_DEMO, "Demo recording; set GRAPH_CAPTURE_DEMO=1")
+
 const directory = process.env.GRAPH_FIXTURE_DIR ?? "/tmp/SessionGraph"
 const sessionID = "ses_session_graph"
-const canvasHost = '[data-slot="graph-canvas-host"]'
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -267,9 +269,9 @@ async function chooseDepth(page: Page, depth: string) {
   // the 3D projection. For the demo recording, the visual 3D state is what
   // matters; wait for projection=3d for non-flat depths.
   if (depth === "flat") {
-    await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "flat", { timeout: 15000 })
+    await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-depth", "flat", { timeout: 15000 })
   } else {
-    await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d", { timeout: 15000 })
+    await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d", { timeout: 15000 })
   }
   await closeLayers(page)
 }
@@ -303,7 +305,7 @@ const videoDir = fileURLToPath(new URL("../../../../docs/spacegraph/video", impo
  * Single continuous test that records one live video through the entire demo flow.
  * This produces a smooth, continuous recording instead of disjointed per-test clips.
  */
-test("live demo recording — continuous flow through all frames", async ({ page }) => {
+test("live demo recording — continuous flow through all frames @capture @demo", async ({ page }) => {
   test.setTimeout(1_800_000) // 30 minutes for full flow
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -317,8 +319,8 @@ test("live demo recording — continuous flow through all frames", async ({ page
 
   // ── FRAME 02: Graph overview ──
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await waitForGraphContent(page)
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-renderer", "spacegraph")
   await setLevel(page, "Overview")
   await fit(page)
   await waitForStillCanvas(page)
@@ -349,9 +351,9 @@ test("live demo recording — continuous flow through all frames", async ({ page
 
   // ── FRAME 06: 3D orbit ──
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await chooseDepth(page, "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d")
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "06-graph-3d.png")
@@ -411,7 +413,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await setLevel(page, "Execution")
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(page.locator('[data-slot="graph-toolbar-overflow"]')).toBeHidden({ timeout: 10000 })
@@ -483,8 +485,8 @@ test("live demo recording — continuous flow through all frames", async ({ page
   // ── FRAME 31: Perspective ──
   await pickLayout(page, "lanes")
   await chooseDepth(page, "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-card-facing", "plane")
   await setLevel(page, "Detail")
   await fit(page)
   await waitForStillCanvas(page)
@@ -502,7 +504,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await setLevel(page, "Execution")
   await fit(page)
   await focusNode(page, "result:prt_tool_shell_2", "failed result")
@@ -515,7 +517,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await setLevel(page, "Execution")
   await fit(page)
   await waitForStillCanvas(page)
@@ -529,7 +531,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await page.keyboard.press("Control+Shift+H")
   const hybrid2 = page.locator('[data-slot="spacegraph-surface-hybrid"]')
   await expect(hybrid2).toBeVisible({ timeout: 15000 })
@@ -569,7 +571,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
 
   // ── FRAME 42: Permalink copy ──
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Search" }).click()
   const search3 = page.getByRole("dialog", { name: "Search" })
@@ -585,7 +587,7 @@ test("live demo recording — continuous flow through all frames", async ({ page
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await setLevel(page, "Overview")
   await fit(page)
   await waitForStillCanvas(page)

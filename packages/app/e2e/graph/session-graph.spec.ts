@@ -50,7 +50,7 @@ async function openMenu(page: Page, slot: string) {
   }
 }
 
-test("the graph surface cycles its reading controls, splits with the transcript, and keeps a node permalink", async ({ page }) => {
+test("the graph surface cycles its reading controls, splits with the transcript, and keeps a node permalink @graph", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page)
 

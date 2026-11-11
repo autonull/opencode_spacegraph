@@ -28,7 +28,9 @@ const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0
 
 const touchScroll = /mobile-timeline-scroll\.spec\.ts/
 
-const isCapture = /graph\/capture(-live|-clips)?\.spec\.ts/
+// The canonical 32-frame gate and the opt-in demo recordings share one project so video stays on and
+// the default suite never runs a demo, or the gate twice.
+const isCapture = /graph\/capture(-live|-clips|-segment1)?\.spec\.ts/
 
 export default defineConfig({
   testDir: "./e2e",
@@ -75,7 +77,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      grepInvert: touchScroll,
+      grepInvert: [touchScroll, isCapture],
     },
     {
       name: "chromium-touch-scroll",
@@ -83,7 +85,7 @@ export default defineConfig({
       grep: touchScroll,
       fullyParallel: true,
     },
-    // Graph capture tests - always record video for demo generation
+    // Graph capture: the canonical gate always; demo recordings only with GRAPH_CAPTURE_DEMO=1.
     {
       name: "graph-capture",
       use: {

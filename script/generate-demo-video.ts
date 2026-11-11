@@ -20,7 +20,7 @@
  *       [--hook-secs 1.4] [--draft] [--no-hook] [--no-kidnapper]
  *
  * Prerequisites:
- *   cd packages/app && bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture
+ *   cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture
  *   bun run script/copy-capture-video.ts
  *   python3 -m edge_tts
  */
