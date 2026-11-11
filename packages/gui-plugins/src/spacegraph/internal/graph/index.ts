@@ -1,6 +1,3 @@
-// Internal graph module - bundled from @opencode/session-ui/graph
-// This replaces the private package dependency
-
 export {
   diffNodeID,
   directoryNodeID,
@@ -143,14 +140,15 @@ export {
   turnSubgraph,
   unverifiedFiles,
   why,
-  downstreamForks,
-  evidenceFor,
   // Trace overlay types and functions
   classifyTrace,
   traceWhy,
   traceLedHere,
   traceRelated,
   traceDownstream,
+  downstreamChain,
+  downstreamForks,
+  evidenceFor,
   litNodeIds,
   stepLitNode,
   copyTraceAsOutline,
@@ -158,13 +156,13 @@ export {
   isAnswer,
   isEdgeVisible,
   isAnswerEdge,
-  type DownstreamFork,
-  type DownstreamStep,
-  type EvidenceGroup,
-  type EvidenceItem,
-  type EvidenceKind,
   type TraceKind,
   type TraceOverlay,
+  type DownstreamStep,
+  type DownstreamFork,
+  type EvidenceKind,
+  type EvidenceItem,
+  type EvidenceGroup,
   type ChangedFile,
   type Subgraph,
   type TranscriptRef,
@@ -292,32 +290,3 @@ export {
   type EqualizerRule,
   type EqualizerRuleSet,
 } from "./equalizer"
-
-// Timeline and message modules (dependencies of graph)
-export {
-  timelineCategories,
-  timelinePresets,
-  type TimelineCategory,
-  type TimelinePlacement,
-  type TimelineExpansion,
-  type TimelineDetail,
-  timelineCategory,
-  timelineNoticePlacement,
-  timelineNoticeRequired,
-} from "./timeline/detail"
-
-export {
-  Timeline,
-  type TimelineRowMap,
-  type PartGroup,
-  type PartRef,
-} from "./timeline/projection"
-
-export {
-  currentToolError,
-  currentToolFailed,
-  currentToolOutput,
-  currentToolInput,
-  currentToolMetadata,
-  shellResultFailed,
-} from "./message/current-tool-state"

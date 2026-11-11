@@ -1410,15 +1410,12 @@ function compactionReplays(message: Extract<SessionMessageInfo, { type: "compact
 
 function noticeLabel(message: GraphNotice) {
   if (message.type === "synthetic") return truncate(message.description ?? message.text)
-
   if (message.type === "skill") return `Skill: ${message.name}`
-
   return truncate(message.text)
 }
 
 function noticeSummary(message: GraphNotice) {
   if (message.type === "skill") return undefined
-
   return message.text
 }
 

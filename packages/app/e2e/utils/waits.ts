@@ -24,10 +24,17 @@ export async function expectSessionReady(page: Page, input: { server: string; se
   await expectSessionTitle(page, input.title)
 }
 
+export function graphCanvasHost(page: Page) {
+  return page.locator('[data-slot="graph-canvas-host"]')
+}
+
+export function graphToolbar(page: Page) {
+  return page.locator('[data-slot="graph-toolbar"]')
+}
+
 export async function waitForGraphContent(page: Page): Promise<void> {
-  // Wait for the graph canvas to be present and the renderer to signal readiness
-  const canvasHost = page.locator('[data-slot="graph-canvas-host"]')
+  // Wait for the graph canvas to be present and the renderer to signal readiness.
+  const canvasHost = graphCanvasHost(page)
   await expect(canvasHost).toBeVisible({ timeout: APP_READY_TIMEOUT })
-  // Wait for the graph to be fully rendered (data-graph-ready attribute)
   await expect(canvasHost).toHaveAttribute("data-graph-ready", "true", { timeout: APP_READY_TIMEOUT })
 }

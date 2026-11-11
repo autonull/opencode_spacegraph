@@ -1,25 +1,34 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-11):** Execution plan for all work remaining after v34 r27. Phases 14–19.4 are
-> complete. `SPACEGRAPH.TODO.34.md` is now the frozen design and history reference; this file is the
-> single source of truth for remaining work.
+> **Status (2026-11-11):** M0 foundation repair is in progress. M0.1, M0.2, M0.3, M0.6, M0.8, M0.9,
+> and M0.10 are complete; M0.4 (capture consolidation) and M0.7 (suite tags) remain, and M0.5 has
+> its helpers in place with the capture specs left to M0.4. Phases 14–19.4 are complete.
+> `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the single source
+> of truth for remaining work.
 >
-> **Baseline:** through Phase 19.4, commit `56e99f4cdd`. `packages/session-ui` graph unit tests pass
-> (324), `packages/session-graph` unit tests pass (96), and root `bun run typecheck` passes (53/53).
+> **Baseline:** through Phase 19.4, commit `56e99f4cdd`, plus the M0 foundation commit. Canonical
+> local suites: `packages/session-ui` `bun test src/graph` 324 tests / 30 files,
+> `packages/session-graph` `bun test src` 96 / 12, `packages/gui-plugins` `bun run test` 1,160 / 115
+> (1 skip, includes the 20 parity tests), and root `bun run check` green (53/53, 0 lint errors).
 >
-> **Next:** M0 (foundation and test repair), then M1.1 (19.5 spatial memory v2) and M1.2 (19.3
+> **Next:** finish M0.4, M0.5, and M0.7, then M1.1 (19.5 spatial memory v2) and M1.2 (19.3
 > compaction-advisor measurement).
 
 ### Session handoff
 
-- Read **M0** first; it removes the duplicated tests and repairs the two broken gates before feature work.
-- Start with **M0.1** (`bun run check` lint baseline) and **M0.2** (`gui-plugins` model `jsxDEV` harness).
-- Then do **M0.3**: delete the 29 duplicated internal graph test files and add the parity test.
-- Canonical checks: `bun run typecheck` at the root; `bun test src/graph` in `packages/session-ui`;
-  `bun test src` in `packages/session-graph`; `bun run typecheck` in `packages/gui-plugins`.
+- M0.1–M0.3 and M0.6–M0.10 are done. Start from **M0.4** (capture gate) and **M0.5** (readiness
+  helpers); both are e2e-only and must keep `bun run graph:verify` green.
+- The bundled graph copy is generated: edit `packages/session-ui/src/graph`, then run
+  `bun run sync:graph` in `packages/gui-plugins`. `bun run check:graph` (also run by `bun test`)
+  fails on drift, and `packages/gui-plugins/src/spacegraph/graph-parity.test.ts` proves behavior
+  parity.
+- Then do **M0.7** tags, then M1.1/M1.2.
+- Canonical checks: `bun run check` at the root; `bun test src/graph` in `packages/session-ui`;
+  `bun test src` in `packages/session-graph`; `bun run test` in `packages/gui-plugins`;
+  `bun run graph:verify` for the full graph gate.
 - Do not add work to `SPACEGRAPH.TODO.34.md`; it is frozen. Record results here.
-- Known hazards: root lint is red on pre-existing restricted-import findings, and the
-  `gui-plugins` model suite fails before running with `jsxDEV is not exported`.
+- Former hazards are fixed: root lint has 0 errors (warnings stay advisory) and the `gui-plugins`
+  model suite runs under the Solid JSX preload.
 
 **Non-negotiables**
 
@@ -57,31 +66,75 @@ P2 work may be parked after its kill test. It must not block M6–M8 unless adop
 Purpose: make the canonical gates trustworthy and remove duplicated coverage before adding more
 features.
 
-- [ ] **M0.1 Repair the canonical lint gate.** `bun run check` currently fails on pre-existing
-      `no-restricted-imports` / anti-slop findings. Categorize them, fix the real layering violations,
-      and align the lint config only where the rule is intentionally obsolete. Do not suppress findings
-      wholesale.
-- [ ] **M0.2 Repair the `gui-plugins` model test harness.** The model suite fails before running with
-      `jsxDEV is not exported` from Solid. Fix the preload/conditions so host-model tests execute.
-- [ ] **M0.3 Delete duplicate internal graph tests.** Remove the 29 test files / 277 tests under
-      `packages/gui-plugins/src/spacegraph/internal/graph`. Replace them with one parity test that:
-      builds the same fixture with both copies, compares nodes/edges/turns, and compares time-travel
-      snapshots. Keep `session-ui` as the test source of truth.
-- [ ] **M0.4 Consolidate the graph capture gate.** Merge `packages/app/e2e/graph/capture*.spec.ts` into
-      one parameterized capture spec. Preserve the 32-frame gate; make live/segment/clip modes explicit
-      env options or delete overlapping flows.
+- [x] **M0.1 Repair the canonical lint gate.** **Done.** The 7 failures were all
+      `no-restricted-imports` findings in the generated `spacegraph/internal/graph` tree and in
+      `spacegraph/external/renderer.tsx` importing that tree. The vendored copy is library code, not
+      plugin source, so it is exempted from `no-restricted-imports` and from the
+      `gui-plugin-no-module-state` ast-grep rules; `script/lint-changed.ts` skips it because
+      `sync:graph` and the parity test guard it. The `../*/*` cross-plugin pattern now negates
+      `../internal/*` so an intra-plugin deep import is not mistaken for a cross-plugin one.
+      `bun run lint` exits 0 with 0 errors; the ~2,070 warn-level anti-slop findings stay advisory.
+- [x] **M0.2 Repair the `gui-plugins` model test harness.** **Done.**
+      `packages/gui-plugins/bunfig.toml` preloads `../ui/test/solid-jsx.ts` before `happydom.ts`, so
+      TSX compiles against `solid-js/h` and no suite asks for `jsxDEV`. Full suite: 1,160 tests /
+      115 files, 1 skip, 0 fail.
+- [x] **M0.3 Delete duplicate internal graph tests.** **Done.** Audit confirmed 27/29 files were
+      byte-identical and the two others are stale subsets; internal had 305 tests against
+      session-ui's 324.
+      - [x] Fixed the two real drifts before deletion. The parity test failed on all three real
+            differences first: missing `downstreamChain`, extra internal-only timeline/message
+            exports, and `reviewChanges` without `turnStats`.
+      - [x] Added `packages/gui-plugins/src/spacegraph/graph-parity.test.ts` with the three layers:
+            public export parity, fixture build/incremental/time-travel parity (normalizing
+            `turnByMessageID`), and selector/review/layout parity over fixture nodes.
+      - [x] Deleted the 29 duplicated test files (277 tests) and 3 fixture JSONs only after the
+            parity test passed. `session-ui` is the test source of truth.
+- [ ] **M0.4 Consolidate the graph capture gate.** The four `packages/app/e2e/graph/capture*.spec.ts`
+      files total ~1,891 lines and capture the same frames 2–4 times. Keep one canonical 32-frame gate,
+      make live/segment/clip modes explicit opt-in demo modes or delete the overlap.
+      **Next:** keep `capture.spec.ts` as the canonical gate, move `capture-live`/`capture-clips`/
+      `capture-segment1` frames behind an env-selected demo mode, and confirm `bun run graph:capture
+      --mode=verify` still asserts the committed set.
+      **Baseline hazard:** on 2026-11-11 the local `PLAYWRIGHT_BUILD=1 bun run test:e2e:built
+      e2e/graph/session-graph.spec.ts e2e/graph/reactivity.spec.ts` run failed the same 4 tests with
+      and without the M0.5 changes (the toolbar "Fit to view" control was not found). Treat that as
+      an environment/fixture issue, not a regression, and establish a green local e2e baseline before
+      trusting a capture comparison.
 - [ ] **M0.5 Remove redundant component readiness checks.** Centralize `data-graph-ready`, canvas,
       toolbar, and inspector waits. Keep one smoke assertion per surface and remove repeated waits that
       do not protect a distinct behavior.
-- [ ] **M0.6 Reconcile stale verification counts.** v34 says 25, 55, and 57 component specs in different
-      places. Record the actual canonical commands and counts here after M0.3–M0.5.
+      **Progress:** `packages/app/e2e/utils/waits.ts` now exports `graphCanvasHost`, `graphToolbar`, and
+      `waitForGraphContent` (canvas visible + `data-graph-ready`). `session-graph.spec.ts` and
+      `reactivity.spec.ts` use them and no longer inline the readiness assertion.
+      **Remaining:** the four capture specs still inline it; fold that into the M0.4 rewrite instead
+      of editing them twice. Add a toolbar/inspector readiness helper only if a spec needs one.
+- [x] **M0.6 Reconcile stale verification counts.** **Done.** Recorded in the baseline above and in
+      the Test strategy section: 324 session-ui graph tests / 30 files, 96 session-graph unit tests /
+      12 files, 1,160 gui-plugins tests / 115 files, 25 session-graph component specs, 31 app
+      component specs, 66 app e2e specs (6 in `e2e/graph`), and root `bun run check` green.
 - [ ] **M0.7 Tag test suites for targeted runs.** Add tags such as `@graph`, `@a11y`, `@capture`,
       `@perf`, `@host`, so pure-model changes do not run every visual surface spec.
-- [ ] **M0.8 Close deferred Phase 14.4 items.** Implement or explicitly drop the toolbar `minimal`
-      variant and container-width inspector panel/sheet/popover selection.
+      **Next:** Playwright supports `test.describe(name, { tag })` and `--grep @tag`; bun has no tag
+      option, so document `--test-name-pattern` commands for the unit suites. Tag the 25
+      session-graph component specs and the graph e2e specs, then publish the targeted commands here.
+- [x] **M0.8 Close deferred Phase 14.4 items.** **Done.** Container-width inspector selection was
+      already implemented: `createWidthThresholdTracker` observes the graph root element, and
+      `SessionGraph` chooses the side panel, sheet (via FAB), or the popover detail mode from it.
+      The unused `GraphChromeProps.minimal` toolbar variant had no caller and no implementation, so
+      it was dropped rather than kept as a dead control; `chrome.hideBelow` remains the narrow
+      container behavior.
+- [x] **M0.9 Delete the unused internal host fork.** **Done.** Deleted all 114 files (792 KB) under
+      `packages/gui-plugins/src/spacegraph/internal/host` after confirming zero references.
+      `gui-plugins` typecheck passes (1,640 files) and `bun run --cwd packages/app build` completes.
+- [x] **M0.10 Add a drift guard for the internal graph copy.** **Done.**
+      `packages/gui-plugins/script/sync-graph.ts` regenerates the copy from `session-ui` (graph
+      modules plus the four timeline modules and `message/current-tool-state`) and rewrites the
+      import paths; `--check` reports missing, stale, and unexpected files. `bun run sync:graph` and
+      `bun run check:graph` are package scripts, `bun test` runs the check first, and
+      `src/spacegraph/internal/README.md` documents the source of truth.
 
 **Exit:** `bun run check` green; `gui-plugins` model tests run; duplicate graph unit tests gone;
-one canonical capture command; targeted test commands documented.
+one canonical capture command still pending M0.4, targeted test commands pending M0.7.
 
 ---
 
@@ -293,9 +346,11 @@ one canonical capture command; targeted test commands documented.
 
 **Consolidation targets**
 
-- Delete 29 internal graph test files / 277 tests; add one parity test.
-- Merge four `capture*.spec.ts` files into one gate.
-- Keep one readiness helper for `data-graph-ready`, toolbar, and inspector waits.
+- [x] Deleted 29 internal graph test files / 277 tests and added one parity test
+      (`gui-plugins/src/spacegraph/graph-parity.test.ts`, 20 tests) plus the `sync:graph --check`
+      drift guard. No internal-only coverage was lost.
+- [ ] Merge four `capture*.spec.ts` files into one gate (M0.4).
+- [x] Added the readiness helpers in `e2e/utils/waits.ts`; the capture specs adopt them in M0.4 (M0.5).
 - Do not duplicate pure model assertions inside component tests.
 - Do not add a new suite when an existing suite already owns the behavior.
 
@@ -354,6 +409,8 @@ one canonical capture command; targeted test commands documented.
 | Phase 23 docs/migration/graduation | M8 |
 | Definition of done | M9 |
 | Duplicate internal graph tests | M0.3 |
+| Internal graph drift (`downstreamChain`, `reviewChanges.turnStats`) | M0.3 |
+| Unused `internal/host` fork | M0.9 |
 | Capture-spec duplication | M0.4 |
 | Stale verification counts | M0.6 |
 | Root lint gate failure | M0.1 |
@@ -369,3 +426,26 @@ this file's revision log and leave the v34 archive unchanged.
 - **r0 (2026-11-11):** Created v35. Absorbed all remaining v34 work, reordered by dependency and
   decision value, added test-consolidation targets, deferred-gap closure, kill register, and open
   decisions. v34 frozen as design/history archive.
+- **r1 (2026-11-11):** Verified test consolidation. 27/29 internal graph test files are byte-identical;
+  the other two are stale subsets. Found two real drifts (`downstreamChain` export and
+  `reviewChanges.turnStats`) that the parity test must catch before deletion. Confirmed the internal
+  host fork is unreferenced, and capture e2e duplication is ~1,891 lines with repeated frames.
+- **r2 (2026-11-11):** Completed M0.1, M0.2, M0.3, M0.6, M0.8, M0.9, M0.10.
+  - Lint: 0 errors. Fixed the 7 `no-restricted-imports` false positives by scoping the generated graph
+    tree out of plugin-only rules (`no-restricted-imports`, `gui-plugin-no-module-state`) and negating
+    `../internal/*` in the cross-plugin glob; `lint-changed` skips the generated tree.
+  - `gui-plugins` tests: preload `../ui/test/solid-jsx.ts`; the full 1,160-test suite runs.
+  - Graph copy: added `script/sync-graph.ts` with `--check`, package scripts, and
+    `internal/README.md`; regenerated the copy. The new parity test first caught `downstreamChain`,
+    12 extra internal-only exports, and missing `reviewChanges.turnStats`. Deleted 29 stale test
+    files / 277 tests and 3 fixture JSONs.
+  - Deleted the 114-file `internal/host` fork; `gui-plugins` typecheck and the app build pass.
+  - Dropped the never-implemented `GraphChromeProps.minimal` prop; container-width inspector
+    panel/sheet/popover selection already exists via `createWidthThresholdTracker`.
+  - M0.5 progress: `e2e/utils/waits.ts` exposes `graphCanvasHost`, `graphToolbar`, and the single
+    `waitForGraphContent` readiness wait; `session-graph.spec.ts` and `reactivity.spec.ts` use them.
+    The capture specs adopt the same helper during the M0.4 rewrite.
+  - Counts recorded: session-ui graph 324/30, session-graph unit 96/12, gui-plugins 1,160/115,
+    session-graph component specs 25, app component specs 31, app e2e specs 66 (6 graph).
+  - Verified: `bun run check` 53/53, `bun run lint` 0 errors, `bun run --cwd packages/app build`, and
+    all three canonical unit suites. Remaining M0 work: M0.4, M0.5, M0.7.

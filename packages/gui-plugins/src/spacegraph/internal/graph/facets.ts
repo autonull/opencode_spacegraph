@@ -197,7 +197,10 @@ export const composeScopes = (
   collapsedGroups: ReadonlySet<string>,
 ): GraphViewData => {
   let result = applyFacets(model, facets)
+
   if (keptIds) result = keepOnly(result, keptIds)
+
   if (collapsedGroups.size > 0) result = collapseGroups(result, collapsedGroups)
+
   return result
 }

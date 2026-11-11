@@ -21,8 +21,11 @@ test.use({
 })
 
 const directory = "C:/OpenCode/SessionGraph"
+
 const sessionID = "ses_session_graph"
+
 const canvasHost = '[data-slot="graph-canvas-host"]'
+
 const toolbar = '[data-slot="graph-toolbar"]'
 
 function graphFixture() {
@@ -34,27 +37,29 @@ function graphFixture() {
   }
 }
 
-// waitForGraphContent is imported from ../utils/waits
-
 async function openGraph(page: Page) {
   await openSession(page, graphFixture())
   await page.keyboard.press("Control+Shift+M")
   await waitForGraphContent(page)
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
 }
 
 async function openMenu(page: Page) {
   const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-view"]`)
+
   if ((await menu.count()) === 0) {
     const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
     // SAFETY: the overflow element is a <details> element per the toolbar component structure
     const open = await overflow.evaluate((element) => (element as HTMLDetailsElement).open)
+
     if (!open) await overflow.getByLabel("More controls").click()
+
     return
   }
+
   // SAFETY: the menu element is a <details> element per the toolbar component structure
   const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+
   if (!open) await menu.locator(":scope > summary").click()
 }
 
@@ -62,6 +67,7 @@ async function openLayers(page: Page) {
   const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
   // SAFETY: the menu element is a <details> element per the toolbar component structure
   const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+
   if (!open) await menu.locator(":scope > summary").click()
 }
 
@@ -69,6 +75,7 @@ async function closeLayers(page: Page) {
   const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
   // SAFETY: the menu element is a <details> element per the toolbar component structure
   const isOpen = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+
   if (isOpen) await menu.locator(":scope > summary").click()
 }
 
@@ -84,6 +91,7 @@ async function pickLayout(page: Page, layout: string) {
   const menu = page.locator(`${toolbar} [data-slot="graph-toolbar-layout"]`)
   // SAFETY: the menu element is a <details> element per the toolbar component structure
   const open = await menu.evaluate((element) => (element as HTMLDetailsElement).open)
+
   if (!open) await menu.locator(":scope > summary").click()
   await page.locator(`${toolbar} [data-slot="graph-layout-option"][data-value="${layout}"]`).click()
 }
@@ -91,9 +99,12 @@ async function pickLayout(page: Page, layout: string) {
 async function fit(page: Page) {
   const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
   const compact = (await overflow.count()) > 0
+
   if (compact) await overflow.getByLabel("More controls").click()
   await page.locator(toolbar).getByRole("button", { name: "Fit to view", exact: true }).click()
+
   if (compact) await overflow.getByLabel("More controls").click()
+
   // eslint-disable-next-line no-useless-return
   return
 }
@@ -103,6 +114,7 @@ async function setArrangement(page: Page, arrangement: "stacked" | "side" | "flo
   const viewMenu = toolbar.locator('[data-slot="graph-toolbar-view"]')
   // SAFETY: the viewMenu element is a <details> element per the toolbar component structure
   const open = await viewMenu.evaluate((element) => (element as HTMLDetailsElement).open)
+
   if (!open) await viewMenu.locator(":scope > summary").click()
   await toolbar.locator(`[data-slot="graph-arrangement-option"][data-value="${arrangement}"]`).click()
 }
@@ -118,6 +130,7 @@ async function waitForStillCanvas(page: Page) {
         const nextStill = current !== "" && current === previous ? still + 1 : 0
         previous = current
         still = nextStill
+
         return still >= 2
       },
       { intervals: [100], timeout: 30000 },
