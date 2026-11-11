@@ -2,7 +2,7 @@ import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
-import type { GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
+import type { GraphViewData, GraphEdge, GraphNode, NodeKind, Confidence } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
 import { PROVENANCE_EDGE_KINDS, READ_EDGE_KINDS } from "./vocabulary"
 import { diffKernels } from "@spacegraphjs/kernel"
@@ -265,46 +265,191 @@ export function forwardChain(model: GraphViewData, id: string): GraphNode[] {
   return result
 }
 
+/** One step of a downstream trace: the node reached and the edge that reached it. */
+export type DownstreamStep = { node: GraphNode; edge: GraphEdge; confidence: Confidence }
+
+/** A downstream node with more than one forward branch. */
+export type DownstreamFork = {
+  /** The node where the chain splits. */
+  node: GraphNode
+  /** One step per distinct branch target, in model edge order. */
+  branches: DownstreamStep[]
+}
+
+const downstreamKinds = new Set<GraphEdge["kind"]>(["sequence", "produces", "writes"])
+
 /**
- * Downstream impact: nodes reachable by following `sequence`/`produces`/`writes` edges forward.
- * Returns nodes in traversal order with their edge confidence.
- * Used for the "What happened after this?" trace.
+ * Downstream impact: every node reachable by following `sequence`/`produces`/`writes` edges
+ * forward, in breadth-first order with the edge that first reached it. Branches stay visible
+ * instead of picking one edge, so a forked chain never reads as a single confident path.
  */
-export function downstreamChain(
-  model: GraphViewData,
-  from: string,
-): Array<{ node: GraphNode; edge: GraphEdge; confidence: "explicit" | "structural" | "inferred" }> {
-  const result: Array<{ node: GraphNode; edge: GraphEdge; confidence: "explicit" | "structural" | "inferred" }> = []
+export function downstreamChain(model: GraphViewData, from: string): DownstreamStep[] {
+  const result: DownstreamStep[] = []
   const seen = new Set([from])
   const nodes = nodeIndex(model)
-  const downstreamKinds = new Set<GraphEdge["kind"]>(["sequence", "produces", "writes"])
+  const queue = [from]
 
-  let current = from
+  for (let index = 0; index < queue.length; index++) {
+    const current = queue[index]
 
-  for (;;) {
-    // Find outgoing edges of the relevant kinds
-    const edges = model.edges.filter(
-      (edge) => edge.source === current && downstreamKinds.has(edge.kind),
-    )
+    for (const edge of model.edges) {
+      if (edge.source !== current || !downstreamKinds.has(edge.kind)) continue
 
-    if (edges.length === 0) break
+      if (seen.has(edge.target)) continue
 
-    // For now, follow the first edge (like forwardChain)
-    // In the future, this could handle forks (ambiguity display)
-    const edge = edges[0]
-    const nextId = edge.target
+      const node = nodes.get(edge.target)
 
-    if (seen.has(nextId)) break
+      if (!node) continue
 
-    const node = nodes.get(nextId)
-    if (!node) break
-
-    seen.add(nextId)
-    result.push({ node, edge, confidence: edge.confidence })
-    current = nextId
+      seen.add(node.id)
+      queue.push(node.id)
+      result.push({ node, edge, confidence: edge.confidence })
+    }
   }
 
   return result
+}
+
+/**
+ * The fork points inside a downstream trace. A fork is a reachable node with at least two distinct
+ * forward targets; parallel edges to the same target are not a fork. The caller renders the
+ * branches instead of guessing which one the reader meant.
+ */
+export function downstreamForks(model: GraphViewData, from: string): DownstreamFork[] {
+  const nodes = nodeIndex(model)
+  const reachable = [from, ...downstreamChain(model, from).map((step) => step.node.id)]
+  const forks: DownstreamFork[] = []
+
+  for (const id of reachable) {
+    const node = nodes.get(id)
+
+    if (!node) continue
+
+    const branches: DownstreamStep[] = []
+    const targets = new Set<string>()
+
+    for (const edge of model.edges) {
+      if (edge.source !== id || !downstreamKinds.has(edge.kind) || targets.has(edge.target)) continue
+
+      const target = nodes.get(edge.target)
+
+      if (!target) continue
+
+      targets.add(edge.target)
+      branches.push({ node: target, edge, confidence: edge.confidence })
+    }
+
+    if (branches.length > 1) forks.push({ node, branches })
+  }
+
+  return forks
+}
+
+/** The groups an evidence panel shows, in reading order. */
+export type EvidenceKind = "tools" | "files" | "results"
+
+/** One node that supports a claim, with the edge that connects it. */
+export type EvidenceItem = { node: GraphNode; edge: GraphEdge }
+
+/** Evidence for a claim, grouped by what the supporting node is. */
+export type EvidenceGroup = { kind: EvidenceKind; items: EvidenceItem[] }
+
+const EVIDENCE_EDGE_KINDS = new Set<GraphEdge["kind"]>([
+  "evidence",
+  "produces",
+  "writes",
+  "reads",
+  "searches",
+  "references",
+  "covers",
+  "executes",
+])
+
+const evidenceKindOf = (node: GraphNode): EvidenceKind | undefined => {
+  if (node.kind === "tool" || node.kind === "subagent") return "tools"
+
+  if (
+    node.kind === "file" ||
+    node.kind === "directory" ||
+    node.kind === "package" ||
+    node.kind === "commit" ||
+    node.kind === "branch"
+  )
+    return "files"
+
+  if (
+    node.kind === "result" ||
+    node.kind === "error" ||
+    node.kind === "test-run" ||
+    node.kind === "test" ||
+    node.kind === "issue"
+  )
+    return "results"
+
+  return undefined
+}
+
+/**
+ * The tool calls, files, and results that support a claim, grouped for the inspector. A claim's
+ * direct causal parents are evidence; when a parent is a tool, its own produced, written, and read
+ * facts join the panel one hop out. The first edge that reaches a node wins, so model order decides
+ * confidence and ties stay stable.
+ */
+export function evidenceFor(model: GraphViewData, claimID: string): EvidenceGroup[] {
+  const nodes = nodeIndex(model)
+  const claim = nodes.get(claimID)
+
+  if (!claim) return []
+
+  const groups: Record<EvidenceKind, Map<string, EvidenceItem>> = {
+    tools: new Map(),
+    files: new Map(),
+    results: new Map(),
+  }
+
+  const add = (node: GraphNode, edge: GraphEdge) => {
+    const kind = evidenceKindOf(node)
+
+    if (!kind || node.id === claimID) return
+
+    const group = groups[kind]
+
+    if (!group.has(node.id)) group.set(node.id, { node, edge })
+  }
+
+  for (const edge of model.edges) {
+    if (edge.target !== claimID || !EVIDENCE_EDGE_KINDS.has(edge.kind)) continue
+
+    const source = nodes.get(edge.source)
+
+    if (!source) continue
+
+    add(source, edge)
+
+    if (evidenceKindOf(source) !== "tools") continue
+
+    for (const product of model.edges) {
+      if (product.source !== source.id || !EVIDENCE_EDGE_KINDS.has(product.kind)) continue
+
+      const node = nodes.get(product.target)
+
+      if (node) add(node, product)
+    }
+  }
+
+  for (const edge of model.edges) {
+    if (edge.source !== claimID || !EVIDENCE_EDGE_KINDS.has(edge.kind)) continue
+
+    const node = nodes.get(edge.target)
+
+    if (node) add(node, edge)
+  }
+
+  return (["tools", "files", "results"] as const).flatMap((kind) => {
+    const items = [...groups[kind].values()]
+
+    return items.length > 0 ? [{ kind, items }] : []
+  })
 }
 
 const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))

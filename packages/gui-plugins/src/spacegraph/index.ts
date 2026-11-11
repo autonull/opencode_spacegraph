@@ -256,6 +256,8 @@ const State = Schema.Struct({
   detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
+  /** Parked time-travel checkpoint (zero-based turn index); absent means live. */
+  checkpoint: Schema.optional(Schema.Number),
   /** Shared trace state across surfaces. */
   traceKind: Schema.optional(Schema.Literals(["why", "led-here", "related", "downstream"])),
   traceSource: Schema.optional(Schema.String),

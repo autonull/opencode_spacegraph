@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { MountedSession, SetupContext } from "@opencode/plugin/gui"
+import type { GraphViewData } from "@opencode/session-ui/graph"
 import type definition from "./index"
 import { createSpacegraph } from "./model"
 
@@ -25,6 +26,7 @@ type Stored = {
   arrangement?: "stacked" | "side" | "floating"
   side?: "start" | "end"
   turnMap?: boolean
+  checkpoint?: number
 }
 
 // SAFETY: the model reads only `stores` and `surfaces.select`; the test session reads only `key`.
@@ -53,6 +55,7 @@ function setup() {
   const ctx = {
     stores: { prefs, session: () => stored },
     surfaces: { select: (id: string) => void selected.push(id) },
+    flags: { enabled: () => true, loading: () => false },
   } as unknown as SetupContext<typeof definition>
 
   return { model: createSpacegraph(ctx), prefs, stored, selected }
@@ -114,4 +117,42 @@ describe("spacegraph model", () => {
     // Global prefs should not be affected
     expect(prefs.value.level).toBeUndefined()
   })
+
+  test("parks and resumes time travel at the selected turn", () => {
+    const { model, stored } = setup()
+    const graph = graphWithTurns(5)
+
+    model.setCheckpoint(session, 2, graph.turns.length)
+    expect(stored.value.checkpoint).toBe(2)
+    expect(model.parked(session)).toBe(true)
+    expect(model.checkpointIndex(session, graph)).toBe(2)
+    expect(model.graphAt(session, graph).turns).toEqual(graph.turns.slice(0, 3))
+
+    model.setCheckpoint(session, 4, graph.turns.length)
+    expect(stored.value.checkpoint).toBeUndefined()
+    expect(model.parked(session)).toBe(false)
+    expect(model.graphAt(session, graph)).toBe(graph)
+  })
+
+  test("clamps a stale checkpoint to the live turn count", () => {
+    const { model, stored } = setup()
+    stored.update((draft) => {
+      draft.checkpoint = 9
+    })
+
+    expect(model.checkpointIndex(session, graphWithTurns(3))).toBe(2)
+    expect(model.graphAt(session, graphWithTurns(3)).turns).toEqual(["turn:0", "turn:1", "turn:2"])
+  })
 })
+
+function graphWithTurns(count: number): GraphViewData {
+  const turns = Array.from({ length: count }, (_, index) => `turn:${index}`)
+
+  return {
+    root: "session",
+    nodes: turns.map((id) => ({ id, kind: "turn", label: id, status: "neutral", minLevel: "overview", turnID: id })),
+    edges: [],
+    turns,
+    turnByMessageID: new Map(),
+  }
+}

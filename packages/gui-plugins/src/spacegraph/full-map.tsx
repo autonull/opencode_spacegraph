@@ -1,4 +1,5 @@
 import { SessionGraph } from "@opencode/session-graph"
+import { createMemo } from "solid-js"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide, Annotations } from "@opencode/session-ui/graph"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
@@ -12,7 +13,10 @@ export function FullMap(props: {
   arrangementSide?: GraphSide
   onSplitView?: () => void
 }) {
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = createMemo(() => props.model.graphAt(props.session, live()))
+  const timeTravel = () => props.model.timeTravelEnabled()
+  const turnCount = () => live().turns.length
 
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer()
@@ -36,6 +40,12 @@ export function FullMap(props: {
       selection={focused()}
       frame={focused()}
       activeTurn={graph().activeTurn}
+      liveModel={timeTravel() ? live() : undefined}
+      checkpoint={timeTravel() ? props.model.checkpointIndex(props.session, live()) : undefined}
+      turnCount={timeTravel() ? turnCount() : undefined}
+      onCheckpoint={
+        timeTravel() ? (index: number) => props.model.setCheckpoint(props.session, index, turnCount()) : undefined
+      }
       onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
       onLayoutChange={(next: string) => {
         const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)

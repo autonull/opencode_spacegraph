@@ -21,7 +21,10 @@ export function MapDialog(props: {
   title: string
   onOpenTranscript?: (id: string) => void
 }): JSX.Element {
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = createMemo(() => props.model.graphAt(props.session, live()))
+  const timeTravel = () => props.model.timeTravelEnabled()
+  const turnCount = () => live().turns.length
 
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer()
@@ -41,6 +44,12 @@ export function MapDialog(props: {
           selection={focused()}
           frame={focused()}
           activeTurn={graph().activeTurn}
+          liveModel={timeTravel() ? live() : undefined}
+          checkpoint={timeTravel() ? props.model.checkpointIndex(props.session, live()) : undefined}
+          turnCount={timeTravel() ? turnCount() : undefined}
+          onCheckpoint={
+            timeTravel() ? (index: number) => props.model.setCheckpoint(props.session, index, turnCount()) : undefined
+          }
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
             const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
@@ -73,7 +82,8 @@ export function TurnMapDialog(props: {
   openFull: () => void
   onOpenTranscript?: (id: string) => void
 }): JSX.Element {
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = createMemo(() => props.model.graphAt(props.session, live()))
 
   const turn = createMemo(() => {
     const messageID = props.screen.transcript.activeMessageID()

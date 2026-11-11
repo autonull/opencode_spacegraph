@@ -38,7 +38,10 @@ export function HybridSurface(props: {
     return `w-2/5 shrink-0 border-v2-border-border-base ${side() === "start" ? "order-first border-r" : "order-last border-l"}`
   })
 
-  const graph = props.model.graph(props.session)
+  const live = props.model.graph(props.session)
+  const graph = createMemo(() => props.model.graphAt(props.session, live()))
+  const timeTravel = () => props.model.timeTravelEnabled()
+  const turnCount = () => live().turns.length
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer()
   const detailMode = () => props.model.detailMode(props.session)
@@ -56,6 +59,12 @@ export function HybridSurface(props: {
           selection={focused()}
           frame={focused()}
           activeTurn={graph().activeTurn}
+          liveModel={timeTravel() ? live() : undefined}
+          checkpoint={timeTravel() ? props.model.checkpointIndex(props.session, live()) : undefined}
+          turnCount={timeTravel() ? turnCount() : undefined}
+          onCheckpoint={
+            timeTravel() ? (index: number) => props.model.setCheckpoint(props.session, index, turnCount()) : undefined
+          }
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
             const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)

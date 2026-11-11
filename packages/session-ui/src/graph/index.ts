@@ -52,6 +52,13 @@ export {
 } from "./incremental-builder"
 
 export {
+  TIME_TRAVEL_LIMIT,
+  captureTimeTravel,
+  graphAtCheckpoint,
+  type TimeTravelSnapshot,
+} from "./time-travel"
+
+export {
   CARD_SIZE,
   COMPACT_SIZE,
   DETAIL_MODES,

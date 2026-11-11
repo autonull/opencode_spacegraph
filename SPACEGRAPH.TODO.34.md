@@ -6,19 +6,20 @@
 > modes are additive, flag-gated, and quiet by default. We win by supporting preference, not by
 > picking one paradigm.
 >
-> **Status (2026-11-10):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
+> **Status (2026-11-11):** Phases 14–18 **complete** (core extraction, embedding bridge, multi-surface,
 > config/lenses/flags). Phase 15.3 **ComposerNodeWidget** done. Phase 16.1-16.5 **complete** — GraphTranscriptSurface
 > implemented and flag-gated in spacegraph plugin, affordance rules done, subagent drill implemented via double-click + drill-down,
 > session.header slot and ComposerPill added for host integration, SDK asks recorded in `docs/spacegraph/library-delta.md`. Phase 17-18 complete.
 > Phase 19.1 **Trace breadcrumbs + back/forward**, **downstream impact**, **ambiguity display**, and
-> the **evidence panel** complete.
-> Phases 19.2–28 are experimental with kill criteria.
+> the **evidence panel** complete. Phase 19.2 compare/trust/files and Phase 19.3 advisor UI complete.
+> Phase 19.4 **time travel** complete.
+> Phases 19.5–28 are experimental with kill criteria.
 >
-> **Current position (r26):** Phase 19.1 is **complete**. **Next:** choose between the 19.3
-> kill-criterion measurement (UI complete, baseline comparison unmeasured) and 19.4 time travel.
-> 19.5 spatial memory is blocked on the G5 fixes already landed in Phase 14; 19.6–19.12 remain.
+> **Current position (r27):** Phase 19.4 is **complete**. **Next:** Phase 19.5 spatial memory v2 (the
+> G5 fixes landed in Phase 14), then 19.6 notes/pins or the still-unmeasured 19.3 baseline comparison.
+> 19.7–19.12 remain.
 >
-> **r20 (2026-11-10):** Phase 19.1 Trace breadcrumbs complete — unified across all surfaces.
+> **r27 (2026-11-11):** Phase 19.4 time travel complete — bounded snapshots + host checkpoint control.
 >
 > **Priority ladder (hard ordering):**
 > 1. **Code** — extraction, isolation, embedding, multi-surface, configuration.
@@ -672,10 +673,13 @@ Implement in the order below; each item is independently shippable and revertibl
 
 ### 19.4 Time travel
 
-- [ ] Snapshot `IncrementalBuilderState` per turn (bounded ring buffer) and scrub with a checkpoint
-      control.
-- [ ] Render the historical model read-only; "return to live" restores streaming.
-- [ ] **Kill:** memory or layout instability on long sessions.
+- [x] Snapshot each turn's built graph in a bounded ring buffer (32 entries) and scrub with the
+      existing checkpoint control; older checkpoints fall back to scoping the live model.
+- [x] Render the historical model read-only; "return to live" restores streaming. The composer node
+      widget switches to its read-only state while parked.
+- [x] **Kill:** memory or layout instability on long sessions. **Result:** snapshots are detached
+      node/edge copies, capped at 32 per session, and layout reuses the existing pipeline. No
+      instability observed in the graph fixtures.
 
 ### 19.5 Spatial memory v2
 
@@ -1062,3 +1066,11 @@ feature that needs it.
   - Added five unit tests covering grouping, tool claims, ignored edges, deduplication, and unknown claims.
   - `packages/session-ui`, `packages/session-graph`, and `packages/ui` typecheck clean; unit tests pass (session-ui graph 96, session-graph 318).
   - **Next:** pick 19.3 baseline measurement or 19.4 time travel.
+- **r27 (2026-11-11):** Phase 19.4 Time travel complete.
+  - Added `time-travel.ts` to `@opencode/session-ui/graph` (and the `gui-plugins` internal copy): `captureTimeTravel` keeps the newest 32 detached turn graphs per session; `graphAtCheckpoint` returns a buffered graph or a live-scoped fallback for older turns.
+  - The spacegraph model records snapshots from each incremental build, exposes a shared per-session `checkpoint`, and builds every surface from `graphAt`; `liveModel` keeps the compare view honest while parked.
+  - Wired `checkpoint` / `turnCount` / `onCheckpoint` through panel, map, hybrid, dialog, and turn-map surfaces behind `graph_time_travel`; returning to the last turn clears the park, and the composer widget becomes read-only.
+  - Synced the internal graph copy with `downstreamForks`/`evidenceFor` so `packages/gui-plugins` typechecks clean.
+  - Added 6 time-travel unit tests plus 3 host model tests.
+  - `packages/session-ui` (324 tests), `packages/session-graph` (96 tests), and `packages/gui-plugins` typecheck clean. The `gui-plugins` model unit file is still blocked by the pre-existing `jsxDEV` harness error in this environment.
+  - **Next:** 19.5 spatial memory v2, then 19.6 notes/pins or the unmeasured 19.3 baseline comparison.
