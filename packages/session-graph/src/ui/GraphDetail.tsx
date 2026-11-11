@@ -9,7 +9,7 @@ import {
   subagentContributions,
   type ActionSpec,
 } from "@opencode/session-ui/graph"
-import { nodeByID, openInTranscript, why, downstreamForks } from "@opencode/session-ui/graph"
+import { nodeByID, openInTranscript, why, downstreamForks, evidenceFor } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, createMemo, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
@@ -26,6 +26,12 @@ const STATUS_TONE: Record<GraphNode["status"], string> = {
   interrupted: "text-text-on-warning-base",
   neutral: "text-text-weak",
 }
+
+const EVIDENCE_LABEL_KEYS = {
+  tools: "ui.sessionGraph.inspector.evidenceTools",
+  files: "ui.sessionGraph.inspector.evidenceFiles",
+  results: "ui.sessionGraph.inspector.evidenceResults",
+} as const
 
 /**
  * JSON display with expand/collapse for long content.
@@ -244,6 +250,8 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
   }
 
   const time = (value: number | undefined) => (value === undefined ? undefined : new Date(value).toLocaleTimeString())
+
+  const evidence = createMemo(() => evidenceFor(props.model, props.node.id))
 
   /**
    * T6.5 — where a fork branched. A fork *before* a message leaves it out of this session; a fork
@@ -495,6 +503,37 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
             </pre>
           </div>
         )}
+      </Show>
+
+      <Show when={evidence().length > 0}>
+        <div class="mt-4" data-component="graph-inspector-evidence" data-slot="graph-inspector-evidence">
+          <div class="text-12-regular text-text-weak">{i18n.t("ui.sessionGraph.inspector.evidence")}</div>
+          <For each={evidence()}>
+            {(group) => (
+              <div class="mt-2">
+                <div class="text-11-regular text-text-weak">{i18n.t(EVIDENCE_LABEL_KEYS[group.kind])}</div>
+                <ul class="mt-1 flex flex-col gap-1">
+                  <For each={group.items}>
+                    {(item) => (
+                      <li>
+                        <button
+                          type="button"
+                          class="flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-left hover:bg-surface-base-hover"
+                          aria-label={i18n.t("ui.sessionGraph.inspector.follow", { label: item.node.label })}
+                          onClick={() => props.onSelect(item.node.id)}
+                        >
+                          <span class="text-12-regular text-text-weaker">{item.edge.kind}</span>
+                          <span class="min-w-0 flex-1 truncate text-12-regular text-text-base">{item.node.label}</span>
+                          <span class="text-12-regular text-text-weaker">{i18n.t(VOCABULARY_KEYS.confidence[item.edge.confidence])}</span>
+                        </button>
+                      </li>
+                    )}
+                  </For>
+                </ul>
+              </div>
+            )}
+          </For>
+        </div>
       </Show>
 
       <div class="mt-4">
