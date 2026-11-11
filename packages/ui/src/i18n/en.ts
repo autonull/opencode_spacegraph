@@ -566,6 +566,7 @@ const source = {
   "ui.sessionGraph.inspector.forkedFrom": "Forked from",
   "ui.sessionGraph.inspector.forkedThrough": "Forked through",
   "ui.sessionGraph.inspector.input": "Input",
+  "ui.sessionGraph.inspector.lineage": "Lineage",
   "ui.sessionGraph.inspector.noConnections": "No connections",
   "ui.sessionGraph.inspector.nodes": "Nodes",
   "ui.sessionGraph.inspector.noFiles": "No files",
@@ -797,6 +798,10 @@ const source = {
   "ui.sessionGraph.status.neutral": "Neutral",
   "ui.sessionGraph.status.pending": "Pending",
   "ui.sessionGraph.status.running": "Running",
+  "ui.sessionGraph.status.pin": "Pin",
+  "ui.sessionGraph.status.pinned": "Pinned",
+  "ui.sessionGraph.status.unpin": "Unpin",
+  "ui.sessionGraph.status.unpinned": "Unpinned",
   "ui.sessionGraph.status.success": "Success",
 
   "ui.sessionGraph.time.aria": "Time slider",

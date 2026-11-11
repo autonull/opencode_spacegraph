@@ -267,6 +267,8 @@ const State = Schema.Struct({
   explicitlyCollapsedGroups: Schema.optional(Schema.Array(Schema.String)),
   /** Shared notes across surfaces. */
   notes: Schema.optional(Schema.Unknown),
+  /** Nodes the reader pinned; every surface marks the same set. */
+  pins: Schema.optional(Schema.Array(Schema.String)),
 })
 
 export type State = Schema.Schema.Type<typeof State>

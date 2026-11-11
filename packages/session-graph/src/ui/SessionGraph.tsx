@@ -323,6 +323,16 @@ export type SessionGraphProps = {
   /** Controlled notes/annotations state (Phase 17.2 shared state). */
   notes?: Annotations
   onNotesChange?: (notes: Annotations) => void
+
+  /** Durable pinned node ids, shared across every surface that renders the session. */
+  pins?: readonly string[]
+  onPinsChange?: (pins: readonly string[]) => void
+
+  /**
+   * How many nested drill-downs this surface allows. A node widget is depth 1, a popover 2, and the
+   * full map 3. The view refuses a fourth rather than mounting another graph inside itself.
+   */
+  maxDrillDepth?: number
 }
 
 /**
@@ -454,6 +464,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
   const [notesStore, setNotesStore] = createStore<Annotations>({})
   // Use controlled notes when provided, otherwise local store
   const notesSource = props.notes ?? notesStore
+  const [localPins, setLocalPins] = createSignal<ReadonlySet<string>>(new Set())
+  const pins = createMemo<ReadonlySet<string>>(() => (props.pins ? new Set(props.pins) : localPins()))
   const model = createMemo(() => (props.model ? withAnnotations(props.model, notesSource) : emptyModel))
 
   // Demo model for first-run: uses canonical fixture when no session data
@@ -496,6 +508,19 @@ export const SessionGraph = (props: SessionGraphProps) => {
   const selection = graphSelection.selection
   const select = graphSelection.select
   const selectionObj = { selection, select }
+
+  const togglePin = (nodeID: string | undefined) => {
+    if (!nodeID) return
+    const next = new Set(pins())
+    const pinned = next.has(nodeID)
+    if (pinned) next.delete(nodeID)
+    else next.add(nodeID)
+    if (props.onPinsChange) props.onPinsChange([...next])
+    else setLocalPins(next)
+    announce(i18n.t(pinned ? "ui.sessionGraph.status.unpinned" : "ui.sessionGraph.status.pinned"))
+  }
+
+  const maxDrillDepth = () => props.maxDrillDepth ?? 3
 
   // Test harness for component tests
   const { groupMenu, setGroupMenu } = useTestHarness(props, selectionObj, setRendererID)
@@ -866,6 +891,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
       collapsedGroups: groupCollapse.collapsedGroups,
       displayPositions,
       i18n,
+      pins,
     },
   )
 
@@ -1115,6 +1141,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     enterDrillDown: state.enterDrillDown,
     exitDrillDown: state.exitDrillDown,
     canDrillDown: state.canDrillDown,
+    maxDrillDepth,
     state,
   })
 
@@ -1680,6 +1707,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
             annotations={{
               openNoteComposer: annotations.openNoteComposer,
             }}
+            pinned={selection()[0] ? pins().has(selection()[0]!) : false}
+            onTogglePin={() => togglePin(selection()[0])}
             error={error() as string | undefined}
             demoDismissed={demoDismissed()}
             seeMapPromptDismissed={seeMapPromptDismissed()}

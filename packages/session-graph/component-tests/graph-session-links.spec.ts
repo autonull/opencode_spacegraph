@@ -33,3 +33,16 @@ story("a compaction says whether it replayed a window or left a summary", async 
   await expect(inspector).toContainText("Replayed")
   await expect(inspector).toContainText("This node was replayed")
 })
+
+story("the lineage map names the fork, parent, and child and opens each", async ({ mount }) => {
+  const root = await mount("session-graph-view--lineage")
+  const lineage = root.locator('[data-slot="graph-lineage"]')
+
+  await expect(lineage.locator('[data-lineage-kind="fork"]')).toContainText("ses_origin")
+  await expect(lineage.locator('[data-lineage-kind="parent"]')).toContainText("ses_parent")
+  await expect(lineage.locator('[data-lineage-kind="child"]')).toContainText("ses_child_auth")
+  await expect(lineage.locator('[data-slot="graph-lineage-node"]')).toHaveCount(3)
+
+  await lineage.locator('[data-lineage-kind="parent"] [data-slot="graph-lineage-node"]').click()
+  await expect(root.locator("[data-opened-session]")).toHaveAttribute("data-opened-session", "ses_parent")
+})

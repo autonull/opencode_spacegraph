@@ -94,6 +94,7 @@ export const NodeWidgetLayer = (props: NodeWidgetLayerProps) => {
       data-slot="graph-node-widget-layer"
       role="group"
       aria-label="Node widgets"
+      style={{ "z-index": 10 }}
     >
       <For each={widgetEntries()}>
         {(entry) => (

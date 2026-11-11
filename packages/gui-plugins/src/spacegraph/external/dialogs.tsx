@@ -67,6 +67,10 @@ export function MapDialog(props: {
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}
+          notes={props.model.notes(props.session)}
+          onNotesChange={(notes) => props.model.setNotes(props.session, notes)}
+          pins={props.model.pins(props.session)}
+          onPinsChange={(pins) => props.model.setPins(props.session, pins)}
         />
       </div>
     </props.ctx.ui.Dialog>
@@ -178,7 +182,12 @@ export function TurnMapDialog(props: {
               shell="bare"
               reducedMotion={true}
               spatialMemoryOwner={false}
+              maxDrillDepth={1}
               onOpenTranscript={props.onOpenTranscript}
+              notes={props.model.notes(props.session)}
+              onNotesChange={(notes) => props.model.setNotes(props.session, notes)}
+              pins={props.model.pins(props.session)}
+              onPinsChange={(pins) => props.model.setPins(props.session, pins)}
             />
           </div>
           <div class="flex shrink-0 justify-end border-t border-v2-border-border-base px-4 py-3">

@@ -332,6 +332,10 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             <GraphTranscriptSurface
               model={model.graph(session)()}
               session={session}
+              notes={model.notes(session)}
+              onNotesChange={(notes) => model.setNotes(session, notes)}
+              pins={model.pins(session)}
+              onPinsChange={(pins) => model.setPins(session, pins)}
               onOpenTranscript={handleOpenTranscript}
               onTurnExpand={(turnID) => {
                 // Expand is handled by the inline graph toggle

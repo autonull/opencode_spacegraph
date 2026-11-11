@@ -41,6 +41,12 @@ export type GraphTranscriptSurfaceProps = {
   renderSummary?: SessionGraphProps["renderSummary"]
   /** Optional diffSource for interactive graphs */
   diffSource?: SessionGraphProps["diffSource"]
+  /** Optional shared notes for interactive graphs */
+  notes?: SessionGraphProps["notes"]
+  onNotesChange?: SessionGraphProps["onNotesChange"]
+  /** Optional shared pins for interactive graphs */
+  pins?: SessionGraphProps["pins"]
+  onPinsChange?: SessionGraphProps["onPinsChange"]
   /** Optional onOpenTranscript for interactive graphs */
   onOpenTranscript?: SessionGraphProps["onOpenTranscript"]
   /** Optional onOpenSession for interactive graphs */
@@ -247,6 +253,10 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
             renderCard={props.renderCard}
             renderSummary={props.renderSummary}
             diffSource={props.diffSource}
+            notes={props.notes}
+            onNotesChange={props.onNotesChange}
+            pins={props.pins}
+            onPinsChange={props.onPinsChange}
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
             onActionNavigate={props.onActionNavigate}
@@ -291,6 +301,10 @@ interface GraphTranscriptRowProps {
   renderCard?: SessionGraphProps["renderCard"]
   renderSummary?: SessionGraphProps["renderSummary"]
   diffSource?: SessionGraphProps["diffSource"]
+  notes?: SessionGraphProps["notes"]
+  onNotesChange?: SessionGraphProps["onNotesChange"]
+  pins?: SessionGraphProps["pins"]
+  onPinsChange?: SessionGraphProps["onPinsChange"]
   onOpenTranscript?: SessionGraphProps["onOpenTranscript"]
   onOpenSession?: SessionGraphProps["onOpenSession"]
   onActionNavigate?: SessionGraphProps["onActionNavigate"]
@@ -491,6 +505,10 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
             renderCard={props.renderCard}
             renderSummary={props.renderSummary}
             diffSource={props.diffSource}
+            notes={props.notes}
+            onNotesChange={props.onNotesChange}
+            pins={props.pins}
+            onPinsChange={props.onPinsChange}
             onOpenTranscript={props.onOpenTranscript}
             onOpenSession={props.onOpenSession}
             onActionNavigate={props.onActionNavigate}

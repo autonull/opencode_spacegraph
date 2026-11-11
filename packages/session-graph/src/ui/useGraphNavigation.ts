@@ -29,6 +29,7 @@ export interface UseGraphNavigationInput {
   enterDrillDown: UseGraphStateReturn["enterDrillDown"]
   exitDrillDown: UseGraphStateReturn["exitDrillDown"]
   canDrillDown: UseGraphStateReturn["canDrillDown"]
+  maxDrillDepth: Accessor<number>
   state: UseGraphStateReturn
 }
 
@@ -69,6 +70,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     enterDrillDown,
     exitDrillDown: exitDrillDownState,
     canDrillDown: canDrillDownState,
+    maxDrillDepth,
     // Drill-down state access for exitDrillDown
     state,
   } = input
@@ -82,6 +84,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
 
     // Phase 10.3: Fractal drill-down for turns and subagents
     if (node.kind === "turn") {
+      if (state.drillDownStack().length >= maxDrillDepth()) return
       const subgraph = turnSubgraph(model(), node.id, 20)
       const camera = viewportTracker.viewport()
       enterDrillDown(
@@ -95,6 +98,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     }
 
     if (node.kind === "subagent") {
+      if (state.drillDownStack().length >= maxDrillDepth()) return
       const subgraph = subagentSubgraph(model(), node.id)
       const camera = viewportTracker.viewport()
       enterDrillDown(

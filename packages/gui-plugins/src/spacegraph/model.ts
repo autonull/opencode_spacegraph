@@ -17,6 +17,7 @@ import {
   captureTimeTravel,
   graphAtCheckpoint,
   layoutGraph,
+  withAnnotations,
   type GraphLayout,
   type GraphViewData,
   type IncrementalBuilderState,
@@ -189,10 +190,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     },
     export: (session: MountedSession, format: "svg" | "json" | "html") => {
       const g = graph(session)()
+      const withNotes = withAnnotations(g, (sessionValue(session)?.notes as Annotations) ?? {})
       const level = store(session).value?.level ?? prefs.value.level ?? "execution"
       const layoutStrategy = (store(session).value?.layout ?? prefs.value.layout ?? "lanes") as LayoutStrategy
-      const layout = layoutGraph(g, { strategy: layoutStrategy })
-      const renderModel = buildRenderModel(g, {
+      const layout = layoutGraph(withNotes, { strategy: layoutStrategy })
+      const renderModel = buildRenderModel(withNotes, {
         level,
         positions: layout.positions,
       })
@@ -324,6 +326,23 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         const notes = { ...(draft.notes ?? {}) } as Annotations
         notes[note.id] = note as any
         draft.notes = notes as any
+      })
+    },
+    /** Pinned node ids for the session. */
+    pins: (session: MountedSession) => sessionValue(session)?.pins ?? [],
+    /** Replace the session's pinned node ids. */
+    setPins: (session: MountedSession, pins: readonly string[]) => {
+      store(session).update((draft) => {
+        draft.pins = [...pins]
+      })
+    },
+    /** Toggle one node's pin without rewriting the others. */
+    togglePin: (session: MountedSession, nodeID: string) => {
+      store(session).update((draft) => {
+        const pins = new Set(draft.pins ?? [])
+        if (pins.has(nodeID)) pins.delete(nodeID)
+        else pins.add(nodeID)
+        draft.pins = [...pins]
       })
     },
   }
