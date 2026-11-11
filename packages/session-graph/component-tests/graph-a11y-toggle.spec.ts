@@ -2,7 +2,7 @@ import { expect, story } from "../../stories/playwright/story"
 
 // Phase 4.5: Screen-reader tree — component test asserting roving-tabindex list matches drawn set after level toggle
 
-story("a11y tree matches drawn set after level toggle", async ({ mount, page }) => {
+story("a11y tree matches drawn set after level toggle @a11y", async ({ mount, page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
   const root = await mount("session-graph-view--fullscreen")

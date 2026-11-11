@@ -9,7 +9,7 @@
  * clips are concatenated in frame order (generate-demo-video then warns that
  * timing falls back to the manifest holds).
  *
- * Run after: cd packages/app && bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture
+ * Run after: cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture
  */
 
 import { readdirSync, copyFileSync, mkdirSync, statSync, writeFileSync } from "fs"

@@ -5,7 +5,7 @@ import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
-import { waitForGraphContent } from "../utils/waits"
+import { graphCanvasHost, waitForGraphContent } from "../utils/waits"
 
 const KNOWN_FLAKY_ERRORS = [
   "Maximum call stack size exceeded",
@@ -24,7 +24,6 @@ const test = base.extend({
 
 const directory = "C:/OpenCode/SessionGraph"
 const sessionID = "ses_session_graph"
-const canvasHost = '[data-slot="graph-canvas-host"]'
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -47,6 +46,9 @@ function shouldCapture(name: string): boolean {
   const frameNum = Number.parseInt(match[1], 10)
   return captureOnly.includes(frameNum)
 }
+
+// The 32-frame gate runs through `bun run graph:capture`, which supplies GRAPH_CAPTURE_DIR.
+test.skip(!captureDir, "Capture gate; run bun run graph:capture --mode=verify")
 
 test.use({
   viewport: { width: 1440, height: 900 },
@@ -236,8 +238,8 @@ async function openGraph(page: Page) {
   await openSession(page, graphFixture())
   await settle(page)
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await waitForGraphContent(page)
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-renderer", "spacegraph")
 }
 
 async function still(page: Page, timeout = 30000) {
@@ -256,7 +258,7 @@ async function chooseProfile(page: Page, profile: string) {
   await closeLayers(page)
 }
 
-test("01 log", async ({ page }) => {
+test("01 log @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openSession(page, graphFixture())
@@ -265,7 +267,7 @@ test("01 log", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("02 graph overview", async ({ page }) => {
+test("02 graph overview @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -276,7 +278,7 @@ test("02 graph overview", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("03 graph execution", async ({ page }) => {
+test("03 graph execution @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -290,7 +292,7 @@ test("03 graph execution", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("04 graph selected", async ({ page }) => {
+test("04 graph selected @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -308,7 +310,7 @@ test("04 graph selected", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("05 return to log", async ({ page }) => {
+test("05 return to log @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -320,12 +322,12 @@ test("05 return to log", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("06 graph 3d", async ({ page }) => {
+test("06 graph 3d @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
   await chooseDepth(page, "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d")
   await still(page)
   await fit(page)
   await still(page)
@@ -333,7 +335,7 @@ test("06 graph 3d", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("11 graph timeline", async ({ page }) => {
+test("11 graph timeline @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -346,7 +348,7 @@ test("11 graph timeline", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("12 graph hierarchy", async ({ page }) => {
+test("12 graph hierarchy @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -359,7 +361,7 @@ test("12 graph hierarchy", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("13 graph narrow", async ({ page }) => {
+test("13 graph narrow @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -376,7 +378,7 @@ test("13 graph narrow", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("14 graph light", async ({ page }) => {
+test("14 graph light @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -388,7 +390,7 @@ test("14 graph light", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("15 graph ribbon", async ({ page }) => {
+test("15 graph ribbon @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -403,7 +405,7 @@ test("15 graph ribbon", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("16 graph matrix", async ({ page }) => {
+test("16 graph matrix @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -416,7 +418,7 @@ test("16 graph matrix", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("17 graph files", async ({ page }) => {
+test("17 graph files @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -430,13 +432,13 @@ test("17 graph files", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("18 graph layered", async ({ page }) => {
+test("18 graph layered @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
   await chooseDepth(page, "orbit")
   await chooseDepth(page, "layered")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "layered")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-depth", "layered")
   await still(page)
   await fit(page)
   await still(page)
@@ -444,13 +446,13 @@ test("18 graph layered", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("19 graph depth stack", async ({ page }) => {
+test("19 graph depth stack @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
   await chooseDepth(page, "orbit")
   await chooseDepth(page, "depth-stack")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "depth-stack")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-depth", "depth-stack")
   await still(page, 60000)
   await fit(page)
   await still(page, 60000)
@@ -458,7 +460,7 @@ test("19 graph depth stack", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("20 graph zoom 150", async ({ page }) => {
+test("20 graph zoom 150 @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -471,7 +473,7 @@ test("20 graph zoom 150", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("21 graph zoom max", async ({ page }) => {
+test("21 graph zoom max @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -484,7 +486,7 @@ test("21 graph zoom max", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("22 graph turn 1", async ({ page }) => {
+test("22 graph turn 1 @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -499,7 +501,7 @@ test("22 graph turn 1", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("23 graph turn 2", async ({ page }) => {
+test("23 graph turn 2 @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -511,7 +513,7 @@ test("23 graph turn 2", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("24 graph failure chain", async ({ page }) => {
+test("24 graph failure chain @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -524,7 +526,7 @@ test("24 graph failure chain", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("28 graph tree", async ({ page }) => {
+test("28 graph tree @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -536,7 +538,7 @@ test("28 graph tree", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("29 graph force", async ({ page }) => {
+test("29 graph force @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -548,13 +550,13 @@ test("29 graph force", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("31 graph perspective", async ({ page }) => {
+test("31 graph perspective @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
   await chooseDepth(page, "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-card-facing", "plane")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-depth", "orbit")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-card-facing", "plane")
   await setLevel(page, "Detail")
   await still(page)
   await fit(page)
@@ -563,7 +565,7 @@ test("31 graph perspective", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("34 graph surfaces", async ({ page }) => {
+test("34 graph surfaces @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -575,7 +577,7 @@ test("34 graph surfaces", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("36 graph trace overlay", async ({ page }) => {
+test("36 graph trace overlay @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -593,7 +595,7 @@ test("36 graph trace overlay", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("37 graph collapsed group", async ({ page }) => {
+test("37 graph collapsed group @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -608,7 +610,7 @@ test("37 graph collapsed group", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("38 graph hybrid", async ({ page }) => {
+test("38 graph hybrid @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -623,7 +625,7 @@ test("38 graph hybrid", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("39 graph nlq search", async ({ page }) => {
+test("39 graph nlq search @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -642,7 +644,7 @@ test("39 graph nlq search", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("40 graph nlq code errors", async ({ page }) => {
+test("40 graph nlq code errors @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -661,7 +663,7 @@ test("40 graph nlq code errors", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("41 graph trust lens", async ({ page }) => {
+test("41 graph trust lens @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -681,7 +683,7 @@ test("41 graph trust lens", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("42 graph permalink copy", async ({ page }) => {
+test("42 graph permalink copy @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
@@ -702,7 +704,7 @@ test("42 graph permalink copy", async ({ page }) => {
   expect(filterKnownErrors(errors)).toEqual([])
 })
 
-test("43 graph demo map", async ({ page }) => {
+test("43 graph demo map @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)

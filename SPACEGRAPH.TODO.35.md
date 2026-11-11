@@ -1,31 +1,39 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-11):** M0 foundation repair is in progress. M0.1, M0.2, M0.3, M0.6, M0.8, M0.9,
-> and M0.10 are complete; M0.4 (capture consolidation) and M0.7 (suite tags) remain, and M0.5 has
-> its helpers in place with the capture specs left to M0.4. Phases 14–19.4 are complete.
-> `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the single source
-> of truth for remaining work.
+> **Status (2026-11-11):** M0 foundation repair is complete (M0.1–M0.10). One canonical capture
+> gate and suite tags are in place. Phases 14–19.4 are complete. `SPACEGRAPH.TODO.34.md` is the
+> frozen design and history reference; this file is the single source of truth for remaining work.
 >
-> **Baseline:** through Phase 19.4, commit `56e99f4cdd`, plus the M0 foundation commit. Canonical
-> local suites: `packages/session-ui` `bun test src/graph` 324 tests / 30 files,
+> **Baseline:** through Phase 19.4, commit `56e99f4cdd`, plus the M0 foundation and gate commits.
+> Canonical local suites: `packages/session-ui` `bun test src/graph` 324 tests / 30 files,
 > `packages/session-graph` `bun test src` 96 / 12, `packages/gui-plugins` `bun run test` 1,160 / 115
 > (1 skip, includes the 20 parity tests), and root `bun run check` green (53/53, 0 lint errors).
 >
-> **Next:** finish M0.4, M0.5, and M0.7, then M1.1 (19.5 spatial memory v2) and M1.2 (19.3
-> compaction-advisor measurement).
+> **Next:** M1.1 (19.5 spatial memory v2) and M1.2 (19.3 compaction-advisor measurement).
 
 ### Session handoff
 
-- M0.1–M0.3 and M0.6–M0.10 are done. Start from **M0.4** (capture gate) and **M0.5** (readiness
-  helpers); both are e2e-only and must keep `bun run graph:verify` green.
+- All M0 work is done. Start with **M1.1** and **M1.2**.
 - The bundled graph copy is generated: edit `packages/session-ui/src/graph`, then run
   `bun run sync:graph` in `packages/gui-plugins`. `bun run check:graph` (also run by `bun test`)
   fails on drift, and `packages/gui-plugins/src/spacegraph/graph-parity.test.ts` proves behavior
   parity.
-- Then do **M0.7** tags, then M1.1/M1.2.
+- Capture: `packages/app/e2e/graph/capture.spec.ts` is the only canonical gate and runs only with
+  `GRAPH_CAPTURE_DIR` (set by `bun run graph:capture`). `capture-live`, `capture-clips`, and
+  `capture-segment1` are opt-in demo recordings (`GRAPH_CAPTURE_DEMO=1`).
+- The committed screenshot set predates the Phase 16.3 "Map this turn" affordance. `--mode=verify`
+  still captures and compares the full set, but reports pre-existing pixel drift; re-blessing needs a
+  reference render environment and belongs with the M7 visual review, not the capture refactor.
 - Canonical checks: `bun run check` at the root; `bun test src/graph` in `packages/session-ui`;
   `bun test src` in `packages/session-graph`; `bun run test` in `packages/gui-plugins`;
   `bun run graph:verify` for the full graph gate.
+- Targeted runs: `cd packages/app && bun run test:e2e -- --grep @graph` (graph surfaces);
+  `bun run graph:capture --mode=frame --only=24` (one capture frame);
+  `GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture`
+  (demo recording);
+  `cd packages/session-graph && bun run test:components -- --grep @graph` (component contract);
+  `cd packages/session-graph && bun run test:components -- --grep @a11y` (a11y only);
+  `cd packages/session-graph && bun test src --test-name-pattern="<pattern>"` (unit tests).
 - Do not add work to `SPACEGRAPH.TODO.34.md`; it is frozen. Record results here.
 - Former hazards are fixed: root lint has 0 errors (warnings stay advisory) and the `gui-plugins`
   model suite runs under the Solid JSX preload.
@@ -89,34 +97,44 @@ features.
             `turnByMessageID`), and selector/review/layout parity over fixture nodes.
       - [x] Deleted the 29 duplicated test files (277 tests) and 3 fixture JSONs only after the
             parity test passed. `session-ui` is the test source of truth.
-- [ ] **M0.4 Consolidate the graph capture gate.** The four `packages/app/e2e/graph/capture*.spec.ts`
-      files total ~1,891 lines and capture the same frames 2–4 times. Keep one canonical 32-frame gate,
-      make live/segment/clip modes explicit opt-in demo modes or delete the overlap.
-      **Next:** keep `capture.spec.ts` as the canonical gate, move `capture-live`/`capture-clips`/
-      `capture-segment1` frames behind an env-selected demo mode, and confirm `bun run graph:capture
-      --mode=verify` still asserts the committed set.
-      **Baseline hazard:** on 2026-11-11 the local `PLAYWRIGHT_BUILD=1 bun run test:e2e:built
-      e2e/graph/session-graph.spec.ts e2e/graph/reactivity.spec.ts` run failed the same 4 tests with
-      and without the M0.5 changes (the toolbar "Fit to view" control was not found). Treat that as
-      an environment/fixture issue, not a regression, and establish a green local e2e baseline before
-      trusting a capture comparison.
-- [ ] **M0.5 Remove redundant component readiness checks.** Centralize `data-graph-ready`, canvas,
-      toolbar, and inspector waits. Keep one smoke assertion per surface and remove repeated waits that
-      do not protect a distinct behavior.
-      **Progress:** `packages/app/e2e/utils/waits.ts` now exports `graphCanvasHost`, `graphToolbar`, and
-      `waitForGraphContent` (canvas visible + `data-graph-ready`). `session-graph.spec.ts` and
-      `reactivity.spec.ts` use them and no longer inline the readiness assertion.
-      **Remaining:** the four capture specs still inline it; fold that into the M0.4 rewrite instead
-      of editing them twice. Add a toolbar/inspector readiness helper only if a spec needs one.
+- [x] **M0.4 Consolidate the graph capture gate.** **Done.**
+      `e2e/graph/capture.spec.ts` is the only always-on gate: 32 frames tagged `@graph @capture`,
+      and the file skips unless `GRAPH_CAPTURE_DIR` is set. `capture-live`, `capture-clips`, and
+      `capture-segment1` are demo recordings tagged `@capture @demo`; they skip unless
+      `GRAPH_CAPTURE_DEMO=1`. `playwright.config.ts` excludes all capture files from `chromium` and
+      runs them only in the `graph-capture` project, so a frame is never written twice. The demo
+      commands in `script/copy-capture-*`, `script/generate-demo-video.ts`, and `DEMO_VIDEO_PLAN.md`
+      now set the opt-in variable.
+      **Verification:** `bun run graph:capture --mode=verify` ran the gate once (32 tests, one
+      worker) and compared all 35 committed frames plus the 3 bundle frames through the pixel gate.
+      It correctly failed on drift: every frame differs slightly from the local render, and frames
+      02–04 also include the Phase 16.3 "Map this turn" affordance added after the last blessing.
+      Re-blessing is deferred to the M7 visual review with a reference environment.
+- [x] **M0.5 Remove redundant component readiness checks.** **Done.**
+      `packages/app/e2e/utils/waits.ts` owns `graphCanvasHost`, `graphToolbar`, and the single
+      `waitForGraphContent` readiness wait (canvas visible plus `data-graph-ready`). All six
+      `e2e/graph` specs use the helpers; the four capture specs no longer inline readiness checks or
+      a local canvas selector. Only distinct assertions remain beside the wait, such as the renderer
+      identity and projection/depth attributes.
 - [x] **M0.6 Reconcile stale verification counts.** **Done.** Recorded in the baseline above and in
       the Test strategy section: 324 session-ui graph tests / 30 files, 96 session-graph unit tests /
       12 files, 1,160 gui-plugins tests / 115 files, 25 session-graph component specs, 31 app
       component specs, 66 app e2e specs (6 in `e2e/graph`), and root `bun run check` green.
-- [ ] **M0.7 Tag test suites for targeted runs.** Add tags such as `@graph`, `@a11y`, `@capture`,
-      `@perf`, `@host`, so pure-model changes do not run every visual surface spec.
-      **Next:** Playwright supports `test.describe(name, { tag })` and `--grep @tag`; bun has no tag
-      option, so document `--test-name-pattern` commands for the unit suites. Tag the 25
-      session-graph component specs and the graph e2e specs, then publish the targeted commands here.
+- [x] **M0.7 Tag test suites for targeted runs.** **Done.**
+      - Component contract: `componentConfig(directory, { tag })` applies `@graph` to the whole
+        `packages/session-graph` component suite; the two a11y specs also carry `@a11y` in their
+        titles.
+      - App e2e: `session-graph` and `reactivity` carry `@graph`; the canonical capture frames carry
+        `@graph @capture`; demo recordings carry `@capture @demo`.
+      - Targets:
+        - `cd packages/app && bun run test:e2e -- --grep @graph`
+        - `cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture`
+        - `cd packages/session-graph && bun run test:components -- --grep @graph`
+        - `cd packages/session-graph && bun run test:components -- --grep @a11y`
+        - Unit suites use Bun's name filter: `bun test src --test-name-pattern="<pattern>"` in
+          `packages/session-graph`, `packages/session-ui`, or `packages/gui-plugins`.
+      - `@perf` and `@host` stay out of the e2e config: benchmarks live in `packages/app/perf` /
+        strobe, and the host keeper is the existing app suite.
 - [x] **M0.8 Close deferred Phase 14.4 items.** **Done.** Container-width inspector selection was
       already implemented: `createWidthThresholdTracker` observes the graph root element, and
       `SessionGraph` chooses the side panel, sheet (via FAB), or the popover detail mode from it.
@@ -134,7 +152,8 @@ features.
       `src/spacegraph/internal/README.md` documents the source of truth.
 
 **Exit:** `bun run check` green; `gui-plugins` model tests run; duplicate graph unit tests gone;
-one canonical capture command still pending M0.4, targeted test commands pending M0.7.
+one canonical capture gate in `capture.spec.ts` with opt-in demo recordings; suite tags and targeted
+commands published in M0.7.
 
 ---
 
@@ -349,8 +368,11 @@ one canonical capture command still pending M0.4, targeted test commands pending
 - [x] Deleted 29 internal graph test files / 277 tests and added one parity test
       (`gui-plugins/src/spacegraph/graph-parity.test.ts`, 20 tests) plus the `sync:graph --check`
       drift guard. No internal-only coverage was lost.
-- [ ] Merge four `capture*.spec.ts` files into one gate (M0.4).
-- [x] Added the readiness helpers in `e2e/utils/waits.ts`; the capture specs adopt them in M0.4 (M0.5).
+- [x] One canonical capture gate: `capture.spec.ts` is the 32-frame `@graph @capture` gate;
+      `capture-live`/`capture-clips`/`capture-segment1` are `@capture @demo` recordings behind
+      `GRAPH_CAPTURE_DEMO=1` (M0.4).
+- [x] `e2e/utils/waits.ts` owns the canvas selector and readiness wait; all six `e2e/graph` specs use
+      them, and the capture specs contain no inline `data-graph-ready` checks (M0.5).
 - Do not duplicate pure model assertions inside component tests.
 - Do not add a new suite when an existing suite already owns the behavior.
 
@@ -449,3 +471,23 @@ this file's revision log and leave the v34 archive unchanged.
     session-graph component specs 25, app component specs 31, app e2e specs 66 (6 graph).
   - Verified: `bun run check` 53/53, `bun run lint` 0 errors, `bun run --cwd packages/app build`, and
     all three canonical unit suites. Remaining M0 work: M0.4, M0.5, M0.7.
+- **r3 (2026-11-11):** Completed M0.4, M0.5, M0.7.
+  - Capture: `capture.spec.ts` is the only always-on gate (32 frames, `@graph @capture`) and skips
+    without `GRAPH_CAPTURE_DIR`. `capture-live`, `capture-clips`, and `capture-segment1` skip without
+    `GRAPH_CAPTURE_DEMO=1` and carry `@capture @demo`. `chromium` excludes every capture file, so the
+    `graph-capture` project is the only writer and no frame is captured twice. Demo commands in the
+    capture/copy scripts and `DEMO_VIDEO_PLAN.md` set the opt-in variable.
+  - Verify: `bun run graph:capture --mode=verify` ran the gate once (32 tests, 1 worker) and compared
+    35 committed frames plus 3 bundle frames. The comparison executed correctly and failed on drift:
+    all frames differ slightly from this machine's render, and frames 02–04 include Phase 16.3's
+    "Map this turn" affordance, which landed 2026-11-10 14:58 after the last screenshot blessing at
+    11:00. Re-blessing is deferred to M7 with a reference render environment.
+  - Readiness: all six `e2e/graph` specs use `graphCanvasHost`/`waitForGraphContent`; the capture
+    specs no longer inline `data-graph-ready` or a local canvas selector. Only distinct assertions
+    (renderer identity, projection, depth) remain beside each wait.
+  - Tags: `componentConfig` accepts a config-level tag, so the 25 `session-graph` component specs run
+    as `@graph`; the two a11y specs also carry `@a11y`; app e2e graph specs carry `@graph`, capture
+    frames `@capture`, and demo recordings `@demo`. Targeted commands are published in M0.7.
+  - Verified: root `bun run check` 53/53; `graph-legend` component spec passes under the tagged
+    config; `capture-clips` reports 4 skipped without the demo env; `playwright test --list` assigns
+    the capture files only to `graph-capture`.

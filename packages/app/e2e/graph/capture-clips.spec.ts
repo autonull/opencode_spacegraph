@@ -6,7 +6,7 @@ import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
-import { waitForGraphContent } from "../utils/waits"
+import { graphCanvasHost, waitForGraphContent } from "../utils/waits"
 
 const KNOWN_FLAKY_ERRORS = ["Maximum call stack size exceeded"]
 
@@ -21,9 +21,11 @@ const test = base.extend({
   },
 })
 
+// Demo recordings are opt-in so the default e2e run stays a bounded gate.
+test.skip(!process.env.GRAPH_CAPTURE_DEMO, "Demo recording; set GRAPH_CAPTURE_DEMO=1")
+
 const directory = process.env.GRAPH_FIXTURE_DIR ?? "/tmp/SessionGraph"
 const sessionID = "ses_session_graph"
-const canvasHost = '[data-slot="graph-canvas-host"]'
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -117,9 +119,9 @@ async function chooseDepth(page: Page, depth: string) {
   await expect(dropdown).toBeVisible({ timeout: 5000 })
   await dropdown.selectOption(depth)
   if (depth === "flat") {
-    await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "flat", { timeout: 15000 })
+    await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-depth", "flat", { timeout: 15000 })
   } else {
-    await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d", { timeout: 15000 })
+    await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d", { timeout: 15000 })
   }
   const close = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
   if (await close.evaluate((element) => (element as HTMLDetailsElement).open)) {
@@ -149,8 +151,8 @@ async function openGraph(page: Page) {
   await openSession(page, graphFixture())
   await settle(page)
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await waitForGraphContent(page)
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-renderer", "spacegraph")
 }
 
 async function clickWithRipple(page: Page, locator: ReturnType<Page["locator"]>) {
@@ -200,7 +202,7 @@ test.use({
 // Clip 1: "Why this failed" — frames 24, 36
 // ═══════════════════════════════════════════════════════════════════════
 
-test("clip: why-this-failed", async ({ page }) => {
+test("clip: why-this-failed @capture @demo", async ({ page }) => {
   test.setTimeout(180_000)
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -221,7 +223,7 @@ test("clip: why-this-failed", async ({ page }) => {
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await setLevel(page, "Execution")
   await fit(page)
   await focusNode(page, "result:prt_tool_shell_2", "failed result")
@@ -258,7 +260,7 @@ async function clickZoom(page: Page, label: "Zoom in" | "Zoom out") {
 // Clip 2: "Live while it runs" — frames 02, 03, 24
 // ═══════════════════════════════════════════════════════════════════════
 
-test("clip: live-while-it-runs", async ({ page }) => {
+test("clip: live-while-it-runs @capture @demo", async ({ page }) => {
   test.setTimeout(180_000)
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -295,7 +297,7 @@ test("clip: live-while-it-runs", async ({ page }) => {
 // Clip 3: "Drill into subagent" — frames 12, 28, 37
 // ═══════════════════════════════════════════════════════════════════════
 
-test("clip: drill-into-subagent", async ({ page }) => {
+test("clip: drill-into-subagent @capture @demo", async ({ page }) => {
   test.setTimeout(180_000)
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -331,7 +333,7 @@ test("clip: drill-into-subagent", async ({ page }) => {
 // Clip 4: "Share the decision" — frames 42, 43
 // ═══════════════════════════════════════════════════════════════════════
 
-test("clip: share-the-decision", async ({ page }) => {
+test("clip: share-the-decision @capture @demo", async ({ page }) => {
   test.setTimeout(180_000)
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -372,7 +374,7 @@ test("clip: share-the-decision", async ({ page }) => {
   await page.keyboard.press("Control+Shift+T")
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await setLevel(page, "Overview")
   await fit(page)
   await waitForStillCanvas(page)

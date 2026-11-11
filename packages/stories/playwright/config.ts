@@ -3,8 +3,9 @@ import { defineConfig, devices } from "@playwright/test"
 const port = Number(process.env.PLAYWRIGHT_STORIES_PORT ?? 6006)
 const baseURL = process.env.PLAYWRIGHT_STORIES_URL ?? `http://127.0.0.1:${port}`
 
-export function componentConfig(directory: string) {
+export function componentConfig(directory: string, options: { tag?: string[] } = {}) {
   return defineConfig({
+    tag: options.tag,
     testDir: `${directory}/component-tests`,
     outputDir: `${directory}/component-tests/test-results`,
     timeout: 60_000,

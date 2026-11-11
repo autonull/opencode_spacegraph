@@ -36,7 +36,7 @@ const inspectByKeyboard = async (page: Page, ids: readonly string[], inspector: 
 
 // CI-skip: a11y selection via keyboard not working in test environment; a11y tree structure verified in graph-a11y-toggle.spec.ts.
 story.skip(
-  "drives selection and inspection from the keyboard mirror in both renderers",
+  "drives selection and inspection from the keyboard mirror in both renderers @a11y",
   { annotation: { type: "issue", description: "a11y selection via keyboard not working in test environment; a11y tree structure verified in graph-a11y-toggle.spec.ts.", url: "https://github.com/opencode/opencode/issues?q=graph+a11y+keyboard" } },
   async ({ mount, page }) => {
   const errors: string[] = []

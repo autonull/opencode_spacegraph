@@ -6,7 +6,7 @@ import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
-import { waitForGraphContent } from "../utils/waits"
+import { graphCanvasHost, waitForGraphContent } from "../utils/waits"
 
 const KNOWN_FLAKY_ERRORS = ["Maximum call stack size exceeded"]
 
@@ -21,9 +21,11 @@ const test = base.extend({
   },
 })
 
+// Demo recordings are opt-in so the default e2e run stays a bounded gate.
+test.skip(!process.env.GRAPH_CAPTURE_DEMO, "Demo recording; set GRAPH_CAPTURE_DEMO=1")
+
 const directory = "C:/OpenCode/SessionGraph"
 const sessionID = "ses_session_graph"
-const canvasHost = '[data-slot="graph-canvas-host"]'
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -116,9 +118,9 @@ async function chooseDepth(page: Page, depth: string) {
   await expect(dropdown).toBeVisible({ timeout: 5000 })
   await dropdown.selectOption(depth)
   if (depth === "flat") {
-    await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-depth", "flat", { timeout: 15000 })
+    await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-depth", "flat", { timeout: 15000 })
   } else {
-    await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d", { timeout: 15000 })
+    await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d", { timeout: 15000 })
   }
   const close = page.locator(`${toolbar} [data-slot="graph-toolbar-layers"]`)
   if (await close.evaluate((element) => (element as HTMLDetailsElement).open)) {
@@ -148,7 +150,7 @@ test.use({
   video: { mode: "on", size: { width: 1440, height: 900 } },
 })
 
-test("segment 1 — log through 3D orbit (frames 01-06)", async ({ page }) => {
+test("segment 1 — log through 3D orbit (frames 01-06) @capture @demo", async ({ page }) => {
   test.setTimeout(180_000)
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -161,8 +163,8 @@ test("segment 1 — log through 3D orbit (frames 01-06)", async ({ page }) => {
 
   // ── FRAME 02: Graph overview ──
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await waitForGraphContent(page)
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-renderer", "spacegraph")
   await setLevel(page, "Overview")
   await fit(page)
   await waitForStillCanvas(page)
@@ -193,9 +195,9 @@ test("segment 1 — log through 3D orbit (frames 01-06)", async ({ page }) => {
 
   // ── FRAME 06: 3D orbit ──
   await page.keyboard.press("Control+Shift+M")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true", { timeout: 30000 })
+  await waitForGraphContent(page)
   await chooseDepth(page, "orbit")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-projection", "3d")
+  await expect(graphCanvasHost(page)).toHaveAttribute("data-graph-projection", "3d")
   await fit(page)
   await waitForStillCanvas(page)
   await capture(page, "06-graph-3d.png")
