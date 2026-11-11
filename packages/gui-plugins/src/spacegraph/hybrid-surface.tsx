@@ -82,6 +82,10 @@ export function HybridSurface(props: {
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}
+          notes={props.model.notes(props.session)}
+          onNotesChange={(notes) => props.model.setNotes(props.session, notes)}
+          pins={props.model.pins(props.session)}
+          onPinsChange={(pins) => props.model.setPins(props.session, pins)}
         />
         <GraphToolbarViewControls
           i18n={i18n}

@@ -76,6 +76,12 @@ export interface GraphInlineProps {
   renderSummary?: SessionGraphProps["renderSummary"]
   /** Optional diffSource for the interactive graph. */
   diffSource?: SessionGraphProps["diffSource"]
+  /** Optional shared notes for the interactive graph. */
+  notes?: SessionGraphProps["notes"]
+  onNotesChange?: SessionGraphProps["onNotesChange"]
+  /** Optional shared pins for the interactive graph. */
+  pins?: SessionGraphProps["pins"]
+  onPinsChange?: SessionGraphProps["onPinsChange"]
   /** Optional layout for the interactive graph. Default: "tree". */
   layout?: SessionGraphProps["layout"]
   /** Optional depth for the interactive graph. Default: "flat". */
@@ -186,6 +192,10 @@ export const GraphInline = (props: GraphInlineProps) => {
           renderCard={props.renderCard}
           renderSummary={props.renderSummary}
           diffSource={props.diffSource}
+          notes={props.notes}
+          onNotesChange={props.onNotesChange}
+          pins={props.pins}
+          onPinsChange={props.onPinsChange}
           onSelect={props.onSelect}
           onOpenTranscript={props.onOpenTranscript}
           onOpenSession={props.onOpenSession}
@@ -202,6 +212,7 @@ export const GraphInline = (props: GraphInlineProps) => {
           reducedMotion={props.reducedMotion ?? true}
           breakpoints={props.breakpoints}
           spatialMemoryOwner={false}
+          maxDrillDepth={1}
           onRendererMounted={handleSessionGraphReady}
         />
       </div>

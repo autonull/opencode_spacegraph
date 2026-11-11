@@ -54,6 +54,7 @@
     "./ui/GraphDiff": "./src/ui/GraphDiff.tsx",
     "./ui/GraphCompare": "./src/ui/GraphCompare.tsx",
     "./ui/GraphDetail": "./src/ui/GraphDetail.tsx",
+    "./ui/GraphLineage": "./src/ui/GraphLineage.tsx",
     "./ui/GraphNoteComposer": "./src/ui/GraphNoteComposer.tsx",
     "./ui/GraphMinimap": "./src/ui/GraphMinimap.tsx",
     "./ui/GraphEqualizer": "./src/ui/GraphEqualizer.tsx",

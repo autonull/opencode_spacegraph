@@ -105,6 +105,7 @@ export {
   fileRange,
   sessionID,
 } from "./ui/node-data"
+export { GraphLineage } from "./ui/GraphLineage"
 export { formatProvenance } from "./ui/provenance"
 
 // Re-exports from @spacegraphjs/overlays

@@ -12,6 +12,9 @@ export type GraphStatusBarProps = {
   onClear: () => void
   /** C1: attach a note to the selected node. */
   onAddNote?: () => void
+  /** Durable pin for the selected node, shared by every surface. */
+  pinned?: boolean
+  onTogglePin?: () => void
   /** B1: two turns are held; compare them, or clear the active comparison. */
   compare?: { active: boolean; onCompare: () => void; onClear: () => void }
   /** B2: the selected node is a group; the verbs collapse it or every other group. */
@@ -77,6 +80,17 @@ export const GraphStatusBar = (props: GraphStatusBarProps) => {
               onClick={() => props.onAddNote?.()}
             >
               {i18n.t("ui.sessionGraph.note.add")}
+            </button>
+          </Show>
+          <Show when={props.onTogglePin}>
+            <button
+              type="button"
+              data-slot="graph-status-pin"
+              aria-pressed={props.pinned === true}
+              class="rounded-sm px-1.5 py-0.5 text-text-base hover:bg-surface-base-hover"
+              onClick={() => props.onTogglePin?.()}
+            >
+              {i18n.t(props.pinned ? "ui.sessionGraph.status.unpin" : "ui.sessionGraph.status.pin")}
             </button>
           </Show>
           <Show when={props.compare}>

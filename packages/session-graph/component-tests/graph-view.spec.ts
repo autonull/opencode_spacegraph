@@ -134,7 +134,7 @@ story(
 )
 
 // TODO: Fix fixture - the tool node is not in the drawn set at execution level
-story.skip(
+story(
   "node widget receives focus and typing without moving the node",
   async ({ mount, page }) => {
     const errors: string[] = []
@@ -147,31 +147,31 @@ story.skip(
     const host = root.locator('[data-slot="graph-canvas-host"]')
     await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
 
-    // Wait for the widget to appear (it's on the tool:prt_tool_read_1 node)
     const widgetLayer = root.locator('[data-slot="graph-node-widget-layer"]')
     await expect(widgetLayer).toBeVisible({ timeout: 30_000 })
 
-    // Check what's in the widget layer
-    const widgetLayerContent = await widgetLayer.innerHTML()
-    console.log("Widget layer content:", widgetLayerContent)
-
-    // Find the TextInput inside the widget layer
     const textInput = widgetLayer.locator('input[type="text"]')
     await expect(textInput).toBeVisible({ timeout: 30_000 })
 
-    // Click the input to focus it
+    const viewportBefore = await page.evaluate(() => {
+      const graph = (window as unknown as { __graph?: { getViewport: () => unknown } }).__graph
+      return graph?.getViewport()
+    })
+
     await textInput.click()
     await expect(textInput).toBeFocused()
-
-    // Type in the input
     await textInput.fill("test input")
     await expect(textInput).toHaveValue("test input")
 
-    // Verify the canvas didn't move (no viewport change from widget interaction)
-    // The widget should have data-sg-interactive to prevent canvas drag
-    const widgetContainer = textInput.locator("..")
-    await expect(widgetContainer).toHaveAttribute("data-sg-interactive", "true")
+    const viewportAfter = await page.evaluate(() => {
+      const graph = (window as unknown as { __graph?: { getViewport: () => unknown } }).__graph
+      return graph?.getViewport()
+    })
+    expect(viewportAfter).toEqual(viewportBefore)
 
+    await expect(
+      widgetLayer.locator('[data-sg-interactive="true"]').first().locator('input[type="text"]'),
+    ).toBeVisible()
     expect(errors).toEqual([])
   },
 )

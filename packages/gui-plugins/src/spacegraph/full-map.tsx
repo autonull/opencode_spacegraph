@@ -82,6 +82,8 @@ export function FullMap(props: {
       // Shared notes state
       notes={notes()}
       onNotesChange={(notes: Annotations) => props.model.setNotes(props.session, notes)}
+      pins={props.model.pins(props.session)}
+      onPinsChange={(pins) => props.model.setPins(props.session, pins)}
     />
   )
 }

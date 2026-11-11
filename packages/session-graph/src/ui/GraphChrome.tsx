@@ -178,6 +178,10 @@ export type GraphChromeProps = {
   annotations?: {
     openNoteComposer: () => void
   }
+  /** Whether the selected node is pinned. */
+  pinned?: boolean
+  /** Toggle the selected node's pinned state. */
+  onTogglePin?: () => void
   /** Error state. */
   error?: string | null
   /** Whether demo is dismissed. */
@@ -409,6 +413,8 @@ export const GraphChrome = (props: GraphChromeProps) => {
         onExportSubset={ctx.exportSelection}
         onClear={graphSelection.clearSelection}
         onAddNote={annotations.openNoteComposer}
+        pinned={props.pinned}
+        onTogglePin={props.onTogglePin}
         compare={
           (props.comparisonHook?.comparedTurns?.() ?? comparisonHook.comparedTurns()) !== null || (selection().length >= 2)
             ? {

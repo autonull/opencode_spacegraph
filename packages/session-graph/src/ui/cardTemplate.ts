@@ -115,6 +115,8 @@ export type CardCopy = {
   expandGroup: () => string
   /** The copy button label. */
   copyButton: () => string
+  /** The pin marker's accessible label. */
+  pinned?: () => string
 }
 
 /** Group card state for fold/unfold progression. */
@@ -149,6 +151,8 @@ export type CardTemplateOptions = {
   renderNodeHTML?: (node: GraphNode) => string | undefined
   /** Trust lens: set of unverified file node IDs (files written but not read by verify phase). */
   unverifiedFiles?: ReadonlySet<string>
+  /** Durable pinned node ids, so every surface marks the same nodes. */
+  pins?: ReadonlySet<string>
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -397,6 +401,11 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       ? `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:${theme.warning};padding:1px 4px;border-radius:3px;background:${theme.warning}15;border:1px solid ${theme.warning}40" title="${safeEscapeHtml(options.copy?.writes?.(0) ?? "Unverified write")}">⚠</span>`
       : ""
 
+    const pinned = options.pins?.has(node.id) === true
+    const pinBadge = pinned
+      ? `<span data-slot="card-pin" data-pinned="true" role="img" aria-label="${safeEscapeHtml(options.copy?.pinned?.() ?? "")}" style="flex:none;display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:${soft};color:${solid}" title="${safeEscapeHtml(options.copy?.pinned?.() ?? "")}"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5l4 4-2.5 1-2 2 .5 3-6.5-6.5 3 .5 2-2z"/><path d="M3 13l3-3"/></svg></span>`
+      : ""
+
     // Phase/group node enhancements: distinct background, group glyph, member preview data
     const isGroupNode = isPhase || node.kind === "error-group" || node.kind === "file-group" || node.kind === "subagent-group"
     const hasCluster = node.clusterOf && node.clusterOf.length > 0
@@ -485,7 +494,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       ? `<span style="color:${theme.textMuted};font-size:10px;white-space:pre-line;overflow:hidden">${safeEscapeHtml(customHtmlContent)}</span>`
       : ""
 
-    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" data-emphasis="${emphasisLevel}" data-group-state="${groupState}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${emphasisStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
+    return `<div data-kind="${node.kind}" data-status="${node.status}" data-tier="${tier}" data-emphasis="${emphasisLevel}" data-group-state="${groupState}"${selected ? ' data-selected="true"' : ""}${active ? ' data-active="true"' : ""}${pinned ? ' data-pinned="true"' : ""}${groupDataAttr}${traceAttrs}${diffAttrs} style="display:flex;align-items:center;gap:8px;height:100%;box-sizing:border-box;padding:8px 10px;${groupBg}border:1px solid ${border};${ring}${mark}border-radius:8px;${emphasisStyle}color:${theme.text};font-family:${theme.fontFamily};font-size:13px;line-height:var(--line-height-compact,16px)">
 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:7px;background:${soft};color:${solid}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${groupGlyph}"/></svg></span>
 <span style="min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:1px">
 <span style="display:flex;gap:4px;align-items:baseline;font-weight:600;font-family:${labelFont};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis">${safeEscapeHtml(node.label)}</span>${isGroupNode ? phaseBadge : derivedBadge}</span>
@@ -498,6 +507,7 @@ ${groupSummaryContent}
 ${groupToggle}
 ${provenanceBadge}
 ${trustBadge}
+${pinBadge}
 ${copyButton}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`

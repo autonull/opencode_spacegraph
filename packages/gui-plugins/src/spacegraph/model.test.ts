@@ -27,6 +27,8 @@ type Stored = {
   side?: "start" | "end"
   turnMap?: boolean
   checkpoint?: number
+  notes?: Record<string, unknown>
+  pins?: string[]
 }
 
 // SAFETY: the model reads only `stores` and `surfaces.select`; the test session reads only `key`.
@@ -142,6 +144,31 @@ describe("spacegraph model", () => {
 
     expect(model.checkpointIndex(session, graphWithTurns(3))).toBe(2)
     expect(model.graphAt(session, graphWithTurns(3)).turns).toEqual(["turn:0", "turn:1", "turn:2"])
+  })
+
+  test("persists notes per session through add, update, and delete", () => {
+    const { model, stored } = setup()
+
+    model.addNote(session, { id: "n1", target: "file:src/auth/token.ts", body: "Check refresh", createdAt: 1 })
+    expect(stored.value.notes?.n1).toMatchObject({ id: "n1", body: "Check refresh", target: "file:src/auth/token.ts" })
+
+    model.updateNote(session, "n1", "Check refresh and retry")
+    expect(model.notes(session).n1.body).toBe("Check refresh and retry")
+
+    model.updateNote(session, "n1", "")
+    expect(model.notes(session).n1).toBeUndefined()
+  })
+
+  test("pins persist per session and toggle without rewriting other pins", () => {
+    const { model, stored } = setup()
+
+    model.togglePin(session, "file:src/auth/token.ts")
+    model.togglePin(session, "turn:0")
+    expect(model.pins(session)).toEqual(["file:src/auth/token.ts", "turn:0"])
+
+    model.togglePin(session, "file:src/auth/token.ts")
+    expect(model.pins(session)).toEqual(["turn:0"])
+    expect(stored.value.pins).toEqual(["turn:0"])
   })
 })
 

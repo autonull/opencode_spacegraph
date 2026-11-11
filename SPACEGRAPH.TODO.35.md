@@ -1,20 +1,27 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-11):** M0 foundation repair and M1 memory/decisions are complete
-> (M0.1–M0.10, M1.1–M1.2). One canonical capture gate and suite tags are in place. Phases 14–19.4 are
-> complete. `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the
-> single source of truth for remaining work.
+> **Status (2026-11-11):** M0 foundation repair, M1 memory/decisions, and M2 authoring/orchestration
+> are complete (M0.1–M0.10, M1.1–M1.2, M2.1–M2.4). One canonical capture gate and suite tags are in
+> place. Phases 14–19.7 are complete. `SPACEGRAPH.TODO.34.md` is the frozen design and history
+> reference; this file is the single source of truth for remaining work.
 >
-> **Baseline:** through Phase 19.4, commit `56e99f4cdd`, plus the M0 foundation, M1 memory, and gate
-> commits. Canonical local suites: `packages/session-ui` `bun test src/graph` 335 tests / 32 files,
-> `packages/session-graph` `bun test src` 96 / 12, `packages/gui-plugins` `bun run test` 1,160 / 115
-> (1 skip, includes the 8-test parity file), and root `bun run check` green (53/53, 0 lint errors).
+> **Baseline:** through Phase 19.7 at `r5` below. Canonical local suites: `packages/session-ui`
+> `bun test src/graph` 335 tests / 32 files, `packages/session-graph` `bun test src` 97 / 12,
+> `packages/gui-plugins` `bun run test` 1,162 / 115 (1 skip), and root `bun run check` green
+> (53/53). Session-graph component suite: 58 pass, 12 skipped, 1 known pre-existing narrow-sheet
+> geometry failure that reproduces on `HEAD` (see r5).
 >
-> **Next:** M2.1 (19.6 notes and pins) and M2.2 (19.7 orchestration).
+> **Next:** M3.1 (19.9 widget breadth) and M3.2 (19.11 cost lens), then M4 performance and scale.
 
 ### Session handoff
 
-- M0 and M1 are done. Start with **M2.1**, **M2.2**, then the deferred gaps in M2.3/M2.4.
+- M0, M1, and M2 are done. Start with **M3.1** and **M3.2**, then M4.
+- Notes and pins are session-local durable annotations. Notes live in the plugin session store and
+  export with the map; pins live in the same store and mark every surface's card. Neither is
+  foregrounded: both stay behind the selected-node status bar until a study says otherwise.
+- Lineage is host navigation, not model causality. `GraphLineage` names the fork, parent, and
+  delegated children from node data; `onOpenSession` opens them. The session model still draws no
+  cross-session edge. Drill-down is capped at widget 1, popover 2, full map 3 (`maxDrillDepth`).
 - The compaction advisor is **parked** (M1.2): it does not beat the keep-all baseline on the
   canonical fixture. Keep the component and the `graph_compaction_advisor` flag; do not foreground it.
 - The bundled graph copy is generated: edit `packages/session-ui/src/graph`, then run
@@ -27,6 +34,10 @@
 - The committed screenshot set predates the Phase 16.3 "Map this turn" affordance. `--mode=verify`
   still captures and compares the full set, but reports pre-existing pixel drift; re-blessing needs a
   reference render environment and belongs with the M7 visual review, not the capture refactor.
+- Known component failure: `graph-refine.spec.ts` "inspector becomes a bottom sheet" fails its
+  40%-height assertion on this machine and reproduces on unmodified `HEAD` (299–316 px against a
+  372.8 px threshold). It is not an M2 regression; fix it during M6 with a real narrow-viewport
+  measurement or by dismissing the first-run banner before measuring.
 - Canonical checks: `bun run check` at the root; `bun test src/graph` in `packages/session-ui`;
   `bun test src` in `packages/session-graph`; `bun run test` in `packages/gui-plugins`;
   `bun run graph:verify` for the full graph gate.
@@ -213,35 +224,66 @@ commands published in M0.7.
 
 ### M2.1 — 19.6 Notes and pins
 
-- [ ] Persist notes per session in the store; export them with the map.
-- [ ] Show pins in every surface that renders the node.
-- [ ] Add note creation/edit/delete coverage at the store layer and one component smoke.
-- [ ] **Kill:** if notes are never used in studies, keep them but do not foreground them.
+- [x] Persist notes per session in the store; export them with the map. **Done.** Notes already
+      lived in `SpacegraphModel.notes/setNotes/addNote/updateNote/deleteNote`; this pass added
+      store-layer tests for add, update, delete, and the per-session key. `model.export` now applies
+      `withAnnotations` before layout and render, so JSON/SVG/HTML exports include note nodes and
+      their `annotates` edges instead of silently dropping them.
+- [x] Show pins in every surface that renders the node. **Done.** `State.pins` stores pinned node
+      ids per session. `SessionGraph` accepts controlled `pins`/`onPinsChange`, marks the card with
+      `data-pinned` plus a pin badge, and exposes the toggle in the selected-node status bar. All
+      plugin surfaces pass `notes` and `pins`: panel, full map, map, hybrid, map dialog, turn map,
+      and the transcript inline graph.
+- [x] Add note creation/edit/delete coverage at the store layer and one component smoke. **Done.**
+      `model.test.ts` covers add/update/delete and pins; `graph-write-path.spec.ts` covers the note
+      composer, the new pin toggle, and the card marker.
+- [x] **Kill:** if notes are never used in studies, keep them but do not foreground them. **Decision:**
+      keep quiet. Notes and pins remain behind the selected-node status bar and are not shown in the
+      toolbar or first-run prompts until a study shows use.
 
 ### M2.2 — 19.7 Orchestration
 
-- [ ] Draw lineage (`forkedFrom`, `parentSessionID`, children) using `SessionLineage`.
-- [ ] Clicking a lineage node opens the other session.
-- [ ] Enforce recursion depth: widget 1, popover 2, full map 3.
-- [ ] **Test:** lineage fixture renders parent/fork/child labels without cross-session causal edges.
+- [x] Draw lineage (`forkedFrom`, `parentSessionID`, children) using `SessionLineage`. **Done.**
+      `GraphLineage` models node attribution as `SessionLineage` and lists the fork, parent, and
+      delegated children. It is host navigation beside the inspector, never a `GraphViewData` edge.
+- [x] Clicking a lineage node opens the other session. **Done.** Each entry is a button carrying
+      `data-session-id` and calling `onOpenSession`; the inspector's existing header link remains.
+- [x] Enforce recursion depth: widget 1, popover 2, full map 3. **Done.** `SessionGraph` gains
+      `maxDrillDepth` (default 3). `useGraphNavigation` refuses a nested drill-down at the limit.
+      `SubagentNodeWidget` caps previews at 1 in a widget and 2 in a popover; `GraphInline` and both
+      turn-map surfaces pass 1.
+- [x] **Test:** lineage fixture renders parent/fork/child labels without cross-session causal edges.
+      **Done.** `GraphView.stories.tsx` adds `Lineage`; `graph-session-links.spec.ts` asserts the
+      three entries and opens the parent. The existing model test still proves every edge stays
+      inside the session.
 
 ### M2.3 — 15.5 Library ask
 
-- [ ] Add `RenderNode.element` and per-instance DOM id prefix status to `docs/spacegraph/library-delta.md`
-      and §F of the v34 archive.
-- [ ] Build the live-element path only if Tier 1 overlay fails a real widget test (occlusion, depth
-      ordering, or hit-testing).
+- [x] Add `RenderNode.element` and per-instance DOM id prefix status to `docs/spacegraph/library-delta.md`
+      and §F of the v34 archive. **Done.** Both proposals were already recorded; their status now
+      states "Proposed, not implemented (recorded 2026-11-11)" and the tracking table keeps them as
+      upstream asks.
+- [x] Build the live-element path only if Tier 1 overlay fails a real widget test (occlusion, depth
+      ordering, or hit-testing). **Decision:** do not build. The skipped `TextInput`-in-node test was
+      a missing story wiring plus a z-order bug, not a Tier 1 contract failure. Giving the widget layer
+      `z-index: 10` makes the live `TextInput` focusable, typable, and pointer-stable over the card.
 
 ### M2.4 — Deferred widget and SDK gaps
 
-- [ ] Replace the skipped `TextInput`-in-node component test with a working fixture. It must prove focus,
-      typing, and no node drag.
-- [ ] Decide the SDK proposals from v34 §F: implement the minimal generic ones or leave them recorded as
-      upstream asks. Do not silently implement them.
-- [ ] Revisit generic `surfaces.selected` persistence (v34 17.3) and either implement it or keep the
-      plugin-store fallback documented.
+- [x] Replace the skipped `TextInput`-in-node component test with a working fixture. It must prove
+      focus, typing, and no node drag. **Done.** `NODE_WIDGET_MODEL` draws the tool node at every
+      level and `ViewHarness` forwards `renderNodeWidget`. The test focuses, types, asserts the
+      viewport is unchanged, and asserts the input sits inside the `data-sg-interactive` wrapper.
+- [x] Decide the SDK proposals from v34 §F: implement the minimal generic ones or leave them recorded
+      as upstream asks. **Decision:** leave recorded. `RenderNode.element`, per-instance DOM id
+      prefixes, and the remaining §F items stay upstream asks; Tier 1/2 cover shipped widgets.
+- [x] Revisit generic `surfaces.selected` persistence (v34 17.3) and either implement it or keep the
+      plugin-store fallback documented. **Decision:** keep the plugin-store fallback. The per-session
+      spacegraph store owns level, layout, depth, surface, notes, and pins; do not widen the generic
+      SDK until a second plugin needs the same record.
 
 **Exit:** notes and lineage work; node widget focus test passes; deferred SDK status is explicit.
+**Met.**
 
 ---
 
@@ -327,6 +369,10 @@ commands published in M0.7.
 - [ ] Theme tokens per surface; no literal colors; extend theme roles where missing.
 - [ ] Add an optional `labels` config to builders with English defaults (additive).
 - [ ] Verify RTL for chrome, popovers, breadcrumbs, and the composer widget.
+- [ ] Fix the known narrow bottom-sheet geometry failure: `graph-refine.spec.ts` expects the sheet
+      below 40% of the root but sees 299–316 px against 372.8 px on this machine, reproducing on
+      unmodified `HEAD`. Measure the sheet against the canvas column, or dismiss the first-run banner
+      before measuring; do not raise the timeout.
 - [ ] Reuse existing a11y component specs; add only uncovered roles and focus-return cases.
 - [ ] **Audit:** `bun run check`; a11y component tests; RTL story screenshots.
 
@@ -412,7 +458,7 @@ commands published in M0.7.
 |---|---|---|
 | 19.3 Compaction advisor | **Parked** | 0 of 46 nodes dropped, 0 tokens saved, spine 31/31; ~0.18 ms latency (M1.2) |
 | 19.5 Spatial memory | **Keep session-local only** | Hash miss on changed structure; same structure restores (M1.1) |
-| 19.6 Notes and pins | Foreground or keep quiet | Study usage |
+| 19.6 Notes and pins | **Keep quiet** | Store coverage and pin smoke pass; no study usage yet (M2.1) |
 | 19.8 Palette | Keep or `/` only | Time-to-action vs typing `/` |
 | 19.9 Widgets | Per-widget pass/park | Saved click or context switch |
 | 19.10 Attention | Keep or reduce | Alarm-fatigue study |
@@ -431,7 +477,7 @@ commands published in M0.7.
 | Per-widget success metric | M3.1 | One saved click or context switch |
 | Renderer strategy thresholds | M5.3 | Keep SpaceGraph only |
 | Notes and attention study design | M7 | Keep quiet, do not foreground |
-| Which SDK proposals to implement | M2.4 | Record as upstream asks |
+| ~~Which SDK proposals to implement~~ | ~~M2.4~~ | Resolved: keep recorded as upstream asks |
 | Flag graduation order | M8 | Delete only proven defaults |
 
 ---
@@ -535,3 +581,25 @@ this file's revision log and leave the v34 archive unchanged.
   - Regenerated the bundled graph copy (`sync:graph`, 42 modules) and updated the parity/export set.
   - Verified: `bun test src/graph` 335/32, `bun test src` 96/12 in `session-graph`, `bun run test`
     1,160/115 in `gui-plugins`, root `bun run check` 53/53, and `check:graph` clean.
+- **r5 (2026-11-11):** Completed M2.1, M2.2, M2.3, M2.4.
+  - Notes: store CRUD covered in `model.test.ts`; `model.export` now applies `withAnnotations` so a
+    saved map carries note nodes. Pins added to `State` (`pins: string[]`), the model
+    (`pins/setPins/togglePin`), `SessionGraph` (`pins`/`onPinsChange`), the card template
+    (`data-pinned`, pin badge), and the status bar. Every plugin surface passes notes and pins:
+    panel, full map, map, hybrid, map dialog, turn map, and the transcript inline graph.
+  - Lineage: new `GraphLineage` renders fork/parent/child from `SessionLineage` data as host
+    navigation buttons. `Lineage` story plus `graph-session-links.spec.ts` prove the three labels
+    and that opening the parent calls `onOpenSession`. No cross-session edge enters the model.
+  - Recursion: `SessionGraph.maxDrillDepth` defaults to 3; `useGraphNavigation` refuses a deeper
+    drill-down. `SubagentNodeWidget` allows 1 in a widget and 2 in a popover; `GraphInline` and
+    turn-map surfaces pass 1.
+  - Widget test: added `NODE_WIDGET_MODEL`, forwarded `renderNodeWidget` in `ViewHarness`, and raised
+    the widget layer to `z-index: 10`. The previously skipped test now proves focus, typing, and an
+    unchanged viewport. This closes the Tier 1 question without `RenderNode.element`.
+  - Docs: `library-delta.md` records both library asks as proposed/not built with the 2026-11-11
+    status. SDK asks and `surfaces.selected` stay plugin-side by decision.
+  - Verified: `bun run check` 53/53; `session-graph` unit 97/12; `gui-plugins` 1,162/115 (1 skip);
+    targeted component suites 14 pass / 1 skip (write path, lineage, widget); full component suite
+    58 pass / 12 skip / 1 fail. The failure is the pre-existing narrow bottom-sheet height assertion
+    in `graph-refine.spec.ts`; it reproduces on unmodified `HEAD` (299–316 px vs 372.8 px) and is
+    recorded in the handoff for M6.

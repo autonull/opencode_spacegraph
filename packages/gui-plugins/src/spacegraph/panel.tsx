@@ -273,6 +273,8 @@ export default function SpacegraphPanel(props: {
           // Shared notes state
           notes={notes()}
           onNotesChange={(notes: Annotations) => props.model.setNotes(props.session, notes)}
+          pins={props.model.pins(props.session)}
+          onPinsChange={(pins) => props.model.setPins(props.session, pins)}
           // Node widget (Phase 15 - ComposerNodeWidget)
           renderNodeWidget={renderNodeWidget()}
         />

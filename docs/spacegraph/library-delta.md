@@ -171,7 +171,7 @@ ctx.mount(<ComposerNodeWidget />, containerElement, { cleanup: () => {} });
 
 **Rationale:** `RenderNode.html` only accepts string markup; `HtmlNode` rewrites `innerHTML`. Live framework mounting (Solid, React) is impossible through the renderer contract. `DOMNode` accepts `data.element` but is not reachable via the adapter. This is Tier 3 embedding (Phase 15.5).
 
-**Status:** Proposed, not implemented. Tier 1 (`NodeWidgetLayer` overlay) works for current widgets.
+**Status:** Proposed, not implemented (recorded 2026-11-11). Tier 1 (`NodeWidgetLayer` overlay) works for current widgets.
 
 **Needed for:** Phase 15.4 (Fractal node with live subgraph), Phase 19.9 (Terminal snapshot, model picker widgets needing focus management).
 
@@ -190,7 +190,7 @@ data?: { element?: HTMLElement }; // passed through from RenderNode.element
 
 **Rationale:** Multiple renderers per page are supported (G25), but DOM ids use `node-html-${id}`. Two graphs with the same node ids collide. An optional prefix per renderer instance (`spacegraph-1-`, `spacegraph-2-`) avoids collisions.
 
-**Status:** Proposed, not implemented.
+**Status:** Proposed, not implemented (recorded 2026-11-11). Instance context isolates state; DOM ids can still collide.
 
 **Needed for:** Phase 14 — multiple `SessionGraph` instances on one page (already isolated via instance context, but DOM ids leak).
 

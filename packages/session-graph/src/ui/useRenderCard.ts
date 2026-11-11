@@ -26,6 +26,7 @@ export function useRenderCard(
     displayPositions: () => Map<string, import("@opencode/session-ui/graph").Position>
     i18n: import("./useGraphState").UseGraphStateReturn["i18n"]
     band?: () => "overview" | "execution" | "detail" | undefined
+    pins: () => ReadonlySet<string>
   },
 ) {
   return createMemo(() => {
@@ -70,6 +71,7 @@ export function useRenderCard(
           band: state.band?.(),
           renderNodeHTML: props.renderNodeHTML,
           unverifiedFiles: unverified(),
+          pins: state.pins(),
         })
       })()
     )

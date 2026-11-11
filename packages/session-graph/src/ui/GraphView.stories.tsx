@@ -90,6 +90,34 @@ const SCALE_MODEL: GraphViewData = (() => {
   return { root: "session", nodes, edges, turns, turnByMessageID: new Map() }
 })()
 
+/** A two-node model so a node widget has a drawn node in every renderer. */
+const NODE_WIDGET_MODEL: GraphViewData = {
+  root: "session",
+  nodes: [
+    { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },
+    {
+      id: "tool:widget",
+      kind: "tool",
+      label: "read",
+      summary: "src/auth/token.ts",
+      status: "success",
+      minLevel: "overview",
+      data: { input: "src/auth/token.ts" },
+    },
+  ],
+  edges: [
+    {
+      id: "sequence:session->tool:widget",
+      kind: "sequence",
+      source: "session",
+      target: "tool:widget",
+      confidence: "explicit",
+    },
+  ],
+  turns: [],
+  turnByMessageID: new Map(),
+}
+
 /**
  * T6.5: a session that was forked from another one. The attribution rides on the root node, so the
  * inspector can name where this session came from and offer to open it.
@@ -97,6 +125,25 @@ const SCALE_MODEL: GraphViewData = (() => {
 const FORKED_MODEL: GraphViewData = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
   forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
 } })
+
+/** T6.5: a session with every lineage edge at once: a fork, a parent, and a delegated child. */
+const LINEAGE_MODEL: GraphViewData = {
+  ...graph,
+  nodes: graph.nodes.map((node) =>
+    node.id === "session"
+      ? {
+          ...node,
+          data: {
+            ...node.data,
+            forkedFrom: "ses_origin",
+            forkBoundary: "msg_user_1",
+            forkBoundaryType: "through",
+            parentSessionID: "ses_parent",
+          },
+        }
+      : node,
+  ),
+}
 
 /**
  * T6.5: a compaction that replayed the provider's replacement window instead of leaving a summary.
@@ -155,6 +202,9 @@ type HarnessProps = {
   rules?: EqualizerRuleSet
   /** Optional renderNodeWidget for interactive widgets in nodes. */
   renderNodeWidget?: (node: GraphNode) => JSX.Element | undefined
+  /** Optional durable pins for the shared-surface proof. */
+  pins?: readonly string[]
+  onPinsChange?: (pins: readonly string[]) => void
   /** Test harness for component tests. */
   testHarness?: {
     selected: () => string | undefined
@@ -294,6 +344,9 @@ const ViewHarness = (props: HarnessProps) => {
         rendererOverrides={props.overrides}
         theme={props.theme}
         diffSource={diffSource}
+        renderNodeWidget={props.renderNodeWidget}
+        pins={props.pins}
+        onPinsChange={props.onPinsChange}
         renderSummary={(node) =>
           node.kind === "message" || node.kind === "reasoning" ? (
             <div data-slot="test-summary">{node.summary}</div>
@@ -473,6 +526,11 @@ export const ForkedSession = {
   render: () => <ViewHarness model={FORKED_MODEL} selection="session" />,
 }
 
+/** T6.5: the full lineage chain: fork, parent, and delegated child, each reachable. */
+export const Lineage = {
+  render: () => <ViewHarness model={LINEAGE_MODEL} selection="session" />,
+}
+
 /** T6.5: a compaction that replayed the provider's window instead of leaving a summary. */
 export const Compacted = {
   render: () => <ViewHarness model={COMPACTED_MODEL} selection="msg:msg_compact_1" />,
@@ -644,6 +702,19 @@ export const TwoInstances = {
 }
 
 /**
+ * T6.5 — pins are shared state: the status bar writes them and every card in the same surface reads
+ * the same set.
+ */
+const PinnedHarness = () => {
+  const [pins, setPins] = createSignal<readonly string[]>([])
+  return <ViewHarness model={NODE_WIDGET_MODEL} selection="tool:widget" pins={pins()} onPinsChange={setPins} />
+}
+
+export const PinToggle = {
+  render: () => <PinnedHarness />,
+}
+
+/**
  * Graph with a node widget (TextInput) - for testing interactive widgets in nodes.
  * The widget appears on the tool node and should receive focus/typing without moving the node.
  */
@@ -653,9 +724,10 @@ export const WithNodeWidget = {
 
     return (
       <ViewHarness
-        selection={INITIAL_SELECTION}
+        model={NODE_WIDGET_MODEL}
+        selection="tool:widget"
         renderNodeWidget={(node: GraphNode) => {
-          if (node.id === "tool:prt_tool_read_1") {
+          if (node.id === "tool:widget") {
             return (
               <TextInput
                 placeholder="Type here..."

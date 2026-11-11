@@ -13,6 +13,7 @@ import { nodeByID, openInTranscript, why, downstreamForks, evidenceFor } from "@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Show, createSignal, createMemo, type JSX } from "solid-js"
 import { GraphDiffView, type GraphDiffSource } from "./GraphDiff"
+import { GraphLineage } from "./GraphLineage"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 import { childSessionID, count, filePath, fileRange, flag, forkedFrom, parentSessionID, strings, text } from "./node-data"
@@ -301,6 +302,8 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
           </Show>
         </div>
       </Show>
+
+      <GraphLineage model={props.model} node={props.node} onOpenSession={props.onOpenSession} />
 
       <dl class="flex flex-col gap-2">
         {field(i18n.t("ui.sessionGraph.inspector.time"), time(props.node.time))}

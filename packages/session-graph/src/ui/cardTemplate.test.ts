@@ -349,6 +349,16 @@ test("the active turn's card carries the active state", () => {
   expect(inactive).not.toContain('data-active="true"')
 })
 
+test("a pinned card carries the pin marker on every render", () => {
+  const tool = node({ id: "tool:1", kind: "tool", label: "read", status: "success" })
+  const other = node({ id: "tool:2", kind: "tool", label: "read", status: "success" })
+  const render = createCardTemplate(theme, { pins: new Set([tool.id]), copy })
+
+  expect(render(tool, "execution")).toContain('data-pinned="true"')
+  expect(render(tool, "execution")).toContain('data-slot="card-pin"')
+  expect(render(other, "execution")).not.toContain('data-pinned="true"')
+})
+
 // The host knows facts the node does not: a file's readers are in the graph's edges.
 test("a host fact fills the line a kind cannot fill", () => {
   const file = node({

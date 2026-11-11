@@ -82,3 +82,13 @@ story("a node peek names the node", async ({ mount }) => {
   await expect(peek).toContainText("File")
   await expect(peek).toContainText("src/auth/token.ts")
 })
+
+story("pinning a node marks its card in the same surface", async ({ mount }) => {
+  const root = await mount("session-graph-view--pin-toggle")
+  const pin = root.locator('[data-slot="graph-status-pin"]')
+
+  await expect(pin).toHaveAttribute("aria-pressed", "false")
+  await pin.click()
+  await expect(pin).toHaveAttribute("aria-pressed", "true")
+  await expect(root.locator('[data-slot="graph-canvas-host"] [data-slot="card-pin"]')).toHaveCount(1)
+})
