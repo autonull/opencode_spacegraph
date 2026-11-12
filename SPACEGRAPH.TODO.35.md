@@ -1,21 +1,28 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-11):** M0 foundation repair, M1 memory/decisions, and M2 authoring/orchestration
-> are complete (M0.1–M0.10, M1.1–M1.2, M2.1–M2.4). One canonical capture gate and suite tags are in
-> place. Phases 14–19.7 are complete. `SPACEGRAPH.TODO.34.md` is the frozen design and history
-> reference; this file is the single source of truth for remaining work.
+> **Status (2026-11-11):** M0 foundation repair, M1 memory/decisions, M2 authoring/orchestration, and
+> M3 widgets/cost are complete (M0.1–M0.10, M1.1–M1.2, M2.1–M2.4, M3.1–M3.2). One canonical capture
+> gate and suite tags are in place. Phases 14–19.11 are complete. `SPACEGRAPH.TODO.34.md` is the frozen
+> design and history reference; this file is the single source of truth for remaining work.
 >
-> **Baseline:** through Phase 19.7 at `r5` below. Canonical local suites: `packages/session-ui`
-> `bun test src/graph` 335 tests / 32 files, `packages/session-graph` `bun test src` 97 / 12,
+> **Baseline:** through Phase 19.11 at `r6` below. Canonical local suites: `packages/session-ui`
+> `bun test src/graph` 338 tests / 33 files, `packages/session-graph` `bun test src` 97 / 12,
 > `packages/gui-plugins` `bun run test` 1,162 / 115 (1 skip), and root `bun run check` green
-> (53/53). Session-graph component suite: 58 pass, 12 skipped, 1 known pre-existing narrow-sheet
-> geometry failure that reproduces on `HEAD` (see r5).
+> (53/53). Session-graph component suite: the two new widget/cost specs pass; the known pre-existing
+> narrow-sheet geometry failure remains (see r5).
 >
-> **Next:** M3.1 (19.9 widget breadth) and M3.2 (19.11 cost lens), then M4 performance and scale.
+> **Next:** M4 performance and scale, then M5 navigation/attention/layout breadth.
 
 ### Session handoff
 
-- M0, M1, and M2 are done. Start with **M3.1** and **M3.2**, then M4.
+- M0–M3 are done. Start with **M4**.
+- Node widgets now cover todo (`todowrite`), a small diff (`edit`/`write`/`patch`/`apply_patch`),
+  and a read-only terminal snapshot (shell result). The model picker and permission-prompt summary
+  are **parked** (M3.1): the plugin SDK exposes no model catalog and the graph carries no permission
+  request, so neither could save a click without duplicating the host.
+- The cost lens is `graph_cost_lens`-gated and shows tokens, wall time, and tool counts on turn
+  cards plus the session total. Streaming turns show a `~` range. Heat sizing was not built because
+  it would force a relayout; it stays optional.
 - Notes and pins are session-local durable annotations. Notes live in the plugin session store and
   export with the map; pins live in the same store and mark every surface's card. Neither is
   foregrounded: both stay behind the selected-node status bar until a study says otherwise.
@@ -291,21 +298,43 @@ commands published in M0.7.
 
 ### M3.1 — 19.9 Widgets breadth
 
-- [ ] Todo widget.
-- [ ] Model picker.
-- [ ] Small diff.
-- [ ] Read-only terminal snapshot.
-- [ ] Permission-prompt summary.
-- [ ] **Kill per widget:** if it does not save a click or context switch, drop it.
-- [ ] Test only the interaction contract (focus, input, no drag, cleanup), not duplicated rendering.
+- [x] Todo widget. **Done.** `TodoNodeWidget` reads the `todowrite` tool input (`todos`, status) and
+      shows progress and items in the node. `widgets.todo` gates it; the master
+      `graph_node_widgets` flag and `widgets.enabled` preference also apply.
+- [x] Model picker. **Parked.** The plugin SDK exposes only `Composer.model()`/`setModel()` and no
+      catalog or variant list, so a one-item picker duplicates the host composer without saving a
+      click. Build it when the SDK exposes the model catalog.
+- [x] Small diff. **Done.** `DiffNodeWidget` renders `oldString`/`newString`, `patch`, or write
+      content as a small read-only diff, with graph `writes` edge stats as the fallback. It is gated
+      by `widgets.diff`.
+- [x] Read-only terminal snapshot. **Done.** `TerminalNodeWidget` renders a shell result's output,
+      exit/timeout status, truncation note, fold, and copy action. It is gated by `widgets.terminal`.
+- [x] Permission-prompt summary. **Parked.** The graph model carries no permission request and the
+      host dock already owns the prompt; adding a second surface would duplicate it. Revisit when a
+      permission node enters the model.
+- [x] **Kill per widget:** if it does not save a click or context switch, drop it. **Result:** keep
+      todo, diff, and terminal; park model picker and permission summary. Each reads data already in
+      the node, so none adds a request or a second source of truth.
+- [x] Test only the interaction contract (focus, input, no drag, cleanup), not duplicated rendering.
+      **Done.** `WidgetBreadth` mounts all three widgets in `graph-view.spec.ts`; the spec proves
+      focus, fold/expand, diff/terminal text, and an unchanged viewport.
 
 ### M3.2 — 19.11 Cost lens
 
-- [ ] Tokens, wall time, and tool counts per turn and per subagent.
-- [ ] Optional heat sizing; ranges when streaming or truncation makes exact numbers misleading.
-- [ ] **Kill:** if numbers are misleading, show ranges or park the lens.
+- [x] Tokens, wall time, and tool counts per turn and per subagent. **Done.** The builder records
+      provider usage on each turn (`tokens`, `cost`, `wallTime`, `tools`, `steps`, `streaming`);
+      `costLens(model)` sums it and `useRenderCard` draws a compact badge on turn and session cards.
+      A subagent's own map shows its turns the same way; the parent model does not hold the child
+      session's messages.
+- [x] Optional heat sizing; ranges when streaming or truncation makes exact numbers misleading.
+      **Decision:** ranges are done (`~` on a streaming turn); heat sizing is not built because it
+      would force a layout pass and the plan marks it optional. Revisit only if a study asks for it.
+- [x] **Kill:** if numbers are misleading, show ranges or park the lens. **Result:** keep, gated by
+      `graph_cost_lens`. Token totals come from the provider's reported usage; streaming turns say
+      they are a lower bound.
 
 **Exit:** each widget and the cost lens has a pass/park result.
+**Met:** todo/diff/terminal/cost lens keep; model picker and permission summary park.
 
 ---
 
@@ -460,9 +489,9 @@ commands published in M0.7.
 | 19.5 Spatial memory | **Keep session-local only** | Hash miss on changed structure; same structure restores (M1.1) |
 | 19.6 Notes and pins | **Keep quiet** | Store coverage and pin smoke pass; no study usage yet (M2.1) |
 | 19.8 Palette | Keep or `/` only | Time-to-action vs typing `/` |
-| 19.9 Widgets | Per-widget pass/park | Saved click or context switch |
+| 19.9 Widgets | **Keep todo, diff, terminal; park model picker and permission summary** | Widget data already lives in the node; picker/permission need host sources that would duplicate the composer and dock (M3.1) |
 | 19.10 Attention | Keep or reduce | Alarm-fatigue study |
-| 19.11 Cost lens | Exact numbers, ranges, or park | Streaming/truncation accuracy |
+| 19.11 Cost lens | **Keep, flag-gated; streaming shows ranges** | Provider-reported usage on turn cards; heat sizing deferred (M3.2) |
 | 19.12 Layouts/renderers | Adopt or drop | Measured benefit over current layouts |
 | Phase 20 budgets | Met or fallback | Strobe against `origin/dev` |
 
@@ -474,7 +503,7 @@ commands published in M0.7.
 |---|---|---|
 | ~~Compaction baseline definition~~ | ~~M1.2~~ | Resolved: keep-all path, 46 nodes / 855 tokens |
 | Palette speed metric | M5.1 | Median time-to-node vs `/` |
-| Per-widget success metric | M3.1 | One saved click or context switch |
+| ~~Per-widget success metric~~ | ~~M3.1~~ | Resolved: data already in the node; keep todo/diff/terminal, park the rest |
 | Renderer strategy thresholds | M5.3 | Keep SpaceGraph only |
 | Notes and attention study design | M7 | Keep quiet, do not foreground |
 | ~~Which SDK proposals to implement~~ | ~~M2.4~~ | Resolved: keep recorded as upstream asks |
@@ -603,3 +632,19 @@ this file's revision log and leave the v34 archive unchanged.
     58 pass / 12 skip / 1 fail. The failure is the pre-existing narrow bottom-sheet height assertion
     in `graph-refine.spec.ts`; it reproduces on unmodified `HEAD` (299–316 px vs 372.8 px) and is
     recorded in the handoff for M6.
+- **r6 (2026-11-11):** Completed M3.1 and M3.2.
+  - Widgets: `TodoNodeWidget` reads `todowrite` todos; `DiffNodeWidget` renders `oldString`/
+    `newString`, `patch`, or write content plus graph `writes` stats; `TerminalNodeWidget` renders a
+    shell result with exit/timeout, truncation, fold, and copy. `panel.tsx` wires all three behind
+    `graph_node_widgets` plus the master and per-widget preferences. The model picker and permission
+    summary are parked: the SDK has no model catalog and the graph has no permission request.
+  - Cost lens: the builder records provider usage on turn nodes (`tokens`, `cost`, `wallTime`,
+    `tools`, `steps`, `streaming`); `cost.ts` exposes `costLens`/`turnCost`; `useRenderCard` draws a
+    card badge and the toolbar offers the lens only when `graph_cost_lens` is on. Streaming turns
+    prefix the label with `~`. Compaction's token estimate ignores the usage field, so the locked
+    855-token baseline is unchanged. Heat sizing is not built; it would force a relayout.
+  - Tests: new `cost.test.ts` proves per-turn sums, wall time, tool counts, streaming lower bounds,
+    and an empty lens; `WidgetBreadth` and `CostLens` stories drive two new `graph-view.spec.ts`
+    component tests (focus/fold and toolbar toggle). Synced the bundled graph copy (43 modules).
+  - Verified: `bun run check` 53/53; `session-ui` graph 338/33; `session-graph` unit 97/12;
+    `gui-plugins` 1,162/115 (1 skip); both new component specs pass.

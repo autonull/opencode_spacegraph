@@ -196,6 +196,10 @@ export type GraphChromeProps = {
   onTrustLensChange?: () => void
   /** Trust lens active (deprecated, use trustLens). */
   trustLensActive?: boolean
+  /** Cost lens available (host flag) and active. */
+  enableCostLens?: boolean
+  costLens?: boolean
+  onToggleCostLens?: () => void
   /** Compaction advisor active. */
   compactionAdvisor?: boolean
   /** Compaction advisor change handler. */
@@ -314,6 +318,10 @@ export const GraphChrome = (props: GraphChromeProps) => {
         onToggleFiles={ctx.toggleFiles}
         trustLens={trustLensActive}
         onToggleTrustLens={ctx.toggleTrustLens}
+        costLens={props.costLens ?? ctx.costLens()}
+        onToggleCostLens={
+          props.enableCostLens ? (props.onToggleCostLens ?? ctx.toggleCostLens) : undefined
+        }
         compactionAdvisor={props.compactionAdvisor ?? ctx.compactionAdvisor()}
         onToggleCompactionAdvisor={props.onCompactionAdvisorChange ?? ctx.toggleCompactionAdvisor}
         arrangement={props.arrangement}

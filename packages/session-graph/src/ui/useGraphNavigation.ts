@@ -16,6 +16,7 @@ export interface UseGraphNavigationInput {
   onPeekChange: ((peek: boolean) => void) | undefined
   setTrustLens: (trustLens: boolean | ((prev: boolean) => boolean)) => void
   onTrustLensChange: ((trustLens: boolean) => void) | undefined
+  setCostLens: (costLens: boolean | ((prev: boolean) => boolean)) => void
   setCompactionAdvisor: (compactionAdvisor: boolean | ((prev: boolean) => boolean)) => void
   onCompactionAdvisorChange: ((compactionAdvisor: boolean) => void) | undefined
   select: UseGraphSelectionReturn["select"]
@@ -38,6 +39,7 @@ export interface UseGraphNavigationReturn {
   toggleFiles: () => void
   togglePeek: () => void
   toggleTrustLens: () => void
+  toggleCostLens: () => void
   toggleCompactionAdvisor: () => void
   dismissDetail: () => void
   openInTranscript: (id: string) => void
@@ -58,6 +60,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     onPeekChange,
     setTrustLens,
     onTrustLensChange,
+    setCostLens,
     setCompactionAdvisor,
     onCompactionAdvisorChange,
     select,
@@ -132,6 +135,10 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     })
   }
 
+  const toggleCostLens = () => {
+    setCostLens((open: boolean) => !open)
+  }
+
   const toggleCompactionAdvisor = () => {
     setCompactionAdvisor((open: boolean) => {
       onCompactionAdvisorChange?.(!open)
@@ -198,6 +205,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     toggleFiles,
     togglePeek,
     toggleTrustLens,
+    toggleCostLens,
     toggleCompactionAdvisor,
     dismissDetail,
     openInTranscript,

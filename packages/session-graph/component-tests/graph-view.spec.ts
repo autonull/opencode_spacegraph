@@ -177,6 +177,91 @@ story(
 )
 
 story(
+  "node widget breadths focus and fold without moving the node",
+  async ({ mount, page }) => {
+    const errors: string[] = []
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text())
+    })
+
+    const root = await mount("session-graph-view--widget-breadth")
+
+    const host = root.locator('[data-slot="graph-canvas-host"]')
+    await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+    const widgetLayer = root.locator('[data-slot="graph-node-widget-layer"]')
+    await expect(widgetLayer).toBeVisible({ timeout: 30_000 })
+
+    const todo = widgetLayer.locator('[data-slot="todo-node-widget"]')
+    const diff = widgetLayer.locator('[data-slot="diff-node-widget"]')
+    const terminal = widgetLayer.locator('[data-slot="terminal-node-widget"]')
+    await expect(todo).toBeVisible()
+    await expect(diff).toBeVisible()
+    await expect(terminal).toBeVisible()
+
+    await expect(todo).toContainText("1/3 done")
+    await expect(diff).toContainText("src/auth/token.ts")
+    await expect(terminal).toContainText("3 pass 0 fail")
+
+    const viewportBefore = await page.evaluate(() => {
+      const graph = (window as unknown as { __graph?: { getViewport: () => unknown } }).__graph
+      return graph?.getViewport()
+    })
+
+    const todoToggle = todo.locator('[data-slot="todo-node-widget-toggle"]')
+    await todoToggle.focus()
+    await expect(todoToggle).toBeFocused()
+    await todoToggle.press("Enter")
+    await expect(todoToggle).toHaveAttribute("aria-expanded", "false")
+
+    const diffToggle = diff.locator('[data-slot="diff-node-widget-toggle"]')
+    await diffToggle.click()
+    await expect(diff.locator('[data-slot="diff-node-widget-lines"]')).toContainText("const ttl = 60")
+
+    const terminalToggle = terminal.locator('[data-slot="terminal-node-widget-toggle"]')
+    await terminalToggle.click()
+    await expect(terminal.locator('[data-slot="terminal-node-widget-output"]')).toContainText("coverage 92%")
+
+    const viewportAfter = await page.evaluate(() => {
+      const graph = (window as unknown as { __graph?: { getViewport: () => unknown } }).__graph
+      return graph?.getViewport()
+    })
+    expect(viewportAfter).toEqual(viewportBefore)
+    expect(errors).toEqual([])
+  },
+)
+
+story(
+  "cost lens shows turn usage from the toolbar",
+  async ({ mount, page }) => {
+    const errors: string[] = []
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text())
+    })
+
+    const root = await mount("session-graph-view--cost-lens")
+    const host = root.locator('[data-slot="graph-canvas-host"]')
+    await expect(host).toHaveAttribute("data-graph-ready", "true", { timeout: 30_000 })
+
+    await expect(host.locator('[data-slot="card-cost"]')).toHaveCount(0)
+
+    await root.locator('[data-slot="graph-toolbar-view"] > summary').click()
+    const option = root.locator('[data-slot="graph-cost-lens-option"]')
+    await expect(option).toBeVisible()
+    await option.click()
+
+    const badge = host.locator('[data-slot="card-cost"]').first()
+    await expect(badge).toBeVisible()
+    await expect(badge).toContainText("tokens")
+    await expect(badge).toContainText("tools")
+
+    await option.click()
+    await expect(host.locator('[data-slot="card-cost"]')).toHaveCount(0)
+    expect(errors).toEqual([])
+  },
+)
+
+story(
   "chrome=false renders canvas at a fixed size without overflow",
   async ({ mount, page }) => {
     const errors: string[] = []

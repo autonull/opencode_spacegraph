@@ -79,6 +79,7 @@ export function HybridSurface(props: {
           onArrangementChange={(next: GraphArrangement) => props.model.setArrangement(props.session, next)}
           onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
           preferredRenderer={preferredRenderer}
+          enableCostLens={props.model.costLensEnabled()}
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}

@@ -228,6 +228,8 @@ export type SessionGraphProps = {
   onLayoutChange?: (layout: Layout) => void
   onFilesChange?: (files: boolean) => void
   onTrustLensChange?: (trustLens: boolean) => void
+  /** Cost lens availability: the host enables it behind `graph_cost_lens`. */
+  enableCostLens?: boolean
   onCompactionAdvisorChange?: (compactionAdvisor: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
   /** T17.4: the camera frames the selected node (the "card" framing behavior). */
@@ -445,6 +447,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
 
     // Trust lens
     trustLens,
+    costLens,
     compactionAdvisor,
 
     announce,
@@ -892,6 +895,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
       displayPositions,
       i18n,
       pins,
+      costLens,
     },
   )
 
@@ -1119,7 +1123,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   })
 
   // Graph navigation hook
-  const { expandToGraph, toggleFiles, togglePeek, toggleTrustLens, toggleCompactionAdvisor, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
+  const { expandToGraph, toggleFiles, togglePeek, toggleTrustLens, toggleCostLens, toggleCompactionAdvisor, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
     model,
     layout,
     setLayout,
@@ -1129,6 +1133,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     onPeekChange: props.onPeekChange,
     setTrustLens: state.setTrustLens,
     onTrustLensChange: props.onTrustLensChange,
+    setCostLens: state.setCostLens,
     setCompactionAdvisor: state.setCompactionAdvisor,
     onCompactionAdvisorChange: props.onCompactionAdvisorChange,
     select,
@@ -1397,6 +1402,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setFiles,
     trustLens,
     setTrustLens,
+    costLens,
+    setCostLens: state.setCostLens,
     compactionAdvisor,
     setCompactionAdvisor: state.setCompactionAdvisor,
     detailMode,
@@ -1527,6 +1534,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     toggleFiles,
     togglePeek,
     toggleTrustLens,
+    toggleCostLens,
     toggleCompactionAdvisor,
     dismissDetail,
     openInTranscript,
@@ -1678,6 +1686,9 @@ export const SessionGraph = (props: SessionGraphProps) => {
             onFilesChange={toggleFiles}
             trustLens={trustLens()}
             onTrustLensChange={toggleTrustLens}
+            enableCostLens={props.enableCostLens}
+            costLens={costLens()}
+            onToggleCostLens={toggleCostLens}
             compactionAdvisor={compactionAdvisor()}
             onCompactionAdvisorChange={toggleCompactionAdvisor}
             onSearch={toggleSearch}

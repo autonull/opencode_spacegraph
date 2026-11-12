@@ -35,6 +35,8 @@ export interface GraphViewContextValue {
   setFiles: (files: boolean) => void
   trustLens: () => boolean
   setTrustLens: (trustLens: boolean) => void
+  costLens: () => boolean
+  setCostLens: (costLens: boolean) => void
   compactionAdvisor: () => boolean
   setCompactionAdvisor: (compactionAdvisor: boolean) => void
   detailMode: () => DetailMode
@@ -165,6 +167,7 @@ export interface GraphViewContextValue {
   toggleFiles: () => void
   togglePeek: () => void
   toggleTrustLens: () => void
+  toggleCostLens: () => void
   toggleCompactionAdvisor: () => void
   dismissDetail: () => void
   jumpTo: (node: GraphNode) => void

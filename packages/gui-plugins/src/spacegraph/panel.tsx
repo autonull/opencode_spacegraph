@@ -1,10 +1,10 @@
 import { usePlugin, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createSignal, createMemo, For, Show, type JSX } from "solid-js"
-import { navigationResults, rankedSearch, type GraphNode as SessionGraphNode, type GraphViewData as SessionGraphViewData } from "@opencode/session-ui/graph"
+import { navigationResults, rankedSearch, EDIT_TOOLS, type GraphNode as SessionGraphNode, type GraphViewData as SessionGraphViewData } from "@opencode/session-ui/graph"
 import { formatProvenance, text } from "@opencode/session-graph"
 import type { SpacegraphModel } from "./model"
-import { SessionGraph, ComposerNodeWidget, SubagentNodeWidget, type ComposerNodeWidgetProps } from "@opencode/session-graph"
+import { SessionGraph, ComposerNodeWidget, SubagentNodeWidget, TodoNodeWidget, TerminalNodeWidget, DiffNodeWidget, type ComposerNodeWidgetProps } from "@opencode/session-graph"
 import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
@@ -137,14 +137,28 @@ export default function SpacegraphPanel(props: {
   const explicitlyCollapsedGroups = () => props.model.explicitlyCollapsedGroups(props.session)
   const notes = () => props.model.notes(props.session)
 
-  // Widgets enabled check (Phase 15 - ComposerNodeWidget)
+  // Widgets enabled check (Phase 19.9 - node widget breadth)
   const widgetsEnabled = createMemo(() => {
     const prefs = ctx.stores.prefs.value
-    return prefs.widgets?.enabled === true
+    return ctx.flags.enabled("graph_node_widgets") && prefs.widgets?.enabled === true
   })
+
+  const widgetEnabled = (name: "todo" | "diff" | "terminal" | "composer") => {
+    if (!widgetsEnabled()) return false
+    return ctx.stores.prefs.value.widgets?.[name] !== false
+  }
 
   // Get the composer from the screen
   const composer = createMemo(() => props.screen.composer)
+
+  const diffFiles = (nodeID: string) =>
+    graph().edges.flatMap((edge) => {
+      if (edge.kind !== "writes" || edge.source !== nodeID) return []
+      const target = graph().nodes.find((candidate: SessionGraphNode) => candidate.id === edge.target)
+      const path = typeof target?.data?.path === "string" ? target.data.path : undefined
+      if (!path) return []
+      return [{ path, additions: edge.data?.additions, deletions: edge.data?.deletions }]
+    })
 
   // Render node widget for the session root node and subagent nodes when widgets are enabled
   const renderNodeWidget = createMemo(() => {
@@ -152,7 +166,7 @@ export default function SpacegraphPanel(props: {
 
     return (node: SessionGraphNode): JSX.Element | undefined => {
       // Composer widget on session root node
-      if (node.kind === "session" && node.id === "session") {
+      if (node.kind === "session" && node.id === "session" && widgetEnabled("composer")) {
         const composerInstance = composer()
         if (!composerInstance) return undefined
 
@@ -183,6 +197,20 @@ export default function SpacegraphPanel(props: {
           />
         )
       }
+
+      if (node.kind === "tool" && node.data?.name === "todowrite" && widgetEnabled("todo"))
+        return <TodoNodeWidget node={node} />
+
+      if (
+        node.kind === "tool" &&
+        typeof node.data?.name === "string" &&
+        EDIT_TOOLS.has(node.data.name) &&
+        widgetEnabled("diff")
+      )
+        return <DiffNodeWidget node={node} files={diffFiles(node.id)} />
+
+      if (node.kind === "result" && typeof node.data?.output === "string" && widgetEnabled("terminal"))
+        return <TerminalNodeWidget node={node} />
 
       return undefined
     }
@@ -275,8 +303,9 @@ export default function SpacegraphPanel(props: {
           onNotesChange={(notes: Annotations) => props.model.setNotes(props.session, notes)}
           pins={props.model.pins(props.session)}
           onPinsChange={(pins) => props.model.setPins(props.session, pins)}
-          // Node widget (Phase 15 - ComposerNodeWidget)
+          // Node widget (Phase 19.9 - widget breadth)
           renderNodeWidget={renderNodeWidget()}
+          enableCostLens={ctx.flags.enabled("graph_cost_lens")}
         />
         <Windows
           windows={windows()}

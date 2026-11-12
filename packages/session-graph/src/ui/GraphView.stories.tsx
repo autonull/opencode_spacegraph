@@ -19,6 +19,9 @@ import type { GraphDiffSource } from "./GraphDiff"
 import { GraphView } from "./GraphView"
 import type { GraphWindowState } from "./GraphWindows"
 import { TextInput } from "@opencode/ui/text-input"
+import { TodoNodeWidget } from "./TodoNodeWidget"
+import { TerminalNodeWidget } from "./TerminalNodeWidget"
+import { DiffNodeWidget } from "./DiffNodeWidget"
 
 const graph = buildFixtureGraph()
 
@@ -118,11 +121,66 @@ const NODE_WIDGET_MODEL: GraphViewData = {
   turnByMessageID: new Map(),
 }
 
+/** Phase 19.9: the widget breadth story. Each tool node carries the data its widget reads. */
+const WIDGET_BREADTH_MODEL: GraphViewData = {
+  root: "session",
+  nodes: [
+    { id: "session", kind: "session", label: "Session", status: "neutral", minLevel: "overview" },
+    {
+      id: "tool:todo",
+      kind: "tool",
+      label: "todowrite",
+      status: "success",
+      minLevel: "overview",
+      data: {
+        name: "todowrite",
+        input: {
+          todos: [
+            { content: "Repair the auth guard", status: "completed" },
+            { content: "Add regression coverage", status: "in_progress" },
+            { content: "Update the handoff", status: "pending" },
+          ],
+        },
+      },
+    },
+    {
+      id: "tool:edit",
+      kind: "tool",
+      label: "edit",
+      status: "success",
+      minLevel: "overview",
+      data: {
+        name: "edit",
+        input: {
+          filePath: "src/auth/token.ts",
+          oldString: "const ttl = 30",
+          newString: "const ttl = 60",
+        },
+      },
+    },
+    {
+      id: "result:shell",
+      kind: "result",
+      label: "ok",
+      status: "success",
+      minLevel: "overview",
+      data: { exit: 0, timeout: false, truncated: false, output: "3 pass 0 fail\ncoverage 92%" },
+    },
+  ],
+  edges: [
+    { id: "sequence:session->tool:todo", kind: "sequence", source: "session", target: "tool:todo", confidence: "explicit" },
+    { id: "sequence:tool:todo->tool:edit", kind: "sequence", source: "tool:todo", target: "tool:edit", confidence: "explicit" },
+    { id: "sequence:tool:edit->result:shell", kind: "sequence", source: "tool:edit", target: "result:shell", confidence: "explicit" },
+    { id: "produces:tool:edit->result:shell", kind: "produces", source: "tool:edit", target: "result:shell", confidence: "structural" },
+  ],
+  turns: [],
+  turnByMessageID: new Map(),
+}
+
 /**
  * T6.5: a session that was forked from another one. The attribution rides on the root node, so the
  * inspector can name where this session came from and offer to open it.
- */
-const FORKED_MODEL: GraphViewData = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
+ */const FORKED_MODEL: GraphViewData = buildGraph({ messages: buildFixtureMessages(), status: { type: "idle" }, sessionID: "ses_abc", lineage: {
   forkedFrom: { sessionID: "ses_origin", boundary: { type: "through", messageID: "msg_user_1" } },
 } })
 
@@ -202,6 +260,8 @@ type HarnessProps = {
   rules?: EqualizerRuleSet
   /** Optional renderNodeWidget for interactive widgets in nodes. */
   renderNodeWidget?: (node: GraphNode) => JSX.Element | undefined
+  /** Phase 19.11: make the cost lens available in the toolbar. */
+  enableCostLens?: boolean
   /** Optional durable pins for the shared-surface proof. */
   pins?: readonly string[]
   onPinsChange?: (pins: readonly string[]) => void
@@ -345,6 +405,7 @@ const ViewHarness = (props: HarnessProps) => {
         theme={props.theme}
         diffSource={diffSource}
         renderNodeWidget={props.renderNodeWidget}
+        enableCostLens={props.enableCostLens}
         pins={props.pins}
         onPinsChange={props.onPinsChange}
         renderSummary={(node) =>
@@ -360,6 +421,11 @@ const ViewHarness = (props: HarnessProps) => {
       />
     </div>
   )
+}
+
+/** Phase 19.11: the cost lens shows measured usage on each turn card. */
+export const CostLens = {
+  render: () => <ViewHarness model={COST_LENS_MODEL} enableCostLens />,
 }
 
 export default {
@@ -742,4 +808,59 @@ export const WithNodeWidget = {
       />
     )
   },
+}
+
+/**
+ * Phase 19.11: the cost lens reads usage the builder records on a turn. The story pins one turn's
+ * numbers so the toolbar toggle and the card badge have a deterministic label.
+ */
+const COST_LENS_MODEL: GraphViewData = (() => {
+  const base = buildFixtureGraph()
+  const turnID = base.turns[0]
+  if (!turnID) return base
+  return {
+    ...base,
+    nodes: base.nodes.map((node) =>
+      node.id === turnID
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              usage: {
+                tokens: { input: 1200, output: 400, reasoning: 100, cacheRead: 300, cacheWrite: 0 },
+                cost: 0.02,
+                wallTime: 2400,
+                tools: 3,
+                steps: 2,
+                streaming: false,
+                startedAt: 0,
+                completedAt: 2400,
+              },
+            },
+          }
+        : node,
+    ),
+  }
+})()
+
+/** Phase 19.9: todo, diff, and terminal widgets in one model, for the interaction contract. */
+export const WidgetBreadth = {
+  render: () => (
+    <ViewHarness
+      model={WIDGET_BREADTH_MODEL}
+      selection="tool:todo"
+      renderNodeWidget={(node: GraphNode) => {
+        if (node.id === "tool:todo") return <TodoNodeWidget node={node} />
+        if (node.id === "tool:edit")
+          return (
+            <DiffNodeWidget
+              node={node}
+              files={[{ path: "src/auth/token.ts", additions: 1, deletions: 1 }]}
+            />
+          )
+        if (node.id === "result:shell") return <TerminalNodeWidget node={node} />
+        return undefined
+      }}
+    />
+  ),
 }

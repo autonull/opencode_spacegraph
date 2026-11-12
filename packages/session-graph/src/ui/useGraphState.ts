@@ -103,6 +103,9 @@ interface GraphState {
   // Trust lens
   trustLens: boolean
 
+  // Cost lens
+  costLens: boolean
+
   // Compaction advisor
   compactionAdvisor: boolean
 
@@ -155,6 +158,7 @@ const initialState: GraphState = {
   seeMapPromptVisible: false,
   seeMapPromptDismissed: false,
   trustLens: false,
+  costLens: false,
   compactionAdvisor: false,
   notesStore: {},
   drillDownStack: [],
@@ -256,6 +260,10 @@ export type UseGraphStateReturn = {
   trustLens: () => boolean
   setTrustLens: (enabled: boolean | ((prev: boolean) => boolean)) => void
 
+  // Cost lens
+  costLens: () => boolean
+  setCostLens: (enabled: boolean | ((prev: boolean) => boolean)) => void
+
   // Compaction advisor
   compactionAdvisor: () => boolean
   setCompactionAdvisor: (enabled: boolean | ((prev: boolean) => boolean)) => void
@@ -315,6 +323,7 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     demoDismissed: typeof window !== "undefined" ? localStorage.getItem("sessionGraph.demoDismissed") === "true" : false,
     seeMapPromptDismissed: typeof window !== "undefined" ? localStorage.getItem("sessionGraph.seeMapPromptDismissed") === "true" : false,
     trustLens: typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("lens") === "unverified" : false,
+    costLens: typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("lens") === "cost" : false,
   })
 
   // Persist demo/prompt dismissal to localStorage
@@ -499,6 +508,10 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     // Trust lens
     trustLens: createGetter(state, "trustLens"),
     setTrustLens: createSetter(setState, "trustLens"),
+
+    // Cost lens
+    costLens: createGetter(state, "costLens"),
+    setCostLens: createSetter(setState, "costLens"),
 
     // Compaction advisor
     compactionAdvisor: createGetter(state, "compactionAdvisor"),
