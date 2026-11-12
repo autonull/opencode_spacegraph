@@ -938,3 +938,9 @@ this file's revision log and leave the v34 archive unchanged.
   - Removed `graph_trust_lens` flag from `packages/schema/src/config/flag.ts` (deleted orphan); `host-apis.tsx` now iterates `ConfigFlag.registry` for all flags.
   - Added `enableCompactionAdvisor` prop to `SessionGraph`/`GraphChrome` and wired `compactionAdvisorEnabled()` in plugin model; all surfaces pass the flag check.
   - Verified: `bun run check` 53/53; `session-graph` unit 108/15; component suite 68 pass; `gui-plugins` 1,165 pass; `session-ui` graph 389/41; `script/docs-graph.ts --check` clean.
+
+- **r16 (2026-11-12):** Removed all deprecated aliases — no external consumers exist in this fork.
+  - Deleted `GraphViewProps` alias, `GraphDetailProps` re-export, `GraphInspectorSheet` component from `@opencode/session-graph`.
+  - Removed `docs/spacegraph/migration.md` (not needed).
+  - Cleaned up `docs/spacegraph/README.md` reference to migration.md.
+  - Verified: `bun run check` 53/53; all unit/component tests pass; `docs-graph` check clean.

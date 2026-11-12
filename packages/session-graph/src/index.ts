@@ -75,11 +75,6 @@ export { useToolbarState } from "@spacegraphjs/toolbar"
 export { GraphView } from "./ui/GraphView"
 export { SessionGraph, type SessionGraphProps, MIN_CARD_HEIGHT_PX, READABLE_CARD_WIDTH } from "./ui/SessionGraph"
 
-/**
- * @deprecated Use `SessionGraphProps`. Removed in the next minor.
- */
-export type { SessionGraphProps as GraphViewProps } from "./ui/SessionGraph"
-
 // Re-exports from @spacegraphjs/turn-map
 export { TurnMapInlineGraph, type TurnMapInlineGraphProps } from "@spacegraphjs/turn-map"
 export { TurnMapOverlay, type TurnMapOverlayProps } from "@spacegraphjs/turn-map"
@@ -118,11 +113,6 @@ export { GraphPeek, type GraphPeekProps } from "@spacegraphjs/overlays"
 export { GraphPopover, type GraphPopoverProps, POPOVER_WIDTH, POPOVER_MAX_HEIGHT, POPOVER_GAP } from "@spacegraphjs/overlays"
 export { GraphOverlayManager, type GraphOverlayManagerProps } from "@spacegraphjs/overlays"
 export { ScopedOverlay, type ScopedOverlayOptions } from "@spacegraphjs/overlays"
-// GraphDetailProps is defined locally in ui/GraphDetail.tsx with trace extensions.
-/**
- * @deprecated Use `GraphDetailSurfaceProps` from `@spacegraphjs/overlays`. Removed in the next minor.
- */
-export type { GraphDetailProps } from "@spacegraphjs/overlays"
 export { type GraphDetailSurfaceProps } from "@spacegraphjs/overlays"
 
 // Re-exports from @spacegraphjs/controls
