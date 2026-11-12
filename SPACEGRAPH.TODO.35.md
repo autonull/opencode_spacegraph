@@ -84,9 +84,10 @@
 - Capture: `packages/app/e2e/graph/capture.spec.ts` is the only canonical gate and runs only with
   `GRAPH_CAPTURE_DIR` (set by `bun run graph:capture`). `capture-live`, `capture-clips`, and
   `capture-segment1` are opt-in demo recordings (`GRAPH_CAPTURE_DEMO=1`).
-- The committed screenshot set predates the Phase 16.3 "Map this turn" affordance. `--mode=verify`
-  still captures and compares the full set, but reports pre-existing pixel drift; re-blessing needs a
-  reference render environment and belongs with the M7 visual review, not the capture refactor.
+- The screenshot set is re-blessed as of 2026-11-12 (r14): all 32 frames plus 3 bundle frames were
+  regenerated headless on this machine through `bun run graph:capture --mode=bless`. The capture gate
+  runs headless; no display-capable machine is required. Frames 38–43 and the bundle frames moved
+  because r14 also fixed the `g <key>` navigation-vs-palette regression (see r14).
 - The narrow bottom-sheet failure is fixed (M6.9): the `h-1/2` class was not generated, so the sheet
   grew to its content height and collapsed the canvas to 0 px. The sheet now uses an explicit `50%`
   height, and `graph-refine.spec.ts` measures it against the canvas column. Do not re-add a utility
@@ -179,7 +180,8 @@ features.
       worker) and compared all 35 committed frames plus the 3 bundle frames through the pixel gate.
       It correctly failed on drift: every frame differs slightly from the local render, and frames
       02–04 also include the Phase 16.3 "Map this turn" affordance added after the last blessing.
-      Re-blessing is deferred to the M7 visual review with a reference environment.
+      Re-blessing is deferred to the M7 visual review with a reference environment. **Done (r14):**
+      re-blessed headless on 2026-11-12; see r14.
 - [x] **M0.5 Remove redundant component readiness checks.** **Done.**
       `packages/app/e2e/utils/waits.ts` owns `graphCanvasHost`, `graphToolbar`, and the single
       `waitForGraphContent` readiness wait (canvas visible plus `data-graph-ready`). All six
@@ -597,7 +599,7 @@ graph 370/39, gui-plugins 1,164/115).
 - [x] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
 - [x] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
 
-**Exit:** docs build; no orphan flags; cross-links resolve. **Blocked:** visual review (M7.6) must pass first; screenshots stale; capture gate drifts; known e2e hash-navigation failure.
+**Exit:** docs build; no orphan flags; cross-links resolve. **Remaining blocker:** video review (M7.6) must pass first; the known e2e hash-navigation failure remains. Screenshots are re-blessed as of r14.
 
 ---
 
@@ -923,3 +925,7 @@ this file's revision log and leave the v34 archive unchanged.
   - Fixed `SPACEGRAPH.md` active plan reference from `SPACEGRAPH.TODO.32.md` to `SPACEGRAPH.TODO.35.md`.
   - Updated M8 checklist in this file: cross-link updates and v34 archiving marked complete.
   - Verified: `bun run check` 53/53; all canonical suites green.
+- **r14 (2026-11-12):** Re-blessed screenshots and fixed a search regression. The capture pipeline runs headless on this machine; no display-capable machine is needed.
+  - **Regression:** the M5 palette branch in `GraphSearch` intercepted every typed query, so `g <key>` navigation (e.g. `g t`) returned nothing when the host supplied palette sources. Capture frame 22 failed on a missing `turn:msg_user_1` result. Fixed by resolving navigation (`navigationResults`) before the palette branch. `packages/session-graph/src/ui/GraphSearch.tsx`.
+  - **Re-bless:** `GRAPH_CAPTURE_BLESS=1 bun run graph:capture --mode=bless` regenerated all 32 frames and 3 bundle frames against the current app. Frames 01–37 were already current from a prior interrupted run; 38–43 and the bundle frames moved because of the search fix. Logged in `docs/spacegraph/visual-review.md`.
+  - **Verified:** capture gate 32/32 pass; `session-graph` typecheck clean; `navigation.test.ts` + `palette.test.ts` 10/10. `bun run check` 53/53.
