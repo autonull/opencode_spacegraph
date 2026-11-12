@@ -571,12 +571,12 @@ graph 370/39, gui-plugins 1,164/115).
 
 ## M7 — Experiments and validation (P2)
 
-- [ ] Author the canonical fixture narrative: failing test → wrong fix → root cause → correct fix →
+- [x] Author the canonical fixture narrative: failing test → wrong fix → root cause → correct fix →
       subagent verification → share.
-- [ ] Add opt-in local counters (no network): surface opens, expand rate, why usage, lens switches, and
+- [x] Add opt-in local counters (no network): surface opens, expand rate, why usage, lens switches, and
       time-to-answer on canned questions.
-- [ ] Add cohort flags: Reader-first vs Map-first vs Hybrid-first.
-- [ ] Define five task scenarios with expected answers on the fixture.
+- [x] Add cohort flags: Reader-first vs Map-first vs Hybrid-first.
+- [x] Define five task scenarios with expected answers on the fixture.
 - [ ] Write the study protocol: consent, counterbalancing, analysis plan, and stop rule (reuse TODO.33
       §14).
 - [ ] Do not start human studies before the video gate.
@@ -892,3 +892,20 @@ this file's revision log and leave the v34 archive unchanged.
   - Verified: root `bun run check` 53/53; `bun run lint` 0 errors; `session-ui` graph 370/39;
     `session-graph` unit 108/15; `gui-plugins` 1,164/115 (1 skip); full component suite 68 pass /
     12 skip / 0 fail; `--grep @a11y` 3 pass / 1 pre-existing skip; `check:graph` clean.
+- **r10 (2026-11-12):** Completed M7 experiments and validation (items 1–4 of 6).
+  - Canonical narrative fixture: `buildNarrativeFixtureMessages` and `buildNarrativeFixtureGraph` in
+    `session-ui/src/graph/fixture.ts` tell one story in a single turn: failing test → wrong fix
+    (extended token lifetime) → root cause (store write missing) → correct fix (store rotated
+    token) → subagent verification → share. `narrative.test.ts` locks the five-step spine.
+  - Local study counters: `study.ts` exports `StudyCounters` with surface opens, lens switches,
+    inline expand/collapse counts, why usage, and timed answers. Validation at the session-store
+    boundary (`normalizeStudyCounters`) and one-line status (`formatStudy`). `study.test.ts` covers
+    all counters, cap behavior, and the status line.
+  - Cohort flags: `STUDY_COHORTS = ["reader-first","map-first","hybrid-first"]` with
+    `cohortEntry(cohort)` mapping to first surface/lens. `isStudyCohort` validates at the boundary.
+  - Five task scenarios: `STUDY_TASKS` in `study.ts` are the five §1 questions with concrete
+    expected answers from the canonical fixture. `narrative.test.ts` proves each answer is present
+    in the model (failed shell → retry error → subagent refresh path → post-failure edits → retry
+    marks the direction change).
+  - Synced the bundled graph copy (49 modules). Verified: `bun run check` 53/53; `session-ui` graph
+    389/41; `session-graph` unit 108/15; `gui-plugins` 1,164/115 (1 skip); `check:graph` clean.
