@@ -208,6 +208,8 @@ export type GraphChromeProps = {
   onToggleCostLens?: () => void
   /** Compaction advisor active. */
   compactionAdvisor?: boolean
+  /** Compaction advisor availability: the host enables it behind `graph_compaction_advisor`. */
+  enableCompactionAdvisor?: boolean
   /** Compaction advisor change handler. */
   onCompactionAdvisorChange?: () => void
   /** I18n function (from context). */
@@ -334,7 +336,9 @@ export const GraphChrome = (props: GraphChromeProps) => {
           props.enableCostLens ? (props.onToggleCostLens ?? ctx.toggleCostLens) : undefined
         }
         compactionAdvisor={props.compactionAdvisor ?? ctx.compactionAdvisor()}
-        onToggleCompactionAdvisor={props.onCompactionAdvisorChange ?? ctx.toggleCompactionAdvisor}
+        onToggleCompactionAdvisor={
+          props.enableCompactionAdvisor ? (props.onCompactionAdvisorChange ?? ctx.toggleCompactionAdvisor) : undefined
+        }
         arrangement={props.arrangement}
         onArrangementChange={props.onArrangementChange}
         arrangementSide={props.arrangementSide}

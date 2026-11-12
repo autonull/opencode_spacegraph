@@ -82,6 +82,7 @@ export function HybridSurface(props: {
           onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
           preferredRenderer={preferredRenderer}
           enableCostLens={props.model.costLensEnabled()}
+          enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}

@@ -1,14 +1,12 @@
 # SpaceGraph for OpenCode — Fork README
 
-> **Status (2026-11-08):** Prototype complete, verified, rebased onto upstream/dev. Phase 6
-> (SpaceGraphJS hardening) done. Phase 4 close-out, Phase 5 discovery, Phase 6 library hardening
-> complete. Capture gate green (`graph/capture.spec.ts`: 64/64 across both projects, 42 frames);
-> session-graph component suite green (55 passed, 12 annotated skips); plugin-spacegraph bundle
-> tests green (3/3); typecheck clean. The depth-spectrum reactive loop (frames 18/19/31) and the
-> badge self-invalidation loop (F10) are fixed. The live demo was recorded continuously and rendered;
-> the first cut is **not shareable** and needs a storyboard-first re-cut (TODO.32 §6.5). Generated
-> media is gitignored and never committed. The T2.2 study remains deferred by its own gate. See
-> `SPACEGRAPH.TODO.32.md` for the active plan. `SPACEGRAPH.TODO.31.md` is superseded.
+> **Status (2026-11-12):** M0–M6 are implemented and M7 is complete except the outsider video
+> review. M8 docs, migration notes, and deprecated aliases are in place; M9 remains the final gate.
+> The capture gate covers 32 `@graph @capture` frames and the committed screenshot set is 35 app
+> frames plus 3 bundle frames, re-blessed headless on 2026-11-12. `bun run check` is green (53/53).
+> The timed benchmark comparison and the M7 video review still need a display-capable machine and
+> outside reviewers. See [`SPACEGRAPH.TODO.35.md`](SPACEGRAPH.TODO.35.md) for the active plan;
+> `SPACEGRAPH.TODO.34.md` is the frozen design archive.
 
 ---
 
@@ -87,7 +85,7 @@ Session messages + status + turn diffs
 | Package | Responsibility |
 |---------|---------------|
 | `session-ui/src/graph` | Pure model: vocabulary, builder, levels, layout, selectors, fixture |
-| `session-graph` | Host UI: `GraphView`, `GraphCanvas`, toolbar, inspector, breadcrumbs, search, minimap, a11y |
+| `session-graph` | Host UI: `SessionGraph` core, `GraphView` chrome wrapper, canvas, toolbar, inspector, breadcrumbs, search, minimap, a11y |
 | `packages/app/src/session/graph` | Integration: panel, mode branch, turn-map overlay, permalinks, commands |
 
 ### Host Modules (`session-graph/src/`)
@@ -234,6 +232,29 @@ OpenCode plugin  │  Hermes plugin  │  Pi Agent plugin
 | OpenCode maintainers adopt SpaceGraph | Rungs 1-4 don't need plugin API changes |
 | SpaceGraph team wants external distro | Build external bundle; migrate when API ready |
 
+### Library contract versions and breaking changes
+
+The library contracts are consumed at source through the `spacegraphjs` submodule. A contract change
+is a hard break: No `CONTRACT_VERSION`, no `negotiateContract` handshake, no `@deprecated`
+shims, and no compatibility layer. The rule is **delete, don't deprecate** for the library. A
+consumer takes the new contract with a `gitlink bump` of the submodule.
+
+| Package | Version |
+|---|---|
+| `spacegraphjs` | 8.5.0 |
+| `@spacegraphjs/renderer` | 0.3.0 |
+| `@spacegraphjs/adapter` | 0.2.0 |
+| `@spacegraphjs/kernel` | 0.1.0 |
+| `@spacegraphjs/spacegraph-renderer` | 0.3.1 |
+| `@spacegraphjs/svg-renderer` | 0.2.0 |
+
+Capture verification is **advisory** in the check output; the canonical gate is
+`packages/app/e2e/graph/capture.spec.ts`, and it writes no frame without `GRAPH_CAPTURE_DIR`.
+
+The OpenCode plugin SDK follows the repository policy instead: a moved public name keeps a
+deprecated alias until the next minor. See [`docs/spacegraph/migration.md`](docs/spacegraph/migration.md)
+for the current aliases.
+
 **Fork preserves the option:** `session-ui/graph` (pure model), `session-graph` (host UI), `gui-plugins/spacegraph` (plugin shell) are already cleanly separated.
 
 Detail: [`SPACEGRAPH.md §5`](SPACEGRAPH.md#5-path-to-fully-plugin-based-spacegraph)
@@ -254,6 +275,10 @@ Detail: [`SPACEGRAPH.md §5`](SPACEGRAPH.md#5-path-to-fully-plugin-based-spacegr
 | **CI gate (`graph:verify`)** | [`docs/spacegraph/ci.md`](docs/spacegraph/ci.md) |
 | **Mouse interaction** | [`docs/spacegraph/interaction.md`](docs/spacegraph/interaction.md) |
 | **Reviewer key files** | [`docs/spacegraph/review-guide.md`](docs/spacegraph/review-guide.md) |
+| **Composition guide** | [`docs/spacegraph/composition-guide.md`](docs/spacegraph/composition-guide.md) |
+| **Embedding guide** | [`docs/spacegraph/embedding-guide.md`](docs/spacegraph/embedding-guide.md) |
+| **Library / SDK proposals** | [`docs/spacegraph/library-delta.md`](docs/spacegraph/library-delta.md) |
+| **Migration and aliases** | [`docs/spacegraph/migration.md`](docs/spacegraph/migration.md) |
 | **All docs index** | [`docs/spacegraph/README.md`](docs/spacegraph/README.md) |
 
 **SpaceGraphJS library:** [`spacegraphjs/README.md`](../spacegraphjs/README.md), [`spacegraphjs/docs/`](../spacegraphjs/docs/), [`spacegraphjs/ROADMAP.md`](../spacegraphjs/ROADMAP.md)

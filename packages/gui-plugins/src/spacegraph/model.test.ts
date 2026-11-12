@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import type { MountedSession, SetupContext } from "@opencode/plugin/gui"
 import type { GraphViewData } from "@opencode/session-ui/graph"
 import type definition from "./index"
+import { BUILTIN_LENSES } from "./index"
 import { createSpacegraph } from "./model"
 
 function memory<T extends object>(initial: T) {
@@ -49,13 +50,25 @@ const session = {
 } as unknown as MountedSession
 
 function setup(flagsEnabled = true) {
-  const prefs = memory<{ level?: string; layout?: string; arrangement?: string; side?: string }>({})
+  const prefs = memory<{
+    level?: string
+    layout?: string
+    arrangement?: string
+    side?: string
+    lens?: string
+    surfaces?: Record<string, unknown>
+    renderer?: unknown
+    widgets?: { enabled?: boolean }
+    density?: unknown
+    userLenses?: { id: string; name: string; description: string; surface: string }[]
+  }>({})
   const stored = memory<Stored>({})
   const selected: string[] = []
 
   // SAFETY: the model reads only these fake stores and the host's select callback.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
   const ctx = {
+    id: "spacegraph",
     stores: { prefs, session: () => stored },
     surfaces: { select: (id: string) => void selected.push(id) },
     flags: { enabled: () => flagsEnabled, loading: () => false },
@@ -210,6 +223,27 @@ describe("spacegraph model", () => {
     expect(sources.actions?.map((action) => action.id)).toContain("surface.map")
     expect(sources.lenses?.length).toBeGreaterThan(0)
     expect(sources.surfaces).toBeUndefined()
+  })
+
+  test("all nine built-in lenses apply their state, persist it, and select their surface", () => {
+    const { model, prefs, stored, selected } = setup()
+
+    expect(BUILTIN_LENSES).toHaveLength(9)
+
+    for (const lens of BUILTIN_LENSES) {
+      model.applyLensById(session, lens.id)
+
+      expect(model.layout(session)).toBe(lens.layout)
+      expect(model.depth(session)).toBe(lens.depth)
+      expect(model.level(session)).toBe(lens.level)
+      expect(model.detailMode(session)).toBe(lens.detailMode)
+      expect(prefs.value.lens).toBe(lens.id)
+      expect(prefs.value.widgets?.enabled).toBe(lens.widgets)
+      expect(stored.value.surface).toBe(
+        lens.surface === "transcript" ? "transcript" : `spacegraph.${lens.surface}`,
+      )
+      expect(selected.at(-1)).toBe(stored.value.surface)
+    }
   })
 })
 

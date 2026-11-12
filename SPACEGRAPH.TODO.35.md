@@ -593,9 +593,9 @@ graph 370/39, gui-plugins 1,164/115).
 - [x] Composition guide: surface table, lens table, progressive-disclosure rules.
 - [x] Embedding guide: tiers 1–3, interactive-control rules, HTML trust boundary.
 - [x] Complete `docs/spacegraph/library-delta.md` with rationale, status, and feature mapping.
-- [ ] SDK proposals with minimal diffs; TSDoc and guide updates in the same change.
+- [x] SDK proposals with minimal diffs; TSDoc and guide updates in the same change.
 - [x] Flag graduation: delete flags for proven defaults; keep the rest.
-- [ ] Deprecated aliases for moved public SDK/plugin names until the next minor.
+- [x] Deprecated aliases for moved public SDK/plugin names until the next minor.
 - [x] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
 - [x] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
 
@@ -929,3 +929,12 @@ this file's revision log and leave the v34 archive unchanged.
   - **Regression:** the M5 palette branch in `GraphSearch` intercepted every typed query, so `g <key>` navigation (e.g. `g t`) returned nothing when the host supplied palette sources. Capture frame 22 failed on a missing `turn:msg_user_1` result. Fixed by resolving navigation (`navigationResults`) before the palette branch. `packages/session-graph/src/ui/GraphSearch.tsx`.
   - **Re-bless:** `GRAPH_CAPTURE_BLESS=1 bun run graph:capture --mode=bless` regenerated all 32 frames and 3 bundle frames against the current app. Frames 01–37 were already current from a prior interrupted run; 38–43 and the bundle frames moved because of the search fix. Logged in `docs/spacegraph/visual-review.md`.
   - **Verified:** capture gate 32/32 pass; `session-graph` typecheck clean; `navigation.test.ts` + `palette.test.ts` 10/10. `bun run check` 53/53.
+
+- **r15 (2026-11-12):** Completed M8 migration and graduation work.
+  - Added deprecated aliases in `@opencode/session-graph`: `GraphViewProps` → `SessionGraphProps`, `GraphDetailProps` → `GraphDetailSurfaceProps` from `@spacegraphjs/overlays`, `GraphInspectorSheet` → `GraphInspectorPanel` with `sheet={true}`. All marked `@deprecated` with "Removed in the next minor".
+  - Added `docs/spacegraph/migration.md` documenting all moved names and removal window.
+  - Updated `docs/spacegraph/composition-guide.md` with current lens table (9 lenses as data), surface table, progressive-disclosure rules, and flag gating.
+  - Updated `docs/spacegraph/library-delta.md` with minimal diffs for open SDK proposals and updated `graph_trust_lens` references to `graph_palette` (graduated flags).
+  - Removed `graph_trust_lens` flag from `packages/schema/src/config/flag.ts` (deleted orphan); `host-apis.tsx` now iterates `ConfigFlag.registry` for all flags.
+  - Added `enableCompactionAdvisor` prop to `SessionGraph`/`GraphChrome` and wired `compactionAdvisorEnabled()` in plugin model; all surfaces pass the flag check.
+  - Verified: `bun run check` 53/53; `session-graph` unit 108/15; component suite 68 pass; `gui-plugins` 1,165 pass; `session-ui` graph 389/41; `script/docs-graph.ts --check` clean.

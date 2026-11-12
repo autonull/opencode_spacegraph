@@ -127,9 +127,10 @@ async function main() {
     const bundleFrames = existsSync(bundleDir) ? readdirSync(bundleDir).filter(f => f.endsWith(".png")) : []
     const totalFrames = frames.length + bundleFrames.length
     
-    // SPACEGRAPH.md claims "29 app frames + 3 bundle frames = 32 total"
-    check(totalFrames === 32, `Screenshot count: ${totalFrames} frames (expected 32: 29 app + 3 bundle)`)
-    check(frames.length === 29, `App frames: ${frames.length} (expected 29)`)
+    // The committed set is 35 app frames + 3 bundle frames = 38 total. The canonical capture
+    // gate writes 32 frames; the remaining app frames are the opt-in zoom, turn, and demo set.
+    check(totalFrames === 38, `Screenshot count: ${totalFrames} frames (expected 38: 35 app + 3 bundle)`)
+    check(frames.length === 35, `App frames: ${frames.length} (expected 35)`)
     check(bundleFrames.length === 3, `Bundle frames: ${bundleFrames.length} (expected 3)`)
   } else {
     check(false, "Screenshots directory not found")

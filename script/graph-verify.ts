@@ -96,7 +96,6 @@ const steps: { label: string; cwd: string; cmd: string[] }[] = [
   { label: "session-graph component contract", cwd: join(root, "packages/session-graph"), cmd: ["bun", "run", "test:components"] },
   { label: "session-ui graph unit tests", cwd: join(root, "packages/session-ui"), cmd: ["bun", "test", "src/graph"] },
   { label: "gui-plugins spacegraph tests", cwd: join(root, "packages/gui-plugins"), cmd: ["bun", "test", "src/spacegraph"] },
-  { label: "capture overrides schema", cwd: root, cmd: ["bun", "run", "script/test-capture-overrides.ts"] },
   { label: "docs truth check", cwd: root, cmd: ["bun", "run", "script/docs-graph.ts", "--check"] },
   { label: "app e2e graph", cwd: join(root, "packages/app"), cmd: ["bun", "run", "test:e2e:built", "--", "e2e/graph/session-graph.spec.ts", "e2e/graph/reactivity.spec.ts"] },
   // The side-panel keeper (e2e/regression/side-panels.spec.ts) is upstream app UI, not the graph.

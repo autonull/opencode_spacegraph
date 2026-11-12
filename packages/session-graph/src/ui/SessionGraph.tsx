@@ -260,6 +260,8 @@ export type SessionGraphProps = {
   onTrustLensChange?: (trustLens: boolean) => void
   /** Cost lens availability: the host enables it behind `graph_cost_lens`. */
   enableCostLens?: boolean
+  /** Compaction advisor availability: the host enables it behind `graph_compaction_advisor`. */
+  enableCompactionAdvisor?: boolean
   onCompactionAdvisorChange?: (compactionAdvisor: boolean) => void
   onDetailModeChange?: (mode: DetailMode) => void
   /** T17.4: the camera frames the selected node (the "card" framing behavior). */
@@ -1780,6 +1782,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
             costLens={costLens()}
             onToggleCostLens={toggleCostLens}
             compactionAdvisor={compactionAdvisor()}
+            enableCompactionAdvisor={props.enableCompactionAdvisor}
             onCompactionAdvisorChange={toggleCompactionAdvisor}
             onSearch={toggleSearch}
             savedQueries={savedQueries()}

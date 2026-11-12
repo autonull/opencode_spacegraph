@@ -12,7 +12,7 @@ This document tracks every SDK and library proposal from the SpaceGraph v34 plan
 
 **Status:** Proposed, not implemented.
 
-**Needed for:** Phase 16.5 — Graph affordances in the host transcript (C1 inline preview, C2 Why, C3 Drill, C6 Share). The `graph_surface_transcript` flag gates the own-rows surface; this layer is the lower-cost path.
+**Needed for:** Phase 16.5 — Graph affordances in the host transcript (C1 inline preview, C2 Why, C3 Drill, C6 Share). The own-rows surface shipped first; this layer remains the lower-cost path for a host-owned transcript.
 
 **API sketch:**
 ```ts
@@ -73,7 +73,7 @@ ctx.ui.Popover({
 
 **Rationale:** Surface selection is not persisted (G28). `current()` returns raw ids; `select()` accepts unknown ids. The plugin works around this with a per-session store (Phase 17.3), but the SDK should expose this generically so any plugin can persist the user's chosen surface.
 
-**Status:** Plugin workaround in place; SDK proposal recorded.
+**Status:** Partially shipped: `Surfaces.current(session)` and `Surfaces.select(id, session)` exist and resolve the host transcript. Persistence across restarts remains plugin-side.
 
 **Needed for:** Phase 17.3 — shared surface persistence across all plugins.
 
@@ -90,7 +90,7 @@ onSurfaceChange: (id: string) => void; // fires after validation
 ### 5. `SessionSurface` metadata: `enabled?`, `default?`, `enter?`, `focus?`
 
 **Rationale:** Current surface metadata is minimal (`id`, `title`, `icon`, `order`). The graph needs:
-- `enabled?: boolean | (() => boolean)` — flag-gated surfaces (e.g., `graph_surface_transcript`)
+- `enabled?: boolean | (() => boolean)` — flag-gated surfaces (e.g., `graph_palette`)
 - `default?: boolean` — which surface is default for new sessions
 - `enter?: (session) => void` — setup when surface becomes active (e.g., restore camera)
 - `focus?: (session) => void` — called when surface gains focus (e.g., sync selection)
@@ -104,8 +104,8 @@ onSurfaceChange: (id: string) => void; // fires after validation
 ctx.add(SessionSurface, {
   id: "spacegraph.map",
   title: ctx.t("surface.map"),
-  enabled: () => ctx.flags.enabled("graph_surface_transcript"),
-  default: () => ctx.flags.enabled("graph_surface_transcript") && prefs.lens === "navigator",
+  enabled: () => ctx.flags.enabled("graph_palette"),
+  default: () => ctx.flags.enabled("graph_palette") && prefs.lens === "navigator",
   enter: (session) => model.restoreSurface(session),
   focus: (session) => model.syncSelection(session),
   render: ({ session }) => <MapSurface ... />,
@@ -161,6 +161,77 @@ ctx.layout.open("spacegraph:map", session, { pane: "bottom" });
 **API sketch:**
 ```ts
 ctx.mount(<ComposerNodeWidget />, containerElement, { cleanup: () => {} });
+```
+
+### Minimal diffs for the open SDK proposals
+
+These are the smallest API edits that unblock the graph without widening the host surface beyond
+what a shipped surface needs. Each diff ships with its TSDoc and a guide update in the same change;
+none is applied until a second consumer proves it. Host implementation follows the type in the same
+change, so no field lands as a declaration only.
+
+**4. Validate and persist surface selection**
+
+```diff
++/** The selected surface, restored from storage; unknown ids fall back to `transcript`. */
++selected(session: SessionRef): string
++/** Selects a surface; an unknown id is stored but reads as `transcript`. */
++select(id: string, session: SessionRef): void
+```
+
+**5. Surface metadata and lifecycle**
+
+```diff
+ export interface SessionSurface {
+   readonly id: string
+   readonly title: string
+   readonly icon?: IconName
+   readonly order?: number
++  /** When false, the surface is hidden from the picker and reads as `transcript`. */
++  readonly enabled?: boolean | (() => boolean)
++  /** The surface a new session enters first; the host keeps `transcript` when none is enabled. */
++  readonly default?: boolean | (() => boolean)
++  /** Runs when the surface becomes selected, after it mounts. */
++  enter?(input: { readonly session: MountedSession }): void
++  /** Runs when the graph or transcript surface gains keyboard focus. */
++  focus?(input: { readonly session: MountedSession }): void
+   render(input: { ... }): JSX.Element
+ }
+```
+
+**6. Surface-scoped storage**
+
+```diff
+ export type StorageScope =
+   | "global"
+   | { readonly server: string; readonly directory?: string }
++  | { readonly session: SessionRef; readonly surface: string }
+   | { readonly session: SessionRef }
+```
+
+Practical key: `plugin.<id>.<key>.<session-key>.<surface>`. A `surface` store follows the same
+location wait and prune rules as a `session` store.
+
+**7. Panel placement**
+
+```diff
+ export interface OpenOptions {
+   readonly tab?: "open" | "preview" | "append" | "select"
+   readonly background?: boolean
++  /** Where the tab lands: the side region, a transcript split, or the bottom pane. */
++  readonly pane?: "side" | "split" | "bottom"
+ }
+```
+
+**8. Widget mount**
+
+```diff
++interface MountOptions {
++  /** Runs when the host removes the container or the plugin unloads. */
++  readonly cleanup?: () => void
++}
++/** Mounts a component into a host-owned element; the host owns the element's lifetime. */
++mount(component: () => JSX.Element, element: HTMLElement, options?: MountOptions): () => void
 ```
 
 ---

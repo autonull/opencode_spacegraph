@@ -66,6 +66,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
   const costLensEnabled = () => ctx.flags.enabled("graph_cost_lens")
 
+  const compactionAdvisorEnabled = () => ctx.flags.enabled("graph_compaction_advisor")
+
   const paletteEnabled = () => ctx.flags.enabled("graph_palette")
 
   const attentionEnabled = () => ctx.flags.enabled("graph_attention")
@@ -153,6 +155,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     paletteEnabled,
     attentionEnabled,
     layoutBreadthEnabled,
+    compactionAdvisorEnabled,
     /** M5.1: the reader's saved questions, validated at the store boundary. */
     savedQueries: (session: MountedSession): SavedQuery[] => normalizeSavedQueries(sessionValue(session)?.savedQueries),
     setSavedQueries: (session: MountedSession, queries: readonly SavedQuery[]) => {
@@ -184,8 +187,32 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       if (!lens) return
       api.applyLens(session, lens)
       prefs.update((draft) => {
+        const surfaces = { ...(draft.surfaces ?? {}) }
+        const map = {
+          layout: lens.layout,
+          depth: lens.depth,
+          level: lens.level,
+          detailMode: lens.detailMode,
+          files: lens.files,
+          trace: lens.trace ?? undefined,
+          persist: true,
+        }
+
+        if (lens.surface === "map" || lens.surface === "hybrid") {
+          surfaces.map = map
+          if (lens.surface === "hybrid") surfaces.hybrid = map
+        }
+
         draft.lens = id
+        draft.surfaces = surfaces
+        draft.renderer = { ...(draft.renderer as Record<string, unknown> | undefined), strategy: "spacegraph" }
+        draft.widgets = { ...(draft.widgets ?? {}), enabled: lens.widgets ?? false }
+        draft.density = { ...(draft.density as Record<string, unknown> | undefined), profile: "comfortable" }
       })
+
+      if (lens.surface === "transcript") api.select(session, "transcript")
+      if (lens.surface === "map") api.select(session, `${ctx.id}.map`)
+      if (lens.surface === "hybrid") api.select(session, `${ctx.id}.hybrid`)
     },
     /** M5.2: the session's failure signal, shared by the badge, the toast, and the titlebar item. */
     attention: (session: MountedSession) => attention(graph(session)()),
