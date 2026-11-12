@@ -125,6 +125,11 @@ export const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
  */
 export const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
 
+/**
+ * Props for the {@link SessionGraph} component.
+ *
+ * @public
+ */
 export type SessionGraphProps = {
   model: GraphViewData
   /** Defaults to the live host theme read from CSS tokens (U3.7). */
@@ -365,6 +370,23 @@ export type SessionGraphProps = {
 /**
  * The core graph surface (U3.8): canvas, overlays, a11y, and drill breadcrumb.
  * Chrome (toolbar, inspector, status, windows, file rail) is composed by the host.
+ *
+ * @public
+ * @example
+ * ```tsx
+ * <SessionGraph
+ *   model={graphModel}
+ *   level={zoomLevel}
+ *   layout={layout}
+ *   depth={depthMode}
+ *   selection={selectedNodeId}
+ *   onSelect={setSelectedNodeId}
+ *   onLayoutChange={setLayout}
+ *   onDepthChange={setDepth}
+ *   surfaceLabel="Session map"
+ *   chrome={true}
+ * />
+ * ```
  */
 export const SessionGraph = (props: SessionGraphProps) => {
   const state = useGraphState(props)

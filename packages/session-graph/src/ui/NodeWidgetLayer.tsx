@@ -4,7 +4,9 @@ import { createMemo, onCleanup, onMount, For } from "solid-js"
 import type { JSX } from "solid-js"
 
 /**
- * Props for NodeWidgetLayer
+ * Props for the {@link NodeWidgetLayer} component.
+ *
+ * @public
  */
 export type NodeWidgetLayerProps = {
   /** Accessor for the renderer instance */
@@ -21,12 +23,23 @@ export type NodeWidgetLayerProps = {
 
 /**
  * NodeWidgetLayer - renders interactive Solid widgets anchored to graph nodes.
- * 
+ *
  * Widgets are positioned using the renderer's getNodeScreenPosition method and
  * repositioned on viewportChange and nodeMoved events.
- * 
+ *
  * Widgets are only rendered for nodes in the drawn set (contentIDs).
  * Widgets carry data-sg-interactive to prevent canvas drag from inside widgets.
+ *
+ * @public
+ * @example
+ * ```tsx
+ * <NodeWidgetLayer
+ *   renderer={() => renderer}
+ *   contentIDs={() => contentIDs}
+ *   model={() => ({ nodes: graphNodes })}
+ *   renderWidget={(node) => node.kind === "tool" ? <TodoNodeWidget node={node} /> : undefined}
+ * />
+ * ```
  */
 export const NodeWidgetLayer = (props: NodeWidgetLayerProps) => {
   // Get screen positions for all drawn nodes

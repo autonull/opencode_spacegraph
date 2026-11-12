@@ -57,8 +57,6 @@ export async function mockGraphSession(page: Page, options: GraphSessionOptions)
         type: "document",
         info: {
           experimental: {
-            graph_surface_transcript: true,
-            graph_node_widgets: true,
             graph_cost_lens: true,
           },
         },

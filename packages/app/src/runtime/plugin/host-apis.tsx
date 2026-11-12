@@ -411,10 +411,6 @@ export function createHostApis() {
 
             // Check each known flag
             const knownFlags = [
-              "graph_surface_transcript",
-              "graph_node_widgets",
-              "graph_inline_preview",
-              "graph_multi_surface",
               "graph_library_renderers",
               "graph_time_travel",
               "graph_compaction_advisor",
@@ -439,10 +435,6 @@ export function createHostApis() {
             const isDev = import.meta.env.VITE_OPENCODE_CHANNEL === "local" ||
               import.meta.env.VITE_OPENCODE_CHANNEL === "dev"
             const knownFlags = [
-              "graph_surface_transcript",
-              "graph_node_widgets",
-              "graph_inline_preview",
-              "graph_multi_surface",
               "graph_library_renderers",
               "graph_time_travel",
               "graph_compaction_advisor",
