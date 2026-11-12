@@ -9,14 +9,14 @@
 > 2. **Video work** — clip-based, assembled. **No music, no extra SFX.**
 > 3. **Recruiting / human studies** — only after the code and video gates pass.
 >
-> Supersedes `SPACEGRAPH.TODO.32.md`.
->
-> **⚠ PIVOT (2026-11-09):** Phase 13 video work paused. The clip-based video plan assumed the current
+> Supersedes `SPACEGRAPH.TODO.32.md`. **Superseded by `SPACEGRAPH.TODO.35.md`.**
+
+**⚠ PIVOT (2026-11-09):** Phase 13 video work paused. The clip-based video plan assumed the current
 > UI was demonstrable. Review revealed the current surfaces don't tell a coherent story because the
 > paradigm (separate panel, mode switch) is the problem. **See `SPACEGRAPH.TODO.34.md`** for the
 > unified-component, multi-surface and capability plan — one `SessionGraph` across inline, popover,
 > panel, split and fullscreen surfaces, nine lenses, graph↔UI embedding, and the instance/performance
-> groundwork — the actual prerequisite for a meaningful demo.
+> groundwork — the actual prerequisite for a meaningful demo. **Execution now continues in `SPACEGRAPH.TODO.35.md`.**
 
 **Directives:**
 
@@ -687,7 +687,8 @@ capability plan that makes the paradigm worth demoing.
 ## References
 
 - `SPACEGRAPH.TODO.32.md` — superseded; its r35/r36 history is authoritative for what was fixed.
-- `SPACEGRAPH.md` — design, §1 questions, §5/§16 plugin path.
+- `SPACEGRAPH.TODO.35.md` — active plan; all remaining work tracked here.
+- `SPACEGRAPH.md` — design, §1 questions, §5 plugin path.
 - `packages/gui-plugins/src/spacegraph/model.ts` — plugin data access through `server.data`.
 - `packages/plugin/src/gui/host-apis.ts` — GUI plugin API (`MountedSession`, `TranscriptScreen`).
 - `packages/session-ui/src/graph/build.ts` — `buildGraph` input (messages + status).
