@@ -121,10 +121,36 @@ export {
   buildFixtureMessages,
   buildFixtureSnapshot,
   buildInterruptedFixtureMessages,
+  buildNarrativeFixtureGraph,
+  buildNarrativeFixtureMessages,
   CHANGED_FILES,
   FIXTURE_BASE_TIME,
   fixtureMessages,
+  narrativeFixtureMessages,
 } from "./fixture"
+
+export {
+  cohortEntry,
+  emptyStudyCounters,
+  formatStudy,
+  isStudyCohort,
+  MAX_STUDY_ANSWERS,
+  normalizeStudyCounters,
+  recordAnswer,
+  recordInlineToggle,
+  recordLensSwitch,
+  recordSurfaceOpen,
+  recordWhy,
+  STUDY_COHORTS,
+  STUDY_TASKS,
+  summarizeStudy,
+  type CohortEntry,
+  type StudyAnswer,
+  type StudyCohort,
+  type StudyCounters,
+  type StudySummary,
+  type StudyTask,
+} from "./study"
 
 export {
   ancestors,
