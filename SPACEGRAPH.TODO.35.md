@@ -579,9 +579,9 @@ graph 370/39, gui-plugins 1,164/115).
 - [x] Define five task scenarios with expected answers on the fixture.
 - [x] Write the study protocol: consent, counterbalancing, analysis plan, and stop rule (reuse TODO.33
       §14).
-- [ ] Do not start human studies before the video gate.
+- [ ] Video review gate: demo video passes ≥3 outsider review with notes recorded.
 
-**Exit:** counters visible in dev; cohorts switchable; narrative fixture committed; protocol committed.
+**Exit:** counters visible in dev; cohorts switchable; narrative fixture committed; protocol committed; **video review passed**.
 
 ---
 
@@ -597,7 +597,7 @@ graph 370/39, gui-plugins 1,164/115).
 - [ ] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
 - [ ] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
 
-**Exit:** docs build; no orphan flags; cross-links resolve.
+**Exit:** docs build; no orphan flags; cross-links resolve. **Blocked:** visual review (M7.6) must pass first; screenshots stale; capture gate drifts; known e2e hash-navigation failure.
 
 ---
 
@@ -667,7 +667,7 @@ graph 370/39, gui-plugins 1,164/115).
 | ~~Renderer strategy thresholds~~ | ~~M5.3~~ | Resolved: SVG < 50, SpaceGraph ≤ 300, Cytoscape only when registered, else SpaceGraph |
 | Notes and attention study design | M7 | Keep quiet, do not foreground |
 | ~~Which SDK proposals to implement~~ | ~~M2.4~~ | Resolved: keep recorded as upstream asks |
-| ~~Flag graduation order~~ | ~~M8~~ | Resolved: deleted graph_surface_transcript, graph_node_widgets, graph_inline_preview, graph_multi_surface |
+| Flag graduation order | M8 (post visual review) | Delete only proven defaults after M7.6 passes |
 
 ---
 
@@ -916,10 +916,4 @@ this file's revision log and leave the v34 archive unchanged.
     early efficacy/futility, max 12), and pre-authored win/loss dispositions. Local dev counters
     in `study.ts` are documented as a separate dogfooding pipeline.
   - Verified: `bun run check` 53/53; all canonical suites green.
-- **r12 (2026-11-12):** Completed M8 docs, migration, graduation (items 1–5 of 9).
-  - TypeDoc: added `@public` JSDoc to `SessionGraphProps` and `SessionGraph` component; `NodeWidgetLayerProps` and `NodeWidgetLayer` component.
-  - Composition guide: `docs/spacegraph/composition-guide.md` with surface table, lens table, progressive-disclosure rules, prop categories, and two-instance verification.
-  - Embedding guide: `docs/spacegraph/embedding-guide.md` with three tiers, interactive control rules, and HTML trust boundary (DOMPurify allowlist).
-  - Library delta: `docs/spacegraph/library-delta.md` updated with rationale, feature mapping table, and graduation criteria.
-  - Flag graduation: deleted `graph_surface_transcript`, `graph_node_widgets`, `graph_inline_preview`, `graph_multi_surface` from `packages/schema/src/config/flag.ts`; removed flag checks from `gui-plugins/src/spacegraph/panel.tsx`, `gui-plugins/src/spacegraph/external/renderer.tsx`, `app/src/runtime/plugin/host-apis.tsx`, and `app/perf/fixtures/graph.ts`.
-  - Synced the bundled graph copy (50 modules). Verified: `bun run check` 53/53; `session-ui` graph 389/41; `session-graph` unit 108/15; `gui-plugins` 1,164/115 (1 skip); `check:graph` clean.
+- **r12 (2026-11-12):** Prepared M8 docs (TypeDoc, composition guide, embedding guide, library delta update, flag graduation). **Not verified:** visual review pending (M7.6); screenshots stale (pre-Phase 16.3); capture gate drifts; known e2e hash-navigation failure. M8 exit criteria blocked until visual review passes.
