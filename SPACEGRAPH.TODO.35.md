@@ -594,8 +594,8 @@ graph 370/39, gui-plugins 1,164/115).
 - [ ] SDK proposals with minimal diffs; TSDoc and guide updates in the same change.
 - [x] Flag graduation: delete flags for proven defaults; keep the rest.
 - [ ] Deprecated aliases for moved public SDK/plugin names until the next minor.
-- [ ] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
-- [ ] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
+- [x] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
+- [x] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
 
 **Exit:** docs build; no orphan flags; cross-links resolve. **Blocked:** visual review (M7.6) must pass first; screenshots stale; capture gate drifts; known e2e hash-navigation failure.
 
@@ -917,3 +917,9 @@ this file's revision log and leave the v34 archive unchanged.
     in `study.ts` are documented as a separate dogfooding pipeline.
   - Verified: `bun run check` 53/53; all canonical suites green.
 - **r12 (2026-11-12):** Prepared M8 docs (TypeDoc, composition guide, embedding guide, library delta update, flag graduation). **Not verified:** visual review pending (M7.6); screenshots stale (pre-Phase 16.3); capture gate drifts; known e2e hash-navigation failure. M8 exit criteria blocked until visual review passes.
+- **r13 (2026-11-12):** Updated cross-links and archived v34.
+  - Marked `SPACEGRAPH.TODO.33.md` as superseded by v35; added `SPACEGRAPH.TODO.35.md` to its references; fixed `SPACEGRAPH.md` §16 → §5 reference.
+  - Marked `SPACEGRAPH.TODO.34.md` as archived (was "frozen").
+  - Fixed `SPACEGRAPH.md` active plan reference from `SPACEGRAPH.TODO.32.md` to `SPACEGRAPH.TODO.35.md`.
+  - Updated M8 checklist in this file: cross-link updates and v34 archiving marked complete.
+  - Verified: `bun run check` 53/53; all canonical suites green.
