@@ -93,6 +93,7 @@ export function TurnMapLayer(props: {
         </div>
         <div class="min-h-0 flex-1 overflow-hidden p-4" data-scrollable style="height: 320px;">
           <SessionGraph
+            surfaceLabel={props.labels.title}
             model={graph()}
             roots={roots()}
             layout="tree"

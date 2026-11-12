@@ -1,13 +1,15 @@
 import { AccessibilityLayer, type AccessibleEdge, type AccessibleItem } from "@spacegraphjs/a11y"
 import type { RenderModel } from "@spacegraphjs/renderer"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { createEffect, onCleanup, onMount } from "solid-js"
+import { createEffect, createUniqueId, onCleanup, onMount } from "solid-js"
 
 export type GraphA11yProps = {
   model: RenderModel
   selection?: readonly string[]
   /** Anchors the wrapper's `aria-describedby`; the instructions live here. */
   instructionsId?: string
+  /** M6.2: the surface this mirror belongs to; announcements name it. */
+  surfaceLabel?: string
   /** T6.8: what the view changed (level, representation, depth); announced when it changes. */
   announcement?: string
   /** Phase 4.11: group expand/collapse announcement */
@@ -31,6 +33,8 @@ export type GraphA11yProps = {
  */
 export const GraphA11y = (props: GraphA11yProps) => {
   const i18n = useI18n()
+  const instanceId = createUniqueId()
+  const surface = () => props.surfaceLabel ?? i18n.t("ui.sessionGraph.surface.map")
   // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let container!: HTMLDivElement
   let layer: AccessibilityLayer | undefined
@@ -90,27 +94,52 @@ export const GraphA11y = (props: GraphA11yProps) => {
     }))
   }
 
+  /**
+   * M6.2 — the mirror owns no DOM ids by default, so two graphs on one page would collide. The host
+   * gives each item an instance-scoped id and points the list's `aria-activedescendant` at the item
+   * whose roving tabindex is 0.
+   */
+  const syncActiveDescendant = () => {
+    const list = container.querySelector<HTMLUListElement>("ul")
+    if (!list) return
+    const entries = Array.from(list.children) as HTMLElement[]
+    entries.forEach((item, index) => {
+      if (!item.id) item.id = `${instanceId}-a11y-item-${index}`
+    })
+    const active = entries.find((item) => item.tabIndex === 0)
+    if (active) list.setAttribute("aria-activedescendant", active.id)
+    else list.removeAttribute("aria-activedescendant")
+  }
+
   onMount(() => {
+    container.addEventListener("focusin", syncActiveDescendant)
     layer = new AccessibilityLayer(container, {
-      label: i18n.t("ui.sessionGraph.a11y.label"),
-      edgeLabel: i18n.t("ui.sessionGraph.a11y.edgeLabel"),
+      label: i18n.t("ui.sessionGraph.a11y.label", { surface: surface() }),
+      edgeLabel: i18n.t("ui.sessionGraph.a11y.edgeLabel", { surface: surface() }),
       onSelect: (id) => props.onSelect(id),
       onEscape: () => props.onEscape?.(),
       formatSelection: (labels) =>
         labels.length
-          ? i18n.t("ui.sessionGraph.a11y.selected", { labels: labels.join(", ") })
-          : i18n.t("ui.sessionGraph.a11y.cleared"),
+          ? i18n.t("ui.sessionGraph.a11y.selectedOn", { labels: labels.join(", "), surface: surface() })
+          : i18n.t("ui.sessionGraph.a11y.clearedOn", { surface: surface() }),
       edgeAnnouncer: (connections) =>
         connections.length
           ? i18n.t("ui.sessionGraph.a11y.connections", { edges: connections.map((edge) => edge.label).join(", ") })
           : "",
     })
+    syncActiveDescendant()
     // The first view state is not a change, so it is not announced.
     announced = props.announcement
   })
 
-  createEffect(() => layer?.setItems(items()))
-  createEffect(() => layer?.setEdges(edges()))
+  createEffect(() => {
+    layer?.setItems(items())
+    queueMicrotask(syncActiveDescendant)
+  })
+  createEffect(() => {
+    layer?.setEdges(edges())
+    queueMicrotask(syncActiveDescendant)
+  })
   createEffect(() => layer?.setSelected(props.selection ?? null))
   // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
   createEffect(() => {
@@ -130,6 +159,7 @@ export const GraphA11y = (props: GraphA11yProps) => {
   })
 
   onCleanup(() => {
+    container.removeEventListener("focusin", syncActiveDescendant)
     layer?.dispose()
     layer = undefined
   })

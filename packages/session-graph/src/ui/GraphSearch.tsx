@@ -192,7 +192,7 @@ export const GraphSearch = (props: GraphSearchProps) => {
     <div
       data-component="session-graph-search"
       data-slot="graph-search"
-      class="absolute left-2 top-2 z-10 flex w-72 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-md"
+      class="absolute start-2 top-2 z-10 flex w-72 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-md"
       role="dialog"
       aria-label={i18n.t("ui.sessionGraph.toolbar.search")}
       onKeyDown={onKeyDown}
@@ -230,7 +230,7 @@ export const GraphSearch = (props: GraphSearchProps) => {
             {(entry) => (
               <button
                 type="button"
-                class="flex items-center gap-1 text-left text-12-regular text-text-weak hover:text-text-strong"
+                class="flex items-center gap-1 text-start text-12-regular text-text-weak hover:text-text-strong"
                 onClick={() => setQuery(`g ${entry.key}`)}
               >
                 <kbd class="rounded border border-border-weaker-base px-1 text-11-regular">g {entry.key}</kbd>
@@ -270,7 +270,7 @@ export const GraphSearch = (props: GraphSearchProps) => {
                         data-active={row.index === active()}
                         role="option"
                         aria-selected={row.index === active()}
-                        class="flex w-full flex-col gap-0.5 px-3 py-1.5 text-left hover:bg-surface-base-hover"
+                        class="flex w-full flex-col gap-0.5 px-3 py-1.5 text-start hover:bg-surface-base-hover"
                         classList={{ "bg-surface-base-hover": row.index === active() }}
                         onMouseEnter={() => setActive(row.index)}
                         onClick={() => choose(row.entry)}

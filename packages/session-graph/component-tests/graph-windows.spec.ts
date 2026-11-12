@@ -64,7 +64,8 @@ story("a window closes on Escape, and the map keeps its selection", async ({ mou
   })
 
   const popover = root.locator('[data-slot="graph-popover"]')
-  await popover.getByRole("button", { name: "Open", exact: true }).click()
+  const open = popover.getByRole("button", { name: "Open", exact: true })
+  await open.click()
 
   const surface = root.locator('[data-slot="graph-window"]')
   await expect(surface).toBeVisible()
@@ -74,6 +75,8 @@ story("a window closes on Escape, and the map keeps its selection", async ({ mou
 
   await expect(surface).toHaveCount(0)
   await expect(root.locator('[data-slot="graph-popover"]')).toBeVisible()
+  // M6.3: focus returns to the affordance that opened the window.
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Open")
 })
 
 // CI-skip: timing flake in test environment; pinned window behavior verified manually.

@@ -80,7 +80,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
           <span class="truncate">
             {i18n.t(sourceLabel(source))}
             {asOf !== undefined && (
-              <span class="text-text-weak ml-1">{formatAge(now - asOf)}</span>
+              <span class="text-text-weak ms-1">{formatAge(now - asOf)}</span>
             )}
           </span>
         </span>
@@ -92,7 +92,7 @@ export const GraphLegendBody = (props: GraphLegendBodyProps) => {
     <span class="flex min-w-0 items-center gap-2 text-12-regular text-text-base">
       <span class="h-3 w-3 shrink-0 rounded-sm" style={{ background: props.theme.warning }} aria-hidden="true" />
       <span class="truncate">{i18n.t(sourceLabel(m.source))}</span>
-      <span class="text-text-weak ml-1 truncate">{m.reason}</span>
+      <span class="text-text-weak ms-1 truncate">{m.reason}</span>
     </span>
   ))
 
@@ -234,7 +234,7 @@ export const GraphLegend = (props: GraphLegendProps) => {
       tabindex="-1"
       data-component="session-graph-legend"
       data-slot="graph-legend"
-      class="absolute left-2 top-2 z-10 flex max-h-[calc(100%-1rem)] w-80 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-md outline-none"
+      class="absolute start-2 top-2 z-10 flex max-h-[calc(100%-1rem)] w-80 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-md outline-none"
       role="dialog"
       aria-label={i18n.t("ui.sessionGraph.legend.label")}
       onKeyDown={(event) => {

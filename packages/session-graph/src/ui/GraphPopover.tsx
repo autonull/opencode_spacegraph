@@ -1,6 +1,6 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import type { GraphNode } from "@opencode/session-ui/graph"
-import { Show } from "solid-js"
+import { createEffect, Show } from "solid-js"
 import { GraphDetailSurface, type GraphDetailProps } from "./GraphDetail"
 import { GraphIconButton } from "./GraphIconButton"
 import { POPOVER_WIDTH, POPOVER_MAX_HEIGHT } from "./popover-constants"
@@ -25,6 +25,23 @@ export type GraphPopoverProps = Omit<GraphDetailProps, "node"> & {
  */
 export const GraphPopover = (props: GraphPopoverProps) => {
   const i18n = useI18n()
+
+  // M6.3 — opening the popover is a move away from the affordance that opened it; closing it
+  // returns the reader there instead of dropping focus on the body.
+  let opener: HTMLElement | undefined
+  createEffect(() => {
+    const node = props.node
+    if (node && !opener) {
+      const active = document.activeElement
+      if (active instanceof HTMLElement && active !== document.body) opener = active
+      return
+    }
+    if (!node && opener) {
+      const target = opener
+      opener = undefined
+      if (target.isConnected) setTimeout(() => target.focus(), 0)
+    }
+  })
 
   return (
     <Show when={props.node} keyed>

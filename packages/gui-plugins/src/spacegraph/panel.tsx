@@ -250,6 +250,7 @@ export default function SpacegraphPanel(props: {
       </div>
       <div class="min-h-0 flex-1 relative">
         <SessionGraph
+          surfaceLabel={i18n.t("surface.map")}
           model={graph()}
           level={props.model.level(props.session)}
           density={props.model.density()}
@@ -343,7 +344,7 @@ export default function SpacegraphPanel(props: {
                       data-active={index() === searchIndex()}
                       role="option"
                       aria-selected={index() === searchIndex()}
-                      class="flex w-full flex-col gap-0.5 px-3 py-1.5 text-left hover:bg-v2-overlay-simple-overlay-hover"
+                      class="flex w-full flex-col gap-0.5 px-3 py-1.5 text-start hover:bg-v2-overlay-simple-overlay-hover"
                       classList={{ "bg-v2-overlay-simple-overlay-hover": index() === searchIndex() }}
                       onMouseEnter={() => setSearchIndex(index())}
                       onClick={() => openSearchResult(node)}

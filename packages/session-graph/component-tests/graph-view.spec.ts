@@ -118,6 +118,15 @@ story(
     const toolbars = root.locator('[data-slot="graph-toolbar"]')
     await expect(toolbars).toHaveCount(2)
 
+    // M6.2: each instance owns its own mirror, item ids, and active descendant.
+    const mirrors = root.locator('[data-slot="graph-a11y"]')
+    await expect(mirrors).toHaveCount(2)
+    const activeIDs = await mirrors.evaluateAll((entries) =>
+      entries.map((entry) => entry.querySelector("ul")?.getAttribute("aria-activedescendant") ?? ""),
+    )
+    expect(activeIDs.every(Boolean)).toBe(true)
+    expect(new Set(activeIDs).size).toBe(2)
+
     // Select a node in the first instance
     await page.evaluate(() => (window as unknown as { __graph?: { select: (id: string) => void; selected: () => string } }).__graph!.select("tool:prt_tool_read_1"))
 

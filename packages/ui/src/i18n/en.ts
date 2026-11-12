@@ -345,12 +345,18 @@ const source = {
 
   // Session Graph
   "ui.sessionGraph.a11y.cleared": "Selection cleared",
-  "ui.sessionGraph.a11y.connections": "connections",
-  "ui.sessionGraph.a11y.edgeLabel": "edge",
+  "ui.sessionGraph.a11y.clearedOn": "Selection cleared on {{surface}}",
+  "ui.sessionGraph.a11y.connections": "Connections: {{edges}}",
+  "ui.sessionGraph.a11y.edgeLabel": "Connections on {{surface}}",
+  "ui.sessionGraph.a11y.groupCollapsed.one": "Group {{label}} collapsed, {{count}} node on {{surface}}",
+  "ui.sessionGraph.a11y.groupCollapsed.other": "Group {{label}} collapsed, {{count}} nodes on {{surface}}",
+  "ui.sessionGraph.a11y.groupExpanded.one": "Group {{label}} expanded, {{count}} node on {{surface}}",
+  "ui.sessionGraph.a11y.groupExpanded.other": "Group {{label}} expanded, {{count}} nodes on {{surface}}",
   "ui.sessionGraph.a11y.instructions": "Use arrow keys to navigate, Enter to open, Escape to clear",
-  "ui.sessionGraph.a11y.label": "Session graph",
+  "ui.sessionGraph.a11y.label": "Graph contents: {{surface}}",
   "ui.sessionGraph.a11y.selected": "Selected",
-  "ui.sessionGraph.a11y.view": "View: {{level}}, {{nodeCount}} nodes, {{edgeCount}} edges",
+  "ui.sessionGraph.a11y.selectedOn": "{{labels}} selected on {{surface}}",
+  "ui.sessionGraph.a11y.view": "View: {{level}}, {{layout}}, {{depth}} on {{surface}}",
 
   "ui.sessionGraph.arrangement.floating": "Floating",
   "ui.sessionGraph.arrangement.side": "Side",
@@ -568,6 +574,19 @@ const source = {
   "ui.sessionGraph.gallery.label": "Gallery",
 
   "ui.sessionGraph.inline.label": "Inline graph",
+  "ui.sessionGraph.inline.edges.one": "{{count}} edge",
+  "ui.sessionGraph.inline.edges.other": "{{count}} edges",
+  "ui.sessionGraph.inline.failures.one": "{{count}} failure",
+  "ui.sessionGraph.inline.failures.other": "{{count}} failures",
+  "ui.sessionGraph.inline.nodes.one": "{{count}} node",
+  "ui.sessionGraph.inline.nodes.other": "{{count}} nodes",
+
+  "ui.sessionGraph.surface.hybrid": "Hybrid view",
+  "ui.sessionGraph.surface.inline": "Inline graph",
+  "ui.sessionGraph.surface.map": "Session map",
+  "ui.sessionGraph.surface.transcript": "Transcript",
+  "ui.sessionGraph.surface.turnMap": "Turn map",
+  "ui.sessionGraph.surface.window": "Graph window",
 
   "ui.sessionGraph.inspector.activityRank": "Activity rank",
   "ui.sessionGraph.inspector.agent": "Agent",

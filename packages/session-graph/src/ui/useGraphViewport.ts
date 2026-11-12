@@ -19,6 +19,8 @@ export type GraphViewportTrackerProps = {
   CARD_SIZE: readonly [number, number]
   READABLE_CARD_WIDTH: number
   capabilities: () => import("@spacegraphjs/renderer").RendererCapabilities | undefined
+  /** M6.4 — the host's reduced-motion preference; focus jumps instead of gliding. */
+  reducedMotion?: () => boolean
 }
 
 export type GraphViewportTrackerReturn = {
@@ -84,6 +86,7 @@ export const useGraphViewport = (props: GraphViewportTrackerProps): GraphViewpor
     cardWidth: cardScreenWidth,
     cardWorldWidth: CARD_SIZE[0],
     readableWidth: READABLE_CARD_WIDTH,
+    reducedMotion: props.reducedMotion,
   })
 
   const setResting = (center: { zoom: number; center: number[] }) => {

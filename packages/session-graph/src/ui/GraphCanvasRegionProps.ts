@@ -133,6 +133,8 @@ export type GraphCanvasRegionProps = {
   viewAnnouncement: () => string
   groupAnnouncement: () => string | undefined
   a11yInstructionsId: string
+  /** M6.2 — the surface name announcements carry; absent defaults to the session map. */
+  surfaceLabel?: string
   announce: (message: string) => void
   i18n: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
   // A11y ordered model (drawn nodes for a11y tree)
@@ -261,6 +263,8 @@ export interface BuildCanvasRegionPropsInput {
   viewAnnouncement: () => string
   groupAnnouncement: () => string | undefined
   a11yInstructionsId: string
+  /** M6.2 — the surface name announcements carry; absent defaults to the session map. */
+  surfaceLabel?: string
   announce: (message: string) => void
   i18n: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
   // A11y ordered model (drawn nodes for a11y tree)
@@ -394,6 +398,7 @@ export function buildCanvasRegionProps(input: BuildCanvasRegionPropsInput): Grap
     viewAnnouncement: input.viewAnnouncement,
     groupAnnouncement: input.groupAnnouncement,
     a11yInstructionsId: input.a11yInstructionsId,
+    surfaceLabel: input.surfaceLabel,
     announce: input.announce,
     i18n: input.i18n,
     ordered: input.ordered,

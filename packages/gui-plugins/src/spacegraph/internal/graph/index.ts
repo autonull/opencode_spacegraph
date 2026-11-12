@@ -52,6 +52,12 @@ export {
 } from "./incremental-builder"
 
 export {
+  DEFAULT_GRAPH_LABELS,
+  resolveGraphLabels,
+  type GraphLabels,
+} from "./labels"
+
+export {
   TIME_TRAVEL_LIMIT,
   captureTimeTravel,
   graphAtCheckpoint,

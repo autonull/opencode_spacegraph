@@ -1,5 +1,5 @@
 import { useI18n } from "@opencode/ui/context/i18n"
-import { For, onCleanup, onMount, type JSX } from "solid-js"
+import { createEffect, For, onCleanup, onMount, type JSX } from "solid-js"
 import { GraphIconButton } from "./GraphIconButton"
 
 /**
@@ -231,6 +231,40 @@ export const GraphWindows = (props: GraphWindowsProps) => {
     if (!anchor) return { left: window.left, top: window.top }
     return { left: anchor.x - window.width / 2, top: anchor.y - window.height / 2 }
   }
+
+  // M6.3 — a window is opened from an affordance, so closing it returns focus there instead of
+  // leaving the reader on the body. Remember the last focused element outside the window layer: by
+  // the time the window's own focus trap runs, `document.activeElement` is already inside it.
+  let lastOutside: HTMLElement | undefined
+  const rememberOutside = (event: Event) => {
+    const target = event.target
+    if (target instanceof HTMLElement && !target.closest('[data-slot="graph-windows"]')) lastOutside = target
+  }
+  onMount(() => {
+    document.addEventListener("pointerdown", rememberOutside, true)
+    document.addEventListener("focusin", rememberOutside, true)
+    onCleanup(() => {
+      document.removeEventListener("pointerdown", rememberOutside, true)
+      document.removeEventListener("focusin", rememberOutside, true)
+    })
+  })
+
+  const openers = new Map<string, HTMLElement>()
+  let previousIDs = new Set<string>()
+  createEffect(() => {
+    const current = new Set(props.windows.map((window) => window.id))
+    for (const id of current) {
+      if (previousIDs.has(id)) continue
+      const opener = lastOutside ?? (document.activeElement instanceof HTMLElement ? document.activeElement : undefined)
+      if (opener && opener !== document.body) openers.set(id, opener)
+    }
+    for (const [id, opener] of openers) {
+      if (current.has(id)) continue
+      openers.delete(id)
+      if (opener.isConnected) setTimeout(() => opener.focus(), 0)
+    }
+    previousIDs = current
+  })
 
   return (
     <div

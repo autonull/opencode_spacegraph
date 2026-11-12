@@ -32,6 +32,17 @@ export const TurnMapInlineGraph = (props: TurnMapInlineGraphProps) => {
   let graph: InlineGraph | undefined
 
   const renderModel = createMemo(() => buildTurnRenderModel(props.model, props.turnID, { limit: props.limit ?? 5 }))
+  // M6.1 — a static preview still tells a screen-reader user what it shows: the scope and failures.
+  const summary = createMemo(() => {
+    const model = renderModel()
+    const parts = [
+      i18n.plural("ui.sessionGraph.inline.nodes", model.nodes.length),
+      i18n.plural("ui.sessionGraph.inline.edges", model.edges.length),
+    ]
+    const failures = model.nodes.filter((node) => node.status === "error").length
+    if (failures > 0) parts.push(i18n.plural("ui.sessionGraph.inline.failures", failures))
+    return parts.join(", ")
+  })
 
   onMount(() => {
     graph = new InlineGraph(host, { theme: props.theme, width: props.width, height: props.height })
@@ -51,6 +62,7 @@ export const TurnMapInlineGraph = (props: TurnMapInlineGraphProps) => {
       data-slot="graph-turn-inline"
       role="img"
       aria-label={props.ariaLabel ?? i18n.t("ui.sessionGraph.inline.label")}
+      aria-description={summary()}
     />
   )
 }

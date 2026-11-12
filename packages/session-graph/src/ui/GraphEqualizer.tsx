@@ -55,7 +55,7 @@ export const GraphEqualizerBody = (props: GraphEqualizerBodyProps) => {
               type="button"
               data-slot="graph-equalizer-preset"
               data-preset={preset.id}
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-12-regular text-text-base hover:bg-surface-base-hover"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
               onClick={() => props.onChange([...preset.rules])}
             >
               <span

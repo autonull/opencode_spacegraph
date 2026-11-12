@@ -1,5 +1,6 @@
 import { SessionGraph } from "@opencode/session-graph"
 import { createMemo } from "solid-js"
+import { useI18n } from "@opencode/ui/context/i18n"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide, Annotations } from "@opencode/session-ui/graph"
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
@@ -13,6 +14,7 @@ export function FullMap(props: {
   arrangementSide?: GraphSide
   onSplitView?: () => void
 }) {
+  const i18n = useI18n()
   const live = props.model.graph(props.session)
   const graph = createMemo(() => props.model.graphAt(props.session, live()))
   const timeTravel = () => props.model.timeTravelEnabled()
@@ -32,6 +34,7 @@ export function FullMap(props: {
 
   return (
     <SessionGraph
+      surfaceLabel={i18n.t("surface.map")}
       model={graph()}
       level={props.model.level(props.session)}
       density={props.model.density()}

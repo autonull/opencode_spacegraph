@@ -44,6 +44,7 @@ import {
 } from "./model"
 import { toGraphEdge, toGraphNode, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
+import { resolveGraphLabels, type GraphLabels } from "./labels"
 import {
   buildFileNodes,
   buildDirectoryNodes,
@@ -210,6 +211,7 @@ export class GraphBuilder {
   private turnByMessageID = new Map<string, string>()
   private activeTurn: string | undefined
   private constructed = false
+  private readonly labels: GraphLabels
 
   constructor(
     private readonly messages: SessionMessageInfo[],
@@ -218,14 +220,16 @@ export class GraphBuilder {
     sessionID?: string,
     lineage?: SessionLineage,
     diffByTurn?: Map<string, FileDiffInfo[]>,
+    labels?: Partial<GraphLabels>,
   ) {
     this.diffByTurn = diffByTurn
+    this.labels = resolveGraphLabels(labels)
     this.goal = messages.find((message) => message.type === "user")?.text
 
     this.addNode({
       id: SESSION_NODE_ID,
       kind: "session",
-      label: "Session",
+      label: this.labels.session,
       status: "neutral",
       minLevel: "overview",
       // T3.6: the session identity rides on the root node, so an exported map can be attributed
@@ -670,7 +674,7 @@ export class GraphBuilder {
       this.addNode({
         id,
         kind: "file-group",
-        label: dirPath === "." ? "Root" : dirPath,
+        label: dirPath === "." ? this.labels.root : dirPath,
         status: writes > 0 ? "success" : "neutral",
         derived: true,
         minLevel: "overview",
@@ -763,7 +767,7 @@ export class GraphBuilder {
       this.addNode({
         id,
         kind: "error-group",
-        label: "Error Chain",
+        label: this.labels.errorChain,
         status: "failed",
         derived: true,
         minLevel: "overview",
@@ -806,7 +810,7 @@ export class GraphBuilder {
       this.addNode({
         id,
         kind: "subagent-group",
-        label: "Subagent",
+        label: this.labels.subagent,
         status: "neutral",
         derived: true,
         minLevel: "overview",
@@ -924,7 +928,7 @@ export class GraphBuilder {
       this.addNode({
         id,
         kind: "turn",
-        label: isShell ? truncate(opener.command) : opener.type === "user" ? truncate(opener.text) : "Turn",
+        label: isShell ? truncate(opener.command) : opener.type === "user" ? truncate(opener.text) : this.labels.turn,
         status: "neutral",
         turnID: id,
         messageID: owner,
@@ -1146,7 +1150,7 @@ export class GraphBuilder {
 
       this.attach(
         this.baseNode(nodeID, "error", turnID, {
-          label: interrupted ? "Interrupted" : truncate(message.error.message),
+          label: interrupted ? this.labels.interrupted : truncate(message.error.message),
           summary: message.error.message,
           status: interrupted ? "interrupted" : "failed",
           messageID: message.id,
@@ -1237,7 +1241,7 @@ export class GraphBuilder {
 
       this.attach(
         this.baseNode(nodeID, "subagent", turnID, {
-          label: stringField(input, "description") ?? stringField(input, "agent") ?? "Subagent",
+          label: stringField(input, "description") ?? stringField(input, "agent") ?? this.labels.subagent,
           summary: stringField(input, "prompt"),
           status,
           messageID: message.id,
@@ -1343,7 +1347,7 @@ export class GraphBuilder {
     } else if (message.outcome === "interrupted") {
       this.attach(
         this.baseNode(errorNodeID(message.id, "idle"), "error", turnID, {
-          label: "Interrupted",
+          label: this.labels.interrupted,
           summary: message.error?.message,
           status: "interrupted",
           messageID: message.id,
@@ -1361,7 +1365,7 @@ export class GraphBuilder {
 
     this.attach(
       this.baseNode(nodeID, "diff", turnID, {
-        label: `${files.size} file${files.size === 1 ? "" : "s"} changed`,
+        label: this.labels.filesChanged(files.size),
         messageID: message.id,
         time: message.time.created,
         data: { files: [...files].sort() },
@@ -1378,7 +1382,7 @@ export class GraphBuilder {
 
     this.attach(
       this.baseNode(nodeID, "compaction", turnID, {
-        label: message.status === "completed" ? "Compacted context" : `Compaction ${message.status}`,
+        label: message.status === "completed" ? this.labels.compactedContext : this.labels.compaction(message.status),
         summary: compactionSummary(message),
         status: compactionStatus(message),
         messageID: message.id,
@@ -1589,6 +1593,8 @@ export type BuildSessionInput = {
   snapshot?: WorkspaceSnapshot
   /** T21.1 — per-turn file diffs for hunk symbol extraction. */
   diffByTurn?: Map<string, FileDiffInfo[]>
+  /** M6.7 — the copy the builder writes; absent keeps the English defaults. */
+  labels?: Partial<GraphLabels>
 }
 
 export function buildSessionKernel(input: BuildSessionInput): Kernel {
@@ -1599,5 +1605,6 @@ export function buildSessionKernel(input: BuildSessionInput): Kernel {
     input.sessionID,
     input.lineage,
     input.diffByTurn,
+    input.labels,
   ).buildKernel()
 }
