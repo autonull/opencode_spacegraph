@@ -577,11 +577,11 @@ graph 370/39, gui-plugins 1,164/115).
       time-to-answer on canned questions.
 - [x] Add cohort flags: Reader-first vs Map-first vs Hybrid-first.
 - [x] Define five task scenarios with expected answers on the fixture.
-- [ ] Write the study protocol: consent, counterbalancing, analysis plan, and stop rule (reuse TODO.33
+- [x] Write the study protocol: consent, counterbalancing, analysis plan, and stop rule (reuse TODO.33
       §14).
 - [ ] Do not start human studies before the video gate.
 
-**Exit:** counters visible in dev; cohorts switchable; narrative fixture committed.
+**Exit:** counters visible in dev; cohorts switchable; narrative fixture committed; protocol committed.
 
 ---
 
@@ -909,3 +909,10 @@ this file's revision log and leave the v34 archive unchanged.
     marks the direction change).
   - Synced the bundled graph copy (49 modules). Verified: `bun run check` 53/53; `session-ui` graph
     389/41; `session-graph` unit 108/15; `gui-plugins` 1,164/115 (1 skip); `check:graph` clean.
+- **r11 (2026-11-12):** Completed M7 study protocol (item 5 of 6).
+  - Protocol committed at `docs/spacegraph/study-protocol.md`: consent form, five task scripts
+    (verbatim from `STUDY_TASKS`), Latin-square counterbalancing with cohort assignment,
+    pre-registered analysis plan (McNemar/Wilcoxon, effect-size thresholds), stop rule (n≥5,
+    early efficacy/futility, max 12), and pre-authored win/loss dispositions. Local dev counters
+    in `study.ts` are documented as a separate dogfooding pipeline.
+  - Verified: `bun run check` 53/53; all canonical suites green.
