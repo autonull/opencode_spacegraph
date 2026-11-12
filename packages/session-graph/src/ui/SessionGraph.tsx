@@ -35,7 +35,13 @@ import {
   Metrics,
   nodeByID,
   nodeIndex,
+  removeQuery,
+  saveQuery,
+  savedQueryFacets,
   turnRows,
+  type PaletteEntry,
+  type PaletteSources,
+  type SavedQuery,
 } from "@opencode/session-ui/graph"
 import { createGraphBus } from "./graph-bus"
 import { registerGraphBus } from "./graph-router"
@@ -137,6 +143,8 @@ export type SessionGraphProps = {
   positions?: ReadonlyMap<string, Position>
   /** T17.1: the controlled layout — the one axis that says how the map is drawn. The host persists it. */
   layout?: Layout
+  /** The layouts the host exposes; optional arrangements stay out when their flag is off. */
+  layouts?: readonly Layout[]
   /** The turn the map is pinned to (0-based), and how many turns the session has. */
   checkpoint?: number
   turnCount?: number
@@ -147,6 +155,18 @@ export type SessionGraphProps = {
   facetQuery?: string
   /** A2: the host turns the current facets into a shareable link. */
   onCopyView?: (query: string) => void
+  /**
+   * M5.1: the graph palette's commands, lenses, and surfaces. The host owns what each entry runs;
+   * the view only ranks and lists them beside the nodes.
+   */
+  palette?: PaletteSources
+  onPaletteAction?: (entry: PaletteEntry) => void
+  onPaletteLens?: (entry: PaletteEntry) => void
+  onPaletteSurface?: (entry: PaletteEntry) => void
+  onPaletteSavedQuery?: (entry: PaletteEntry) => void
+  /** M5.1: the reader's saved questions, persisted by the host. */
+  savedQueries?: readonly SavedQuery[]
+  onSavedQueriesChange?: (queries: SavedQuery[]) => void
   /**
    * Where a selected node's detail is shown: nowhere, on the node itself, in a popover beside it, or
    * in the side panel. The host persists the choice; the view mirrors it.
@@ -398,7 +418,6 @@ export const SessionGraph = (props: SessionGraphProps) => {
 
     cardFacing,
     toggleBillboard,
-
     searchOpen,
     setSearchOpen,
     searchInitial,
@@ -455,6 +474,18 @@ export const SessionGraph = (props: SessionGraphProps) => {
 
     announce,
   } = state
+
+  // M5.1: saved questions are controlled by the host; a standalone view keeps its own list.
+  const [localSavedQueries, setLocalSavedQueries] = createSignal<SavedQuery[]>([])
+  const savedQueries = () => props.savedQueries ?? localSavedQueries()
+  const changeSavedQueries = (next: SavedQuery[]) => {
+    if (props.onSavedQueriesChange) props.onSavedQueriesChange(next)
+    else setLocalSavedQueries(next)
+  }
+  const paletteSources = (): PaletteSources => ({
+    ...props.palette,
+    savedQueries: props.palette?.savedQueries ?? savedQueries(),
+  })
 
   const manualPositions = createManualPositions()
   const { manual, undoManual, redoManual, moveNodes, resizeNode, history, future } = manualPositions
@@ -1304,7 +1335,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     applyModel,
     preferredRenderer: props.preferredRenderer as () => "spacegraph" | undefined,
     rendererOverrides: props.rendererOverrides,
-    reducedMotion: () => reducedMotion(),
+    reducedMotion: () => props.reducedMotion ?? reducedMotion(),
     detailMode,
     effectiveDetailMode,
     files,
@@ -1323,6 +1354,14 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setSearchOpen,
     jumpTo,
     contentIDs,
+    palette: paletteSources(),
+    onPaletteAction: props.onPaletteAction,
+    onPaletteLens: props.onPaletteLens,
+    onPaletteSurface: props.onPaletteSurface,
+    onPaletteSavedQuery: (entry: PaletteEntry) => {
+      if (entry.savedQuery) setFacets(savedQueryFacets(entry.savedQuery))
+      props.onPaletteSavedQuery?.(entry)
+    },
     legendOpen,
     setLegendOpen,
     edgeKinds,
@@ -1691,6 +1730,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
             detailFraming={detailFraming()}
             onDetailFramingChange={changeDetailFraming}
             layout={layout()}
+            layouts={props.layouts}
             onLayoutChange={changeLayout}
             files={files()}
             onFilesChange={toggleFiles}
@@ -1702,6 +1742,10 @@ export const SessionGraph = (props: SessionGraphProps) => {
             compactionAdvisor={compactionAdvisor()}
             onCompactionAdvisorChange={toggleCompactionAdvisor}
             onSearch={toggleSearch}
+            savedQueries={savedQueries()}
+            onSaveQuery={() => changeSavedQueries(saveQuery(savedQueries(), facets()))}
+            onRemoveSavedQuery={(query: string) => changeSavedQueries(removeQuery(savedQueries(), query))}
+            onApplySavedQuery={(query: SavedQuery) => setFacets(savedQueryFacets(query))}
             frame={props.frame}
             activeTurn={props.activeTurn}
             model={model()}

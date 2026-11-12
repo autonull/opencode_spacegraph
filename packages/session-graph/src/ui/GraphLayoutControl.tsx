@@ -5,6 +5,7 @@ import { ToolbarMenu } from "./ToolbarMenu"
 
 export type GraphLayoutControlProps = {
   layout?: Layout
+  layouts?: readonly Layout[]
   onLayoutChange?: (layout: Layout) => void
 }
 
@@ -20,7 +21,7 @@ export const GraphLayoutControl = (props: GraphLayoutControlProps) => {
         value={i18n.t(VOCABULARY_KEYS.layout[props.layout ?? "lanes"])}
         valueSlot="graph-layout-name"
       >
-        {LAYOUTS.map((layout) =>
+        {(props.layouts ?? LAYOUTS).map((layout) =>
           (
             <button
               type="button"

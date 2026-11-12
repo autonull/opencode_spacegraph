@@ -7,6 +7,7 @@ import type {
   GraphViewData,
   GraphSide,
   Layout,
+  SavedQuery,
   ZoomLevel,
 } from "@opencode/session-ui/graph"
 import type { RendererID } from "../canvas/renderer-registry"
@@ -41,6 +42,8 @@ export type GraphChromeProps = {
   endInset?: string
   /** The current layout mode. */
   layout?: Layout
+  /** The layouts the host exposes under its flags. */
+  layouts?: readonly Layout[]
   /** Callback when layout changes. */
   onLayoutChange?: (layout: Layout) => void
   /** The current arrangement (hybrid mode). */
@@ -76,9 +79,12 @@ export type GraphChromeProps = {
   /** Callback when level changes. */
   onLevelChange?: (level: ZoomLevel) => void
   /** The current facets. */
-  facets?: any
-  /** Callback when facets change. */
+  facets?: any  /** Callback when facets change. */
   onFacetsChange?: (facets: any) => void
+  savedQueries?: readonly SavedQuery[]
+  onSaveQuery?: () => void
+  onRemoveSavedQuery?: (query: string) => void
+  onApplySavedQuery?: (query: SavedQuery) => void
   /** The checkpoint index. */
   checkpoint?: number
   /** The total turn count. */
@@ -290,6 +296,10 @@ export const GraphChrome = (props: GraphChromeProps) => {
         facets={ctx.facets()}
         facetCounts={ctx.counts()}
         onFacetsChange={ctx.setFacets}
+        savedQueries={props.savedQueries}
+        onSaveQuery={props.onSaveQuery}
+        onRemoveSavedQuery={props.onRemoveSavedQuery}
+        onApplySavedQuery={props.onApplySavedQuery}
         depth={ctx.depth()}
         onDepth={ctx.changeDepth}
         depthModes={DEPTH_MODES}
@@ -313,6 +323,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
         detailFraming={ctx.detailFraming()}
         onDetailFramingChange={ctx.changeDetailFraming}
         layout={ctx.layout()}
+        layouts={props.layouts}
         onLayoutChange={ctx.changeLayout}
         files={ctx.files()}
         onToggleFiles={ctx.toggleFiles}

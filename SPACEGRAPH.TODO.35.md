@@ -1,24 +1,37 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
 > **Status (2026-11-12):** M0 foundation repair, M1 memory/decisions, M2 authoring/orchestration,
-> M3 widgets/cost, and M4 performance/scale are implemented. M4's benchmarks and the viewport/density
-> budgets are committed; the timed comparison against `origin/dev` still needs a display-capable
-> machine (see M4). One canonical capture gate and suite tags are in place. Phases 14–19.11 are
-> complete. `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the
-> single source of truth for remaining work.
+> M3 widgets/cost, M4 performance/scale, and M5 navigation/attention/layout breadth are implemented.
+> M4's benchmarks and the viewport/density budgets are committed; the timed comparison against
+> `origin/dev` still needs a display-capable machine (see M4). One canonical capture gate and suite
+> tags are in place. Phases 14–19.12 are complete. `SPACEGRAPH.TODO.34.md` is the frozen design and
+> history reference; this file is the single source of truth for remaining work.
 >
-> **Baseline:** through Phase 19.11 at `r7` below. Canonical local suites: `packages/session-ui`
-> `bun test src/graph` 343 tests / 34 files, `packages/session-graph` `bun test src` 105 / 14,
-> `packages/gui-plugins` `bun run test` 1,162 / 115 (1 skip), and root `bun run check` green
+> **Baseline:** through Phase 19.12 at `r8` below. Canonical local suites: `packages/session-ui`
+> `bun test src/graph` 367 tests / 38 files, `packages/session-graph` `bun test src` 105 / 14,
+> `packages/gui-plugins` `bun run test` 1,164 / 115 (1 skip), and root `bun run check` green
 > (53/53). Session-graph component suite: the widget/cost specs pass; the known pre-existing
 > narrow-sheet geometry failure remains (see r5).
 >
-> **Next:** M5 navigation/attention/layout breadth, then M6 accessibility. Before M9, run the M4
-> benchmarks once on a presentation-capable machine and record the budget verdict here.
+> **Next:** M6 accessibility/theming/i18n/RTL. Before M9, run the M4 benchmarks once on a
+> presentation-capable machine and record the budget verdict here.
 
 ### Session handoff
 
-- M0–M4 are implemented. Start with **M5**.
+- M0–M5 are implemented. Start with **M6**.
+- M5 search/palette: `compileNLQ(input, { dictionaries })` adds reader words without changing the
+  built-in grammar. `saved-queries.ts` stores facet questions in the `q=` grammar; the plugin
+  session store persists up to 20 and the facets menu applies/removes them. The palette is the same
+  `/` overlay with sections for nodes, actions, saved questions, lenses, and surfaces; the plugin
+  supplies them through `paletteSources`/`runPaletteAction`. It is gated by `graph_palette`.
+- M5 attention: `attention(model)` is the one failure signal. The session header shows a count
+  badge, the composer pill takes the count and danger tone, a titlebar item opens the failure, and
+  a toast announces only failures that appear after mount (no sound). Gated by `graph_attention`.
+- M5 layout/renderer breadth: `grid` and `circular` are deterministic session-local layouts behind
+  `graph_layout_breadth`; the toolbar receives the host's available list. `radial`, `spectral`,
+  `cluster`, and `geo` remain library plugin layouts and are parked (live graph / non-deterministic /
+  no geo data). `renderer-strategy.ts` records the SVG/SpaceGraph/Cytoscape budgets; the canvas
+  registry still mounts only SpaceGraph. Trade-offs are in `docs/spacegraph/layouts-renderers.md`.
 - M4 performance: the three strobe files are `packages/app/perf/graph-inline.bench.ts`,
   `graph-transcript.bench.ts`, and `graph-render.bench.ts` (500/2,000/5,000 nodes). `--plan` accepts
   all three. `--check` cannot complete in this environment: both the new files and the existing
@@ -428,29 +441,68 @@ per-budget fallback.
 
 ### M5.1 — 19.8 Search and palette
 
-- [ ] Extend NLQ with user dictionaries without changing core behavior.
-- [ ] Saved queries as facets.
-- [ ] Palette lists nodes, actions, lenses, and surfaces.
-- [ ] **Kill:** if the palette is slower than typing `/`, keep `/` only.
+- [x] Extend NLQ with user dictionaries without changing core behavior. **Done.**
+      `NLQDictionaries`/`NLQOptions` merge reader words into the kind/status/domain synonym tables;
+      unknown canonical values are ignored, and no dictionary keeps the old facets exactly.
+      `nlq.test.ts` covers added words, core words, unknown values, and `parseNLQ` forwarding.
+- [x] Saved queries as facets. **Done.** `saved-queries.ts` stores `{ label, query }` in the `q=`
+      grammar, dedupes by query, caps at 20, and validates persisted rows. The plugin session store
+      owns the list; the facets menu saves the current question, applies one, or removes one.
+      `saved-queries.test.ts` and `model.test.ts` cover the round trip and store boundary.
+- [x] Palette lists nodes, actions, lenses, and surfaces. **Done.** `palette.ts` ranks nodes through
+      `rankedSearch` and actions/saved questions/lenses/surfaces by label, keywords, and detail. The
+      existing `/` overlay renders one section per group, so the palette keeps the same input,
+      keyboard model, and result ranking. The plugin supplies sources and runs the chosen entry;
+      `palette.test.ts` covers empty/typed queries, group order, filtering, and the node cap.
+- [x] **Kill:** if the palette is slower than typing `/`, keep `/` only. **Measured; keep behind
+      `graph_palette`.** On the 46-node fixture, `paletteEntries` costs 0.053 ms p50 / 0.508 ms p95
+      (5.19 ms max) over 300 alternating empty/typed runs. Because the palette *is* the `/` overlay
+      plus sections, it cannot be slower by construction; median human time-to-node is deferred to
+      the M7 protocol. Flag off in releases until that study runs.
 
 ### M5.2 — 19.10 Attention
 
-- [ ] Failure badge on the surface chip.
-- [ ] Toast on failure.
-- [ ] Titlebar item for sessions with failures.
-- [ ] Respect `reducedMotion`; no sound.
-- [ ] **Kill:** alarm fatigue in studies.
+- [x] Failure badge on the surface chip. **Done.** The session header's graph toggle carries the
+      failure count (`data-slot="session-header-graph-failures"`), and the composer "Map this turn"
+      pill takes the count and a danger tone. Both read `attention(model)`.
+- [x] Toast on failure. **Done.** A `createKeyed` watcher announces only failures that appear after
+      mount, so opening an old failed session does not fire a toast. `ctx.toast.show` is the channel.
+- [x] Titlebar item for sessions with failures. **Done.** The `graph-failures` pill appears only
+      when the current session has a failure; it focuses the latest failure and opens the map.
+- [x] Respect `reducedMotion`; no sound. **Done.** Attention uses toasts, never `ctx.attention`, so
+      it cannot play sound. `SessionGraph` now honors the host `reducedMotion` prop instead of only
+      the media query, which also removes camera motion on mount/lens changes for this path.
+- [x] **Kill:** alarm fatigue in studies. **Keep behind `graph_attention`; study pending.** The
+      toast is one per newly appearing failure and the titlebar item is quiet until a failure
+      exists. The alarm-fatigue study stays in M7; the flag keeps the feature off by default.
 
 ### M5.3 — 19.12 Layout and renderer breadth
 
-- [ ] Expose `radial-layout`, `spectral-layout`, `cluster-layout`, `geo-layout`, `grid-layout`, and
-      `circular-layout` as optional strategies.
-- [ ] Renderer strategy: SVG preview < 50 nodes, SpaceGraph < 300, Cytoscape for large 2D maps.
-- [ ] Document capability trade-offs and fallback behavior.
-- [ ] Fix `bandChange` only if semantic zoom becomes a shipped feature (G21).
-- [ ] **Kill:** no measured user benefit over current layouts.
+- [x] Expose optional layout strategies. **Done for `grid` and `circular`; park the library plugin
+      layouts.** `grid` packs by model order into a square (or host-column) grid; `circular` places
+      model order on one ring. Both are deterministic session-local geometry, tested in
+      `layout.test.ts`, and exposed only when `graph_layout_breadth` is on. `radial-layout`,
+      `spectral-layout`, `cluster-layout`, and `geo-layout` stay in the SpaceGraphJS plugin registry:
+      the first two need a live graph, spectral is not append-stable, and the session carries no
+      geo data. Their reasons are in `docs/spacegraph/layouts-renderers.md`.
+- [x] Renderer strategy: SVG preview < 50 nodes, SpaceGraph < 300, Cytoscape for large 2D maps.
+      **Contract recorded; one canvas renderer ships.** `chooseRendererStrategy` and
+      `canvasRendererFor` state the budgets and the SpaceGraph fallback; the canvas registry still
+      mounts only SpaceGraph, and inline maps already use the static SVG preview. Cytoscape becomes
+      available when its factory and contract version are registered.
+- [x] Document capability trade-offs and fallback behavior. **Done.**
+      `docs/spacegraph/layouts-renderers.md` lists every layout, the parked strategies and reasons,
+      renderer node budgets, and the fallback path; the docs index links it.
+- [x] Fix `bandChange` only if semantic zoom becomes a shipped feature (G21). **Not built.** No
+      listener was added; the document says it belongs to semantic zoom.
+- [x] **Kill:** no measured user benefit over current layouts. **Park the library plugin layouts;
+      keep grid/circular behind the flag.** There is no measured benefit yet for radial/spectral/
+      cluster/geo, so they stay unexposed. The two deterministic arrangements ship off by default
+      and do not block M6–M8.
 
 **Exit:** each P2 capability has a pass/park decision; none blocks M6–M8 unless adopted.
+**Met:** palette keep (flag), attention keep (flag, study pending), grid/circular keep off by
+default, library plugin layouts and Cytoscape parked.
 
 ---
 
@@ -555,11 +607,11 @@ per-budget fallback.
 | 19.3 Compaction advisor | **Parked** | 0 of 46 nodes dropped, 0 tokens saved, spine 31/31; ~0.18 ms latency (M1.2) |
 | 19.5 Spatial memory | **Keep session-local only** | Hash miss on changed structure; same structure restores (M1.1) |
 | 19.6 Notes and pins | **Keep quiet** | Store coverage and pin smoke pass; no study usage yet (M2.1) |
-| 19.8 Palette | Keep or `/` only | Time-to-action vs typing `/` |
+| 19.8 Palette | **Keep behind `graph_palette`** | Same `/` overlay plus sections; 0.053 ms p50 / 0.508 ms p95 on the 46-node fixture (M5.1) |
 | 19.9 Widgets | **Keep todo, diff, terminal; park model picker and permission summary** | Widget data already lives in the node; picker/permission need host sources that would duplicate the composer and dock (M3.1) |
-| 19.10 Attention | Keep or reduce | Alarm-fatigue study |
+| 19.10 Attention | **Keep behind `graph_attention`; study pending** | One toast per newly appearing failure, quiet titlebar item, no sound (M5.2) |
 | 19.11 Cost lens | **Keep, flag-gated; streaming shows ranges** | Provider-reported usage on turn cards; heat sizing deferred (M3.2) |
-| 19.12 Layouts/renderers | Adopt or drop | Measured benefit over current layouts |
+| 19.12 Layouts/renderers | **Keep grid/circular behind flag; park radial/spectral/cluster/geo and Cytoscape** | Deterministic session geometry; plugin layouts need a live graph or absent geo data (M5.3) |
 | Phase 20 budgets | Met or fallback | Benchmarks committed; timing blocked by this environment (M4) |
 
 ---
@@ -569,9 +621,9 @@ per-budget fallback.
 | Decision | Needed by | Default if unresolved |
 |---|---|---|
 | ~~Compaction baseline definition~~ | ~~M1.2~~ | Resolved: keep-all path, 46 nodes / 855 tokens |
-| Palette speed metric | M5.1 | Median time-to-node vs `/` |
+| ~~Palette speed metric~~ | ~~M5.1~~ | Resolved: 0.053 ms p50 / 0.508 ms p95 on the fixture; human study in M7 |
 | ~~Per-widget success metric~~ | ~~M3.1~~ | Resolved: data already in the node; keep todo/diff/terminal, park the rest |
-| Renderer strategy thresholds | M5.3 | Keep SpaceGraph only |
+| ~~Renderer strategy thresholds~~ | ~~M5.3~~ | Resolved: SVG < 50, SpaceGraph ≤ 300, Cytoscape only when registered, else SpaceGraph |
 | Notes and attention study design | M7 | Keep quiet, do not foreground |
 | ~~Which SDK proposals to implement~~ | ~~M2.4~~ | Resolved: keep recorded as upstream asks |
 | Flag graduation order | M8 | Delete only proven defaults |
@@ -737,3 +789,31 @@ this file's revision log and leave the v34 archive unchanged.
   - Verified: `session-ui` graph 343/34; `session-graph` unit 105/14; `gui-plugins` 1,162/115
     (1 skip); the new `graph-transcript` component spec 2/2; `session-ui`, `session-graph`,
     `gui-plugins`, and `app` typecheck.
+- **r8 (2026-11-12):** Implemented M5 navigation, attention, and layout breadth.
+  - NLQ: `compileNLQ`/`parseNLQ` accept `NLQDictionaries`; user words merge into the built-in kind,
+    status, and domain tables, unknown values are ignored, and no dictionary preserves the old
+    facets exactly. `nlq.test.ts` covers the merge, core behavior, unknown values, and forwarding.
+  - Saved questions: `saved-queries.ts` serializes facets to the `q=` grammar, dedupes, caps at 20,
+    and validates the persisted list. The plugin store owns `savedQueries`; the facets menu saves,
+    applies, and removes questions. Tests cover round trip, dedupe, cap, blank labels, and malformed
+    rows.
+  - Palette: `palette.ts` ranks nodes plus actions, saved questions, lenses, and surfaces. The
+    existing `/` overlay renders the groups and preserves its keyboard model. The plugin builds the
+    sources from its commands, built-in/user lenses, and host surfaces; `runPaletteAction` executes
+    the choice. `graph_palette` gates it. Fixture latency: 0.053 ms p50 / 0.508 ms p95 / 5.19 ms
+    max over 300 runs. Human time-to-node stays in the M7 protocol.
+  - Attention: `attention(model)` derives tone, counts, the latest failure, and stable ids from
+    `failures`/`sessionProgress`. The header toggle shows the count, the composer pill takes the
+    count and danger tone, a titlebar item opens the latest failure, and a `createKeyed` watcher
+    toasts only failures that appear after mount. `graph_attention` gates it; no sound is used.
+    `SessionGraph` now honors the host `reducedMotion` prop.
+  - Layouts: `grid` and `circular` are deterministic session-local arrangements in `layout.ts`,
+    tested for placement, determinism, and a growing session. The plugin filters the toolbar list
+    through `availableLayouts()`; `graph_layout_breadth` decides whether they appear. The library
+    plugin layouts (`radial`, `spectral`, `cluster`, `geo`) are parked with reasons, `bandChange`
+    stays unused, and `renderer-strategy.ts` records the SVG/SpaceGraph/Cytoscape budgets and the
+    SpaceGraph fallback. `docs/spacegraph/layouts-renderers.md` carries the trade-off table.
+  - Synced the bundled graph copy (47 modules). Verified: root `bun run check` 53/53; `bun run lint`
+    0 errors; `session-ui` graph 367/38; `session-graph` unit 105/14; `gui-plugins` 1,164/115
+    (1 skip); targeted component `graph-view` 5 pass / 1 skip and `graph-toolbar` 2 pass / 1 skip;
+    `check:graph` clean.

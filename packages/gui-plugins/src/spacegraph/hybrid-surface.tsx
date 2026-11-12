@@ -88,6 +88,13 @@ export function HybridSurface(props: {
           onNotesChange={(notes) => props.model.setNotes(props.session, notes)}
           pins={props.model.pins(props.session)}
           onPinsChange={(pins) => props.model.setPins(props.session, pins)}
+          savedQueries={props.model.savedQueries(props.session)}
+          onSavedQueriesChange={(queries) => props.model.setSavedQueries(props.session, queries)}
+          layouts={props.model.availableLayouts()}
+          palette={props.model.paletteEnabled() ? props.model.paletteSources(props.session) : undefined}
+          onPaletteAction={(entry) => props.model.runPaletteAction(props.session, entry.action?.id ?? "")}
+          onPaletteLens={(entry) => entry.lens && props.model.applyLensById(props.session, entry.lens.id)}
+          onPaletteSurface={(entry) => entry.surface && props.model.select(props.session, entry.surface.id)}
         />
         <GraphToolbarViewControls
           i18n={i18n}

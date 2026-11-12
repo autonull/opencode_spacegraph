@@ -12,6 +12,7 @@ import {
   type GraphViewData,
   type GraphSide,
   type Layout,
+  type SavedQuery,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphLayersControl } from "./GraphLayersControl"
@@ -31,6 +32,10 @@ export type GraphToolbarProps = {
   /** Live kept/total counts for the facet chips. */
   facetCounts?: FacetCounts
   onFacetsChange?: (facets: GraphFacets) => void
+  savedQueries?: readonly SavedQuery[]
+  onSaveQuery?: () => void
+  onRemoveSavedQuery?: (query: string) => void
+  onApplySavedQuery?: (query: SavedQuery) => void
   /** The projection spectrum: flat through orbit. */
   depth?: DepthMode
   onDepth?: (depth: DepthMode) => void
@@ -53,6 +58,8 @@ export type GraphToolbarProps = {
   dispatchCommand?: (command: string) => void
   /** T17.1: the layout on screen; the host persists the choice. */
   layout?: Layout
+  /** The layouts the host exposes under its flags. */
+  layouts?: readonly Layout[]
   onLayoutChange?: (layout: Layout) => void
   /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
   files?: boolean
@@ -171,6 +178,10 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
         facets={props.facets}
         facetCounts={props.facetCounts}
         onFacetsChange={props.onFacetsChange}
+        savedQueries={props.savedQueries}
+        onSaveQuery={props.onSaveQuery}
+        onRemoveSavedQuery={props.onRemoveSavedQuery}
+        onApplySavedQuery={props.onApplySavedQuery}
         depth={props.depth}
         onDepth={props.onDepth}
         depthModes={props.depthModes}
@@ -180,6 +191,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       />
       <GraphLayoutControl
         layout={props.layout}
+        layouts={props.layouts}
         onLayoutChange={props.onLayoutChange}
       />
       <GraphTimeControl

@@ -5,12 +5,19 @@ import {
   GRAPH_SIDES,
   LAYOUTS,
   LAYOUT_STRATEGIES,
+  OPTIONAL_LAYOUT_STRATEGIES,
   ZOOM_LEVELS,
+  attention,
+  failures,
+  normalizeSavedQueries,
+  removeQuery,
+  saveQuery,
   type DepthMode,
   type GraphArrangement,
   type GraphSide,
   type Layout,
   type LayoutStrategy,
+  type SavedQuery,
   type ZoomLevel,
   type DetailMode,
   buildGraphIncremental,
@@ -20,12 +27,15 @@ import {
   withAnnotations,
   type GraphLayout,
   type GraphViewData,
+  type GraphFacets,
+  type PaletteSources,
   type IncrementalBuilderState,
   type TimeTravelSnapshot,
   type Annotations,
   type CardDensity,
 } from "@opencode/session-ui/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
+import { BUILTIN_LENSES } from "./index"
 import type definition from "./index"
 import type { State } from "./index"
 
@@ -56,6 +66,20 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
   const costLensEnabled = () => ctx.flags.enabled("graph_cost_lens")
 
+  const paletteEnabled = () => ctx.flags.enabled("graph_palette")
+
+  const attentionEnabled = () => ctx.flags.enabled("graph_attention")
+
+  const layoutBreadthEnabled = () => ctx.flags.enabled("graph_layout_breadth")
+
+  /** The layouts the toolbar offers: optional arrangements need the flag and stay out otherwise. */
+  const availableLayouts = (): readonly Layout[] =>
+    layoutBreadthEnabled()
+      ? LAYOUTS
+      : LAYOUTS.filter(
+          (layout) => !OPTIONAL_LAYOUT_STRATEGIES.includes(layout as (typeof OPTIONAL_LAYOUT_STRATEGIES)[number]),
+        )
+
   /** M4: the density profile scales the card budget; the canvas still owns the layout. */
   const density = (): CardDensity => {
     const profile = (prefValue().density as { profile?: CardDensity } | undefined)?.profile
@@ -64,8 +88,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   }
 
   /** Shared graph memo - built incrementally per session, reused by panel, full-map, hybrid, etc. */
-  const graph = (session: MountedSession) =>
-    createMemo(() => {
+  const graphMemos = new Map<string, () => GraphViewData>()
+  const graph = (session: MountedSession) => {
+    const cached = graphMemos.get(session.id)
+    if (cached) return cached
+    const memo = createMemo<GraphViewData>(() => {
       const status: { type: "busy" | "idle" } =
         session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
 
@@ -96,8 +123,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
       return builtGraph
     })
+    graphMemos.set(session.id, memo)
+    return memo
+  }
 
-  return {
+  const api = {
     focused: (session: MountedSession) => sessionValue(session)?.focused,
     focus: (session: MountedSession, id: string | undefined) => {
       store(session).update((draft) => {
@@ -117,6 +147,104 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       store(session).update((draft) => {
         draft.layout = layout
       })
+    },
+    /** M5.1/M5.3: the layouts the toolbar may offer under the current flags. */
+    availableLayouts,
+    paletteEnabled,
+    attentionEnabled,
+    layoutBreadthEnabled,
+    /** M5.1: the reader's saved questions, validated at the store boundary. */
+    savedQueries: (session: MountedSession): SavedQuery[] => normalizeSavedQueries(sessionValue(session)?.savedQueries),
+    setSavedQueries: (session: MountedSession, queries: readonly SavedQuery[]) => {
+      store(session).update((draft) => {
+        draft.savedQueries = normalizeSavedQueries(queries)
+      })
+    },
+    saveFacets: (session: MountedSession, facets: GraphFacets) => {
+      store(session).update((draft) => {
+        draft.savedQueries = saveQuery(normalizeSavedQueries(draft.savedQueries), facets)
+      })
+    },
+    removeSavedQuery: (session: MountedSession, query: string) => {
+      store(session).update((draft) => {
+        draft.savedQueries = removeQuery(normalizeSavedQueries(draft.savedQueries), query)
+      })
+    },
+    /** Apply a lens preset to the session without changing the reader's density or renderer. */
+    applyLens: (session: MountedSession, lens: { layout?: Layout; depth?: DepthMode; level?: ZoomLevel; detailMode?: DetailMode; files?: boolean }) => {
+      store(session).update((draft) => {
+        if (lens.layout) draft.layout = lens.layout
+        if (lens.depth) draft.depth = lens.depth
+        if (lens.level) draft.level = lens.level
+        if (lens.detailMode) draft.detailMode = lens.detailMode
+      })
+    },
+    applyLensById: (session: MountedSession, id: string) => {
+      const lens = [...BUILTIN_LENSES, ...(prefValue().userLenses ?? [])].find((entry) => entry.id === id)
+      if (!lens) return
+      api.applyLens(session, lens)
+      prefs.update((draft) => {
+        draft.lens = id
+      })
+    },
+    /** M5.2: the session's failure signal, shared by the badge, the toast, and the titlebar item. */
+    attention: (session: MountedSession) => attention(graph(session)()),
+    /** M5.1: the commands the palette can run, plus the lenses and surfaces the host knows. */
+    paletteSources: (session: MountedSession): PaletteSources => {
+      const focused = sessionValue(session)?.focused
+      const surfaces = (ctx as { surfaces?: { list: () => readonly { id: string; title: string }[] } }).surfaces
+      const actions = [
+        { id: "surface.map", label: ctx.t("surface.map"), keywords: ["map", "graph"] },
+        { id: "surface.hybrid", label: ctx.t("surface.hybrid"), keywords: ["split", "transcript"] },
+        { id: "surface.transcript", label: ctx.t("surface.transcript"), keywords: ["log", "chat"] },
+        { id: "layout.next", label: ctx.t("command.layout"), keywords: ["arrange", "strategy"] },
+        { id: "level.next", label: ctx.t("command.level"), keywords: ["zoom", "detail"] },
+        { id: "failures", label: ctx.t("ui.sessionGraph.failureProgress.title"), keywords: ["error", "why"] },
+        { id: "permalink", label: ctx.t("command.permalink"), keywords: ["link", "share"] },
+        ...(focused
+          ? [
+              { id: "trace.why", label: ctx.t("ui.sessionGraph.trace.why"), keywords: ["cause", "trace"] },
+              { id: "pin.toggle", label: ctx.t("ui.sessionGraph.status.pin"), keywords: ["keep", "mark"] },
+            ]
+          : []),
+      ]
+
+      const lenses = [...BUILTIN_LENSES, ...(prefValue().userLenses ?? [])].map((lens) => ({
+        id: lens.id,
+        label: lens.name,
+        description: lens.description,
+      }))
+
+      return {
+        actions,
+        lenses,
+        surfaces:
+          surfaces && typeof surfaces.list === "function"
+            ? surfaces.list().map((surface) => ({ id: surface.id, label: surface.title }))
+            : undefined,
+      }
+    },
+    runPaletteAction: (session: MountedSession, id: string) => {
+      const focused = sessionValue(session)?.focused
+      if (id === "surface.map") return api.select(session, `${ctx.id}.map`)
+      if (id === "surface.hybrid") return api.select(session, `${ctx.id}.hybrid`)
+      if (id === "surface.transcript") return api.select(session, "transcript")
+      if (id === "layout.next") return api.cycleLayout(session)
+      if (id === "level.next") return api.cycleLevel(session)
+      if (id === "permalink") return api.copyPermalink(session)
+      if (id === "failures") {
+        const first = failures(graph(session)())[0]
+        if (!first) return
+        api.focus(session, first.node.id)
+        api.setDetailMode(session, "panel")
+        return
+      }
+      if (id === "trace.why" && focused) {
+        api.setTraceKind(session, "why")
+        api.setTraceSource(session, focused)
+        return
+      }
+      if (id === "pin.toggle" && focused) return api.togglePin(session, focused)
     },
     setDepth: (session: MountedSession, depth: DepthMode) => {
       store(session).update((draft) => {
@@ -358,6 +486,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       })
     },
   }
+
+  return api
 }
 
 export type SpacegraphModel = ReturnType<typeof createSpacegraph>

@@ -1,7 +1,7 @@
 import { DEPTH_MODES, supportsDepth } from "@spacegraphjs/renderer"
 import { SegmentedControl, SegmentedControlItem } from "@opencode/ui/segmented-control"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { Show } from "solid-js"
+import { For, Show } from "solid-js"
 import {
   ZOOM_LEVELS,
   type ZoomLevel,
@@ -16,6 +16,7 @@ import {
   type FacetCounts,
   type GraphViewData,
   type DepthMode,
+  type SavedQuery,
   VOCABULARY_KEYS,
 } from "@opencode/session-ui/graph"
 import { ToolbarMenu } from "./ToolbarMenu"
@@ -26,6 +27,10 @@ export type GraphLayersControlProps = {
   facets?: GraphFacets
   facetCounts?: FacetCounts
   onFacetsChange?: (facets: GraphFacets) => void
+  savedQueries?: readonly SavedQuery[]
+  onSaveQuery?: () => void
+  onRemoveSavedQuery?: (query: string) => void
+  onApplySavedQuery?: (query: SavedQuery) => void
   depth?: DepthMode
   onDepth?: (depth: DepthMode) => void
   depthModes?: readonly DepthMode[]
@@ -264,6 +269,54 @@ export const GraphLayersControl = (props: GraphLayersControlProps) => {
             aria-label={i18n.t("ui.sessionGraph.facets.placeholder")}
             onInput={(event) => changeFacets({ query: event.currentTarget.value })}
           />
+          <Show when={props.onSaveQuery}>
+            <div data-slot="graph-facet-saved" class="flex flex-col gap-1">
+              <button
+                type="button"
+                data-slot="graph-facet-save"
+                class="rounded-sm border border-border-weaker-base px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+                onClick={() => props.onSaveQuery?.()}
+              >
+                {i18n.t("ui.sessionGraph.facets.save")}
+              </button>
+              <Show
+                when={(props.savedQueries?.length ?? 0) > 0}
+                fallback={
+                  <span class="px-1 text-12-regular text-text-weaker">
+                    {i18n.t("ui.sessionGraph.facets.savedEmpty")}
+                  </span>
+                }
+              >
+                <div class="px-1 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+                  {i18n.t("ui.sessionGraph.facets.saved")}
+                </div>
+                <For each={props.savedQueries}>
+                  {(saved) => (
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        data-slot="graph-facet-saved-apply"
+                        data-query={saved.query}
+                        class="min-w-0 flex-1 truncate rounded-sm px-2 py-1 text-start text-12-regular text-text-base hover:bg-surface-base-hover"
+                        onClick={() => props.onApplySavedQuery?.(saved)}
+                      >
+                        {saved.label}
+                      </button>
+                      <button
+                        type="button"
+                        data-slot="graph-facet-saved-remove"
+                        class="shrink-0 rounded-sm px-1.5 py-1 text-12-regular text-text-weak hover:bg-surface-base-hover hover:text-text-strong"
+                        aria-label={i18n.t("ui.sessionGraph.facets.remove", { label: saved.label })}
+                        onClick={() => props.onRemoveSavedQuery?.(saved.query)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </For>
+              </Show>
+            </div>
+          </Show>
           <div class="flex max-h-72 flex-col gap-2 overflow-y-auto">
             <div data-slot="graph-facet-kinds" class="flex flex-col">
               <div class="px-1 py-1 text-11-medium uppercase tracking-wide text-text-weak">

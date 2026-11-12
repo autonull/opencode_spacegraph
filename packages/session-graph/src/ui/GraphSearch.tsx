@@ -1,11 +1,13 @@
-import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode, PaletteEntry, PaletteSources } from "@opencode/session-ui/graph"
 import {
   applyFacets,
   navigationHelp,
   navigationResults,
+  paletteEntries,
+  PALETTE_GROUP_ORDER,
+  parseNLQ,
   rankedSearch,
 } from "@opencode/session-ui/graph"
-import { parseNLQ } from "@opencode/session-ui/graph"
 import { Icon } from "@opencode/ui/icon"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
@@ -17,49 +19,102 @@ export type GraphSearchProps = {
   onSelect: (node: GraphNode) => void
   onClose: () => void
   initialQuery?: string
+  /** The commands, lenses, surfaces, and saved questions the palette adds to the node search. */
+  palette?: PaletteSources
+  onAction?: (entry: PaletteEntry) => void
+  onLens?: (entry: PaletteEntry) => void
+  onSurface?: (entry: PaletteEntry) => void
+  onSavedQuery?: (entry: PaletteEntry) => void
 }
 
+const GROUP_KEY = {
+  node: "ui.sessionGraph.search.nodes",
+  action: "ui.sessionGraph.search.actions",
+  lens: "ui.sessionGraph.search.lenses",
+  surface: "ui.sessionGraph.search.surfaces",
+  "saved-query": "ui.sessionGraph.search.saved",
+} as const
+
+type Row = { type: "header"; kind: PaletteEntry["kind"] } | { type: "item"; entry: PaletteEntry; index: number }
+
 /**
- * Label/tool/path search (U3.12). It reuses the model selector, so results are the same nodes the
- * inspector can describe; selecting one jumps the graph to it.
- * Also supports natural language queries (NLQ) that compile to facet grammar.
+ * Label/tool/path search (U3.12) and the graph palette. The host supplies the commands it can run,
+ * so the palette lists nodes, actions, lenses, surfaces, and saved questions over the same ranked
+ * search the `/` key opens. It never executes a graph action itself.
  */
 export const GraphSearch = (props: GraphSearchProps) => {
   const i18n = useI18n()
   const [query, setQuery] = createSignal(props.initialQuery ?? "")
   const [active, setActive] = createSignal(0)
-  const [compiledQuery, setCompiledQuery] = createSignal<string>("")
-
-  const results = createMemo(() => {
-    const q = query().trim()
-
-    // Try NLQ compilation first - if it produces facet filters, use facet-based search
-    const { facets, queryString } = parseNLQ(q)
-    const hasFacetFilters = facets.kinds.size > 0 || facets.statuses.size > 0 || facets.domains.size > 1 // >1 because "session" is default
-
-    if (hasFacetFilters) {
-      setCompiledQuery(queryString)
-      const scopedModel = applyFacets(props.model, facets)
-      const filteredNodes = scopedModel.nodes.filter((node) => node.id !== scopedModel.root)
-      if (props.contentIDs.length === 0) return filteredNodes
-      const contentIDSet = new Set(props.contentIDs)
-      return filteredNodes.filter((node) => contentIDSet.has(node.id))
-    }
-
-    // No facet filters from NLQ - fall back to existing search
-    setCompiledQuery("")
-    const fullResults = navigationResults(props.model, q) ?? rankedSearch(props.model, q)
-    if (props.contentIDs.length === 0) return fullResults
-    const contentIDSet = new Set(props.contentIDs)
-    return fullResults.filter((node) => contentIDSet.has(node.id))
-  })
-  const navigationHint = createMemo(() =>
-    query().trim().toLowerCase() === "g" ? navigationHelp() : [],
-  )
   // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let input!: HTMLInputElement
   // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
   let list!: HTMLDivElement
+
+  const filteredNodes = (nodes: GraphNode[]) => {
+    if (props.contentIDs.length === 0) return nodes
+    const contentIDSet = new Set(props.contentIDs)
+    return nodes.filter((node) => contentIDSet.has(node.id))
+  }
+
+  const nodeEntry = (node: GraphNode, score = 0): PaletteEntry => ({
+    id: node.id,
+    kind: "node",
+    label: node.label,
+    detail: node.summary,
+    score,
+    node,
+  })
+
+  const search = createMemo(() => {
+    const q = query().trim()
+    const { facets, queryString } = parseNLQ(q)
+    const hasFacetFilters = facets.kinds.size > 0 || facets.statuses.size > 0 || facets.domains.size > 1
+
+    if (hasFacetFilters) {
+      const scoped = applyFacets(props.model, facets)
+      const entries = filteredNodes(scoped.nodes.filter((node) => node.id !== scoped.root)).map((node) =>
+        nodeEntry(node),
+      )
+      return { compiled: queryString, entries }
+    }
+
+    if (props.palette) {
+      const entries = paletteEntries(props.model, q, props.palette).filter(
+        (entry) => entry.kind !== "node" || filteredNodes([entry.node!]).length > 0,
+      )
+      return { compiled: "", entries }
+    }
+
+    if (!q) return { compiled: "", entries: [] }
+
+    const entries = filteredNodes(navigationResults(props.model, q) ?? rankedSearch(props.model, q)).map((node) =>
+      nodeEntry(node),
+    )
+    return { compiled: "", entries }
+  })
+
+  const entries = () => search().entries
+  const compiledQuery = () => search().compiled
+
+  const rows = createMemo<Row[]>(() => {
+    const rows: Row[] = []
+    let index = 0
+    let last: PaletteEntry["kind"] | undefined
+    const ordered = [...entries()].sort(
+      (a, b) => PALETTE_GROUP_ORDER.indexOf(a.kind) - PALETTE_GROUP_ORDER.indexOf(b.kind) || b.score - a.score,
+    )
+
+    for (const entry of ordered) {
+      if (entry.kind !== last) {
+        rows.push({ type: "header", kind: entry.kind })
+        last = entry.kind
+      }
+      rows.push({ type: "item", entry, index: index++ })
+    }
+
+    return rows
+  })
 
   createEffect(() => {
     query()
@@ -72,9 +127,30 @@ export const GraphSearch = (props: GraphSearchProps) => {
   })
 
   const move = (delta: number) => {
-    const max = results().length - 1
+    const max = entries().length - 1
     if (max < 0) return
     setActive((current) => Math.min(max, Math.max(0, current + delta)))
+  }
+
+  const choose = (entry: PaletteEntry | undefined) => {
+    if (!entry) return
+    if (entry.kind === "node" && entry.node) {
+      // Add search hit ring animation to the selected node
+      if ((entry.node as GraphNode & { className?: string }).className === undefined) {
+        const nodeWithClass = entry.node as GraphNode & { className?: string }
+        nodeWithClass.className = "graph-search-hit"
+        setTimeout(() => {
+          delete nodeWithClass.className
+        }, 200)
+      }
+      props.onSelect(entry.node)
+      return
+    }
+    if (entry.kind === "action") props.onAction?.(entry)
+    if (entry.kind === "lens") props.onLens?.(entry)
+    if (entry.kind === "surface") props.onSurface?.(entry)
+    if (entry.kind === "saved-query") props.onSavedQuery?.(entry)
+    props.onClose()
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
@@ -98,25 +174,17 @@ export const GraphSearch = (props: GraphSearchProps) => {
 
     if (event.key === "Home" || event.key === "End") {
       event.preventDefault()
-      setActive(event.key === "Home" ? 0 : results().length - 1)
+      setActive(event.key === "Home" ? 0 : entries().length - 1)
       return
     }
 
     if (event.key === "Enter") {
-      const node = results()[active()]
-      if (node) {
-        // Add search hit ring animation to the selected node
-        if ((node as GraphNode & { className?: string }).className === undefined) {
-          const nodeWithClass = node as GraphNode & { className?: string }
-          nodeWithClass.className = "graph-search-hit"
-          setTimeout(() => {
-            delete nodeWithClass.className
-          }, 200)
-        }
-        props.onSelect(node)
-      }
+      event.preventDefault()
+      choose(entries()[active()])
     }
   }
+
+  const navigationHint = createMemo(() => (query().trim().toLowerCase() === "g" ? navigationHelp() : []))
 
   onMount(() => input.focus())
 
@@ -138,9 +206,9 @@ export const GraphSearch = (props: GraphSearchProps) => {
           placeholder={i18n.t("ui.sessionGraph.search.placeholder")}
           aria-label={i18n.t("ui.sessionGraph.search.placeholder")}
           role="combobox"
-          aria-expanded={results().length > 0}
+          aria-expanded={entries().length > 0}
           aria-controls="graph-search-results"
-          aria-activedescendant={results().length > 0 ? `graph-search-option-${active()}` : undefined}
+          aria-activedescendant={entries().length > 0 ? `graph-search-option-${active()}` : undefined}
           onInput={(event) => setQuery(event.currentTarget.value)}
         />
         <GraphIconButton
@@ -173,41 +241,48 @@ export const GraphSearch = (props: GraphSearchProps) => {
         </div>
       </Show>
 
-      <Show when={query().trim().length > 0}>
+      <Show when={entries().length > 0 || query().trim().length > 0}>
         <div ref={list} class="max-h-72 overflow-y-auto border-t border-border-weaker-base">
           <Show
-            when={results().length > 0}
+            when={entries().length > 0}
             fallback={
               <div class="px-3 py-2 text-12-regular text-text-weaker">{i18n.t("ui.sessionGraph.search.noResults")}</div>
             }
           >
             <div class="px-3 py-1 text-12-regular text-text-weaker">
-              {i18n.plural("ui.sessionGraph.search.results", results().length)}
+              {i18n.plural("ui.sessionGraph.search.results", entries().length)}
             </div>
             <ul id="graph-search-results" role="listbox" aria-label={i18n.t("ui.sessionGraph.toolbar.search")}>
-              <For each={results()}>
-                {(node, index) => (
-                  <li>
-                    <button
-                      type="button"
-                      id={`graph-search-option-${index()}`}
-                      data-index={index()}
-                      data-node-id={node.id}
-                      data-active={index() === active()}
-                      role="option"
-                      aria-selected={index() === active()}
-                      class="flex w-full flex-col gap-0.5 px-3 py-1.5 text-left hover:bg-surface-base-hover"
-                      classList={{ "bg-surface-base-hover": index() === active() }}
-                      onMouseEnter={() => setActive(index())}
-                      onClick={() => props.onSelect(node)}
-                    >
-                      <span class="truncate text-12-regular text-text-strong">{node.label}</span>
-                      <Show when={node.summary}>
-                        <span class="truncate text-12-regular text-text-weak">{node.summary}</span>
-                      </Show>
-                    </button>
-                  </li>
-                )}
+              <For each={rows()}>
+                {(row) =>
+                  row.type === "header" ? (
+                    <li role="presentation" class="px-3 py-1 text-11-medium uppercase tracking-wide text-text-weak">
+                      {i18n.t(GROUP_KEY[row.kind])}
+                    </li>
+                  ) : (
+                    <li>
+                      <button
+                        type="button"
+                        id={`graph-search-option-${row.index}`}
+                        data-index={row.index}
+                        data-kind={row.entry.kind}
+                        data-node-id={row.entry.node?.id}
+                        data-active={row.index === active()}
+                        role="option"
+                        aria-selected={row.index === active()}
+                        class="flex w-full flex-col gap-0.5 px-3 py-1.5 text-left hover:bg-surface-base-hover"
+                        classList={{ "bg-surface-base-hover": row.index === active() }}
+                        onMouseEnter={() => setActive(row.index)}
+                        onClick={() => choose(row.entry)}
+                      >
+                        <span class="truncate text-12-regular text-text-strong">{row.entry.label}</span>
+                        <Show when={row.entry.detail}>
+                          <span class="truncate text-12-regular text-text-weak">{row.entry.detail}</span>
+                        </Show>
+                      </button>
+                    </li>
+                  )
+                }
               </For>
             </ul>
           </Show>

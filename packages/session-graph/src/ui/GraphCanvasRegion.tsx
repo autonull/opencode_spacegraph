@@ -160,6 +160,11 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
         setSearchOpen={props.setSearchOpen}
         jumpTo={props.jumpTo}
         contentIDs={props.contentIDs}
+        palette={props.palette}
+        onPaletteAction={props.onPaletteAction}
+        onPaletteLens={props.onPaletteLens}
+        onPaletteSurface={props.onPaletteSurface}
+        onPaletteSavedQuery={props.onPaletteSavedQuery}
 
         // Legend
         legendOpen={props.legendOpen}

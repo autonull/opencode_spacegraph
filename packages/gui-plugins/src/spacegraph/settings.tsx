@@ -107,6 +107,10 @@ export default function SpacegraphSettings() {
         return ctx.t("layout.tree")
       case "force":
         return ctx.t("layout.force")
+      case "grid":
+        return ctx.t("layout.grid")
+      case "circular":
+        return ctx.t("layout.circular")
       case "ribbon":
         return ctx.t("layout.ribbon")
       case "matrix":

@@ -33,6 +33,8 @@ export const VOCABULARY_KEYS = {
     hierarchy: "ui.sessionGraph.layout.hierarchy",
     tree: "ui.sessionGraph.layout.tree",
     force: "ui.sessionGraph.layout.force",
+    grid: "ui.sessionGraph.layout.grid",
+    circular: "ui.sessionGraph.layout.circular",
     ribbon: "ui.sessionGraph.layout.ribbon",
     matrix: "ui.sessionGraph.layout.matrix",
     log: "ui.sessionGraph.layout.log",
@@ -45,6 +47,8 @@ export const VOCABULARY_KEYS = {
     hierarchy: "ui.sessionGraph.layoutHint.hierarchy",
     tree: "ui.sessionGraph.layoutHint.tree",
     force: "ui.sessionGraph.layoutHint.force",
+    grid: "ui.sessionGraph.layoutHint.grid",
+    circular: "ui.sessionGraph.layoutHint.circular",
     ribbon: "ui.sessionGraph.layoutHint.ribbon",
     matrix: "ui.sessionGraph.layoutHint.matrix",
     log: "ui.sessionGraph.layoutHint.log",
@@ -331,9 +335,14 @@ export const READ_TOOLS = new Set(["read", "glob", "grep", "list", "webfetch"])
 
 /**
  * How the map is drawn. The layout strategies are the session's policy over the library's
- * geometries, so the vocabulary names them all in one place.
+ * geometries, so the vocabulary names them all in one place. The optional strategies are
+ * deterministic session-local arrangements; a host exposes them only when its preference agrees.
  */
-export const LAYOUT_STRATEGIES = ["lanes", "timeline", "hierarchy", "tree", "force"] as const
+export const CORE_LAYOUT_STRATEGIES = ["lanes", "timeline", "hierarchy", "tree", "force"] as const
+
+export const OPTIONAL_LAYOUT_STRATEGIES = ["grid", "circular"] as const
+
+export const LAYOUT_STRATEGIES = [...CORE_LAYOUT_STRATEGIES, ...OPTIONAL_LAYOUT_STRATEGIES] as const
 
 export type LayoutStrategy = (typeof LAYOUT_STRATEGIES)[number]
 

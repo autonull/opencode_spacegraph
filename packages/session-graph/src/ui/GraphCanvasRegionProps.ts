@@ -13,6 +13,8 @@ import type {
   GraphEdge,
   Layout,
   ZoomLevel,
+  PaletteEntry,
+  PaletteSources,
 } from "@opencode/session-ui/graph"
 import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
 import type { GraphDiffSource } from "./GraphDiff"
@@ -86,6 +88,11 @@ export type GraphCanvasRegionProps = {
   setSearchOpen: (open: boolean) => void
   jumpTo: (node: GraphNode) => void
   contentIDs: () => string[]
+  palette?: PaletteSources
+  onPaletteAction?: (entry: PaletteEntry) => void
+  onPaletteLens?: (entry: PaletteEntry) => void
+  onPaletteSurface?: (entry: PaletteEntry) => void
+  onPaletteSavedQuery?: (entry: PaletteEntry) => void
 
   // Legend
   legendOpen: () => boolean
@@ -209,6 +216,11 @@ export interface BuildCanvasRegionPropsInput {
   setSearchOpen: (open: boolean) => void
   jumpTo: (node: GraphNode) => void
   contentIDs: () => string[]
+  palette?: PaletteSources
+  onPaletteAction?: (entry: PaletteEntry) => void
+  onPaletteLens?: (entry: PaletteEntry) => void
+  onPaletteSurface?: (entry: PaletteEntry) => void
+  onPaletteSavedQuery?: (entry: PaletteEntry) => void
 
   // Legend
   legendOpen: () => boolean
@@ -337,6 +349,11 @@ export function buildCanvasRegionProps(input: BuildCanvasRegionPropsInput): Grap
     setSearchOpen: input.setSearchOpen,
     jumpTo: input.jumpTo,
     contentIDs: input.contentIDs,
+    palette: input.palette,
+    onPaletteAction: input.onPaletteAction,
+    onPaletteLens: input.onPaletteLens,
+    onPaletteSurface: input.onPaletteSurface,
+    onPaletteSavedQuery: input.onPaletteSavedQuery,
 
     // Legend
     legendOpen: input.legendOpen,

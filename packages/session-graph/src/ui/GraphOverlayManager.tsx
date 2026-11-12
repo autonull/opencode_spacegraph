@@ -10,6 +10,8 @@ import type {
   GraphNode,
   GraphEdge,
   Layout,
+  PaletteEntry,
+  PaletteSources,
 } from "@opencode/session-ui/graph"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Show, type JSX } from "solid-js"
@@ -65,6 +67,11 @@ export type GraphOverlayManagerProps = {
   setSearchOpen: (open: boolean) => void
   jumpTo: (node: GraphNode) => void
   contentIDs: () => string[]
+  palette?: PaletteSources
+  onPaletteAction?: (entry: PaletteEntry) => void
+  onPaletteLens?: (entry: PaletteEntry) => void
+  onPaletteSurface?: (entry: PaletteEntry) => void
+  onPaletteSavedQuery?: (entry: PaletteEntry) => void
 
   // Legend
   legendOpen: () => boolean
@@ -192,6 +199,11 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
           model={props.model()}
           contentIDs={props.contentIDs()}
           initialQuery={props.searchInitial}
+          palette={props.palette}
+          onAction={props.onPaletteAction}
+          onLens={props.onPaletteLens}
+          onSurface={props.onPaletteSurface}
+          onSavedQuery={props.onPaletteSavedQuery}
           onSelect={(node) => {
             props.jumpTo(node)
             props.setSearchOpen(false)

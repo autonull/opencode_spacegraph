@@ -291,6 +291,50 @@ describe("layout — alternate strategies", () => {
   })
 })
 
+describe("layout — optional arrangements", () => {
+  test("grid is deterministic and packs every node into the requested columns", () => {
+    const model = buildFixtureGraph()
+    const columns = 6
+    const a = layoutGraph(model, { strategy: "grid", columns })
+    const b = layoutGraph(model, { strategy: "grid", columns })
+
+    expect(a.strategy).toBe("grid")
+    expect(a.positions.size).toBe(model.nodes.length)
+    expect([...a.positions.entries()]).toEqual([...b.positions.entries()])
+
+    const points = [...a.positions.values()]
+    expect(new Set(points.map((point) => Math.round(point.x))).size).toBeLessThanOrEqual(columns)
+    expect(new Set(points.map((point) => Math.round(point.y))).size).toBeGreaterThan(1)
+  })
+
+  test("circular places every node on one ring in model order", () => {
+    const model = buildFixtureGraph()
+    const a = layoutGraph(model, { strategy: "circular" })
+    const b = layoutGraph(model, { strategy: "circular" })
+    const points = [...a.positions.values()]
+    const radii = points.map((point) => Math.round(Math.hypot(point.x, point.y)))
+
+    expect(a.strategy).toBe("circular")
+    expect(a.positions.size).toBe(model.nodes.length)
+    expect(new Set(radii).size).toBe(1)
+    expect(radii[0]).toBeGreaterThan(0)
+    expect([...a.positions.entries()]).toEqual([...b.positions.entries()])
+  })
+
+  test("the optional arrangements keep appending along their own geometry", () => {
+    const base = [user("u1"), text("a1", "first"), idle("i1")] satisfies SessionMessageInfo[]
+    const extended = [...base, user("u2"), text("a2", "second"), idle("i2")] satisfies SessionMessageInfo[]
+
+    for (const strategy of ["grid", "circular"] as const) {
+      const before = layoutGraph(buildGraph({ messages: base, status: { type: "idle" } }), { strategy })
+      const after = layoutGraph(buildGraph({ messages: extended, status: { type: "idle" } }), { strategy })
+
+      expect(after.positions.size).toBeGreaterThan(before.positions.size)
+      expect(after.positions.has("session")).toBe(true)
+    }
+  })
+})
+
 describe("layout — the tree and the force layout", () => {
   test("every layout is deterministic and places every node", () => {
     const model = buildFixtureGraph()

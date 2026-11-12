@@ -61,6 +61,7 @@ export {
 export {
   CARD_SIZE,
   COMPACT_SIZE,
+  CORE_LAYOUT_STRATEGIES,
   DETAIL_MODES,
   DOMAINS,
   GRAPH_ARRANGEMENTS,
@@ -73,6 +74,7 @@ export {
   NODE_KINDS,
   NODE_SHAPE,
   NODE_STATUSES,
+  OPTIONAL_LAYOUT_STRATEGIES,
   PHASE_CATEGORIES,
   PHASE_LABELS,
   PROVENANCE_EDGE_KINDS,
@@ -185,7 +187,36 @@ export {
   type FacetCounts,
   type GraphFacets,
 } from "./facets"
-export { compileNLQ, formatNLQResult, parseNLQ } from "./nlq"
+export { compileNLQ, formatNLQResult, parseNLQ, type NLQDictionaries, type NLQOptions } from "./nlq"
+export {
+  isSavedQuery,
+  MAX_SAVED_QUERIES,
+  normalizeSavedQueries,
+  removeQuery,
+  saveQuery,
+  savedQueryFacets,
+  type SavedQuery,
+} from "./saved-queries"
+export { attention, type Attention, type AttentionTone } from "./attention"
+export {
+  paletteEntries,
+  paletteGroup,
+  PALETTE_GROUP_ORDER,
+  PALETTE_NODE_LIMIT,
+  type PaletteAction,
+  type PaletteEntry,
+  type PaletteEntryKind,
+  type PaletteLens,
+  type PaletteSources,
+  type PaletteSurface,
+} from "./palette"
+export {
+  canvasRendererFor,
+  chooseRendererStrategy,
+  RENDERER_STRATEGY_THRESHOLDS,
+  type RendererStrategy,
+  type RendererStrategyOptions,
+} from "./renderer-strategy"
 export {
   analyzeCompaction,
   estimateNodeTokens,

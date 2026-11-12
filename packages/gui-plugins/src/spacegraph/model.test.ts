@@ -22,13 +22,14 @@ function memory<T extends object>(initial: T) {
 type Stored = {
   surface?: string
   level?: "overview" | "execution" | "detail"
-  layout?: "lanes" | "timeline" | "hierarchy" | "tree" | "force"
+  layout?: "lanes" | "timeline" | "hierarchy" | "tree" | "force" | "grid" | "circular"
   arrangement?: "stacked" | "side" | "floating"
   side?: "start" | "end"
   turnMap?: boolean
   checkpoint?: number
   notes?: Record<string, unknown>
   pins?: string[]
+  savedQueries?: { label: string; query: string }[]
 }
 
 // SAFETY: the model reads only `stores` and `surfaces.select`; the test session reads only `key`.
@@ -47,7 +48,7 @@ const session = {
   },
 } as unknown as MountedSession
 
-function setup() {
+function setup(flagsEnabled = true) {
   const prefs = memory<{ level?: string; layout?: string; arrangement?: string; side?: string }>({})
   const stored = memory<Stored>({})
   const selected: string[] = []
@@ -57,7 +58,9 @@ function setup() {
   const ctx = {
     stores: { prefs, session: () => stored },
     surfaces: { select: (id: string) => void selected.push(id) },
-    flags: { enabled: () => true, loading: () => false },
+    flags: { enabled: () => flagsEnabled, loading: () => false },
+    t: (key: string) => key,
+    plural: (key: string) => key,
   } as unknown as SetupContext<typeof definition>
 
   return { model: createSpacegraph(ctx), prefs, stored, selected }
@@ -169,6 +172,44 @@ describe("spacegraph model", () => {
     model.togglePin(session, "file:src/auth/token.ts")
     expect(model.pins(session)).toEqual(["turn:0"])
     expect(stored.value.pins).toEqual(["turn:0"])
+  })
+
+  test("saved questions persist as facet grammar and remove by query", () => {
+    const { model, stored } = setup()
+    const facets = {
+      query: "",
+      kinds: new Set(["tool"] as const),
+      statuses: new Set(["failed"] as const),
+      domains: new Set(["session"] as const),
+    }
+
+    model.saveFacets(session, facets)
+    expect(model.savedQueries(session)).toEqual([{ label: "kind:tool status:failed domain:session", query: "kind:tool status:failed domain:session" }])
+
+    model.removeSavedQuery(session, "kind:tool status:failed domain:session")
+    expect(model.savedQueries(session)).toEqual([])
+    expect(stored.value.savedQueries).toEqual([])
+  })
+
+  test("the layout breadth flag decides whether optional arrangements are exposed", () => {
+    const { model } = setup()
+
+    expect(model.availableLayouts()).toContain("grid")
+    expect(model.availableLayouts()).toContain("circular")
+
+    const off = setup(false).model
+    expect(off.availableLayouts()).not.toContain("grid")
+    expect(off.availableLayouts()).not.toContain("circular")
+    expect(off.availableLayouts()).toContain("lanes")
+  })
+
+  test("the palette lists surfaces, lenses, and the commands the model can run", () => {
+    const { model } = setup()
+    const sources = model.paletteSources(session)
+
+    expect(sources.actions?.map((action) => action.id)).toContain("surface.map")
+    expect(sources.lenses?.length).toBeGreaterThan(0)
+    expect(sources.surfaces).toBeUndefined()
   })
 })
 

@@ -25,5 +25,8 @@ export const registry = {
   graph_compaction_advisor: "Enable compaction preview advisor.",
   graph_cost_lens: "Enable cost/budget lens.",
   graph_trust_lens: "Enable trust lens (highlight unverified writes).",
+  graph_palette: "Enable the graph palette over nodes, actions, lenses, and surfaces.",
+  graph_attention: "Enable failure attention badges, toasts, and the titlebar item.",
+  graph_layout_breadth: "Enable optional grid and circular graph layouts.",
 } as const satisfies Record<string, string>
 export type Key = keyof typeof registry
