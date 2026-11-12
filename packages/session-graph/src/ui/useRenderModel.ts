@@ -23,6 +23,8 @@ export type UseRenderModelOptions = {
   manualSizes: Record<string, [number, number]>
   hiddenEdgeKinds: UseEdgeKindsReturn["hiddenEdgeKinds"]
   drawn: Accessor<GraphViewData>
+  /** M4: the card budget for the level at the current viewport and density. */
+  cardBudget?: Accessor<number | undefined>
 }
 
 export type UseRenderModelReturn = {
@@ -67,6 +69,7 @@ export function useRenderModel(options: UseRenderModelOptions): UseRenderModelRe
     manualPositions,
     manualSizes,
     hiddenEdgeKinds,
+    cardBudget: options.cardBudget,
   })
 
   const renderModel = renderModelBuilder

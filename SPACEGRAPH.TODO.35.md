@@ -1,21 +1,44 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-11):** M0 foundation repair, M1 memory/decisions, M2 authoring/orchestration, and
-> M3 widgets/cost are complete (M0.1–M0.10, M1.1–M1.2, M2.1–M2.4, M3.1–M3.2). One canonical capture
-> gate and suite tags are in place. Phases 14–19.11 are complete. `SPACEGRAPH.TODO.34.md` is the frozen
-> design and history reference; this file is the single source of truth for remaining work.
+> **Status (2026-11-12):** M0 foundation repair, M1 memory/decisions, M2 authoring/orchestration,
+> M3 widgets/cost, and M4 performance/scale are implemented. M4's benchmarks and the viewport/density
+> budgets are committed; the timed comparison against `origin/dev` still needs a display-capable
+> machine (see M4). One canonical capture gate and suite tags are in place. Phases 14–19.11 are
+> complete. `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the
+> single source of truth for remaining work.
 >
-> **Baseline:** through Phase 19.11 at `r6` below. Canonical local suites: `packages/session-ui`
-> `bun test src/graph` 338 tests / 33 files, `packages/session-graph` `bun test src` 97 / 12,
+> **Baseline:** through Phase 19.11 at `r7` below. Canonical local suites: `packages/session-ui`
+> `bun test src/graph` 343 tests / 34 files, `packages/session-graph` `bun test src` 105 / 14,
 > `packages/gui-plugins` `bun run test` 1,162 / 115 (1 skip), and root `bun run check` green
-> (53/53). Session-graph component suite: the two new widget/cost specs pass; the known pre-existing
+> (53/53). Session-graph component suite: the widget/cost specs pass; the known pre-existing
 > narrow-sheet geometry failure remains (see r5).
 >
-> **Next:** M4 performance and scale, then M5 navigation/attention/layout breadth.
+> **Next:** M5 navigation/attention/layout breadth, then M6 accessibility. Before M9, run the M4
+> benchmarks once on a presentation-capable machine and record the budget verdict here.
 
 ### Session handoff
 
-- M0–M3 are done. Start with **M4**.
+- M0–M4 are implemented. Start with **M5**.
+- M4 performance: the three strobe files are `packages/app/perf/graph-inline.bench.ts`,
+  `graph-transcript.bench.ts`, and `graph-render.bench.ts` (500/2,000/5,000 nodes). `--plan` accepts
+  all three. `--check` cannot complete in this environment: both the new files and the existing
+  `timeline.bench.ts` blank-page in headless Chromium, and a headed run needs a display with at least
+  1366×768. Run the milestone comparison on a display machine before M9 and record the verdict.
+- The card budget is `viewportCardBudget(level, canvasSize, density)`: the table's number at the
+  1280×800 reference, scaled by viewport area and the host's density profile, clamped to half/double.
+  The density profile reaches `SessionGraph` through `props.density`; the map, hybrid, panel,
+  dialogs, turn map, and transcript pass it from the plugin preferences.
+- `GraphTranscriptSurface` virtualizes its rows with `@tanstack/solid-virtual`; the surface is now
+  its own scroll element. Affordances are built once per graph model (`buildTurnAffordances`), not
+  scanned per row: a turn with a failed child gets "Why", a turn with a subagent gets "Expand" and
+  "Subagent". Rows use the graph's turn node id (`turn:<messageID>`), so chips and the inline map
+  address the turn the model actually contains; only a turn's first row owns them, so a turn mounts
+  one map, not one per message.
+- `canPatchRenderModel`/`modelUpdatePath` own the patch decision. An append patches and never asks
+  the camera to fit; a moved, removed, or reshaped node takes the full path.
+- The kernel `SpatialIndex2D` evaluation is `packages/session-graph/script/spatial-bench.ts`:
+  5–14 µs/query indexed against 34–155 µs linear at 500–5,000 nodes. Keep it as the candidate for
+  host-side picking; there is no call site today because the renderer owns hit-testing.
 - Node widgets now cover todo (`todowrite`), a small diff (`edit`/`write`/`patch`/`apply_patch`),
   and a read-only terminal snapshot (shell result). The model picker and permission-prompt summary
   are **parked** (M3.1): the plugin SDK exposes no model catalog and the graph carries no permission
@@ -45,6 +68,9 @@
   40%-height assertion on this machine and reproduces on unmodified `HEAD` (299–316 px against a
   372.8 px threshold). It is not an M2 regression; fix it during M6 with a real narrow-viewport
   measurement or by dismissing the first-run banner before measuring.
+- Known app e2e failure in this environment: `e2e/graph/session-graph.spec.ts` does not open the map
+  from `#graph:file:…` and reproduces on unmodified `HEAD`. The graph component suite (including the
+  new transcript spec) passes. Diagnose the hash/surface selection separately from M4.
 - Canonical checks: `bun run check` at the root; `bun test src/graph` in `packages/session-ui`;
   `bun test src` in `packages/session-graph`; `bun run test` in `packages/gui-plugins`;
   `bun run graph:verify` for the full graph gate.
@@ -340,20 +366,61 @@ commands published in M0.7.
 
 ## M4 — Performance and scale (P1)
 
-- [ ] Add `packages/app/perf/graph-inline.bench.ts` (expand cost, first frame).
-- [ ] Add `packages/app/perf/graph-transcript.bench.ts` (scroll cost with zero graphs mounted).
-- [ ] Add `packages/app/perf/graph-render.bench.ts` (500 / 2,000 / 5,000 nodes).
-- [ ] Keep the host timeline untouched; inline previews stay static SVG.
-- [ ] Lazy mount and dispose one renderer per visible surface; reuse safely across lens switches.
-- [ ] Use `applyPatch` for additions and verify no camera jump.
-- [ ] Virtualize the graph transcript surface; do no per-row graph work when collapsed.
-- [ ] Make budgets viewport/density-aware using `useBudgetCenter` and `DOM_BUDGET`.
-- [ ] Evaluate kernel `SpatialIndex2D` for hit-testing and nearest-node at scale.
+- [x] Add `packages/app/perf/graph-inline.bench.ts` (expand cost, first frame). **Done.** It opens
+      the graph transcript surface, clicks the failed turn's affordance toggle (the row's expand
+      control), and waits for the inline renderer's `data-graph-ready`. Primary `main.work`; reset
+      reloads the document so the lazy chunk and WebGL mount are cold each run.
+- [x] Add `packages/app/perf/graph-transcript.bench.ts` (scroll cost with zero graphs mounted).
+      **Done.** It scrolls the virtualized transcript 3,000 px down and back. Primary `main.busy`
+      with `main.work` and `frames.dropped.pct`; no row mounts an inline graph.
+- [x] Add `packages/app/perf/graph-render.bench.ts` (500 / 2,000 / 5,000 nodes). **Done.** A
+      parameterized fixture builds about 3 nodes per tool call, so the curve is approximate. Cases
+      redraw at Detail and at Overview; reset returns to Execution.
+- [x] Keep the host timeline untouched; inline previews stay static SVG. **Verified.** `GraphPreview`
+      renders `TurnMapInlineGraph` (static SVG) and no host timeline code changed. Only the graph
+      surface's own rows were touched.
+- [x] Lazy mount and dispose one renderer per visible surface; reuse safely across lens switches.
+      **Verified, no change needed.** `GraphInline` lazily imports `SessionGraph` and unmounts it on
+      collapse; `GraphCanvas` owns one renderer, disposes it in `teardown`/`onCleanup`, and guards a
+      late mount with a generation counter. Projection, depth, level, layout, and selection are
+      pushed through setters on the same instance; a lens that switches surfaces remounts only that
+      surface's renderer.
+- [x] Use `applyPatch` for additions and verify no camera jump. **Done.** The patch decision moved
+      to `canvas/model-apply.ts` (`canPatchRenderModel`, `modelUpdatePath`). `model-apply.test.ts`
+      proves an append patches, while a moved, removed, or reshaped node takes the full path. The
+      patch path never calls `onModelApplied`, so it never requests a fit; the camera stays put.
+- [x] Virtualize the graph transcript surface; do no per-row graph work when collapsed. **Done.**
+      `GraphTranscriptSurface` uses `@tanstack/solid-virtual` (dynamic row measurement, 3-row
+      overscan) and owns its scroll element. `buildTurnAffordances` makes one pass over the graph
+      model; rows read the map. The surface also uses the graph's turn node id (`turn:<messageID>`)
+      and gives the affordances/inline map to a turn's first row only, so the chips and the map
+      reach the right turn and a turn mounts one map, not one per message.
+      `transcript-affordances.test.ts` covers the rules; `graph-transcript.spec.ts` proves only the
+      visible rows mount and a failed turn expands its inline map.
+- [x] Make budgets viewport/density-aware using `useBudgetCenter` and `DOM_BUDGET`. **Done.**
+      `viewportCardBudget` scales the level's table value by viewport area and the
+      comfortable/compact/cozy profile, clamped to half/double. `SessionGraph` computes it from
+      `canvasSize()` and `props.density`; the plugin surfaces pass the persisted profile.
+      `dom-budget.test.ts` covers the reference, small/large viewports, clamps, and density.
+- [x] Evaluate kernel `SpatialIndex2D` for hit-testing and nearest-node at scale. **Evaluated;
+      parked.** `packages/session-graph/script/spatial-bench.ts` measures 5–14 µs/query indexed against
+      34–155 µs linear at 500–5,000 nodes. No host-side hit-testing or nearest-node call site exists
+      (the renderer owns picking), so there is nothing to replace yet. Keep the script as the
+      candidate measurement when a host-side query appears.
 - [ ] **Budgets:** transcript scroll regression < 3%; interactive expand first frame < 100 ms;
-      two mounted graphs ≤ 1.5× the memory of one.
-- [ ] Record benchmark results against `origin/dev` once per milestone, not per commit.
+      two mounted graphs ≤ 1.5× the memory of one. **Open — measurement environment blocked.** All
+      three new files and the existing `timeline.bench.ts` produce a blank page under headless
+      Chromium here, and a headed run needs a display of at least 1366×768. The files pass
+      `strobe bench --plan`.
+- [ ] Record benchmark results against `origin/dev` once per milestone, not per commit. **Open.**
+      Run on a display-capable machine before M9:
+      `strobe bench packages/app/perf/graph-inline.bench.ts --base origin/dev --head .` (and the
+      transcript/render files). Record the numbers here.
 
-**Exit:** benchmarks committed; budgets met or a documented fallback chosen.
+**Exit:** benchmarks committed; budgets met or a documented fallback chosen. **Partial fallback
+adopted:** the files and plan are committed, but no timing claim is made until one milestone run on
+a display-capable machine. The M9 gate must replace this paragraph with measured numbers or a
+per-budget fallback.
 
 ---
 
@@ -493,7 +560,7 @@ commands published in M0.7.
 | 19.10 Attention | Keep or reduce | Alarm-fatigue study |
 | 19.11 Cost lens | **Keep, flag-gated; streaming shows ranges** | Provider-reported usage on turn cards; heat sizing deferred (M3.2) |
 | 19.12 Layouts/renderers | Adopt or drop | Measured benefit over current layouts |
-| Phase 20 budgets | Met or fallback | Strobe against `origin/dev` |
+| Phase 20 budgets | Met or fallback | Benchmarks committed; timing blocked by this environment (M4) |
 
 ---
 
@@ -648,3 +715,25 @@ this file's revision log and leave the v34 archive unchanged.
     component tests (focus/fold and toolbar toggle). Synced the bundled graph copy (43 modules).
   - Verified: `bun run check` 53/53; `session-ui` graph 338/33; `session-graph` unit 97/12;
     `gui-plugins` 1,162/115 (1 skip); both new component specs pass.
+- **r7 (2026-11-12):** Implemented M4 performance and scale.
+  - Budgets: `viewportCardBudget` answers viewport area and density over `DOM_BUDGET`, clamped to
+    half/double. `SessionGraph` computes it from `canvasSize()` and the new `density` prop; map,
+    hybrid, panel, dialogs, turn map, and the transcript surface pass the plugin's persisted profile.
+  - Transcript: virtualized with `@tanstack/solid-virtual`; the surface owns its scroll element.
+    Affordances are one pass over the graph (`buildTurnAffordances`), not a scan per row. Rows now
+    address the graph's turn node (`turn:<messageID>`), and only a turn's first row carries the
+    chips and inline map, so the surface reaches the right turn and mounts one map per turn.
+    `graph-transcript.spec.ts` proves visible-row-only mounting and a failed turn's inline map.
+  - Patch path: `canPatchRenderModel`/`modelUpdatePath` extracted and tested. Appends patch without a
+    camera fit; moved/removed/reshaped nodes rebuild.
+  - Benchmarks: `graph-inline`, `graph-transcript`, and `graph-render` added to
+    `packages/app/perf`, with a shared `fixtures/graph.ts` that enables the graph flags through the
+    mocked config. All three pass `strobe bench --plan`. Timed runs are blocked here: headless
+    Chromium blanks the page, and the existing `timeline.bench.ts` fails the same way; a headed run
+    needs a display of at least 1366×768. No budget is claimed met until that run.
+  - Spatial index: `script/spatial-bench.ts` measures 5–14 µs/query indexed against 34–155 µs linear
+    at 500–5,000 nodes. Parked because the renderer owns picking and no host-side nearest-node call
+    site exists.
+  - Verified: `session-ui` graph 343/34; `session-graph` unit 105/14; `gui-plugins` 1,162/115
+    (1 skip); the new `graph-transcript` component spec 2/2; `session-ui`, `session-graph`,
+    `gui-plugins`, and `app` typecheck.

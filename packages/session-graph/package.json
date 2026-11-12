@@ -130,6 +130,7 @@
   "dependencies": {
     "@opencode/session-ui": "workspace:*",
     "@opencode/ui": "workspace:*",
+    "@tanstack/solid-virtual": "catalog:",
     "@spacegraphjs/adapter": "workspace:*",
     "@spacegraphjs/a11y": "workspace:*",
     "@spacegraphjs/controls": "workspace:*",
@@ -153,6 +154,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "catalog:",
+    "@spacegraphjs/kernel": "workspace:*",
     "@tsconfig/node22": "catalog:",
     "@types/bun": "catalog:",
     "@types/three": "0.186.0",

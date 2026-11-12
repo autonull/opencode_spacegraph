@@ -99,6 +99,7 @@ export function TurnMapLayer(props: {
             depth="flat"
             detailMode="popover"
             level="execution"
+            density={props.model.density()}
             chrome={false}
             shell="bare"
             reducedMotion={true}

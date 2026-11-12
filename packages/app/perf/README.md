@@ -17,6 +17,9 @@ build on the e2e mock server, so they need no backend.
 | `composer.bench.ts`   | type in a large draft · move the cursor in it · recall a prompt from history                                                                                                                          | A 44,000-character saved draft; 100 prompts with screenshots.      |
 | `docks.bench.ts`      | open and close request docks                                                                                                                                                                          | A permission dock and an MCP elicitation over a 20-turn session.   |
 | `question.bench.ts`   | switch questions                                                                                                                                                                                      | The new question dock with its motion on: five questions.          |
+| `graph-inline.bench.ts` | expand a turn map | The graph transcript surface with a static turn preview, then its lazy WebGL inline map. |
+| `graph-transcript.bench.ts` | scroll the graph transcript | The graph transcript surface with no inline graph expanded, virtualized to the visible rows. |
+| `graph-render.bench.ts` | draw in detail · draw the overview | A session map at about 500, 2,000 and 5,000 nodes. |
 | `desktop.bench.ts`    | idle                                                                                                                                                                                                  | The packaged desktop app, every process, doing nothing for 5 s.    |
 
 Every case decides `main.work` (renderer main-thread task time per run) unless it says otherwise: it is continuous,

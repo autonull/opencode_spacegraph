@@ -18,8 +18,9 @@ import type {
   Position,
   SpatialMemoryCamera,
   ZoomLevel,
+  CardDensity,
 } from "@opencode/session-ui/graph"
-import { buildFixtureGraph } from "@opencode/session-ui/graph"
+import { buildFixtureGraph, viewportCardBudget } from "@opencode/session-ui/graph"
 import { GraphActionTarget } from "./GraphActionTarget"
 import {
   CARD_SIZE,
@@ -123,6 +124,8 @@ export type SessionGraphProps = {
   /** Defaults to the live host theme read from CSS tokens (U3.7). */
   theme?: RenderTheme
   level?: ZoomLevel
+  /** M4: the density profile the host persists; it scales the card budget. */
+  density?: CardDensity
   projection?: Projection
   /** LE.14: controlled depth spectrum (flat | layered | depth-stack | orbit); the host persists it. */
   depth?: DepthMode
@@ -1069,6 +1072,12 @@ export const SessionGraph = (props: SessionGraphProps) => {
     })
   }
 
+  // M4 — the card budget answers the viewport and the density profile, not only the level: a small
+  // pane spends fewer cards, a large display more. The camera chooses which nodes win the budget.
+  const cardBudget = createMemo(() =>
+    viewportCardBudget(level(), canvasSize(), props.density ?? "comfortable"),
+  )
+
   // Build render model using extracted helper
   const { renderModel, contentIDs, ordered } = useRenderModel({
     model: demoModel,
@@ -1086,6 +1095,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     manualSizes: manual.sizes,
     hiddenEdgeKinds: edgeKinds.hiddenEdgeKinds,
     drawn,
+    cardBudget,
   })
 
   // B1 — the selection verbs. frameSelection and exportSelection need camera/ordered (defined later).
