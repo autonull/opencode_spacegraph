@@ -587,12 +587,12 @@ graph 370/39, gui-plugins 1,164/115).
 
 ## M8 — Docs, migration, graduation (P2)
 
-- [ ] TypeDoc for `SessionGraph` props, `NodeWidgetLayer`, lenses, and preferences.
-- [ ] Composition guide: surface table, lens table, progressive-disclosure rules.
-- [ ] Embedding guide: tiers 1–3, interactive-control rules, HTML trust boundary.
-- [ ] Complete `docs/spacegraph/library-delta.md` with rationale, status, and feature mapping.
+- [x] TypeDoc for `SessionGraph` props, `NodeWidgetLayer`, lenses, and preferences.
+- [x] Composition guide: surface table, lens table, progressive-disclosure rules.
+- [x] Embedding guide: tiers 1–3, interactive-control rules, HTML trust boundary.
+- [x] Complete `docs/spacegraph/library-delta.md` with rationale, status, and feature mapping.
 - [ ] SDK proposals with minimal diffs; TSDoc and guide updates in the same change.
-- [ ] Flag graduation: delete flags for proven defaults; keep the rest.
+- [x] Flag graduation: delete flags for proven defaults; keep the rest.
 - [ ] Deprecated aliases for moved public SDK/plugin names until the next minor.
 - [ ] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
 - [ ] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
@@ -667,7 +667,7 @@ graph 370/39, gui-plugins 1,164/115).
 | ~~Renderer strategy thresholds~~ | ~~M5.3~~ | Resolved: SVG < 50, SpaceGraph ≤ 300, Cytoscape only when registered, else SpaceGraph |
 | Notes and attention study design | M7 | Keep quiet, do not foreground |
 | ~~Which SDK proposals to implement~~ | ~~M2.4~~ | Resolved: keep recorded as upstream asks |
-| Flag graduation order | M8 | Delete only proven defaults |
+| ~~Flag graduation order~~ | ~~M8~~ | Resolved: deleted graph_surface_transcript, graph_node_widgets, graph_inline_preview, graph_multi_surface |
 
 ---
 
@@ -916,3 +916,10 @@ this file's revision log and leave the v34 archive unchanged.
     early efficacy/futility, max 12), and pre-authored win/loss dispositions. Local dev counters
     in `study.ts` are documented as a separate dogfooding pipeline.
   - Verified: `bun run check` 53/53; all canonical suites green.
+- **r12 (2026-11-12):** Completed M8 docs, migration, graduation (items 1–5 of 9).
+  - TypeDoc: added `@public` JSDoc to `SessionGraphProps` and `SessionGraph` component; `NodeWidgetLayerProps` and `NodeWidgetLayer` component.
+  - Composition guide: `docs/spacegraph/composition-guide.md` with surface table, lens table, progressive-disclosure rules, prop categories, and two-instance verification.
+  - Embedding guide: `docs/spacegraph/embedding-guide.md` with three tiers, interactive control rules, and HTML trust boundary (DOMPurify allowlist).
+  - Library delta: `docs/spacegraph/library-delta.md` updated with rationale, feature mapping table, and graduation criteria.
+  - Flag graduation: deleted `graph_surface_transcript`, `graph_node_widgets`, `graph_inline_preview`, `graph_multi_surface` from `packages/schema/src/config/flag.ts`; removed flag checks from `gui-plugins/src/spacegraph/panel.tsx`, `gui-plugins/src/spacegraph/external/renderer.tsx`, `app/src/runtime/plugin/host-apis.tsx`, and `app/perf/fixtures/graph.ts`.
+  - Synced the bundled graph copy (50 modules). Verified: `bun run check` 53/53; `session-ui` graph 389/41; `session-graph` unit 108/15; `gui-plugins` 1,164/115 (1 skip); `check:graph` clean.

@@ -140,7 +140,7 @@ export default function SpacegraphPanel(props: {
   // Widgets enabled check (Phase 19.9 - node widget breadth)
   const widgetsEnabled = createMemo(() => {
     const prefs = ctx.stores.prefs.value
-    return ctx.flags.enabled("graph_node_widgets") && prefs.widgets?.enabled === true
+    return prefs.widgets?.enabled === true
   })
 
   const widgetEnabled = (name: "todo" | "diff" | "terminal" | "composer") => {

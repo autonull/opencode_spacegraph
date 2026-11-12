@@ -7,6 +7,8 @@ export const wildcard = "all"
  * Every feature flag, by key, with what it turns on. A flag is on in local and dev builds and off in released ones;
  * `experimental.<key>` in config and `OPENCODE_FLAGS` override that, and `OPENCODE_FLAGS=all` or
  * `experimental.all_flags: true` turn every flag on. Read one with Core's `Flag.enabled("<key>")`.
+ *
+ * Graduated (always on): graph_surface_transcript, graph_node_widgets, graph_inline_preview, graph_multi_surface
  */
 export const registry = {
   todo: "Enable the experimental todowrite tool.",
@@ -16,17 +18,13 @@ export const registry = {
   schedules: "Enable experimental scheduled tasks that wake a session with a prompt.",
   artifacts: "Enable experimental artifacts backed by pluggable providers.",
   codemode_vm: "Run the Code Mode execute tool on the experimental bytecode VM instead of the legacy interpreter.",
-  graph_surface_transcript: "Enable the graph transcript surface (own rows with per-turn affordances).",
-  graph_node_widgets: "Enable node widget overlay (interactive UI inside graph nodes).",
-  graph_inline_preview: "Enable inline graph preview (static SVG with lazy interactive expand).",
-  graph_multi_surface: "Enable shared selection/trace/notes across multiple graph surfaces.",
-  graph_library_renderers: "Enable alternative renderer strategies (Cytoscape, etc.).",
-  graph_time_travel: "Enable time travel scrubber through incremental builder snapshots.",
-  graph_compaction_advisor: "Enable compaction preview advisor.",
   graph_cost_lens: "Enable cost/budget lens.",
   graph_trust_lens: "Enable trust lens (highlight unverified writes).",
   graph_palette: "Enable the graph palette over nodes, actions, lenses, and surfaces.",
   graph_attention: "Enable failure attention badges, toasts, and the titlebar item.",
   graph_layout_breadth: "Enable optional grid and circular graph layouts.",
+  graph_library_renderers: "Enable alternative renderer strategies (Cytoscape, etc.).",
+  graph_time_travel: "Enable time travel scrubber through incremental builder snapshots.",
+  graph_compaction_advisor: "Enable compaction preview advisor.",
 } as const satisfies Record<string, string>
 export type Key = keyof typeof registry

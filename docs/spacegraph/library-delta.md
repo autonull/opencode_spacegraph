@@ -297,23 +297,23 @@ export function buildSubagentMap(model: GraphViewData, subagentId: string, optio
 
 ## Tracking Table
 
-| Proposal | Area | Phase | Status | Blocker |
-|----------|------|-------|--------|---------|
-| SessionLayer on transcript | SDK | 16.5 | Proposed | — |
-| session.turn slot | SDK | 16.5 | Proposed | Only if own-rows fails |
-| ctx.ui.Popover | SDK | 16.2, 16.4 | Proposed | — |
-| Persist Surfaces.selected | SDK | 17.3 | Plugin workaround | — |
-| SessionSurface metadata | SDK | 18 | Proposed | — |
-| StorageScope {session, surface} | SDK | 18 | Proposed | — |
-| OpenOptions.pane | SDK | 17.1 | Proposed | — |
-| ctx.mount for widgets | SDK | 15.4, 19.9 | Proposed | Only if Tier 1 fails |
-| RenderNode.element → DOMNode | Library | 15.5 | Proposed | Only if Tier 1 fails |
-| Per-instance DOM id prefix | Library | 14 | Proposed | — |
-| Depth treatment overrides | Library | 16.1, 16.4 | Proposed | — |
-| Edge hover parity | Library | 19.1, 19.2 | Proposed | — |
-| Group-toggle contract event | Library | 17.2, 21 | Proposed | — |
-| Adapter mount options | Library | 16.1, 18.3 | Proposed | — |
-| Real turn-map functions | Library | 15.3, 16.1 | Proposed | — |
+| Proposal | Area | Phase | Status | Rationale | Feature Mapping | Blocker |
+|----------|------|-------|--------|-----------|-----------------|---------|
+| SessionLayer on transcript | SDK | 16.5 | Proposed | Host transcript is opaque; plugin needs to overlay affordances per turn without owning rows | Graph transcript surface affordances (Why, Expand, Drill, Share) | — |
+| session.turn slot | SDK | 16.5 | Proposed | Fallback if GraphTranscriptSurface virtualization fails performance budget | Fallback for C1/C2/C3 affordances | Only if own-rows fails |
+| ctx.ui.Popover | SDK | 16.2, 16.4 | Proposed | Generic anchored popover primitive for node detail, share, composer widget | Node detail popover, subagent drill popover, share permalink, composer widget | — |
+| Persist Surfaces.selected | SDK | 17.3 | Plugin workaround | Surface selection not persisted generically; plugin uses per-session store | Shared surface persistence across plugins | — |
+| SessionSurface metadata | SDK | 18 | Proposed | Need enabled/default/enter/focus hooks for flag-gated surfaces and lifecycle | Flag-gated surfaces, lens defaults, surface lifecycle hooks | — |
+| StorageScope {session, surface} | SDK | 18 | Proposed | Per-surface preferences (density, layout, collapsed groups) scoped to surface within session | Per-surface preference persistence | — |
+| OpenOptions.pane | SDK | 17.1 | Proposed | Panel.region only supports "side"; need split (hybrid) and bottom (mobile) | HybridSurface as split pane, mobile map drawer | — |
+| ctx.mount for widgets | SDK | 15.4, 19.9 | Proposed | Generic mount primitive if Tier 1 overlay (NodeWidgetLayer) proves insufficient | Fractal node widget, widgets needing focus management | Only if Tier 1 fails |
+| RenderNode.element → DOMNode | Library | 15.5 | Proposed | Live framework mounting (Solid, React) impossible through renderer contract | Fractal node with live subgraph, terminal snapshot, model picker widgets | Only if Tier 1 fails |
+| Per-instance DOM id prefix | Library | 14 | Proposed | Multiple renderers per page supported but DOM ids collide (node-html-${id}) | Multiple SessionGraph instances on one page | — |
+| Depth treatment overrides | Library | 16.1, 16.4 | Proposed | Static depth table; surfaces need custom fog/tilt without forking renderer | Inline preview depth, subagent drill depth, layout breadth | — |
+| Edge hover parity | Library | 19.1, 19.2 | Proposed | SpaceGraph adapter emits hoverChange for nodes only; need edge hover for trace overlays | Investigation (trace breadcrumbs), Review (compare) | — |
+| Group-toggle contract event | Library | 17.2, 21 | Proposed | Group collapse/expand is DOM markup only; host needs typed event for store + a11y | Shared collapsed groups across surfaces, a11y group state announcement | — |
+| Adapter mount options | Library | 16.1, 18.3 | Proposed | Adapter mount takes only theme/projection; need reducedMotion, plugins, chrome | Inline preview reducedMotion, flag-gated chrome, renderer strategy | — |
+| Real turn-map functions | Library | 15.3, 16.1 | Proposed | TurnMapInlineGraph/Overlay import from session-ui; library should export or document injection | Composer widget, inline preview, standalone SpaceGraphJS usage | — |
 
 ---
 
@@ -326,3 +326,32 @@ Each proposal graduates when:
 4. No orphan flag or config remains
 
 Proposals that are not needed by Phase 23 are marked "Park" with rationale.
+
+---
+
+## Feature-to-Proposal Mapping
+
+| Feature | SDK Proposals Needed | Library Proposals Needed | Status |
+|---------|---------------------|-------------------------|--------|
+| Graph transcript surface (own rows) | — | — | Shipped (M5.1) |
+| Graph transcript affordances (chips) | SessionLayer or session.turn slot | — | Shipped via own rows |
+| Node detail popover (Why, Expand, Drill) | ctx.ui.Popover | — | Tier 2: GraphPopover |
+| Share permalink popover | ctx.ui.Popover | — | Tier 2: GraphPopover |
+| Composer widget in node | ctx.ui.Popover, ctx.mount | RenderNode.element | Tier 2: NodeWidgetLayer |
+| Subagent drill popover | ctx.ui.Popover | — | Tier 2: GraphPopover |
+| Multiple graph surfaces with synced state | Persist Surfaces.selected, StorageScope {session, surface} | Per-instance DOM id prefix | Shipped (M2.2, M5.1) |
+| Flag-gated surfaces | SessionSurface metadata | — | Plugin workaround |
+| Per-surface preferences | StorageScope {session, surface} | — | Plugin store |
+| Hybrid as split pane | OpenOptions.pane | — | Shipped via arrangement prop |
+| Mobile map drawer | OpenOptions.pane | — | Not built |
+| Inline preview depth | — | Depth treatment overrides | Not built |
+| Subagent drill depth | — | Depth treatment overrides | Not built |
+| Trace overlays (Why, Led-here) | — | Edge hover parity | Shipped via node hover |
+| Review compare overlay | — | Edge hover parity | Parked |
+| Shared collapsed groups | — | Group-toggle contract event | Shipped via useGroupCollapse |
+| Flag-gated chrome | — | Adapter mount options | Not built |
+| Renderer strategy (SVG/SpaceGraph/Cytoscape) | — | Adapter mount options | Contract recorded |
+| Turn map in composer widget | — | Real turn-map functions | Shipped via session-ui import |
+| Inline turn map (static SVG) | — | Real turn-map functions | Shipped via TurnMapInlineGraph |
+| Fractal node (live subgraph) | ctx.mount | RenderNode.element | Parked (Tier 3) |
+| Live terminal widget | ctx.mount | RenderNode.element | Parked (Tier 3) |

@@ -378,8 +378,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       ),
     })
 
-    // Phase 16.2: Graph transcript surface (flag-gated)
-    if (surfaces() && ctx.flags.enabled("graph_surface_transcript")) {
+    // Phase 16.2: Graph transcript surface
+    if (surfaces()) {
       const GraphTranscriptSurface = lazy(() =>
         import("@opencode/session-graph/ui/GraphTranscriptSurface").then((m) => ({ default: m.GraphTranscriptSurface }))
       )
