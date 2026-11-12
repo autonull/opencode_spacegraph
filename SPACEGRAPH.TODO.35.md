@@ -1,6 +1,6 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-12):** M0–M7 complete. M8 docs/migration done. M9 **functional items complete**; remaining gates are environmental: capture gate (headless rendering flake), benchmarks (need display machine), and manual listener-leak verification. `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
+> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: capture gate (4 frames differ 0.13–0.17% on headless, needs re-bless on reference env), benchmarks (need display machine ≥1366×768), and manual listener-leak verification. `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
 
 ### Session handoff
 
@@ -119,7 +119,7 @@
 | 7 | **M6 — Accessibility, theming, i18n, RTL** | P1 | ✅ Complete |
 | 8 | **M7 — Experiments and validation** | P2 | ✅ Complete (video review needs outsiders) |
 | 9 | **M8 — Docs, migration, graduation** | P2 | ✅ Complete |
-| 10 | **M9 — Definition of done** | P0 gate | 🟡 Functional complete; environmental gates remain |
+| 10 | **M9 — Definition of done** | P0 gate | 🟡 Functional complete; environmental gates remain (capture re-bless, benchmarks, listener-leak check) |
 
 P2 work may be parked after its kill test. It must not block M6–M8 unless adopted as a default.
 
@@ -568,7 +568,7 @@ graph 370/39, gui-plugins 1,164/115).
       §14).
 - [ ] Video review gate: demo video passes ≥3 outsider review with notes recorded.
 
-**Exit:** counters visible in dev; cohorts switchable; narrative fixture committed; protocol committed; **video review passed**.
+**Exit:** counters visible in dev; cohorts switchable; narrative fixture committed; protocol committed; **video review pending** (≥3 outsider reviews).
 
 ---
 
@@ -584,7 +584,7 @@ graph 370/39, gui-plugins 1,164/115).
 - [x] Update `SPACEGRAPH.TODO.33.md` cross-links and `SPACEGRAPH.md` §5/§16.
 - [x] Mark `SPACEGRAPH.TODO.34.md` as archived and point all remaining work here.
 
-**Exit:** docs build; no orphan flags; cross-links resolve. **Remaining blocker:** video review (M7.6) must pass first; the known e2e hash-navigation failure remains. Screenshots are re-blessed as of r14.
+**Exit:** docs build; no orphan flags; cross-links resolve. M8 complete; M7.6 video review and M9 environmental gates remain. Screenshots re-blessed as of r14; capture verify shows 4 frames with minor headless variance.
 
 ---
 
@@ -596,12 +596,12 @@ graph 370/39, gui-plugins 1,164/115).
 - [x] All nine lenses switch without surprise and persist.
 - [x] Every capability is flag-gated and has a pass/park decision with evidence.
 - [ ] No dead control, global listener leak, or duplicate DOM id in a normal session.
-- [ ] Benchmarks within budget; a11y and RTL verified.
-- [x] `bun run check` green; capture gate green; one `dist/` rebuild; one component-suite run.
+- [ ] Benchmarks within budget (need display machine ≥1366×768); a11y and RTL **verified** via component tests (3 a11y + 2 RTL pass).
+- [ ] `bun run check` green (53/53); capture gate **4 frames differ 0.13–0.17%** (needs re-bless on reference env); one `dist/` rebuild; one component-suite run.
 
 **Notes:**
-- Capture gate: headless rendering differences from r14 blessing (non-deterministic in this environment). Screenshots re-blessed at r14 on this machine headless; subsequent commits are doc/alias-only. Requires re-bless or acceptance of flake.
-- Benchmarks: need display-capable machine (headed Chromium ≥1366×768). Headless blanks page.
+- Capture gate: 4 frames differ slightly from r14 blessing (01-log, 13-narrow, 34-surfaces, 38-hybrid). Re-bless on reference environment or accept as headless variance. Current headless run is non-deterministic for these frames.
+- Benchmarks: need display-capable machine (headed Chromium ≥1366×768). Headless blanks page. No budget claim until milestone run recorded.
 - a11y + RTL: **verified** via component tests (3 a11y + 2 RTL pass).
 - Dead control / listener leak / duplicate DOM id: needs manual e2e session verification.
 
@@ -935,3 +935,11 @@ this file's revision log and leave the v34 archive unchanged.
   - Removed `docs/spacegraph/migration.md` (not needed).
   - Cleaned up `docs/spacegraph/README.md` reference to migration.md.
   - Verified: `bun run check` 53/53; all unit/component tests pass; `docs-graph` check clean.
+- **r17 (2026-11-12):** Verified all canonical gates and updated M9 status.
+  - `bun run check` 53/53 green (0 errors, 2334 warnings advisory).
+  - `session-ui` graph: 389 pass / 41 files.
+  - `session-graph` unit: 108 pass / 15 files; component: 68 pass / 12 skip.
+  - `gui-plugins`: 1,165 pass / 1 skip / 115 files.
+  - `docs-graph` check: 49 pass / 0 fail.
+  - Capture verify: 39/43 frames match; 4 frames differ 0.13–0.17% (01-log, 13-narrow, 34-surfaces, 38-hybrid).
+  - M7.6 video review gate and M9 environmental gates remain (benchmarks need display machine, manual listener-leak check).
