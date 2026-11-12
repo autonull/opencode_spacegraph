@@ -23,5 +23,20 @@ export function createCardCopy(i18n: UiI18n): CardCopy {
     expandGroup: () => i18n.t("ui.sessionGraph.status.expandGroup"),
     copyButton: () => i18n.t("ui.sessionGraph.card.copyButton"),
     pinned: () => i18n.t("ui.sessionGraph.status.pinned"),
+    cost: (usage) => {
+      const compact = new Intl.NumberFormat(i18n.locale(), { notation: "compact", maximumFractionDigits: 1 })
+      const tokens = `${usage.streaming ? "~" : ""}${compact.format(usage.tokens)} ${i18n.t("ui.sessionGraph.card.tokenUnit")}`
+      const tools = usage.tools > 0 ? i18n.plural("ui.sessionGraph.card.tools", usage.tools) : undefined
+      const seconds = usage.wallTime / 1000
+      const duration =
+        usage.wallTime <= 0
+          ? undefined
+          : seconds < 1
+            ? i18n.t("ui.sessionGraph.card.durationUnderSecond")
+            : seconds < 60
+              ? i18n.t("ui.sessionGraph.card.durationSeconds", { seconds: seconds.toFixed(1) })
+              : i18n.t("ui.sessionGraph.card.durationMinutes", { minutes: (seconds / 60).toFixed(1) })
+      return [tokens, tools, duration].filter(Boolean).join(" · ")
+    },
   }
 }

@@ -60,6 +60,9 @@ export type GraphToolbarProps = {
   /** Trust lens: highlight unverified writes; default off. */
   trustLens?: boolean
   onToggleTrustLens?: () => void
+  /** Cost lens: measured tokens, wall time, and tool counts on each turn. */
+  costLens?: boolean
+  onToggleCostLens?: () => void
   /** Compaction advisor: preview what would be kept or dropped during compaction. */
   compactionAdvisor?: boolean
   onToggleCompactionAdvisor?: () => void

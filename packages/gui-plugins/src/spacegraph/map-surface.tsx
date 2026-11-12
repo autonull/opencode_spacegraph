@@ -55,6 +55,7 @@ export function MapSurface(props: {
         onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
         onSplitView={props.onSplitView}
         preferredRenderer={preferredRenderer}
+        enableCostLens={props.model.costLensEnabled()}
         chrome={true}
         shell="full"
         onOpenTranscript={props.onOpenTranscript}

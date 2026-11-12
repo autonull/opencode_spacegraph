@@ -110,6 +110,10 @@ function stringField(record: Record<string, JsonValue>, key: string) {
   return value ? value : undefined
 }
 
+function jsonRecord(value: JsonValue | undefined): Record<string, JsonValue> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : undefined
+}
+
 function toolInput(tool: SessionMessageAssistantTool): Record<string, JsonValue> {
   if (tool.state.status === "streaming") {
     // SAFETY: Schema.Json and the client's JsonValue describe the same JSON tree.
@@ -1171,6 +1175,50 @@ export class GraphBuilder {
       const evidence = this.lastErrorByTurn.get(turnID)
 
       if (evidence) this.addEdge({ kind: "evidence", source: evidence, target: nodeID, confidence: "structural" })
+    }
+
+    this.recordUsage(turnID, message)
+  }
+
+  /**
+   * The cost lens reads measured usage from the turn, so the model records what the provider
+   * reported instead of re-counting nodes later. A streaming step records a range: the numbers are
+   * a lower bound until the step completes.
+   */
+  private recordUsage(turnID: string, message: SessionMessageAssistant) {
+    const node = this.nodesByID.get(turnID)
+
+    if (!node) return
+
+    const prior = jsonRecord(node.data?.usage)
+    const priorTokens = jsonRecord(prior?.tokens)
+    const number = (value: Record<string, JsonValue> | undefined, key: string) =>
+      typeof value?.[key] === "number" ? (value[key] as number) : 0
+
+    const completedAt = message.time.completed ?? (typeof prior?.completedAt === "number" ? prior.completedAt : undefined)
+    const startedAt = Math.min(
+      typeof prior?.startedAt === "number" ? prior.startedAt : message.time.created,
+      message.time.created,
+    )
+
+    node.data = {
+      ...node.data,
+      usage: {
+        tokens: {
+          input: number(priorTokens, "input") + (message.tokens?.input ?? 0),
+          output: number(priorTokens, "output") + (message.tokens?.output ?? 0),
+          reasoning: number(priorTokens, "reasoning") + (message.tokens?.reasoning ?? 0),
+          cacheRead: number(priorTokens, "cacheRead") + (message.tokens?.cache.read ?? 0),
+          cacheWrite: number(priorTokens, "cacheWrite") + (message.tokens?.cache.write ?? 0),
+        },
+        cost: number(prior, "cost") + (message.cost ?? 0),
+        wallTime: completedAt === undefined ? number(prior, "wallTime") : completedAt - startedAt,
+        tools: number(prior, "tools") + message.content.filter((content) => content.type === "tool").length,
+        steps: number(prior, "steps") + 1,
+        streaming: prior?.streaming === true || message.time.completed === undefined,
+        startedAt,
+        completedAt: completedAt ?? null,
+      },
     }
   }
 

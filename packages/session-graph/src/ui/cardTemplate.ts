@@ -117,6 +117,8 @@ export type CardCopy = {
   copyButton: () => string
   /** The pin marker's accessible label. */
   pinned?: () => string
+  /** Cost lens: a compact usage label for a measured turn. */
+  cost?: (usage: { tokens: number; tools: number; wallTime: number; streaming: boolean }) => string
 }
 
 /** Group card state for fold/unfold progression. */
@@ -153,6 +155,8 @@ export type CardTemplateOptions = {
   unverifiedFiles?: ReadonlySet<string>
   /** Durable pinned node ids, so every surface marks the same nodes. */
   pins?: ReadonlySet<string>
+  /** Cost lens: a compact usage label for a measured turn or the session total. */
+  cost?: (node: GraphNode) => string | undefined
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -406,6 +410,12 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
       ? `<span data-slot="card-pin" data-pinned="true" role="img" aria-label="${safeEscapeHtml(options.copy?.pinned?.() ?? "")}" style="flex:none;display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:${soft};color:${solid}" title="${safeEscapeHtml(options.copy?.pinned?.() ?? "")}"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5l4 4-2.5 1-2 2 .5 3-6.5-6.5 3 .5 2-2z"/><path d="M3 13l3-3"/></svg></span>`
       : ""
 
+    // Cost lens badge: the measured usage on a turn, or the session total on the root.
+    const costLabel = options.cost?.(node)
+    const costBadge = costLabel
+      ? `<span data-slot="card-cost" style="flex:none;display:flex;align-items:center;font-size:10px;color:${theme.textMuted};padding:1px 4px;border-radius:3px;background:${theme.surfaceMuted};white-space:nowrap">${safeEscapeHtml(costLabel)}</span>`
+      : ""
+
     // Phase/group node enhancements: distinct background, group glyph, member preview data
     const isGroupNode = isPhase || node.kind === "error-group" || node.kind === "file-group" || node.kind === "subagent-group"
     const hasCluster = node.clusterOf && node.clusterOf.length > 0
@@ -508,6 +518,7 @@ ${groupToggle}
 ${provenanceBadge}
 ${trustBadge}
 ${pinBadge}
+${costBadge}
 ${copyButton}
 <span style="flex:none;align-self:flex-start;width:8px;height:8px;border-radius:9999px;background:${status}"></span>
 </div>`

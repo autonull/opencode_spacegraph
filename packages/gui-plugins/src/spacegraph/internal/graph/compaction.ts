@@ -239,7 +239,11 @@ export type CompactionMeasurement = {
 
 /** The graph has no tokenizer; content length at four characters per token is the stable proxy. */
 export function estimateNodeTokens(node: GraphNode): number {
-  const content = `${node.label}\n${node.summary ?? ""}\n${node.data ? JSON.stringify(node.data) : ""}`
+  const data = node.data ? { ...node.data } : undefined
+  // The cost lens records measured usage on the turn. It is not context the model reads, so it
+  // stays out of the compaction estimate.
+  if (data) delete data.usage
+  const content = `${node.label}\n${node.summary ?? ""}\n${data && Object.keys(data).length > 0 ? JSON.stringify(data) : ""}`
   return Math.max(1, Math.ceil(content.length / 4))
 }
 

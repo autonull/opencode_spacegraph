@@ -64,6 +64,7 @@ export function MapDialog(props: {
           onArrangementChange={(next: import("@opencode/session-ui/graph").GraphArrangement) => props.model.setArrangement(props.session, next)}
           onArrangementSideChange={(next: import("@opencode/session-ui/graph").GraphSide) => props.model.setSide(props.session, next)}
           preferredRenderer={preferredRenderer}
+          enableCostLens={props.model.costLensEnabled()}
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}

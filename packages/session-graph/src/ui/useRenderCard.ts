@@ -3,7 +3,7 @@ import type { GraphNode, GraphViewData, DetailTier, EqualizerRuleSet } from "@op
 import type { CardTemplate } from "../canvas/buildRenderModel"
 import { createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
-import { fileRelations, unverifiedFiles } from "@opencode/session-ui/graph"
+import { fileRelations, tokenTotal, unverifiedFiles, costLens } from "@opencode/session-ui/graph"
 
 export function useRenderCard(
   props: {
@@ -27,6 +27,7 @@ export function useRenderCard(
     i18n: import("./useGraphState").UseGraphStateReturn["i18n"]
     band?: () => "overview" | "execution" | "detail" | undefined
     pins: () => ReadonlySet<string>
+    costLens: () => boolean
   },
 ) {
   return createMemo(() => {
@@ -34,6 +35,28 @@ export function useRenderCard(
     const selectedId = state.selection()[0]
     const model = state.model()
     const unverified = createMemo(() => new Set(unverifiedFiles(model).map((f) => f.id)))
+    const costs = costLens(model)
+    const costDetail = (node: GraphNode) => {
+      if (!state.costLens()) return undefined
+      if (node.kind === "session") {
+        if (costs.session.turns === 0) return undefined
+        return state.copy.cost?.({
+          tokens: tokenTotal(costs.session.tokens),
+          tools: costs.session.tools,
+          wallTime: costs.session.wallTime,
+          streaming: costs.session.streaming,
+        })
+      }
+      if (node.kind !== "turn") return undefined
+      const turn = costs.turns.get(node.id)
+      if (!turn) return undefined
+      return state.copy.cost?.({
+        tokens: tokenTotal(turn.tokens),
+        tools: turn.tools,
+        wallTime: turn.wallTime,
+        streaming: turn.streaming,
+      })
+    }
 
     return (
       props.renderCard ??
@@ -72,6 +95,7 @@ export function useRenderCard(
           renderNodeHTML: props.renderNodeHTML,
           unverifiedFiles: unverified(),
           pins: state.pins(),
+          cost: costDetail,
         })
       })()
     )

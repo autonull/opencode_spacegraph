@@ -11,6 +11,8 @@ export type GraphDrawControlProps = {
   onToggleFiles?: () => void
   trustLens?: boolean
   onToggleTrustLens?: () => void
+  costLens?: boolean
+  onToggleCostLens?: () => void
   compactionAdvisor?: boolean
   onToggleCompactionAdvisor?: () => void
   onOpenEqualizer?: () => void
@@ -93,6 +95,15 @@ export const GraphDrawControl = (props: GraphDrawControlProps) => {
           onClick: () => props.onToggleTrustLens?.(),
           pressed: props.trustLens,
           slot: "graph-trust-lens-option",
+          keepOpen: true,
+        })}
+      </Show>
+      <Show when={props.onToggleCostLens}>
+        {option({
+          label: i18n.t("ui.sessionGraph.toolbar.costLens"),
+          onClick: () => props.onToggleCostLens?.(),
+          pressed: props.costLens,
+          slot: "graph-cost-lens-option",
           keepOpen: true,
         })}
       </Show>

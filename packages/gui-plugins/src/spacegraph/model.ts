@@ -53,6 +53,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
   const timeTravelEnabled = () => ctx.flags.enabled("graph_time_travel")
 
+  const costLensEnabled = () => ctx.flags.enabled("graph_cost_lens")
+
   /** Shared graph memo - built incrementally per session, reused by panel, full-map, hybrid, etc. */
   const graph = (session: MountedSession) =>
     createMemo(() => {
@@ -206,6 +208,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     graph,
     /** Whether the host exposes the time-travel scrubber. */
     timeTravelEnabled,
+    costLensEnabled,
     /** The parked checkpoint index, or undefined for live. */
     checkpoint: (session: MountedSession) => sessionValue(session)?.checkpoint,
     /** Whether the session is parked away from live. */
