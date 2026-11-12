@@ -175,6 +175,21 @@ export function buildFixtureMessages(): SessionMessageInfo[] {
         ),
         { created: at(), completed: at() },
       ),
+      tool(
+        "prt_tool_todo_1",
+        "todowrite",
+        completed(
+          {
+            todos: [
+              { content: "Fix refresh token storage", status: "completed" },
+              { content: "Add integration test for refresh path", status: "in_progress" },
+              { content: "Update authentication docs", status: "pending" },
+            ],
+          },
+          "created task list",
+        ),
+        { created: at(), completed: at() },
+      ),
     ], { snapshot: { files: ["src/auth/session.ts"] } }),
   )
 

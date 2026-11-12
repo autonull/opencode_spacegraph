@@ -327,8 +327,8 @@ export const SHELL_TOOLS = new Set(["shell", "execute", "bash"])
 /** The tools that search the workspace. */
 export const SEARCH_TOOLS = new Set(["glob", "grep", "list"])
 
-/** The tools that change a file. */
-export const EDIT_TOOLS = new Set(["edit", "write", "patch", "apply_patch"])
+/** The tools that change a file or task state. */
+export const EDIT_TOOLS = new Set(["edit", "write", "patch", "apply_patch", "todowrite"])
 
 /** The tools that read a file. */
 export const READ_TOOLS = new Set(["read", "glob", "grep", "list", "webfetch"])

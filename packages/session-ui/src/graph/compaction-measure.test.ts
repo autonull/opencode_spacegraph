@@ -8,9 +8,9 @@ const measurement = measureCompaction(analysis)
 
 describe("compaction advisor measurement", () => {
   it("records the keep-all baseline on the canonical fixture", () => {
-    expect(measurement.totalNodes).toBe(46)
-    expect(measurement.totalTokens).toBe(855)
-    expect(measurement.keptNodes).toBe(46)
+    expect(measurement.totalNodes).toBe(47)
+    expect(measurement.totalTokens).toBe(926)
+    expect(measurement.keptNodes).toBe(47)
     expect(measurement.droppedTokens).toBe(0)
     expect(measurement.droppedShare).toBe(0)
   })

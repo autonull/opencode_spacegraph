@@ -1,6 +1,6 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: capture gate (detects changes correctly, 4 frames with expected headless variance), benchmarks (need display machine ≥1366×768), manual listener-leak verification, and **capture coverage for M2–M6 features** (pins/lineage, widgets, cost lens, palette, attention, layouts). `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
+> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: capture gate (detects changes correctly, 4 frames with expected headless variance), benchmarks (need display machine ≥1366×768), manual listener-leak verification. **Capture coverage for M2–M6 features is now complete** (pins/lineage frame 44, todo/diff/terminal/write widgets frames 45-47/54, cost lens frame 48, palette frame 51, attention frame 52, grid/circular layouts frames 49-50). `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
 
 ### Session handoff
 
@@ -119,7 +119,7 @@
 | 7 | **M6 — Accessibility, theming, i18n, RTL** | P1 | ✅ Complete |
 | 8 | **M7 — Experiments and validation** | P2 | ✅ Complete (video review needs outsiders) |
 | 9 | **M8 — Docs, migration, graduation** | P2 | ✅ Complete |
-| 10 | **M9 — Definition of done** | P0 gate | 🟡 Functional complete; environmental gates remain (capture re-bless, benchmarks, listener-leak check, video review, **capture coverage for M2–M6**) |
+| 10 | **M9 — Definition of done** | P0 gate | 🟡 Functional complete; environmental gates remain (capture re-bless, benchmarks, listener-leak check, video review) |
 
 P2 work may be parked after its kill test. It must not block M6–M8 unless adopted as a default.
 
@@ -973,3 +973,14 @@ this file's revision log and leave the v34 archive unchanged.
   - Fixed palette test (frame 51) to type a query ("token") to show node entries and wait for search results before capture.
   - All 9 new capture frames now pass individually.
   - Verified: `bun run check` 53/53; all canonical test suites pass.
+- **r22 (2026-11-12):** Completed M9 capture coverage for pins and todo widget (frames 53–54).
+  - Added `todowrite` tool (`prt_tool_todo_1`) to canonical fixture in `session-ui/src/graph/fixture.ts` with three todo items (completed, in_progress, pending).
+  - Added `todowrite` to `EDIT_TOOLS` vocabulary so it clusters with edit-phase tools.
+  - Updated compaction baseline test (`compaction-measure.test.ts`) from 46→47 nodes and 855→926 tokens.
+  - Regenerated layout golden file (`layout.golden.json`) for new node positions.
+  - Extended `packages/app/e2e/graph/capture.spec.ts` with 2 new frames:
+    - Frame 53: pins — selects a node and clicks the status-bar pin button, showing `data-pinned` card marker.
+    - Frame 54: todo widget — focuses the `todowrite` tool node, captures the expanded `TodoNodeWidget` with progress badge and item list.
+  - Synced graph copy to `gui-plugins` (`sync:graph`, 49 modules), `check:graph` clean.
+  - Verified: `bun run check` 53/53; `session-ui` graph 389/41; `session-graph` unit 108/15 + component 68/12; `gui-plugins` 1,165/115; capture gate 54 frames (44–54) all pass.
+  - M9 capture coverage for M2–M6 features now **complete**; remaining environmental gates: benchmarks (display machine), manual listener-leak check, video review (M7.6), re-bless on reference environment.

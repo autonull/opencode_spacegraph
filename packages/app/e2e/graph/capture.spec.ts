@@ -852,3 +852,38 @@ test("52 graph attention badges @graph @capture", async ({ page }) => {
   await capture(page, "52-graph-attention-badges.png")
   expect(filterKnownErrors(errors)).toEqual([])
 })
+
+// M2: Pins on node card (select a node and pin it)
+test("53 graph pins @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus on a tool node to show the status bar with pin button
+  await focusNode(page, "tool:prt_tool_edit_1", "edit")
+  await still(page)
+  // Click the pin button in the status bar
+  const pinButton = page.locator('[data-slot="graph-status-pin"]')
+  await expect(pinButton).toBeVisible({ timeout: 10000 })
+  await pinButton.click()
+  await still(page)
+  await capture(page, "53-graph-pins.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M3: Todo widget in todowrite tool node (prt_tool_todo_1 has todo items)
+test("54 graph widget todo @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus on the todowrite tool node to show the todo widget
+  await focusNode(page, "tool:prt_tool_todo_1", "todowrite")
+  await still(page)
+  await capture(page, "54-graph-widget-todo.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
