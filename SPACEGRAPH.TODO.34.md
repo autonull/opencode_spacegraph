@@ -1,6 +1,6 @@
 # SpaceGraph: Unified Component, Multi-Paradigm Surfaces & Graph-Infused Development (v34)
 
-> **Frozen (2026-11-11):** This document is the v34 design and history archive. Remaining execution
+> **Archived (2026-11-12):** This document is the v34 design and history archive. All remaining execution
 > lives in [`SPACEGRAPH.TODO.35.md`](./SPACEGRAPH.TODO.35.md). Do not add new work here; record new
 > results in v35.
 

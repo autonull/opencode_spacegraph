@@ -236,7 +236,7 @@ OpenCode plugin  │  Hermes plugin  │  Pi Agent plugin
 
 **Fork preserves the option:** `session-ui/graph` (pure model), `session-graph` (host UI), `gui-plugins/spacegraph` (plugin shell) are already cleanly separated.
 
-Detail: [`SPACEGRAPH.md §16`](SPACEGRAPH.md#16-path-to-a-fully-plugin-based-spacegraph-future-architecture)
+Detail: [`SPACEGRAPH.md §5`](SPACEGRAPH.md#5-path-to-fully-plugin-based-spacegraph)
 
 ---
 
@@ -258,7 +258,7 @@ Detail: [`SPACEGRAPH.md §16`](SPACEGRAPH.md#16-path-to-a-fully-plugin-based-spa
 
 **SpaceGraphJS library:** [`spacegraphjs/README.md`](../spacegraphjs/README.md), [`spacegraphjs/docs/`](../spacegraphjs/docs/), [`spacegraphjs/ROADMAP.md`](../spacegraphjs/ROADMAP.md)
 
-**Active plan:** [`SPACEGRAPH.TODO.32.md`](SPACEGRAPH.TODO.32.md)
+**Active plan:** [`SPACEGRAPH.TODO.35.md`](SPACEGRAPH.TODO.35.md)
 
 ---
 
