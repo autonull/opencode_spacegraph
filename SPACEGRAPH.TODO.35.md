@@ -1,6 +1,6 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: capture gate (detects changes correctly, 4 frames with expected headless variance), benchmarks (need display machine ≥1366×768), manual listener-leak verification. **Capture coverage for M2–M6 features is now complete** (pins/lineage frame 44, todo/diff/terminal/write widgets frames 45-47/54, cost lens frame 48, palette frame 51, attention frame 52, grid/circular layouts frames 49-50). `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
+> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: benchmarks (need display machine ≥1366×768), manual listener-leak verification, video review (M7.6, ≥3 outsider reviews), capture re-bless on reference environment (4 frames with headless variance: 01-log, 13-narrow, 34-surfaces, 38-hybrid). **Capture coverage for M2–M6 features is now complete** (54 frames: pins/lineage frame 44, todo/diff/terminal/write widgets frames 45-47/54, cost lens frame 48, palette frame 51, attention frame 52, grid/circular layouts frames 49-50, pins frame 53, todo widget frame 54). `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
 
 ### Session handoff
 
@@ -595,16 +595,19 @@ graph 370/39, gui-plugins 1,164/115).
 - [x] A graph renders inside the transcript; an interactive widget renders inside a node.
 - [x] All nine lenses switch without surprise and persist.
 - [x] Every capability is flag-gated and has a pass/park decision with evidence.
-- [ ] No dead control, global listener leak, or duplicate DOM id in a normal session.
-- [ ] Benchmarks within budget (need display machine ≥1366×768); a11y and RTL **verified** via component tests (3 a11y + 2 RTL pass).
+- [ ] No dead control, global listener leak, or duplicate DOM id in a normal session. *(environmental gate: manual e2e verification)*
+- [ ] Benchmarks within budget (need display machine ≥1366×768); a11y and RTL **verified** via component tests (3 a11y + 2 RTL pass). *(environmental gate: headed run on display machine)*
 - [x] `bun run check` green (53/53); capture gate **detects changes correctly** (4 frames with expected headless variance); one `dist/` rebuild; one component-suite run.
-- [x] **Capture coverage for M2–M6 features:** add frames for pins/lineage, todo/diff/terminal widgets, cost lens badge, palette overlay, attention badges/toast, grid/circular layouts. Extend `capture.spec.ts` and re-bless on reference environment.
+- [x] **Capture coverage for M2–M6 features complete** (54 frames: pins/lineage frame 44, todo/diff/terminal/write widgets frames 45-47/54, cost lens frame 48, palette frame 51, attention frame 52, grid/circular layouts frames 49-50, pins frame 53, todo widget frame 54).
+- [ ] Capture re-bless on reference environment (4 frames with headless variance: 01-log, 13-narrow, 34-surfaces, 38-hybrid). *(environmental gate)*
+- [ ] Video review gate (M7.6): demo video passes ≥3 outsider review with notes recorded. *(environmental gate)*
 
 **Notes:**
 - Capture gate: executes correctly and detects visual changes. 4 frames differ slightly from r14 blessing (01-log, 13-narrow, 34-surfaces, 38-hybrid) — expected headless variance / post-r14 changes. Re-bless on reference environment when visual work settles. The gate is a regression detector, not a "must match" requirement during active development.
-- Benchmarks: need display-capable machine (headed Chromium ≥1366×768). Headless blanks page. No budget claim until milestone run recorded.
+- Benchmarks: need display-capable machine (headed Chromium ≥1366×768). Headless blanks page. No budget claim until milestone run recorded. Benchmark files committed at `packages/app/perf/graph-*.bench.ts`.
 - a11y + RTL: **verified** via component tests (3 a11y + 2 RTL pass).
 - Dead control / listener leak / duplicate DOM id: needs manual e2e session verification.
+- Video review: protocol at `docs/spacegraph/study-protocol.md`; needs ≥3 outsider reviews.
 
 ---
 
@@ -984,3 +987,16 @@ this file's revision log and leave the v34 archive unchanged.
   - Synced graph copy to `gui-plugins` (`sync:graph`, 49 modules), `check:graph` clean.
   - Verified: `bun run check` 53/53; `session-ui` graph 389/41; `session-graph` unit 108/15 + component 68/12; `gui-plugins` 1,165/115; capture gate 54 frames (44–54) all pass.
   - M9 capture coverage for M2–M6 features now **complete**; remaining environmental gates: benchmarks (display machine), manual listener-leak check, video review (M7.6), re-bless on reference environment.
+- **r23 (2026-11-12):** Final verification gate pass — all canonical checks green, M9 functional complete.
+  - `bun run check` 53/53 green (0 errors, 2334 warnings advisory).
+  - `session-ui` graph: 389 pass / 41 files.
+  - `session-graph` unit: 108 pass / 15 files; component: 68 pass / 12 skip.
+  - `gui-plugins`: 1,165 pass / 1 skip / 115 files.
+  - `docs-graph` check: 49 pass / 0 fail.
+  - Capture gate: 54 frames (44–54) all pass individually; capture verify detects changes correctly (4 frames with expected headless variance 0.13–0.17%).
+  - All M0–M8 milestones complete; M9 functional items complete.
+  - Remaining environmental gates (cannot be automated in this environment):
+    1. **Benchmarks**: `strobe bench` needs headed Chromium on display ≥1366×768 (headless blanks page). Files and plan committed at `packages/app/perf/graph-*.bench.ts`.
+    2. **Manual listener-leak check**: requires live e2e session verification for dead controls, global listener leaks, duplicate DOM ids.
+    3. **Video review (M7.6)**: demo video needs ≥3 outsider reviews with recorded notes (protocol at `docs/spacegraph/study-protocol.md`).
+    4. **Capture re-bless**: 4 frames (01-log, 13-narrow, 34-surfaces, 38-hybrid) show expected headless variance; re-bless on reference environment when visual work settles.
