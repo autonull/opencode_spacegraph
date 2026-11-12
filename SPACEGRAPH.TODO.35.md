@@ -960,3 +960,8 @@ this file's revision log and leave the v34 archive unchanged.
   - Updated `seedSessionGraph` in `e2e/utils/graph.ts` to accept optional flag overrides
   - Verified: `bun run check` 53/53; all unit/component tests pass; `gui-plugins` 1,165 pass; `session-ui` graph 389/41; `session-graph` unit 108/15
   - M9 functional items complete; environmental gates remain (benchmark on display machine, manual listener-leak check, video review, re-bless on reference environment)
+- **r20 (2026-11-12):** Fixed `seedSessionGraph` naming conflict in capture spec.
+  - The test fixture in `capture.spec.ts` declared a local `seedSessionGraph` function that shadowed the imported utility from `e2e/utils/graph.ts`, causing a `TypeError: Duplicate declaration` when the capture verify script ran the tests.
+  - Removed the local wrapper function and moved the flag configuration into the test fixture's `page` extension, so all capture tests run with all M2–M6 flags enabled (`graph_cost_lens`, `graph_palette`, `graph_attention`, `graph_layout_breadth`).
+  - Removed redundant per-test `seedSessionGraph` calls that attempted to override flags after the fixture already ran.
+  - Verified: `bun run check` 53/53; `session-graph` unit 108/15; component 68/12; `gui-plugins` 1,165/115; `session-ui` graph 389/41; capture test 01-log passes.

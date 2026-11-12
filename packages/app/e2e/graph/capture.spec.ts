@@ -13,7 +13,7 @@ const KNOWN_FLAKY_ERRORS = [
 
 const test = base.extend({
   page: async ({ page }, use) => {
-    await seedSessionGraph(page)
+    await seedSessionGraph(page, { graph_cost_lens: true, graph_palette: true, graph_attention: true, graph_layout_breadth: true })
     await use(page)
   },
 })
@@ -234,10 +234,7 @@ async function focusNode(page: Page, nodeId: string, query: string) {
   await waitForStillCanvas(page)
 }
 
-async function seedSessionGraph(page: Page) {
-  const { seedSessionGraph } = await import("../utils/graph")
-  await seedSessionGraph(page, { graph_cost_lens: true, graph_palette: true, graph_attention: true, graph_layout_breadth: true })
-}
+
 
 async function openGraph(page: Page) {
   await openSession(page, graphFixture())
@@ -796,7 +793,6 @@ test("47 graph widget write @graph @capture", async ({ page }) => {
 test("48 graph cost lens @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-  await seedSessionGraph(page, { graph_cost_lens: true })
   await openGraph(page)
   await setLevel(page, "Execution")
   await fit(page)
@@ -829,7 +825,6 @@ test("48 graph cost lens @graph @capture", async ({ page }) => {
 test("49 graph grid @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-  await seedSessionGraph(page, { graph_layout_breadth: true })
   await openGraph(page)
   await setLevel(page, "Execution")
   await pickLayout(page, "grid")
@@ -843,7 +838,6 @@ test("49 graph grid @graph @capture", async ({ page }) => {
 test("50 graph circular @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-  await seedSessionGraph(page, { graph_layout_breadth: true })
   await openGraph(page)
   await setLevel(page, "Execution")
   await pickLayout(page, "circular")
@@ -857,7 +851,6 @@ test("50 graph circular @graph @capture", async ({ page }) => {
 test("51 graph palette @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-  await seedSessionGraph(page, { graph_palette: true })
   await openGraph(page)
   await setLevel(page, "Execution")
   await fit(page)
@@ -882,7 +875,6 @@ test("51 graph palette @graph @capture", async ({ page }) => {
 test("52 graph attention badges @graph @capture", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
-  await seedSessionGraph(page, { graph_attention: true })
   await openGraph(page)
   await setLevel(page, "Execution")
   await fit(page)
