@@ -777,12 +777,6 @@ export type TurnStats = {
 }
 
 /**
- * @deprecated Use `reviewChanges` from `@opencode/session-ui/graph/review` instead.
- * This re-export is kept for backward compatibility.
- */
-export { reviewChanges, type ReviewChanges } from "./review"
-
-/**
  * The execution-level subgraph for one turn (H6.2/H6.4): the turn node plus its highest-signal
  * `part-of` children, capped so a compact overlay or inline graph stays legible. Phase chips and
  * failures rank above individual tools and files; ties keep model order, so the result is stable.
