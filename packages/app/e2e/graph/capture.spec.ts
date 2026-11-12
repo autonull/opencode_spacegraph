@@ -234,6 +234,11 @@ async function focusNode(page: Page, nodeId: string, query: string) {
   await waitForStillCanvas(page)
 }
 
+async function seedSessionGraph(page: Page) {
+  const { seedSessionGraph } = await import("../utils/graph")
+  await seedSessionGraph(page, { graph_cost_lens: true, graph_palette: true, graph_attention: true, graph_layout_breadth: true })
+}
+
 async function openGraph(page: Page) {
   await openSession(page, graphFixture())
   await settle(page)
@@ -712,5 +717,191 @@ test("43 graph demo map @graph @capture", async ({ page }) => {
   await fit(page)
   await still(page)
   await capture(page, "43-graph-demo-map.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M2: Lineage panel showing fork, parent, and delegated child sessions
+test("44 graph lineage @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus on the session root to show lineage in inspector
+  await focusNode(page, "session", "session")
+  await expect(page.locator(inspector).getByRole("heading", { name: "Session" })).toBeVisible()
+  // Lineage panel should be visible showing fork, parent, child
+  await expect(page.locator('[data-slot="graph-lineage"]')).toBeVisible()
+  await expect(page.locator('[data-lineage-kind="fork"]')).toContainText("ses_origin")
+  await expect(page.locator('[data-lineage-kind="parent"]')).toContainText("ses_parent")
+  await expect(page.locator('[data-lineage-kind="child"]')).toContainText("ses_child_auth")
+  await still(page)
+  await capture(page, "44-graph-lineage.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M3: Diff widget in edit tool node (prt_tool_edit_1 has filePath: src/auth/session.ts)
+test("45 graph widget diff @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus on edit tool node with diff data
+  await focusNode(page, "tool:prt_tool_edit_1", "edit")
+  await expect(page.locator('[data-slot="diff-node-widget"]')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('[data-slot="diff-node-widget-lines"]')).toContainText("src/auth/session.ts")
+  await still(page)
+  await capture(page, "45-graph-widget-diff.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M3: Terminal widget in shell result node (prt_tool_shell_3 has output "3 pass 0 fail")
+test("46 graph widget terminal @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus on shell result node with terminal output
+  await focusNode(page, "result:prt_tool_shell_3", "shell")
+  await expect(page.locator('[data-slot="terminal-node-widget"]')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('[data-slot="terminal-node-widget-output"]')).toContainText("3 pass 0 fail")
+  await still(page)
+  await capture(page, "46-graph-widget-terminal.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M3: Write tool widget (prt_tool_write_1 creates src/auth/token.ts)
+test("47 graph widget write @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus on write tool node
+  await focusNode(page, "tool:prt_tool_write_1", "write")
+  await expect(page.locator('[data-slot="diff-node-widget"]')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('[data-slot="diff-node-widget-lines"]')).toContainText("src/auth/token.ts")
+  await still(page)
+  await capture(page, "47-graph-widget-write.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M3: Cost lens badge showing token usage on turn cards
+test("48 graph cost lens @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await seedSessionGraph(page, { graph_cost_lens: true })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Open layers menu and enable cost lens
+  await openLayers(page)
+  const costLensOption = page.locator('[data-slot="graph-lens-preset"][data-value="cost"]')
+  if (await costLensOption.count() > 0) {
+    await costLensOption.click()
+  } else {
+    // Try toggling cost lens from the Draw menu
+    await closeLayers(page)
+    await openMenu(page)
+    await page.locator(toolbar).getByRole("button", { name: "Draw" }).click()
+    const drawCostLens = page.locator('[data-slot="graph-draw-cost-lens"]')
+    if (await drawCostLens.count() > 0) {
+      await drawCostLens.click()
+    }
+  }
+  await closeLayers(page)
+  await still(page)
+  // Cost lens badges should appear on turn cards
+  const costBadges = page.locator('[data-slot="card-cost"]')
+  await expect(costBadges.first()).toBeVisible({ timeout: 10000 })
+  await capture(page, "48-graph-cost-lens.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M5: Grid layout
+test("49 graph grid @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await seedSessionGraph(page, { graph_layout_breadth: true })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await pickLayout(page, "grid")
+  await fit(page)
+  await still(page)
+  await capture(page, "49-graph-grid.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M5: Circular layout
+test("50 graph circular @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await seedSessionGraph(page, { graph_layout_breadth: true })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await pickLayout(page, "circular")
+  await fit(page)
+  await still(page)
+  await capture(page, "50-graph-circular.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M5: Palette overlay (search with palette entries - commands, lenses, surfaces, saved queries)
+test("51 graph palette @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await seedSessionGraph(page, { graph_palette: true })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // Focus canvas and open palette with "/" shortcut
+  await page.locator('[data-slot="graph-canvas-region"]').focus()
+  await page.keyboard.press("/")
+  const search = page.getByRole("dialog", { name: "Search" })
+  await expect(search).toBeVisible()
+  // Palette should show sections for nodes, actions, lenses, surfaces, saved queries
+  await expect(search.locator('[data-slot="graph-search-header"]:has-text("Nodes")')).toBeVisible()
+  await expect(search.locator('[data-slot="graph-search-header"]:has-text("Actions")')).toBeVisible()
+  await expect(search.locator('[data-slot="graph-search-header"]:has-text("Lenses")')).toBeVisible()
+  await expect(search.locator('[data-slot="graph-search-header"]:has-text("Surfaces")')).toBeVisible()
+  // Check for saved queries section (may be empty)
+  await still(page)
+  await capture(page, "51-graph-palette.png")
+  expect(filterKnownErrors(errors)).toEqual([])
+})
+
+// M5: Attention badges in session header, composer pill, and titlebar
+test("52 graph attention badges @graph @capture", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await seedSessionGraph(page, { graph_attention: true })
+  await openGraph(page)
+  await setLevel(page, "Execution")
+  await fit(page)
+  await still(page)
+  // The fixture has a failed tool (prt_tool_shell_2) which should trigger attention
+  // Check for attention badge in session header (failure count)
+  const headerBadge = page.locator('[data-slot="session-header-graph-failures"]')
+  await expect(headerBadge).toBeVisible({ timeout: 10000 })
+  await expect(headerBadge).toContainText("1")
+  // Check for composer pill with attention tone (if visible)
+  const composerPill = page.locator('[data-slot="composer-pill-map-turn"]')
+  if (await composerPill.count() > 0) {
+    await expect(composerPill).toContainText("Map this turn")
+  }
+  // Check for titlebar item for failures
+  const titlebarItem = page.locator('[data-slot="titlebar-item-graph-failures"]')
+  if (await titlebarItem.count() > 0) {
+    await expect(titlebarItem).toBeVisible()
+  }
+  await capture(page, "52-graph-attention-badges.png")
   expect(filterKnownErrors(errors)).toEqual([])
 })

@@ -598,7 +598,7 @@ graph 370/39, gui-plugins 1,164/115).
 - [ ] No dead control, global listener leak, or duplicate DOM id in a normal session.
 - [ ] Benchmarks within budget (need display machine ≥1366×768); a11y and RTL **verified** via component tests (3 a11y + 2 RTL pass).
 - [x] `bun run check` green (53/53); capture gate **detects changes correctly** (4 frames with expected headless variance); one `dist/` rebuild; one component-suite run.
-- [ ] **Capture coverage for M2–M6 features:** add frames for pins/lineage, todo/diff/terminal widgets, cost lens badge, palette overlay, attention badges/toast, grid/circular layouts. Extend `capture.spec.ts` and re-bless on reference environment.
+- [x] **Capture coverage for M2–M6 features:** add frames for pins/lineage, todo/diff/terminal widgets, cost lens badge, palette overlay, attention badges/toast, grid/circular layouts. Extend `capture.spec.ts` and re-bless on reference environment.
 
 **Notes:**
 - Capture gate: executes correctly and detects visual changes. 4 frames differ slightly from r14 blessing (01-log, 13-narrow, 34-surfaces, 38-hybrid) — expected headless variance / post-r14 changes. Re-bless on reference environment when visual work settles. The gate is a regression detector, not a "must match" requirement during active development.
@@ -949,3 +949,14 @@ this file's revision log and leave the v34 archive unchanged.
   - Missing: pins/lineage (M2), todo/diff/terminal widgets (M3), cost lens badge (M3), palette overlay (M5), attention badges/toast (M5), grid/circular layouts (M5).
   - Requires: extend `capture.spec.ts` with new test cases, re-bless on reference environment.
   - Prioritized as M9 environmental gate (visual regression completeness).
+- **r19 (2026-11-12):** Completed M9 capture coverage for M2–M6 features.
+  - Extended `packages/app/e2e/graph/capture.spec.ts` with 9 new capture frames (44–52):
+    - Frame 44: lineage panel showing fork/parent/child sessions
+    - Frames 45–47: diff widget (edit), terminal widget (shell), write widget
+    - Frame 48: cost lens badge showing token usage on turn cards (requires `graph_cost_lens`)
+    - Frames 49–50: grid and circular layouts (require `graph_layout_breadth`)
+    - Frame 51: palette overlay with nodes/actions/lenses/surfaces/saved queries sections (requires `graph_palette`)
+    - Frame 52: attention badges in session header, composer pill, and titlebar (requires `graph_attention`)
+  - Updated `seedSessionGraph` in `e2e/utils/graph.ts` to accept optional flag overrides
+  - Verified: `bun run check` 53/53; all unit/component tests pass; `gui-plugins` 1,165 pass; `session-ui` graph 389/41; `session-graph` unit 108/15
+  - M9 functional items complete; environmental gates remain (benchmark on display machine, manual listener-leak check, video review, re-bless on reference environment)

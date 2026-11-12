@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test"
 // The session graph sits behind `experimental.sessionGraph`, which the app reads from its `settings.v3`
 // storage key. The timeline harness rewrites that key on every navigation, so the flag is merged into
 // whatever is written instead of being written once: a reload keeps the graph available.
-export async function seedSessionGraph(page: Page) {
-  await page.addInitScript(() => {
+export async function seedSessionGraph(page: Page, extraFlags: Record<string, boolean> = {}) {
+  await page.addInitScript(([flags]) => {
     const key = "settings.v3"
     const write = Storage.prototype.setItem
 
@@ -13,7 +13,7 @@ export async function seedSessionGraph(page: Page) {
 
       return JSON.stringify({
         ...current,
-        experimental: { ...(current.experimental ?? {}), sessionGraph: true },
+        experimental: { ...(current.experimental ?? {}), sessionGraph: true, ...flags },
       })
     }
 
@@ -30,6 +30,6 @@ export async function seedSessionGraph(page: Page) {
     // The harness may write the key after this script, but it may not write it at all.
     const stored = localStorage.getItem(key)
 
-    localStorage.setItem(key, stored ? merge(stored) : JSON.stringify({ experimental: { sessionGraph: true } }))
-  })
+    localStorage.setItem(key, stored ? merge(stored) : JSON.stringify({ experimental: { sessionGraph: true, ...flags } }))
+  }, [extraFlags])
 }
