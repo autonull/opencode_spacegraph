@@ -74,7 +74,7 @@ export const GraphFilesystemWindow = (props: GraphFilesystemWindowProps) => {
           <span class="text-10-regular text-text-weaker">
             {fileCount(dir)} files
             {touchedCount(dir) > 0 && (
-              <span class="ml-1 text-text-base">({touchedCount(dir)} touched)</span>
+              <span class="ms-1 text-text-base">({touchedCount(dir)} touched)</span>
             )}
           </span>
         </div>
@@ -87,8 +87,8 @@ export const GraphFilesystemWindow = (props: GraphFilesystemWindowProps) => {
               {(file) => (
                 <div
                   class="flex items-center gap-1.5 px-2 py-1 rounded-sm hover:bg-surface-base-hover cursor-pointer"
+                  classList={{ "bg-surface-base-hover": props.selection === file.id }}
                   data-selected={props.selection === file.id}
-                  style={{ background: props.selection === file.id ? "var(--theme-selection, #3b82f6)20" : "transparent" }}
                   onClick={() => props.onSelect(file.id)}
                   onDblClick={() => props.onOpen?.(file)}
                 >

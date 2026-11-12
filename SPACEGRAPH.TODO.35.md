@@ -1,24 +1,34 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
 > **Status (2026-11-12):** M0 foundation repair, M1 memory/decisions, M2 authoring/orchestration,
-> M3 widgets/cost, M4 performance/scale, and M5 navigation/attention/layout breadth are implemented.
-> M4's benchmarks and the viewport/density budgets are committed; the timed comparison against
-> `origin/dev` still needs a display-capable machine (see M4). One canonical capture gate and suite
-> tags are in place. Phases 14–19.12 are complete. `SPACEGRAPH.TODO.34.md` is the frozen design and
-> history reference; this file is the single source of truth for remaining work.
+> M3 widgets/cost, M4 performance/scale, M5 navigation/attention/layout breadth, and M6
+> accessibility/theming/i18n/RTL are implemented. M4's benchmarks and the viewport/density budgets
+> are committed; the timed comparison against `origin/dev` still needs a display-capable machine
+> (see M4). One canonical capture gate and suite tags are in place. Phases 14–19.12 are complete.
+> `SPACEGRAPH.TODO.34.md` is the frozen design and history reference; this file is the single source
+> of truth for remaining work.
 >
-> **Baseline:** through Phase 19.12 at `r8` below. Canonical local suites: `packages/session-ui`
-> `bun test src/graph` 367 tests / 38 files, `packages/session-graph` `bun test src` 105 / 14,
+> **Baseline:** through M6 at `r9` below. Canonical local suites: `packages/session-ui`
+> `bun test src/graph` 370 tests / 39 files, `packages/session-graph` `bun test src` 108 / 15,
 > `packages/gui-plugins` `bun run test` 1,164 / 115 (1 skip), and root `bun run check` green
-> (53/53). Session-graph component suite: the widget/cost specs pass; the known pre-existing
-> narrow-sheet geometry failure remains (see r5).
+> (53/53). Session-graph component suite: 68 pass / 12 skip / 0 fail, including the a11y and RTL
+> additions; the narrow-sheet geometry failure is fixed.
 >
-> **Next:** M6 accessibility/theming/i18n/RTL. Before M9, run the M4 benchmarks once on a
+> **Next:** M7 experiments and validation. Before M9, run the M4 benchmarks once on a
 > presentation-capable machine and record the budget verdict here.
 
 ### Session handoff
 
-- M0–M5 are implemented. Start with **M6**.
+- M0–M6 are implemented. Start with **M7**.
+- M6 accessibility/theming/i18n/RTL: the static preview is a labelled image with a node/edge/failure
+  summary and no a11y mirror; the interactive mirror is per-instance (`aria-activedescendant` and
+  instance-scoped item ids), and every announcement names the surface (`surfaceLabel`, default
+  "Session map"; the plugin passes Map/Hybrid/Turn map/Inline). Windows and popovers restore focus to
+  the affordance that opened them. The camera focuses instantly when the host asks for less motion.
+  The builders accept optional `labels` with English defaults. Chrome uses logical edges; the
+  composer widget CSS now targets the real `data-slot` selectors and logical margin. The narrow sheet
+  bug was an unpurged `h-1/2` utility; it now uses an explicit 50% height, so the canvas keeps its
+  area. `graph-gallery.spec.ts` was updated for the seven M5 layouts.
 - M5 search/palette: `compileNLQ(input, { dictionaries })` adds reader words without changing the
   built-in grammar. `saved-queries.ts` stores facet questions in the `q=` grammar; the plugin
   session store persists up to 20 and the facets menu applies/removes them. The palette is the same
@@ -77,10 +87,10 @@
 - The committed screenshot set predates the Phase 16.3 "Map this turn" affordance. `--mode=verify`
   still captures and compares the full set, but reports pre-existing pixel drift; re-blessing needs a
   reference render environment and belongs with the M7 visual review, not the capture refactor.
-- Known component failure: `graph-refine.spec.ts` "inspector becomes a bottom sheet" fails its
-  40%-height assertion on this machine and reproduces on unmodified `HEAD` (299–316 px against a
-  372.8 px threshold). It is not an M2 regression; fix it during M6 with a real narrow-viewport
-  measurement or by dismissing the first-run banner before measuring.
+- The narrow bottom-sheet failure is fixed (M6.9): the `h-1/2` class was not generated, so the sheet
+  grew to its content height and collapsed the canvas to 0 px. The sheet now uses an explicit `50%`
+  height, and `graph-refine.spec.ts` measures it against the canvas column. Do not re-add a utility
+  class for this cell unless it is proven present in the built CSS.
 - Known app e2e failure in this environment: `e2e/graph/session-graph.spec.ts` does not open the map
   from `#graph:file:…` and reproduces on unmodified `HEAD`. The graph component suite (including the
   new transcript spec) passes. Diagnose the hash/surface selection separately from M4.
@@ -508,23 +518,54 @@ default, library plugin layouts and Cytoscape parked.
 
 ## M6 — Accessibility, theming, i18n, RTL (P1)
 
-- [ ] Inline graphs expose the a11y tree only when interactive; static previews carry an accessible name
-      and summary.
-- [ ] Per-instance roving tabindex and `aria-activedescendant`; announcements include the surface name.
-- [ ] Focus returns to the affordance that opened a popover or window.
-- [ ] `reducedMotion` disables camera animation on mount and lens change.
-- [ ] Density themes: comfortable and compact; high-contrast audit.
-- [ ] Theme tokens per surface; no literal colors; extend theme roles where missing.
-- [ ] Add an optional `labels` config to builders with English defaults (additive).
-- [ ] Verify RTL for chrome, popovers, breadcrumbs, and the composer widget.
-- [ ] Fix the known narrow bottom-sheet geometry failure: `graph-refine.spec.ts` expects the sheet
-      below 40% of the root but sees 299–316 px against 372.8 px on this machine, reproducing on
-      unmodified `HEAD`. Measure the sheet against the canvas column, or dismiss the first-run banner
-      before measuring; do not raise the timeout.
-- [ ] Reuse existing a11y component specs; add only uncovered roles and focus-return cases.
-- [ ] **Audit:** `bun run check`; a11y component tests; RTL story screenshots.
+- [x] Inline graphs expose the a11y tree only when interactive; static previews carry an accessible name
+      and summary. **Done.** `GraphPreview`/`TurnMapInlineGraph` render one labelled `role="img"` with
+      `aria-description` (node/edge/failure counts, pluralized), and no mirror. The interactive
+      `SessionGraph` keeps the mirror. `graph-inline.spec.ts` proves both facts.
+- [x] Per-instance roving tabindex and `aria-activedescendant`; announcements include the surface name.
+      **Done.** `GraphA11y` assigns instance-scoped item ids and points the mirror's list at the item
+      with tabindex 0. `SessionGraph.surfaceLabel` defaults to "Session map"; view, group, selection,
+      and connection announcements carry it. The plugin passes Map, Hybrid, Turn map, and Inline.
+      `graph-a11y-surface.spec.ts` and the two-instance spec prove the ids and announcements.
+- [x] Focus returns to the affordance that opened a popover or window. **Done.** `GraphWindows`
+      remembers the last focused element outside the window layer and restores it on close;
+      `GraphPopover` does the same for node changes. `graph-windows.spec.ts` proves the window case.
+- [x] `reducedMotion` disables camera animation on mount and lens change. **Done.** The mount option
+      already reaches the renderer; `createGraphCamera` now takes the host preference and jumps with
+      `setViewport` on focus instead of the system-media query. `graph-camera.test.ts` proves both
+      paths; lens changes inherit the renderer's mount option.
+- [x] Density themes: comfortable and compact; high-contrast audit. **Done.** `dom-budget.test.ts`
+      already proves compact/comfortable/cozy card budgets. `contrast.test.ts` adds a high-contrast
+      theme audit at the stronger AAA text target.
+- [x] Theme tokens per surface; no literal colors; extend theme roles where missing. **Done.**
+      Removed the one ad-hoc `#3b82f6` selection fill (`GraphFilesystemWindow`) in favour of the
+      surface token; remaining model colours are data hues from `cardConstants`. No missing semantic
+      role surfaced, so `theme.ts` stays unchanged.
+- [x] Add an optional `labels` config to builders with English defaults (additive). **Done.**
+      `GraphLabels`/`DEFAULT_GRAPH_LABELS`/`resolveGraphLabels` cover session, root, error chain,
+      subagent, turn, interrupted, compaction, and files-changed copy. Both builders accept it;
+      `labels.test.ts` proves defaults, partial overrides, and `buildGraph` output. Synced the bundled
+      graph copy.
+- [x] Verify RTL for chrome, popovers, breadcrumbs, and the composer widget. **Done.** Chrome and
+      overlays use logical `start`/`end`/`ms`/`pe` classes; the composer CSS now targets the real
+      `data-slot` nodes and uses `margin-inline-end`. `graph-rtl.spec.ts` mounts the full graph and
+      the composer widget with `direction: rtl`, checks no horizontal overflow, and checks the
+      popover/search bounds and the inline margin.
+- [x] Fix the known narrow bottom-sheet geometry failure. **Done.** Root cause: the `h-1/2` utility
+      was not generated, so the sheet grew to content height and the canvas collapsed to 0 px. The
+      sheet now uses an explicit `50%` height; `graph-refine.spec.ts` measures against the canvas
+      column instead of the page root.
+- [x] Reuse existing a11y component specs; add only uncovered roles and focus-return cases. **Done.**
+      Added `graph-a11y-surface.spec.ts` and `graph-inline.spec.ts` (roles, names, summary,
+      per-instance ids, announcements) and the focus-return assertion in `graph-windows.spec.ts`.
+      The two-instance spec now also proves disjoint mirror ids.
+- [x] **Audit:** `bun run check`; a11y component tests; RTL story screenshots. **Done.** Root
+      `bun run check` 53/53; lint 0 errors; `--grep @a11y` 3 pass / 1 pre-existing skip; full
+      component suite 68 pass / 12 skip / 0 fail; RTL spec 2/2. Screenshots are captured by the
+      component runner on failure; the RTL story ids are the reference frames.
 
-**Exit:** a11y suite green; no new English literals; RTL verified.
+**Exit:** a11y suite green; no new English literals; RTL verified. **Met** (unit 108/15, session-ui
+graph 370/39, gui-plugins 1,164/115).
 
 ---
 
@@ -817,3 +858,37 @@ this file's revision log and leave the v34 archive unchanged.
     0 errors; `session-ui` graph 367/38; `session-graph` unit 105/14; `gui-plugins` 1,164/115
     (1 skip); targeted component `graph-view` 5 pass / 1 skip and `graph-toolbar` 2 pass / 1 skip;
     `check:graph` clean.
+- **r9 (2026-11-12):** Implemented M6 accessibility, theming, i18n, and RTL.
+  - Static previews: `GraphPreview` no longer duplicates the image role; `TurnMapInlineGraph`
+    carries one `aria-label` plus an `aria-description` from the drawn node, edge, and failure
+    counts. A static preview mounts no a11y mirror.
+  - Interactive mirror: `GraphA11y` assigns instance-scoped item ids and an
+    `aria-activedescendant` on the node list from the item with tabindex 0. `SessionGraph` owns a
+    `surfaceLabel` (default "Session map"); the view, selection, connection, and group announcements
+    name it. The plugin passes Map, Hybrid, Turn map, and Inline labels.
+  - Copy: migrated the remaining inline group announcements to `i18n.plural` keys and added the
+    surface/selection/summary keys to the English dictionary. The new `GraphLabels` builder config
+    gives hosts additive overrides for session, root, error chain, subagent, turn, interrupted,
+    compaction, and files-changed copy; defaults stay English. Synced the bundled graph copy (48
+    modules) and kept `check:graph` clean.
+  - Focus: `GraphWindows` remembers the last focused element outside the window layer and restores
+    it on close; `GraphPopover` restores the same way when its node clears. `graph-windows.spec.ts`
+    asserts focus returns to the popover's Open button. Window close uses a macrotask because the
+    browser's own focus fixup after removing the focused dialog runs after a microtask.
+  - Motion: the mount option already reached the renderer; `createGraphCamera` now reads the host
+    preference for its instant focus path instead of the system media query. `graph-camera.test.ts`
+    covers instant versus gliding focus.
+  - Theme/density: removed the one ad-hoc hex selection fill; chrome now uses logical spacing
+    classes. The composer widget CSS matched no real node before (`.text-input-v2-*` classes do not
+    exist), so it now targets `data-slot` and uses `margin-inline-end`. The high-contrast audit is a
+    unit test at AAA for text. Density already had compact/comfortable/cozy budget coverage.
+  - Narrow sheet: the `h-1/2` utility was never generated, so the sheet grew to its content height
+    (585 px) and the canvas collapsed to 0 px. Replaced it with an explicit `50%` height and changed
+    the spec to measure against the canvas column. The narrow story now keeps a real canvas above the
+    sheet.
+  - RTL: `graph-rtl.spec.ts` mounts the full graph and the composer widget with `direction: rtl`,
+    checking document direction, horizontal overflow, popover/search bounds, and the composer's
+    inline margin. The gallery spec was updated for the seven M5 layouts.
+  - Verified: root `bun run check` 53/53; `bun run lint` 0 errors; `session-ui` graph 370/39;
+    `session-graph` unit 108/15; `gui-plugins` 1,164/115 (1 skip); full component suite 68 pass /
+    12 skip / 0 fail; `--grep @a11y` 3 pass / 1 pre-existing skip; `check:graph` clean.

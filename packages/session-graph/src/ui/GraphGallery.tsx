@@ -57,7 +57,7 @@ export const GraphGallery = (props: GraphGalleryProps) => {
       tabindex="-1"
       data-component="session-graph-gallery"
       data-slot="graph-gallery"
-      class="absolute left-2 top-2 z-10 flex max-h-[calc(100%-1rem)] w-[min(56rem,calc(100%-1rem))] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-md outline-none"
+      class="absolute start-2 top-2 z-10 flex max-h-[calc(100%-1rem)] w-[min(56rem,calc(100%-1rem))] flex-col overflow-hidden rounded-md border border-border-base bg-background-base shadow-md outline-none"
       role="dialog"
       aria-label={i18n.t("ui.sessionGraph.gallery.label")}
       onKeyDown={(event) => {

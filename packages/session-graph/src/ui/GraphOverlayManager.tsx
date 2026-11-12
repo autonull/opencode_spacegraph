@@ -110,6 +110,7 @@ export type GraphOverlayManagerProps = {
   viewAnnouncement: string
   groupAnnouncement: string | undefined
   a11yInstructionsId: string
+  surfaceLabel?: string
   announce: (message: string) => void
   i18n: ReturnType<typeof useI18n>
 }
@@ -126,6 +127,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
         model={props.renderModel}
         selection={props.selection()}
         instructionsId={props.a11yInstructionsId}
+        surfaceLabel={props.surfaceLabel}
         announcement={props.viewAnnouncement}
         groupAnnouncement={props.groupAnnouncement}
         onSelect={props.select}
@@ -144,7 +146,7 @@ export const GraphOverlayManager = (props: GraphOverlayManagerProps) => {
       </Show>
       <Show when={props.peekEdge}>
         {(edge) => (
-          <div data-slot="graph-edge-peek-anchor" class="absolute bottom-2 left-2 z-20">
+          <div data-slot="graph-edge-peek-anchor" class="absolute bottom-2 start-2 z-20">
             <GraphPeek edge={edge()} />
           </div>
         )}

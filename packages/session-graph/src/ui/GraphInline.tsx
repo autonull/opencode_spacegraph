@@ -1,4 +1,4 @@
-import { lazy, Suspense, createSignal, createEffect } from "solid-js"
+import { lazy, Suspense, createSignal, createEffect, createUniqueId } from "solid-js"
 import { useI18n } from "@opencode/ui/context/i18n"
 import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
 import { turnSubgraph } from "@opencode/session-ui/graph"
@@ -15,7 +15,6 @@ export interface GraphPreviewProps extends Omit<TurnMapInlineGraphProps, "model"
 }
 
 export const GraphPreview = (props: GraphPreviewProps) => {
-  const i18n = useI18n()
   const width = props.width ?? 320
   const height = props.height ?? 200
 
@@ -23,8 +22,7 @@ export const GraphPreview = (props: GraphPreviewProps) => {
     <div
       class="graph-inline-preview"
       style={{ width: `${width}px`, height: `${height}px`, "flex-shrink": 0 }}
-      role="img"
-      aria-label={props.ariaLabel ?? i18n.t("ui.sessionGraph.inline.label")}
+      data-slot="graph-inline-preview"
     >
       <TurnMapInlineGraph
         model={props.model}
@@ -137,6 +135,7 @@ const LazySessionGraph = lazy(() => import("./SessionGraph").then((mod) => ({ de
  */
 export const GraphInline = (props: GraphInlineProps) => {
   const i18n = useI18n()
+  const contentID = `graph-inline-${createUniqueId()}`
   const [expanded, setExpanded] = createSignal(props.defaultExpanded ?? false)
   const [sessionGraphReady, setSessionGraphReady] = createSignal(false)
 
@@ -214,6 +213,7 @@ export const GraphInline = (props: GraphInlineProps) => {
           endInset={props.endInset}
           reducedMotion={props.reducedMotion ?? true}
           breakpoints={props.breakpoints}
+          surfaceLabel={i18n.t("ui.sessionGraph.surface.inline")}
           spatialMemoryOwner={false}
           maxDrillDepth={1}
           onRendererMounted={handleSessionGraphReady}
@@ -229,7 +229,7 @@ export const GraphInline = (props: GraphInlineProps) => {
         role="button"
         tabIndex={0}
         aria-expanded={expanded()}
-        aria-controls="graph-inline-content"
+        aria-controls={contentID}
         onClick={handleToggle}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -242,7 +242,7 @@ export const GraphInline = (props: GraphInlineProps) => {
           {expanded() ? i18n.t("ui.sessionGraph.inline.collapse") : i18n.t("ui.sessionGraph.inline.expand")}
         </span>
       </div>
-      <div id="graph-inline-content" class="graph-inline-content" role="region" aria-label={i18n.t("ui.sessionGraph.inline.region")}>
+      <div id={contentID} class="graph-inline-content" role="region" aria-label={i18n.t("ui.sessionGraph.inline.region")}>
         {expanded() && !sessionGraphReady ? (
           // Show preview as placeholder while SessionGraph loads
           <div style={{ height: heightPx }} class="graph-inline-placeholder">

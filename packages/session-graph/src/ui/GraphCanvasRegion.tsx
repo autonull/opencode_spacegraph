@@ -63,7 +63,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
           </For>
           <button
             type="button"
-            class="flex items-center gap-1 ml-2 rounded-sm px-2 py-1 text-11-regular text-text-base hover:bg-surface-base-hover"
+            class="flex items-center gap-1 ms-2 rounded-sm px-2 py-1 text-11-regular text-text-base hover:bg-surface-base-hover"
             onClick={props.exitDrillDown}
             aria-label={i18n.t("ui.sessionGraph.drillDown.exit")}
           >
@@ -203,6 +203,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
         viewAnnouncement={props.viewAnnouncement()}
         groupAnnouncement={props.groupAnnouncement()}
         a11yInstructionsId={props.a11yInstructionsId}
+        surfaceLabel={props.surfaceLabel}
         announce={props.announce}
         i18n={props.i18n}
       />

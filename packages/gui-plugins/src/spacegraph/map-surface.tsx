@@ -2,6 +2,7 @@ import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { SessionGraph } from "@opencode/session-graph"
 import { createMemo } from "solid-js"
+import { useI18n } from "@opencode/ui/context/i18n"
 import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 
@@ -12,6 +13,7 @@ export function MapSurface(props: {
   onSplitView?: () => void
   onOpenTranscript?: (id: string) => void
 }) {
+  const i18n = useI18n()
   const live = props.model.graph(props.session)
   const graph = createMemo(() => props.model.graphAt(props.session, live()))
   const timeTravel = () => props.model.timeTravelEnabled()
@@ -26,6 +28,7 @@ export function MapSurface(props: {
   return (
     <div class="relative size-full min-h-0" data-slot="spacegraph-surface-map">
       <SessionGraph
+        surfaceLabel={i18n.t("surface.map")}
         model={graph()}
         level={props.model.level(props.session)}
         density={props.model.density()}

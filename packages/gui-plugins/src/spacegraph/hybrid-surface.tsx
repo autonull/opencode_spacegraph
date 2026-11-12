@@ -51,6 +51,7 @@ export function HybridSurface(props: {
       <div class={transcriptClass()}>{props.transcript}</div>
       <div class={mapClass()}>
         <SessionGraph
+          surfaceLabel={i18n.t("surface.hybrid")}
           model={graph()}
           level={props.model.level(props.session)}
           density={props.model.density()}

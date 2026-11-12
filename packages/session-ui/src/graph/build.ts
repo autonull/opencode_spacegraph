@@ -20,6 +20,8 @@ export function buildGraph(input: BuildGraphInput): GraphViewData {
     input.snapshot,
     input.sessionID,
     input.lineage,
+    undefined,
+    input.labels,
   )
   const session = builder.buildKernel()
 
@@ -40,6 +42,7 @@ export function buildGraphIncremental(input: IncrementalBuildGraphInput): { grap
     input.lineage,
     input.diffByTurn,
     input.previousState,
+    input.labels,
   )
   const kernel = builder.buildKernel()
 

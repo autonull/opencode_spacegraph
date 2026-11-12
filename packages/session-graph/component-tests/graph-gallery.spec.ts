@@ -19,10 +19,10 @@ story("shows every layout of the same model side by side", async ({ mount, page 
 
   // One picture per layout, and every picture is a drawing.
   const items = gallery.locator('[data-slot="graph-gallery-item"]')
-  await expect(items).toHaveCount(5)
-  await expect(items.locator("svg")).toHaveCount(5)
+  await expect(items).toHaveCount(7)
+  await expect(items.locator("svg")).toHaveCount(7)
 
-  for (const name of ["Lanes", "Timeline", "Hierarchy", "Tree", "Force"])
+  for (const name of ["Lanes", "Timeline", "Hierarchy", "Tree", "Force", "Grid", "Circular"])
     await expect(gallery).toContainText(name)
 
   // Picking one opens it in the full surface.

@@ -205,6 +205,8 @@ export type SessionGraphProps = {
   endInset?: string
   /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
   reducedMotion?: boolean
+  /** M6.2 — the surface name accessibility announcements carry. Defaults to the session map. */
+  surfaceLabel?: string
   /**
    * The node to select and frame. The view raises the semantic level when the node is hidden
    * at the current one, then moves the camera to it once the model that carries it is applied.
@@ -475,6 +477,9 @@ export const SessionGraph = (props: SessionGraphProps) => {
     announce,
   } = state
 
+  // M6.2 — every announcement says where it happened, so two graphs on one page are distinguishable.
+  const surfaceLabel = () => props.surfaceLabel ?? i18n.t("ui.sessionGraph.surface.map")
+
   // M5.1: saved questions are controlled by the host; a standalone view keeps its own list.
   const [localSavedQueries, setLocalSavedQueries] = createSignal<SavedQuery[]>([])
   const savedQueries = () => props.savedQueries ?? localSavedQueries()
@@ -714,7 +719,12 @@ export const SessionGraph = (props: SessionGraphProps) => {
       const node = model().nodes.find((n) => n.id === id)
       if (node) {
         const count = node.clusterOf?.length ?? 0
-        setGroupAnnouncement(`Group '${node.label}' collapsed, ${count} nodes`)
+        setGroupAnnouncement(
+          i18n.plural("ui.sessionGraph.a11y.groupCollapsed", count, {
+            label: node.label,
+            surface: surfaceLabel(),
+          }),
+        )
         // Clear after announcement
         setTimeout(() => setGroupAnnouncement(undefined), 100)
       }
@@ -723,7 +733,12 @@ export const SessionGraph = (props: SessionGraphProps) => {
       const node = model().nodes.find((n) => n.id === id)
       if (node) {
         const count = node.clusterOf?.length ?? 0
-        setGroupAnnouncement(`Group '${node.label}' expanded, ${count} nodes`)
+        setGroupAnnouncement(
+          i18n.plural("ui.sessionGraph.a11y.groupExpanded", count, {
+            label: node.label,
+            surface: surfaceLabel(),
+          }),
+        )
         setTimeout(() => setGroupAnnouncement(undefined), 100)
       }
     }
@@ -942,6 +957,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
       level: i18n.t(VOCABULARY_KEYS.level[level()]),
       layout: i18n.t(VOCABULARY_KEYS.layout[layout()]),
       depth: i18n.t(VOCABULARY_KEYS.depth[depth()]),
+      surface: surfaceLabel(),
     }),
   )
   // T1.11: the summary layouts name their axes; the node-link graph names itself.
@@ -980,6 +996,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     CARD_SIZE,
     READABLE_CARD_WIDTH,
     capabilities: () => capabilities(),
+    reducedMotion: () => props.reducedMotion ?? reducedMotion(),
   })
 
 
@@ -1390,6 +1407,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     groupAnnouncement,
     ordered,
     a11yInstructionsId,
+    surfaceLabel: surfaceLabel(),
     announce,
     i18n,
     canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
@@ -1828,7 +1846,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
           <Show when={narrow() && selectedNode() && !inspectorSheetOpen()}>
             <button
               type="button"
-              class="absolute bottom-4 right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-surface-base shadow-lg border border-border-weaker-base text-text-base"
+              class="absolute bottom-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-surface-base shadow-lg border border-border-weaker-base text-text-base"
+              style={{ "inset-inline-end": "1rem" }}
               onClick={() => setInspectorSheetOpen(true)}
               aria-label={i18n.t("ui.sessionGraph.inspector.openSheet")}
               data-slot="graph-inspector-fab"
@@ -1873,10 +1892,16 @@ export const SessionGraph = (props: SessionGraphProps) => {
               classList={{
                 "shrink-0": true,
                 "h-0 w-0 overflow-hidden": !inspectorOpen(),
-                "h-1/2 w-full border-t border-border-weaker-base": !!(inspectorOpen() && narrow()),
+                "w-full border-t border-border-weaker-base": !!(inspectorOpen() && narrow()),
                 "border-s border-border-weaker-base": !!(inspectorOpen() && !narrow()),
               }}
-              style={inspectorOpen() && !narrow() ? { width: `${inspectorWidth()}px`, "max-width": "60%" } : undefined}
+              style={
+                inspectorOpen() && !narrow()
+                  ? { width: `${inspectorWidth()}px`, "max-width": "60%" }
+                  : inspectorOpen() && narrow()
+                    ? { height: "50%" }
+                    : undefined
+              }
               data-slot="graph-inspector-gutter"
               data-collapsed={!inspectorOpen()}
               data-layout={narrow() ? "sheet" : "side"}

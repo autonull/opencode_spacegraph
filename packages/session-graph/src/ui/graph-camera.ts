@@ -27,6 +27,8 @@ export type GraphCameraOptions = {
   cardWorldWidth: number
   /** The width a card must cover on the screen before the reader can read it. */
   readableWidth: number
+  /** M6.4 — the host's preference, so a focus jump never waits for an animation. */
+  reducedMotion?: () => boolean
 }
 
 /**
@@ -97,7 +99,7 @@ export function createGraphCamera(options: GraphCameraOptions) {
     if (!instance) return
     const position = options.positionOf(id)
     const current = options.viewport()
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches || !position || !current) {
+    if (!options.reducedMotion?.() || !position || !current) {
       instance.focus(id)
       return
     }

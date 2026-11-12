@@ -36,7 +36,7 @@ export const GraphFallback = (props: GraphFallbackProps) => {
         <span>Graph renderer error: {props.error}</span>
         <button
           type="button"
-          class="ml-2 text-12-regular text-text-base hover:text-text-emphasis transition-colors"
+          class="ms-2 text-12-regular text-text-base hover:text-text-emphasis transition-colors"
           onClick={copyReport}
           aria-label="Copy error report"
         >

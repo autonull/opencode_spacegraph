@@ -36,6 +36,7 @@ export function MapDialog(props: {
     <props.ctx.ui.Dialog title={props.title} size="x-large">
       <div class="h-[min(64vh,560px)] min-h-0">
         <SessionGraph
+          surfaceLabel={props.ctx.t("surface.map")}
           model={graph()}
           level={props.model.level(props.session)}
           density={props.model.density()}
@@ -181,6 +182,7 @@ export function TurnMapDialog(props: {
           </div>
           <div class="min-h-0 flex-1 overflow-hidden p-4" data-scrollable style="height: 320px;">
             <SessionGraph
+              surfaceLabel={props.ctx.t("turnMap.title")}
               model={graph()}
               roots={roots()}
               layout="tree"

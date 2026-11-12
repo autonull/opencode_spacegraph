@@ -181,11 +181,12 @@ story("the inspector becomes a bottom sheet without a drag handle when narrow", 
   await expect(gutter).toHaveAttribute("data-layout", "sheet")
   await expect(root.locator('[data-slot="graph-inspector-resize"]')).toHaveCount(0)
 
-  // The sheet sits at the bottom and still shows readable detail.
+  // The sheet sits at the bottom and still shows readable detail. Measure it against the canvas
+  // column, not the whole page: the column holds the canvas plus the sheet, so the sheet must start
+  // below the column's 40% line even when chrome above it (toolbar, first-run prompt) is present.
   const gutterBox = await gutter.boundingBox()
-  const rootBox = await root.boundingBox()
-  // Gutter should be in the bottom portion of the view (below 40% of root height)
-  expect(gutterBox!.y).toBeGreaterThan(rootBox!.y + rootBox!.height * 0.4)
+  const columnBox = await root.locator('[data-slot="graph-canvas-region"]').locator("..").boundingBox()
+  expect(gutterBox!.y).toBeGreaterThan(columnBox!.y + columnBox!.height * 0.4)
   await expect(root.locator('[data-slot="graph-inspector"]')).toContainText("Tool")
 
   // LE.4: the sheet is a real sibling below the canvas, not an overlay, so the canvas is sized to the

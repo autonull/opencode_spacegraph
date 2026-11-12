@@ -26,6 +26,25 @@ const LIGHT: RenderTheme = {
 const dark = () => graphThemeFromTokens(() => "")
 const auditor = new ContrastAuditor()
 
+/** M6.5 — a host high-contrast token set, audited at the stronger AAA text target. */
+const HIGH_CONTRAST: RenderTheme = {
+  ...LIGHT,
+  background: "#000000",
+  surface: "#000000",
+  surfaceMuted: "#0a0a0a",
+  text: "#ffffff",
+  textMuted: "#d0d0d0",
+  border: "#ffffff",
+  accent: "#7cc4ff",
+  success: "#6ee7a0",
+  warning: "#ffd166",
+  error: "#ff8a8a",
+  edge: "#d0d0d0",
+  edgeMuted: "#b8b8b8",
+  selection: "#7cc4ff",
+  focus: "#ffffff",
+}
+
 describe("graph theme contrast", () => {
   test("computes WCAG ratios and ignores unparseable colours", () => {
     expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 5)
@@ -44,5 +63,13 @@ describe("graph theme contrast", () => {
 
   test("the audit catches a cue that would vanish on the canvas", () => {
     expect(auditor.failingRoles({ ...LIGHT, edgeMuted: "#f2f2f2" })).toEqual(["edgeMuted"])
+  })
+
+  test("a high-contrast theme clears the AAA text target", () => {
+    expect(auditor.failingRoles(HIGH_CONTRAST)).toEqual([])
+    const ratios = auditor.contrast(HIGH_CONTRAST)
+    expect(ratios.text!).toBeGreaterThanOrEqual(7)
+    expect(ratios.textMuted!).toBeGreaterThanOrEqual(4.5)
+    expect(ratios.edgeMuted!).toBeGreaterThanOrEqual(3)
   })
 })

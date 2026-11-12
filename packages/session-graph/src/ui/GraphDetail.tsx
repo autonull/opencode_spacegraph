@@ -521,7 +521,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
                       <li>
                         <button
                           type="button"
-                          class="flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-left hover:bg-surface-base-hover"
+                          class="flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-start hover:bg-surface-base-hover"
                           aria-label={i18n.t("ui.sessionGraph.inspector.follow", { label: item.node.label })}
                           onClick={() => props.onSelect(item.node.id)}
                         >
@@ -551,7 +551,7 @@ export const GraphDetailBody = (props: GraphDetailProps) => {
                 <li>
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-left hover:bg-surface-base-hover"
+                    class="flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-start hover:bg-surface-base-hover"
                     aria-label={i18n.t("ui.sessionGraph.inspector.follow", { label: connection.other.label })}
                     onClick={() => props.onSelect(connection.other.id)}
                   >
@@ -724,7 +724,7 @@ function GraphDetailActions(props: {
           <div class="flex items-center gap-1.5 mb-2">
             <button
               type="button"
-              class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-start hover:bg-surface-base-hover transition-colors"
               onClick={props.onTraceBack}
               disabled={history.length <= 1}
               aria-label={i18n.t("ui.sessionGraph.trace.back")}
@@ -733,7 +733,7 @@ function GraphDetailActions(props: {
             </button>
             <button
               type="button"
-              class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              class="flex w-full items-center justify-center gap-2 rounded-sm px-2 py-1.5 text-start hover:bg-surface-base-hover transition-colors"
               onClick={props.onTraceForward}
               disabled={props.traceHistoryIndex !== undefined && props.traceHistoryIndex >= history.length - 1}
               aria-label={i18n.t("ui.sessionGraph.trace.forward")}
@@ -763,7 +763,7 @@ function GraphDetailActions(props: {
                       {(branch) => (
                         <button
                           type="button"
-                          class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left hover:bg-surface-base-hover transition-colors"
+                          class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-start hover:bg-surface-base-hover transition-colors"
                           onClick={() => props.onSelect(branch.node.id)}
                         >
                           <span class="min-w-0 flex-1 truncate text-12-regular text-text-base">{branch.node.label}</span>
@@ -781,7 +781,7 @@ function GraphDetailActions(props: {
           {(action) => (
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start hover:bg-surface-base-hover transition-colors"
               onClick={() => handleAction(action)}
             >
               <span class="text-12-regular text-text-base truncate">{i18n.t(action.labelKey)}</span>
@@ -797,7 +797,7 @@ function GraphDetailActions(props: {
           {(action) => (
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+              class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start hover:bg-surface-base-hover transition-colors"
               onClick={action.onClick}
             >
               <span class="text-12-regular text-text-base truncate">{action.label}</span>

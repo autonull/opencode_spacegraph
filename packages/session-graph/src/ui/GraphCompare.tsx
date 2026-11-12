@@ -84,12 +84,12 @@ export const GraphCompare = (props: { model: GraphViewData; changes: GraphCompar
             <div class="overflow-x-auto">
               <table class="w-full text-12-regular text-text-base">
                 <thead>
-                  <tr class="text-left text-text-weak border-b border-border-weaker-base">
-                    <th class="pb-1 pr-4">{i18n.t("ui.sessionGraph.compare.turn")}</th>
-                    <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.files")}</th>
-                    <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.tools")}</th>
-                    <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.errors")}</th>
-                    <th class="pb-1 pr-4 tabular-nums">{i18n.t("ui.sessionGraph.compare.retries")}</th>
+                  <tr class="text-start text-text-weak border-b border-border-weaker-base">
+                    <th class="pb-1 pe-2">{i18n.t("ui.sessionGraph.compare.turn")}</th>
+                    <th class="pb-1 pe-2 tabular-nums">{i18n.t("ui.sessionGraph.compare.files")}</th>
+                    <th class="pb-1 pe-2 tabular-nums">{i18n.t("ui.sessionGraph.compare.tools")}</th>
+                    <th class="pb-1 pe-2 tabular-nums">{i18n.t("ui.sessionGraph.compare.errors")}</th>
+                    <th class="pb-1 pe-2 tabular-nums">{i18n.t("ui.sessionGraph.compare.retries")}</th>
                     <th class="pb-1 tabular-nums">{i18n.t("ui.sessionGraph.compare.duration")}</th>
                   </tr>
                 </thead>
@@ -97,11 +97,11 @@ export const GraphCompare = (props: { model: GraphViewData; changes: GraphCompar
                   <For each={props.changes.turnStats ?? []}>
                     {(stat) => (
                       <tr class="border-b border-border-weaker-base/50 last:border-0">
-                        <td class="py-1 pr-4">{i18n.t("ui.sessionGraph.compare.turnNumber", { num: stat.turnNumber })}</td>
-                        <td class="py-1 pr-4 tabular-nums">{stat.filesTouched}</td>
-                        <td class="py-1 pr-4 tabular-nums">{stat.toolsRun}</td>
-                        <td class="py-1 pr-4 tabular-nums text-text-on-critical-base">{stat.errors}</td>
-                        <td class="py-1 pr-4 tabular-nums text-text-on-warning-base">{stat.retries}</td>
+                        <td class="py-1 pe-2">{i18n.t("ui.sessionGraph.compare.turnNumber", { num: stat.turnNumber })}</td>
+                        <td class="py-1 pe-2 tabular-nums">{stat.filesTouched}</td>
+                        <td class="py-1 pe-2 tabular-nums">{stat.toolsRun}</td>
+                        <td class="py-1 pe-2 tabular-nums text-text-on-critical-base">{stat.errors}</td>
+                        <td class="py-1 pe-2 tabular-nums text-text-on-warning-base">{stat.retries}</td>
                         <td class="py-1 tabular-nums">{Math.round(stat.durationMs / 1000)}s</td>
                       </tr>
                     )}

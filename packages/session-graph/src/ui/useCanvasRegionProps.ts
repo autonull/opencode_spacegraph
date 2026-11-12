@@ -90,6 +90,7 @@ export function useCanvasRegionProps(
     viewAnnouncement: () => string
     groupAnnouncement: () => string | undefined
     a11yInstructionsId: string
+    surfaceLabel?: string
     announce: (message: string) => void
     i18n: ReturnType<typeof import("@opencode/ui/context/i18n").useI18n>
     canvasRegionRef: (el: HTMLDivElement | undefined) => void
@@ -219,6 +220,7 @@ export function useCanvasRegionProps(
     viewAnnouncement: state.viewAnnouncement,
     groupAnnouncement: state.groupAnnouncement,
     a11yInstructionsId: state.a11yInstructionsId,
+    surfaceLabel: state.surfaceLabel,
     announce: state.announce,
     i18n: state.i18n,
 

@@ -44,6 +44,7 @@ import {
 } from "./model"
 import { toGraphEdge, toGraphNode, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
+import { resolveGraphLabels, type GraphLabels } from "./labels"
 import {
   buildFileNodes,
   buildDirectoryNodes,
@@ -152,6 +153,7 @@ export class IncrementalGraphBuilder {
   private processedMessageCount = 0
   private readonly messages: SessionMessageInfo[]
   private readonly status: SessionStatus
+  private readonly labels: GraphLabels
 
   constructor(
     messages: SessionMessageInfo[],
@@ -161,9 +163,11 @@ export class IncrementalGraphBuilder {
     lineage?: SessionLineage,
     diffByTurn?: Map<string, FileDiffInfo[]>,
     previousState?: IncrementalBuilderState,
+    labels?: Partial<GraphLabels>,
   ) {
     this.messages = messages
     this.status = status
+    this.labels = resolveGraphLabels(labels)
     if (previousState) {
       this.state = previousState
       this.state.messages = messages
@@ -214,7 +218,7 @@ export class IncrementalGraphBuilder {
     state.nodes.push({
       id: SESSION_NODE_ID,
       kind: "session",
-      label: "Session",
+      label: this.labels.session,
       status: "neutral",
       minLevel: "overview",
       data: rootData(sessionID, lineage),
@@ -633,7 +637,7 @@ export class IncrementalGraphBuilder {
       this.addNode({
         id,
         kind: "file-group",
-        label: dirPath === "." ? "Root" : dirPath,
+        label: dirPath === "." ? this.labels.root : dirPath,
         status: writes > 0 ? "success" : "neutral",
         derived: true,
         minLevel: "overview",
@@ -714,7 +718,7 @@ export class IncrementalGraphBuilder {
       this.addNode({
         id,
         kind: "error-group",
-        label: "Error Chain",
+        label: this.labels.errorChain,
         status: "failed",
         derived: true,
         minLevel: "overview",
@@ -752,7 +756,7 @@ export class IncrementalGraphBuilder {
       this.addNode({
         id,
         kind: "subagent-group",
-        label: "Subagent",
+        label: this.labels.subagent,
         status: "neutral",
         derived: true,
         minLevel: "overview",
@@ -862,7 +866,7 @@ export class IncrementalGraphBuilder {
       this.addNode({
         id,
         kind: "turn",
-        label: isShell ? truncate(opener.command) : opener.type === "user" ? truncate(opener.text) : "Turn",
+        label: isShell ? truncate(opener.command) : opener.type === "user" ? truncate(opener.text) : this.labels.turn,
         status: "neutral",
         turnID: id,
         messageID: owner,
@@ -1074,7 +1078,7 @@ export class IncrementalGraphBuilder {
 
       this.attach(
         this.baseNode(nodeID, "error", turnID, {
-          label: interrupted ? "Interrupted" : truncate(message.error.message),
+          label: interrupted ? this.labels.interrupted : truncate(message.error.message),
           summary: message.error.message,
           status: interrupted ? "interrupted" : "failed",
           messageID: message.id,
@@ -1121,7 +1125,7 @@ export class IncrementalGraphBuilder {
 
       this.attach(
         this.baseNode(nodeID, "subagent", turnID, {
-          label: stringField(input, "description") ?? stringField(input, "agent") ?? "Subagent",
+          label: stringField(input, "description") ?? stringField(input, "agent") ?? this.labels.subagent,
           summary: stringField(input, "prompt"),
           status,
           messageID: message.id,
@@ -1227,7 +1231,7 @@ export class IncrementalGraphBuilder {
     } else if (message.outcome === "interrupted") {
       this.attach(
         this.baseNode(errorNodeID(message.id, "idle"), "error", turnID, {
-          label: "Interrupted",
+          label: this.labels.interrupted,
           summary: message.error?.message,
           status: "interrupted",
           messageID: message.id,
@@ -1245,7 +1249,7 @@ export class IncrementalGraphBuilder {
 
     this.attach(
       this.baseNode(nodeID, "diff", turnID, {
-        label: `${files.size} file${files.size === 1 ? "" : "s"} changed`,
+        label: this.labels.filesChanged(files.size),
         messageID: message.id,
         time: message.time.created,
         data: { files: [...files].sort() },
@@ -1262,7 +1266,7 @@ export class IncrementalGraphBuilder {
 
     this.attach(
       this.baseNode(nodeID, "compaction", turnID, {
-        label: message.status === "completed" ? "Compacted context" : `Compaction ${message.status}`,
+        label: message.status === "completed" ? this.labels.compactedContext : this.labels.compaction(message.status),
         summary: compactionSummary(message),
         status: compactionStatus(message),
         messageID: message.id,

@@ -186,7 +186,7 @@ export const GraphFind = (props: GraphFindProps) => {
           onClick={() => setActiveTab("search")}
         >
           {i18n.t("ui.sessionGraph.find.tabSearch")}
-          <kbd class="ml-1.5 rounded border border-border-weaker-base px-1 text-10-regular text-text-weaker">
+          <kbd class="ms-2 rounded border border-border-weaker-base px-1 text-10-regular text-text-weaker">
             Shift+S
           </kbd>
         </button>
@@ -201,7 +201,7 @@ export const GraphFind = (props: GraphFindProps) => {
           onClick={() => setActiveTab("filters")}
         >
           {i18n.t("ui.sessionGraph.find.tabFilters")}
-          <kbd class="ml-1.5 rounded border border-border-weaker-base px-1 text-10-regular text-text-weaker">
+          <kbd class="ms-2 rounded border border-border-weaker-base px-1 text-10-regular text-text-weaker">
             Alt+F
           </kbd>
         </button>
@@ -216,7 +216,7 @@ export const GraphFind = (props: GraphFindProps) => {
           onClick={() => setActiveTab("outline")}
         >
           {i18n.t("ui.sessionGraph.find.tabOutline")}
-          <kbd class="ml-1.5 rounded border border-border-weaker-base px-1 text-10-regular text-text-weaker">
+          <kbd class="ms-2 rounded border border-border-weaker-base px-1 text-10-regular text-text-weaker">
             Shift+O
           </kbd>
         </button>
@@ -276,7 +276,7 @@ export const GraphFind = (props: GraphFindProps) => {
                           type="button"
                           role="option"
                           aria-selected={index() === activeIndex()}
-                          class={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors ${
+                          class={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start transition-colors ${
                             index() === activeIndex() ? "bg-surface-base-hover" : "hover:bg-surface-base-hover"
                           }`}
                           onMouseEnter={() => setActiveIndex(index())}
@@ -417,7 +417,7 @@ export const GraphFind = (props: GraphFindProps) => {
                   <li class="flex flex-col" role="treeitem">
                     <button
                       type="button"
-                      class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-base-hover transition-colors"
+                      class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start hover:bg-surface-base-hover transition-colors"
                       onClick={() => handleOutlineSelect(turn.turnID)}
                     >
                       <svg
@@ -436,13 +436,13 @@ export const GraphFind = (props: GraphFindProps) => {
                       <span class="shrink-0 text-11-regular text-text-weaker">{turn.phases.length} phases</span>
                     </button>
                     <Show when={turn.phases.length > 0}>
-                      <ul class="ml-6 mt-1 flex flex-col gap-0.5 border-s border-border-weaker-base ps-2" role="group">
+                      <ul class="ms-2 mt-1 flex flex-col gap-0.5 border-s border-border-weaker-base ps-2" role="group">
                         <For each={turn.phases}>
                           {(phase) => (
                             <li role="treeitem">
                               <button
                                 type="button"
-                                class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left hover:bg-surface-base-hover transition-colors"
+                                class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-start hover:bg-surface-base-hover transition-colors"
                                 onClick={() => {
                                   const phaseNode = props.model.nodes.find((n) => n.id === phase.id)
                                   if (phaseNode) {
