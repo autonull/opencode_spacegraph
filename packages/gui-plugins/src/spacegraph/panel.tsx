@@ -252,6 +252,7 @@ export default function SpacegraphPanel(props: {
         <SessionGraph
           model={graph()}
           level={props.model.level(props.session)}
+          density={props.model.density()}
           layout={props.model.layout(props.session)}
           depth={props.model.depth(props.session)}
           detailMode={detailMode()}

@@ -38,6 +38,7 @@ export function MapDialog(props: {
         <SessionGraph
           model={graph()}
           level={props.model.level(props.session)}
+          density={props.model.density()}
           layout={props.model.layout(props.session)}
           depth={props.model.depth(props.session)}
           detailMode={detailMode()}
@@ -179,6 +180,7 @@ export function TurnMapDialog(props: {
               depth="flat"
               detailMode="popover"
               level="execution"
+              density={props.model.density()}
               chrome={false}
               shell="bare"
               reducedMotion={true}

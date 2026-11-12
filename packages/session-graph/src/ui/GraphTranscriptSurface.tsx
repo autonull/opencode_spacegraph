@@ -1,13 +1,15 @@
-import { createSignal, createMemo, For, Show, type JSX } from "solid-js"
+import { createSignal, createMemo, For, Show, onMount, type JSX } from "solid-js"
+import { createVirtualizer } from "@tanstack/solid-virtual"
 import { useI18n } from "@opencode/ui/context/i18n"
-import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
-import { turnSubgraph, buildGraphIncremental } from "@opencode/session-ui/graph"
+import type { GraphViewData } from "@opencode/session-ui/graph"
+import { buildGraphIncremental, turnNodeID, turnSubgraph } from "@opencode/session-ui/graph"
 import { GraphInline, type GraphInlineProps } from "./GraphInline"
 import type { SessionGraphProps } from "./SessionGraph"
 import { createReactiveTimelineProjection, TimelineRow, type ReasoningMode } from "@opencode/session-ui/timeline/projection"
 import { createSessionTimelineRowRenderer } from "@opencode/session-ui/timeline/row"
 import { createStore } from "solid-js/store"
 import type { MountedSession } from "@opencode/plugin/gui"
+import { buildTurnAffordances } from "./transcript-affordances"
 import "./graph-transcript.css"
 
 export type GraphTranscriptSurfaceProps = {
@@ -29,6 +31,8 @@ export type GraphTranscriptSurfaceProps = {
   previewTheme?: GraphInlineProps["previewTheme"]
   /** Maximum nodes in preview */
   previewLimit?: number
+  /** M4: the density profile that scales the card budget. */
+  density?: SessionGraphProps["density"]
   /** Height of expanded inline graph */
   inlineHeight?: number
   /** Optional renderNodeWidget for interactive graphs */
@@ -125,32 +129,11 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
     return builtGraph
   })
 
-  // Check if a turn has a graph affordance
-  const hasGraphAffordance = (turnID: string): { why?: boolean; expand?: boolean; subagent?: boolean } => {
-    const model = graphModel()
-    const turnNode = model.nodes.find((n) => n.turnID === turnID)
-    if (!turnNode) return {}
+  // The affordances of every turn, built in one pass over the graph. Rows look up the map instead
+  // of scanning the model per render, so a collapsed transcript does no per-row graph work.
+  const turnAffordances = createMemo(() => buildTurnAffordances(graphModel()))
 
-    const result: { why?: boolean; expand?: boolean; subagent?: boolean } = {}
-
-    // "Why" for failed turns
-    if (turnNode.status === "failed" || turnNode.kind === "error") {
-      result.why = true
-    }
-
-    // "Expand" for delegation turns (subagents)
-    if (turnNode.kind === "subagent") {
-      result.expand = true
-      // Check for nested subagents
-      const subgraph = turnSubgraph(model, turnID, 7)
-      const hasSubagents = subgraph.nodes.some((n) => n.kind === "subagent")
-      if (hasSubagents) {
-        result.subagent = true
-      }
-    }
-
-    return result
-  }
+  const affordanceFor = (turnID: string) => turnAffordances().get(turnID) ?? {}
 
   // Get the turn's nodes for sharing
   const getTurnNodeForShare = (turnID: string): string | undefined => {
@@ -203,13 +186,6 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
     }
   }
 
-  // Get the turn's subgraph for the inline graph
-  const getTurnSubgraphNodes = (turnID: string): readonly GraphNode[] => {
-    const model = graphModel()
-    const { nodes } = turnSubgraph(model, turnID, props.previewLimit ?? 5)
-    return nodes
-  }
-
   // Create the row renderer using session-ui's renderer
   const rowRenderer = createMemo(() =>
     createSessionTimelineRowRenderer({
@@ -226,60 +202,127 @@ export const GraphTranscriptSurface = (props: GraphTranscriptSurfaceProps) => {
 
   const rows = createMemo(() => timelineProjection().rows())
 
+  // One turn owns several timeline rows. The turn's map and affordances belong to the first row,
+  // so a turn never mounts the same inline graph once per message.
+  const turnStarts = createMemo(() => {
+    const seen = new Set<string>()
+    const starts = new Set<string>()
+
+    for (const row of rows()) {
+      if (seen.has(row.userMessageID)) continue
+      seen.add(row.userMessageID)
+      starts.add(TimelineRow.key(row))
+    }
+
+    return starts
+  })
+
+  // M4 — only the rows near the viewport mount. A collapsed transcript keeps a preview per visible
+  // turn and no graph per row, so scrolling cost stays with the row renderer, not the graph.
+  const [scrollElement, setScrollElement] = createSignal<HTMLDivElement>()
+  // The virtualizer observes a connected element: measuring before insertion would read a 0×0 rect.
+  let root!: HTMLDivElement
+  onMount(() => setScrollElement(root))
+  const virtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
+    get count() {
+      return rows().length
+    },
+    getScrollElement: () => scrollElement() ?? null,
+    estimateSize: () => 240,
+    getItemKey: (index) => {
+      const row = rows()[index]
+      return row ? TimelineRow.key(row) : index
+    },
+    overscan: 3,
+  })
+
   return (
-    <div class="graph-transcript-surface flex flex-col size-full min-h-0" data-slot="graph-transcript-surface">
-      <For each={rows()}>
-        {(row) => (
-          <GraphTranscriptRow
-            row={row}
-            projection={timelineProjection()}
-            rowRenderer={rowRenderer()}
-            expanded={expandedTurns().has(row.userMessageID)}
-            graphExpanded={expandedTurnGraphs().get(row.userMessageID) ?? false}
-            model={graphModel()}
-            hasAffordance={hasGraphAffordance(row.userMessageID)}
-            onToggleExpand={toggleTurnExpand}
-            onExpandChange={handleExpandChange}
-            onWhyClick={handleWhyClick}
-            onExpandDelegationClick={handleExpandDelegationClick}
-            onSubagentClick={handleSubagentClick}
-            onShareClick={handleShareClick}
-            getTurnSubgraphNodes={getTurnSubgraphNodes}
-            previewTheme={props.previewTheme}
-            previewLimit={props.previewLimit}
-            inlineHeight={props.inlineHeight}
-            renderNodeWidget={props.renderNodeWidget}
-            renderNodeHTML={props.renderNodeHTML}
-            renderCard={props.renderCard}
-            renderSummary={props.renderSummary}
-            diffSource={props.diffSource}
-            notes={props.notes}
-            onNotesChange={props.onNotesChange}
-            pins={props.pins}
-            onPinsChange={props.onPinsChange}
-            onOpenTranscript={props.onOpenTranscript}
-            onOpenSession={props.onOpenSession}
-            onActionNavigate={props.onActionNavigate}
-            onActionReveal={props.onActionReveal}
-            onActionCopy={props.onActionCopy}
-            onActionRun={props.onActionRun}
-            onBack={props.onBack}
-            onTurnMap={props.onTurnMap}
-            onSplitView={props.onSplitView}
-            sessionTitle={props.sessionTitle}
-            testedCommit={props.testedCommit}
-            endInset={props.endInset}
-            reducedMotion={props.reducedMotion}
-            breakpoints={props.breakpoints}
-          />
-        )}
-      </For>
+    <div
+      ref={root}
+      class="graph-transcript-surface flex flex-col size-full min-h-0"
+      data-slot="graph-transcript-surface"
+    >
+      <div style={{ position: "relative", width: "100%", height: `${virtualizer.getTotalSize()}px`, "flex-shrink": 0 }}>
+        <For each={virtualizer.getVirtualItems()}>
+          {(item) => (
+            <Show when={rows()[item.index]}>
+              {(row) => {
+                const turnID = () => turnNodeID(row().userMessageID)
+                const isTurnStart = () => turnStarts().has(TimelineRow.key(row()))
+
+                return (
+                  <div
+                    data-index={item.index}
+                    ref={(element) => queueMicrotask(() => virtualizer.measureElement(element))}
+                    style={{
+                      position: "absolute",
+                      top: "0",
+                      left: "0",
+                      width: "100%",
+                      transform: `translateY(${item.start}px)`,
+                    }}
+                  >
+                    <GraphTranscriptRow
+                      row={row()}
+                      turnID={turnID()}
+                      isTurnStart={isTurnStart()}
+                      projection={timelineProjection()}
+                      rowRenderer={rowRenderer()}
+                      expanded={isTurnStart() && expandedTurns().has(turnID())}
+                      graphExpanded={isTurnStart() && (expandedTurnGraphs().get(turnID()) ?? false)}
+                      model={graphModel()}
+                      hasAffordance={affordanceFor(turnID())}
+                      onToggleExpand={toggleTurnExpand}
+                      onExpandChange={handleExpandChange}
+                      onWhyClick={handleWhyClick}
+                      onExpandDelegationClick={handleExpandDelegationClick}
+                      onSubagentClick={handleSubagentClick}
+                      onShareClick={handleShareClick}
+                      previewTheme={props.previewTheme}
+                      previewLimit={props.previewLimit}
+                      inlineHeight={props.inlineHeight}
+                      density={props.density}
+                      renderNodeWidget={props.renderNodeWidget}
+                      renderNodeHTML={props.renderNodeHTML}
+                      renderCard={props.renderCard}
+                      renderSummary={props.renderSummary}
+                      diffSource={props.diffSource}
+                      notes={props.notes}
+                      onNotesChange={props.onNotesChange}
+                      pins={props.pins}
+                      onPinsChange={props.onPinsChange}
+                      onOpenTranscript={props.onOpenTranscript}
+                      onOpenSession={props.onOpenSession}
+                      onActionNavigate={props.onActionNavigate}
+                      onActionReveal={props.onActionReveal}
+                      onActionCopy={props.onActionCopy}
+                      onActionRun={props.onActionRun}
+                      onBack={props.onBack}
+                      onTurnMap={props.onTurnMap}
+                      onSplitView={props.onSplitView}
+                      sessionTitle={props.sessionTitle}
+                      testedCommit={props.testedCommit}
+                      endInset={props.endInset}
+                      reducedMotion={props.reducedMotion}
+                      breakpoints={props.breakpoints}
+                    />
+                  </div>
+                )
+              }}
+            </Show>
+          )}
+        </For>
+      </div>
     </div>
   )
 }
 
 interface GraphTranscriptRowProps {
   row: TimelineRow.TimelineRow
+  /** The graph's turn node for this row's turn, not the raw user message id. */
+  turnID: string
+  /** The turn's first timeline row owns its affordances and inline map. */
+  isTurnStart: boolean
   projection: ReturnType<typeof createReactiveTimelineProjection>
   rowRenderer: ReturnType<typeof createSessionTimelineRowRenderer>
   expanded: boolean
@@ -292,10 +335,10 @@ interface GraphTranscriptRowProps {
   onExpandDelegationClick: (turnID: string) => void
   onSubagentClick: (turnID: string, subagentID: string) => void
   onShareClick: (turnID: string) => void
-  getTurnSubgraphNodes: (turnID: string) => readonly GraphNode[]
   previewTheme?: GraphInlineProps["previewTheme"]
   previewLimit?: number
   inlineHeight?: number
+  density?: GraphInlineProps["density"]
   renderNodeWidget?: SessionGraphProps["renderNodeWidget"]
   renderNodeHTML?: SessionGraphProps["renderNodeHTML"]
   renderCard?: SessionGraphProps["renderCard"]
@@ -323,8 +366,7 @@ interface GraphTranscriptRowProps {
 
 const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
   const i18n = useI18n()
-  const { row, rowRenderer, expanded, hasAffordance } = props
-  const turnID = row.userMessageID
+  const turnID = props.turnID
   const [isRowFocused, setIsRowFocused] = createSignal(false)
   const [chipTabIndex, setChipTabIndex] = createSignal(-1)
 
@@ -361,9 +403,8 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
 
   const affordanceChips = () => {
     const chips: JSX.Element[] = []
-    const turnID = row.userMessageID
 
-    if (hasAffordance.why) {
+    if (props.hasAffordance.why) {
       chips.push(
         <button
           type="button"
@@ -381,7 +422,7 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
       )
     }
 
-    if (hasAffordance.expand) {
+    if (props.hasAffordance.expand) {
       chips.push(
         <button
           type="button"
@@ -399,7 +440,7 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
       )
     }
 
-    if (hasAffordance.subagent) {
+    if (props.hasAffordance.subagent) {
       chips.push(
         <button
           type="button"
@@ -455,8 +496,8 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
   // Use the row renderer from session-ui to render the actual row
   // The Row component takes { row: Accessor<TimelineRow>, onSizeChange?: () => void }
   const renderedRow = (
-    <rowRenderer.Row
-      row={() => row}
+    <props.rowRenderer.Row
+      row={() => props.row}
       onSizeChange={undefined}
     />
   )
@@ -471,26 +512,26 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
     >
       {renderedRow}
 
-      {/* Graph affordance chips - shown on hover/focus or when expanded */}
-      <Show when={hasAffordance.why || hasAffordance.expand || hasAffordance.subagent}>
+      {/* Graph affordance chips - the turn's first row owns them, so a turn never repeats a chip */}
+      <Show when={props.isTurnStart && (props.hasAffordance.why || props.hasAffordance.expand || props.hasAffordance.subagent)}>
         <div class="graph-affordance-bar" role="group" aria-label={i18n.t("ui.sessionGraph.transcript.affordances.label")}>
           {affordanceChips()}
           <button
             type="button"
             class="graph-affordance-toggle"
             onClick={() => props.onToggleExpand(turnID)}
-            aria-expanded={expanded}
+            aria-expanded={props.expanded}
             aria-controls={`graph-inline-${turnID}`}
           >
             <svg class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d={expanded ? "M4 9l4 4 6-6" : "M4 7l4-4 6 6"} stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              <path d={props.expanded ? "M4 9l4 4 6-6" : "M4 7l4-4 6 6"} stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
         </div>
       </Show>
 
-      {/* Expanded inline graph */}
-      <Show when={expanded}>
+      {/* Expanded inline graph - one per turn, after its first row */}
+      <Show when={props.isTurnStart && props.expanded}>
         <div id={`graph-inline-${turnID}`} class="graph-inline-container">
           <GraphInline
             model={props.model}
@@ -500,6 +541,7 @@ const GraphTranscriptRow = (props: GraphTranscriptRowProps) => {
             limit={props.previewLimit}
             previewTheme={props.previewTheme}
             onExpandChange={(expanded) => props.onExpandChange(turnID, expanded)}
+            density={props.density}
             renderNodeWidget={props.renderNodeWidget}
             renderNodeHTML={props.renderNodeHTML}
             renderCard={props.renderCard}

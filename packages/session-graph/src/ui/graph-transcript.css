@@ -3,6 +3,13 @@
  * Chips are text + icon, 13px, using --line-height-compact; no layout shift on hover.
  */
 
+/* M4 — the surface is its own scroll viewport so only rows near it mount. Browser scroll
+   anchoring would fight the virtualizer's translations, so it is off. */
+.graph-transcript-surface {
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+
 .graph-affordance-bar {
   display: flex;
   align-items: center;

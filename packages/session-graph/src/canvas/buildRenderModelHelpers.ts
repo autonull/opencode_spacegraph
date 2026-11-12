@@ -47,6 +47,8 @@ export interface BuildRenderModelOptions {
   manualPositions: Record<string, [number, number, number]>
   manualSizes: Record<string, [number, number]>
   hiddenEdgeKinds: Accessor<ReadonlySet<string>>
+  /** M4: the card budget for the level at the current viewport and density. */
+  cardBudget?: Accessor<number | undefined>
 }
 
 /**
@@ -82,6 +84,7 @@ export function createRenderModelBuilder(options: BuildRenderModelOptions) {
       manualPositions,
       manualSizes,
       hiddenEdgeKinds,
+      cardBudget,
     } = options
 
     const currentLayout = layout()
@@ -110,6 +113,7 @@ export function createRenderModelBuilder(options: BuildRenderModelOptions) {
       axisLabels: axisLabels(),
       renderCard: renderCard(),
       renderBand: renderBand(),
+      cardBudget: cardBudget?.(),
     })
 
     // Apply manual layout overrides

@@ -213,7 +213,14 @@ export {
 } from "./memory"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
-export { DOM_BUDGET } from "./dom-budget"
+export {
+  CARD_DENSITY_SCALE,
+  DOM_BUDGET,
+  DOM_BUDGET_VIEWPORT,
+  viewportCardBudget,
+  type CardDensity,
+  type DomBudgetLevel,
+} from "./dom-budget"
 export { exportGraphFilename, exportGraphJSON } from "./export"
 
 export {

@@ -90,6 +90,8 @@ export interface GraphInlineProps {
   detailMode?: SessionGraphProps["detailMode"]
   /** Optional level for the interactive graph. Default: "execution". */
   level?: SessionGraphProps["level"]
+  /** M4: the density profile that scales the card budget. */
+  density?: SessionGraphProps["density"]
   /** Optional projection for the interactive graph. */
   projection?: SessionGraphProps["projection"]
   /** Optional onSelect for the interactive graph. */
@@ -186,6 +188,7 @@ export const GraphInline = (props: GraphInlineProps) => {
           depth={props.depth ?? "flat"}
           detailMode={props.detailMode ?? "popover"}
           level={props.level ?? "execution"}
+          density={props.density}
           projection={props.projection}
           renderNodeWidget={props.renderNodeWidget}
           renderNodeHTML={props.renderNodeHTML}

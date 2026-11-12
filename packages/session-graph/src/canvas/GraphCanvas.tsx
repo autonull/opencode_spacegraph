@@ -10,6 +10,7 @@ import type {
 import { createEffect, createRenderEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { mountRenderer, type MountedRenderer, type RendererFactory, type RendererID } from "./renderer-registry"
 import { diffRenderModels } from "@spacegraphjs/adapter"
+import { modelUpdatePath } from "./model-apply"
 
 export type GraphCanvasReady = { id: RendererID; capabilities: RendererCapabilities; fallback: boolean }
 
@@ -97,47 +98,6 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   const getDepth = () => typeof props.depth === "function" ? props.depth() : (props.depth ?? (getProjection() === "3d" ? "orbit" : "flat"))
   const cardFacing = () => typeof props.cardFacing === "function" ? props.cardFacing() : (props.cardFacing ?? "plane")
 
-  /** Check if we can apply an incremental patch instead of a full model rebuild. */
-  function canPatch(prev: RenderModel, next: RenderModel): boolean {
-    // Cold mount or no previous model -> full rebuild
-    if (!prev) return false
-
-    // Structural changes (level/layout/depth/projection) -> full rebuild
-    // These are handled by separate effects, so we assume if we're here, they haven't changed
-
-    // Check for removed nodes
-    const prevNodeIds = new Set(prev.nodes.map((n) => n.id))
-    const nextNodeIds = new Set(next.nodes.map((n) => n.id))
-    for (const id of prevNodeIds) {
-      if (!nextNodeIds.has(id)) return false
-    }
-
-    // Check for changed kind/shape/position on existing nodes
-    const prevNodes = new Map(prev.nodes.map((n) => [n.id, n]))
-    for (const nextNode of next.nodes) {
-      const prevNode = prevNodes.get(nextNode.id)
-      if (prevNode) {
-        if (prevNode.kind !== nextNode.kind) return false
-        if (prevNode.shape !== nextNode.shape) return false
-        // Position rewrites for existing ids
-        if (prevNode.position[0] !== nextNode.position[0] ||
-            prevNode.position[1] !== nextNode.position[1] ||
-            prevNode.position[2] !== nextNode.position[2]) {
-          return false
-        }
-      }
-    }
-
-    // Check for removed edges
-    const prevEdgeIds = new Set(prev.edges.map((e) => e.id))
-    const nextEdgeIds = new Set(next.edges.map((e) => e.id))
-    for (const id of prevEdgeIds) {
-      if (!nextEdgeIds.has(id)) return false
-    }
-
-    return true
-  }
-
   /** Apply model with streaming support: use applyPatch for append-only changes, else setModel. */
   function applyModel(model: RenderModel) {
     if (!mounted) return
@@ -145,9 +105,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     const renderer = mounted.renderer
     const hasApplyPatch = typeof renderer.applyPatch === "function"
 
-    if (hasApplyPatch && previousModel && canPatch(previousModel, model)) {
+    if (modelUpdatePath(previousModel, model, hasApplyPatch) === "patch") {
       // Use incremental patch
-      const patch = diffRenderModels(previousModel, model)
+      const patch = diffRenderModels(previousModel!, model)
       const hasChanges = patch.nodes.added.length > 0 ||
         patch.nodes.changed.length > 0 ||
         patch.nodes.removed.length > 0 ||

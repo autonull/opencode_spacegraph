@@ -332,6 +332,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             <GraphTranscriptSurface
               model={model.graph(session)()}
               session={session}
+              density={model.density()}
               notes={model.notes(session)}
               onNotesChange={(notes) => model.setNotes(session, notes)}
               pins={model.pins(session)}

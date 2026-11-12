@@ -23,6 +23,7 @@ import {
   type IncrementalBuilderState,
   type TimeTravelSnapshot,
   type Annotations,
+  type CardDensity,
 } from "@opencode/session-ui/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 import type definition from "./index"
@@ -54,6 +55,13 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const timeTravelEnabled = () => ctx.flags.enabled("graph_time_travel")
 
   const costLensEnabled = () => ctx.flags.enabled("graph_cost_lens")
+
+  /** M4: the density profile scales the card budget; the canvas still owns the layout. */
+  const density = (): CardDensity => {
+    const profile = (prefValue().density as { profile?: CardDensity } | undefined)?.profile
+
+    return profile ?? "comfortable"
+  }
 
   /** Shared graph memo - built incrementally per session, reused by panel, full-map, hybrid, etc. */
   const graph = (session: MountedSession) =>
@@ -209,6 +217,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     /** Whether the host exposes the time-travel scrubber. */
     timeTravelEnabled,
     costLensEnabled,
+    density,
     /** The parked checkpoint index, or undefined for live. */
     checkpoint: (session: MountedSession) => sessionValue(session)?.checkpoint,
     /** Whether the session is parked away from live. */
