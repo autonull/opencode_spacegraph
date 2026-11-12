@@ -79,6 +79,13 @@ export const GraphSearch = (props: GraphSearchProps) => {
       return { compiled: queryString, entries }
     }
 
+    // The `g <key>` navigation grammar outranks the palette: the palette intercepts every typed
+    // query when the host supplies one, so navigation must resolve first or it returns nothing.
+    const navigation = navigationResults(props.model, q)
+    if (navigation) {
+      return { compiled: "", entries: filteredNodes(navigation).map((node) => nodeEntry(node)) }
+    }
+
     if (props.palette) {
       const entries = paletteEntries(props.model, q, props.palette).filter(
         (entry) => entry.kind !== "node" || filteredNodes([entry.node!]).length > 0,
@@ -88,9 +95,7 @@ export const GraphSearch = (props: GraphSearchProps) => {
 
     if (!q) return { compiled: "", entries: [] }
 
-    const entries = filteredNodes(navigationResults(props.model, q) ?? rankedSearch(props.model, q)).map((node) =>
-      nodeEntry(node),
-    )
+    const entries = filteredNodes(rankedSearch(props.model, q)).map((node) => nodeEntry(node))
     return { compiled: "", entries }
   })
 

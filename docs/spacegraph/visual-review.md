@@ -91,3 +91,7 @@ semantic level, not the camera.
 ## 2026-11-10 — me
 Reason: Chrome consolidation changes (Phase 17.4) - minor rendering difference in export menu
 Frames: 42-graph-permalink-copy.png
+
+## 2026-11-12 — me
+Reason: Re-bless after Phase 16.3 Map this turn affordance, M5/M6 chrome, and navigation-vs-palette search fix
+Frames: 43-graph-demo-map.png, 42-graph-permalink-copy.png, 41-graph-trust-lens.png, 40-graph-nlq-code-errors.png, 39-graph-nlq-search.png, 38-graph-hybrid.png, bundle/spacegraph-bundle-dialog.png, bundle/spacegraph-bundle-panel.png, bundle/spacegraph-bundle-map.png
