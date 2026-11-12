@@ -74,15 +74,3 @@ export function GraphInspectorPanel(props: GraphInspectorPanelProps) {
     <GraphInspector {...inspectorProps} />
   )
 }
-
-/** @deprecated Use GraphInspectorPanel with sheet={true} instead. */
-export type GraphInspectorSheetProps = GraphInspectorPanelProps & {
-  title: string
-  onClose: () => void
-  i18n: ReturnType<typeof import("@opencode/ui/context/i18n")["useI18n"]>
-}
-
-/** @deprecated Use GraphInspectorPanel with sheet={true} instead. */
-export function GraphInspectorSheet(props: GraphInspectorSheetProps) {
-  return <GraphInspectorPanel {...props} sheet={true} />
-}
