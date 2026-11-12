@@ -83,6 +83,8 @@ export default {
   "layout.hierarchy": "Hierarchy",
   "layout.tree": "Tree",
   "layout.force": "Force",
+  "layout.grid": "Grid",
+  "layout.circular": "Circular",
   "layout.ribbon": "Ribbon",
   "layout.matrix": "Matrix",
   "layout.log": "Log",

@@ -11,6 +11,7 @@
 | [evidence.md](evidence.md) | Evidence gap & T2.2 study protocol (§10) |
 | [review-guide.md](review-guide.md) | Key files for reviewers (§14) |
 | [performance.md](performance.md) | Performance numbers & folded-vs-unfolded dividend (§7.3-7.4) |
+| [layouts-renderers.md](layouts-renderers.md) | Layout and renderer budgets, fallbacks, and parked strategies |
 | [ci.md](ci.md) | `graph:verify` gate detail (§7.2a) |
 | [interaction.md](interaction.md) | Mouse map contract (§7.1a) |
 | [upstream-review.md](upstream-review.md) | Full maintainer review packet |
@@ -26,4 +27,4 @@
 
 - **SpaceGraphJS library docs:** `spacegraphjs/README.md`, `spacegraphjs/docs/`
 - **SpaceGraphJS roadmap:** `spacegraphjs/ROADMAP.md`, `spacegraphjs/PLAN/`
-- **Active plan:** `SPACEGRAPH.TODO.31.md`
+- **Active plan:** `SPACEGRAPH.TODO.35.md`

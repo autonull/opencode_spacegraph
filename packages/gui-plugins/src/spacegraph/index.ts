@@ -269,6 +269,10 @@ const State = Schema.Struct({
   notes: Schema.optional(Schema.Unknown),
   /** Nodes the reader pinned; every surface marks the same set. */
   pins: Schema.optional(Schema.Array(Schema.String)),
+  /** M5.1: saved facet questions, newest first. */
+  savedQueries: Schema.optional(
+    Schema.Array(Schema.Struct({ label: Schema.String, query: Schema.String })),
+  ),
 })
 
 export type State = Schema.Schema.Type<typeof State>

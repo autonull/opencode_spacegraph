@@ -137,4 +137,34 @@ describe("NLQ compiler", () => {
     expect(result.query).toBe("auth token")
     expect(result.kinds.has("error")).toBe(true)
   })
+
+  test("a user dictionary adds words without changing the built-in grammar", () => {
+    const dictionaries = {
+      kinds: { error: ["bug"], file: ["script"] },
+      statuses: { success: ["green"] },
+      domains: { history: ["repo"] },
+    }
+
+    expect(compileNLQ("bug", { dictionaries }).kinds.has("error")).toBe(true)
+    expect(compileNLQ("green script", { dictionaries }).statuses.has("success")).toBe(true)
+    expect(compileNLQ("green script", { dictionaries }).kinds.has("file")).toBe(true)
+    expect(compileNLQ("repo commits", { dictionaries }).domains.has("history")).toBe(true)
+    // The built-in words still work, and an absent option keeps the exact old facets.
+    expect(compileNLQ("failed tools").kinds.has("tool")).toBe(true)
+    expect(compileNLQ("failed tools").statuses.has("failed")).toBe(true)
+  })
+
+  test("a user dictionary cannot add an unknown canonical value", () => {
+    const result = compileNLQ("galaxy", {
+      dictionaries: { kinds: { galaxy: ["galaxy"] } as never },
+    })
+    expect(result.kinds.size).toBe(0)
+    expect(result.query).toBe("galaxy")
+  })
+
+  test("parseNLQ forwards the dictionary to the compiled facets", () => {
+    const { facets } = parseNLQ("show bug", { dictionaries: { kinds: { error: ["bug"] } } })
+    expect(facets.kinds.has("error")).toBe(true)
+    expect(facets.query).toBe("")
+  })
 })

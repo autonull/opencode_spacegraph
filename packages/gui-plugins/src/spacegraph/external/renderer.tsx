@@ -1,17 +1,19 @@
 import {
   Command,
   ComposerPill,
+  createKeyed,
   MenuItem,
   Panel,
   SessionSurface,
   SettingsPage,
   Slot,
+  TitlebarItem,
   type MountedSession,
   type PanelTab,
   type Plugin,
   type SetupContext,
 } from "@opencode/plugin/gui"
-import { createSignal, lazy, onCleanup, onMount, Suspense, type ParentProps } from "solid-js"
+import { createSignal, lazy, onCleanup, onMount, Show, Suspense, type ParentProps } from "solid-js"
 import { LAYOUTS } from "../internal/graph"
 import definition, { BUILTIN_LENSES, type BuiltinLensId } from ".."
 import { createSpacegraph } from "../model"
@@ -104,13 +106,42 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     }
   }
 
+  // M5.2: failures are announced as a toast (no sound) once per newly seen failure node.
+  const AttentionWatch = (props: { session: MountedSession }) => {
+    const seen = new Set<string>()
+    let primed = false
+    createKeyed(
+      () => (model.attentionEnabled() ? model.attention(props.session).ids.join("|") : ""),
+      () => {
+        if (!model.attentionEnabled()) return
+        const signal = model.attention(props.session)
+        if (!primed) {
+          for (const id of signal.ids) seen.add(id)
+          primed = true
+          return
+        }
+        const fresh = signal.ids.filter((id) => !seen.has(id))
+        if (fresh.length === 0) return
+        for (const id of fresh) seen.add(id)
+        ctx.toast.show({
+          variant: "error",
+          title: ctx.t("ui.sessionGraph.attention.toastTitle"),
+          description: signal.latest?.label ?? ctx.t("ui.sessionGraph.attention.toastDescription"),
+        })
+      },
+    )
+    return null
+  }
+
   // Phase 16.3: session.header slot - "Map this turn" toggle
   ctx.add(Slot, {
     at: "session.header",
     order: 30,
     render: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
+      const signal = () => (model.attentionEnabled() ? model.attention(input.session) : undefined)
       return (
         <div class="flex items-center gap-2" data-slot="session-header-graph-toggle">
+          <AttentionWatch session={input.session} />
           <button
             type="button"
             class="text-13-regular leading-[var(--line-height-compact)] text-v2-text-text-muted hover:text-v2-text-text-base transition-colors"
@@ -123,6 +154,15 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             </svg>
             <span>{ctx.t("session.header.mapTurn.label")}</span>
           </button>
+          <Show when={(signal()?.count ?? 0) > 0}>
+            <span
+              data-slot="session-header-graph-failures"
+              class="rounded-full bg-v2-state-bg-danger px-1.5 text-11-medium text-v2-state-fg-danger"
+              title={ctx.t("ui.sessionGraph.attention.title")}
+            >
+              {signal()?.count}
+            </span>
+          </Show>
         </div>
       )
     },
@@ -149,13 +189,35 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       const messages = session.server.data.session.message.list(session.id)
       if (!messages.length) return undefined
 
+      const count = model.attentionEnabled() ? model.attention(session).count : 0
+
       return {
-        label: ctx.t("session.header.mapTurn.label"),
+        label: count > 0 ? `${ctx.t("session.header.mapTurn.label")} (${count})` : ctx.t("session.header.mapTurn.label"),
         icon: "branch-out" as const,
-        tone: "success" as const,
+        tone: count > 0 ? ("danger" as const) : ("success" as const),
         run: () => select(`${ctx.id}.map`),
       }
     },
+  })
+
+  // M5.2: a titlebar pill for a session with failures; the toast is the quieter channel.
+  ctx.add(TitlebarItem, () => {
+    if (!model.attentionEnabled()) return
+    const session = ctx.sessions.current()
+    if (!session) return
+    const signal = model.attention(session)
+    if (!signal.latest) return
+
+    return {
+      id: "graph-failures",
+      label: ctx.plural("ui.sessionGraph.attention", signal.count),
+      title: ctx.t("ui.sessionGraph.attention.titlebar"),
+      icon: "outline-hexagonal-warning" as const,
+      run: () => {
+        model.focus(session, signal.latest?.nodeID)
+        select(`${ctx.id}.map`)
+      },
+    }
   })
 
   const openMapDialog = (session: MountedSession, title: string) => {

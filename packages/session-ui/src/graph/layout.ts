@@ -191,6 +191,9 @@ export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: numbe
 }
 
 export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): GraphLayout {
+  if (options.strategy === "grid") return gridLayout(model, options)
+  if (options.strategy === "circular") return circularLayout(model, options)
+
   const config = options.nodeSizeFn ? { ...LAYOUT, nodeSizeFn: options.nodeSizeFn } : LAYOUT
   return Strategies.layoutGraph(model, config, {
     strategy: options.strategy,
@@ -208,6 +211,98 @@ export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): 
     include: options.level === "overview" ? (node) => isVisibleAt(node, "overview") : undefined,
     minColumnWidth: options.level === "overview" ? COMPACT_SIZE[0] : undefined,
   })
+}
+
+/**
+ * Grid and circular are optional, deterministic session arrangements. They consume the same model
+ * and level as the library strategies, so a host can expose them without a second layout engine.
+ */
+const optionalLayoutNodes = (model: GraphViewData): GraphNode[] => [...model.nodes]
+
+const optionalNodeSize = (node: GraphNode, options: LayoutOptions): readonly [number, number] =>
+  options.nodeSizeFn?.(node) ?? (options.level === "overview" ? COMPACT_SIZE : nodeSize(node))
+
+function boundingLayout(
+  model: GraphViewData,
+  options: LayoutOptions,
+  strategy: "grid" | "circular",
+  positions: Map<string, Position>,
+): GraphLayout {
+  const nodes = optionalLayoutNodes(model)
+  const sizes = new Map(nodes.map((node) => [node.id, optionalNodeSize(node, options)]))
+  const placed = nodes.filter((node) => positions.has(node.id))
+  const bounds = placed.reduce(
+    (current, node) => {
+      const position = positions.get(node.id)!
+      const [width, height] = sizes.get(node.id)!
+      return {
+        min: {
+          x: Math.min(current.min.x, position.x - width / 2),
+          y: Math.min(current.min.y, position.y - height / 2),
+          z: Math.min(current.min.z, position.z),
+        },
+        max: {
+          x: Math.max(current.max.x, position.x + width / 2),
+          y: Math.max(current.max.y, position.y + height / 2),
+          z: Math.max(current.max.z, position.z),
+        },
+      }
+    },
+    { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+  )
+
+  return { positions, clusters: new Map(), bounds, strategy }
+}
+
+/** Row-major packing in model order: a square grid unless the host chooses the column count. */
+function gridLayout(model: GraphViewData, options: LayoutOptions): GraphLayout {
+  const nodes = optionalLayoutNodes(model)
+  const columns = Math.max(1, options.columns ?? Math.ceil(Math.sqrt(nodes.length || 1)))
+  const gap = options.gap ?? 32
+  const rowGap = options.rowGap ?? options.laneGap ?? 32
+  const sizes = nodes.map((node) => optionalNodeSize(node, options))
+  const columnWidths = Array.from({ length: columns }, () => 0)
+  const rowHeights = Array.from({ length: Math.ceil(nodes.length / columns) }, () => 0)
+
+  sizes.forEach(([width, height], index) => {
+    const column = index % columns
+    const row = Math.floor(index / columns)
+    columnWidths[column] = Math.max(columnWidths[column] ?? 0, width)
+    rowHeights[row] = Math.max(rowHeights[row] ?? 0, height)
+  })
+
+  const xOf = (column: number) =>
+    columnWidths.slice(0, column).reduce((sum, width) => sum + width + gap, 0)
+  const yOf = (row: number) =>
+    -rowHeights.slice(0, row).reduce((sum, height) => sum + height + rowGap, 0)
+  const positions = new Map<string, Position>()
+
+  nodes.forEach((node, index) => {
+    positions.set(node.id, { x: xOf(index % columns), y: yOf(Math.floor(index / columns)), z: 0 })
+  })
+
+  return boundingLayout(model, options, "grid", positions)
+}
+
+/** Even spacing around one circle, ordered by the model so a streamed session appends along the arc. */
+function circularLayout(model: GraphViewData, options: LayoutOptions): GraphLayout {
+  const nodes = optionalLayoutNodes(model)
+  const gap = options.gap ?? 32
+  const sizes = nodes.map((node) => optionalNodeSize(node, options))
+  const circumference = sizes.reduce((sum, [width]) => sum + width + gap, 0)
+  const radius = Math.max(240, circumference / (Math.PI * 2))
+  const positions = new Map<string, Position>()
+
+  nodes.forEach((node, index) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(1, nodes.length)
+    positions.set(node.id, {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+      z: 0,
+    })
+  })
+
+  return boundingLayout(model, options, "circular", positions)
 }
 
 const LANE_BY_KIND: Partial<Record<NodeKind, Lane>> = {

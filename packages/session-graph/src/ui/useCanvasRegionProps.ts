@@ -6,7 +6,7 @@ import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGroupCollapseReturn } from "./useGroupCollapse"
 import type { UseEdgeKindsReturn } from "./useEdgeKinds"
 import type { GraphViewportTrackerReturn } from "./useGraphViewport"
-import type { GraphViewData, GraphNode, GraphEdge, DetailMode, Layout, ZoomLevel, EqualizerRuleSet } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode, GraphEdge, DetailMode, Layout, ZoomLevel, EqualizerRuleSet, PaletteEntry, PaletteSources } from "@opencode/session-ui/graph"
 import type { RenderModel } from "@spacegraphjs/renderer"
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import type { Projection } from "@spacegraphjs/renderer"
@@ -57,6 +57,11 @@ export function useCanvasRegionProps(
     setSearchOpen: (open: boolean) => void
     jumpTo: (node: GraphNode) => void
     contentIDs: () => string[]
+    palette?: PaletteSources
+    onPaletteAction?: (entry: PaletteEntry) => void
+    onPaletteLens?: (entry: PaletteEntry) => void
+    onPaletteSurface?: (entry: PaletteEntry) => void
+    onPaletteSavedQuery?: (entry: PaletteEntry) => void
     legendOpen: () => boolean
     setLegendOpen: (open: boolean) => void
     edgeKinds: UseEdgeKindsReturn
@@ -168,6 +173,11 @@ export function useCanvasRegionProps(
     setSearchOpen: state.setSearchOpen,
     jumpTo: state.jumpTo,
     contentIDs: state.contentIDs,
+    palette: state.palette,
+    onPaletteAction: state.onPaletteAction,
+    onPaletteLens: state.onPaletteLens,
+    onPaletteSurface: state.onPaletteSurface,
+    onPaletteSavedQuery: state.onPaletteSavedQuery,
 
     // Legend
     legendOpen: state.legendOpen,
