@@ -19,6 +19,7 @@ import { toaster } from "@opencode/ui/toast"
 import { writeClipboard } from "@opencode/session-ui/copy"
 import { base64Encode } from "@opencode/util/encode"
 import { uuid } from "@opencode/util/uuid"
+import { ConfigFlag } from "@opencode/schema/config/flag"
 import {
   type App,
   type Layout,
@@ -410,18 +411,7 @@ export function createHostApis() {
             const allFlags = experimental.all_flags === true
 
             // Check each known flag
-            const knownFlags = [
-              "graph_library_renderers",
-              "graph_time_travel",
-              "graph_compaction_advisor",
-              "graph_cost_lens",
-              "todo",
-              "background_compaction",
-              "media_blob",
-              "schedules",
-              "artifacts",
-              "codemode_vm",
-            ]
+            const knownFlags = Object.keys(ConfigFlag.registry)
 
             for (const flag of knownFlags) {
               const override = experimental[flag]
@@ -434,18 +424,7 @@ export function createHostApis() {
             // No experimental config, use defaults based on channel
             const isDev = import.meta.env.VITE_OPENCODE_CHANNEL === "local" ||
               import.meta.env.VITE_OPENCODE_CHANNEL === "dev"
-            const knownFlags = [
-              "graph_library_renderers",
-              "graph_time_travel",
-              "graph_compaction_advisor",
-              "graph_cost_lens",
-              "todo",
-              "background_compaction",
-              "media_blob",
-              "schedules",
-              "artifacts",
-              "codemode_vm",
-            ]
+            const knownFlags = Object.keys(ConfigFlag.registry)
             for (const flag of knownFlags) {
               resolved[flag] = isDev
             }

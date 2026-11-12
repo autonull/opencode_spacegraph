@@ -29,34 +29,46 @@ All surfaces share:
 
 ## Surface Table
 
-| Surface ID | Title | Icon | Default Lens | Flags | Persisted State |
-|------------|-------|------|--------------|-------|-----------------|
-| `spacegraph.map` | Map | `MapIcon` | `cartographer` | — | level, layout, depth, density, selection, windows, collapsedGroups |
-| `spacegraph.hybrid` | Hybrid | `SplitIcon` | `navigator` | `graph_surface_transcript` | level, layout, depth, density, arrangement, side, activeTurn, followLog |
-| `spacegraph.transcript` | Transcript | `ListIcon` | `reader` | `graph_surface_transcript` | virtualized scroll, inline expand state |
-| `spacegraph.turn-map` | Turn Map | `GitBranchIcon` | `navigator` | — | level, layout, depth, density (read-only memory) |
-| `spacegraph.inline` | Inline | `Maximize2Icon` | `reader` | `graph_inline_preview` | expand/collapse per turn (read-only memory) |
+| Surface | ID | Entry point | Flags | Persisted State |
+|---------|----|-------------|-------|-----------------|
+| Map | `${ctx.id}.map` | `MapSurface` → `SessionGraph` | `graph_palette`, `graph_attention`, `graph_layout_breadth` | level, layout, depth, density, selection, windows, collapsedGroups |
+| Hybrid | `${ctx.id}.hybrid` | `HybridSurface` → map + transcript | `graph_palette`, `graph_attention`, `graph_layout_breadth` | level, layout, depth, density, arrangement, side, activeTurn, followLog |
+| Transcript graph | `${ctx.id}.transcript-graph` | `GraphTranscriptSurface` | `graph_palette` | virtualized rows, inline expand state, notes, pins |
+| Side panel | panel key `${ctx.id}:map` | `SpacegraphPanel` → `SessionGraph` | `graph_palette`, `graph_attention` | level, layout, depth, density, selection |
+| Turn map | layer on a surface | `TurnMapLayer` → `GraphInline` | — | level, layout, depth, density (read-only memory) |
+| Inline preview | inside a transcript row | `GraphInline` → `SessionGraph` | — | expand/collapse per turn (read-only memory) |
+
+The flags above add optional chrome. The surface itself is always registered; the graduated
+`graph_surface_transcript`, `graph_node_widgets`, `graph_inline_preview`, and `graph_multi_surface`
+keys are gone from the registry.
 
 ---
 
 ## Lens Table
 
-| Lens ID | Title | Description | Projection | Flags |
-|---------|-------|-------------|------------|-------|
-| `reader` | Reader | Linear transcript order, minimal edges | `reader` | — |
-| `cartographer` | Cartographer | Full session topology, all edges | `cartographer` | — |
-| `navigator` | Navigator | Turn-focused with subagent context | `navigator` | — |
-| `debugger` | Debugger | Failure chain + trace overlays | `debugger` | — |
-| `trust` | Trust | Highlights unverified writes | `trust` | `graph_trust_lens` |
-| `cost` | Cost | Token/time/tool badges on turns | `cost` | `graph_cost_lens` |
-| `files` | Files | Changed-files rail + provenance | `files` | — |
-| `compare` | Compare | Two-turn diff overlay | `compare` | `graph_compare_lens` |
-| `review` | Review | Review Changes mode | `review` | `graph_review_lens` |
+The nine built-in lenses are data in `packages/gui-plugins/src/spacegraph/index.ts`. Applying one
+sets the surface, layout, depth, level, detail mode, files rail, trace kind, and widget preference,
+and persists the lens id. No lens id is flag-gated; flags gate individual capabilities inside the
+lens.
 
-**Lens ↔ Projection mapping** (in `session-ui/graph/profiles.ts`):
-- Each lens selects a projection profile that determines which nodes/edges are visible.
-- Projections are pure functions: `project(model, profile) → GraphViewData`.
-- The active lens is persisted per session in the plugin store.
+| Lens ID | Title | Surface | Layout | Depth | Level | Detail | Files | Trace | Widgets |
+|---------|-------|---------|--------|-------|-------|--------|-------|-------|---------|
+| `reader` | Reader | transcript | lanes | flat | overview | off | — | — | — |
+| `navigator` | Navigator | hybrid | lanes | flat | execution | popover | — | why | — |
+| `cartographer` | Cartographer | map | lanes | flat | overview | panel | — | — | — |
+| `investigator` | Investigator | map | lanes | flat | execution | panel | — | why | — |
+| `orchestrator` | Orchestrator | map | hierarchy | layered | overview | panel | — | led-here | — |
+| `reviewer` | Reviewer | hybrid | lanes | flat | execution | panel | yes | related | — |
+| `archivist` | Archivist | map | lanes | flat | overview | panel | — | — | — |
+| `composer` | Composer | hybrid | lanes | flat | execution | popover | — | — | yes |
+| `auditor` | Auditor | map | matrix | flat | overview | panel | yes | — | — |
+
+Applying a lens through the palette also selects the lens surface: `transcript` stays the host
+surface, `map` selects `${ctx.id}.map`, and `hybrid` selects `${ctx.id}.hybrid`. Stored lens fields
+are in the plugin `prefs` store; per-session overrides stay in the session store.
+
+**Surface filtering** uses `PROFILE_PRESETS` in `session-ui/graph/profiles.ts`. Profiles are domain
+and status scopes; they are not lenses and do not change layout or surface.
 
 ---
 
@@ -65,7 +77,7 @@ All surfaces share:
 1. **Static first, interactive on demand**
    - Inline graphs (transcript, turn map) render static SVG previews (`TurnMapInlineGraph`, `GraphPreview`).
    - Interactive `SessionGraph` mounts only when the user expands (clicks affordance or presses `Enter`).
-   - `graph_inline_preview` flag gates the expand affordance.
+   - The expand affordance is always on; its old `graph_inline_preview` flag is graduated.
 
 2. **Chrome is host-composed**
    - `SessionGraph.chrome={false}` for inline/embedded surfaces.
@@ -85,7 +97,10 @@ All surfaces share:
 5. **Flag gating**
    - Every capability starts behind a flag (see `packages/schema/src/config/flag.ts`).
    - UI checks `ctx.flags.enabled("flag_name")` before rendering affordances.
+   - The host resolves every key in `ConfigFlag.registry`, so a new flag needs no second list.
    - Flags default `off` in releases; `on` in local/dev via `OPENCODE_FLAGS`.
+   - Graduated and removed: `graph_surface_transcript`, `graph_node_widgets`,
+     `graph_inline_preview`, `graph_multi_surface`. Deleted orphan: `graph_trust_lens`.
 
 ---
 
@@ -96,7 +111,7 @@ All surfaces share:
 
 ### View Control (controlled, persisted by host)
 - `level: ZoomLevel` — `overview` | `detail` | `execution`
-- `layout: Layout` — `force` | `grid` | `circular` | `hierarchical` | `radial` | `spectral` | `cluster` | `geo`
+- `layout: Layout` — `lanes` | `timeline` | `hierarchy` | `tree` | `force` | `grid` | `circular` | `ribbon` | `matrix` | `log`
 - `depth: DepthMode` — `flat` | `layered` | `depth-stack` | `orbit`
 - `projection: Projection` — 2D | 3D | AR
 - `density: CardDensity` — `comfortable` | `compact` | `cozy`
@@ -122,7 +137,7 @@ All surfaces share:
 - `onRulesChange, onCompactionAdvisorChange, onTrustLensChange, onFilesChange`
 
 ### Advanced
-- `renderNodeWidget: (node) => JSX.Element` — `graph_node_widgets`
+- `renderNodeWidget: (node) => JSX.Element` — node widgets (graduated)
 - `renderNodeHTML: (node) => string` — sanitized HTML in card
 - `diffSource: GraphDiffSource` — host loader for turn diffs
 - `renderSummary: (node) => JSX.Element` — custom node summary

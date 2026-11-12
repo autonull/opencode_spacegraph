@@ -12,6 +12,11 @@
 | [review-guide.md](review-guide.md) | Key files for reviewers (§14) |
 | [performance.md](performance.md) | Performance numbers & folded-vs-unfolded dividend (§7.3-7.4) |
 | [layouts-renderers.md](layouts-renderers.md) | Layout and renderer budgets, fallbacks, and parked strategies |
+| [composition-guide.md](composition-guide.md) | Surface table, lens table, and progressive-disclosure rules |
+| [embedding-guide.md](embedding-guide.md) | Embedding tiers 1–3, interactive controls, and the HTML trust boundary |
+| [library-delta.md](library-delta.md) | SDK and library proposals with rationale, status, and feature mapping |
+| [migration.md](migration.md) | Moved public names, deprecated aliases, and removal window |
+| [study-protocol.md](study-protocol.md) | M7 consent, task scripts, counterbalancing, and stop rule |
 | [ci.md](ci.md) | `graph:verify` gate detail (§7.2a) |
 | [interaction.md](interaction.md) | Mouse map contract (§7.1a) |
 | [upstream-review.md](upstream-review.md) | Full maintainer review packet |

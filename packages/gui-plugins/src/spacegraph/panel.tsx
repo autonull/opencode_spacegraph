@@ -315,6 +315,7 @@ export default function SpacegraphPanel(props: {
           // Node widget (Phase 19.9 - widget breadth)
           renderNodeWidget={renderNodeWidget()}
           enableCostLens={ctx.flags.enabled("graph_cost_lens")}
+          enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
         />
         <Windows
           windows={windows()}

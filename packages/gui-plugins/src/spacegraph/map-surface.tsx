@@ -60,6 +60,7 @@ export function MapSurface(props: {
         onSplitView={props.onSplitView}
         preferredRenderer={preferredRenderer}
         enableCostLens={props.model.costLensEnabled()}
+        enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
         chrome={true}
         shell="full"
         onOpenTranscript={props.onOpenTranscript}

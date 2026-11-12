@@ -23,7 +23,6 @@ export const registry = {
     "Enable experimental MCP Events, a draft MCP extension: declare support to MCP servers and read the events of servers that offer them.",
   codemode_vm: "Run the Code Mode execute tool on the experimental bytecode VM instead of the legacy interpreter.",
   graph_cost_lens: "Enable cost/budget lens.",
-  graph_trust_lens: "Enable trust lens (highlight unverified writes).",
   graph_palette: "Enable the graph palette over nodes, actions, lenses, and surfaces.",
   graph_attention: "Enable failure attention badges, toasts, and the titlebar item.",
   graph_layout_breadth: "Enable optional grid and circular graph layouts.",
