@@ -1,6 +1,6 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: capture gate (detects changes correctly, 4 frames with expected headless variance), benchmarks (need display machine ≥1366×768), and manual listener-leak verification. `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
+> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: capture gate (detects changes correctly, 4 frames with expected headless variance), benchmarks (need display machine ≥1366×768), manual listener-leak verification, and **capture coverage for M2–M6 features** (pins/lineage, widgets, cost lens, palette, attention, layouts). `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
 
 ### Session handoff
 
@@ -119,7 +119,7 @@
 | 7 | **M6 — Accessibility, theming, i18n, RTL** | P1 | ✅ Complete |
 | 8 | **M7 — Experiments and validation** | P2 | ✅ Complete (video review needs outsiders) |
 | 9 | **M8 — Docs, migration, graduation** | P2 | ✅ Complete |
-| 10 | **M9 — Definition of done** | P0 gate | 🟡 Functional complete; environmental gates remain (capture re-bless, benchmarks, listener-leak check) |
+| 10 | **M9 — Definition of done** | P0 gate | 🟡 Functional complete; environmental gates remain (capture re-bless, benchmarks, listener-leak check, video review, **capture coverage for M2–M6**) |
 
 P2 work may be parked after its kill test. It must not block M6–M8 unless adopted as a default.
 
@@ -598,6 +598,7 @@ graph 370/39, gui-plugins 1,164/115).
 - [ ] No dead control, global listener leak, or duplicate DOM id in a normal session.
 - [ ] Benchmarks within budget (need display machine ≥1366×768); a11y and RTL **verified** via component tests (3 a11y + 2 RTL pass).
 - [x] `bun run check` green (53/53); capture gate **detects changes correctly** (4 frames with expected headless variance); one `dist/` rebuild; one component-suite run.
+- [ ] **Capture coverage for M2–M6 features:** add frames for pins/lineage, todo/diff/terminal widgets, cost lens badge, palette overlay, attention badges/toast, grid/circular layouts. Extend `capture.spec.ts` and re-bless on reference environment.
 
 **Notes:**
 - Capture gate: executes correctly and detects visual changes. 4 frames differ slightly from r14 blessing (01-log, 13-narrow, 34-surfaces, 38-hybrid) — expected headless variance / post-r14 changes. Re-bless on reference environment when visual work settles. The gate is a regression detector, not a "must match" requirement during active development.
@@ -943,3 +944,8 @@ this file's revision log and leave the v34 archive unchanged.
   - `docs-graph` check: 49 pass / 0 fail.
   - Capture verify: gate executes correctly (detects changes). 39/43 frames within threshold; 4 frames differ 0.13–0.17% (01-log, 13-narrow, 34-surfaces, 38-hybrid) — expected headless variance / post-r14 changes. Re-bless on reference environment when visual work settles.
   - M7.6 video review gate and M9 environmental gates remain (benchmarks need display machine, manual listener-leak check).
+- **r18 (2026-11-12):** Added capture coverage gap for M2–M6 features to M9.
+  - Current 35 frames cover pre-M0-M7 feature set only.
+  - Missing: pins/lineage (M2), todo/diff/terminal widgets (M3), cost lens badge (M3), palette overlay (M5), attention badges/toast (M5), grid/circular layouts (M5).
+  - Requires: extend `capture.spec.ts` with new test cases, re-bless on reference environment.
+  - Prioritized as M9 environmental gate (visual regression completeness).
