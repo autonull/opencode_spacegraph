@@ -13,7 +13,7 @@ import { SessionMessage } from "@opencode/schema/session-message"
 import type { TimelineDetail } from "@opencode/session-ui/timeline/detail"
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test"
 import { Schema } from "effect"
-import { SERVER, seed, sessionHref } from "./app"
+import { SERVER, seed, sessionHref, provider } from "./app"
 import { mockOpenCodeServer, type MockServerConfig } from "./mock-server"
 import { installSseTransport } from "./sse-transport"
 import { expectSessionReady } from "./waits"
@@ -222,14 +222,22 @@ export async function setupTimeline(
     locale?: string
     deviceScaleFactor?: number
     seedHistory?: boolean
+    // Session title for expectSessionReady
+    title?: string
+    // Skip page navigation (use when already on session page)
+    skipNavigation?: boolean
+    // Skip session title check in expectSessionReady (use when title doesn't match heading)
+    skipSessionTitleCheck?: boolean
     // Session IDs to open as titlebar tabs.
     tabs?: string[]
   } & TimelineServerInput = {},
 ) {
+  console.log("[setupTimeline] Starting")
   const state = scenario()
   state.eventSequence = 0
   state.durableSequence = -1
   const sessions = input.sessions ?? [session()]
+  const title = input.title ?? "Timeline visual stability"
 
   const messages =
     input.sessionMessages ??
@@ -238,17 +246,21 @@ export async function setupTimeline(
       ...(input.messages ?? [userMessage(), assistantMessage()]),
     ])
 
+  console.log("[setupTimeline] Messages validated, count:", messages.length)
   const active = messages.findLast((message) => message.type === "assistant")
 
   const initialStatus: SessionStatus =
     active?.type === "assistant" && active.time.completed === undefined ? { type: "busy" } : { type: "idle" }
 
+  console.log("[setupTimeline] Installing SSE transport")
   const transport = await installSseTransport(page, {
     server: SERVER,
     retry: input.eventRetry ?? 20,
     keepalive: input.keepalive,
   })
+  console.log("[setupTimeline] SSE transport installed")
 
+  console.log("[setupTimeline] Creating mock server")
   const mock = await mockOpenCodeServer(page, {
     ...input,
     directory,
@@ -258,21 +270,55 @@ export async function setupTimeline(
     sessionStatus: input.sessionStatus ?? { [sessionID]: initialStatus },
     pageMessages: input.pageMessages ?? (() => ({ items: messages })),
   })
+  console.log("[setupTimeline] Mock server created")
 
-  if (input.tabs) await seed(page, { tabs: input.tabs })
+  if (input.tabs) await seed(page, { usedProjects: { local: [input.projectID ?? projectID] }, tabs: input.tabs })
   await page.addInitScript((settings) => {
-    localStorage.setItem(
-      "settings.v3",
-      JSON.stringify({
+    const key = "settings.v3"
+    const write = Storage.prototype.setItem
+
+    const merge = (value: string) => {
+      const current = JSON.parse(value)
+      return JSON.stringify({
+        ...current,
         general: {
           editToolPartsExpanded: false,
           shellToolPartsExpanded: false,
           showReasoningSummaries: false,
           showSessionProgressBar: true,
-          ...settings,
+          ...current.general,
+          ...settings.general,
         },
-      }),
-    )
+        experimental: {
+          sessionGraph: true,
+          ...current.experimental,
+          ...settings.experimental,
+        },
+      })
+    }
+
+    Storage.prototype.setItem = function (name: string, value: string) {
+      if (name !== key) {
+        write.call(this, name, value)
+        return
+      }
+      write.call(this, name, merge(value))
+    }
+
+    const stored = localStorage.getItem(key)
+    localStorage.setItem(key, stored ? merge(stored) : JSON.stringify({
+      general: {
+        editToolPartsExpanded: false,
+        shellToolPartsExpanded: false,
+        showReasoningSummaries: false,
+        showSessionProgressBar: true,
+        ...settings.general,
+      },
+      experimental: {
+        sessionGraph: true,
+        ...settings.experimental,
+      },
+    }))
   }, input.settings ?? {})
 
   if (input.locale) {
@@ -295,9 +341,15 @@ export async function setupTimeline(
     })
   }
 
-  await page.goto(sessionHref(sessionID))
-  await expectSessionReady(page, { server: SERVER, sessionID, title })
-  await transport.waitForConnection()
+  if (!input.skipNavigation) {
+    await page.goto(sessionHref(sessionID))
+    if (!input.skipSessionTitleCheck) {
+      await expectSessionReady(page, { server: SERVER, sessionID, title })
+    } else {
+      await expect(page).toHaveURL(sessionHref(sessionID, SERVER))
+    }
+    await transport.waitForConnection()
+  }
 
   if (input.cpuRate && input.cpuRate > 1) {
     const devtools = await page.context().newCDPSession(page)
@@ -323,8 +375,12 @@ export async function setupTimeline(
     transport,
     persistentPty: mock.persistentPty,
     send,
-    async sendAll(sequence: { event: TimelineEvent; delay: number }[]) {
-      for (const item of sequence) await send(item.event, item.delay)
+    async sendAll(sequence: ({ event: TimelineEvent; delay: number } | TimelineEvent)[]) {
+      for (const item of sequence) {
+        const event = "event" in item ? item.event : item
+        const delay = "event" in item ? item.delay : 0
+        await send(event, delay)
+      }
     },
     async waitForPart(partID: string) {
       const part = page.locator(`[data-timeline-part-id="${renderedPartID(partID)}"]`)
@@ -390,23 +446,37 @@ export function toolCalled(data: Extract<OpenCodeEvent, { type: "session.tool.ca
 }
 
 export function validateTimelineEvent(input: OpenCodeEvent | JsonValue): OpenCodeEvent {
+  console.log("[validateTimelineEvent] Input type:", typeof input, input && (input as any).type)
   const header = Schema.decodeUnknownSync(Schema.Struct({ type: Schema.String }))(input)
   const definition = EventManifest.ServerDefinitions.find((definition) => definition.type === header.type)
 
   if (!definition) throw new Error(`Unknown timeline event: ${header.type}`)
 
   // SAFETY: the matching canonical event schema validates the payload; OpenCodeEvent is generated from those schemas.
-  return Schema.decodeUnknownSync(definition)(input) as OpenCodeEvent
+  try {
+    return Schema.decodeUnknownSync(definition)(input) as OpenCodeEvent
+  } catch (e) {
+    console.error("[validateTimelineEvent] Validation failed for type:", header.type)
+    console.error("[validateTimelineEvent] Input:", JSON.stringify(input, null, 2))
+    throw e
+  }
 }
 
 export function validateTimelineMessages(input: readonly TimelineMessage[]): TimelineMessage[] {
-  const messages = input.map((message): TimelineMessage => {
-    const decoded = Schema.decodeUnknownSync(SessionMessage.Info)(message)
+  const messages = input.map((message, index): TimelineMessage => {
+    try {
+      const decoded = Schema.decodeUnknownSync(SessionMessage.Info)(message)
 
-    if (decoded.type !== "user" && decoded.type !== "assistant")
-      throw new Error(`Unsupported timeline message type: ${decoded.type}`)
+      if (decoded.type !== "user" && decoded.type !== "assistant")
+        throw new Error(`Unsupported timeline message type: ${decoded.type}`)
 
-    return message
+      return message
+    } catch (e) {
+      console.error(`[validateTimelineMessages] Failed at index ${index}, message id: ${message.id}, type: ${message.type}`)
+      console.error(`[validateTimelineMessages] Error:`, e)
+      console.error(`[validateTimelineMessages] Message:`, JSON.stringify(message, null, 2))
+      throw e
+    }
   })
 
   const messageIDs = new Set<string>()
@@ -1075,7 +1145,12 @@ function makeEvent<Type extends OpenCodeEvent["type"]>(
       : base
 
   // SAFETY: the matching canonical event schema validates the payload; OpenCodeEvent is generated from those schemas.
-  return Schema.decodeUnknownSync(definition)(input) as OpenCodeEvent
+  try {
+    return Schema.decodeUnknownSync(definition)(input) as OpenCodeEvent
+  } catch (e) {
+    console.error(`[makeEvent] Failed to validate event type: ${type}`, e)
+    throw e
+  }
 }
 
 const decodeJsonRecord = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Record(Schema.String, Schema.MutableJson)))
@@ -1084,38 +1159,6 @@ function jsonRecord(value: JsonRecord | undefined): Record<string, JsonValue> {
   if (!value) return {}
 
   return decodeJsonRecord(JSON.stringify(value))
-}
-
-function provider() {
-  return {
-    all: [
-      {
-        id: "opencode",
-        name: "OpenCode",
-        models: { "claude-opus-4-6": { id: "claude-opus-4-6", name: "Claude Opus 4.6", limit: { context: 200_000 } } },
-      },
-      {
-        id: "company-gateway",
-        name: "Company Gateway",
-        models: {
-          "fast-nano": {
-            id: "fast-nano",
-            api: { id: "openai/gpt-5.4-nano" },
-            name: "GPT-5.4 nano",
-            limit: { context: 128_000 },
-          },
-          "long-context": {
-            id: "long-context",
-            api: { id: "company/long-context" },
-            name: "Company Gateway Extra Long Context Model for Narrow Timeline Layouts",
-            limit: { context: 128_000 },
-          },
-        },
-      },
-    ],
-    connected: ["opencode", "company-gateway"],
-    default: { providerID: "opencode", modelID: "claude-opus-4-6" },
-  }
 }
 
 /** Hovers a user message, opens the chevron menu its bubble (or, without text, its footer) shows, and picks an action. */

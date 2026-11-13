@@ -34,6 +34,7 @@ test.skip(!process.env.GRAPH_CAPTURE_DEMO, "Chapter 1 live-open recording; set G
 
 const directory = "C:/OpenCode/SessionGraphChapter1"
 const sessionID = "ses_chapter1_live"
+const projectID = "proj_chapter1"
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -150,15 +151,32 @@ async function waitForStillCanvas(page: Page, timeout = 30000) {
 test.describe.configure({ retries: 0, mode: "serial" })
 
 test("Chapter 1 — Live: watch the session build with nodes streaming in", async ({ page }) => {
+  console.log("[TEST] Starting Chapter 1 test")
   test.setTimeout(600_000)
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await addFirstFrameMarker(page)
   flowWallStart = Date.now()
 
-  // Open the session with only the initial user prompt
-  await openSession(page, graphFixture())
-  await expect(page.locator('[data-component="composer-editor"]')).toBeEditable({ timeout: 15000 })
+  const narrativeMessages = buildNarrativeFixtureMessages()
+  const initialMessages = narrativeMessages // Use all messages like capture-live
+
+  // Install SSE transport first (navigates to session)
+  console.log("[TEST] Calling setupTimeline")
+  const { send, sendAll } = await setupTimeline(page, {
+    sessionMessages: narrativeMessages,
+    sessionStatus: { [sessionID]: { type: "busy" } },
+    pageMessages: () => ({ items: initialMessages }),
+    sessions: [{ id: sessionID, projectID, location: { directory }, title: "Session graph (live)", cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }, time: { created: 1700000000000, updated: 1700000000000 } }],
+    title: "Session graph (live)",
+    tabs: [sessionID],
+    skipSessionTitleCheck: true,
+    settings: { experimental: { sessionGraph: true } },
+    projectID,
+  })
+
+  // Sync beacon for video timeline anchoring
+  await syncBeacon(page)
 
   // ── FRAME 01: Live open on a running session ──
   await page.keyboard.press("Control+Shift+M")
@@ -169,25 +187,16 @@ test("Chapter 1 — Live: watch the session build with nodes streaming in", asyn
   await capture(page, "chapter1-01-live-open.png")
   recordMark("chapter1-01-live-open")
 
-  // Install SSE transport to stream the rest of the narrative
-  const { send, sendAll } = await setupTimeline(page, {
-    sessionMessages: buildNarrativeFixtureMessages(),
-    sessionStatus: { [sessionID]: { type: "busy" } },
-  })
-
-  // Sync beacon for video timeline anchoring
-  await syncBeacon(page)
-
   // Stream the assistant plan
-  await send(event("session.status", { sessionID, type: "running" }))
+  await send(event("session.status", { sessionID, status: { type: "busy" } }))
   await sendAll(
     [
-      { event: inboxEnqueued({ sessionID, inboxID: "msg_narr_plan_1", item: { type: "prompt", delivery: "steer" } }), delay: 200 },
+      { event: inboxEnqueued({ sessionID, inboxID: "msg_narr_plan_1", item: { type: "user", payload: { text: "I will reproduce the failure, then trace where the refresh token is stored." }, delivery: "steer" } }), delay: 200 },
       { event: inboxDelivered({ sessionID, inboxID: "msg_narr_plan_1" }), delay: 100 },
     ],
     { delay: 0 },
   )
-  await sendAll(partUpdated(textPart("prt_narr_plan_1:text:0", "I will reproduce the failure, then trace where the refresh token is stored.")))
+  await sendAll(partUpdated(textPart("prt_narr_plan_1:text:0", "I will reproduce the failure, then trace where the refresh token is stored.")).map(e => ({ event: e, delay: 0 })))
   await send(messageUpdated(buildNarrativeFixtureMessages()[1] as any))
 
   // ── FRAME 02: Plan arrives, graph grows ──
@@ -257,7 +266,7 @@ test("Chapter 1 — Live: watch the session build with nodes streaming in", asyn
   await send(event("session.compaction.ended", {
     sessionID,
     reason: "auto",
-    summary: "Summarized the failed attempts before the root-cause trace",
+    text: "Summarized the failed attempts before the root-cause trace",
   }))
   await send(messageUpdated(buildNarrativeFixtureMessages()[5] as any))
 
@@ -363,7 +372,7 @@ test("Chapter 1 — Live: watch the session build with nodes streaming in", asyn
 
   // Stream the share
   await send(messageUpdated(buildNarrativeFixtureMessages()[11] as any))
-  await send(event("session.status", { sessionID, type: "idle" }))
+  await send(event("session.status", { sessionID, status: { type: "idle" } }))
 
   // ── FRAME 11: Session idle, story complete ──
   await waitForStillCanvas(page, 10000)

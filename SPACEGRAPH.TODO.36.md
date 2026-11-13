@@ -8,6 +8,9 @@
 > copy that labels the product — so Phase 1 is rethought as a chapter program below.
 > Phase 2 is **complete (r6)**: all product friction resolved, including the reopened copy scrub —
 > no user-facing string in the spacegraph plugin says "map" any more.
+> Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
+> Live-open capture: `capture-chapter1.spec.ts` has mock server limitation (graph API routes not handled);
+> use `capture-live.spec.ts` output for Chapter 1 footage.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
 
@@ -143,6 +146,13 @@ shooting. The copy-scrub prerequisite below is done (r6) — chapters may not sh
       `chapter1-11-idle.png`), with frame marks written to `marks-chapter1.json`. The test reuses
       `buildNarrativeFixtureMessages()` and `partUpdated`/`messageUpdated` from `timeline.ts` — no
       new infrastructure. Verified: `bun run check` green (53/53 packages).
+
+      **Note (2026-11-13):** The test has a mock server limitation — the graph canvas host is not
+      found when opening the graph via Ctrl+Shift+M. The mock server doesn't handle graph plugin
+      API routes needed for rendering. The `capture-live.spec.ts` test works as a fallback: it
+      captures a graph opening (frame 02) on a session with all messages pre-loaded. For Chapter 1
+      footage, use the capture-live test output. The capture-chapter1 test requires mock server
+      enhancements to handle graph plugin data endpoints.
 - [x] **Capture mechanics:** replace the teleporting cursor ring (`demo-cursor-ring` in
       `capture-story.spec.ts`) with a gliding cursor — eased movement, hover states register — and a
       click ripple that survives into the recorded video; pace every action at human speed; one
@@ -359,6 +369,13 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r8 (2026-11-13):** Phase 1R — capture-chapter1 mock server limitation identified.
+  - The `capture-chapter1.spec.ts` test fails to render the graph canvas host when opening via Ctrl+Shift+M.
+  - Root cause: the mock server in `setupTimeline` doesn't handle graph plugin API routes needed for rendering the graph surface.
+  - The `capture-live.spec.ts` test works as a fallback: it captures a graph opening (frame 02) on a session with all messages pre-loaded using `mockWorkspace`.
+  - For Chapter 1 demo footage, use the capture-live test output. The capture-chapter1 test requires mock server enhancements to handle graph plugin data endpoints.
+  - All other Phase 1R prerequisites remain complete: fixture enrichment, capture mechanics, render rework.
 
 - **r7 (2026-11-13):** Phase 1R — fixture enrichment + live-open capture + capture mechanics +
   render rework complete (all prerequisites for Chapters 1–8).
