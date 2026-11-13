@@ -142,7 +142,7 @@ cannot run.
 |------|--------|------------------|
 | Benchmarks | **Try headless first.** `strobe bench packages/app/perf/graph-*.bench.ts --plan` then a timed run. | Timed frames are blank or non-comparable to `origin/dev` — then a headed run on a display machine. Do not assume headless is blocked; prove it. |
 | Listener-leak | Focused probe: open/close the map N times in one page, assert no growth in listeners, no duplicate DOM ids, no dead controls. | A leak needs a real multi-session manual pass. |
-| Capture re-bless | Re-run the gate; re-bless only the 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid). | Reference hardware renders differently — then bless there. |
+| Capture re-bless | Re-run the gate; re-bless only the 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid). ✅ **Done** — Re-blessed 4 frames to 0% diff on 2026-11-13. | Reference hardware renders differently — then bless there. |
 | Video review (M7.6) | Use the Phase 1 cut. ≥3 outside reviewers, notes recorded per `study-protocol.md`. | Reviewers are not available — hold, do not fake a pass. |
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
@@ -233,6 +233,11 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r4 (2026-11-13):** Phase 3 — Capture re-bless gate complete.
+  - Re-blessed 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid) to 0% diff
+  - Other frames left unchanged per gate requirement: "re-bless only the 4 known-variance frames"
+  - Fresh captures produced via `bun run graph:capture --mode=frame` with targeted grep
 
 - **r3 (2026-11-13):** Phase 2 — Completed all product-facing friction fixes; parked remaining test/video infrastructure items.
   - All 5 demo workflows verified friction-free: Diagnose (attention→Why), Navigate (palette→NLQ→jump), Audit (files rail→diff), Delegate (hierarchy→subagent), Share (permalink)
