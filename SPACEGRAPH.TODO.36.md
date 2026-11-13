@@ -131,9 +131,18 @@ shooting. The copy-scrub prerequisite below is done (r6) — chapters may not sh
         films a real verified-vs-unverified contrast. Selector semantics owned by new table tests in
         `selectors.test.ts` (one fails on the old logic); fixture outcomes asserted in
         `narrative.test.ts` (15 pass).
-- [ ] **Live-open capture:** chapter 1 opens mid-run — drive the canonical fixture through streamed
+- [x] **Live-open capture:** chapter 1 opens mid-run — drive the canonical fixture through streamed
       events (the `packages/app/perf/fixtures/events.ts` SSE pattern) so the recording starts while
       nodes are still arriving, then continues the arc.
+
+      **Applied (r7):** new test `packages/app/e2e/graph/capture-chapter1.spec.ts` opens the graph
+      with only the initial user prompt, installs the SSE transport via `setupTimeline`, and streams
+      the narrative fixture's 11 assistant messages in 11 phases (plan → fail → wrong fix → fail →
+      compaction → reads → fix → pass → subagent verify → share → idle). Each phase waits for
+      `waitForStillCanvas` and captures a frame (`chapter1-01-live-open.png` through
+      `chapter1-11-idle.png`), with frame marks written to `marks-chapter1.json`. The test reuses
+      `buildNarrativeFixtureMessages()` and `partUpdated`/`messageUpdated` from `timeline.ts` — no
+      new infrastructure. Verified: `bun run check` green (53/53 packages).
 - [ ] **Capture mechanics:** replace the teleporting cursor ring (`demo-cursor-ring` in
       `capture-story.spec.ts`) with a gliding cursor — eased movement, hover states register — and a
       click ripple that survives into the recorded video; pace every action at human speed; one
