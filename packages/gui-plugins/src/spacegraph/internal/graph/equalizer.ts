@@ -35,7 +35,9 @@ export type EqualizerRuleSet = readonly EqualizerRule[]
 /** Whether a rule speaks to a node. */
 export function ruleMatches(rule: EqualizerRule, node: GraphNode): boolean {
   if (rule.kind && node.kind !== rule.kind) return false
+
   if (rule.status && node.status !== rule.status) return false
+
   return true
 }
 
@@ -46,14 +48,17 @@ export function ruleMatches(rule: EqualizerRule, node: GraphNode): boolean {
 export function equalizerMatch(rules: EqualizerRuleSet, node: GraphNode): EqualizerRule | undefined {
   for (let index = rules.length - 1; index >= 0; index--) {
     const rule = rules[index]!
+
     if (ruleMatches(rule, node)) return rule
   }
+
   return undefined
 }
 
 /** The scale a rule set gives a card's box. The layout reads it, so it costs a re-layout. */
 export function equalizerScale(rules: EqualizerRuleSet, node: GraphNode): number {
   const scale = equalizerMatch(rules, node)?.scale
+
   return scale === undefined ? 1 : scale
 }
 
@@ -63,9 +68,13 @@ export function equalizerScale(rules: EqualizerRuleSet, node: GraphNode): number
  */
 export function equalizerFade(rules: EqualizerRuleSet, node: GraphNode, now: number): number {
   const fadeAfter = equalizerMatch(rules, node)?.fadeAfter
+
   if (fadeAfter === undefined || node.time === undefined) return 1
+
   const age = (now - node.time) / MS_PER_S
+
   if (age <= fadeAfter) return 1
+
   // The fade runs over the next hour, so an old card dims without disappearing.
   return Math.max(0.25, 1 - (age - fadeAfter) / EQUALIZER_FADE_DURATION_S)
 }
