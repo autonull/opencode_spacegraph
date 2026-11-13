@@ -119,11 +119,11 @@ friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
       kill/park register. Do not add a new flag for polish.
 
 **Completed Phase 2 items (from friction log):**
+- **Friction #10 (Search dialog race condition):** Moved `/` search shortcut to global keyboard handler with input guard, so it works regardless of canvas focus state. Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts` and `packages/session-graph/src/ui/graph-utils.ts`.
 - **Friction #11 (Layout switch):** Added keyboard shortcuts Alt+1 through Alt+9 for the first 9 layouts (lanes, timeline, hierarchy, tree, force, grid, circular, ribbon, matrix). Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts`.
 - **Friction #12 (Fit button):** Added keyboard shortcut `f` for fit content (already existed in handleRegionKeyDown).
 
 **Remaining friction items (lower priority):**
-- Friction #10: Search dialog race condition with canvas focus - needs investigation
 - Friction #1, #8: First-frame marker detection in capture tests - test infrastructure
 - Friction #4, #5, #6, #7, #9: Video generation issues - script/rendering issues
 
@@ -232,6 +232,12 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r2 (2026-11-13):** Phase 2 — Fixed search dialog race condition (friction #10).
+  - Moved `/` search shortcut from canvas-region handler to global keyboard handler with input guard
+  - Now works regardless of which element has focus (as long as no input/textarea/contenteditable is focused)
+  - Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts` and `packages/session-graph/src/ui/graph-utils.ts`
+  - Added optional `guard` function to `KeyboardShortcut` type for input focus checking
 
 - **r1 (2026-11-13):** Phase 2 — Added keyboard shortcuts for layout switching and fit.
   - Alt+1 through Alt+9: Switch to layouts 1-9 (lanes, timeline, hierarchy, tree, force, grid, circular, ribbon, matrix)

@@ -123,7 +123,9 @@ export type KeyboardShortcut = {
   alt?: boolean
   ctrl?: boolean
   meta?: boolean
-  handler: () => void
+  handler: (event: KeyboardEvent) => void
+  /** Optional guard to prevent shortcut when an input is focused. Receives the keydown event. */
+  guard?: (event: KeyboardEvent) => boolean
 }
 
 export function attachKeyboardShortcuts(shortcuts: KeyboardShortcut[]): () => void {
@@ -136,8 +138,9 @@ export function attachKeyboardShortcuts(shortcuts: KeyboardShortcut[]): () => vo
         !!e.ctrlKey === !!shortcut.ctrl &&
         !!e.metaKey === !!shortcut.meta
       ) {
+        if (shortcut.guard && !shortcut.guard(e)) return
         e.preventDefault()
-        shortcut.handler()
+        shortcut.handler(e)
         break
       }
     }

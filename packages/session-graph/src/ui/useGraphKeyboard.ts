@@ -120,22 +120,29 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
     onCleanup(unsubscribe)
   })
 
-  // Global shortcuts (Shift+F, Shift+O, Alt+f) - only work when this instance is active
+  // Global shortcuts (Shift+F, Shift+O, Alt+f, Alt+1-9, /) - only work when this instance is active
   onMount(() => {
+    const isInputTarget = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      return !target?.closest("input, textarea, [contenteditable], [data-slot='graph-a11y']")
+    }
+
     const cleanupShortcuts = attachKeyboardShortcuts([
-      { key: "F", shift: true, handler: () => { if (isActiveInstance()) openWindow("failureProgress") } },
-      { key: "O", shift: true, handler: () => { if (isActiveInstance()) { setFindInitialTab("outline"); openWindow("find") } } },
-      { key: "f", alt: true, handler: () => { if (isActiveInstance()) { setFindInitialTab("filters"); openWindow("find") } } },
+      { key: "F", shift: true, handler: (e) => { if (isActiveInstance()) openWindow("failureProgress") } },
+      { key: "O", shift: true, handler: (e) => { if (isActiveInstance()) { setFindInitialTab("outline"); openWindow("find") } } },
+      { key: "f", alt: true, handler: (e) => { if (isActiveInstance()) { setFindInitialTab("filters"); openWindow("find") } } },
+      // Search: / opens search palette (guarded to not trigger in inputs)
+      { key: "/", handler: (e) => { if (isActiveInstance()) openSearch() }, guard: isInputTarget },
       // Layout switching: Alt+1 through Alt+9 for first 9 layouts
-      { key: "1", alt: true, handler: () => { if (isActiveInstance() && layouts[0]) changeLayout(layouts[0]) } },
-      { key: "2", alt: true, handler: () => { if (isActiveInstance() && layouts[1]) changeLayout(layouts[1]) } },
-      { key: "3", alt: true, handler: () => { if (isActiveInstance() && layouts[2]) changeLayout(layouts[2]) } },
-      { key: "4", alt: true, handler: () => { if (isActiveInstance() && layouts[3]) changeLayout(layouts[3]) } },
-      { key: "5", alt: true, handler: () => { if (isActiveInstance() && layouts[4]) changeLayout(layouts[4]) } },
-      { key: "6", alt: true, handler: () => { if (isActiveInstance() && layouts[5]) changeLayout(layouts[5]) } },
-      { key: "7", alt: true, handler: () => { if (isActiveInstance() && layouts[6]) changeLayout(layouts[6]) } },
-      { key: "8", alt: true, handler: () => { if (isActiveInstance() && layouts[7]) changeLayout(layouts[7]) } },
-      { key: "9", alt: true, handler: () => { if (isActiveInstance() && layouts[8]) changeLayout(layouts[8]) } },
+      { key: "1", alt: true, handler: (e) => { if (isActiveInstance() && layouts[0]) changeLayout(layouts[0]) } },
+      { key: "2", alt: true, handler: (e) => { if (isActiveInstance() && layouts[1]) changeLayout(layouts[1]) } },
+      { key: "3", alt: true, handler: (e) => { if (isActiveInstance() && layouts[2]) changeLayout(layouts[2]) } },
+      { key: "4", alt: true, handler: (e) => { if (isActiveInstance() && layouts[3]) changeLayout(layouts[3]) } },
+      { key: "5", alt: true, handler: (e) => { if (isActiveInstance() && layouts[4]) changeLayout(layouts[4]) } },
+      { key: "6", alt: true, handler: (e) => { if (isActiveInstance() && layouts[5]) changeLayout(layouts[5]) } },
+      { key: "7", alt: true, handler: (e) => { if (isActiveInstance() && layouts[6]) changeLayout(layouts[6]) } },
+      { key: "8", alt: true, handler: (e) => { if (isActiveInstance() && layouts[7]) changeLayout(layouts[7]) } },
+      { key: "9", alt: true, handler: (e) => { if (isActiveInstance() && layouts[8]) changeLayout(layouts[8]) } },
     ])
     onCleanup(cleanupShortcuts)
   })
@@ -208,12 +215,6 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
         }
         return
       }
-    }
-
-    if (event.key === "/") {
-      event.preventDefault()
-      openSearch()
-      return
     }
 
     if (event.key === "g") {
