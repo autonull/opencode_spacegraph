@@ -1,6 +1,6 @@
 # SpaceGraph: Proof & Polish (v36)
 
-> **Status (2026-11-13, r9):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
+> **Status (2026-11-13, r10):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
 > not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
 > artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
@@ -9,9 +9,8 @@
 > Phase 2 is **complete (r6)**: all product friction resolved, including the reopened copy scrub —
 > no user-facing string in the spacegraph plugin says "map" any more.
 > Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
-> Live-open capture: `capture-chapter1.spec.ts` has mock server limitation (plugin host surfaces API not initialized);
-> use `capture-live.spec.ts` output (frame 02) for Chapter 1 footage.
-> Phase 3: Capture re-bless ✅; Benchmarks ⏳ (blocked: strobe worktree monorepo setup); Listener-leak ⏳; Video review ⏳ (blocked on 8 chapters).
+> Live-open capture: `capture-chapter1.spec.ts` fixed to use `openSession` (full plugin host init). Passes with built app.
+> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Benchmarks ⏳ (blocked: strobe worktree monorepo setup); Listener-leak ⏳; Video review ⏳ (blocked on 8 chapters).
 > Phase 4: Not started.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
@@ -274,11 +273,12 @@ cannot run.
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
-**Phase 3 Status (2026-11-13, updated r9):**
+**Phase 3 Status (2026-11-13, updated r10):**
 - ✅ Capture re-bless: Complete (4 frames re-blessed to 0% diff on 2026-11-13)
-- ⏳ Benchmarks: Headless `strobe --plan` works; timed run against `origin/dev` blocked by workspace dependency (`spacegraphjs` not found in worktree build). **Escalated (r9)** — requires monorepo build setup in strobe worktrees (bun workspace linking or turborepo remote cache). Strobe worktrees lack access to built workspace packages.
+- ⏳ Benchmarks: Headless `strobe --plan` works; timed run against `origin/dev` blocked by workspace dependency (`spacegraphjs` not found in worktree build). **Escalated (r9/r10)** — requires monorepo build setup in strobe worktrees (bun workspace linking or turborepo remote cache). Strobe worktrees lack access to built workspace packages.
 - ⏳ Listener-leak: Not started — needs dedicated e2e test that opens/closes graph surface N times in one page, asserts no listener growth, no duplicate DOM ids, no dead controls. Requires multi-session manual pass to validate.
 - ⏳ Video review: Not started — blocked on the Phase 1R chapters (8 mp4s needed); needs ≥3 outside reviewers per `study-protocol.md`. Chapter 1 footage to use `capture-live.spec.ts` output (frame 02) as fallback for `capture-chapter1` mock server limitation.
+- ✅ Chapter 1 capture: `capture-chapter1.spec.ts` fixed to use `openSession` → `mockWorkspace` (full plugin host init). Passes with `PLAYWRIGHT_BUILD=1`.
 
 ---
 
@@ -372,6 +372,13 @@ revision log; leave v34 and v35 unchanged.
 
 ## Revision log
 
+- **r10 (2026-11-13):** Capture tests working with built app; strobe benchmarks blocked by worktree monorepo setup.
+  - Fixed `capture-chapter1.spec.ts` to use `openSession` → `mockWorkspace` like `capture-live.spec.ts` (full plugin host init). Both tests pass with `PLAYWRIGHT_BUILD=1`.
+  - The mock server limitation was that `setupTimeline` doesn't initialize plugin host surfaces API. Using `openSession` (which calls `mockWorkspace` → full plugin host) works correctly.
+  - Strobe benchmarks still fail: worktree lacks monorepo workspace package linking (`spacegraphjs`, `@opencode/*` packages). `bun install` in worktree doesn't link workspace deps. Requires strobe config to use main repo's node_modules or turborepo remote cache.
+  - Listener-leak probe not started — needs dedicated e2e test that opens/closes graph surface N times, asserts no listener growth.
+  - Video review blocked: needs ≥3 outside reviewers per `study-protocol.md` and the 8 chapter mp4s.
+  - Phase 4 study not started: needs n≥5 participants, tasks mapped to Phase 0 jobs (Diagnose, Audit, Delegate).
 - **r9 (2026-11-13):** Continued implementation — Phase 3 benchmarks blocked by strobe worktree monorepo setup; capture-chapter1 mock server limitation confirmed.
   - Strobe benchmarks (`graph-render.bench.ts`, `graph-transcript.bench.ts`, `graph-inline.bench.ts`) fail with "timed out waiting for [data-component="composer-editor"]" — the strobe worktree lacks the full monorepo build (`spacegraphjs` and other workspace packages not linked).
   - This is the "workspace dependency" escalation noted in Phase 3: requires monorepo build setup in strobe worktrees (bun workspace linking or turborepo remote cache).
