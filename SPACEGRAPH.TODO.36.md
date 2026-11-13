@@ -147,6 +147,12 @@ cannot run.
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
+**Phase 3 Status (2026-11-13):**
+- ✅ Capture re-bless: Complete (4 frames re-blessed)
+- ⏳ Benchmarks: Headless `strobe --plan` works; timed run against `origin/dev` blocked by workspace dependency (`spacegraphjs` not found in worktree build). **Escalated** — requires monorepo build setup in strobe worktrees.
+- ⏳ Listener-leak: Not started — needs manual multi-session pass.
+- ⏳ Video review: Not started — needs ≥3 outside reviewers per `study-protocol.md`.
+
 ---
 
 ## Phase 4 — Validation (P1, after Phase 1)
