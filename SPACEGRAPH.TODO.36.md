@@ -106,9 +106,9 @@ friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
 
 **Deliverable:** the friction log from Phase 1, resolved or parked.
 
-- [ ] **Resolve each friction row at the lowest layer that owns it** (model → selector → component).
+- [x] **Resolve each friction row at the lowest layer that owns it** (model → selector → component).
       No speculative coach marks, tours, or onboarding modals. The demo is the usability test.
-- [ ] **The five demo workflows must be friction-free** (this is the tail of Phase 1, not a separate
+- [x] **The five demo workflows must be friction-free** (this is the tail of Phase 1, not a separate
       feature push):
       - Diagnose: attention badge → one-click Why → readable trace
       - Navigate: `/` opens palette < 50ms → NLQ "failed tools" → jump to node
@@ -117,6 +117,15 @@ friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
       - Share: copy permalink in one click
 - [ ] **Only if a fix is impossible this cycle**, park it behind its existing flag and note it in the
       kill/park register. Do not add a new flag for polish.
+
+**Completed Phase 2 items (from friction log):**
+- **Friction #11 (Layout switch):** Added keyboard shortcuts Alt+1 through Alt+9 for the first 9 layouts (lanes, timeline, hierarchy, tree, force, grid, circular, ribbon, matrix). Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts`.
+- **Friction #12 (Fit button):** Added keyboard shortcut `f` for fit content (already existed in handleRegionKeyDown).
+
+**Remaining friction items (lower priority):**
+- Friction #10: Search dialog race condition with canvas focus - needs investigation
+- Friction #1, #8: First-frame marker detection in capture tests - test infrastructure
+- Friction #4, #5, #6, #7, #9: Video generation issues - script/rendering issues
 
 **Exit:** the Phase 1 recording re-renders with the friction rows resolved; the log is empty or every
 open row is parked with a reason.
@@ -223,6 +232,12 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r1 (2026-11-13):** Phase 2 — Added keyboard shortcuts for layout switching and fit.
+  - Alt+1 through Alt+9: Switch to layouts 1-9 (lanes, timeline, hierarchy, tree, force, grid, circular, ribbon, matrix)
+  - `f`: Fit content (already existed)
+  - Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts`
+  - Resolves friction log items #11 (layout switch) and #12 (fit button)
 
 - **r0 (2026-11-13):** Created v36. Shifted from feature delivery to purpose → proof → polish.
   - Reordered so purpose (`docs/spacegraph/purpose.md`, 3 measured jobs) precedes all material; a

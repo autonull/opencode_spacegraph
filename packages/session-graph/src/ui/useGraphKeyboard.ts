@@ -1,6 +1,6 @@
 import { onMount, onCleanup } from "solid-js"
 import { attachKeyboardShortcuts } from "./graph-utils"
-import type { GraphViewData } from "@opencode/session-ui/graph"
+import type { GraphViewData, Layout } from "@opencode/session-ui/graph"
 import { neighborStep } from "@opencode/session-ui/graph"
 import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
@@ -25,6 +25,9 @@ export type UseGraphKeyboardOptions = {
   undoManual: () => void
   redoManual: () => void
   onGroupToggle: (id: string) => void
+  /** Layout switching */
+  layouts: readonly Layout[]
+  changeLayout: (layout: Layout) => void
   /** Unique instance ID for this graph. */
   instanceId: string
   /** Whether this instance is the active one (has pointer/focus). */
@@ -51,6 +54,8 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
     undoManual,
     redoManual,
     onGroupToggle,
+    layouts,
+    changeLayout,
     instanceId,
     isActiveInstance,
     setActiveInstance,
@@ -121,6 +126,16 @@ export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
       { key: "F", shift: true, handler: () => { if (isActiveInstance()) openWindow("failureProgress") } },
       { key: "O", shift: true, handler: () => { if (isActiveInstance()) { setFindInitialTab("outline"); openWindow("find") } } },
       { key: "f", alt: true, handler: () => { if (isActiveInstance()) { setFindInitialTab("filters"); openWindow("find") } } },
+      // Layout switching: Alt+1 through Alt+9 for first 9 layouts
+      { key: "1", alt: true, handler: () => { if (isActiveInstance() && layouts[0]) changeLayout(layouts[0]) } },
+      { key: "2", alt: true, handler: () => { if (isActiveInstance() && layouts[1]) changeLayout(layouts[1]) } },
+      { key: "3", alt: true, handler: () => { if (isActiveInstance() && layouts[2]) changeLayout(layouts[2]) } },
+      { key: "4", alt: true, handler: () => { if (isActiveInstance() && layouts[3]) changeLayout(layouts[3]) } },
+      { key: "5", alt: true, handler: () => { if (isActiveInstance() && layouts[4]) changeLayout(layouts[4]) } },
+      { key: "6", alt: true, handler: () => { if (isActiveInstance() && layouts[5]) changeLayout(layouts[5]) } },
+      { key: "7", alt: true, handler: () => { if (isActiveInstance() && layouts[6]) changeLayout(layouts[6]) } },
+      { key: "8", alt: true, handler: () => { if (isActiveInstance() && layouts[7]) changeLayout(layouts[7]) } },
+      { key: "9", alt: true, handler: () => { if (isActiveInstance() && layouts[8]) changeLayout(layouts[8]) } },
     ])
     onCleanup(cleanupShortcuts)
   })
