@@ -186,10 +186,14 @@ function loadTiming(manifest: ManifestEntry[]) {
   }
   const marks: MarkEntry[] = JSON.parse(readFileSync(MARKS_PATH, "utf8"))
   return marks
-    .map((mark) => ({
-      frame: parseInt(mark.frame.match(/^(\d+)/)?.[1] ?? "0", 10),
-      start: mark.elapsed,
-    }))
+    .map((mark) => {
+      // Match frame number from "NN-name.png" or "story-NN-name.png" format
+      const match = mark.frame.match(/(?:^|story-)(\d+)/)
+      return {
+        frame: parseInt(match?.[1] ?? "0", 10),
+        start: mark.elapsed,
+      }
+    })
     .filter((mark) => mark.frame > 0)
     .sort((a, b) => a.start - b.start)
 }
@@ -496,11 +500,34 @@ async function main() {
       continue
     }
     const cacheDir = resolve(WORK_DIR, "tts")
-    const hashKey = Buffer.from(`${voice}|${TTS_RATE}|${entry.narration}`).toString("base64url").slice(0, 24)
+    const hashInput = `${entry.frame}|${voice}|${TTS_RATE}|${entry.narration}`
+    const hashKey = Buffer.from(hashInput).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "").slice(0, 32)
+    console.log(`  [DEBUG] Frame ${entry.frame}: hashKey=${hashKey}`)
     const audio = resolve(cacheDir, `${String(entry.frame).padStart(2, "0")}-${hashKey}.mp3`)
-    if (!existsSync(audio)) {
-      await Bun.$`python3 -m edge_tts --rate ${TTS_RATE} --voice ${voice} --text ${entry.narration} --write-media ${audio}`.quiet()
+    if (!existsSync(audio) || (await Bun.file(audio).stat()).size === 0) {
+      const textFile = resolve(cacheDir, `${String(entry.frame).padStart(2, "0")}-${hashKey}.txt`)
+      writeFileSync(textFile, entry.narration)
+      // Use shell to ensure proper environment and stderr capture
+      const cmd = `python3 -m edge_tts --rate ${TTS_RATE} --voice ${voice} --file ${textFile} --write-media ${audio} 2>&1`
+      // Retry with exponential backoff for transient network failures
+      let lastError = ""
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        console.log(`  [DEBUG] Running (attempt ${attempt}): ${cmd}`)
+        const proc = Bun.spawn(["bash", "-c", cmd], { cwd: process.cwd() })
+        const [code, stdout] = await Promise.all([proc.exited, new Response(proc.stdout).text()])
+        console.log(`  [DEBUG] Exit code: ${code}, stdout length: ${stdout.length}`)
+        if (code === 0 && (await Bun.file(audio).stat()).size > 0) break
+        lastError = stdout || `empty output file (${(await Bun.file(audio).stat()).size} bytes)`
+        if (attempt < 3) {
+          const delay = Math.min(1000 * 2 ** attempt, 10000)
+          console.log(`  [DEBUG] Attempt ${attempt} failed, retrying in ${delay}ms...`)
+          await new Promise((r) => setTimeout(r, delay))
+        }
+      }
+      if (lastError) throw new Error(`edge_tts failed after 3 attempts: ${lastError}`)
     }
+    // Delay between requests to avoid rate limiting
+    await new Promise((r) => setTimeout(r, 500))
     audioByFrame.set(entry.frame, audio)
   }
   console.log(`  ✅ ${audioByFrame.size} segments ready`)
