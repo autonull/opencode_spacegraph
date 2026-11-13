@@ -1,21 +1,22 @@
-# SpaceGraph: Purpose, Proof & Polish (v36)
+# SpaceGraph: Proof & Polish (v36)
 
 > **Status (2026-11-13):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
-> not more features — it answers one question we have never answered crisply: **what is SpaceGraph
-> for, and does it beat the transcript?** Everything else is downstream of that answer. `bun run check`
-> green (53/53); 54 capture frames pass; story capture (`capture-story.spec.ts`) records an 8-frame
-> debugging narrative; a 35s live recording exists. `SPACEGRAPH.TODO.34.md` is frozen design history;
-> `SPACEGRAPH.TODO.35.md` is frozen feature-complete archive; this file is the single source of truth.
+> not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
+> artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
+> capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
+> exists. `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
+> feature-complete archive; this file is the single source of truth.
 
 ---
 
 ## Why this plan exists
 
-We built 9 lenses, 7 layouts, widgets, palette, attention, cost, notes, pins, lineage. We cannot yet
-say in one sentence why a developer should open the map instead of reading the transcript, and our
-demo clips are "sped-up clicks with no purpose." That is a **purpose** failure, not a feature gap.
+We built 9 lenses, 7 layouts, widgets, palette, attention, cost, notes, pins, lineage. We have a
+purpose in `SPACEGRAPH.md` §1 ("transcendent agentic development experience…"), but no single
+artifact demonstrates it. Demo clips are "sped-up clicks with no purpose." That is a **proof**
+failure, not a purpose gap.
 
-v36 is ordered so that purpose comes first, one convincing artifact proves it, and we fix only the
+v36 is ordered so that proof comes first, one convincing artifact delivers it, and we fix only the
 friction that artifact exposes. No speculative onboarding. No parallel material tracks.
 
 ---
@@ -23,7 +24,7 @@ friction that artifact exposes. No speculative onboarding. No parallel material 
 ## Critical path
 
 ```
-Phase 0 Purpose  →  Phase 1 One Demo  →  Phase 2 Friction  →  Phase 3 Gates  →  Phase 4 Study
+Phase 0 Proof  →  Phase 1 One Demo  →  Phase 2 Friction  →  Phase 3 Gates  →  Phase 4 Study
    (days)              (days)                (days)               (parallel)        (weeks)
 ```
 
@@ -32,16 +33,13 @@ Phase 1 has produced a friction log.
 
 ---
 
-## Phase 0 — Purpose (P0, days)
+## Phase 0 — Proof (P0, days)
 
-**Deliverable:** a committed one-page answer that a skeptic accepts.
+**Deliverable:** the purpose in `SPACEGRAPH.md` §1 survives a concrete test on the canonical fixture.
 
-- [ ] **Write `docs/spacegraph/purpose.md`.** One sentence, then 3 jobs. Draft hypothesis to confirm
-      or reject against the canonical fixture, not to assert:
-      > "SpaceGraph replaces scrolling to answer *why*, *what changed*, and *who did it* with one
-      > glance at structure."
-- [ ] **Define exactly 3 jobs** (resist a persona list). Each row: a session state, a question, and
-      the graph action that answers it faster than transcript.
+- [ ] **Validate the purpose on the canonical fixture** (`buildNarrativeFixtureGraph()`): for each
+      of the three jobs below, time the graph path vs the transcript path by hand. Record both
+      numbers in this plan (append to Phase 0).
 
       | Job | Session state | Question | Graph action | Faster than transcript by |
       |-----|---------------|----------|--------------|---------------------------|
@@ -49,14 +47,12 @@ Phase 1 has produced a friction log.
       | Audit | files changed | "What did it touch?" | files rail + diff widget | one glance vs reading every edit |
       | Delegate | subagent ran | "What did it contribute?" | hierarchy + subagent node | one layout vs hunting messages |
 
-- [ ] **Purpose test on the canonical fixture** (`buildNarrativeFixtureGraph()`): for each job, time
-      the graph path vs the transcript path by hand. Record both numbers in `purpose.md`.
 - [ ] **Decision gate:** if a job is not clearly faster, either fix the flow in Phase 2 or **park the
-      feature behind its flag** and say so. A parked feature is a successful outcome.
+      feature behind its flag** and note it in the kill/park register. A parked feature is a
+      successful outcome.
 
-**Exit:** `purpose.md` states a purpose, 3 jobs with measured graph-vs-transcript times, and a
-keep/park decision per feature. If the purpose does not hold, stop and park: do not build material
-for an unproven value.
+**Exit:** the three jobs have measured graph-vs-transcript times; if any job fails, the feature is
+parked. The purpose stands or falls on these numbers — no separate `purpose.md` document.
 
 ---
 
@@ -76,8 +72,17 @@ Reuse, do not rebuild:
       the gallery — same run, no second capture path.
 - [ ] **Write the 7-act narration** (1–2 sentences per act) into `generate-demo-video.ts`; no feature
       narration, only the Phase 0 jobs (Diagnose → Audit → Delegate → Share).
-- [ ] **Render the ladder:** 30s teaser, 90s full. Dark theme, 1440×900 minimum, clean fonts.
-      Recording is headless via Playwright — **do not** treat "no display" as a blocker; verify the
+- [ ] **Render the ladder to `docs/spacegraph/video/` (gitignored):** 30s teaser, 90s full. Dark theme,
+      1440×900 minimum, clean fonts. Recording is headless via Playwright — **do not** treat "no
+      display" as a blocker; verify the output frame-by-frame and escalate only if the render is
+      actually blank.
+- [ ] **Annotate the 8 stills** with one caption each (the job, the action, the payoff). Reuse
+      `story-01…story-08` frames produced by the spec; add the missing 8th if needed.
+- [ ] **Keep a friction log while recording:** every awkward interaction, dead control, or unclear
+      affordance you hit becomes a Phase 2 row. This log *is* the usability audit.
+
+**Exit:** a smooth 90s cut whose every scene answers a Phase 0 job, plus 8 captioned stills and a
+friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
       output frame-by-frame and escalate only if the render is actually blank.
 - [ ] **Annotate the 8 stills** with one caption each (the job, the action, the payoff). Reuse
       `story-01…story-07` frames produced by the spec; add the missing 8th if needed.

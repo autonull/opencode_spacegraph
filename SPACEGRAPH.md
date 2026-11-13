@@ -11,6 +11,8 @@
 
 ## 1. Why SpaceGraph?
 
+**SpaceGraph is a transcendent agentic development experience — offering new visual/graphic possibilities that can convey more detail, accept more input/feedback, and support a new kind of development flow that engages the imagination while supporting usefulness and practicality.**
+
 **The problem:** OpenCode's session model captures rich structure (tool calls, file ops, subtasks, retries, compactions) but presents it as a chronological log. Beyond a few dozen turns, developers can't easily answer:
 - **Why** did the agent change this file?
 - **Which** tool calls led to this failure?
