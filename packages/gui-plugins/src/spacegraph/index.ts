@@ -129,7 +129,7 @@ export const BUILTIN_LENSES: readonly {
   {
     id: "navigator",
     name: "Navigator",
-    description: "Hybrid view with linked selection and turn map",
+    description: "Hybrid view with linked selection and turn view",
     surface: "hybrid",
     layout: "lanes",
     depth: "flat",

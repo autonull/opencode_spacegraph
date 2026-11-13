@@ -133,7 +133,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     return null
   }
 
-  // Phase 16.3: session.header slot - "Map this turn" toggle
+  // Phase 16.3: session.header slot - "Open this turn" toggle
   ctx.add(Slot, {
     at: "session.header",
     order: 30,
@@ -177,7 +177,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     closable: "compact",
   }
 
-  // Phase 16.3: ComposerPill - "Map this turn" action for active turn
+  // Phase 16.3: ComposerPill - "Open this turn" action for active turn
   ctx.add(ComposerPill, {
     id: "map-turn",
     show: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
@@ -414,7 +414,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
                 model.setDetailMode(session, "popover")
               }}
               onTurnSubagent={(turnID, subagentID) => {
-                // Open subagent map
+                // Open subagent graph
                 model.focus(session, subagentID)
                 model.setDetailMode(session, "popover")
               }}

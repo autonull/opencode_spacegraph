@@ -140,5 +140,5 @@ test("the built bundle evaluates as a window plugin with the expected declaratio
   expect(Schema.isSchema(bundle.definition.stores?.prefs?.schema)).toBe(true)
   expect(bundle.definition.stores?.prefs?.scope).toBe("global")
   expect(bundle.definition.stores?.session?.scope).toBe("session")
-  expect(bundle.definition.i18n?.en?.["panel.title"]).toBe("Session map")
+  expect(bundle.definition.i18n?.en?.["panel.title"]).toBe("Session graph")
 })

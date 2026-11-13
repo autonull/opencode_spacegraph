@@ -164,11 +164,11 @@ export const TurnMapLayerStory: StoryObj = {
         model={model}
         session={session}
         screen={screen}
-        surface={{ id: "spacegraph.map", title: "Map", order: 10, render: () => null, layers: [] }}
+        surface={{ id: "spacegraph.map", title: "Session graph", order: 10, render: () => null, layers: [] }}
         labels={{
           title: "This turn",
-          open: "Open full map",
-          close: "Close turn map",
+          open: "Open full view",
+          close: "Close turn view",
           empty: "No turn to show yet",
         }}
         openFull={() => console.log("open full map")}

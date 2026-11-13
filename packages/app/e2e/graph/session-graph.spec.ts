@@ -81,11 +81,11 @@ test("the graph surface cycles its reading controls, splits with the transcript,
   // The turn-map layer opens over the map and closes without disturbing it.
   await page.keyboard.press("Control+Shift+P")
   const palette = page.getByRole("dialog")
-  await palette.getByRole("combobox").fill("Toggle turn map")
-  await palette.getByRole("option", { name: /Toggle turn map/ }).click()
+  await palette.getByRole("combobox").fill("Toggle turn view")
+  await palette.getByRole("option", { name: /Toggle turn view/ }).click()
   const turnMap = page.locator('[data-slot="spacegraph-turn-map"]')
   await expect(turnMap).toBeVisible()
-  await turnMap.getByRole("button", { name: "Close turn map" }).click()
+  await turnMap.getByRole("button", { name: "Close turn view" }).click()
   await expect(turnMap).toBeHidden()
   await expect(graphToolbar(page)).toBeVisible()
 

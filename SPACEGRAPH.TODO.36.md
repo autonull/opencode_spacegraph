@@ -6,6 +6,8 @@
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
 > exists. The Phase 1 demo cut was **rejected in review (r5)** — machine-paced, too narrow, and
 > copy that labels the product — so Phase 1 is rethought as a chapter program below.
+> Phase 2 is **complete (r6)**: all product friction resolved, including the reopened copy scrub —
+> no user-facing string in the spacegraph plugin says "map" any more.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
 
@@ -96,7 +98,11 @@ does a job; none lists features:
 | 7 | Hand off | Give it away: permalink to the exact node and layout | Gliding cursor + pacing |
 | 8 | Return | Come back tomorrow: pins, notes, the session where you left it | Fixture: a note and a pin |
 
-**Prerequisites (in dependency order):**
+**Prerequisites (in dependency order) — next up, r6:** work them top to bottom; each unlocks the
+chapters listed in the table above. Fixture enrichment is product work the Phase 4 study also
+consumes, so it goes first; capture mechanics (gliding cursor + human pacing) unblock chapters
+2–4 and 7; live-open capture is chapter 1's own prerequisite; render rework is last, before
+shooting. The copy-scrub prerequisite below is done (r6) — chapters may not ship a "map" string.
 - [ ] **Fixture enrichment** (`buildNarrativeFixtureGraph()`): per-turn cost, verification/trust
       states, a note and a pin, a compaction marker, commit history in the workspace snapshot. The
       lenses and the Phase 4 study consume the same data — product work, not video work.
@@ -107,7 +113,7 @@ does a job; none lists features:
       `capture-story.spec.ts`) with a gliding cursor — eased movement, hover states register — and a
       click ripple that survives into the recorded video; pace every action at human speed; one
       continuous take per chapter, no freeze-frame holds (`renderFrameClips` padding goes).
-- [ ] **Copy scrub:** see Phase 2 (reopened below). No chapter ships while a visible string still
+- [x] **Copy scrub:** see Phase 2 (done, r6). No chapter ships while a visible string still
       says "map".
 - [ ] **Render rework** (`script/generate-demo-video.ts`): mp4 only — delete the webm pass and the
       kidnapper cut with its pitch/formant effect; clean neutral voice; title and end cards without
@@ -142,13 +148,26 @@ watch-through finds no freeze-frame, no feature list, and no string that says "m
 - [ ] **Only if a fix is impossible this cycle**, park it behind its existing flag and note it in the
       kill/park register. Do not add a new flag for polish.
 
-**Reopened (2026-11-13, r5):**
-- [ ] **Copy scrub — drop the noun** in `packages/gui-plugins/src/spacegraph/i18n/en.ts` and every
+**Reopened (2026-11-13, r5) — DONE (r6):**
+- [x] **Copy scrub — drop the noun** in `packages/gui-plugins/src/spacegraph/i18n/en.ts` and every
       fixture, bench and test that matches label text: no user-facing string says "map"
       ("Show session map" → "Show session"; "Map this turn" → "Open this turn"; "Open full map" →
-      "Open full view"; "Copy map permalink" → "Copy permalink"; "Toggle session map" → "Show
-      session"). Surface ids, data-slots, storage keys and internals do NOT change. Product friction
+      "Open full view"; "Copy map permalink" → "Copy permalink"; "Toggle session map" →
+      "Toggle session view"). Surface ids, data-slots, storage keys and internals do NOT change. Product friction
       from the review: the copy assumes the user needs telling what the feature is.
+
+      **Applied (r6):** full catalog scrub in `i18n/en.ts` (surface tab "Session graph", panel and
+      settings title "Session graph", "Open session graph", "Cycle level/layout", "Swap side",
+      "Toggle turn view", "Close turn view", "Subagent graph", "Export graph(-as-SVG/JSON/HTML)",
+      "Show transcript and graph", "Open subagent graph"), the Navigator lens description in
+      `index.ts` (same string is hardcoded there), the story fixture, the renderer comments, and the
+      three label-matching dependents: `packages/plugins/spacegraph/bundle.test.ts`
+      ("panel.title" = "Session graph"), `packages/app/perf/fixtures/graph.ts` (palette drive label
+      "Toggle session view"), `packages/app/e2e/graph/session-graph.spec.ts` ("Toggle turn view",
+      "Close turn view"). Keyword `["map", "graph"]` kept on the palette action so the old habit
+      still finds it. **One deviation from the r5 text:** `command.graph.toggle` becomes
+      "Toggle session view", not "Show session" — the plan's literal mapping would have produced two
+      identical palette titles ("Show session" is already `command.map`'s new name).
 
 **Completed Phase 2 items (from friction log):**
 - **Friction #10 (Search dialog race condition):** Moved `/` search shortcut to global keyboard handler with input guard, so it works regardless of canvas focus state. Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts` and `packages/session-graph/src/ui/graph-utils.ts`.
@@ -161,7 +180,20 @@ watch-through finds no freeze-frame, no feature list, and no string that says "m
 - Friction #5, #6, #7: edge_tts robustness — fixed in generate-demo-video.ts (already done)
 - Friction #9: Video duration ~60s vs 90s target — adjustable via demo-manifest.json hold times; not a product issue
 
-**Phase 2 Exit:** All product-facing friction from the demo recording is resolved. Remaining items are test/video-generation infrastructure, not user-facing affordances. Phase 2 complete except the reopened copy scrub.
+**Phase 2 Exit: COMPLETE (r6).** All product-facing friction from the demo recording is resolved,
+including the reopened copy scrub. Remaining items are test/video-generation infrastructure, not
+user-facing affordances. The flag-gated experimental session-graph surface (`packages/ui/src/i18n`
+"Session map"/"Turn map" copy) was left as-is: decide whether it ships before spending a scrub on it.
+
+**Environment notes (pre-existing, not from r6):**
+- `packages/plugins/spacegraph/bundle.test.ts` fails before any change: the bundle build rejects
+  `@opencode/session-graph/ui/GraphTranscriptSurface` — it is not in the app's provided-modules
+  allowlist (`packages/plugin/src/gui/vite.ts`). Fix the allowlist, not the test.
+- `bun run lint:changed` fails repo-wide with ~1100 anti-slop findings across 75 files committed
+  before r6; the r6 files add none.
+- The app e2e `session-graph.spec.ts` cannot start the graph in this environment
+  (`data-graph-ready` stays "false"; vite dependency scan fails on JSX parse). Same failure on a
+  clean tree.
 
 ---
 
@@ -277,6 +309,24 @@ revision log; leave v34 and v35 unchanged.
 
 ## Revision log
 
+- **r6 (2026-11-13):** Phase 2 — copy scrub complete; Phase 2 closed.
+  - Scrubbed every user-facing "map" string in `packages/gui-plugins/src/spacegraph/i18n/en.ts`:
+    surface tab, panel/settings titles → "Session graph"; commands → "Show session", "Show
+    transcript and graph", "Cycle level/layout", "Swap side", "Toggle turn view", "Copy permalink",
+    "Export graph(-as-SVG/JSON/HTML)", "Toggle session view"; turn-map copy → "Open full view",
+    "Close turn view", "Subagent graph"; header action → "Open this turn" (+tooltip
+    "Open this turn in the session graph"); subagent → "Open subagent graph"; inspector hint →
+    "Click a node to see details"; Navigator lens description → "...and turn view" (also the
+    hardcoded copy in `index.ts`).
+  - Updated the three label-matching dependents: `packages/plugins/spacegraph/bundle.test.ts`,
+    `packages/app/perf/fixtures/graph.ts` (palette drive label), `packages/app/e2e/graph/
+    session-graph.spec.ts` ("Toggle turn view" / "Close turn view"), plus the story fixture and
+    renderer comments. Ids, data-slots and storage keys untouched; palette keyword "map" kept.
+  - Deviation from r5 text: `command.graph.toggle` → "Toggle session view" (not "Show session") to
+    avoid two identical palette titles.
+  - Verified: `bun typecheck` green in `packages/gui-plugins` and `packages/app`; gui-plugins suite
+    1165 pass / 0 fail. Pre-existing, unrelated failures recorded under Phase 2 environment notes
+    (bundle allowlist, repo-wide lint:changed debt, e2e graph-ready environmental failure).
 - **r5 (2026-11-13):** Review rejected the demo cut; Phase 1 rethought as a chapter program.
   - Verdict: machine-paced (teleporting cursor ring, freeze-frame holds), one narrow debugging
     story, and copy that labels the product ("map") — the cut belittles the scope of the system.

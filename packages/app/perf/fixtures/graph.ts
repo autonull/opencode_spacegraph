@@ -80,7 +80,7 @@ export async function mockGraphSession(page: Page, options: GraphSessionOptions)
 
 /** Opens a graph surface from the command palette; the graph plugin owns the label. */
 export async function openGraphSurface(page: Page, surface: GraphSurface) {
-  const command = surface === "map" ? "Toggle session map" : "Show transcript (Graph)"
+  const command = surface === "map" ? "Toggle session view" : "Show transcript (Graph)"
 
   await page.press("ControlOrMeta+Shift+P", { until: palette })
   await page.type(palette, command, { delay: 0 })
