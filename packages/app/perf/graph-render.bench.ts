@@ -7,7 +7,7 @@ import { canvas, map, mockGraphSession, openGraphSurface } from "./fixtures/grap
 
 const layers = '[data-slot="graph-toolbar-layers"] > summary'
 
-const level = (name: string) => `[data-slot="graph-layers-level"] button:has-text("${name}")`
+const levelButton = (name: string) => `[data-slot="graph-layers-level"] [data-slot="segmented-control-v2-item"][data-value="${name.toLowerCase()}"]`
 
 export default bench({
   // The plan's curve; `--params all` is the same three sizes.
@@ -43,12 +43,12 @@ export default bench({
       metrics: ["run.duration"],
       async run({ page }) {
         await page.click(layers)
-        await page.click(level("Detail"), { until: canvas })
+        await page.click(levelButton("Detail"), { until: canvas })
         await page.idle()
       },
       async reset({ page }) {
         await page.click(layers)
-        await page.click(level("Execution"), { until: canvas })
+        await page.click(levelButton("Execution"), { until: canvas })
         await page.idle()
       },
     },
@@ -57,12 +57,12 @@ export default bench({
       metrics: ["run.duration"],
       async run({ page }) {
         await page.click(layers)
-        await page.click(level("Overview"), { until: canvas })
+        await page.click(levelButton("Overview"), { until: canvas })
         await page.idle()
       },
       async reset({ page }) {
         await page.click(layers)
-        await page.click(level("Execution"), { until: canvas })
+        await page.click(levelButton("Execution"), { until: canvas })
         await page.idle()
       },
     },
