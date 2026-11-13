@@ -1,10 +1,11 @@
 # SpaceGraph: Remaining Work & Delivery Plan (v35)
 
-> **Status (2026-11-12):** M0–M8 complete. M9 **functional items complete**; remaining gates are environmental: benchmarks (need display machine ≥1366×768), manual listener-leak verification, video review (M7.6, ≥3 outsider reviews), capture re-bless on reference environment (4 frames with headless variance: 01-log, 13-narrow, 34-surfaces, 38-hybrid). **Capture coverage for M2–M6 features is now complete** (54 frames: pins/lineage frame 44, todo/diff/terminal/write widgets frames 45-47/54, cost lens frame 48, palette frame 51, attention frame 52, grid/circular layouts frames 49-50, pins frame 53, todo widget frame 54). `bun run check` green (53/53). All canonical suites pass: session-ui graph 389/41, session-graph unit 108/15 + component 68/12, gui-plugins 1,165/1, docs-graph 49/0. `SPACEGRAPH.TODO.34.md` is frozen design archive; this file is single source of truth.
+> **Status (2026-11-13):** v35 **COMPLETE**. M0–M8 complete. M9 **functional items complete**; environmental gates remain (benchmarks, listener-leak, video review, capture re-bless). **Capture coverage for M2–M6 features complete** (54 frames). `bun run check` green (53/53). All canonical suites pass. **Next plan: `SPACEGRAPH.TODO.36.md`** — shifts from feature delivery to excellence in usability, usefulness, and communication. `SPACEGRAPH.TODO.34.md` is frozen design archive; v35 is frozen feature-complete archive; v36 is single source of truth for ongoing work.
 
 ### Session handoff
 
-- M0–M6 are implemented. Start with **M7**.
+- v35 **feature delivery complete**. Start with **v36** for usability/usefulness/communication excellence.
+- Environmental gates from v35 M9 remain P0 blockers (benchmarks, listener-leak, video review, re-bless).
 - M6 accessibility/theming/i18n/RTL: the static preview is a labelled image with a node/edge/failure
   summary and no a11y mirror; the interactive mirror is per-instance (`aria-activedescendant` and
   instance-scoped item ids), and every announcement names the surface (`surfaceLabel`, default
