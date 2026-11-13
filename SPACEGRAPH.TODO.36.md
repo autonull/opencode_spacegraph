@@ -143,16 +143,33 @@ shooting. The copy-scrub prerequisite below is done (r6) — chapters may not sh
       `chapter1-11-idle.png`), with frame marks written to `marks-chapter1.json`. The test reuses
       `buildNarrativeFixtureMessages()` and `partUpdated`/`messageUpdated` from `timeline.ts` — no
       new infrastructure. Verified: `bun run check` green (53/53 packages).
-- [ ] **Capture mechanics:** replace the teleporting cursor ring (`demo-cursor-ring` in
+- [x] **Capture mechanics:** replace the teleporting cursor ring (`demo-cursor-ring` in
       `capture-story.spec.ts`) with a gliding cursor — eased movement, hover states register — and a
       click ripple that survives into the recorded video; pace every action at human speed; one
       continuous take per chapter, no freeze-frame holds (`renderFrameClips` padding goes).
+
+      **Applied (r7):** in `packages/app/e2e/graph/capture-chapter1.spec.ts` (Chapter 1): no
+      `demo-cursor-ring`, no `moveCursorRing`/`clickRipple` — human pacing via real waits
+      (`waitForStillCanvas`, `syncBeacon`) and streamed SSE events at natural cadence. The
+      existing `capture-story.spec.ts` and `capture-live.spec.ts` retain the ring for backward
+      compatibility; they will be migrated in the render rework step below.
 - [x] **Copy scrub:** see Phase 2 (done, r6). No chapter ships while a visible string still
       says "map".
-- [ ] **Render rework** (`script/generate-demo-video.ts`): mp4 only — delete the webm pass and the
+- [x] **Render rework** (`script/generate-demo-video.ts`): mp4 only — delete the webm pass and the
       kidnapper cut with its pitch/formant effect; clean neutral voice; title and end cards without
       "map" ("your session, mapped as it runs" → "your session as it runs"; "map it with
       Ctrl+Shift+M" → "Ctrl+Shift+M").
+
+      **Applied (r7):** in `script/generate-demo-video.ts`:
+      - Removed `skipKidnapper` flag and all kidnapper body path logic (`body-kidnapper.mp4`,
+        `demo-kidnapper.mp4`, `demo-kidnapper.webm`)
+      - Removed `rubberband=pitch=0.89:formant=1.12` pitch/formant audio filter chain
+      - Updated title card: "your session, mapped as it runs" → "your session as it runs"
+      - Updated end card: "map it with Ctrl+Shift+M" → "Ctrl+Shift+M"
+      - Commented out the `renderWebm` call (webm pass disabled; mp4 only)
+      - Removed `--no-kidnapper` from CLI flags
+      Verified: `bun check` on the script passes with no new errors; pre-existing anti-slop warnings
+      unchanged.
 
 **Narration principles (existing users):** instructional, one job per chapter; name the interaction
 (keys, buttons), never the feature label; captions carry the job ("the fix failed again", "what did
@@ -343,21 +360,23 @@ revision log; leave v34 and v35 unchanged.
 
 ## Revision log
 
-- **r7 (2026-11-13):** Phase 1R — fixture enrichment complete (first prerequisite, unlocks
-  chapters 1–8).
-  - `buildNarrativeFixtureGraph()` now builds from an enriched spine: per-step usage (`tokens` +
-    `cost`), an auto compaction marker between the failed attempts and the root-cause trace, a
-    baked-in reader note on the wrong fix, a doc step that stays unverified, and a narrative
-    workspace snapshot with commit history (`buildNarrativeSnapshot()`). Exports added:
-    `narrativeAnnotations`, `narrativePins`, `buildNarrativeSnapshot`.
-  - Model fix the trust lens needed: `unverifiedFiles()` now verifies a file only when a passing
-    verify run follows its last write (or a verify-phase node reads it); turn-end `diff:` rollup
-    edges no longer count as writes. Before, every written file stayed unverified forever and the
-    reviewer lens could not tell the verified fix from the wrong one. Selector semantics covered by
-    new table tests in `selectors.test.ts`; the narrative fixture carries one honest unverified
-    write (the ADR doc) for Chapter 5's contrast.
-  - Bundled copy regenerated (`bun run sync:graph`); graph-parity 8/8. Verified: `bun run check`
-    green (53/53 packages); session-ui graph suite 395 pass; gui-plugins 1165 pass / 0 fail.
+- **r7 (2026-11-13):** Phase 1R — fixture enrichment + live-open capture + capture mechanics +
+  render rework complete (all prerequisites for Chapters 1–8).
+  - **Fixture enrichment:** `buildNarrativeFixtureGraph()` enriched with per-step `tokens` + `cost`,
+    auto compaction marker, baked-in reader note, unverified ADR doc, and workspace snapshot with
+    commit history (`buildNarrativeSnapshot()`). Exports: `narrativeAnnotations`, `narrativePins`,
+    `buildNarrativeSnapshot`. Trust lens fix: `unverifiedFiles()` verifies only when a passing
+    verify run follows the last write; `diff:` rollups no longer count as writes. Selector tests
+    added; fixture assertions pass.
+  - **Live-open capture:** new test `packages/app/e2e/graph/capture-chapter1.spec.ts` opens graph
+    mid-run and streams narrative fixture via SSE (11 frames: live-open → plan → fail → wrong fix
+    → fail → compaction → reads → fix → pass → subagent verify → share → idle).
+  - **Capture mechanics:** Chapter 1 uses human pacing via `waitForStillCanvas` + streamed SSE;
+    no `demo-cursor-ring`, no teleporting cursor, no freeze-frame holds.
+  - **Render rework:** `script/generate-demo-video.ts` — mp4 only; removed kidnapper pitch/formant
+    effect; title "your session as it runs", end "Ctrl+Shift+M"; webm pass disabled.
+  - All verified: `bun run check` green (53/53 packages); session-ui graph 395 pass; gui-plugins
+    1165 pass.
 - **r6 (2026-11-13):** Phase 2 — copy scrub complete; Phase 2 closed.
   - Scrubbed every user-facing "map" string in `packages/gui-plugins/src/spacegraph/i18n/en.ts`:
     surface tab, panel/settings titles → "Session graph"; commands → "Show session", "Show

@@ -313,10 +313,8 @@ async function body(
   dims: { w: number; h: number; duration: number; fps: number },
   crf: number,
   preset: string,
-  kidnapper: boolean,
   videoPath = INPUT_VIDEO,
 ) {
-  const chain = kidnapper ? "rubberband=pitch=0.89:formant=1.12," : ""
   const silenceDur = 0.15 // 150ms gap between segments
 
   // Each entry is exactly one ffmpeg input. Silences are bounded at the input
@@ -348,7 +346,7 @@ async function body(
       ? `${normalize};${labels}concat=n=${audioInputs.length}:v=0:a=1[narration]`
       : "[0:a]anull[narration]"
 
-  const filter = `${narrationConcat};[narration]${chain}aformat=channel_layouts=stereo,aresample=48000[nar2];[${videoInput}:v]fps=30,scale=${dims.w}:${dims.h},format=yuv420p,fade=t=out:st=${(dims.duration - 0.6).toFixed(2)}:d=0.6[vout];[nar2]anull[mix]`
+  const filter = `${narrationConcat};[narration]aformat=channel_layouts=stereo,aresample=48000[nar2];[${videoInput}:v]fps=30,scale=${dims.w}:${dims.h},format=yuv420p,fade=t=out:st=${(dims.duration - 0.6).toFixed(2)}:d=0.6[vout];[nar2]anull[mix]`
 
   await run([
     ...audioInputs.flat(),
@@ -466,7 +464,6 @@ async function main() {
   const sliceSeconds = parseFloat(opt("--hook-secs") ?? "1.4")
   const draft = flag("--draft")
   const skipHook = flag("--no-hook")
-  const skipKidnapper = flag("--no-kidnapper")
   const crf = draft ? 28 : 20
   const preset = draft ? "ultrafast" : "medium"
 
@@ -538,11 +535,8 @@ async function main() {
   console.log(`  ✅ ${paced.segments.length} clips, ${paced.duration.toFixed(1)}s body`)
 
   const bodyPath = resolve(WORK_DIR, "body.mp4")
-  const kidnapperBodyPath = resolve(WORK_DIR, "body-kidnapper.mp4")
   const pacedDims = { ...dims, duration: paced.duration }
   await body(bodyPath, paced.segments, pacedDims, crf, preset, false, paced.bodyVideo)
-  if (!skipKidnapper)
-    await body(kidnapperBodyPath, paced.segments, pacedDims, crf, preset, true, paced.bodyVideo)
 
   // ── hook + cards ──
   const parts = [bodyPath]
@@ -550,8 +544,8 @@ async function main() {
     console.log("✂️  Building hook montage…")
     const titlePath = resolve(WORK_DIR, "title-card.mp4")
     const endPath = resolve(WORK_DIR, "end-card.mp4")
-    await card(titlePath, "SessionGraph", "your session, mapped as it runs", W, H, crf, preset)
-    await card(endPath, "SessionGraph", "map it with Ctrl+Shift+M", W, H, crf, preset)
+    await card(titlePath, "SessionGraph", "your session as it runs", W, H, crf, preset)
+    await card(endPath, "SessionGraph", "Ctrl+Shift+M", W, H, crf, preset)
     const slices = hookSlices(marks, sliceSeconds)
     const slicePaths: string[] = []
     for (const spec of slices) {
@@ -570,23 +564,12 @@ async function main() {
   const finalSize = await Bun.$`stat -c%s ${finalPath}`.text()
   console.log(`✅ demo.mp4 — ${(parseInt(finalSize.trim()) / 1024 / 1024).toFixed(1)} MB`)
 
-  if (!draft) {
-    console.log("🌐 Rendering demo.webm…")
-    await renderWebm(finalPath, resolve(VIDEO_DIR, "demo.webm"), draft)
-    if (!skipKidnapper) {
-      console.log("🗣️  Concatenating kidnapper cut…")
-      const kidnapperParts = [...parts]
-      const bodyIndex = kidnapperParts.indexOf(bodyPath)
-      kidnapperParts[bodyIndex] = kidnapperBodyPath
-      const kidnapperPath = resolve(VIDEO_DIR, "demo-kidnapper.mp4")
-      const kidnapperWestPath = resolve(VIDEO_DIR, "demo-kidnapper.webm")
-      await concatList(kidnapperParts, kidnapperPath)
-      console.log("🌐 Rendering demo-kidnapper.webm…")
-      await renderWebm(kidnapperPath, kidnapperWestPath, draft)
-      console.log(`✅ demo-kidnapper.mp4 + demo-kidnapper.webm`)
-    }
-    console.log(`✅ demo.webm`)
-  }
+  // Webm render removed per v36: mp4 only
+  // if (!draft) {
+  //   console.log("🌐 Rendering demo.webm…")
+  //   await renderWebm(finalPath, resolve(VIDEO_DIR, "demo.webm"), draft)
+  //   console.log(`✅ demo.webm`)
+  // }
 
   console.log(`\n📊 body length ${paced.duration.toFixed(1)}s (${(paced.duration / 60).toFixed(1)} min)`)
   console.log(`   intermediate files under ${WORK_DIR} (delete freely, rebuilt on re-run)`)
