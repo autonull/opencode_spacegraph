@@ -1,239 +1,224 @@
-# SpaceGraph: Usability, Usefulness & Communication Excellence (v36)
+# SpaceGraph: Purpose, Proof & Polish (v36)
 
-> **Status (2026-11-13):** v35 M0–M8 complete, M9 functional complete. v36 shifts from "feature delivery" to **"excellence in usability, usefulness, and communication."** All canonical checks green (53/53). 54 capture frames pass. Story-driven capture test records 8 frames demonstrating a coherent debugging narrative. Live demo video (35s) recorded. Remaining: environmental gates (benchmarks, listener-leak, video review, re-bless) + v36 excellence work.
-
----
-
-## Purpose
-
-v35 delivered **features**. v36 delivers **excellence** — making SpaceGraph:
-1. **Immediately understandable** — a new user sees value in 30 seconds
-2. **Genuinely useful** — solves real debugging/navigation problems better than alternatives
-3. **Self-teaching** — the UI, recordings, and docs communicate possibilities without a manual
+> **Status (2026-11-13):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
+> not more features — it answers one question we have never answered crisply: **what is SpaceGraph
+> for, and does it beat the transcript?** Everything else is downstream of that answer. `bun run check`
+> green (53/53); 54 capture frames pass; story capture (`capture-story.spec.ts`) records an 8-frame
+> debugging narrative; a 35s live recording exists. `SPACEGRAPH.TODO.34.md` is frozen design history;
+> `SPACEGRAPH.TODO.35.md` is frozen feature-complete archive; this file is the single source of truth.
 
 ---
 
-## Priority Order
+## Why this plan exists
 
-| Order | Focus Area | Priority | Target |
-|-------|------------|----------|--------|
-| 1 | **Onboarding & First-Run Experience** | P0 | 30s to "aha!" moment |
-| 2 | **Narrative Demo & Communication Material** | P0 | Shareable video + screenshots that teach |
-| 3 | **Usability Polish** | P1 | Friction-free common workflows |
-| 4 | **Usefulness Validation** | P1 | Real-user task success metrics |
-| 5 | **Environmental Gates (from v35 M9)** | P0 gate | Benchmarks, listener-leak, video review, re-bless |
-| 6 | **SpaceGraphJS Library Polish** | P2 | Upstream-ready components |
+We built 9 lenses, 7 layouts, widgets, palette, attention, cost, notes, pins, lineage. We cannot yet
+say in one sentence why a developer should open the map instead of reading the transcript, and our
+demo clips are "sped-up clicks with no purpose." That is a **purpose** failure, not a feature gap.
+
+v36 is ordered so that purpose comes first, one convincing artifact proves it, and we fix only the
+friction that artifact exposes. No speculative onboarding. No parallel material tracks.
 
 ---
 
-## 1. Onboarding & First-Run Experience (P0)
+## Critical path
 
-**Goal:** A developer opening SpaceGraph for the first time understands its value within 30 seconds without reading docs.
+```
+Phase 0 Purpose  →  Phase 1 One Demo  →  Phase 2 Friction  →  Phase 3 Gates  →  Phase 4 Study
+   (days)              (days)                (days)               (parallel)        (weeks)
+```
 
-### 1.1 Empty State → Guided Discovery
-- [ ] **Empty map state**: Show "Your session will appear as it runs" with a subtle animated placeholder graph (frame 43)
-- [ ] **First-run coach marks**: 3-step overlay on first open — (1) "Press `Ctrl+Shift+M` to open map" (2) "Click any node to inspect" (3) "Type `/` to search"
-- [ ] **Interactive tutorial**: A guided walkthrough session (separate from real sessions) that teaches: overview → execution → failure trace → palette search → share permalink
-- [ ] **Keyboard shortcut hint bar**: Non-intrusive footer showing `Ctrl+Shift+M` (map), `/` (palette), `Esc` (close) on first 3 visits
-
-### 1.2 Progressive Disclosure Done Right
-- [ ] **Level selector always visible**: Overview/Execution/Detail as segmented control (not buried in menu)
-- [ ] **Layout selector with previews**: Show thumbnail of each layout (dagre, grid, circular, timeline, hierarchy) on hover
-- [ ] **Lens badges on toolbar**: Active lens shown as pill with count (e.g., "Cost: 42k tokens", "Attention: 1 failure")
-- [ ] **Surface switcher in titlebar**: Map / Hybrid / Turn Map / Transcript as tabs, not menu items
-
-### 1.3 Immediate Visual Feedback
-- [ ] **Selection ripple**: Click a node → subtle pulse animation (respects `reducedMotion`)
-- [ ] **Search highlight**: Palette results pulse in graph, not just list
-- [ ] **Trace overlay entrance**: "Why?" trace animates in from inspector, not pop-in
+Phases 3 and 4 run in parallel with 1–2 once their inputs exist. Nothing in Phase 2 starts before
+Phase 1 has produced a friction log.
 
 ---
 
-## 2. Narrative Demo & Communication Material (P0)
+## Phase 0 — Purpose (P0, days)
 
-**Goal:** Produce materials that *teach* SpaceGraph's value — not just list features.
+**Deliverable:** a committed one-page answer that a skeptic accepts.
 
-### 2.1 Hero Demo Video (60–90s)
-Using the story-driven capture test as foundation:
-- [ ] **Storyboard & script**: 7-act structure (Problem → Open Map → Attention Badge → "Why?" Trace → Palette Search → Subagent Discovery → Share)
-- [ ] **Smooth camera work**: `fit()` → `focusNode()` → layout transitions → zoom, no jump cuts
-- [ ] **Cursor ring + click ripple**: All interactions visible
-- [ ] **Narration**: 1–2 sentences per scene, −14 LUFS, captions
-- [ ] **Output ladder**: 30s teaser (social), 90s full (docs), 3min deep-dive (YouTube)
-- [ ] **Record on display machine**: 1920×1080 or 2560×1440, dark theme, 60fps, clean fonts
+- [ ] **Write `docs/spacegraph/purpose.md`.** One sentence, then 3 jobs. Draft hypothesis to confirm
+      or reject against the canonical fixture, not to assert:
+      > "SpaceGraph replaces scrolling to answer *why*, *what changed*, and *who did it* with one
+      > glance at structure."
+- [ ] **Define exactly 3 jobs** (resist a persona list). Each row: a session state, a question, and
+      the graph action that answers it faster than transcript.
 
-### 2.2 Static Communication Assets
-- [ ] **Key frame gallery**: 8–10 annotated screenshots for README/landing page:
-  1. Transcript overwhelm → "Open map" (Ctrl+Shift+M)
-  2. Attention badge in header → "Something failed"
-  3. "Why?" trace overlay → causal chain
-  4. Palette NLQ "failed tools" → jump to node
-  5. Hierarchy layout → subagent delegation
-  6. File diff widget → wrong fix visible
-  7. Green test pass → resolution confirmed
-  8. Permalink copied → "Share with team"
-- [ ] **Animated GIFs** (2–3s loops) for each core workflow:
-  - Open map → see failure → click "Why?"
-  - Palette search → jump to node
-  - Layout switch → hierarchy reveals subagent
-  - Copy permalink → paste in chat
-- [ ] **One-page "Why SpaceGraph?"** — problem/solution fit for 5 personas:
-  - Debugging agent failures
-  - Understanding delegation
-  - Navigating large sessions
-  - Sharing findings
-  - Learning from past runs
+      | Job | Session state | Question | Graph action | Faster than transcript by |
+      |-----|---------------|----------|--------------|---------------------------|
+      | Diagnose | a failure exists | "Why did this fail?" | attention badge → Why trace | one click vs scrolling to the error |
+      | Audit | files changed | "What did it touch?" | files rail + diff widget | one glance vs reading every edit |
+      | Delegate | subagent ran | "What did it contribute?" | hierarchy + subagent node | one layout vs hunting messages |
 
-### 2.3 In-App Teaching
-- [ ] **Contextual tips**: "Press `/` to search" appears in empty search dialog
-- [ ] **Feature discovery toasts**: "Try hierarchy layout for subagents" (once, dismissible)
-- [ ] **Keyboard shortcut cheat sheet**: `?` key opens modal with all shortcuts
+- [ ] **Purpose test on the canonical fixture** (`buildNarrativeFixtureGraph()`): for each job, time
+      the graph path vs the transcript path by hand. Record both numbers in `purpose.md`.
+- [ ] **Decision gate:** if a job is not clearly faster, either fix the flow in Phase 2 or **park the
+      feature behind its flag** and say so. A parked feature is a successful outcome.
+
+**Exit:** `purpose.md` states a purpose, 3 jobs with measured graph-vs-transcript times, and a
+keep/park decision per feature. If the purpose does not hold, stop and park: do not build material
+for an unproven value.
 
 ---
 
-## 3. Usability Polish (P1)
+## Phase 1 — The One Demo (P0, critical path)
 
-**Goal:** Remove friction from the 5 core workflows identified in the narrative.
+**Deliverable:** one 90s narrated video + 8 captioned stills, from assets that already exist.
 
-### 3.1 Workflow 1: "Something failed — what happened?"
-- [ ] **Attention badge click** → opens map at failure, auto-fits, shows trace
-- [ ] **One-click "Why?"** from any failed node (tool, result, message)
-- [ ] **Trace overlay** shows: error → tool → cause → fix path, with collapse/expand
-- [ ] **Keyboard**: `w` opens "Why?" on selected node
+Reuse, do not rebuild:
+- `packages/app/e2e/graph/capture-story.spec.ts` (7-act narrative, 8 frames, currently passing)
+- `packages/app/e2e/graph/capture-live.spec.ts` (continuous Playwright recording)
+- `script/generate-demo-video.ts` (beacon-anchored narration + hook + render)
+- `DEMO_VIDEO_PLAN.md` (storyboard notes)
 
-### 3.2 Workflow 2: "Find X in this session"
-- [ ] **Palette opens instantly** (`/` key, <50ms p50)
-- [ ] **NLQ understands**: "failed tools", "my edits", "subagents", "token.ts", "errors yesterday"
-- [ ] **Results grouped**: Nodes / Actions / Saved Questions / Lenses / Surfaces
-- [ ] **Recent searches** persist across sessions (20 max)
-- [ ] **Keyboard**: `↑/↓` navigate, `Enter` select, `Esc` close
+- [ ] **Extend `capture-story.spec.ts` into the demo recording:** add camera beats (`fit()` before
+      each act, `focusNode()` on the subject, deliberate layout switch), a visible cursor ring and
+      click ripple, and a scene marker per act so narration can anchor. Keep the 8-frame stills as
+      the gallery — same run, no second capture path.
+- [ ] **Write the 7-act narration** (1–2 sentences per act) into `generate-demo-video.ts`; no feature
+      narration, only the Phase 0 jobs (Diagnose → Audit → Delegate → Share).
+- [ ] **Render the ladder:** 30s teaser, 90s full. Dark theme, 1440×900 minimum, clean fonts.
+      Recording is headless via Playwright — **do not** treat "no display" as a blocker; verify the
+      output frame-by-frame and escalate only if the render is actually blank.
+- [ ] **Annotate the 8 stills** with one caption each (the job, the action, the payoff). Reuse
+      `story-01…story-07` frames produced by the spec; add the missing 8th if needed.
+- [ ] **Keep a friction log while recording:** every awkward interaction, dead control, or unclear
+      affordance you hit becomes a Phase 2 row. This log *is* the usability audit.
 
-### 3.3 Workflow 3: "What did the subagent do?"
-- [ ] **Hierarchy layout** as default for sessions with delegations
-- [ ] **Subagent node** shows: description, outcome, child session link
-- [ ] **Lineage panel** (fork/parent/children) always accessible from toolbar
-- [ ] **Cross-session permalink**: `#graph:ses_child_xyz:file:foo.ts`
-
-### 3.4 Workflow 4: "Show me the code change"
-- [ ] **File node click** → diff widget opens in inspector (not modal)
-- [ ] **Diff widget**: syntax highlighted, scrollable, copy button, "open in editor" link
-- [ ] **Changed files rail**: toggle in toolbar, shows all modified files with status
-
-### 3.5 Workflow 5: "Share this finding"
-- [ ] **Copy permalink** (1 click): copies `#graph:ses_abc:tool:prt_xyz` to clipboard
-- [ ] **Export options**: SVG / PNG / JSON / Permalink
-- [ ] **Share modal**: "Copy link" + "Copy markdown" + "Copy for GitHub issue"
-
-### 3.6 Cross-Cutting Polish
-- [ ] **Toolbar never clips**: Overflow menu tested at 800px, 1024px, 1440px
-- [ ] **Inspector resizable**: Drag handle, remembers width per surface
-- [ ] **Canvas context menu**: Right-click → "Focus here", "Copy permalink", "Why?", "Open in new tab"
-- [ ] **Zoom/pan indicators**: Subtle zoom % badge, mini-map in corner for large graphs
-- [ ] **Loading states**: Skeleton cards while graph builds, not spinner
+**Exit:** a smooth 90s cut whose every scene answers a Phase 0 job, plus 8 captioned stills and a
+friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
 
 ---
 
-## 4. Usefulness Validation (P1)
+## Phase 2 — Fix only what the demo exposed (P1)
 
-**Goal:** Prove SpaceGraph solves real problems better than alternatives.
+**Deliverable:** the friction log from Phase 1, resolved or parked.
 
-### 4.1 Task-Based Metrics (from v35 M7 study protocol)
-- [ ] **Run the study**: Recruit ≥5 participants (protocol at `docs/spacegraph/study-protocol.md`)
-- [ ] **Tasks**: Why did agent change X? What led to failure? What did subagent contribute? What changed after failure? Where did agent retry?
-- [ ] **Measure**: Success rate, time, wrong turns, interaction rates, preference (1–7 Likert)
-- [ ] **Threshold**: Cohen's d ≥ 0.5 on time AND success rate diff ≥ 20pp vs transcript
+- [ ] **Resolve each friction row at the lowest layer that owns it** (model → selector → component).
+      No speculative coach marks, tours, or onboarding modals. The demo is the usability test.
+- [ ] **The five demo workflows must be friction-free** (this is the tail of Phase 1, not a separate
+      feature push):
+      - Diagnose: attention badge → one-click Why → readable trace
+      - Navigate: `/` opens palette < 50ms → NLQ "failed tools" → jump to node
+      - Audit: files rail → diff widget → changed line visible without a modal
+      - Delegate: hierarchy layout → subagent node → child-session link
+      - Share: copy permalink in one click
+- [ ] **Only if a fix is impossible this cycle**, park it behind its existing flag and note it in the
+      kill/park register. Do not add a new flag for polish.
 
-### 4.2 Dogfooding Counters (dev-only, already in `study.ts`)
-- [ ] **Enable by default in dev**: Surface opens, lens switches, inline expands, "Why" clicks, timed answers
-- [ ] **Weekly review**: Team reviews counters, identifies unused features
-- [ ] **Kill unused**: If a feature has <5% engagement after 2 weeks, flag for removal
-
-### 4.3 Real-World Session Analysis
-- [ ] **Analyze 50+ real sessions**: What graphs do users actually open? What do they search? Where do they get stuck?
-- [ ] **Heatmap of feature usage**: Toolbar clicks, palette queries, layout switches, lens toggles
-- [ ] **Friction log**: Every "I wish I could..." from team dogfooding → backlog item
-
----
-
-## 5. Environmental Gates (from v35 M9) — P0 Gate
-
-| Gate | Status | Owner | Target |
-|------|--------|-------|--------|
-| **Benchmarks** | ⏳ Needs display machine | — | `strobe bench` on 1366×768+ headed Chromium; record numbers vs `origin/dev` |
-| **Listener-leak check** | ⏳ Manual e2e | — | 30-min session: no dead controls, no global listener leaks, no duplicate DOM ids |
-| **Video review (M7.6)** | ⏳ Needs demo video | — | ≥3 outsider reviews with recorded notes; pass/fail per `study-protocol.md` |
-| **Capture re-bless** | ⏳ Reference env | — | Re-bless 4 frames (01-log, 13-narrow, 34-surfaces, 38-hybrid) on reference machine |
-
-> **Note:** These block graduation. v36 work proceeds in parallel but cannot ship until gates pass.
+**Exit:** the Phase 1 recording re-renders with the friction rows resolved; the log is empty or every
+open row is parked with a reason.
 
 ---
 
-## 6. SpaceGraphJS Library Polish (P2)
+## Phase 3 — Gates (P0, parallel)
 
-**Goal:** Make upstream components production-ready for external consumers.
+These block graduation. Run the ones that are testable here first; escalate only what genuinely
+cannot run.
 
-- [ ] **Renderer package**: Export `SpaceGraphRenderer`, `SVGRenderer`, `CanvasRenderer` with stable API
-- [ ] **Layout package**: `dagre`, `grid`, `circular`, `force`, `hierarchy` as pure functions
-- [ ] **Kernel package**: `SpatialIndex2D`, `Viewport`, `Camera` with TypeScript types
-- [ ] **Adapter package**: `GraphNode`, `GraphEdge`, `GraphModel` schema + validators
-- [ ] **Demo app**: Second host (`spacegraphjs/demo/second-host/`) demonstrating embedding
-- [ ] **Versioning**: Semver with `CONTRACT_VERSION` policy (no deprecations, delete-don't-deprecate)
-- [ ] **Docs**: API reference, embedding guide, migration guide, breaking-change policy
+| Gate | Action | Escalate only if |
+|------|--------|------------------|
+| Benchmarks | **Try headless first.** `strobe bench packages/app/perf/graph-*.bench.ts --plan` then a timed run. | Timed frames are blank or non-comparable to `origin/dev` — then a headed run on a display machine. Do not assume headless is blocked; prove it. |
+| Listener-leak | Focused probe: open/close the map N times in one page, assert no growth in listeners, no duplicate DOM ids, no dead controls. | A leak needs a real multi-session manual pass. |
+| Capture re-bless | Re-run the gate; re-bless only the 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid). | Reference hardware renders differently — then bless there. |
+| Video review (M7.6) | Use the Phase 1 cut. ≥3 outside reviewers, notes recorded per `study-protocol.md`. | Reviewers are not available — hold, do not fake a pass. |
+
+**Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
 ---
 
-## Non-Negotiables (Carried from v35)
+## Phase 4 — Validation (P1, after Phase 1)
+
+**Deliverable:** evidence that the Phase 0 jobs hold for real users.
+
+- [ ] Run the study in `docs/spacegraph/study-protocol.md` (n≥5). Tasks map to the Phase 0 jobs.
+- [ ] Record success rate, time, wrong turns, preference. Compare graph vs transcript.
+- [ ] Turn on the dev counters in `packages/session-ui/src/graph/study.ts` for dogfooding; review
+      weekly. A feature with < 5% engagement after two weeks is a Phase 2 park candidate.
+
+**Exit:** a disposition in `study-protocol.md` §6: win, loss, or inconclusive with numbers.
+
+---
+
+## Explicitly parked (do not start in v36)
+
+- Coach marks, 3-step tours, interactive tutorial session — speculative onboarding; the demo teaches.
+- Animated GIFs, persona one-pagers, "What's new" assets — the 8 stills + one video cover this.
+- Library extraction (renderer/layout/kernel packages), semver, second-host demo — wait for the
+  purpose answer; extracting an unproven surface is premature.
+- Model picker and permission-summary widgets — SDK/host gaps (v35 M3.1).
+- Compaction advisor — 0/46 nodes dropped on the canonical fixture (v35 M1.2).
+- Radial/spectral/cluster/geo layouts, Cytoscape, heat sizing (v35 M3.2/M5.3).
+
+---
+
+## Non-negotiables
 
 1. One `SessionGraph` code path; surfaces compose it and never fork rendering.
-2. New behavior starts flag-gated; a capability is available only when its flag and preference agree.
-3. Never add work to the host timeline. Inline graphs stay static until expanded.
+2. New behavior starts flag-gated; available only when its flag and preference agree.
+3. Never add work to the host timeline; inline graphs stay static until expanded.
 4. Every capability has a measured pass/park result. No capability ships on intuition alone.
 5. Test each behavior at one layer only. Do not duplicate pure-model tests in the bundled copy.
 6. Do not add a second active checklist. Completed work moves to the revision log; remaining work stays here.
 
 ---
 
-## Revision Log
-
-- **r0 (2026-11-13):** Created v36. Shift from feature delivery to excellence in usability, usefulness, and communication. Absorbs v35 M9 environmental gates as P0 blockers. Adds onboarding, demo materials, usability polish, usefulness validation, and library polish tracks.
-
----
-
-## Absorption Map from v35
-
-| v35 Item | v36 Location |
-|----------|--------------|
-| M9 Benchmarks | §5 Environmental Gates |
-| M9 Listener-leak check | §5 Environmental Gates |
-| M9 Video review (M7.6) | §5 Environmental Gates |
-| M9 Capture re-bless | §5 Environmental Gates |
-| M7 Study protocol | §4.1 Task-Based Metrics |
-| M7 Local counters | §4.2 Dogfooding Counters |
-| Capture story test | §2.1 Hero Demo Video |
-| Live demo video | §2.1 Hero Demo Video |
-| Frame captures | §2.2 Static Communication Assets |
-
----
-
-## Kill/Park Register (v36 Additions)
+## Kill/park register
 
 | Capability | Decision | Evidence |
 |------------|----------|----------|
-| Model picker widget | **Park** | SDK exposes no model catalog; duplicates host composer |
-| Permission summary widget | **Park** | Graph carries no permission request; duplicates host dock |
-| Compaction advisor | **Park** | 0/46 nodes dropped, 0 tokens saved on canonical fixture |
-| Radial/spectral/cluster/geo layouts | **Park** | Need live graph / non-deterministic / no geo data |
-| Heat sizing (cost lens) | **Park** | Forces relayout; optional future work |
-| Cytoscape renderer | **Park** | Only when factory + contract version registered |
+| Model picker widget | Park | SDK exposes no model catalog; duplicates host composer |
+| Permission summary widget | Park | Graph carries no permission request; duplicates dock |
+| Compaction advisor | Park | 0/46 nodes dropped, 0 tokens saved on fixture |
+| Radial/spectral/cluster/geo | Park | Need live graph / non-deterministic / no geo data |
+| Heat sizing (cost lens) | Park | Forces relayout; optional future work |
+| Cytoscape renderer | Park | Only when factory + contract version registered |
+| Coach marks / tours / GIFs | Park | Demo + stills teach; revisit if study shows confusion |
 
 ---
 
-## Open Decisions
+## Open decisions
 
-| Decision | Needed By | Default If Unresolved |
-|----------|-----------|----------------------|
-| Study recruitment & execution | §4.1 (P1) | Run with internal team first; external if resources allow |
-| Demo video production quality bar | §2.1 (P0) | 1920×1080, 60fps, clean narration; re-record until smooth |
-| First-run tutorial scope | §1.1 (P0) | 3-step coach marks + interactive tutorial session |
-| Keyboard shortcut discoverability | §1.3 (P0) | `?` key cheat sheet + footer hints on first 3 visits |
-| Flag graduation order | Post video review | Delete only proven defaults after M7.6 passes |
+| Decision | Needed by | Default if unresolved |
+|----------|-----------|-----------------------|
+| Does the one-sentence purpose hold? | End of Phase 0 | If not, park features and ship the library value only |
+| 90s cut quality bar | Phase 1 | 1440×900, 30fps, clean narration; re-render until every scene reads |
+| Benchmarks headless? | Phase 3 | Prove with numbers; headed run only if non-comparable |
+| Study recruitment | Phase 4 | Internal team first (n≥5); external only if available |
+| Flag graduation order | After M7.6 | Delete only proven defaults |
+
+---
+
+## Absorption map from v36-draft and v35
+
+| Earlier item | v36 location |
+|--------------|--------------|
+| v36-draft §1 Onboarding (coach marks, tutorial) | Parked (demo teaches) |
+| v36-draft §2.1 Hero video | Phase 1 |
+| v36-draft §2.2 Stills/GIFs | Phase 1 (stills only; GIFs parked) |
+| v36-draft §2.3 In-app teaching | Parked |
+| v36-draft §3 Usability polish (5 workflows) | Phase 2 (demo-exposed only) |
+| v36-draft §4 Usefulness validation | Phase 4 |
+| v36-draft §5 Environmental gates | Phase 3 |
+| v36-draft §6 Library polish | Parked |
+| v35 M9 benchmarks / listener-leak / video review / re-bless | Phase 3 |
+| v35 M7 study protocol / counters | Phase 4 |
+| v35 capture-story + capture-live + generate-demo-video | Phase 1 |
+
+Every v35 M9 open item is represented above. When an item completes, record the result in the
+revision log; leave v34 and v35 unchanged.
+
+---
+
+## Revision log
+
+- **r0 (2026-11-13):** Created v36. Shifted from feature delivery to purpose → proof → polish.
+  - Reordered so purpose (`docs/spacegraph/purpose.md`, 3 measured jobs) precedes all material; a
+    failed purpose parks features rather than spawning more work.
+  - Consolidated 6 parallel tracks into one critical path; merged demo production and usability
+    audit (the friction log from recording *is* the audit).
+  - Reuses `capture-story.spec.ts`, `capture-live.spec.ts`, and `generate-demo-video.ts`; no second
+    capture path and no separate GIF/persona tracks.
+  - Corrected the "headless blocks benchmarks" assumption: Phase 3 tests headless first and escalates
+    only on measured non-comparability.
+  - Parked speculative onboarding, GIFs, and library extraction until the purpose and study justify
+    them.
