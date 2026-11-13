@@ -4,7 +4,9 @@
 > not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
 > artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
-> exists. `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
+> exists. The Phase 1 demo cut was **rejected in review (r5)** — machine-paced, too narrow, and
+> copy that labels the product — so Phase 1 is rethought as a chapter program below.
+> `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
 
 ---
@@ -66,39 +68,61 @@ parked. The purpose stands or falls on these numbers — no separate `purpose.md
 
 ---
 
-## Phase 1 — The One Demo (P0, critical path)
+## Phase 1 — The One Demo, rethought (P0, critical path)
 
-**Deliverable:** one 90s narrated video + 8 captioned stills, from assets that already exist.
+> **Rejected (2026-11-13, r5):** the Phase 1 cut — 8-frame story, ~60s, freeze-frame holds,
+> teleporting cursor — belittles the system. It obsesses over one debugging chapter and ignores the
+> breadth the codebase enables; its copy labels the product ("map") instead of using it. The
+> friction log (`docs/spacegraph/video/FRICTION_LOG.md`) and the capture pipeline remain inputs; the
+> completed checklist moved to the revision log.
 
-Reuse, do not rebuild:
-- `packages/app/e2e/graph/capture-story.spec.ts` (7-act narrative, 8 frames, currently passing)
-- `packages/app/e2e/graph/capture-live.spec.ts` (continuous Playwright recording)
-- `script/generate-demo-video.ts` (beacon-anchored narration + hook + render)
-- `DEMO_VIDEO_PLAN.md` (storyboard notes)
+**Decision record (2026-11-13):** chapters — one mp4 file per chapter, 60–90s each, cut from one
+shared spine; the film **opens on a running session** (nodes streaming in as the agent works); the
+canonical fixture is **enriched** so the later lenses have substance; narration is instructional for
+**existing users**, one job per chapter; **human real-time pacing** throughout; **mp4 only**; clean
+neutral voice (the "kidnapper" pitch effect is killed).
 
-- [x] **Extend `capture-story.spec.ts` into the demo recording:** add camera beats (`fit()` before
-      each act, `focusNode()` on the subject, deliberate layout switch), a visible cursor ring and
-      click ripple, and a scene marker per act so narration can anchor. Keep the 8-frame stills as
-      the gallery — same run, no second capture path.
-- [x] **Write the 7-act narration** (1–2 sentences per act) into `generate-demo-video.ts`; no feature
-      narration, only the Phase 0 jobs (Diagnose → Audit → Delegate → Share).
-- [x] **Render the ladder to `docs/spacegraph/video/` (gitignored):** 30s teaser, 90s full. Dark theme,
-      1440×900 minimum, clean fonts. Recording is headless via Playwright — **do not** treat "no
-      display" as a blocker; verify the output frame-by-frame and escalate only if the render is
-      actually blank.
-- [x] **Annotate the 8 stills** with one caption each (the job, the action, the payoff). Reuse
-      `story-01…story-08` frames produced by the spec; add the missing 8th if needed.
-- [x] **Keep a friction log while recording:** every awkward interaction, dead control, or unclear
-      affordance you hit becomes a Phase 2 row. This log *is* the usability audit.
+**The eight chapters** — one arc, the same session, seven different ways of looking. Every scene
+does a job; none lists features:
 
-**Exit:** a smooth 90s cut whose every scene answers a Phase 0 job, plus 8 captioned stills and a
-friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
+| # | Chapter | Job it films | Needs first |
+|---|---------|--------------|-------------|
+| 1 | Live | Watch the session build: nodes streaming in while the agent works | Live-open capture |
+| 2 | Diagnose | A failure stops it: attention → Why trace | Gliding cursor + pacing |
+| 3 | Audit | What did it touch: files rail → diff → the wrong fix | Gliding cursor + pacing |
+| 4 | Delegate | Who did the work: hierarchy → subagent drill-down | Gliding cursor + pacing |
+| 5 | Trust | What was verified: reviewer lens, verification vs unverified outputs | Fixture: trust states |
+| 6 | Cost | What it cost: auditor lens, where the tokens went | Fixture: per-turn cost |
+| 7 | Hand off | Give it away: permalink to the exact node and layout | Gliding cursor + pacing |
+| 8 | Return | Come back tomorrow: pins, notes, the session where you left it | Fixture: a note and a pin |
 
-**Status: ✅ COMPLETE**
-- demo.mp4 (1.8 MB), demo.webm (1.8 MB), demo-kidnapper.mp4, demo-kidnapper.webm generated
-- 8 captioned stills in docs/spacegraph/video/stills/
-- Friction log at docs/spacegraph/video/FRICTION_LOG.md (12 items)
-- Video duration: ~60s (50s body + hook/cards), close to 90s target
+**Prerequisites (in dependency order):**
+- [ ] **Fixture enrichment** (`buildNarrativeFixtureGraph()`): per-turn cost, verification/trust
+      states, a note and a pin, a compaction marker, commit history in the workspace snapshot. The
+      lenses and the Phase 4 study consume the same data — product work, not video work.
+- [ ] **Live-open capture:** chapter 1 opens mid-run — drive the canonical fixture through streamed
+      events (the `packages/app/perf/fixtures/events.ts` SSE pattern) so the recording starts while
+      nodes are still arriving, then continues the arc.
+- [ ] **Capture mechanics:** replace the teleporting cursor ring (`demo-cursor-ring` in
+      `capture-story.spec.ts`) with a gliding cursor — eased movement, hover states register — and a
+      click ripple that survives into the recorded video; pace every action at human speed; one
+      continuous take per chapter, no freeze-frame holds (`renderFrameClips` padding goes).
+- [ ] **Copy scrub:** see Phase 2 (reopened below). No chapter ships while a visible string still
+      says "map".
+- [ ] **Render rework** (`script/generate-demo-video.ts`): mp4 only — delete the webm pass and the
+      kidnapper cut with its pitch/formant effect; clean neutral voice; title and end cards without
+      "map" ("your session, mapped as it runs" → "your session as it runs"; "map it with
+      Ctrl+Shift+M" → "Ctrl+Shift+M").
+
+**Narration principles (existing users):** instructional, one job per chapter; name the interaction
+(keys, buttons), never the feature label; captions carry the job ("the fix failed again", "what did
+it touch").
+
+Reuse, do not rebuild: `capture-story.spec.ts`, `capture-live.spec.ts`, `generate-demo-video.ts`,
+`DEMO_VIDEO_PLAN.md` — all extended, none rewritten from scratch.
+
+**Exit:** every chapter is one human-paced mp4 with a captioned still from the same run; a
+watch-through finds no freeze-frame, no feature list, and no string that says "map".
 
 ---
 
@@ -118,6 +142,14 @@ friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
 - [ ] **Only if a fix is impossible this cycle**, park it behind its existing flag and note it in the
       kill/park register. Do not add a new flag for polish.
 
+**Reopened (2026-11-13, r5):**
+- [ ] **Copy scrub — drop the noun** in `packages/gui-plugins/src/spacegraph/i18n/en.ts` and every
+      fixture, bench and test that matches label text: no user-facing string says "map"
+      ("Show session map" → "Show session"; "Map this turn" → "Open this turn"; "Open full map" →
+      "Open full view"; "Copy map permalink" → "Copy permalink"; "Toggle session map" → "Show
+      session"). Surface ids, data-slots, storage keys and internals do NOT change. Product friction
+      from the review: the copy assumes the user needs telling what the feature is.
+
 **Completed Phase 2 items (from friction log):**
 - **Friction #10 (Search dialog race condition):** Moved `/` search shortcut to global keyboard handler with input guard, so it works regardless of canvas focus state. Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts` and `packages/session-graph/src/ui/graph-utils.ts`.
 - **Friction #11 (Layout switch):** Added keyboard shortcuts Alt+1 through Alt+9 for the first 9 layouts (lanes, timeline, hierarchy, tree, force, grid, circular, ribbon, matrix). Implemented in `packages/session-graph/src/ui/useGraphKeyboard.ts`.
@@ -129,7 +161,7 @@ friction log. Record the numbers frame-by-frame; no "seems fine" verdicts.
 - Friction #5, #6, #7: edge_tts robustness — fixed in generate-demo-video.ts (already done)
 - Friction #9: Video duration ~60s vs 90s target — adjustable via demo-manifest.json hold times; not a product issue
 
-**Phase 2 Exit:** All product-facing friction from the demo recording is resolved. Remaining items are test/video-generation infrastructure, not user-facing affordances. Phase 2 complete.
+**Phase 2 Exit:** All product-facing friction from the demo recording is resolved. Remaining items are test/video-generation infrastructure, not user-facing affordances. Phase 2 complete except the reopened copy scrub.
 
 ---
 
@@ -143,7 +175,7 @@ cannot run.
 | Benchmarks | **Try headless first.** `strobe bench packages/app/perf/graph-*.bench.ts --plan` then a timed run. | Timed frames are blank or non-comparable to `origin/dev` — then a headed run on a display machine. Do not assume headless is blocked; prove it. |
 | Listener-leak | Focused probe: open/close the map N times in one page, assert no growth in listeners, no duplicate DOM ids, no dead controls. | A leak needs a real multi-session manual pass. |
 | Capture re-bless | Re-run the gate; re-bless only the 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid). ✅ **Done** — Re-blessed 4 frames to 0% diff on 2026-11-13. | Reference hardware renders differently — then bless there. |
-| Video review (M7.6) | Use the Phase 1 cut. ≥3 outside reviewers, notes recorded per `study-protocol.md`. | Reviewers are not available — hold, do not fake a pass. |
+| Video review (M7.6) | Use the Phase 1R chapters (the rejected cut is not reviewable). ≥3 outside reviewers, notes recorded per `study-protocol.md`. | Reviewers are not available — hold, do not fake a pass. |
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
@@ -151,7 +183,7 @@ cannot run.
 - ✅ Capture re-bless: Complete (4 frames re-blessed)
 - ⏳ Benchmarks: Headless `strobe --plan` works; timed run against `origin/dev` blocked by workspace dependency (`spacegraphjs` not found in worktree build). **Escalated** — requires monorepo build setup in strobe worktrees.
 - ⏳ Listener-leak: Not started — needs manual multi-session pass.
-- ⏳ Video review: Not started — needs ≥3 outside reviewers per `study-protocol.md`.
+- ⏳ Video review: Not started — blocked on the Phase 1R chapters; needs ≥3 outside reviewers per `study-protocol.md`.
 
 ---
 
@@ -171,7 +203,7 @@ cannot run.
 ## Explicitly parked (do not start in v36)
 
 - Coach marks, 3-step tours, interactive tutorial session — speculative onboarding; the demo teaches.
-- Animated GIFs, persona one-pagers, "What's new" assets — the 8 stills + one video cover this.
+- Animated GIFs, persona one-pagers, "What's new" assets — the chapters + captioned stills cover this.
 - Library extraction (renderer/layout/kernel packages), semver, second-host demo — wait for the
   purpose answer; extracting an unproven surface is premature.
 - Model picker and permission-summary widgets — SDK/host gaps (v35 M3.1).
@@ -188,6 +220,7 @@ cannot run.
 4. Every capability has a measured pass/park result. No capability ships on intuition alone.
 5. Test each behavior at one layer only. Do not duplicate pure-model tests in the bundled copy.
 6. Do not add a second active checklist. Completed work moves to the revision log; remaining work stays here.
+7. Demos film a person working at human pace — gliding cursor, real clicks, no freeze-frame holds. A scene does a job; it never lists features.
 
 ---
 
@@ -202,6 +235,9 @@ cannot run.
 | Heat sizing (cost lens) | Park | Forces relayout; optional future work |
 | Cytoscape renderer | Park | Only when factory + contract version registered |
 | Coach marks / tours / GIFs | Park | Demo + stills teach; revisit if study shows confusion |
+| Kidnapper voice (pitch/formant effect) | Kill | Review 2026-11-13: undermines a serious demo |
+| demo.webm + kidnapper variants | Kill | One format (mp4); halves render time |
+| One-arc hero cut (~4-6 min single take) | Park | Chapters chosen; revisit if the chapters fragment the story |
 
 ---
 
@@ -210,7 +246,8 @@ cannot run.
 | Decision | Needed by | Default if unresolved |
 |----------|-----------|-----------------------|
 | Does the one-sentence purpose hold? | End of Phase 0 | If not, park features and ship the library value only |
-| 90s cut quality bar | Phase 1 | 1440×900, 30fps, clean narration; re-render until every scene reads |
+| Chapter quality bar | Phase 1R | 1440×900, 30fps mp4, human-paced, clean voice; re-render until every chapter reads |
+| First chapter to ship | Phase 1R | Diagnose — shortest path to proving the new pacing and copy |
 | Benchmarks headless? | Phase 3 | Prove with numbers; headed run only if non-comparable |
 | Study recruitment | Phase 4 | Internal team first (n≥5); external only if available |
 | Flag graduation order | After M7.6 | Delete only proven defaults |
@@ -222,8 +259,8 @@ cannot run.
 | Earlier item | v36 location |
 |--------------|--------------|
 | v36-draft §1 Onboarding (coach marks, tutorial) | Parked (demo teaches) |
-| v36-draft §2.1 Hero video | Phase 1 |
-| v36-draft §2.2 Stills/GIFs | Phase 1 (stills only; GIFs parked) |
+| v36-draft §2.1 Hero video | Phase 1R (chapters; one-arc cut parked) |
+| v36-draft §2.2 Stills/GIFs | Phase 1R (one captioned still per chapter; GIFs parked) |
 | v36-draft §2.3 In-app teaching | Parked |
 | v36-draft §3 Usability polish (5 workflows) | Phase 2 (demo-exposed only) |
 | v36-draft §4 Usefulness validation | Phase 4 |
@@ -231,7 +268,7 @@ cannot run.
 | v36-draft §6 Library polish | Parked |
 | v35 M9 benchmarks / listener-leak / video review / re-bless | Phase 3 |
 | v35 M7 study protocol / counters | Phase 4 |
-| v35 capture-story + capture-live + generate-demo-video | Phase 1 |
+| v35 capture-story + capture-live + generate-demo-video | Phase 1R (extended, not rebuilt) |
 
 Every v35 M9 open item is represented above. When an item completes, record the result in the
 revision log; leave v34 and v35 unchanged.
@@ -239,6 +276,22 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r5 (2026-11-13):** Review rejected the demo cut; Phase 1 rethought as a chapter program.
+  - Verdict: machine-paced (teleporting cursor ring, freeze-frame holds), one narrow debugging
+    story, and copy that labels the product ("map") — the cut belittles the scope of the system.
+  - Capability inventory grounded in code before deciding (10 lenses, 9 layouts, 3 levels, 4 depth
+    modes, live build, NLQ search, Why traces, files rail, delegation, trust, cost, notes/pins,
+    permalinks, export, composer widget, workspace snapshot): the old cut shows ~15% of the
+    product's verbs.
+  - Decisions with the author: chapters (one mp4 per chapter, 60–90s); the film opens on a running
+    session; the canonical fixture is enriched (cost, trust/verification, a note and a pin,
+    compaction, commit history); narration is instructional for existing users; mp4 only; human
+    real-time pacing; clean neutral voice (kidnapper effect killed); drop the noun in user-facing
+    copy (ids and internals unchanged).
+  - New work: fixture enrichment, live-open capture, gliding-cursor capture mechanics, copy scrub
+    (reopened in Phase 2), render rework. Chapter list and prerequisites are in Phase 1R.
+  - Implementation deferred to a fresh session; the plan is the deliverable of this pass.
 
 - **r4 (2026-11-13):** Phase 3 — Capture re-bless gate complete.
   - Re-blessed 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid) to 0% diff
