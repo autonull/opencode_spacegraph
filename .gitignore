@@ -41,3 +41,4 @@ legal-drafts-private/
 
 # Generated demo media is rebuilt locally; never commit video/audio assets.
 docs/spacegraph/video/
+docs/spacegraph/screenshots/
