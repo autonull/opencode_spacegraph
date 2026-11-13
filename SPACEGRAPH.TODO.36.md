@@ -103,9 +103,34 @@ chapters listed in the table above. Fixture enrichment is product work the Phase
 consumes, so it goes first; capture mechanics (gliding cursor + human pacing) unblock chapters
 2–4 and 7; live-open capture is chapter 1's own prerequisite; render rework is last, before
 shooting. The copy-scrub prerequisite below is done (r6) — chapters may not ship a "map" string.
-- [ ] **Fixture enrichment** (`buildNarrativeFixtureGraph()`): per-turn cost, verification/trust
+- [x] **Fixture enrichment** (`buildNarrativeFixtureGraph()`): per-turn cost, verification/trust
       states, a note and a pin, a compaction marker, commit history in the workspace snapshot. The
       lenses and the Phase 4 study consume the same data — product work, not video work.
+
+      **Applied (r7):** in `packages/session-ui/src/graph/fixture.ts` (the single editable source;
+      bundled copy regenerated with `bun run sync:graph`):
+      - **Per-turn cost** — every narrative assistant step now carries the reported `tokens` + `cost`
+        (`recordUsage` aggregates them into the turn's `usage`). The story: the wrong fix cost more
+        than the root-cause diagnosis (0.067 vs 0.049) and the reviewer subagent is the most
+        expensive step (0.098); turn totals 73.1k in / 1.88k out / $0.394.
+      - **Compaction marker** — `msg_narr_compact_1` (auto, completed) sits between the failed
+        attempts and the root-cause trace.
+      - **Note + pin** — `narrativeAnnotations` bakes one reader note onto the wrong fix
+        (`note:note_narr_wrong_fix` → annotates `tool:prt_narr_edit_1`); `narrativePins` owns the
+        pin target (the root-cause finding `msg_narr_cause_1:text:0`) for the harness to seed, since
+        pins are session UI state, not graph data.
+      - **Commit history** — `buildNarrativeSnapshot()` (files of the story, `fix/auth-refresh`
+        branch, two commits, symbols) is passed to `buildNarrativeFixtureGraph()`; commit nodes get
+        `touches` edges to the story files.
+      - **Verification/trust states** — `unverifiedFiles()` in `selectors.ts` was fixed at the model
+        layer: only a passing verify run *after* a file's last write (or a verify-phase read)
+        verifies it; turn-end `diff:` rollup nodes no longer count as new writes. Previously every
+        written file was permanently "unverified", so the trust lens could not distinguish the
+        verified fix from anything else. The narrative gains one honest unverified write — the ADR
+        doc step (`msg_narr_doc_1`, `docs/adr/001-auth.md`), which no run covers — so Chapter 5
+        films a real verified-vs-unverified contrast. Selector semantics owned by new table tests in
+        `selectors.test.ts` (one fails on the old logic); fixture outcomes asserted in
+        `narrative.test.ts` (15 pass).
 - [ ] **Live-open capture:** chapter 1 opens mid-run — drive the canonical fixture through streamed
       events (the `packages/app/perf/fixtures/events.ts` SSE pattern) so the recording starts while
       nodes are still arriving, then continues the arc.
@@ -309,6 +334,21 @@ revision log; leave v34 and v35 unchanged.
 
 ## Revision log
 
+- **r7 (2026-11-13):** Phase 1R — fixture enrichment complete (first prerequisite, unlocks
+  chapters 1–8).
+  - `buildNarrativeFixtureGraph()` now builds from an enriched spine: per-step usage (`tokens` +
+    `cost`), an auto compaction marker between the failed attempts and the root-cause trace, a
+    baked-in reader note on the wrong fix, a doc step that stays unverified, and a narrative
+    workspace snapshot with commit history (`buildNarrativeSnapshot()`). Exports added:
+    `narrativeAnnotations`, `narrativePins`, `buildNarrativeSnapshot`.
+  - Model fix the trust lens needed: `unverifiedFiles()` now verifies a file only when a passing
+    verify run follows its last write (or a verify-phase node reads it); turn-end `diff:` rollup
+    edges no longer count as writes. Before, every written file stayed unverified forever and the
+    reviewer lens could not tell the verified fix from the wrong one. Selector semantics covered by
+    new table tests in `selectors.test.ts`; the narrative fixture carries one honest unverified
+    write (the ADR doc) for Chapter 5's contrast.
+  - Bundled copy regenerated (`bun run sync:graph`); graph-parity 8/8. Verified: `bun run check`
+    green (53/53 packages); session-ui graph suite 395 pass; gui-plugins 1165 pass / 0 fail.
 - **r6 (2026-11-13):** Phase 2 — copy scrub complete; Phase 2 closed.
   - Scrubbed every user-facing "map" string in `packages/gui-plugins/src/spacegraph/i18n/en.ts`:
     surface tab, panel/settings titles → "Session graph"; commands → "Show session", "Show

@@ -161,26 +161,73 @@ describe("selectors — changed files (LE.12 file-first rail)", () => {
 })
 
 describe("selectors — unverified files (trust lens)", () => {
-  test("returns files written but not read by verify phase nodes", () => {
-    const unverified = unverifiedFiles(model)
+  /**
+   * A minimal session in node order: every non-file entry sits where it was built, verify members
+   * cluster into the phase the selector reads, and writes edges point at real file nodes.
+   */
+  function trustModel(steps: Array<{ id: string; kind: string; status?: string; writes?: string[] }>): GraphViewData {
+    const nodes: GraphNode[] = []
+    const edges: GraphEdge[] = []
+    const files = new Set(steps.flatMap((step) => step.writes ?? []))
+    for (const file of files)
+      nodes.push({ id: file, kind: "file", label: file, status: "neutral", minLevel: "execution" })
 
-    // The fixture has files written in edit phases; verify phases run tests that read them
-    // At least one file should be unverified (written but not read by verify)
-    expect(unverified.length).toBeGreaterThanOrEqual(0)
-
-    for (const file of unverified) {
-      expect(file.writers.length).toBeGreaterThan(0)
-      expect(file.readers.length).toBe(0)
+    const members: string[] = []
+    for (const step of steps) {
+      nodes.push({
+        id: step.id,
+        kind: step.kind as GraphNode["kind"],
+        label: step.id,
+        status: (step.status ?? "neutral") as GraphNode["status"],
+        minLevel: "execution",
+        ...(step.kind === "phase" ? { data: { category: "verify" } } : {}),
+      })
+      if (step.kind !== "phase" && step.kind !== "file") members.push(step.id)
     }
+
+    const phase = nodes.find((node) => node.kind === "phase")!
+    phase.clusterOf = members
+
+    for (const step of steps)
+      for (const file of step.writes ?? [])
+        edges.push({ id: `writes:${step.id}->${file}`, kind: "writes", source: step.id, target: file, confidence: "explicit" })
+
+    return { root: "session", nodes, edges, turns: [], turnByMessageID: new Map() } as GraphViewData
+  }
+
+  test("a passing verify run after the last write verifies the file", () => {
+    const verified = trustModel([
+      { id: "tool:e1", kind: "tool", writes: ["file:a.ts"] },
+      { id: "tool:s1", kind: "tool" },
+      { id: "result:s1", kind: "result", status: "success" },
+      { id: "phase:verify", kind: "phase" },
+    ])
+
+    expect(unverifiedFiles(verified)).toEqual([])
   })
 
-  test("files read by verify phase are not unverified", () => {
-    const unverified = unverifiedFiles(model)
+  test("a write after the last passing run is unverified until a run passes again", () => {
+    const stale = trustModel([
+      { id: "tool:e1", kind: "tool", writes: ["file:a.ts"] },
+      { id: "tool:s1", kind: "tool" },
+      { id: "result:s1", kind: "result", status: "success" },
+      { id: "tool:e2", kind: "tool", writes: ["file:a.ts"] },
+      { id: "phase:verify", kind: "phase" },
+    ])
 
-    // Any file with readers from verify phase should not be in unverified
-    for (const file of unverified) {
-      expect(file.readers.length).toBe(0)
-    }
+    expect(unverifiedFiles(stale).map((file) => file.id)).toEqual(["file:a.ts"])
+  })
+
+  test("a failed verify run verifies nothing, and a turn-end diff rollup is not a new write", () => {
+    const failed = trustModel([
+      { id: "tool:e1", kind: "tool", writes: ["file:a.ts"] },
+      { id: "tool:s1", kind: "tool" },
+      { id: "result:s1", kind: "result", status: "failed" },
+      { id: "diff:idle_1", kind: "diff", writes: ["file:a.ts"] },
+      { id: "phase:verify", kind: "phase" },
+    ])
+
+    expect(unverifiedFiles(failed).map((file) => file.id)).toEqual(["file:a.ts"])
   })
 })
 

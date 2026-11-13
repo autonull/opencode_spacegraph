@@ -536,14 +536,18 @@ export function changedFiles(model: GraphViewData): ChangedFile[] {
 }
 
 /**
- * Files that were written (have incoming `writes`/`produces` edges) but not read by any
- * node in a "verify" phase cluster. These are "unverified writes" — files created or
- * modified without subsequent test/verification runs.
+ * Files that were written (have incoming `writes`/`produces` edges) but never verified: no node in
+ * a "verify" phase cluster reads them, and no passing verify run follows their last write. These
+ * are "unverified writes" — files created or modified without a subsequent passing test or
+ * verification run. A write after a passing run goes back to unverified until a run passes again.
  */
 export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
   const nodes = nodeIndex(model)
+  const position = new Map(model.nodes.map((node, index) => [node.id, index]))
   const byID = new Map<string, ChangedFile>()
   const order: string[] = []
+  const lastWriteAt = new Map<string, number>()
+  let lastVerifiedAt = -1
 
   // Find all "verify" phase nodes
   const verifyPhaseNodes = model.nodes.filter(
@@ -558,8 +562,10 @@ export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
     }
   }
 
-  // First pass: collect files that were written (have writes/produces edges)
-  for (const edge of model.edges) {
+  // First pass: collect files that were written (have writes/produces edges) and where their
+  // last write sits, so a later passing run can be compared against it.
+  for (let index = 0; index < model.edges.length; index++) {
+    const edge = model.edges[index]
     if (nodes.get(edge.target)?.kind !== "file") continue
 
     if (edge.kind !== "writes" && edge.kind !== "produces") continue
@@ -574,6 +580,19 @@ export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
     }
 
     entry.writers.push(edge.source)
+    // A turn-end diff node is a rollup of writes the turn already made, not a new write: it must
+    // not push a file's last write past the run that verified it.
+    if (nodes.get(edge.source)?.kind !== "diff") {
+      const at = position.get(edge.source) ?? -1
+      lastWriteAt.set(edge.target, Math.max(lastWriteAt.get(edge.target) ?? -1, at))
+    }
+  }
+
+  // A passing verify run verifies every write that came before it.
+  for (const node of model.nodes) {
+    if (node.kind !== "result" || node.status !== "success") continue
+    if (!verifyClusterNodeIDs.has(node.id)) continue
+    lastVerifiedAt = Math.max(lastVerifiedAt, position.get(node.id) ?? -1)
   }
 
   // Second pass: collect readers from verify phase nodes only
@@ -583,10 +602,10 @@ export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
     byID.get(edge.target)?.readers.push(edge.source)
   }
 
-  // Return only files that have writers but no readers from verify phases
+  // Return only files that were written and never verified afterwards
   return order
     .map((id) => byID.get(id)!)
-    .filter((file) => file.writers.length > 0 && file.readers.length === 0)
+    .filter((file) => file.writers.length > 0 && file.readers.length === 0 && (lastWriteAt.get(file.id) ?? -1) > lastVerifiedAt)
 }
 
 /** The message/part a node points back to in the transcript, when it has one. */

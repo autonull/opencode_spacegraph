@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { buildFixtureGraph, buildNarrativeFixtureGraph } from "./fixture"
+import { noteNodeID } from "./annotations"
+import { buildFixtureGraph, buildNarrativeFixtureGraph, narrativePins } from "./fixture"
 import { STUDY_TASKS } from "./study"
+import { unverifiedFiles } from "./selectors"
 import type { GraphViewData } from "./model"
 
 const node = (model: GraphViewData, id: string) => model.nodes.find((item) => item.id === id)
@@ -107,5 +109,54 @@ describe("M7 canonical narrative fixture", () => {
     expect(subagent?.label).toContain("Verify refresh rotation")
     expect(subagent?.data).toMatchObject({ childSessionID: "ses_child_verify" })
     expect(node(model, "msg_narr_share_1:text:0")?.summary).toContain("#spacegraph")
+  })
+
+  test("the turn carries the usage the provider reported", () => {
+    const usage = node(model, "turn:msg_user_narr_1")?.data?.usage as
+      | { cost: number; steps: number; tools: number; tokens: { input: number; output: number } }
+      | undefined
+
+    expect(usage).toBeDefined()
+    expect(usage?.steps).toBe(10)
+    expect(usage?.tools).toBe(9)
+    expect(usage?.tokens).toMatchObject({ input: 73100, output: 1880 })
+    expect(usage?.cost).toBeCloseTo(0.394, 10)
+  })
+
+  test("the auto compaction marks where the context was summarized", () => {
+    const compaction = node(model, "msg:msg_narr_compact_1")
+
+    expect(compaction?.kind).toBe("compaction")
+    expect(compaction?.data).toMatchObject({ reason: "auto", replayed: false })
+    expect(order(model, "msg:msg_narr_compact_1")).toBeGreaterThan(order(model, "tool:prt_narr_shell_2"))
+    expect(order(model, "tool:prt_narr_read_1")).toBeGreaterThan(order(model, "msg:msg_narr_compact_1"))
+  })
+
+  test("the reader note annotates the wrong fix", () => {
+    const id = noteNodeID("note_narr_wrong_fix")
+
+    expect(node(model, id)?.kind).toBe("note")
+    expect(model.edges).toContainEqual(
+      expect.objectContaining({ kind: "annotates", source: id, target: "tool:prt_narr_edit_1" }),
+    )
+  })
+
+  test("the pin targets the root-cause finding", () => {
+    expect(narrativePins).toEqual(["msg_narr_cause_1:text:0"])
+    expect(node(model, narrativePins[0])?.summary).toContain("Root cause")
+  })
+
+  test("the trust lens separates the verified fix from the unverified doc", () => {
+    expect(unverifiedFiles(model).map((file) => file.path)).toEqual(["docs/adr/001-auth.md"])
+  })
+
+  test("the workspace snapshot carries the commit history of the fix", () => {
+    const head = node(model, "commit:def456abc789")
+
+    expect(head?.kind).toBe("commit")
+    expect(head?.data).toMatchObject({ message: "auth: store the rotated refresh token" })
+    expect(model.edges).toContainEqual(
+      expect.objectContaining({ kind: "touches", source: "commit:def456abc789", target: "file:src/auth/session.ts" }),
+    )
   })
 })

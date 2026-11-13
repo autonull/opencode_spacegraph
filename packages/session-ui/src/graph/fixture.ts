@@ -6,6 +6,7 @@ import type {
   SessionMessageInfo,
   SessionMessageToolStateCompleted,
 } from "@opencode/client/promise"
+import { withAnnotations, type Annotations } from "./annotations"
 import { buildGraph } from "./build"
 import type { GraphViewData, WorkspaceSnapshot } from "./model"
 
@@ -60,7 +61,7 @@ function assistant(
   id: string,
   time: SessionMessageAssistant["time"],
   content: AssistantPart[],
-  extra: Pick<SessionMessageAssistant, "error" | "retry" | "snapshot"> = {},
+  extra: Pick<SessionMessageAssistant, "error" | "retry" | "snapshot" | "cost" | "tokens"> = {},
 ): SessionMessageAssistant {
   return {
     id,
@@ -275,6 +276,11 @@ export const fixtureMessages: SessionMessageInfo[] = buildFixtureMessages()
  * M7 canonical narrative: failing test → wrong fix → root cause → correct fix → subagent
  * verification → share. Deterministic like the representative fixture, but it keeps one story in a
  * single turn so clips and task scenarios share the same spine.
+ *
+ * v36 fixture enrichment (SPACEGRAPH.TODO.36 Phase 1R): every step carries the usage the provider
+ * reported (`tokens` + `cost`), so the cost lens and the Phase 4 study read the same numbers; an
+ * auto compaction marks where the context was summarized between the failed attempts and the
+ * root-cause trace; the note and the pin give the return chapter something to come back to.
  */
 export function buildNarrativeFixtureMessages(): SessionMessageInfo[] {
   let clock = FIXTURE_BASE_TIME
@@ -288,53 +294,87 @@ export function buildNarrativeFixtureMessages(): SessionMessageInfo[] {
       files: [attachment("src/auth/session.ts"), attachment("src/auth/session.test.ts")],
       time: { created: at() },
     },
-    assistant("msg_narr_plan_1", { created: at(), completed: at() }, [
-      { type: "text", text: "I will reproduce the failure, then trace where the refresh token is stored." },
-    ]),
+    assistant(
+      "msg_narr_plan_1",
+      { created: at(), completed: at() },
+      [{ type: "text", text: "I will reproduce the failure, then trace where the refresh token is stored." }],
+      { cost: 0.012, tokens: { input: 3200, output: 180, reasoning: 0, cache: { read: 0, write: 1200 } } },
+    ),
     // Failing test.
-    assistant("msg_narr_fail_1", { created: at(), completed: at() }, [
-      tool(
-        "prt_narr_shell_1",
-        "shell",
-        completed({ command: "bun test src/auth/session.test.ts" }, "FAIL expected refresh token to be stored", {
-          exit: 1,
-          timeout: false,
-        }),
-        { created: at(), completed: at() },
-      ),
-    ]),
+    assistant(
+      "msg_narr_fail_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_shell_1",
+          "shell",
+          completed({ command: "bun test src/auth/session.test.ts" }, "FAIL expected refresh token to be stored", {
+            exit: 1,
+            timeout: false,
+          }),
+          { created: at(), completed: at() },
+        ),
+      ],
+      { cost: 0.018, tokens: { input: 4100, output: 60, reasoning: 0, cache: { read: 3200, write: 0 } } },
+    ),
     // Wrong fix: extend the token lifetime instead of storing the rotated token.
-    assistant("msg_narr_wrong_1", { created: at(), completed: at() }, [
-      tool("prt_narr_edit_1", "edit", completed({ path: "src/auth/token.ts" }, "extended token lifetime"), {
-        created: at(),
-        completed: at(),
-      }),
-      { type: "text", text: "I extended the token lifetime; the refreshed token should now survive." },
-    ]),
-    assistant("msg_narr_wrong_2", { created: at(), completed: at() }, [
-      tool(
-        "prt_narr_shell_2",
-        "shell",
-        completed({ command: "bun test src/auth/session.test.ts" }, "FAIL expected refresh token to be stored", {
-          exit: 1,
-          timeout: false,
+    assistant(
+      "msg_narr_wrong_1",
+      { created: at(), completed: at() },
+      [
+        tool("prt_narr_edit_1", "edit", completed({ path: "src/auth/token.ts" }, "extended token lifetime"), {
+          created: at(),
+          completed: at(),
         }),
-        { created: at(), completed: at() },
-      ),
-      { type: "text", text: "Still failing, so the lifetime was not the cause." },
-    ]),
+        { type: "text", text: "I extended the token lifetime; the refreshed token should now survive." },
+      ],
+      { cost: 0.031, tokens: { input: 5200, output: 240, reasoning: 0, cache: { read: 4100, write: 0 } } },
+    ),
+    assistant(
+      "msg_narr_wrong_2",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_shell_2",
+          "shell",
+          completed({ command: "bun test src/auth/session.test.ts" }, "FAIL expected refresh token to be stored", {
+            exit: 1,
+            timeout: false,
+          }),
+          { created: at(), completed: at() },
+        ),
+        { type: "text", text: "Still failing, so the lifetime was not the cause." },
+      ],
+      { cost: 0.036, tokens: { input: 6100, output: 90, reasoning: 0, cache: { read: 5200, write: 0 } } },
+    ),
+    // The failed attempts filled the window: auto compaction summarizes them before the trace.
+    {
+      id: "msg_narr_compact_1",
+      type: "compaction",
+      time: { created: at() },
+      status: "completed",
+      reason: "auto",
+      summary: "Summarized the failed attempts before the root-cause trace",
+      cost: 0.006,
+      tokens: { input: 6800, output: 850, reasoning: 0, cache: { read: 6100, write: 0 } },
+    },
     // Root cause: the rotated token is never written back to the store.
-    assistant("msg_narr_cause_1", { created: at(), completed: at() }, [
-      tool("prt_narr_read_1", "read", completed({ path: "src/auth/session.ts" }, "export function refresh() {}"), {
-        created: at(),
-        completed: at(),
-      }),
-      tool("prt_narr_read_2", "read", completed({ path: "src/auth/store.ts" }, "export function store(token) {}"), {
-        created: at(),
-        completed: at(),
-      }),
-      { type: "text", text: "Root cause: refresh() rotates the token but never writes it back to the store." },
-    ]),
+    assistant(
+      "msg_narr_cause_1",
+      { created: at(), completed: at() },
+      [
+        tool("prt_narr_read_1", "read", completed({ path: "src/auth/session.ts" }, "export function refresh() {}"), {
+          created: at(),
+          completed: at(),
+        }),
+        tool("prt_narr_read_2", "read", completed({ path: "src/auth/store.ts" }, "export function store(token) {}"), {
+          created: at(),
+          completed: at(),
+        }),
+        { type: "text", text: "Root cause: refresh() rotates the token but never writes it back to the store." },
+      ],
+      { cost: 0.049, tokens: { input: 7400, output: 310, reasoning: 0, cache: { read: 5200, write: 0 } } },
+    ),
     // Correct fix.
     assistant(
       "msg_narr_fix_1",
@@ -345,30 +385,58 @@ export function buildNarrativeFixtureMessages(): SessionMessageInfo[] {
           completed: at(),
         }),
       ],
-      { snapshot: { files: ["src/auth/session.ts"] } },
+      {
+        cost: 0.054,
+        tokens: { input: 8200, output: 260, reasoning: 0, cache: { read: 7400, write: 0 } },
+        snapshot: { files: ["src/auth/session.ts"] },
+      },
     ),
-    assistant("msg_narr_pass_1", { created: at(), completed: at() }, [
-      tool(
-        "prt_narr_shell_3",
-        "shell",
-        completed({ command: "bun test" }, "3 pass 0 fail", { exit: 0, timeout: false }),
-        { created: at(), completed: at() },
-      ),
-      { type: "text", text: "The suite passes after the store write." },
-    ]),
-    // Subagent verification.
-    assistant("msg_narr_verify_1", { created: at(), completed: at() }, [
-      tool(
-        "prt_narr_subagent_1",
-        "subagent",
-        completed(
-          { agent: "review", description: "Verify refresh rotation" },
-          "Reviewer confirmed refresh rotation; the token is stored before expiry.",
-          { sessionID: "ses_child_verify", status: "completed" },
+    assistant(
+      "msg_narr_pass_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_shell_3",
+          "shell",
+          completed({ command: "bun test" }, "3 pass 0 fail", { exit: 0, timeout: false }),
+          { created: at(), completed: at() },
         ),
-        { created: at(), completed: at() },
-      ),
-    ]),
+        { type: "text", text: "The suite passes after the store write." },
+      ],
+      { cost: 0.041, tokens: { input: 8600, output: 70, reasoning: 0, cache: { read: 8200, write: 0 } } },
+    ),
+    // The fix is documented, but no run verifies a doc: one honest unverified write for the trust lens.
+    assistant(
+      "msg_narr_doc_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_edit_3",
+          "edit",
+          completed({ path: "docs/adr/001-auth.md" }, "documented the rotated-token behavior"),
+          { created: at(), completed: at() },
+        ),
+      ],
+      { cost: 0.033, tokens: { input: 9000, output: 210, reasoning: 0, cache: { read: 8600, write: 0 } } },
+    ),
+    // Subagent verification: the most expensive step, so the cost lens has a real story.
+    assistant(
+      "msg_narr_verify_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_subagent_1",
+          "subagent",
+          completed(
+            { agent: "review", description: "Verify refresh rotation" },
+            "Reviewer confirmed refresh rotation; the token is stored before expiry.",
+            { sessionID: "ses_child_verify", status: "completed" },
+          ),
+          { created: at(), completed: at() },
+        ),
+      ],
+      { cost: 0.098, tokens: { input: 12400, output: 420, reasoning: 0, cache: { read: 8600, write: 0 } } },
+    ),
     {
       id: "msg_narr_synthetic_1",
       type: "synthetic",
@@ -378,17 +446,84 @@ export function buildNarrativeFixtureMessages(): SessionMessageInfo[] {
       time: { created: at() },
     },
     // Share.
-    assistant("msg_narr_share_1", { created: at(), completed: at() }, [
-      { type: "text", text: "Shared the fix and its verification: #spacegraph:tree:msg_narr_share_1" },
-    ]),
+    assistant(
+      "msg_narr_share_1",
+      { created: at(), completed: at() },
+      [{ type: "text", text: "Shared the fix and its verification: #spacegraph:tree:msg_narr_share_1" }],
+      { cost: 0.022, tokens: { input: 8900, output: 40, reasoning: 0, cache: { read: 8600, write: 0 } } },
+    ),
     { id: "msg_narr_idle_1", type: "idle", outcome: "succeeded", time: { created: at() } },
   ]
 }
 
 export const narrativeFixtureMessages: SessionMessageInfo[] = buildNarrativeFixtureMessages()
 
+/** C1 — the reader note the return chapter comes back to: what the wrong fix taught. */
+export const narrativeAnnotations: Annotations = {
+  note_narr_wrong_fix: {
+    id: "note_narr_wrong_fix",
+    target: "tool:prt_narr_edit_1",
+    body: "Wrong fix: extending the lifetime never stores the rotated token.",
+    createdAt: FIXTURE_BASE_TIME + 90_000,
+  },
+}
+
+/** The node the demo pins for the return chapter: the root-cause finding. Pins are session UI
+ * state, so the harness seeds them; the fixture owns the target. */
+export const narrativePins: string[] = ["msg_narr_cause_1:text:0"]
+
+/** The narrative session's workspace at the end of the story: the files it touched and the commit
+ * history the fix produced, so the workspace lenses and the audit chapter have substance. */
+export function buildNarrativeSnapshot(): WorkspaceSnapshot {
+  const asOf = FIXTURE_BASE_TIME + 100_000
+  const headSha = "def456abc789"
+  const baseSha = "base456narr"
+
+  return {
+    version: 1,
+    revision: "narrative-r1",
+    root: "/workspace/project",
+    scope: "session",
+    asOf: { tree: asOf, vcs: asOf, packages: asOf, symbols: asOf, processes: asOf, issues: asOf },
+    truncated: false,
+    workspace: { name: "project", path: "/workspace/project" },
+    directories: [
+      { path: "src", parent: "" },
+      { path: "src/auth", parent: "src" },
+    ],
+    files: [
+      { path: "src/auth/session.ts" },
+      { path: "src/auth/session.test.ts" },
+      { path: "src/auth/store.ts" },
+      { path: "src/auth/token.ts" },
+    ],
+    head: { branch: "fix/auth-refresh", sha: headSha },
+    base: { sha: baseSha },
+    branches: [
+      { name: "dev", sha: baseSha, upstream: "origin/dev", remote: true },
+      { name: "fix/auth-refresh", sha: headSha, remote: false },
+    ],
+    commits: [
+      { sha: headSha, short: "def456a", message: "auth: store the rotated refresh token", author: "agent", time: FIXTURE_BASE_TIME + 90_000, files: ["src/auth/session.ts"] },
+      { sha: baseSha, short: "base456n", message: "auth: add refresh coverage", author: "user", time: FIXTURE_BASE_TIME - 60_000, files: ["src/auth/session.test.ts"] },
+    ],
+    symbols: [
+      { path: "src/auth/session.ts", name: "refresh", qualified: "session.refresh", kind: "function", range: { start: { line: 25, character: 0 }, end: { line: 34, character: 1 } }, signature: "function refresh(token: string): Promise<string>", origin: "hunk" },
+      { path: "src/auth/store.ts", name: "store", qualified: "store", kind: "function", range: { start: { line: 3, character: 0 }, end: { line: 8, character: 1 } }, signature: "function store(token: string): void", origin: "parser" },
+    ],
+    packages: [],
+    processes: [],
+    issues: [],
+    missing: [],
+    capabilities: ["fs.tree", "vcs.status", "vcs.diff", "vcs.checkout", "vcs.blame", "vcs.branch.list", "agent", "proxy"],
+  }
+}
+
 export function buildNarrativeFixtureGraph(): GraphViewData {
-  return buildGraph({ messages: narrativeFixtureMessages, status: { type: "idle" } })
+  return withAnnotations(
+    buildGraph({ messages: narrativeFixtureMessages, status: { type: "idle" }, snapshot: buildNarrativeSnapshot() }),
+    narrativeAnnotations,
+  )
 }
 
 /** T32.1 — comprehensive snapshot fixture with all derived kinds. */

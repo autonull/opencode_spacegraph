@@ -123,10 +123,13 @@ export {
   buildInterruptedFixtureMessages,
   buildNarrativeFixtureGraph,
   buildNarrativeFixtureMessages,
+  buildNarrativeSnapshot,
   CHANGED_FILES,
   FIXTURE_BASE_TIME,
   fixtureMessages,
+  narrativeAnnotations,
   narrativeFixtureMessages,
+  narrativePins,
 } from "./fixture"
 
 export {
