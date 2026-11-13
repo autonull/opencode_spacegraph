@@ -1,6 +1,6 @@
 # SpaceGraph: Proof & Polish (v36)
 
-> **Status (2026-11-13, r10):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
+> **Status (2026-11-13, r11):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
 > not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
 > artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
@@ -10,7 +10,7 @@
 > no user-facing string in the spacegraph plugin says "map" any more.
 > Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
 > Live-open capture: `capture-chapter1.spec.ts` fixed to use `openSession` (full plugin host init). Passes with built app.
-> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Benchmarks ⏳ (blocked: strobe worktree monorepo setup); Listener-leak ⏳; Video review ⏳ (blocked on 8 chapters).
+> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Benchmarks ⏳ (blocked: strobe worktree monorepo setup — build command updated to init submodule + build spacegraphjs, but timed runs still blocked on composer-editor timeout in mock setup); Listener-leak ⏳; Video review ⏳ (blocked on 8 chapters).
 > Phase 4: Not started.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
@@ -371,6 +371,14 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r11 (2026-11-13):** Strobe benchmark build command updated; composer-editor timeout persists in mock setup.
+  - Updated `strobe.json` build command: `git submodule update --init && cd spacegraphjs && bun install && bun run build:packages && bun run build:lib && cd .. && bun install && cd packages/app && bun run build` — initializes submodule, installs spacegraphjs deps, builds internal packages + lib.
+  - Updated benchmark fixture `packages/app/perf/fixtures/graph.ts` to include `sessionGraph: true` in configEntries alongside `graph_cost_lens`.
+  - Benchmark build now completes (spacegraphjs built), but `strobe --check` still fails with "timed out waiting for [data-component="composer-editor"]" — mock server setup doesn't fully initialize app session screen. Same mock works in e2e tests via `openSession`/`mockWorkspace`; bench fixture uses lower-level `mockGraphSession`. Root cause: benchmark mock doesn't seed session state the same way. Escalated: requires aligning bench fixture with `mockWorkspace` pattern or fixing mock server session initialization.
+  - Listener-leak probe not started — needs dedicated e2e test that opens/closes graph surface N times, asserts no listener growth.
+  - Video review blocked: needs ≥3 outside reviewers per `study-protocol.md` and the 8 chapter mp4s.
+  - Phase 4 study not started: needs n≥5 participants, tasks mapped to Phase 0 jobs (Diagnose, Audit, Delegate).
 
 - **r10 (2026-11-13):** Capture tests working with built app; strobe benchmarks blocked by worktree monorepo setup.
   - Fixed `capture-chapter1.spec.ts` to use `openSession` → `mockWorkspace` like `capture-live.spec.ts` (full plugin host init). Both tests pass with `PLAYWRIGHT_BUILD=1`.

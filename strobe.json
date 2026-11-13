@@ -1,5 +1,5 @@
 {
-  "build": { "command": "bun run build", "cwd": "packages/app", "output": "packages/app/dist" },
+  "build": { "command": "git submodule update --init && cd spacegraphjs && bun install && bun run build:packages && bun run build:lib && cd .. && bun install && cd packages/app && bun run build", "cwd": ".", "output": "packages/app/dist" },
   "serve": { "command": "bun e2e/utils/serve.ts --host 127.0.0.1 --port {port}", "cwd": "packages/app" },
   "apps": {
     "opencode": {

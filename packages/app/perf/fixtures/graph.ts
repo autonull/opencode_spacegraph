@@ -57,6 +57,7 @@ export async function mockGraphSession(page: Page, options: GraphSessionOptions)
         type: "document",
         info: {
           experimental: {
+            sessionGraph: true,
             graph_cost_lens: true,
           },
         },
