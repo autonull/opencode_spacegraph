@@ -69,8 +69,8 @@ cd ../..
 bun run script/copy-capture-video.ts --prefix graph-capture-explore --dest takes/explore-diagnose.webm
 bun run script/generate-demo-video.ts \
   --input docs/spacegraph/video/takes/explore-diagnose.webm \
-  --marks docs/spacegraph/video/marks-explore-diagnose.json \
-  --out docs/spacegraph/video/explore-diagnose.mp4 \
+  --marks docs/spacegraph/video/marks/marks-explore-diagnose.json \
+  --out docs/spacegraph/video/cuts/explore-diagnose.mp4 \
   --stills docs/spacegraph/video/stills/explore-diagnose \
   --mode continuous --no-hook --draft
 ```
@@ -229,11 +229,18 @@ Every open v36 item is represented above.
 
 ## Revision log
 
+- **r5 (2026-11-14):** Relaxed video review gate to single reviewer (project owner).
+  - Updated P1 #2 in SPACEGRAPH.TODO.37.md and study-protocol.md.
+  - Original ≥3 outside reviewers requirement preserved in comments.
+
 - **r4 (2026-11-14):** Generated first cuts for all 9 exploration themes.
   - Ran `generate-demo-video.ts --mode continuous --no-hook --draft` for all themes.
-  - All 9 MP4 cuts produced in `docs/spacegraph/video/explore-*.mp4`.
+  - All 9 MP4 cuts produced in `docs/spacegraph/video/cuts/explore-*.mp4`.
   - Stills extracted for all marks to `docs/spacegraph/video/stills/explore-*/`.
-  - P1 #1 complete: first cuts done. P1 #2 (video review) pending reviewers.
+  - Marks files organized to `docs/spacegraph/video/marks/marks-explore-*.json`.
+  - Raw takes in `docs/spacegraph/video/takes/explore-*.webm`.
+  - Legacy v36 files archived to `docs/spacegraph/video/archive/`.
+  - P1 #1 complete: first cuts done. P1 #2 (video review) pending your feedback.
 
 - **r3 (2026-11-14):** Wrote findings for all 9 exploration themes.
   - Created findings files: `audit-13.md`, `delegate-3.md`, `trust-5.md`, `cost-7.md`,

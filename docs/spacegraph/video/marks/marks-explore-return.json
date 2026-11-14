@@ -1,0 +1,26 @@
+[
+  {
+    "frame": "return-00-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "return-01-lanes",
+    "elapsed": 0.981
+  },
+  {
+    "frame": "return-02-orbit-drift",
+    "elapsed": 4.994
+  },
+  {
+    "frame": "return-03-push-in",
+    "elapsed": 8
+  },
+  {
+    "frame": "return-04-detour",
+    "elapsed": 9.31
+  },
+  {
+    "frame": "return-05-fit",
+    "elapsed": 9.449
+  }
+]
