@@ -116,13 +116,13 @@ Two waves: film what exists, then build and film the new capabilities.
 
 ### P0 — film the existing eight (Wave 1)
 
-- [ ] **P0.0 — Void the unverified findings.** The 7 findings written in v37 r3 were not derived from
+- [x] **P0.0 — Void the unverified findings.** The 7 findings written in v37 r3 were not derived from
       watched footage (`audit-13`, `delegate-3`, `trust-5`, `cost-7`, `handoff-9`, `return-11`,
       `night-15`). Archive or delete them so they are not mistaken for evidence. Keep `diagnose-7` and
       `chaos-1` as v36-history only.
-- [ ] **P0.1 — Shot lists.** For scenarios 1–8, fill the Part E template: start state, ordered
+- [x] **P0.1 — Shot lists.** For scenarios 1–8, fill the Part E template: start state, ordered
       actions, the exact text that must be legible, hold length, duration (≤12 s).
-- [ ] **P0.2 — Film scenario 1 only, then get sign-off.** "I need to know why the build broke":
+- [x] **P0.2 — Film scenario 1 only, then get sign-off.** "I need to know why the build broke":
       attention badge → Why → readable failed `bun test` error. This is the cheapest proof that the
       scenario format communicates. Do not film the rest until the owner accepts the format.
 - [ ] **P0.3 — Film scenarios 2–8.** One take each, stable framing, readable outcome.

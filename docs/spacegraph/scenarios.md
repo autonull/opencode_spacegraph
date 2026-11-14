@@ -117,7 +117,7 @@ Ordered by a plausible session: read → investigate → verify → delegate →
 
 | # | "I need to…" | Actions | Capabilities | Readable outcome | Status |
 |---|---|---|---|---|---|
-| 1 | Know why the build broke | attention badge → **Why** | trace=why, investigator/navigator, panel detail | causal chain ending in the failed `bun test` and its error | `exists` |
+| 1 | Know why the build broke | attention badge → **Why** | trace=why, investigator/navigator, panel detail | causal chain ending in the failed `bun test` and its error | `exists` ✅ filmed |
 | 2 | Find the call that caused the failure | search "failed" → focus → follow `sequence` back | search, focus/frame, led-here | the exact result node and its command input | `exists` |
 | 3 | See what the subagent actually did | hierarchy/tree → subagent node → `delegates` | orchestrator, tree, panel detail | the subagent's reads and the finding it returned | `exists` |
 | 4 | Verify the fix before I merge | files rail → diff | reviewer, files rail, diffSource | wrong fix vs correct fix, side by side | `exists` |
@@ -242,15 +242,94 @@ Hold:     3–5 s on the outcome
 Duration: <= 12 s
 ```
 
-Example — scenario 1:
+---
+
+### Scenario 1 — "I need to know why the build broke."
 
 ```
 Scenario: 1 — "I need to know why the build broke."
 Start:    lanes, execution level, nothing selected
 Actions:  click attention badge -> click "Why"
-Legible:  the failed `bun test` line and its error text
+Legible:  the failed `bun test` line and its error text (assertion message, file:line)
 Hold:     4 s, zoomed so the error fills the lower third
 Duration: 8 s
+```
+
+### Scenario 2 — "I need to find the call that caused the failure."
+
+```
+Scenario: 2 — "I need to find the call that caused the failure."
+Start:    lanes, execution level, trace=why active from scenario 1
+Actions:  search "failed" -> select result -> middle-click / frame node -> follow "led here" edge back to caller
+Legible:  the exact result node label and its command input text (the failing command)
+Hold:     4 s on the caller node with command visible
+Duration: 10 s
+```
+
+### Scenario 3 — "I need to see what the subagent actually did."
+
+```
+Scenario: 3 — "I need to see what the subagent actually did."
+Start:    hierarchy or tree layout, overview level, nothing selected
+Actions:  navigate to subagent node (delegated task) -> click to expand delegates -> open panel detail
+Legible:  the subagent's read tool calls (file paths) and the finding text it returned
+Hold:     5 s on the panel showing the finding
+Duration: 11 s
+```
+
+### Scenario 4 — "I need to verify the fix before I merge."
+
+```
+Scenario: 4 — "I need to verify the fix before I merge."
+Start:    reviewer lens (files rail visible), detail level
+Actions:  select changed file in files rail -> open diff -> toggle between wrong fix and correct fix
+Legible:  side-by-side diff showing the wrong fix (red) and correct fix (green) with readable code lines
+Hold:     4 s on the correct fix diff
+Duration: 10 s
+```
+
+### Scenario 5 — "I need to hand this to a teammate."
+
+```
+Scenario: 5 — "I need to hand this to a teammate."
+Start:    cartographer lens, any layout, target node in view
+Actions:  select target node -> open share/copy permalink -> paste into chat (simulated)
+Legible:  the `#graph:<node-id>` URL with layout params visible in the toast/notification
+Hold:     3 s on the copied URL toast
+Duration: 7 s
+```
+
+### Scenario 6 — "I need to audit a long session fast."
+
+```
+Scenario: 6 — "I need to audit a long session fast."
+Start:    auditor lens, matrix layout (`graph_layout_breadth` flag on), overview level
+Actions:  (no interaction needed — the lens + layout is the answer) -> observe compaction drops indicator
+Legible:  the matrix showing the whole session as one object; compaction "N drops" badge legible
+Hold:     5 s on the full matrix view
+Duration: 9 s
+```
+
+### Scenario 7 — "I need to know what this run cost."
+
+```
+Scenario: 7 — "I need to know what this run cost."
+Start:    cost lens (`graph_cost_lens` flag on), lanes layout, execution level
+Actions:  (no interaction — lens applies cost sizing/color) -> scan for highest-cost nodes
+Legible:  per-node token counts and USD cost labels on the top 3 nodes; no relayout flash
+Hold:     4 s on the highest-cost node with tooltip open
+Duration: 8 s
+```
+
+### Scenario 8 — "I need to read a turn without leaving the transcript."
+
+```
+Scenario: 8 — "I need to read a turn without leaving the transcript."
+Start:    reader lens, transcript surface, inline preview visible
+Actions:  hover turn row -> inline preview expands to interactive -> click expand to turn map
+Legible:  the turn's graph structure in the inline preview (static SVG) and after expand (interactive nodes)
+Hold:     4 s on the expanded turn map with node labels readable
+Duration: 10 s
 ```
 
 ---
