@@ -27,6 +27,7 @@ const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
 const videoDir = fileURLToPath(new URL("../../../../docs/spacegraph/video", import.meta.url))
+const marksDir = fileURLToPath(new URL("../../../../docs/spacegraph/video/marks", import.meta.url))
 
 function filterKnownErrors(errs: string[]): string[] {
   return errs.filter((e) => e && !KNOWN_FLAKY_ERRORS.some((k) => e.includes(k)))
@@ -47,8 +48,8 @@ let flowWallStart = 0
 function recordMark(name: string) {
   if (!flowWallStart) return
   frameMarks.push({ frame: name, elapsed: (Date.now() - flowWallStart) / 1000 })
-  mkdirSync(videoDir, { recursive: true })
-  writeFileSync(resolve(videoDir, `marks-scenario-${scenarioNum}.json`), JSON.stringify(frameMarks, null, 2))
+  mkdirSync(marksDir, { recursive: true })
+  writeFileSync(resolve(marksDir, `marks-scenario-${scenarioNum}.json`), JSON.stringify(frameMarks, null, 2))
 }
 
 async function syncBeacon(page: Page) {
