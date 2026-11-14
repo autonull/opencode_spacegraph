@@ -139,7 +139,7 @@ test("Chapter 1 — Live: watch the session build with nodes streaming in", asyn
   console.log("[TEST] Starting Chapter 1 test")
   test.setTimeout(600_000)
   const errors = trackPageErrors(page)
-  await page.emulateMedia({ reducedMotion: "reduce" })
+  await page.emulateMedia({ reducedMotion: "no-preference" })
   await addFirstFrameMarker(page)
   flowWallStart = Date.now()
 

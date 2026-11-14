@@ -1,6 +1,6 @@
 # SpaceGraph: Proof & Polish (v36)
 
-> **Status (2026-11-14, r15):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
+> **Status (2026-11-14, r16):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
 > not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
 > artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
@@ -8,7 +8,10 @@
 > copy that labels the product — so Phase 1 is rethought as a chapter program below.
 > Phase 2 is **complete (r6)**: all product friction resolved, including the reopened copy scrub —
 > no user-facing string in the spacegraph plugin says "map" any more.
-> Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
+> Phase 1 is **Explorations (r16)**: full-motion continuous takes, 30 fps / 1440×900 for drafts,
+> 95% dark with one dedicated light pass. The renderer never pads a frame; narration fits the
+> measured window or is cut. Seed-driven takes (`capture-explore.spec.ts`) plus human takes; the
+> findings files, not the film, are the product feedback.
 > Live-open capture: `capture-chapter1.spec.ts` (25.2s), `capture-live.spec.ts` (57.6s), and `capture-story.spec.ts` (41.3s) all pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` (full plugin host init). **Verified passing (r15).**
 > Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Listener-leak ✅ (dedicated e2e test opens/closes map/hybrid 10×, 0 listener growth); Benchmarks ⏳ (strobe `--plan` works headless; timed runs against `origin/dev` blocked on strobe worktree monorepo setup — workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees; **escalated** — requires strobe config to use main repo's node_modules or turborepo remote cache); Video review ⏳ (blocked on 8 chapter mp4s; Chapter 1 footage uses `capture-chapter1.spec.ts` output since mock server limitation resolved).
 > Phase 4: Not started.
@@ -32,8 +35,8 @@ friction that artifact exposes. No speculative onboarding. No parallel material 
 ## Critical path
 
 ```
-Phase 0 Proof  →  Phase 1 One Demo  →  Phase 2 Friction  →  Phase 3 Gates  →  Phase 4 Study
-   (days)              (days)                (days)               (parallel)        (weeks)
+Phase 0 Proof  →  Phase 1 Explorations  →  Phase 2 Friction  →  Phase 3 Gates  →  Phase 4 Study
+   (days)              (days)                  (days)               (parallel)        (weeks)
 ```
 
 Phases 3 and 4 run in parallel with 1–2 once their inputs exist. Nothing in Phase 2 starts before
@@ -74,7 +77,7 @@ parked. The purpose stands or falls on these numbers — no separate `purpose.md
 
 ---
 
-## Phase 1 — The One Demo, rethought (P0, critical path)
+## Phase 1 — Explorations, not a demo (P0, critical path)
 
 > **Rejected (2026-11-13, r5):** the Phase 1 cut — 8-frame story, ~60s, freeze-frame holds,
 > teleporting cursor — belittles the system. It obsesses over one debugging chapter and ignores the
@@ -82,31 +85,70 @@ parked. The purpose stands or falls on these numbers — no separate `purpose.md
 > friction log (`docs/spacegraph/video/FRICTION_LOG.md`) and the capture pipeline remain inputs; the
 > completed checklist moved to the revision log.
 
-**Decision record (2026-11-13):** chapters — one mp4 file per chapter, 60–90s each, cut from one
-shared spine; the film **opens on a running session** (nodes streaming in as the agent works); the
-canonical fixture is **enriched** so the later lenses have substance; narration is instructional for
-**existing users**, one job per chapter; **human real-time pacing** throughout; **mp4 only**; clean
-neutral voice (the "kidnapper" pitch effect is killed).
+**Decision record (2026-11-14, r16): full-motion exploration, not a tutorial.**
 
-**The eight chapters** — one arc, the same session, seven different ways of looking. Every scene
-does a job; none lists features:
+- **The recording is the artifact.** One continuous take at real speed per session. The picture is
+  never extended for the voice. Narration is fitted to the measured gap before the next mark
+  (`atempo` up to 1.6×, then trimmed), and a line that does not fit is cut. Stills are extracted
+  from the same take at the marks.
+- **Format:** 30 fps, 1440×900 for drafts and the pixel gate. Go 60 fps / 1080p only for a cut that
+  earns a public release.
+- **Theme:** 95% dark, 5% light. The light spend is one dedicated `night` take per cycle, never a
+  sprinkled accent.
+- **Stance:** exploration, not instruction. A mission states a goal, not a click script. Detours
+  stay in the take. Mistakes are footage. The findings, not the film, are the product feedback.
+- **Who drives:** the seeded explorer harness (`capture-explore.spec.ts`) for volume and
+  reproducibility; a human takes over when judgment matters. Every take replays from
+  `GRAPH_EXPLORE_THEME` + `GRAPH_EXPLORE_SEED`.
+- **Three layers:**
+  1. **Takes** — continuous, unedited recordings under `docs/spacegraph/video/takes/`. Long is fine.
+  2. **Cuts** — one 60–120 s cut per take, motion intact, sparse commentary.
+  3. **Findings** — `docs/spacegraph/explorations/<theme>-<seed>.md`: what worked, what fought
+     back, timestamped evidence, verdict `keep` / `park` / `change`.
+- **Cinematic rules:** camera moves replace freezes (push-in, orbit drift, whip to a node, trace
+  reveal); 3–5 s per beat; hard cuts inside the app, crossfades only between takes; no feature
+  lists; captions state the job, never the feature name.
 
-| # | Chapter | Job it films | Needs first |
-|---|---------|--------------|-------------|
-| 1 | Live | Watch the session build: nodes streaming in while the agent works | Live-open capture |
-| 2 | Diagnose | A failure stops it: attention → Why trace | Gliding cursor + pacing |
-| 3 | Audit | What did it touch: files rail → diff → the wrong fix | Gliding cursor + pacing |
-| 4 | Delegate | Who did the work: hierarchy → subagent drill-down | Gliding cursor + pacing |
-| 5 | Trust | What was verified: reviewer lens, verification vs unverified outputs | Fixture: trust states |
-| 6 | Cost | What it cost: auditor lens, where the tokens went | Fixture: per-turn cost |
-| 7 | Hand off | Give it away: permalink to the exact node and layout | Gliding cursor + pacing |
-| 8 | Return | Come back tomorrow: pins, notes, the session where you left it | Fixture: a note and a pin |
+**Exploration themes** — a starting set, not a fixed list. Each take stresses one job; the seed
+varies the path:
 
-**Prerequisites (in dependency order) — next up, r6:** work them top to bottom; each unlocks the
-chapters listed in the table above. Fixture enrichment is product work the Phase 4 study also
-consumes, so it goes first; capture mechanics (gliding cursor + human pacing) unblock chapters
-2–4 and 7; live-open capture is chapter 1's own prerequisite; render rework is last, before
-shooting. The copy-scrub prerequisite below is done (r6) — chapters may not ship a "map" string.
+| Theme | Mission | What it stresses |
+|-------|---------|------------------|
+| diagnose | Root cause, speedrun | attention → Why under pressure |
+| audit | Ship it blind | files rail → diff, wrong-fix recovery |
+| delegate | Who did the work | hierarchy, subagent drill-down |
+| trust | Trust but verify | verified vs unverified outputs |
+| cost | Follow the money | per-turn cost, the expensive subagent |
+| chaos | Break it | rapid layout/depth/zoom, 5000 nodes, 390 px |
+| night | Light pass (the 5%) | legibility and theme switching |
+| handoff | Give it away | permalink to node + layout |
+| return | Tomorrow | pins, notes, compaction |
+
+**Pipeline (r16):**
+
+```bash
+# capture (from packages/app)
+GRAPH_EXPLORE_DEMO=1 GRAPH_EXPLORE_THEME=diagnose GRAPH_EXPLORE_SEED=7 \
+  npx playwright test ./e2e/graph/capture-explore.spec.ts   # PLAYWRIGHT_BUILD=1
+
+# copy the take
+bun run script/copy-capture-video.ts --prefix graph-capture-explore --dest takes/explore-diagnose.webm
+
+# render: continuous body + stills, no freeze frames
+bun run script/generate-demo-video.ts --input docs/spacegraph/video/takes/explore-diagnose.webm \
+  --marks docs/spacegraph/video/marks-explore-diagnose.json \
+  --out docs/spacegraph/video/explore-diagnose.mp4 \
+  --stills docs/spacegraph/video/stills/explore-diagnose \
+  --mode continuous --no-hook --draft
+```
+
+`continuous` is the renderer default and never pads a frame. `padded` exists only to re-render the
+rejected cut. `reducedMotion: reduce` stays only in the pixel gate (`capture.spec.ts`); takes run
+with `no-preference`, so the motion is real.
+
+**Prerequisites (in dependency order) — completed groundwork:** fixture enrichment, live-open
+capture, capture mechanics and render rework all landed in r7. They now serve the exploration
+themes above. The copy-scrub prerequisite is done — no take may ship a visible "map" string.
 - [x] **Fixture enrichment** (`buildNarrativeFixtureGraph()`): per-turn cost, verification/trust
       states, a note and a pin, a compaction marker, commit history in the workspace snapshot. The
       lenses and the Phase 4 study consume the same data — product work, not video work.
@@ -148,22 +190,18 @@ shooting. The copy-scrub prerequisite below is done (r6) — chapters may not sh
       `buildNarrativeFixtureMessages()` and `partUpdated`/`messageUpdated` from `timeline.ts` — no
       new infrastructure. Verified: `bun run check` green (53/53 packages).
 
-      **Note (2026-11-13):** The test has a mock server limitation — the graph canvas host is not
-      found when opening the graph via Ctrl+Shift+M. The mock server doesn't handle graph plugin
-      API routes needed for rendering. The `capture-live.spec.ts` test works as a fallback: it
-      captures a graph opening (frame 02) on a session with all messages pre-loaded. For Chapter 1
-      footage, use the capture-live test output. The capture-chapter1 test requires mock server
-      enhancements to handle graph plugin data endpoints.
+      **Resolved (r14):** the mock server limitation is gone. `capture-chapter1.spec.ts` uses
+      `openSession` → `mockWorkspace` (full plugin host init) and passes with `PLAYWRIGHT_BUILD=1`.
 - [x] **Capture mechanics:** replace the teleporting cursor ring (`demo-cursor-ring` in
       `capture-story.spec.ts`) with a gliding cursor — eased movement, hover states register — and a
       click ripple that survives into the recorded video; pace every action at human speed; one
       continuous take per chapter, no freeze-frame holds (`renderFrameClips` padding goes).
 
-      **Applied (r7):** in `packages/app/e2e/graph/capture-chapter1.spec.ts` (Chapter 1): no
-      `demo-cursor-ring`, no `moveCursorRing`/`clickRipple` — human pacing via real waits
-      (`waitForStillCanvas`, `syncBeacon`) and streamed SSE events at natural cadence. The
-      existing `capture-story.spec.ts` and `capture-live.spec.ts` retain the ring for backward
-      compatibility; they will be migrated in the render rework step below.
+      **Applied (r7, extended r16):** takes use no `demo-cursor-ring`, no `moveCursorRing`/
+      `clickRipple`, and `reducedMotion: no-preference` so CSS motion is real. `capture-explore.spec.ts`
+      drives full-motion takes; `capture-story.spec.ts` and `capture-live.spec.ts` remain the legacy
+      path and are no longer required for new footage. The renderer's continuous mode never pads a
+      frame (see r16).
 - [x] **Copy scrub:** see Phase 2 (done, r6). No chapter ships while a visible string still
       says "map".
 - [x] **Render rework** (`script/generate-demo-video.ts`): mp4 only — delete the webm pass and the
@@ -182,15 +220,18 @@ shooting. The copy-scrub prerequisite below is done (r6) — chapters may not sh
       Verified: `bun check` on the script passes with no new errors; pre-existing anti-slop warnings
       unchanged.
 
-**Narration principles (existing users):** instructional, one job per chapter; name the interaction
-(keys, buttons), never the feature label; captions carry the job ("the fix failed again", "what did
-it touch").
+**Commentary principles (exploration):** sparse, optional, and subordinate to the picture. Name the
+interaction (keys, buttons), never the feature label. Captions carry the job ("the fix failed
+again", "what did it touch"). Silence is allowed; a take with no voice is still a finished take.
 
-Reuse, do not rebuild: `capture-story.spec.ts`, `capture-live.spec.ts`, `generate-demo-video.ts`,
-`DEMO_VIDEO_PLAN.md` — all extended, none rewritten from scratch.
+**Findings (the product output):** after each take, write
+`docs/spacegraph/explorations/<theme>-<seed>.md` with: mission, seed, take path, what worked, what
+fought back, timestamped evidence (mark names), and a verdict (`keep` / `park` / `change`). Update
+the kill/park register when a pattern is parked or promoted.
 
-**Exit:** every chapter is one human-paced mp4 with a captioned still from the same run; a
-watch-through finds no freeze-frame, no feature list, and no string that says "map".
+**Exit:** for each theme, one continuous take, one cut with the motion intact, one captioned still,
+and one findings file with verdicts. A watch-through finds no freeze frame, no feature list, no
+"map" string, and no narration line that outruns the picture.
 
 ---
 
@@ -269,7 +310,7 @@ cannot run.
 | Benchmarks | **Try headless first.** `strobe bench packages/app/perf/graph-*.bench.ts --plan` then a timed run. | Timed frames are blank or non-comparable to `origin/dev` — then a headed run on a display machine. Do not assume headless is blocked; prove it. |
 | Listener-leak | Focused probe: open/close the map N times in one page, assert no growth in listeners, no duplicate DOM ids, no dead controls. | A leak needs a real multi-session manual pass. |
 | Capture re-bless | Re-run the gate; re-bless only the 4 known-variance frames (01-log, 13-narrow, 34-surfaces, 38-hybrid). ✅ **Done** — Re-blessed 4 frames to 0% diff on 2026-11-13. | Reference hardware renders differently — then bless there. |
-| Video review (M7.6) | Use the Phase 1R chapters (the rejected cut is not reviewable). ≥3 outside reviewers, notes recorded per `study-protocol.md`. | Reviewers are not available — hold, do not fake a pass. |
+| Video review (M7.6) | Use the exploration takes and cuts (the rejected cut is not reviewable). ≥3 outside reviewers, notes recorded per `study-protocol.md`. | Reviewers are not available — hold, do not fake a pass. |
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
@@ -277,7 +318,7 @@ cannot run.
 - ✅ Capture re-bless: Complete (4 frames re-blessed to 0% diff on 2026-11-13)
 - ⏳ Benchmarks: Headless `strobe --plan` works; selector fix applied (`:has-text` → `data-value` attributes). Timed runs against `origin/dev` blocked by strobe worktree monorepo setup — workspace packages (`spacegraphjs`, `@opencode/*`) not linked in detached worktrees. **Escalated** — requires monorepo build setup in strobe worktrees (bun workspace linking or turborepo remote cache). Benchmark fixture in `packages/app/perf/fixtures/graph.ts` fixed to use `seedSessionGraph` + `mockOpenCodeServer` (matching e2e pattern), ensuring graph plugin surfaces API is initialized.
 - ✅ Listener-leak: Complete — dedicated e2e test `packages/app/e2e/graph/listener-leak.spec.ts` opens/closes map and hybrid surfaces 10× each, asserts no listener growth (0 baseline, 0 max), no duplicate DOM ids (expected cross-surface duplicates only), no dead controls (pre-existing toolbar button issue). Passes with `PLAYWRIGHT_BUILD=1` (verified r15, 2m duration).
-- ⏳ Video review: Not started — blocked on the Phase 1R chapters (8 mp4s needed); needs ≥3 outside reviewers per `study-protocol.md`. Chapter 1 footage uses `capture-chapter1.spec.ts` output (mock server limitation resolved in r14).
+- ⏳ Video review: Not started — blocked on exploration takes and cuts (one per theme); needs ≥3 outside reviewers per `study-protocol.md`. Footage now comes from `capture-explore.spec.ts` / human takes, not the chapter specs.
 - ✅ Chapter 1 capture: `capture-chapter1.spec.ts` fixed to use `openSession` → `mockWorkspace` (full plugin host init). Passes with `PLAYWRIGHT_BUILD=1` (verified r15, 25.2s).
 - ✅ Capture-live: `capture-live.spec.ts` passes with `PLAYWRIGHT_BUILD=1` (verified r15, 57.6s).
 - ✅ Capture-story: `capture-story.spec.ts` passes with `PLAYWRIGHT_BUILD=1` (verified r15, 41.3s).
@@ -343,8 +384,8 @@ cannot run.
 | Decision | Needed by | Default if unresolved |
 |----------|-----------|-----------------------|
 | Does the one-sentence purpose hold? | End of Phase 0 | If not, park features and ship the library value only |
-| Chapter quality bar | Phase 1R | 1440×900, 30fps mp4, human-paced, clean voice; re-render until every chapter reads |
-| First chapter to ship | Phase 1R | Diagnose — shortest path to proving the new pacing and copy |
+| Take quality bar | Phase 1R | 1440×900, 30 fps, continuous, no freeze; 1080p/60 only for a public cut |
+| First exploration | Phase 1R | `diagnose` — shortest path to proving pacing, copy and the findings loop |
 | Benchmarks headless? | Phase 3 | Prove with numbers; headed run only if non-comparable |
 | Study recruitment | Phase 4 | Internal team first (n≥5); external only if available |
 | Flag graduation order | After M7.6 | Delete only proven defaults |
@@ -356,8 +397,8 @@ cannot run.
 | Earlier item | v36 location |
 |--------------|--------------|
 | v36-draft §1 Onboarding (coach marks, tutorial) | Parked (demo teaches) |
-| v36-draft §2.1 Hero video | Phase 1R (chapters; one-arc cut parked) |
-| v36-draft §2.2 Stills/GIFs | Phase 1R (one captioned still per chapter; GIFs parked) |
+| v36-draft §2.1 Hero video | Phase 1R (exploration cuts; one-arc cut parked) |
+| v36-draft §2.2 Stills/GIFs | Phase 1R (one captioned still per take; GIFs parked) |
 | v36-draft §2.3 In-app teaching | Parked |
 | v36-draft §3 Usability polish (5 workflows) | Phase 2 (demo-exposed only) |
 | v36-draft §4 Usefulness validation | Phase 4 |
@@ -373,6 +414,27 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r16 (2026-11-14):** Strategy shift to full-motion explorations. The picture is the take; the
+  voice fits it or is cut.
+  - **Renderer v3** (`script/generate-demo-video.ts`): `--mode continuous` is the default. The
+    recording is the body; narration is fitted to the measured gap before the next mark (`atempo`
+    ≤ 1.6×, then trimmed) and stills are extracted from the same take. `--mode padded` remains only
+    for the rejected cut. Fixed the old 7-argument `body()` call that silently ignored the paced
+    clips.
+  - **Beacon anchor** now returns the first dark frame after the flash, so the first mark lands on
+    the UI, not the white beacon. Verified: all four stills for the diagnose take have mean luma
+    ≈ 22.
+  - **Capture motion** restored: takes use `reducedMotion: no-preference`; the pixel gate keeps
+    `reduce`. Chapter take clocks start after the beacon, so marks and video agree.
+  - **New `packages/app/e2e/graph/capture-explore.spec.ts`**: seeded explorer
+    (`diagnose|audit|chaos|night`), valid detours, one mark per beat, full motion, no freeze gating.
+  - **`script/copy-capture-video.ts`** accepts `--prefix` and `--dest`, so each take copies by name.
+  - **Verified end to end:** `diagnose` seed 7 → 6.9 s continuous 30 fps cut + 4 stills; frame
+    hashes at 1 s and 3 s differ (real motion).
+  - **Copy:** `ui.sessionGraph.prompt.seeMap` "See the map of this run" → "See this run". It was the
+    last visible "map" string and it sat in the opening shot.
+  - **Defaults:** 30 fps, 1440×900 drafts; 95% dark, one dedicated `night` take for the 5% light.
 
 - **r15 (2026-11-14):** Verified all three capture tests pass with `PLAYWRIGHT_BUILD=1`; Phase 3 gates updated.
   - `capture-chapter1.spec.ts`: 1 passed (25.2s) — Chapter 1 live-open capture works via `openSession` → `mockWorkspace`

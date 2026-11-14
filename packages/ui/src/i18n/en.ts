@@ -438,7 +438,7 @@ const source = {
   "ui.sessionGraph.canvas.emptyHint": "No nodes to display",
   "ui.sessionGraph.demo.label": "demo — your session will appear as it runs",
   "ui.sessionGraph.demo.dismiss": "Dismiss",
-  "ui.sessionGraph.prompt.seeMap": "See the map of this run",
+  "ui.sessionGraph.prompt.seeMap": "See this run",
   "ui.sessionGraph.prompt.seeMapHint": "Your session has errors, compactions, or many turns — explore it spatially",
   "ui.sessionGraph.prompt.dismiss": "Don't show again",
   "ui.sessionGraph.trustLens.banner": "Trust lens: files written without later verification are highlighted",

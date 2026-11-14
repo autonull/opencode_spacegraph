@@ -21,7 +21,6 @@ test.skip(!process.env.GRAPH_CAPTURE_DEMO, "Chapter 2 Diagnose recording; set GR
 
 const directory = "C:/OpenCode/SessionGraphChapter2"
 const sessionID = "ses_chapter2_diagnose"
-const projectID = "proj_chapter2"
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 
@@ -130,14 +129,14 @@ test("Chapter 2 — Diagnose: a failure stops it — attention → Why trace", a
   console.log("[TEST] Starting Chapter 2 test")
   test.setTimeout(600_000)
   const errors = trackPageErrors(page)
-  await page.emulateMedia({ reducedMotion: "reduce" })
-  flowWallStart = Date.now()
+  await page.emulateMedia({ reducedMotion: "no-preference" })
 
   // Open session with all narrative messages pre-loaded
   await openSession(page, graphFixture())
 
-  // Sync beacon for video timeline anchoring
+  // Sync beacon for video timeline anchoring; the clock starts at the beacon's end.
   await syncBeacon(page)
+  flowWallStart = Date.now()
 
   // ── FRAME 01: Open graph, fit to see full session ──
   await openGraph(page)

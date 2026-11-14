@@ -1,43 +1,47 @@
 #!/usr/bin/env bun
 /**
- * Demo Video Generator — v2 (live recording, mark-anchored, hook + cards)
+ * Demo Video Generator — v3 (continuous takes, mark-anchored narration)
  *
- * Pipeline:
- *   1. `packages/app/e2e/graph/capture-live.spec.ts` records one continuous
- *      1440x900 Playwright video of the whole demo flow and writes the
- *      wall-clock seconds of every frame capture to
- *      docs/spacegraph/video/marks.json.
- *   2. This script locates the white sync beacon (the first bright frames of
- *      the recording) to convert wall-clock marks into video-timeline seconds,
- *      so narration is anchored to what is actually on screen.
- *   3. It builds a hook montage (title card, 3D transition, force explosion,
- *      auto-zoom, trace overlay) from the same recording, mixes edge-tts
- *      narration at the real frame times, appends an end card, and renders
- *      demo.mp4, demo.webm and demo-kidnapper.mp4.
+ * The recording is the picture. A take runs at real speed from one continuous
+ * Playwright recording; a mark names the moment a beat lands. The renderer
+ * never extends the picture for the voice: narration is fitted to the measured
+ * gap before the next mark, and a line that does not fit is sped up or cut.
+ *
+ * Modes:
+ *   continuous (default) — use the recording as the body, mix narration at its
+ *     marks, extract one still per mark. No freeze frames.
+ *   padded — legacy slideshow path: one clip per mark, last frame frozen to fit
+ *     the narration. Kept only to re-render the rejected cut.
+ *   stills — extract one PNG per mark and exit.
  *
  * Usage:
- *   bun run script/generate-demo-video.ts [--voice en-US-AndrewNeural]
- *       [--hook-secs 1.4] [--draft] [--no-hook] [--no-kidnapper]
+ *   bun run script/generate-demo-video.ts \
+ *     [--input docs/spacegraph/video/takes/chapter2.webm] \
+ *     [--marks docs/spacegraph/video/marks-chapter2.json] \
+ *     [--out docs/spacegraph/video/chapter2.mp4] \
+ *     [--stills docs/spacegraph/video/stills/chapter2] \
+ *     [--mode continuous|padded|stills] [--voice en-US-AndrewNeural] \
+ *     [--hook-secs 1.4] [--draft] [--no-hook]
  *
  * Prerequisites:
- *   cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-live.spec.ts -p graph-capture
- *   bun run script/copy-capture-video.ts
+ *   cd packages/app && GRAPH_CAPTURE_DEMO=1 bun run test:e2e:built -- e2e/graph/capture-chapter2.spec.ts -p graph-capture
+ *   bun run script/copy-capture-video.ts --prefix graph-capture-chapter2 --dest takes/chapter2.webm
  *   python3 -m edge_tts
  */
 
 import { $ } from "bun"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
-import { resolve } from "path"
+import { basename, resolve } from "path"
 
 const VIDEO_DIR = resolve(import.meta.dir, "../docs/spacegraph/video")
 const WORK_DIR = resolve(VIDEO_DIR, "work")
 const MANIFEST_PATH = resolve(import.meta.dir, "../docs/spacegraph/demo-manifest.json")
-const INPUT_VIDEO = resolve(VIDEO_DIR, "capture.webm")
-const MARKS_PATH = resolve(VIDEO_DIR, "marks.json")
+let INPUT_VIDEO = resolve(VIDEO_DIR, "capture.webm")
+let MARKS_PATH = resolve(VIDEO_DIR, "marks.json")
+let OUTPUT_VIDEO = resolve(VIDEO_DIR, "demo.mp4")
+let STILLS_DIR: string | undefined
 const FFMPEG = ["-hide_banner", "-nostdin", "-loglevel", "error", "-y"] as const
 const FONT = "/usr/share/fonts/noto/NotoSans-Bold.ttf"
-/** The sync beacon flashes for this long before the flow starts. */
-const BEACON_SECONDS = 0.36
 const TTS_RATE = "+10%"
 
 interface ManifestEntry {
@@ -82,11 +86,10 @@ async function probe(file: string) {
 }
 
 /**
- * Video-timeline second where the sync beacon starts. The live test flashes a
- * fullscreen white div for BEACON_SECONDS right before the demo flow begins
- * and restarts the wall clock when it ends, so:
- *   videoTime(mark) = beaconVideoStart + BEACON_SECONDS + mark.elapsed
- * Detected as the first run of ≥5 bright frames in the recording head.
+ * Video-timeline second where the sync beacon ends. The capture flashes a
+ * fullscreen white div, removes it, then restarts its wall clock, so:
+ *   videoTime(mark) = beaconEnd + mark.elapsed
+ * Detected as the first dark frame after a run of ≥5 bright frames.
  *
  * First tries to detect a deterministic first-frame marker (red pixel at 0,0)
  * added by the test, falling back to the luma beacon detection.
@@ -111,18 +114,19 @@ async function detectBeacon(fps: number) {
   for (const line of lines) {
     const frameMatch = line.match(/^frame:(\d+)/)
     if (frameMatch) {
-      index = parseInt(frameMatch[1], 10)
+      index = parseInt(frameMatch[1] ?? "0", 10)
       continue
     }
     const luma = line.match(/lavfi\.signalstats\.YAVG=([\d.]+)/)
     if (!luma) continue
-    if (parseFloat(luma[1]) > 200) {
+    if (parseFloat(luma[1] ?? "0") > 200) {
       run += 1
-      // 0.36 s flash ≈ 9 frames at 25 fps; five bright frames is a robust run.
-      if (run >= 5) return index / fps + BEACON_SECONDS
-    } else {
-      run = 0
+      continue
     }
+    // The flash is one short bright run; the first dark frame after it is the
+    // end. The capture resets its clock when the beacon is removed, so anchor there.
+    if (run >= 5) return index / fps
+    run = 0
   }
   console.warn("⚠  sync beacon not found — marks anchored at video t=0 (timing may drift)")
   return 0
@@ -156,14 +160,14 @@ async function detectFirstFrameMarker(fps: number): Promise<number> {
   for (const line of lines) {
     const frameMatch = line.match(/^frame:(\d+)/)
     if (frameMatch) {
-      frameIndex = parseInt(frameMatch[1], 10)
+      frameIndex = parseInt(frameMatch[1] ?? "0", 10)
       continue
     }
     const redMin = line.match(/lavfi\.signalstats\.RED_MIN=([\d.]+)/)
     if (!redMin) continue
     // Red marker has high red value (255), low green/blue
     // We check RED_MIN > 200 in the 10x10 crop at (0,0)
-    if (parseFloat(redMin[1]) > 200) {
+    if (parseFloat(redMin[1] ?? "0") > 200) {
       return frameIndex / 10 // 10fps sampling
     }
   }
@@ -196,6 +200,59 @@ function loadTiming(manifest: ManifestEntry[]) {
     })
     .filter((mark) => mark.frame > 0)
     .sort((a, b) => a.start - b.start)
+}
+
+/** Mark names stay strings: chapter takes name beats, they do not number them. */
+function loadMarks() {
+  if (!existsSync(MARKS_PATH)) {
+    console.error(`❌ missing ${MARKS_PATH} — record the take first`)
+    process.exit(1)
+  }
+  const marks: MarkEntry[] = JSON.parse(readFileSync(MARKS_PATH, "utf8"))
+  return marks
+    .map((mark) => ({ frame: mark.frame, start: mark.elapsed }))
+    .sort((a, b) => a.start - b.start)
+}
+
+async function durationOf(file: string) {
+  const out = await $`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${file}`.quiet()
+  return parseFloat(out.stdout.toString().trim())
+}
+
+/**
+ * A take has no spare time. Fit the narration into the window before the next
+ * mark: speed it up (up to 1.6×) before trimming it. The picture never waits.
+ */
+async function fitNarration(file: string, window: number) {
+  const duration = await durationOf(file)
+  if (!Number.isFinite(duration) || duration <= window) return file
+  const tempo = Math.min(1.6, duration / window)
+  const out = resolve(WORK_DIR, "narration", `${basename(file).replace(/\.\w+$/, "")}-fit.m4a`)
+  mkdirSync(resolve(WORK_DIR, "narration"), { recursive: true })
+  await run([
+    "-i", file,
+    "-filter:a", `atempo=${tempo.toFixed(3)}`,
+    "-t", window.toFixed(3),
+    "-c:a", "aac", "-b:a", "128k",
+    out,
+  ])
+  console.log(`  ✂️  ${basename(file)} ${duration.toFixed(2)}s → ${window.toFixed(2)}s (${tempo.toFixed(2)}×)`)
+  return out
+}
+
+/** One still per mark, taken from the same take as the cut. */
+async function extractStills(marks: { frame: string | number; videoStart: number }[], dir: string) {
+  mkdirSync(dir, { recursive: true })
+  for (const mark of marks) {
+    const name = String(mark.frame).replace(/\.png$/, "")
+    await run([
+      "-ss", mark.videoStart.toFixed(3),
+      "-i", INPUT_VIDEO,
+      "-frames:v", "1",
+      resolve(dir, `${name}.png`),
+    ])
+  }
+  console.log(`  🖼️  ${marks.length} stills → ${dir}`)
 }
 
 /** Motion inside the hook happens between adjacent frame captures. */
@@ -331,6 +388,10 @@ async function body(
     const segDur = parseFloat(durOut.stdout.toString().trim())
     currentTime = seg.start + segDur + silenceDur
   }
+  if (audioInputs.length === 0) {
+    audioInputs.push(["-f", "lavfi", "-t", dims.duration.toFixed(3), "-i", "anullsrc=r=48000:cl=stereo"])
+    currentTime = dims.duration
+  }
   if (currentTime < dims.duration) {
     audioInputs.push(["-f", "lavfi", "-t", (dims.duration - currentTime).toFixed(3), "-i", "anullsrc=r=48000:cl=stereo"])
   }
@@ -367,7 +428,7 @@ async function body(
  * start times on the new timeline.
  */
 async function renderFrameClips(
-  marks: { frame: string; videoStart: number }[],
+  marks: { frame: string | number; videoStart: number }[],
   audioByFrame: Map<string, string>,
   dims: { w: number; h: number; duration: number; fps: number },
   crf: number,
@@ -379,12 +440,12 @@ async function renderFrameClips(
   const segments: { start: number; file: string }[] = []
   let clock = 0
 
-  for (let i = 0; i < marks.length; i++) {
-    const from = marks[i].videoStart
-    const until = i + 1 < marks.length ? marks[i + 1].videoStart : dims.duration
+  for (const [i, mark] of marks.entries()) {
+    const from = mark.videoStart
+    const until = marks[i + 1]?.videoStart ?? dims.duration
     // Keep the action that happened before the next capture; cap very long gaps.
     const window = Math.max(0.5, Math.min(until - from, 6))
-    const audio = audioByFrame.get(marks[i].frame)
+    const audio = audioByFrame.get(String(mark.frame))
     const narr = audio
       ? parseFloat(
           (
@@ -464,11 +525,20 @@ async function main() {
   const sliceSeconds = parseFloat(opt("--hook-secs") ?? "1.4")
   const draft = flag("--draft")
   const skipHook = flag("--no-hook")
+  const mode = opt("--mode") ?? "continuous"
+  if (!["continuous", "padded", "stills"].includes(mode)) {
+    console.error(`❌ unknown --mode ${mode} (continuous|padded|stills)`)
+    process.exit(1)
+  }
+  INPUT_VIDEO = opt("--input") ? resolve(opt("--input")!) : INPUT_VIDEO
+  MARKS_PATH = opt("--marks") ? resolve(opt("--marks")!) : MARKS_PATH
+  OUTPUT_VIDEO = opt("--out") ? resolve(opt("--out")!) : OUTPUT_VIDEO
+  STILLS_DIR = opt("--stills") ? resolve(opt("--stills")!) : STILLS_DIR
   const crf = draft ? 28 : 20
   const preset = draft ? "ultrafast" : "medium"
 
   if (!existsSync(INPUT_VIDEO)) {
-    console.error(`❌ missing ${INPUT_VIDEO} — record the live demo first`)
+    console.error(`❌ missing ${INPUT_VIDEO} — record the take first`)
     process.exit(1)
   }
   await Bun.$`mkdir -p ${WORK_DIR}/tts`.quiet()
@@ -479,28 +549,35 @@ async function main() {
   const W = dims.w
   const H = dims.h
 
+  const continuous = mode !== "padded"
   const beacon = await detectBeacon(dims.fps)
-  const timing = loadTiming(manifest)
+  const timing = continuous ? loadMarks() : loadTiming(manifest)
   const marks = timing.map((entry) => ({
     frame: entry.frame,
     videoStart: Math.max(0, entry.start + beacon),
   }))
   const byFrame = new Map(marks.map((mark) => [mark.frame, mark.videoStart]))
 
+  if (mode === "stills") {
+    await extractStills(marks, STILLS_DIR ?? resolve(VIDEO_DIR, "stills"))
+    return
+  }
+
   // ── narration TTS (cached by text hash so re-runs skip synthesis) ───
   console.log("\n🎙️  Generating narration segments…")
   const audioByFrame = new Map<string, string>()
   for (const entry of manifest) {
-    const start = byFrame.get(entry.frame)
+    const key = continuous ? entry.file : String(entry.frame)
+    const start = byFrame.get(key)
     if (start === undefined) {
-      console.warn(`  ⚠  frame ${entry.frame}: no mark — narration skipped`)
+      console.warn(`  ⚠  ${key}: no mark — narration skipped`)
       continue
     }
     const cacheDir = resolve(WORK_DIR, "tts")
     const hashInput = `${entry.frame}|${voice}|${TTS_RATE}|${entry.narration}`
     const hashKey = Buffer.from(hashInput).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "").slice(0, 32)
     console.log(`  [DEBUG] Frame ${entry.frame}: hashKey=${hashKey}`)
-    const audio = resolve(cacheDir, `${String(entry.frame).padStart(2, "0")}-${hashKey}.mp3`)
+    const audio = resolve(cacheDir, `${continuous ? key.replace(/\.png$/, "") : String(entry.frame).padStart(2, "0")}-${hashKey}.mp3`)
     if (!existsSync(audio) || (await Bun.file(audio).stat()).size === 0) {
       const textFile = resolve(cacheDir, `${String(entry.frame).padStart(2, "0")}-${hashKey}.txt`)
       writeFileSync(textFile, entry.narration)
@@ -525,28 +602,49 @@ async function main() {
     }
     // Delay between requests to avoid rate limiting
     await new Promise((r) => setTimeout(r, 500))
-    audioByFrame.set(entry.frame, audio)
+    audioByFrame.set(key, audio)
   }
   console.log(`  ✅ ${audioByFrame.size} segments ready`)
 
-  // ── paced body: real motion per frame, then a freeze long enough for its narration ──
-  console.log("\n🎬 Rendering paced frame clips…")
-  const paced = await renderFrameClips(marks, audioByFrame, { ...dims, w: W, h: H }, crf, preset)
-  console.log(`  ✅ ${paced.segments.length} clips, ${paced.duration.toFixed(1)}s body`)
-
   const bodyPath = resolve(WORK_DIR, "body.mp4")
-  const pacedDims = { ...dims, duration: paced.duration }
-  await body(bodyPath, paced.segments, pacedDims, crf, preset, false, paced.bodyVideo)
+  let duration: number
+  if (continuous) {
+    // The take is the picture. Fit each narration line into the gap before the
+    // next mark; never hold a frame so a line can finish.
+    console.log("\n🎬 Rendering continuous take…")
+    const segments: { start: number; file: string }[] = []
+    for (const [i, mark] of marks.entries()) {
+      const audio = audioByFrame.get(String(mark.frame))
+      if (!audio) continue
+      const end = marks[i + 1]?.videoStart ?? dims.duration
+      const window = Math.max(0.4, end - mark.videoStart - 0.25)
+      segments.push({ start: mark.videoStart + 0.1, file: await fitNarration(audio, window) })
+    }
+    duration = dims.duration
+    await body(bodyPath, segments, { ...dims, duration }, crf, preset, INPUT_VIDEO)
+    console.log(`  ✅ ${segments.length} narration lines over ${duration.toFixed(1)}s of motion`)
+  } else {
+    console.log("\n🎬 Rendering padded frame clips (legacy)…")
+    const paced = await renderFrameClips(marks, audioByFrame, { ...dims, w: W, h: H }, crf, preset)
+    duration = paced.duration
+    await body(bodyPath, paced.segments, { ...dims, duration }, crf, preset, paced.bodyVideo)
+    console.log(`  ✅ ${paced.segments.length} clips, ${duration.toFixed(1)}s body`)
+  }
+
+  if (STILLS_DIR) await extractStills(marks, STILLS_DIR)
 
   // ── hook + cards ──
+  const numbered = marks.filter((mark): mark is { frame: number; videoStart: number } => typeof mark.frame === "number")
+  const canHook = numbered.length === marks.length
   const parts = [bodyPath]
-  if (!skipHook) {
+  if (!skipHook && !canHook) console.log("⏭️  hook needs numbered frames; skipped for this named take")
+  if (!skipHook && canHook) {
     console.log("✂️  Building hook montage…")
     const titlePath = resolve(WORK_DIR, "title-card.mp4")
     const endPath = resolve(WORK_DIR, "end-card.mp4")
     await card(titlePath, "SessionGraph", "your session as it runs", W, H, crf, preset)
     await card(endPath, "SessionGraph", "Ctrl+Shift+M", W, H, crf, preset)
-    const slices = hookSlices(marks, sliceSeconds)
+    const slices = hookSlices(numbered, sliceSeconds)
     const slicePaths: string[] = []
     for (const spec of slices) {
       const path = resolve(WORK_DIR, `hook-${spec.label}.mp4`)
@@ -559,10 +657,10 @@ async function main() {
 
   // ── final ──
   console.log("\n🧩 Concatenating…")
-  const finalPath = resolve(VIDEO_DIR, "demo.mp4")
+  const finalPath = OUTPUT_VIDEO
   await concatList(parts, finalPath)
   const finalSize = await Bun.$`stat -c%s ${finalPath}`.text()
-  console.log(`✅ demo.mp4 — ${(parseInt(finalSize.trim()) / 1024 / 1024).toFixed(1)} MB`)
+  console.log(`✅ ${finalPath} — ${(parseInt(finalSize.trim()) / 1024 / 1024).toFixed(1)} MB`)
 
   // Webm render removed per v36: mp4 only
   // if (!draft) {
@@ -571,7 +669,7 @@ async function main() {
   //   console.log(`✅ demo.webm`)
   // }
 
-  console.log(`\n📊 body length ${paced.duration.toFixed(1)}s (${(paced.duration / 60).toFixed(1)} min)`)
+  console.log(`\n📊 body length ${duration.toFixed(1)}s (${(duration / 60).toFixed(1)} min)`)
   console.log(`   intermediate files under ${WORK_DIR} (delete freely, rebuilt on re-run)`)
 }
 

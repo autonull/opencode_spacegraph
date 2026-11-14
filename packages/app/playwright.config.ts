@@ -30,7 +30,7 @@ const touchScroll = /mobile-timeline-scroll\.spec\.ts/
 
 // The canonical 32-frame gate and the opt-in demo recordings share one project so video stays on and
 // the default suite never runs a demo, or the gate twice.
-const isCapture = /graph\/capture(-live|-clips|-segment1|-story|-chapter\d+)?\.spec\.ts/
+const isCapture = /graph\/capture(-live|-clips|-segment1|-story|-chapter\d+|-explore)?\.spec\.ts/
 
 export default defineConfig({
   testDir: "./e2e",
