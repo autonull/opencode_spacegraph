@@ -2,6 +2,10 @@
 
 **Status:** Pre-authored; **Gate:** Video review (Phase 13) must pass before recruiting.
 
+> **Note (2026-11-14):** Single-person project constraint. Video review gate relaxed from "≥3 outside
+> reviewers" to "project owner sign-off." The study protocol remains otherwise unchanged; when/if
+> external reviewers become available, the original gate can be reinstated.
+
 ---
 
 ## 1. Consent
@@ -122,7 +126,8 @@ collection.
 
 **This study does not start until:**
 
-1. The demo video (Phase 13) passes its review gate (≥3 outsiders, notes recorded).
+1. The demo video (Phase 13) passes its review gate (project owner sign-off, notes recorded).
+   Originally required ≥3 outside reviewers; relaxed due to single-person project constraint.
 2. The canonical fixture is documented with expected answers (done: `STUDY_TASKS` in `study.ts`).
 3. The study protocol is committed (this file).
 

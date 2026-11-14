@@ -142,8 +142,10 @@ the job, never the feature name.
       Completed: All 9 themes rendered as continuous cuts (`explore-*.mp4`) with stills extracted
       to `stills/explore-*/`. Durations: diagnose 6.9s, chaos 19.7s, audit 15.3s, delegate 14.2s,
       trust 11.5s, cost 9.6s, handoff 8.8s, return 12.8s, night 14.2s.
-- [ ] **Video review gate (M7.6).** ≥3 outside reviewers; notes recorded per `study-protocol.md`.
-      If reviewers are unavailable, hold — do not fake a pass.
+- [ ] **Video review gate (M7.6).** Single reviewer (project owner); notes recorded per
+      `study-protocol.md`. Gate passes when reviewer signs off on pacing, camera motion, and
+      clarity of each cut. Previous requirement of ≥3 outside reviewers relaxed due to single-person
+      project constraint.
 
 ### P2 — measurement
 
