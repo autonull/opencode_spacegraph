@@ -343,15 +343,20 @@ test(`Exploration — ${theme} (seed ${seed})`, async ({ page }) => {
     // Camera beat: orbit drift in timeline view
     await orbitDrift(page, 0.1, 0.2, 4000)
     recordMark(`${theme}-02-orbit-drift`)
-    await searchAndFocus(page, "file:src/auth/token.ts", "token.ts")
+    // First failure: wrong fix (extended token lifetime)
+    await searchAndFocus(page, "result:prt_narr_shell_1", "FAIL")
     recordMark(`${theme}-03-wrong-fix`)
-    await searchAndFocus(page, "file:src/auth/session.ts", "session.ts")
-    recordMark(`${theme}-04-correct-fix`)
-    // Camera beat: whip to correct fix node
-    await whipToNode(page, "file:src/auth/session.ts", 2000)
-    recordMark(`${theme}-05-whip-to-fix`)
+    // Second failure: still failing after wrong fix
+    await searchAndFocus(page, "result:prt_narr_shell_2", "FAIL")
+    recordMark(`${theme}-04-still-failing`)
+    // Success: correct fix (stored rotated token)
+    await searchAndFocus(page, "result:prt_narr_shell_3", "pass")
+    recordMark(`${theme}-05-correct-fix`)
+    // Camera beat: whip to success result
+    await whipToNode(page, "result:prt_narr_shell_3", 2000)
+    recordMark(`${theme}-06-whip-to-fix`)
     await detour(page, rnd)
-    recordMark(`${theme}-06-detour`)
+    recordMark(`${theme}-07-detour`)
   }
 
   if (theme === "chaos") {
@@ -392,11 +397,11 @@ test(`Exploration — ${theme} (seed ${seed})`, async ({ page }) => {
     await pickLayout(page, "tree")
     await pace(700)
     recordMark(`${theme}-01-tree`)
-    await searchAndFocus(page, "subagent:explore", "subagent")
+    await searchAndFocus(page, "sub:ses_child_verify", "subagent")
     recordMark(`${theme}-02-subagent`)
-    await whipToNode(page, "subagent:explore", 2000)
+    await whipToNode(page, "sub:ses_child_verify", 2000)
     recordMark(`${theme}-03-whip-to-subagent`)
-    await traceReveal(page, "subagent:explore", 3, 5000)
+    await traceReveal(page, "sub:ses_child_verify", 3, 5000)
     recordMark(`${theme}-04-trace-subagent`)
     await detour(page, rnd)
     recordMark(`${theme}-05-detour`)
@@ -444,14 +449,14 @@ test(`Exploration — ${theme} (seed ${seed})`, async ({ page }) => {
   }
 
   if (theme === "handoff") {
-    // Give it away - focus on handoff points
+    // Give it away - focus on share message
     await pickLayout(page, "timeline")
     await pace(700)
     recordMark(`${theme}-01-timeline`)
-    await searchAndFocus(page, "handoff", "handoff")
-    recordMark(`${theme}-02-handoff-search`)
-    await whipToNode(page, "handoff", 2000)
-    recordMark(`${theme}-03-whip-to-handoff`)
+    await searchAndFocus(page, "msg_narr_share_1:text:0", "share")
+    recordMark(`${theme}-02-share-search`)
+    await whipToNode(page, "msg_narr_share_1:text:0", 2000)
+    recordMark(`${theme}-03-whip-to-share`)
     await detour(page, rnd)
     recordMark(`${theme}-04-detour`)
     await fit(page)

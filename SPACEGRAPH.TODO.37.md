@@ -49,7 +49,7 @@ Gates run beside the loop, not after it: benchmarks, listener-leak, capture re-b
 | Continuous renderer + still extraction | Done (v36 r16) | `script/generate-demo-video.ts` |
 | Named take copy | Done (v36 r16) | `script/copy-capture-video.ts` |
 | Seeded explorer | Done (v36 r16) | `packages/app/e2e/graph/capture-explore.spec.ts` |
-| Takes | 2: `diagnose` seed 7, `chaos` seed 1 | `docs/spacegraph/video/takes/` (gitignored) |
+| Takes | 9: all themes shot | `docs/spacegraph/video/takes/` (gitignored) |
 | Findings | 2 | `docs/spacegraph/explorations/` |
 | Pixel gate | 54 frames pass | `capture.spec.ts` |
 | Capture re-bless | 4 known-variance frames at 0% | v36 r4 |
@@ -85,14 +85,14 @@ human take. The seed reproduces the path.
 | Theme | Mission | State |
 |-------|---------|-------|
 | diagnose | Root cause, speedrun | shot (seed 7) |
-| audit | Ship it blind | scripted |
-| delegate | Who did the work | scripted |
-| trust | Trust but verify | scripted |
-| cost | Follow the money | scripted |
+| audit | Ship it blind | shot (seed 13) |
+| delegate | Who did the work | shot (seed 3) |
+| trust | Trust but verify | shot (seed 5) |
+| cost | Follow the money | shot (seed 7) |
 | chaos | Break it | shot (seed 1) |
-| night | Light pass (the 5%) | scripted |
-| handoff | Give it away | scripted |
-| return | Tomorrow | scripted |
+| night | Light pass (the 5%) | shot (seed 15) |
+| handoff | Give it away | shot (seed 9) |
+| return | Tomorrow | shot (seed 11) |
 
 **Three layers per theme**
 
@@ -128,8 +128,9 @@ the job, never the feature name.
       Implemented: Added camera beat helpers (`pushIn`, `orbitDrift`, `whipToNode`, `traceReveal`) and
       integrated into all themes in `capture-explore.spec.ts`. Each beat runs 3–5 s with `fit()` after
       layout changes.
-- [ ] **Shoot the remaining themes.** `delegate`, `trust`, `cost`, `handoff`, `return`, then `night`
-      (the 5% light). One seeded take each; add a human take where the seed flounders.
+- [x] **Shoot the remaining themes.** `delegate` (seed 3), `trust` (seed 5), `cost` (seed 7),
+      `handoff` (seed 9), `return` (seed 11), `audit` (seed 13), `night` (seed 15).
+      All 9 themes now have seeded takes captured.
 - [ ] **Write findings per take, same day.** Update the kill/park register when a pattern is parked
       or promoted. A finding without a mark is an opinion.
 
@@ -214,6 +215,13 @@ Every open v36 item is represented above.
 ---
 
 ## Revision log
+
+- **r2 (2026-11-14):** Shot all 9 exploration themes.
+  - Fixed node IDs in `capture-explore.spec.ts` for `audit` (uses result nodes), `delegate` (uses sub:ses_child_verify), `handoff` (uses msg_narr_share_1:text:0).
+  - All themes pass: diagnose (seed 7), chaos (seed 1), delegate (seed 3), trust (seed 5), cost (seed 7), handoff (seed 9), return (seed 11), audit (seed 13), night (seed 15).
+  - Videos copied to `docs/spacegraph/video/takes/explore-*.webm`.
+  - Marks files written to `docs/spacegraph/video/marks-explore-*.json`.
+  - Updated Program table: all themes now "shot" with seeds.
 
 - **r1 (2026-11-14):** Completed P0 camera beats and scripted remaining themes.
   - Added camera beat helpers to `capture-explore.spec.ts`: `pushIn`, `orbitDrift`, `whipToNode`, `traceReveal`.
