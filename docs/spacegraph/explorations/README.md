@@ -23,7 +23,7 @@ For each pattern the take exercised:
 
 - **keep** — the pattern earns its place; note why.
 - **park** — it does not earn its place yet; record the blocker and add it to the kill/park
-  register in `SPACEGRAPH.TODO.36.md`.
+  register in `SPACEGRAPH.TODO.37.md`.
 - **change** — it is close but fights the user; write the smallest change that would fix it.
 
 Mistakes are welcome in a take. Do not cut a detour that exposes a real problem; mark it and write

@@ -1,9 +1,9 @@
 # Auto-Generated Narrated Demo Feature-Tour Video Plan
 
-> **Superseded (2026-11-13):** the video program now lives in `SPACEGRAPH.TODO.36.md` Phase 1R —
-> chapters, live-open capture, human real-time pacing, mp4 only, no "map" copy, clean voice. This
-> file stays for pipeline notes (marks, beacon, TTS mechanics); its narration table and the
-> "kidnapper" voice effect are historical.
+> **Superseded (2026-11-14):** the video program now lives in `SPACEGRAPH.TODO.37.md` —
+> full-motion exploration takes, seeded themes, findings to product. v36's chapter program is frozen
+> history. This file stays for pipeline notes (marks, beacon, TTS mechanics); its narration table
+> and the "kidnapper" voice effect are historical.
 
 ## Goal
 Generate an engaging demo video from the live capture run, with synchronized narration explaining each feature.

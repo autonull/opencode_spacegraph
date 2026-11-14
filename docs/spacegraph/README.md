@@ -31,4 +31,4 @@
 
 - **SpaceGraphJS library docs:** `spacegraphjs/README.md`, `spacegraphjs/docs/`
 - **SpaceGraphJS roadmap:** `spacegraphjs/ROADMAP.md`, `spacegraphjs/PLAN/`
-- **Active plan:** `SPACEGRAPH.TODO.35.md`
+- **Active plan:** `SPACEGRAPH.TODO.37.md` (v36 and v35 are frozen archives)

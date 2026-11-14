@@ -1,11 +1,11 @@
 # SpaceGraph for OpenCode — Fork README
 
-> **Status (2026-11-13):** v35 delivered every feature (M0–M8 complete, M9 functional complete; the
-> 54-frame capture gate and all canonical suites pass, `bun run check` green 53/53). v36 now answers
-> the open question — what SpaceGraph is for, and whether it beats the transcript — before adding
-> more. See [`SPACEGRAPH.TODO.36.md`](SPACEGRAPH.TODO.36.md) for the active plan;
-> [`SPACEGRAPH.TODO.35.md`](SPACEGRAPH.TODO.35.md) is the frozen feature-complete archive and
-> `SPACEGRAPH.TODO.34.md` is the frozen design archive.
+> **Status (2026-11-14):** v35 delivered every feature (M0–M8 complete, M9 functional complete; the
+> 54-frame capture gate and all canonical suites pass, `bun run check` green 53/53). v36 answered the
+> open question — what SpaceGraph is for, and whether it beats the transcript: the three jobs measure
+> 4–8× faster on the graph. v37 films exploration at human speed and turns findings into product
+> changes. See [`SPACEGRAPH.TODO.37.md`](SPACEGRAPH.TODO.37.md) for the active plan; v36 and v35 are
+> frozen archives, and `SPACEGRAPH.TODO.34.md` is the frozen design archive.
 
 ---
 
@@ -284,7 +284,7 @@ Detail: [`SPACEGRAPH.md §5`](SPACEGRAPH.md#5-path-to-fully-plugin-based-spacegr
 
 **SpaceGraphJS library:** [`spacegraphjs/README.md`](../spacegraphjs/README.md), [`spacegraphjs/docs/`](../spacegraphjs/docs/), [`spacegraphjs/ROADMAP.md`](../spacegraphjs/ROADMAP.md)
 
-**Active plan:** [`SPACEGRAPH.TODO.36.md`](SPACEGRAPH.TODO.36.md) (v35 is the frozen feature archive)
+**Active plan:** [`SPACEGRAPH.TODO.37.md`](SPACEGRAPH.TODO.37.md) (v36 and v35 are frozen archives)
 
 ---
 
