@@ -97,10 +97,13 @@ breadcrumbs, minimap, a11y mirror.
 
 Diff via `diffSource`; files rail; permalink `#graph:<node>`; export SVG/JSON/HTML.
 
-### Progressive expansion — `partial`
+### Progressive expansion — `exists`
 
 Drill depth `maxDrillDepth` default 3 (`useGraphNavigation` refuses a 4th); `isClusterExpanded`;
-`graph_multi_surface`. Visible "expand node grows graph" affordance: `proposed` (D3).
+`graph_multi_surface`. Visible "expand node grows graph" affordance: chevron toggle on group cards
+(phase, file-group, subagent-group, error-group) in `cardTemplate.ts:441`. Click handler in
+`GraphCanvas.tsx:217`, state in `useGroupCollapse.ts:125`. Layout preserves positions on expand
+(append-only).
 
 ### Trust lens — `gap / verify`
 
@@ -157,7 +160,7 @@ D1–D3 are additive; build and film them second.
 | Neighborhood dim | 9 | `proposed` |
 | Composer + follow | 10 | `partial` |
 | New-node camera grab | 10 | `proposed` |
-| Progressive expansion | 11 | `partial` |
+| Progressive expansion | 11 | `exists` |
 | Trust lens | — | `gap / verify` |
 | Export SVG/JSON/HTML | — | `gap` (candidate: hand off as file) |
 | A11y / minimap / breadcrumbs | — | not demoed (supporting chrome) |
@@ -222,10 +225,12 @@ node in view while the prompt is typed.
 
 **Goal it serves:** "I need to open a crowded cluster without losing my place."
 
-**What exists:** drill depth 3, `isClusterExpanded`, `graph_multi_surface`. **Gap:** a visible
-affordance to expand a node and see children fan out (subagent → its tool calls; file → its diff).
-Design a card affordance that expands in place and re-fits only the expanded subtree, preserving the
-rest of the frame.
+**What exists:** drill depth 3, `isClusterExpanded`, `graph_multi_surface`. **Implemented:** card
+affordance (chevron toggle) on group cards for phase clusters, file groups, subagent groups, and
+error groups (`packages/session-graph/src/ui/cardTemplate.ts:420-442`). Click handler in
+`GraphCanvas.tsx:217` calls `onGroupToggle` which updates `useGroupCollapse` state. Layout is
+deterministic append-only: expanding a cluster adds member nodes with new positions while preserving
+all existing node positions. No full re-layout occurs.
 
 ---
 

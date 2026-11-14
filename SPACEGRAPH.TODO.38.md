@@ -296,7 +296,8 @@ A scenario shot is done when all hold:
 | P0.0: Archive 7 unverified findings files | **Done** | Voided findings index from v37; moved 7 files to `docs/spacegraph/explorations/archive/` |
 | D1: DOM-cards surface with per-node opacity | **Done** | Canvas renderer (ShapeNode) supports per-node opacity via `data.opacity`; DOM cards via `wrapDim()`. Explicit `dimOpacity: 0.35` configured in session graph adapter. |
 | D2: Streaming fixture / scripted append for node-grab focus | **Done** | Streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to gui-plugins). Subagent tool in streaming state demonstrates node-grab focus for D2. |
-| D3: Hybrid surface with related/downstream trace | **Todo** | Two gap rows: related/downstream trace or hybrid surface |
+| D3: Progressive expansion (expand cluster affordance) | **Done** | Card affordance (chevron) implemented in `packages/session-graph/src/ui/cardTemplate.ts` for phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state in useGroupCollapse.ts. Layout preserves positions on expand. |
+| Hybrid surface with related/downstream trace | **Todo** | Two gap rows: related/downstream trace or hybrid surface (decide which earns a scenario) |
 | Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |
@@ -307,6 +308,7 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r8 (2026-11-14):** D3 complete — Progressive expansion affordance already implemented. Card chevron toggle for cluster expand/collapse in `packages/session-graph/src/ui/cardTemplate.ts` covers phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state management in useGroupCollapse.ts. Layout preserves existing node positions on expand (append-only).
 - **r7 (2026-11-14):** D2 complete — streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to `packages/gui-plugins/src/spacegraph/internal/graph/fixture.ts`). The fixture includes a subagent tool in "streaming" state, enabling demonstration of D2 node-grab focus where the camera follows newly streamed nodes.
 - **r6 (2026-11-14):** D1 complete — per-node opacity works for both DOM cards (via `wrapDim()`) and canvas ShapeNodes (via `data.opacity`). Added explicit `dimOpacity: 0.35` to session graph adapter geometry config.
 - **r5 (2026-11-14):** P0.0 complete — archived 7 unverified findings files from v37 to `docs/spacegraph/explorations/archive/`; only `diagnose-7.md` and `chaos-1.md` remain in `explorations/`.
