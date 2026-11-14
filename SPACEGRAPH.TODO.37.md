@@ -85,14 +85,14 @@ human take. The seed reproduces the path.
 | Theme | Mission | State |
 |-------|---------|-------|
 | diagnose | Root cause, speedrun | shot (seed 7) |
-| audit | Ship it blind | todo |
-| delegate | Who did the work | todo |
-| trust | Trust but verify | todo |
-| cost | Follow the money | todo |
+| audit | Ship it blind | scripted |
+| delegate | Who did the work | scripted |
+| trust | Trust but verify | scripted |
+| cost | Follow the money | scripted |
 | chaos | Break it | shot (seed 1) |
-| night | Light pass (the 5%) | todo |
-| handoff | Give it away | todo |
-| return | Tomorrow | todo |
+| night | Light pass (the 5%) | scripted |
+| handoff | Give it away | scripted |
+| return | Tomorrow | scripted |
 
 **Three layers per theme**
 
@@ -122,9 +122,12 @@ the job, never the feature name.
       - `onNodeResized` in useCanvasRegionProps.ts
       - `setSearchOpen` in useCanvasRegionProps.ts
       - `changeLayout` in useCanvasRegionProps.ts
-- [ ] **Camera beats.** Add helpers to `capture-explore.spec.ts`: push-in, orbit drift, whip-to-node,
+- [x] **Camera beats.** Add helpers to `capture-explore.spec.ts`: push-in, orbit drift, whip-to-node,
       trace reveal. Slow beats to 3–5 s. Run `fit` after each layout change (the `chaos` take left
       the graph at 71%, small in frame).
+      Implemented: Added camera beat helpers (`pushIn`, `orbitDrift`, `whipToNode`, `traceReveal`) and
+      integrated into all themes in `capture-explore.spec.ts`. Each beat runs 3–5 s with `fit()` after
+      layout changes.
 - [ ] **Shoot the remaining themes.** `delegate`, `trust`, `cost`, `handoff`, `return`, then `night`
       (the 5% light). One seeded take each; add a human take where the seed flounders.
 - [ ] **Write findings per take, same day.** Update the kill/park register when a pattern is parked
@@ -211,6 +214,13 @@ Every open v36 item is represented above.
 ---
 
 ## Revision log
+
+- **r1 (2026-11-14):** Completed P0 camera beats and scripted remaining themes.
+  - Added camera beat helpers to `capture-explore.spec.ts`: `pushIn`, `orbitDrift`, `whipToNode`, `traceReveal`.
+  - Each beat runs 3–5 s with `fit()` after layout changes.
+  - Integrated beats into all 9 themes: diagnose, audit, chaos, night, delegate, trust, cost, handoff, return.
+  - Updated Program table: all themes now "scripted" (test code ready to shoot).
+  - Banner auto-dismiss (P0 #1) also completed in prior commit.
 
 - **r0 (2026-11-14):** Split v37 from v36 after the full-motion turn. v36 frozen as design history.
   - Thesis tightened: from "prove the purpose with one artifact" to "film exploration and keep the

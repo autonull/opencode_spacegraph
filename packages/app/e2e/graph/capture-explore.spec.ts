@@ -161,6 +161,106 @@ function pointIn(box: { x: number; y: number; width: number; height: number }, r
   }
 }
 
+/**
+ * Camera beat helpers for cinematic exploration takes.
+ * Each beat is 3–5 s of deliberate motion; no freezes, no feature lists.
+ */
+
+async function pushIn(page: Page, nodeId: string, durationMs = 3000) {
+  // Smooth zoom toward a specific node (push-in)
+  await page.evaluate(
+    async ({ id, ms }) => {
+      const app = (window as any).__opencodeApp
+      const graph = app?.graph
+      const node = graph?.model?.nodes?.find((n: any) => n.id === id)
+      if (!node) return
+      const camera = graph?.renderer?.cameraControls
+      if (!camera) return
+      const target = new (await import("three")).Vector3(...node.position)
+      const distance = camera.camera.position.length() * 0.3
+      camera.flyTo(target, distance, ms / 1000)
+    },
+    { id: nodeId, ms: durationMs },
+  )
+  await pace(durationMs)
+}
+
+async function orbitDrift(page: Page, phiDelta: number, thetaDelta: number, durationMs = 4000) {
+  // Orbit drift: rotate camera around the scene
+  await page.evaluate(
+    async ({ phi, theta, ms }) => {
+      const app = (window as any).__opencodeApp
+      const graph = app?.graph
+      const camera = graph?.renderer?.cameraControls
+      if (!camera) return
+      const currentPhi = camera.spherical.phi
+      const currentTheta = camera.spherical.theta
+      camera.setPolar(
+        Math.max(0.01, Math.min(Math.PI - 0.01, currentPhi + phi)),
+        currentTheta + theta,
+        ms / 1000,
+      )
+    },
+    { phi: phiDelta, theta: thetaDelta, ms: durationMs },
+  )
+  await pace(durationMs)
+}
+
+async function whipToNode(page: Page, nodeId: string, durationMs = 2000) {
+  // Quick camera move to a node (whip pan)
+  await page.evaluate(
+    async ({ id, ms }) => {
+      const app = (window as any).__opencodeApp
+      const graph = app?.graph
+      const node = graph?.model?.nodes?.find((n: any) => n.id === id)
+      if (!node) return
+      const camera = graph?.renderer?.cameraControls
+      if (!camera) return
+      const target = new (await import("three")).Vector3(...node.position)
+      const distance = camera.camera.position.length()
+      camera.flyTo(target, distance, ms / 1000)
+    },
+    { id: nodeId, ms: durationMs },
+  )
+  await pace(durationMs)
+}
+
+async function traceReveal(page: Page, startNodeId: string, maxHops = 2, durationMs = 5000) {
+  // Reveal connected nodes by following edges outward (trace reveal)
+  await page.evaluate(
+    async ({ startId, hops, ms }) => {
+      const app = (window as any).__opencodeApp
+      const graph = app?.graph
+      if (!graph) return
+      const visited = new Set<string>()
+      const queue = [{ id: startId, depth: 0 }]
+      const nodesToSelect: string[] = []
+      while (queue.length > 0) {
+        const { id, depth } = queue.shift()!
+        if (visited.has(id) || depth > hops) continue
+        visited.add(id)
+        nodesToSelect.push(id)
+        const node = graph.model.nodes.find((n: any) => n.id === id)
+        if (!node) continue
+        const edges = graph.model.edges.filter(
+          (e: any) => e.source === id || e.target === id,
+        )
+        for (const edge of edges) {
+          const nextId = edge.source === id ? edge.target : edge.source
+          if (!visited.has(nextId)) queue.push({ id: nextId, depth: depth + 1 })
+        }
+      }
+      // Select nodes sequentially with delays
+      for (let i = 0; i < nodesToSelect.length; i++) {
+        graph.selection.select([nodesToSelect[i]])
+        await new Promise((r) => setTimeout(r, ms / nodesToSelect.length))
+      }
+    },
+    { startId: startNodeId, hops: maxHops, ms: durationMs },
+  )
+  await pace(durationMs)
+}
+
 const layouts = ["lanes", "timeline", "hierarchy", "tree", "force", "grid", "circular", "ribbon", "matrix"]
 const queries = ["failed result", "token.ts", "session.ts", "explore", "subagent", "compaction"]
 
@@ -226,27 +326,46 @@ test(`Exploration — ${theme} (seed ${seed})`, async ({ page }) => {
     await page.locator(inspector).getByRole("button", { name: "Why" }).click()
     await pace(900)
     recordMark(`${theme}-02-why-trace`)
+    // Camera beats: push-in to failure node, then trace reveal
+    await pushIn(page, "result:prt_narr_shell_2", 3000)
+    recordMark(`${theme}-03-push-in`)
+    await traceReveal(page, "result:prt_narr_shell_2", 2, 4000)
+    recordMark(`${theme}-04-trace-reveal`)
     await detour(page, rnd)
     await fit(page)
-    recordMark(`${theme}-03-recover`)
+    recordMark(`${theme}-05-recover`)
   }
 
   if (theme === "audit") {
     await pickLayout(page, "timeline")
     await pace(700)
     recordMark(`${theme}-01-timeline`)
+    // Camera beat: orbit drift in timeline view
+    await orbitDrift(page, 0.1, 0.2, 4000)
+    recordMark(`${theme}-02-orbit-drift`)
     await searchAndFocus(page, "file:src/auth/token.ts", "token.ts")
-    recordMark(`${theme}-02-wrong-fix`)
+    recordMark(`${theme}-03-wrong-fix`)
     await searchAndFocus(page, "file:src/auth/session.ts", "session.ts")
-    recordMark(`${theme}-03-correct-fix`)
+    recordMark(`${theme}-04-correct-fix`)
+    // Camera beat: whip to correct fix node
+    await whipToNode(page, "file:src/auth/session.ts", 2000)
+    recordMark(`${theme}-05-whip-to-fix`)
     await detour(page, rnd)
-    recordMark(`${theme}-04-detour`)
+    recordMark(`${theme}-06-detour`)
   }
 
   if (theme === "chaos") {
-    for (let i = 0; i < 12; i++) {
+    // Opening: push-in to show full graph context
+    await pushIn(page, "session", 4000)
+    recordMark(`${theme}-01-push-in`)
+    for (let i = 0; i < 10; i++) {
       await detour(page, rnd)
-      recordMark(`${theme}-${String(i + 1).padStart(2, "0")}-detour`)
+      recordMark(`${theme}-${String(i + 2).padStart(2, "0")}-detour`)
+      // Periodic orbit drift for cinematic motion
+      if (i % 3 === 2) {
+        await orbitDrift(page, 0.15, 0.3, 3000)
+        recordMark(`${theme}-${String(i + 2).padStart(2, "0")}-orbit`)
+      }
     }
     await fit(page)
     recordMark(`${theme}-13-fit`)
@@ -256,15 +375,106 @@ test(`Exploration — ${theme} (seed ${seed})`, async ({ page }) => {
     await pickLayout(page, "hierarchy")
     await pace(800)
     recordMark(`${theme}-01-hierarchy`)
+    // Camera beat: orbit drift in light mode
+    await orbitDrift(page, 0.2, 0.4, 5000)
+    recordMark(`${theme}-02-orbit-drift`)
     await detour(page, rnd)
     await searchAndFocus(page, "result:prt_narr_shell_2", "failed result")
-    recordMark(`${theme}-02-failure`)
+    recordMark(`${theme}-03-failure`)
+    await whipToNode(page, "result:prt_narr_shell_2", 2500)
+    recordMark(`${theme}-04-whip-to-failure`)
     await fit(page)
-    recordMark(`${theme}-03-fit`)
+    recordMark(`${theme}-05-fit`)
   }
 
-  if (!["diagnose", "audit", "chaos", "night"].includes(theme)) {
-    throw new Error(`unknown GRAPH_EXPLORE_THEME=${theme} (diagnose|audit|chaos|night)`)
+  if (theme === "delegate") {
+    // Who did the work - focus on subagent nodes
+    await pickLayout(page, "tree")
+    await pace(700)
+    recordMark(`${theme}-01-tree`)
+    await searchAndFocus(page, "subagent:explore", "subagent")
+    recordMark(`${theme}-02-subagent`)
+    await whipToNode(page, "subagent:explore", 2000)
+    recordMark(`${theme}-03-whip-to-subagent`)
+    await traceReveal(page, "subagent:explore", 3, 5000)
+    recordMark(`${theme}-04-trace-subagent`)
+    await detour(page, rnd)
+    recordMark(`${theme}-05-detour`)
+    await fit(page)
+    recordMark(`${theme}-06-fit`)
+  }
+
+  if (theme === "trust") {
+    // Trust but verify - focus on unverified nodes
+    await pickLayout(page, "hierarchy")
+    await pace(700)
+    recordMark(`${theme}-01-hierarchy`)
+    // Enable trust lens if available
+    await page.evaluate(() => {
+      const app = (window as any).__opencodeApp
+      app?.graph?.setTrustLens?.(true)
+    })
+    await pace(500)
+    recordMark(`${theme}-02-trust-lens`)
+    await orbitDrift(page, 0.1, 0.15, 4000)
+    recordMark(`${theme}-03-orbit-drift`)
+    await detour(page, rnd)
+    recordMark(`${theme}-04-detour`)
+    await fit(page)
+    recordMark(`${theme}-05-fit`)
+  }
+
+  if (theme === "cost") {
+    // Follow the money - focus on cost nodes
+    await pickLayout(page, "lanes")
+    await pace(700)
+    recordMark(`${theme}-01-lanes`)
+    await page.evaluate(() => {
+      const app = (window as any).__opencodeApp
+      app?.graph?.setCostLens?.(true)
+    })
+    await pace(500)
+    recordMark(`${theme}-02-cost-lens`)
+    await pushIn(page, "session", 3000)
+    recordMark(`${theme}-03-push-in`)
+    await detour(page, rnd)
+    recordMark(`${theme}-04-detour`)
+    await fit(page)
+    recordMark(`${theme}-05-fit`)
+  }
+
+  if (theme === "handoff") {
+    // Give it away - focus on handoff points
+    await pickLayout(page, "timeline")
+    await pace(700)
+    recordMark(`${theme}-01-timeline`)
+    await searchAndFocus(page, "handoff", "handoff")
+    recordMark(`${theme}-02-handoff-search`)
+    await whipToNode(page, "handoff", 2000)
+    recordMark(`${theme}-03-whip-to-handoff`)
+    await detour(page, rnd)
+    recordMark(`${theme}-04-detour`)
+    await fit(page)
+    recordMark(`${theme}-05-fit`)
+  }
+
+  if (theme === "return") {
+    // Tomorrow - focus on session continuity
+    await pickLayout(page, "lanes")
+    await pace(700)
+    recordMark(`${theme}-01-lanes`)
+    await orbitDrift(page, 0.15, 0.3, 4000)
+    recordMark(`${theme}-02-orbit-drift`)
+    await pushIn(page, "session", 3000)
+    recordMark(`${theme}-03-push-in`)
+    await detour(page, rnd)
+    recordMark(`${theme}-04-detour`)
+    await fit(page)
+    recordMark(`${theme}-05-fit`)
+  }
+
+  if (!["diagnose", "audit", "chaos", "night", "delegate", "trust", "cost", "handoff", "return"].includes(theme)) {
+    throw new Error(`unknown GRAPH_EXPLORE_THEME=${theme} (diagnose|audit|chaos|night|delegate|trust|cost|handoff|return)`)
   }
 
   await pace(800)
