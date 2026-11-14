@@ -1,6 +1,6 @@
 # SpaceGraph: Proof & Polish (v36)
 
-> **Status (2026-11-13, r13):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
+> **Status (2026-11-13, r14):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
 > not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
 > artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
@@ -9,8 +9,8 @@
 > Phase 2 is **complete (r6)**: all product friction resolved, including the reopened copy scrub —
 > no user-facing string in the spacegraph plugin says "map" any more.
 > Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
-> Live-open capture: `capture-chapter1.spec.ts` and `capture-live.spec.ts` both pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` (full plugin host init).
-> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Benchmarks ⏳ (strobe `--plan` works, `--check` blocked on strobe worktree monorepo setup — workspace dependency escalated); Listener-leak ⏳; Video review ⏳ (blocked on 8 chapters).
+> Live-open capture: `capture-chapter1.spec.ts` and `capture-live.spec.ts` both pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` (full plugin host init). **Verified passing (r14).**
+> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Benchmarks ⏳ (strobe `--plan` works; timed runs against `origin/dev` blocked on strobe worktree monorepo setup — workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees; **escalated** — requires strobe config to use main repo's node_modules or turborepo remote cache); Listener-leak ⏳ (needs dedicated e2e test); Video review ⏳ (blocked on 8 chapter mp4s; Chapter 1 footage to use `capture-live.spec.ts` output frame 02 as fallback for `capture-chapter1` mock server limitation).
 > Phase 4: Not started.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
@@ -371,6 +371,15 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r14 (2026-11-13):** Verified both capture tests pass with `PLAYWRIGHT_BUILD=1`.
+  - `capture-chapter1.spec.ts`: 1 passed (25.4s) — Chapter 1 live-open capture works via `openSession` → `mockWorkspace`
+  - `capture-live.spec.ts`: 1 passed (58.8s) — Full 43-frame live demo recording works
+  - Benchmark fixture in `packages/app/perf/fixtures/graph.ts` already uses `mockGraphSession` with proper plugin host init (matching e2e pattern)
+  - Strobe `--plan` works headless; timed runs blocked on worktree monorepo setup (escalated — requires strobe config to use main repo's node_modules or turborepo remote cache)
+  - Listener-leak probe not started — needs dedicated e2e test that opens/closes graph surface N times, asserts no listener growth
+  - Video review blocked: needs ≥3 outside reviewers per `study-protocol.md` and the 8 chapter mp4s
+  - Phase 4 study not started: needs n≥5 participants, tasks mapped to Phase 0 jobs (Diagnose, Audit, Delegate)
 
 - **r13 (2026-11-13):** Phase 1R capture tests passing; benchmark fixture fixed to use full plugin host init.
   - `capture-chapter1.spec.ts` and `capture-live.spec.ts` both pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` pattern (full plugin host init)
