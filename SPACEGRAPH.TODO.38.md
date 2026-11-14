@@ -125,7 +125,14 @@ Two waves: film what exists, then build and film the new capabilities.
 - [x] **P0.2 — Film scenario 1 only, then get sign-off.** "I need to know why the build broke":
       attention badge → Why → readable failed `bun test` error. This is the cheapest proof that the
       scenario format communicates. Do not film the rest until the owner accepts the format.
-- [ ] **P0.3 — Film scenarios 2–8.** One take each, stable framing, readable outcome.
+- [x] **P0.3 — Film scenarios 2–7.** Implemented and passing as automated e2e captures:
+      - Scenario 2: "I need to find the call that caused the failure" — search → trace=led-here
+      - Scenario 3: "I need to see what the subagent actually did" — tree layout → subagent → trace=related
+      - Scenario 4: "I need to verify the fix before I merge" — reviewer lens → files rail → diff
+      - Scenario 5: "I need to hand this to a teammate" — cartographer lens → permalink command
+      - Scenario 6: "I need to audit a long session fast" — auditor lens → matrix layout → compaction badge
+      - Scenario 7: "I need to know what this run cost" — cost lens → lanes → highest-cost node
+- [ ] **P0.3 (cont.) — Scenario 8.** Requires transcript surface with inline preview (flag-gated surface, not available in test env). Parked for now.
 - [ ] **P0.4 — Findings per scenario.** From inspected frames only; each cites the scenario and frame.
 - [ ] **P0.5 — Review gate per scenario.** Owner sign-off on goal clarity and outcome legibility.
 
