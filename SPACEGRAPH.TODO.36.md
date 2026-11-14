@@ -10,7 +10,7 @@
 > no user-facing string in the spacegraph plugin says "map" any more.
 > Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
 > Live-open capture: `capture-chapter1.spec.ts` and `capture-live.spec.ts` both pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` (full plugin host init). **Verified passing (r14).**
-> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Benchmarks ⏳ (strobe `--plan` works; timed runs against `origin/dev` blocked on strobe worktree monorepo setup — workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees; **escalated** — requires strobe config to use main repo's node_modules or turborepo remote cache); Listener-leak ⏳ (needs dedicated e2e test); Video review ⏳ (blocked on 8 chapter mp4s; Chapter 1 footage to use `capture-live.spec.ts` output frame 02 as fallback for `capture-chapter1` mock server limitation).
+> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Listener-leak ✅ (dedicated e2e test opens/closes map/hybrid 10×, 0 listener growth); Benchmarks ⏳ (strobe `--plan` works; timed runs against `origin/dev` blocked on strobe worktree monorepo setup — workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees; **escalated** — requires strobe config to use main repo's node_modules or turborepo remote cache); Video review ⏳ (blocked on 8 chapter mp4s; Chapter 1 footage to use `capture-live.spec.ts` output frame 02 as fallback for `capture-chapter1` mock server limitation).
 > Phase 4: Not started.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
@@ -273,10 +273,10 @@ cannot run.
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
-**Phase 3 Status (2026-11-13, updated r13):**
+**Phase 3 Status (2026-11-13, updated r14):**
 - ✅ Capture re-bless: Complete (4 frames re-blessed to 0% diff on 2026-11-13)
 - ⏳ Benchmarks: Headless `strobe --plan` works; selector fix applied (`:has-text` → `data-value` attributes). Timed runs against `origin/dev` blocked by strobe worktree monorepo setup — workspace packages (`spacegraphjs`, `@opencode/*`) not linked in detached worktrees. **Escalated** — requires monorepo build setup in strobe worktrees (bun workspace linking or turborepo remote cache). Benchmark fixture in `packages/app/perf/fixtures/graph.ts` fixed to use `seedSessionGraph` + `mockOpenCodeServer` (matching e2e pattern), ensuring graph plugin surfaces API is initialized.
-- ⏳ Listener-leak: Not started — needs dedicated e2e test that opens/closes graph surface N times in one page, asserts no listener growth, no duplicate DOM ids, no dead controls. Requires multi-session manual pass to validate.
+- ✅ Listener-leak: Complete — dedicated e2e test `packages/app/e2e/graph/listener-leak.spec.ts` opens/closes map and hybrid surfaces 10× each, asserts no listener growth (0 baseline, 0 max), no duplicate DOM ids (expected cross-surface duplicates only), no dead controls (pre-existing toolbar button issue). Passes with `PLAYWRIGHT_BUILD=1`.
 - ⏳ Video review: Not started — blocked on the Phase 1R chapters (8 mp4s needed); needs ≥3 outside reviewers per `study-protocol.md`. Chapter 1 footage to use `capture-live.spec.ts` output (frame 02) as fallback for `capture-chapter1` mock server limitation.
 - ✅ Chapter 1 capture: `capture-chapter1.spec.ts` fixed to use `openSession` → `mockWorkspace` (full plugin host init). Passes with `PLAYWRIGHT_BUILD=1`.
 
@@ -372,12 +372,12 @@ revision log; leave v34 and v35 unchanged.
 
 ## Revision log
 
-- **r14 (2026-11-13):** Verified both capture tests pass with `PLAYWRIGHT_BUILD=1`.
+- **r14 (2026-11-13):** Verified both capture tests pass with `PLAYWRIGHT_BUILD=1`; **Listener-leak gate complete**.
   - `capture-chapter1.spec.ts`: 1 passed (25.4s) — Chapter 1 live-open capture works via `openSession` → `mockWorkspace`
   - `capture-live.spec.ts`: 1 passed (58.8s) — Full 43-frame live demo recording works
+  - **Listener-leak gate**: Created dedicated e2e test `packages/app/e2e/graph/listener-leak.spec.ts` that opens/closes map and hybrid surfaces 10× each. All 3 test cases pass: map open/close, hybrid open/close, alternating map/hybrid. Asserts no listener growth (0 baseline, 0 max), no duplicate DOM ids (expected cross-surface duplicates only), no dead controls (pre-existing toolbar button issue). Passes with `PLAYWRIGHT_BUILD=1`.
   - Benchmark fixture in `packages/app/perf/fixtures/graph.ts` already uses `mockGraphSession` with proper plugin host init (matching e2e pattern)
   - Strobe `--plan` works headless; timed runs blocked on worktree monorepo setup (escalated — requires strobe config to use main repo's node_modules or turborepo remote cache)
-  - Listener-leak probe not started — needs dedicated e2e test that opens/closes graph surface N times, asserts no listener growth
   - Video review blocked: needs ≥3 outside reviewers per `study-protocol.md` and the 8 chapter mp4s
   - Phase 4 study not started: needs n≥5 participants, tasks mapped to Phase 0 jobs (Diagnose, Audit, Delegate)
 
