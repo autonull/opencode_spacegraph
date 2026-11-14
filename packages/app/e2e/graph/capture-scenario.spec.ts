@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { expect, test as base, type Page } from "@playwright/test"
-import { buildFixtureMessages } from "@opencode/session-ui/graph"
+import { buildNarrativeFixtureMessages } from "@opencode/session-ui/graph"
 import { trackPageErrors } from "../utils/errors"
 import { seedSessionGraph } from "../utils/graph"
 import { openSession } from "../utils/workspace"
@@ -38,7 +38,7 @@ function graphFixture() {
     name: "ScenarioGraph",
     directory,
     sessions: [{ id: sessionID, title: "Scenario graph" }],
-    pageMessages: () => ({ items: buildFixtureMessages() }),
+    pageMessages: () => ({ items: buildNarrativeFixtureMessages() }),
   }
 }
 
@@ -251,7 +251,7 @@ async function clickPermalink(page: Page) {
  * Scenario 1: "I need to know why the build broke"
  * 
  * Start: lanes, execution level, nothing selected
- * Actions: click attention badge -> click "Why"
+ * Actions: search for failed result -> click "Why"
  * Legible: the failed `bun test` line and its error text (assertion message, file:line)
  * Hold: 4 s, zoomed so the error fills the lower third
  * Duration: 8 s
@@ -264,17 +264,9 @@ async function runScenario1(page: Page) {
   flowWallStart = Date.now()
   recordMark("scenario-1-01-open")
 
-  // Open the graph panel first to show the attention badge
-  await pace(500)
-  recordMark("scenario-1-02-attention-badge-visible")
-
-  // Click the attention badge in the titlebar (the failure count button)
-  // This is the TitlebarItem with id "graph-failures"
-  const attentionButton = page.getByRole("button", { name: "Open the session map at the failure" })
-  await expect(attentionButton).toBeVisible({ timeout: 10000 })
-  await attentionButton.click()
-  await pace(800)
-  recordMark("scenario-1-03-attention-clicked")
+  // Search for the failed result
+  await searchAndSelect(page, "failed", "result:prt_narr_shell_2")
+  recordMark("scenario-1-02-failure-selected")
 
   // Click "Why" button in the inspector to activate trace=why
   const whyButton = page.locator(inspector).getByRole("button", { name: "Why", exact: true })
@@ -282,11 +274,11 @@ async function runScenario1(page: Page) {
   await whyButton.click()
   await waitForStillCanvas(page)
   await pace(500)
-  recordMark("scenario-1-04-why-trace-active")
+  recordMark("scenario-1-03-why-trace-active")
 
   // Hold on the outcome - the causal chain ending in the failed bun test error
   await pace(4000)
-  recordMark("scenario-1-05-hold-outcome")
+  recordMark("scenario-1-04-hold-outcome")
 }
 
 /**
@@ -306,16 +298,9 @@ async function runScenario2(page: Page) {
   flowWallStart = Date.now()
   recordMark("scenario-2-01-open")
 
-  // Click attention badge to open graph at failure
-  const attentionButton = page.getByRole("button", { name: "Open the session map at the failure" })
-  await expect(attentionButton).toBeVisible({ timeout: 10000 })
-  await attentionButton.click()
-  await pace(800)
-
-  // Trace=why is already active from scenario 1's end state
-  // Search for "failed" to find the failure node (the tool that failed)
-  await searchAndSelect(page, "failed", "tool:prt_tool_shell_2")
-  recordMark("scenario-2-02-failure-tool-selected")
+  // Search for "failed" to find the failure node (the first failed result)
+  await searchAndSelect(page, "failed", "result:prt_narr_shell_1")
+  recordMark("scenario-2-02-failure-result-selected")
 
   // Click "Led here" to follow the edge back to the caller
   await clickTraceButton(page, "Led here")
@@ -345,8 +330,8 @@ async function runScenario3(page: Page) {
   flowWallStart = Date.now()
   recordMark("scenario-3-01-open")
 
-  // Search for subagent tool node
-  await searchAndSelect(page, "subagent", "prt_tool_subagent_1")
+  // Search for subagent node
+  await searchAndSelect(page, "subagent", "sub:ses_child_verify")
   recordMark("scenario-3-02-subagent-selected")
 
   // Click to expand delegates (the subagent node should show its children)
@@ -414,8 +399,8 @@ async function runScenario5(page: Page) {
   flowWallStart = Date.now()
   recordMark("scenario-5-01-open")
 
-  // Select a target node (the failed test result)
-  await searchAndSelect(page, "FAIL", "result:prt_tool_shell_2")
+  // Select a target node (the root cause finding)
+  await searchAndSelect(page, "root cause", "msg_narr_cause_1:text:0")
   recordMark("scenario-5-02-node-selected")
 
   // Copy permalink

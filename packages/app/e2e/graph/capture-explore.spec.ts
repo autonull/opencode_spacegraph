@@ -17,14 +17,14 @@ const test = base.extend({
   },
 })
 
-// Explorations are opt-in. The take is the artifact; marks name the beats so
+// Scenario captures are opt-in. The take is the artifact; marks name the beats so
 // stills and commentary can be cut from the same recording.
-test.skip(!process.env.GRAPH_EXPLORE_DEMO, "Exploration take; set GRAPH_EXPLORE_DEMO=1")
+test.skip(!process.env.GRAPH_EXPLORE_DEMO, "Scenario capture; set GRAPH_EXPLORE_DEMO=1")
 
-const theme = process.env.GRAPH_EXPLORE_THEME ?? "diagnose"
+const scenario = Number(process.env.GRAPH_EXPLORE_SCENARIO ?? "1")
 const seed = Number(process.env.GRAPH_EXPLORE_SEED ?? "1")
-const directory = `C:/OpenCode/Explore/${theme}`
-const sessionID = `ses_explore_${theme}`
+const directory = `C:/OpenCode/Explore/scenario-${scenario}`
+const sessionID = `ses_explore_scenario_${scenario}`
 const toolbar = '[data-slot="graph-toolbar"]'
 const inspector = '[data-slot="graph-inspector"]'
 const canvasHost = '[data-slot="graph-canvas-host"]'
@@ -37,9 +37,9 @@ function filterKnownErrors(errs: string[]): string[] {
 
 function graphFixture() {
   return {
-    name: `SessionGraphExplore-${theme}`,
+    name: `SessionGraphScenario-${scenario}`,
     directory,
-    sessions: [{ id: sessionID, title: `Exploration (${theme})` }],
+    sessions: [{ id: sessionID, title: `Scenario ${scenario}` }],
     pageMessages: () => ({ items: buildNarrativeFixtureMessages() }),
   }
 }
@@ -63,7 +63,7 @@ function recordMark(name: string) {
   if (!flowWallStart) return
   frameMarks.push({ frame: name, elapsed: (Date.now() - flowWallStart) / 1000 })
   mkdirSync(videoDir, { recursive: true })
-  writeFileSync(resolve(videoDir, `marks-explore-${theme}.json`), JSON.stringify(frameMarks, null, 2))
+  writeFileSync(resolve(videoDir, `marks-scenario-${scenario}.json`), JSON.stringify(frameMarks, null, 2))
 }
 
 /** Authored performance time, not a synchronization primitive. */
@@ -148,10 +148,8 @@ async function zoomCanvas(page: Page, at: { x: number; y: number }, delta: numbe
   await pace(500)
 }
 
-async function canvasBox(page: Page) {
-  const box = await page.locator(canvasHost).boundingBox()
-  if (!box) throw new Error("graph canvas has no box")
-  return box
+function canvasBox(page: Page) {
+  return page.locator(canvasHost).boundingBox()
 }
 
 function pointIn(box: { x: number; y: number; width: number; height: number }, rnd: () => number) {
@@ -162,12 +160,11 @@ function pointIn(box: { x: number; y: number; width: number; height: number }, r
 }
 
 /**
- * Camera beat helpers for cinematic exploration takes.
- * Each beat is 3–5 s of deliberate motion; no freezes, no feature lists.
+ * Camera beat helpers for scenario captures.
+ * Each beat is deliberate motion between evidence; stillness holds on the answer.
  */
 
 async function pushIn(page: Page, nodeId: string, durationMs = 3000) {
-  // Smooth zoom toward a specific node (push-in)
   await page.evaluate(
     async ({ id, ms }) => {
       const app = (window as any).__opencodeApp
@@ -185,8 +182,25 @@ async function pushIn(page: Page, nodeId: string, durationMs = 3000) {
   await pace(durationMs)
 }
 
+async function whipToNode(page: Page, nodeId: string, durationMs = 2000) {
+  await page.evaluate(
+    async ({ id, ms }) => {
+      const app = (window as any).__opencodeApp
+      const graph = app?.graph
+      const node = graph?.model?.nodes?.find((n: any) => n.id === id)
+      if (!node) return
+      const camera = graph?.renderer?.cameraControls
+      if (!camera) return
+      const target = new (await import("three")).Vector3(...node.position)
+      const distance = camera.camera.position.length()
+      camera.flyTo(target, distance, ms / 1000)
+    },
+    { id: nodeId, ms: durationMs },
+  )
+  await pace(durationMs)
+}
+
 async function orbitDrift(page: Page, phiDelta: number, thetaDelta: number, durationMs = 4000) {
-  // Orbit drift: rotate camera around the scene
   await page.evaluate(
     async ({ phi, theta, ms }) => {
       const app = (window as any).__opencodeApp
@@ -206,27 +220,7 @@ async function orbitDrift(page: Page, phiDelta: number, thetaDelta: number, dura
   await pace(durationMs)
 }
 
-async function whipToNode(page: Page, nodeId: string, durationMs = 2000) {
-  // Quick camera move to a node (whip pan)
-  await page.evaluate(
-    async ({ id, ms }) => {
-      const app = (window as any).__opencodeApp
-      const graph = app?.graph
-      const node = graph?.model?.nodes?.find((n: any) => n.id === id)
-      if (!node) return
-      const camera = graph?.renderer?.cameraControls
-      if (!camera) return
-      const target = new (await import("three")).Vector3(...node.position)
-      const distance = camera.camera.position.length()
-      camera.flyTo(target, distance, ms / 1000)
-    },
-    { id: nodeId, ms: durationMs },
-  )
-  await pace(durationMs)
-}
-
 async function traceReveal(page: Page, startNodeId: string, maxHops = 2, durationMs = 5000) {
-  // Reveal connected nodes by following edges outward (trace reveal)
   await page.evaluate(
     async ({ startId, hops, ms }) => {
       const app = (window as any).__opencodeApp
@@ -250,7 +244,6 @@ async function traceReveal(page: Page, startNodeId: string, maxHops = 2, duratio
           if (!visited.has(nextId)) queue.push({ id: nextId, depth: depth + 1 })
         }
       }
-      // Select nodes sequentially with delays
       for (let i = 0; i < nodesToSelect.length; i++) {
         graph.selection.select([nodesToSelect[i]])
         await new Promise((r) => setTimeout(r, ms / nodesToSelect.length))
@@ -261,225 +254,197 @@ async function traceReveal(page: Page, startNodeId: string, maxHops = 2, duratio
   await pace(durationMs)
 }
 
-const layouts = ["lanes", "timeline", "hierarchy", "tree", "force", "grid", "circular", "ribbon", "matrix"]
-const queries = ["failed result", "token.ts", "session.ts", "explore", "subagent", "compaction"]
+async function clickWhyButton(page: Page) {
+  await page.locator(inspector).getByRole("button", { name: "Why" }).click()
+  await pace(900)
+}
 
-/**
- * Detours are the improvisation. Each one is a valid interaction the UI
- * supports, chosen by the seed, kept in the take even when it flounders.
- */
-async function detour(page: Page, rnd: () => number) {
-  const roll = rnd()
-  const box = await canvasBox(page)
-  if (roll < 0.25) {
-    await pickLayout(page, layouts[Math.floor(rnd() * layouts.length)])
-    await pace(400 + rnd() * 800)
-    return
-  }
-  if (roll < 0.4) {
-    await chooseDepth(page, rnd() > 0.5 ? "orbit" : "flat")
-    await pace(500 + rnd() * 900)
-    return
-  }
-  if (roll < 0.55) {
-    const query = queries[Math.floor(rnd() * queries.length)]
-    await page.locator('[data-slot="graph-canvas-region"]').focus()
-    await page.keyboard.press("/")
-    const search = page.getByRole("dialog", { name: "Search" })
-    await search.getByRole("combobox").fill(query)
-    await pace(700 + rnd() * 800)
-    await page.keyboard.press("Escape")
-    return
-  }
-  if (roll < 0.7) {
-    await dragCanvas(page, pointIn(box, rnd), pointIn(box, rnd), 14 + Math.floor(rnd() * 12))
-    await pace(400)
-    return
-  }
-  if (roll < 0.85) {
-    await zoomCanvas(page, pointIn(box, rnd), rnd() > 0.5 ? -240 : 240)
-    return
-  }
-  await hoverCanvas(page, pointIn(box, rnd), pointIn(box, rnd), 20 + Math.floor(rnd() * 20))
-  await pace(300)
+async function selectFilesRailFile(page: Page, filePath: string) {
+  // Files rail is in the panel; click the file item
+  await page.locator('[data-slot="graph-files-rail"]').getByRole("button", { name: filePath }).click()
+  await pace(500)
+}
+
+async function openDiff(page: Page) {
+  // Click the diff button/tool in inspector
+  await page.locator(inspector).getByRole("button", { name: "Diff" }).click()
+  await pace(800)
+}
+
+async function copyPermalink(page: Page) {
+  await page.locator('[data-slot="graph-toolbar"]').getByRole("button", { name: "Copy link" }).click()
+  await pace(500)
+}
+
+async function toggleCostLens(page: Page) {
+  await page.evaluate(() => {
+    const app = (window as any).__opencodeApp
+    app?.graph?.setCostLens?.(true)
+  })
+  await pace(500)
+}
+
+async function toggleAuditorLens(page: Page) {
+  await page.evaluate(() => {
+    const app = (window as any).__opencodeApp
+    app?.graph?.setAuditorLens?.(true)
+  })
+  await pace(500)
+}
+
+async function enableMatrixLayout(page: Page) {
+  await page.evaluate(() => {
+    const app = (window as any).__opencodeApp
+    app?.graph?.setFlag?.("graph_layout_breadth", true)
+  })
+  await pace(500)
+}
+
+async function pickLayoutByName(page: Page, layout: string) {
+  await pickLayout(page, layout)
+  await pace(500)
 }
 
 test.describe.configure({ retries: 0, mode: "serial" })
 
-test(`Exploration — ${theme} (seed ${seed})`, async ({ page }) => {
+test(`Scenario ${scenario} capture (seed ${seed})`, async ({ page }) => {
   test.setTimeout(900_000)
   const errors = trackPageErrors(page)
   const rnd = random(seed)
-  await page.emulateMedia({ reducedMotion: "no-preference", colorScheme: theme === "night" ? "light" : "dark" })
+  await page.emulateMedia({ reducedMotion: "no-preference", colorScheme: "dark" })
 
   await openSession(page, graphFixture())
   await openGraph(page)
   await fit(page)
   await syncBeacon(page)
   flowWallStart = Date.now()
-  recordMark(`${theme}-00-open`)
+  recordMark(`scenario-${scenario}-00-open`)
 
-  if (theme === "diagnose") {
+  // Scenario 1: "I need to know why the build broke."
+  // Start: attention badge → Why → readable failed `bun test` error
+  if (scenario === 1) {
     await searchAndFocus(page, "result:prt_narr_shell_2", "failed result")
+    recordMark(`scenario-1-01-failure-focused`)
     await expect(page.locator(inspector).getByRole("heading", { name: "failed" })).toBeVisible({ timeout: 10000 })
-    recordMark(`${theme}-01-failure`)
-    await page.locator(inspector).getByRole("button", { name: "Why" }).click()
-    await pace(900)
-    recordMark(`${theme}-02-why-trace`)
-    // Camera beats: push-in to failure node, then trace reveal
+    await clickWhyButton(page)
+    recordMark(`scenario-1-02-why-trace`)
+    // Camera beat: push-in to failure node
     await pushIn(page, "result:prt_narr_shell_2", 3000)
-    recordMark(`${theme}-03-push-in`)
+    recordMark(`scenario-1-03-push-in`)
+    // Trace reveal to show causal chain
     await traceReveal(page, "result:prt_narr_shell_2", 2, 4000)
-    recordMark(`${theme}-04-trace-reveal`)
-    await detour(page, rnd)
-    await fit(page)
-    recordMark(`${theme}-05-recover`)
+    recordMark(`scenario-1-04-trace-reveal`)
+    // Hold on the evidence
+    await pace(4000)
+    recordMark(`scenario-1-05-hold`)
   }
 
-  if (theme === "audit") {
-    await pickLayout(page, "timeline")
-    await pace(700)
-    recordMark(`${theme}-01-timeline`)
-    // Camera beat: orbit drift in timeline view
-    await orbitDrift(page, 0.1, 0.2, 4000)
-    recordMark(`${theme}-02-orbit-drift`)
-    // First failure: wrong fix (extended token lifetime)
+  // Scenario 2: "I need to find the call that caused the failure."
+  // Start: search "failed" → focus → follow `sequence` back → the exact result node and its command input
+  if (scenario === 2) {
     await searchAndFocus(page, "result:prt_narr_shell_1", "FAIL")
-    recordMark(`${theme}-03-wrong-fix`)
-    // Second failure: still failing after wrong fix
-    await searchAndFocus(page, "result:prt_narr_shell_2", "FAIL")
-    recordMark(`${theme}-04-still-failing`)
-    // Success: correct fix (stored rotated token)
-    await searchAndFocus(page, "result:prt_narr_shell_3", "pass")
-    recordMark(`${theme}-05-correct-fix`)
-    // Camera beat: whip to success result
-    await whipToNode(page, "result:prt_narr_shell_3", 2000)
-    recordMark(`${theme}-06-whip-to-fix`)
-    await detour(page, rnd)
-    recordMark(`${theme}-07-detour`)
+    recordMark(`scenario-2-01-first-failure`)
+    await clickWhyButton(page)
+    recordMark(`scenario-2-02-led-here-trace`)
+    await whipToNode(page, "result:prt_narr_shell_1", 2000)
+    recordMark(`scenario-2-03-whip-to-result`)
+    // Trace reveal to show led-here chain
+    await traceReveal(page, "result:prt_narr_shell_1", 3, 5000)
+    recordMark(`scenario-2-04-trace-chain`)
+    // Hold on the exact result node with command input visible
+    await pace(4000)
+    recordMark(`scenario-2-05-hold`)
   }
 
-  if (theme === "chaos") {
-    // Opening: push-in to show full graph context
-    await pushIn(page, "session", 4000)
-    recordMark(`${theme}-01-push-in`)
-    for (let i = 0; i < 10; i++) {
-      await detour(page, rnd)
-      recordMark(`${theme}-${String(i + 2).padStart(2, "0")}-detour`)
-      // Periodic orbit drift for cinematic motion
-      if (i % 3 === 2) {
-        await orbitDrift(page, 0.15, 0.3, 3000)
-        recordMark(`${theme}-${String(i + 2).padStart(2, "0")}-orbit`)
-      }
-    }
-    await fit(page)
-    recordMark(`${theme}-13-fit`)
-  }
-
-  if (theme === "night") {
-    await pickLayout(page, "hierarchy")
-    await pace(800)
-    recordMark(`${theme}-01-hierarchy`)
-    // Camera beat: orbit drift in light mode
-    await orbitDrift(page, 0.2, 0.4, 5000)
-    recordMark(`${theme}-02-orbit-drift`)
-    await detour(page, rnd)
-    await searchAndFocus(page, "result:prt_narr_shell_2", "failed result")
-    recordMark(`${theme}-03-failure`)
-    await whipToNode(page, "result:prt_narr_shell_2", 2500)
-    recordMark(`${theme}-04-whip-to-failure`)
-    await fit(page)
-    recordMark(`${theme}-05-fit`)
-  }
-
-  if (theme === "delegate") {
-    // Who did the work - focus on subagent nodes
-    await pickLayout(page, "tree")
-    await pace(700)
-    recordMark(`${theme}-01-tree`)
+  // Scenario 3: "I need to see what the subagent actually did."
+  // Start: tree layout → subagent node → trace=related → the subagent's reads and finding
+  if (scenario === 3) {
+    await pickLayoutByName(page, "tree")
+    recordMark(`scenario-3-01-tree-layout`)
     await searchAndFocus(page, "sub:ses_child_verify", "subagent")
-    recordMark(`${theme}-02-subagent`)
+    recordMark(`scenario-3-02-subagent-focused`)
     await whipToNode(page, "sub:ses_child_verify", 2000)
-    recordMark(`${theme}-03-whip-to-subagent`)
+    recordMark(`scenario-3-03-whip-to-subagent`)
+    // Trace related to show what the subagent did
     await traceReveal(page, "sub:ses_child_verify", 3, 5000)
-    recordMark(`${theme}-04-trace-subagent`)
-    await detour(page, rnd)
-    recordMark(`${theme}-05-detour`)
-    await fit(page)
-    recordMark(`${theme}-06-fit`)
+    recordMark(`scenario-3-04-related-trace`)
+    // Hold on subagent's reads and finding
+    await pace(4000)
+    recordMark(`scenario-3-05-hold`)
   }
 
-  if (theme === "trust") {
-    // Trust but verify - focus on unverified nodes
-    await pickLayout(page, "hierarchy")
-    await pace(700)
-    recordMark(`${theme}-01-hierarchy`)
-    // Enable trust lens if available
-    await page.evaluate(() => {
-      const app = (window as any).__opencodeApp
-      app?.graph?.setTrustLens?.(true)
-    })
-    await pace(500)
-    recordMark(`${theme}-02-trust-lens`)
-    await orbitDrift(page, 0.1, 0.15, 4000)
-    recordMark(`${theme}-03-orbit-drift`)
-    await detour(page, rnd)
-    recordMark(`${theme}-04-detour`)
-    await fit(page)
-    recordMark(`${theme}-05-fit`)
+  // Scenario 4: "I need to verify the fix before I merge."
+  // Start: reviewer lens (files rail visible), detail level → select changed file → open diff → toggle wrong/correct fix
+  if (scenario === 4) {
+    await pickLayoutByName(page, "tree")
+    recordMark(`scenario-4-01-tree-layout`)
+    // Files rail should be visible in reviewer lens
+    await selectFilesRailFile(page, "src/auth/session.ts")
+    recordMark(`scenario-4-02-file-selected`)
+    await openDiff(page)
+    recordMark(`scenario-4-03-diff-open`)
+    // The diff should show wrong fix vs correct fix
+    await pace(4000)
+    recordMark(`scenario-4-04-hold-diff`)
   }
 
-  if (theme === "cost") {
-    // Follow the money - focus on cost nodes
-    await pickLayout(page, "lanes")
-    await pace(700)
-    recordMark(`${theme}-01-lanes`)
-    await page.evaluate(() => {
-      const app = (window as any).__opencodeApp
-      app?.graph?.setCostLens?.(true)
-    })
-    await pace(500)
-    recordMark(`${theme}-02-cost-lens`)
-    await pushIn(page, "session", 3000)
-    recordMark(`${theme}-03-push-in`)
-    await detour(page, rnd)
-    recordMark(`${theme}-04-detour`)
-    await fit(page)
-    recordMark(`${theme}-05-fit`)
+  // Scenario 5: "I need to hand this to a teammate."
+  // Start: cartographer lens, any layout, target node in view → select target → copy permalink → URL visible
+  if (scenario === 5) {
+    await pickLayoutByName(page, "tree")
+    recordMark(`scenario-5-01-tree-layout`)
+    await searchAndFocus(page, "msg_narr_cause_1:text:0", "root cause")
+    recordMark(`scenario-5-02-target-focused`)
+    await whipToNode(page, "msg_narr_cause_1:text:0", 2000)
+    recordMark(`scenario-5-03-whip-to-target`)
+    await copyPermalink(page)
+    recordMark(`scenario-5-04-permalink-copied`)
+    // Toast/notification should show the #graph:<node-id> URL
+    await pace(3000)
+    recordMark(`scenario-5-05-hold-url`)
   }
 
-  if (theme === "handoff") {
-    // Give it away - focus on share message
-    await pickLayout(page, "timeline")
-    await pace(700)
-    recordMark(`${theme}-01-timeline`)
-    await searchAndFocus(page, "msg_narr_share_1:text:0", "share")
-    recordMark(`${theme}-02-share-search`)
-    await whipToNode(page, "msg_narr_share_1:text:0", 2000)
-    recordMark(`${theme}-03-whip-to-share`)
-    await detour(page, rnd)
-    recordMark(`${theme}-04-detour`)
+  // Scenario 6: "I need to audit a long session fast."
+  // Start: auditor lens, matrix layout, overview level → observe compaction drops indicator
+  if (scenario === 6) {
+    await toggleAuditorLens(page)
+    recordMark(`scenario-6-01-auditor-lens`)
+    await enableMatrixLayout(page)
+    recordMark(`scenario-6-02-matrix-layout`)
+    await pickLayoutByName(page, "matrix")
+    recordMark(`scenario-6-03-matrix-picked`)
     await fit(page)
-    recordMark(`${theme}-05-fit`)
+    recordMark(`scenario-6-04-fit-overview`)
+    // Hold on full matrix view with compaction badge
+    await pace(5000)
+    recordMark(`scenario-6-05-hold-matrix`)
   }
 
-  if (theme === "return") {
-    // Tomorrow - focus on session continuity
-    await pickLayout(page, "lanes")
-    await pace(700)
-    recordMark(`${theme}-01-lanes`)
-    await orbitDrift(page, 0.15, 0.3, 4000)
-    recordMark(`${theme}-02-orbit-drift`)
-    await pushIn(page, "session", 3000)
-    recordMark(`${theme}-03-push-in`)
-    await detour(page, rnd)
-    recordMark(`${theme}-04-detour`)
-    await fit(page)
-    recordMark(`${theme}-05-fit`)
+  // Scenario 7: "I need to know what this run cost."
+  // Start: cost lens, lanes layout, execution level → scan for highest-cost nodes
+  if (scenario === 7) {
+    await toggleCostLens(page)
+    recordMark(`scenario-7-01-cost-lens`)
+    await pickLayoutByName(page, "lanes")
+    recordMark(`scenario-7-02-lanes-layout`)
+    await chooseDepth(page, "flat")
+    recordMark(`scenario-7-03-flat-depth`)
+    // Hold on highest-cost node with tooltip
+    await pace(4000)
+    recordMark(`scenario-7-04-hold-cost`)
   }
 
-  if (!["diagnose", "audit", "chaos", "night", "delegate", "trust", "cost", "handoff", "return"].includes(theme)) {
-    throw new Error(`unknown GRAPH_EXPLORE_THEME=${theme} (diagnose|audit|chaos|night|delegate|trust|cost|handoff|return)`)
+  // Scenario 8: "I need to read a turn without leaving the transcript."
+  // Start: reader lens, transcript surface, inline preview → hover turn row → expand
+  if (scenario === 8) {
+    // This requires the transcript surface with inline preview
+    // For now, park this scenario as it needs the hybrid surface
+    recordMark(`scenario-8-01-parked`)
+    await pace(1000)
+  }
+
+  if (scenario < 1 || scenario > 8) {
+    throw new Error(`unknown GRAPH_EXPLORE_SCENARIO=${scenario} (1-8)`)
   }
 
   await pace(800)

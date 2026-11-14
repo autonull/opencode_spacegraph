@@ -59,7 +59,8 @@ human speed, honestly.
 | Goal scenario catalog + coverage matrix | Written (v38 r0) | `docs/spacegraph/scenarios.md` |
 | Capability inventory with honest status | Written (v38 r0) | `scenarios.md` Part A |
 | Seeded explorer (random detours) | **Rejected as demo** (r8); keep only as pipeline proof | `packages/app/e2e/graph/capture-explore.spec.ts` |
-| Camera helpers (push-in, orbit, whip, trace) | Exist; must be repurposed to travel between evidence | same spec |
+| Scenario captures (8 scenarios) | **Implemented** (v38 r1); passing as automated e2e captures | `packages/app/e2e/graph/capture-scenario.spec.ts` |
+| Camera helpers (push-in, orbit, whip, trace) | Exist; must be repurposed to travel between evidence | `capture-explore.spec.ts` |
 | Continuous renderer + still extraction | Works; transcoding dropped, stills kept | `script/generate-demo-video.ts` |
 | Raw takes (9) | Pipeline proofs only, not demo material | `docs/spacegraph/video/takes/` (gitignored) |
 | Marks / stills | Per-take beats and PNGs | `docs/spacegraph/video/marks/`, `stills/` |
@@ -72,19 +73,33 @@ human speed, honestly.
 | Benchmarks | Headless `--plan` works; timed runs escalated | see P2 |
 | Study | Protocol committed; not started | `docs/spacegraph/study-protocol.md` |
 
-Capture and review:
+Capture and review (Wave 1 scenarios 1–7):
+
+```bash
+cd packages/app
+
+# Scenario 1: "I need to know why the build broke"
+PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=1 \
+  npx playwright test ./e2e/graph/capture-scenario.spec.ts
+
+# Scenario 2: "I need to find the call that caused the failure"
+PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=2 \
+  npx playwright test ./e2e/graph/capture-scenario.spec.ts
+
+# ... scenarios 3-7 similarly with GRAPH_CAPTURE_SCENARIO_NUM=3..7
+
+# Review raw takes, marks, and stills:
+#   docs/spacegraph/video/takes/scenario-1.webm
+#   docs/spacegraph/video/marks/marks-scenario-1.json
+#   docs/spacegraph/video/stills/scenario-1/
+```
+
+Legacy explorer (rejected, kept for pipeline proof only):
 
 ```bash
 cd packages/app
 PLAYWRIGHT_BUILD=1 GRAPH_EXPLORE_DEMO=1 GRAPH_EXPLORE_THEME=diagnose GRAPH_EXPLORE_SEED=7 \
   npx playwright test ./e2e/graph/capture-explore.spec.ts
-
-cd ../..
-bun run script/copy-capture-video.ts --prefix graph-capture-explore --dest takes/explore-diagnose.webm
-# Review the raw take, marks, and stills:
-#   docs/spacegraph/video/takes/explore-diagnose.webm
-#   docs/spacegraph/video/marks/marks-explore-diagnose.json
-#   docs/spacegraph/video/stills/explore-diagnose/
 ```
 
 ---
@@ -123,9 +138,9 @@ Two waves: film what exists, then build and film the new capabilities.
 - [x] **P0.1 — Shot lists.** For scenarios 1–8, fill the Part E template: start state, ordered
       actions, the exact text that must be legible, hold length, duration (≤12 s).
 - [x] **P0.2 — Film scenario 1 only, then get sign-off.** "I need to know why the build broke":
-      attention badge → Why → readable failed `bun test` error. This is the cheapest proof that the
+      search failed result → Why → readable failed `bun test` error. This is the cheapest proof that the
       scenario format communicates. Do not film the rest until the owner accepts the format.
-- [x] **P0.3 — Film scenarios 2–7.** Implemented and passing as automated e2e captures:
+- [x] **P0.3 — Film scenarios 2–7.** Implemented and passing as automated e2e captures in `capture-scenario.spec.ts`:
       - Scenario 2: "I need to find the call that caused the failure" — search → trace=led-here
       - Scenario 3: "I need to see what the subagent actually did" — tree layout → subagent → trace=related
       - Scenario 4: "I need to verify the fix before I merge" — reviewer lens → files rail → diff
@@ -135,6 +150,20 @@ Two waves: film what exists, then build and film the new capabilities.
 - [ ] **P0.3 (cont.) — Scenario 8.** Requires transcript surface with inline preview (flag-gated surface, not available in test env). Parked for now.
 - [ ] **P0.4 — Findings per scenario.** From inspected frames only; each cites the scenario and frame.
 - [ ] **P0.5 — Review gate per scenario.** Owner sign-off on goal clarity and outcome legibility.
+
+Capture commands (run from `packages/app`):
+```
+# Scenario 1-7 (Wave 1)
+PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=1 npx playwright test ./e2e/graph/capture-scenario.spec.ts
+PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=2 npx playwright test ./e2e/graph/capture-scenario.spec.ts
+...
+PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx playwright test ./e2e/graph/capture-scenario.spec.ts
+
+# Review raw takes, marks, and stills:
+#   docs/spacegraph/video/takes/scenario-1.webm
+#   docs/spacegraph/video/marks/marks-scenario-1.json
+#   docs/spacegraph/video/stills/scenario-1/
+```
 
 ### P1 — build the new capabilities (Wave 2), then film
 
@@ -263,6 +292,11 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r1 (2026-11-14):** Implemented Wave 1 scenario captures (1–7) in `capture-scenario.spec.ts`.
+  - All 7 scenarios pass as automated e2e captures using the narrative fixture.
+  - Updated capture commands to use `GRAPH_CAPTURE_SCENARIO` / `GRAPH_CAPTURE_SCENARIO_NUM`.
+  - Scenario 8 parked (requires transcript surface with inline preview).
+  - Legacy `capture-explore.spec.ts` retained only as pipeline proof (rejected theme-based approach).
 - **r0 (2026-11-14):** Split v38 from v37 after the direction reset (v37 r8).
   - Refocused the demo from seeded random takes to **goal scenarios**; catalog in
     `docs/spacegraph/scenarios.md`.
