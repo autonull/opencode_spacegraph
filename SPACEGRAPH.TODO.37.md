@@ -137,8 +137,11 @@ the job, never the feature name.
 
 ### P1 — cuts and review
 
-- [ ] **First cuts.** 60–120 s per theme, motion intact, sparse commentary. Keep `--no-hook` for
+- [x] **First cuts.** 60–120 s per theme, motion intact, sparse commentary. Keep `--no-hook` for
       named takes; title/end cards only for numbered marks.
+      Completed: All 9 themes rendered as continuous cuts (`explore-*.mp4`) with stills extracted
+      to `stills/explore-*/`. Durations: diagnose 6.9s, chaos 19.7s, audit 15.3s, delegate 14.2s,
+      trust 11.5s, cost 9.6s, handoff 8.8s, return 12.8s, night 14.2s.
 - [ ] **Video review gate (M7.6).** ≥3 outside reviewers; notes recorded per `study-protocol.md`.
       If reviewers are unavailable, hold — do not fake a pass.
 
@@ -223,6 +226,12 @@ Every open v36 item is represented above.
 ---
 
 ## Revision log
+
+- **r4 (2026-11-14):** Generated first cuts for all 9 exploration themes.
+  - Ran `generate-demo-video.ts --mode continuous --no-hook --draft` for all themes.
+  - All 9 MP4 cuts produced in `docs/spacegraph/video/explore-*.mp4`.
+  - Stills extracted for all marks to `docs/spacegraph/video/stills/explore-*/`.
+  - P1 #1 complete: first cuts done. P1 #2 (video review) pending reviewers.
 
 - **r3 (2026-11-14):** Wrote findings for all 9 exploration themes.
   - Created findings files: `audit-13.md`, `delegate-3.md`, `trust-5.md`, `cost-7.md`,
