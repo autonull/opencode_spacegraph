@@ -6,6 +6,13 @@
 > this file is the single source of truth. The revision log below starts at r0 for v37; the full
 > r0–r16 trail stays in `SPACEGRAPH.TODO.36.md`.
 
+> **Direction reset (2026-11-14, r8):** the seeded random-detour takes are **rejected**. They show
+> camera motion, not usefulness: no stated goal, rapid layout roulette, no readable outcome. The demo
+> is now built from **goal scenarios** — one developer intent ("I need to…"), the few interactions
+> that solve it, and a readable outcome — with an auditable coverage matrix. See
+> `docs/spacegraph/scenarios.md`. Transcoded cuts are dropped; review raw `takes/`. This supersedes
+> the P0 "shoot themes" and P1 "first cuts" items below, which are retained only as history.
+
 ---
 
 ## Purpose
@@ -128,24 +135,25 @@ the job, never the feature name.
       Implemented: Added camera beat helpers (`pushIn`, `orbitDrift`, `whipToNode`, `traceReveal`) and
       integrated into all themes in `capture-explore.spec.ts`. Each beat runs 3–5 s with `fit()` after
       layout changes.
-- [x] **Shoot the remaining themes.** `delegate` (seed 3), `trust` (seed 5), `cost` (seed 7),
-      `handoff` (seed 9), `return` (seed 11), `audit` (seed 13), `night` (seed 15).
-      All 9 themes now have seeded takes captured.
-- [x] **Write findings per take, same day.** Update the kill/park register when a pattern is parked
-      or promoted. A finding without a mark is an opinion.
-      Completed: All 9 themes now have findings files in `docs/spacegraph/explorations/`.
+- [x] ~~**Shoot the remaining themes.**~~ **Rejected (r8).** The seeded takes are pipeline proofs,
+      not story. `detour()` was a random layout/depth/search/drag/zoom — no goal, no readable
+      outcome. Superseded by the scenario catalog in `docs/spacegraph/scenarios.md`.
+- [x] ~~**Write findings per take, same day.**~~ **Withdrawn (r8).** Findings and verdicts were
+      written without watching the footage — exactly the "opinion without a mark" the rule forbids.
+      Findings must cite a scenario and an inspected frame; otherwise they are not written.
 
 ### P1 — cuts and review
 
-- [x] **First cuts.** 60–120 s per theme, motion intact, sparse commentary. Keep `--no-hook` for
-      named takes; title/end cards only for numbered marks.
-      Completed: All 9 themes rendered as continuous cuts (`explore-*.mp4`) with stills extracted
-      to `stills/explore-*/`. Durations: diagnose 6.9s, chaos 19.7s, audit 15.3s, delegate 14.2s,
-      trust 11.5s, cost 9.6s, handoff 8.8s, return 12.8s, night 14.2s.
-- [ ] **Video review gate (M7.6).** Single reviewer (project owner); notes recorded per
-      `study-protocol.md`. Gate passes when reviewer signs off on pacing, camera motion, and
-      clarity of each cut. Previous requirement of ≥3 outside reviewers relaxed due to single-person
-      project constraint.
+- [x] ~~**First cuts.**~~ **Dropped (r7/r8).** Transcoded MP4s were deleted; review raw `takes/`.
+      Scenario shots replace themed cuts. A scenario is 8–12 s with a stateable goal and a legible
+      outcome, not a 60–120 s layout tour.
+- [ ] **Scenario shots.** Film the 8 existing scenarios first (no new code), then build and film
+      D1–D3 (neighborhood highlight, live conduct, progressive expansion). See
+      `docs/spacegraph/scenarios.md` Parts B–E. Definition of done in Part F: human sign-off, not a
+      green pipeline.
+- [ ] **Video review gate (M7.6).** Single reviewer (project owner) per scenario shot. Gate passes
+      when the reviewer confirms the goal is clear and the outcome is readable. Original ≥3 outside
+      reviewers requirement relaxed for the single-person project.
 
 ### P2 — measurement
 
@@ -229,11 +237,26 @@ Every open v36 item is represented above.
 
 ## Revision log
 
-- **r6 (2026-11-14):** Dropped transcoding; review raw takes directly.
+- **r8 (2026-11-14):** Direction reset — reject random-detour takes; adopt goal scenarios.
+  - Wrote `docs/spacegraph/scenarios.md`: intent → solution → readable outcome model, capability
+    inventory with honest status (`exists`/`partial`/`proposed`/`gap`), scenario catalog (11),
+    coverage matrix, and designs for D1 neighborhood highlighting, D2 live conduct, D3 progressive
+    expansion.
+  - Grounded status in code: `cardTemplate.ts:239-241` shows focus dim is still a placeholder;
+    `ComposerNodeWidget` + `followLog` (`SessionGraph.tsx:831`) already exist; trust lens is a
+    verify/ gap (`composition-guide.md` calls `graph_trust_lens` a deleted orphan).
+  - Withdrew fabricated findings and themed cuts; dropped transcoded MP4s.
+  - Film 8 existing scenarios first; D1–D3 are additive.
+
+- **r7 (2026-11-14):** Dropped transcoding; review raw takes directly.
   - Removed `cuts/` directory and `generate-demo-video.ts` from review pipeline.
   - Source of truth: `takes/explore-<theme>.webm` + `marks/marks-explore-<theme>.json`.
   - Only derived output kept: `stills/explore-<theme>/` (for findings screenshots).
   - Updated capture/review instructions in SPACEGRAPH.TODO.37.md.
+
+- **r6 (2026-11-14):** Reorganized `docs/spacegraph/video/`.
+  - `takes/` (raw), `cuts/` (then-current), `marks/`, `stills/`, `archive/` (legacy v36).
+  - Removed duplicate v36 demo files from the root.
 
 - **r5 (2026-11-14):** Relaxed video review gate to single reviewer (project owner).
   - Updated P1 #2 in SPACEGRAPH.TODO.37.md and study-protocol.md.
