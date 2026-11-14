@@ -59,7 +59,7 @@ human speed, honestly.
 | Goal scenario catalog + coverage matrix | Written (v38 r0) | `docs/spacegraph/scenarios.md` |
 | Capability inventory with honest status | Written (v38 r0) | `scenarios.md` Part A |
 | Seeded explorer (random detours) | **Rejected as demo** (r8); keep only as pipeline proof | `packages/app/e2e/graph/capture-explore.spec.ts` |
-| Scenario captures (8 scenarios) | **Implemented** (v38 r1); passing as automated e2e captures | `packages/app/e2e/graph/capture-scenario.spec.ts` |
+| Scenario captures (7 scenarios) | **Implemented** (v38 r1); passing as automated e2e captures | `packages/app/e2e/graph/capture-scenario.spec.ts` |
 | Camera helpers (push-in, orbit, whip, trace) | Exist; must be repurposed to travel between evidence | `capture-explore.spec.ts` |
 | Continuous renderer + still extraction | Works; transcoding dropped, stills kept | `script/generate-demo-video.ts` |
 | Raw takes (9) | Pipeline proofs only, not demo material | `docs/spacegraph/video/takes/` (gitignored) |
@@ -67,7 +67,7 @@ human speed, honestly.
 | Banner auto-dismiss | Done (r1) | `GraphChrome.tsx`, `useGraphState.ts` |
 | Composer widget + `followLog` | Exist; live conduct is partial | `ComposerNodeWidget.tsx`, `SessionGraph.tsx:831` |
 | Focus / neighborhood dim | **Placeholder** — not built | `cardTemplate.ts:239-241` |
-| Pixel gate | 54 frames pass | `capture.spec.ts` |
+| Pixel gate | 43 passed (54 frames, 4 known-variance at 0%) | `capture.spec.ts` |
 | Capture re-bless | 4 known-variance frames at 0% | v36 r4 |
 | Listener-leak | 3 cases pass, 0 growth | `listener-leak.spec.ts` |
 | Benchmarks | Headless `--plan` works; timed runs escalated | see P2 |
@@ -111,14 +111,14 @@ Two waves: film what exists, then build and film the new capabilities.
 
 | # | "I need to…" | Wave | Status |
 |---|---|---|---|
-| 1 | Know why the build broke | 1 | `exists` |
-| 2 | Find the call that caused the failure | 1 | `exists` |
-| 3 | See what the subagent actually did | 1 | `exists` |
-| 4 | Verify the fix before I merge | 1 | `exists` |
-| 5 | Hand this to a teammate | 1 | `exists` |
-| 6 | Audit a long session fast | 1 | `exists` |
-| 7 | Know what this run cost | 1 | `exists` (flag-gated) |
-| 8 | Read a turn without leaving the transcript | 1 | `exists` |
+| 1 | Know why the build broke | 1 | `done` |
+| 2 | Find the call that caused the failure | 1 | `done` |
+| 3 | See what the subagent actually did | 1 | `done` |
+| 4 | Verify the fix before I merge | 1 | `done` |
+| 5 | Hand this to a teammate | 1 | `done` |
+| 6 | Audit a long session fast | 1 | `done` |
+| 7 | Know what this run cost | 1 | `done` (flag-gated) |
+| 8 | Read a turn without leaving the transcript | 1 | `parked` (needs transcript inline preview) |
 | 9 | Focus on what matters, ignore the rest | 2 | `proposed` (D1) |
 | 10 | Keep working while the agent runs | 2 | `partial` (D2) |
 | 11 | Open a crowded cluster without losing my place | 2 | `partial` (D3) |
@@ -140,7 +140,8 @@ Two waves: film what exists, then build and film the new capabilities.
 - [x] **P0.2 — Film scenario 1 only, then get sign-off.** "I need to know why the build broke":
       search failed result → Why → readable failed `bun test` error. This is the cheapest proof that the
       scenario format communicates. Do not film the rest until the owner accepts the format.
-- [x] **P0.3 — Film scenarios 2–7.** Implemented and passing as automated e2e captures in `capture-scenario.spec.ts`:
+- [x] **P0.3 — Film scenarios 1–7.** All implemented and passing as automated e2e captures in `capture-scenario.spec.ts`:
+      - Scenario 1: "I need to know why the build broke" — search failed → Why trace
       - Scenario 2: "I need to find the call that caused the failure" — search → trace=led-here
       - Scenario 3: "I need to see what the subagent actually did" — tree layout → subagent → trace=related
       - Scenario 4: "I need to verify the fix before I merge" — reviewer lens → files rail → diff
@@ -292,6 +293,12 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r3 (2026-11-14):** All Wave 1 scenario captures (1–7) verified passing; all gates pass.
+  - `bun run check` — clean (lint + typecheck).
+  - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).
+  - Listener-leak `listener-leak.spec.ts` — 3 cases, 0 growth.
+  - Scenario 8 remains parked (transcript surface with inline preview not yet implemented).
+  - Fixed test opt-in logic in `capture-scenario.spec.ts` for reliable `test.skip` behavior.
 - **r2 (2026-11-14):** Verified all gates pass.
   - `bun run check` — clean (lint + typecheck).
   - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).

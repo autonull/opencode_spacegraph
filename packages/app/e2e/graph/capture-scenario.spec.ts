@@ -19,8 +19,7 @@ const test = base.extend({
 
 // Scenario captures are opt-in. Set GRAPH_CAPTURE_SCENARIO=1 to run.
 // Set GRAPH_CAPTURE_SCENARIO_NUM to run a specific scenario (1-8).
-test.skip(!process.env.GRAPH_CAPTURE_SCENARIO, "Scenario capture; set GRAPH_CAPTURE_SCENARIO=1")
-
+const runScenarios = !!process.env.GRAPH_CAPTURE_SCENARIO
 const scenarioNum = Number(process.env.GRAPH_CAPTURE_SCENARIO_NUM ?? "1")
 const directory = "C:/OpenCode/ScenarioGraph"
 const sessionID = "ses_scenario_graph"
@@ -513,6 +512,7 @@ async function runScenario8(page: Page) {
 test.describe.configure({ retries: 0, mode: "serial" })
 
 test(`Scenario ${scenarioNum} — capture`, async ({ page }) => {
+  test.skip(!runScenarios, "Scenario capture; set GRAPH_CAPTURE_SCENARIO=1")
   test.setTimeout(120_000)
   const errors = trackPageErrors(page)
   
