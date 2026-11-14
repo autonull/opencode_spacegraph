@@ -293,8 +293,8 @@ A scenario shot is done when all hold:
 ## Remaining work (post Wave 1)
 | Item | Status | Notes |
 |------|--------|-------|
-| P0.0: Archive 7 unverified findings files | **Todo** | Void findings index from v37; move files to archive |
-| D1: DOM-cards surface with per-node opacity | **Todo** | Canvas renderer support for per-node opacity needed |
+| P0.0: Archive 7 unverified findings files | **Done** | Voided findings index from v37; moved 7 files to `docs/spacegraph/explorations/archive/` |
+| D1: DOM-cards surface with per-node opacity | **Done** | Canvas renderer (ShapeNode) supports per-node opacity via `data.opacity`; DOM cards via `wrapDim()`. Explicit `dimOpacity: 0.35` configured in session graph adapter. |
 | D2: Streaming fixture / scripted append for node-grab focus | **Todo** | Need fixture that streams or scripted append |
 | D3: Hybrid surface with related/downstream trace | **Todo** | Two gap rows: related/downstream trace or hybrid surface |
 | Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
@@ -307,6 +307,8 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r6 (2026-11-14):** D1 complete — per-node opacity works for both DOM cards (via `wrapDim()`) and canvas ShapeNodes (via `data.opacity`). Added explicit `dimOpacity: 0.35` to session graph adapter geometry config.
+- **r5 (2026-11-14):** P0.0 complete — archived 7 unverified findings files from v37 to `docs/spacegraph/explorations/archive/`; only `diagnose-7.md` and `chaos-1.md` remain in `explorations/`.
 - **r4 (2026-11-14):** All Wave 1 scenario captures (1–7) verified passing; all gates pass.
   - `bun run check` — clean (lint + typecheck).
   - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).

@@ -54,7 +54,7 @@ export class SessionGraphAdapter extends ModelAdapter<GraphNode, GraphEdge, Zoom
       isClusterExpanded: (level: ZoomLevel) => isClusterExpanded(level),
       neighbors: (model: GraphViewData, id: string) => neighbors(model, id).nodes.map((node) => node.id),
       nodeSizeFn: (node: GraphNode) => nodeSize(node),
-      geometry: { bandPadding: BAND_PADDING },
+      geometry: { bandPadding: BAND_PADDING, dimOpacity: 0.35 },
       renderCardTemplate: config.renderCardTemplate,
     }
     super({ ...baseConfig, ...config })

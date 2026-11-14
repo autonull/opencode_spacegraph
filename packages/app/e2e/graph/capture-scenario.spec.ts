@@ -17,6 +17,8 @@ const test = base.extend({
   },
 })
 
+test.describe.configure({ retries: 0, mode: "serial" })
+
 // Scenario captures are opt-in. Set GRAPH_CAPTURE_SCENARIO=1 to run.
 // Set GRAPH_CAPTURE_SCENARIO_NUM to run a specific scenario (1-8).
 const runScenarios = !!process.env.GRAPH_CAPTURE_SCENARIO
@@ -509,8 +511,6 @@ async function runScenario8(page: Page) {
   await pace(4000)
   recordMark("scenario-8-04-hold-outcome")
 }
-
-test.describe.configure({ retries: 0, mode: "serial" })
 
 test.describe(`Scenario ${scenarioNum} — capture`, () => {
   test(`Scenario ${scenarioNum} — capture`, async ({ page }) => {
