@@ -290,9 +290,30 @@ A scenario shot is done when all hold:
 6. The project owner signs off that it communicates.
 
 ---
+## Remaining work (post Wave 1)
+| Item | Status | Notes |
+|------|--------|-------|
+| P0.0: Archive 7 unverified findings files | **Todo** | Void findings index from v37; move files to archive |
+| D1: DOM-cards surface with per-node opacity | **Todo** | Canvas renderer support for per-node opacity needed |
+| D2: Streaming fixture / scripted append for node-grab focus | **Todo** | Need fixture that streams or scripted append |
+| D3: Hybrid surface with related/downstream trace | **Todo** | Two gap rows: related/downstream trace or hybrid surface |
+| Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
+| Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
+| P2: Benchmarks | **Carried** | Unchanged from v37 |
+| P2: Study | **Carried** | Gated on Wave 1 sign-off |
+| Scenario 8: Transcript surface with inline preview | **Parked** | Requires transcript surface implementation |
+
+---
 
 ## Revision log
 
+- **r4 (2026-11-14):** All Wave 1 scenario captures (1–7) verified passing; all gates pass.
+  - `bun run check` — clean (lint + typecheck).
+  - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).
+  - Listener-leak `listener-leak.spec.ts` — 3 cases, 0 growth.
+  - Scenario 8 remains parked (transcript surface with inline preview not yet implemented).
+  - Test structure in `capture-scenario.spec.ts` stabilized for Playwright runner.
+  - Marks written to `docs/spacegraph/video/marks/`; videos in `docs/spacegraph/video/takes/`.
 - **r3 (2026-11-14):** All Wave 1 scenario captures (1–7) verified passing; all gates pass.
   - `bun run check` — clean (lint + typecheck).
   - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).

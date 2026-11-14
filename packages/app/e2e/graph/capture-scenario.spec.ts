@@ -512,7 +512,8 @@ async function runScenario8(page: Page) {
 
 test.describe.configure({ retries: 0, mode: "serial" })
 
-test(`Scenario ${scenarioNum} — capture`, async ({ page }) => {
+test.describe(`Scenario ${scenarioNum} — capture`, () => {
+  test(`Scenario ${scenarioNum} — capture`, async ({ page }) => {
   test.skip(!runScenarios, "Scenario capture; set GRAPH_CAPTURE_SCENARIO=1")
   test.setTimeout(120_000)
   const errors = trackPageErrors(page)
@@ -557,6 +558,8 @@ test(`Scenario ${scenarioNum} — capture`, async ({ page }) => {
 
   await pace(800)
   expect(filterKnownErrors(errors)).toEqual([])
+})
+
 })
 
 test.use({
