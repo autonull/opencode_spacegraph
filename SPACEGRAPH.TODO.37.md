@@ -58,7 +58,7 @@ Gates run beside the loop, not after it: benchmarks, listener-leak, capture re-b
 | Video review | Not started | needs cuts + reviewers |
 | Study | Not started | `docs/spacegraph/study-protocol.md` |
 
-Capture and render:
+Capture and review:
 
 ```bash
 cd packages/app
@@ -67,12 +67,12 @@ PLAYWRIGHT_BUILD=1 GRAPH_EXPLORE_DEMO=1 GRAPH_EXPLORE_THEME=diagnose GRAPH_EXPLO
 
 cd ../..
 bun run script/copy-capture-video.ts --prefix graph-capture-explore --dest takes/explore-diagnose.webm
-bun run script/generate-demo-video.ts \
-  --input docs/spacegraph/video/takes/explore-diagnose.webm \
-  --marks docs/spacegraph/video/marks/marks-explore-diagnose.json \
-  --out docs/spacegraph/video/cuts/explore-diagnose.mp4 \
-  --stills docs/spacegraph/video/stills/explore-diagnose \
-  --mode continuous --no-hook --draft
+# Review the raw take:
+#   docs/spacegraph/video/takes/explore-diagnose.webm
+# Marks (beat timestamps):
+#   docs/spacegraph/video/marks/marks-explore-diagnose.json
+# Stills extracted for findings:
+#   docs/spacegraph/video/stills/explore-diagnose/
 ```
 
 ---
@@ -228,6 +228,12 @@ Every open v36 item is represented above.
 ---
 
 ## Revision log
+
+- **r6 (2026-11-14):** Dropped transcoding; review raw takes directly.
+  - Removed `cuts/` directory and `generate-demo-video.ts` from review pipeline.
+  - Source of truth: `takes/explore-<theme>.webm` + `marks/marks-explore-<theme>.json`.
+  - Only derived output kept: `stills/explore-<theme>/` (for findings screenshots).
+  - Updated capture/review instructions in SPACEGRAPH.TODO.37.md.
 
 - **r5 (2026-11-14):** Relaxed video review gate to single reviewer (project owner).
   - Updated P1 #2 in SPACEGRAPH.TODO.37.md and study-protocol.md.
