@@ -31,4 +31,5 @@
 
 - **SpaceGraphJS library docs:** `spacegraphjs/README.md`, `spacegraphjs/docs/`
 - **SpaceGraphJS roadmap:** `spacegraphjs/ROADMAP.md`, `spacegraphjs/PLAN/`
-- **Active plan:** `SPACEGRAPH.TODO.37.md` (v36 and v35 are frozen archives)
+- **Active plan:** `SPACEGRAPH.TODO.38.md` (v37 and earlier are frozen archives)
+- **Scenario catalog:** `scenarios.md` — the demo's unit of work and coverage matrix

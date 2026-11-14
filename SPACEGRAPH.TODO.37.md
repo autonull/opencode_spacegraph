@@ -1,5 +1,9 @@
 # SpaceGraph: Explorations (v37)
 
+> **Superseded by `SPACEGRAPH.TODO.38.md` (2026-11-14).** v37 is frozen as design history. Its
+> random-detour takes were rejected; v38 refocuses the demo on goal scenarios. Keep this file for the
+> r0–r8 trail and the rejected-work record.
+
 > **Status (2026-11-14, r0):** v36 delivered the full-motion turn — continuous takes, fitted
 > narration, still extraction, and a seeded explorer. `bun run check` green (53/53). Two takes are
 > verified end to end: `diagnose` (6.9 s) and `chaos` (19.7 s). v36 is **frozen design history**;
