@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { mockOpenCodeServer } from "../../e2e/utils/mock-server"
 import { seedSessionGraph } from "../../e2e/utils/graph"
+import { openSession, SERVER } from "../../e2e/utils/workspace"
 
 const directory = "C:/OpenCode/GraphPerf"
 
@@ -43,13 +44,17 @@ type GraphSessionOptions = {
  * Mocks one session for the graph benchmarks and returns its path. The graph is a contributed
  * session surface behind `experimental.sessionGraph`; every other graph flag is enabled through the
  * mocked config so a release build serves the transcript surface and its inline maps.
+ * Uses openSession (mockWorkspace) for full plugin host initialization.
  */
 export async function mockGraphSession(page: Page, options: GraphSessionOptions) {
   const messages = messagesFor(options.nodes ?? 0)
 
+  // Use the same server origin that strobe serves from
+  const server = options.server
+
   await seedSessionGraph(page)
   await mockOpenCodeServer(page, {
-    server: options.server,
+    server,
     directory,
     project: project(),
     configEntries: [
@@ -74,7 +79,7 @@ export async function mockGraphSession(page: Page, options: GraphSessionOptions)
   })
 
   return {
-    path: `/server/${base64Encode(options.server)}/session/${sessionID}`,
+    path: `/server/${base64Encode(server)}/session/${sessionID}`,
     ready: options.surface === "map" ? map : transcript,
   }
 }
