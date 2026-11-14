@@ -299,6 +299,7 @@ A scenario shot is done when all hold:
   - Listener-leak `listener-leak.spec.ts` — 3 cases, 0 growth.
   - Scenario 8 remains parked (transcript surface with inline preview not yet implemented).
   - Fixed test opt-in logic in `capture-scenario.spec.ts` for reliable `test.skip` behavior.
+  - Marks now written to `docs/spacegraph/video/marks/`; videos in `docs/spacegraph/video/takes/`.
 - **r2 (2026-11-14):** Verified all gates pass.
   - `bun run check` — clean (lint + typecheck).
   - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).
