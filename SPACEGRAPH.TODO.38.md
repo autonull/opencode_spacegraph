@@ -292,6 +292,11 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r2 (2026-11-14):** Verified all gates pass.
+  - `bun run check` — clean (lint + typecheck).
+  - Pixel gate `capture.spec.ts` — 43 passed (54 frames, 4 known-variance at 0%).
+  - Listener-leak `listener-leak.spec.ts` — 3 cases, 0 growth.
+  - Scenario 8 remains parked (transcript surface with inline preview not yet implemented).
 - **r1 (2026-11-14):** Implemented Wave 1 scenario captures (1–7) in `capture-scenario.spec.ts`.
   - All 7 scenarios pass as automated e2e captures using the narrative fixture.
   - Updated capture commands to use `GRAPH_CAPTURE_SCENARIO` / `GRAPH_CAPTURE_SCENARIO_NUM`.
