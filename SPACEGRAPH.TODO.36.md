@@ -1,6 +1,6 @@
 # SpaceGraph: Proof & Polish (v36)
 
-> **Status (2026-11-13, r14):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
+> **Status (2026-11-14, r15):** v35 delivered every feature (M0–M8 complete, M9 functional complete). v36 is
 > not more features — it proves the purpose stated in **`SPACEGRAPH.md` §1** and produces the one
 > artifact that convinces a skeptic. `bun run check` green (53/53); 54 capture frames pass; story
 > capture (`capture-story.spec.ts`) records an 8-frame debugging narrative; a 35s live recording
@@ -9,8 +9,8 @@
 > Phase 2 is **complete (r6)**: all product friction resolved, including the reopened copy scrub —
 > no user-facing string in the spacegraph plugin says "map" any more.
 > Phase 1R prerequisites: fixture enrichment ✅, capture mechanics ✅, render rework ✅.
-> Live-open capture: `capture-chapter1.spec.ts` and `capture-live.spec.ts` both pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` (full plugin host init). **Verified passing (r14).**
-> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Listener-leak ✅ (dedicated e2e test opens/closes map/hybrid 10×, 0 listener growth); Benchmarks ⏳ (strobe `--plan` works; timed runs against `origin/dev` blocked on strobe worktree monorepo setup — workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees; **escalated** — requires strobe config to use main repo's node_modules or turborepo remote cache); Video review ⏳ (blocked on 8 chapter mp4s; Chapter 1 footage to use `capture-live.spec.ts` output frame 02 as fallback for `capture-chapter1` mock server limitation).
+> Live-open capture: `capture-chapter1.spec.ts` (25.2s), `capture-live.spec.ts` (57.6s), and `capture-story.spec.ts` (41.3s) all pass with `PLAYWRIGHT_BUILD=1` using `openSession` → `mockWorkspace` (full plugin host init). **Verified passing (r15).**
+> Phase 3: Capture re-bless ✅; Chapter 1 capture ✅; Listener-leak ✅ (dedicated e2e test opens/closes map/hybrid 10×, 0 listener growth); Benchmarks ⏳ (strobe `--plan` works headless; timed runs against `origin/dev` blocked on strobe worktree monorepo setup — workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees; **escalated** — requires strobe config to use main repo's node_modules or turborepo remote cache); Video review ⏳ (blocked on 8 chapter mp4s; Chapter 1 footage uses `capture-chapter1.spec.ts` output since mock server limitation resolved).
 > Phase 4: Not started.
 > `SPACEGRAPH.TODO.34.md` is frozen design history; `SPACEGRAPH.TODO.35.md` is frozen
 > feature-complete archive; this file is the single source of truth.
@@ -273,12 +273,14 @@ cannot run.
 
 **Exit:** each gate has a measured result or a dated escalation with the exact blocker and owner.
 
-**Phase 3 Status (2026-11-13, updated r14):**
+**Phase 3 Status (2026-11-14, updated r15):**
 - ✅ Capture re-bless: Complete (4 frames re-blessed to 0% diff on 2026-11-13)
 - ⏳ Benchmarks: Headless `strobe --plan` works; selector fix applied (`:has-text` → `data-value` attributes). Timed runs against `origin/dev` blocked by strobe worktree monorepo setup — workspace packages (`spacegraphjs`, `@opencode/*`) not linked in detached worktrees. **Escalated** — requires monorepo build setup in strobe worktrees (bun workspace linking or turborepo remote cache). Benchmark fixture in `packages/app/perf/fixtures/graph.ts` fixed to use `seedSessionGraph` + `mockOpenCodeServer` (matching e2e pattern), ensuring graph plugin surfaces API is initialized.
-- ✅ Listener-leak: Complete — dedicated e2e test `packages/app/e2e/graph/listener-leak.spec.ts` opens/closes map and hybrid surfaces 10× each, asserts no listener growth (0 baseline, 0 max), no duplicate DOM ids (expected cross-surface duplicates only), no dead controls (pre-existing toolbar button issue). Passes with `PLAYWRIGHT_BUILD=1`.
-- ⏳ Video review: Not started — blocked on the Phase 1R chapters (8 mp4s needed); needs ≥3 outside reviewers per `study-protocol.md`. Chapter 1 footage to use `capture-live.spec.ts` output (frame 02) as fallback for `capture-chapter1` mock server limitation.
-- ✅ Chapter 1 capture: `capture-chapter1.spec.ts` fixed to use `openSession` → `mockWorkspace` (full plugin host init). Passes with `PLAYWRIGHT_BUILD=1`.
+- ✅ Listener-leak: Complete — dedicated e2e test `packages/app/e2e/graph/listener-leak.spec.ts` opens/closes map and hybrid surfaces 10× each, asserts no listener growth (0 baseline, 0 max), no duplicate DOM ids (expected cross-surface duplicates only), no dead controls (pre-existing toolbar button issue). Passes with `PLAYWRIGHT_BUILD=1` (verified r15, 2m duration).
+- ⏳ Video review: Not started — blocked on the Phase 1R chapters (8 mp4s needed); needs ≥3 outside reviewers per `study-protocol.md`. Chapter 1 footage uses `capture-chapter1.spec.ts` output (mock server limitation resolved in r14).
+- ✅ Chapter 1 capture: `capture-chapter1.spec.ts` fixed to use `openSession` → `mockWorkspace` (full plugin host init). Passes with `PLAYWRIGHT_BUILD=1` (verified r15, 25.2s).
+- ✅ Capture-live: `capture-live.spec.ts` passes with `PLAYWRIGHT_BUILD=1` (verified r15, 57.6s).
+- ✅ Capture-story: `capture-story.spec.ts` passes with `PLAYWRIGHT_BUILD=1` (verified r15, 41.3s).
 
 ---
 
@@ -371,6 +373,16 @@ revision log; leave v34 and v35 unchanged.
 ---
 
 ## Revision log
+
+- **r15 (2026-11-14):** Verified all three capture tests pass with `PLAYWRIGHT_BUILD=1`; Phase 3 gates updated.
+  - `capture-chapter1.spec.ts`: 1 passed (25.2s) — Chapter 1 live-open capture works via `openSession` → `mockWorkspace`
+  - `capture-live.spec.ts`: 1 passed (57.6s) — Full 43-frame live demo recording works
+  - `capture-story.spec.ts`: 1 passed (41.3s) — 8-frame debugging narrative capture works
+  - Listener-leak gate confirmed: 3 passed (2m) — no listener growth (0 baseline, 0 max), expected cross-surface duplicate DOM ids only, pre-existing toolbar button issue documented
+  - Benchmark fixture in `packages/app/perf/fixtures/graph.ts` uses `mockGraphSession` with proper plugin host init (matching e2e pattern)
+  - Strobe `--plan` works headless; timed runs blocked on worktree monorepo setup (escalated — requires strobe config to use main repo's node_modules or turborepo remote cache)
+  - Video review blocked: needs ≥3 outside reviewers per `study-protocol.md` and the 8 chapter mp4s
+  - Phase 4 study not started: needs n≥5 participants, tasks mapped to Phase 0 jobs (Diagnose, Audit, Delegate)
 
 - **r14 (2026-11-13):** Verified both capture tests pass with `PLAYWRIGHT_BUILD=1`; **Listener-leak gate complete**.
   - `capture-chapter1.spec.ts`: 1 passed (25.4s) — Chapter 1 live-open capture works via `openSession` → `mockWorkspace`
