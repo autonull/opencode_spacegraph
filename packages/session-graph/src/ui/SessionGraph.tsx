@@ -487,6 +487,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     // Demo / first-run
     demoDismissed,
     setDemoDismissed,
+    recordInteraction,
 
     // See-map prompt
     seeMapPromptVisible,
@@ -1421,6 +1422,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
     modelForGroupMenu: model,
     graphSelection,
     handleRegionKeyDown,
+    recordInteraction,
     error,
     onBack: props.onBack,
     diffSource: props.diffSource,
@@ -1442,6 +1444,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
       viewportTracker!.camera.report(next)
       viewportTracker!.setResting(next)
       setViewport(next)
+      recordInteraction()
     },
     setViewport,
     viewportTracker: viewportTracker!,

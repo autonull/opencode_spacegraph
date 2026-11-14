@@ -249,6 +249,7 @@ export type UseGraphStateReturn = {
   setDemoSeen: (seen: boolean | ((prev: boolean) => boolean)) => void
   demoDismissed: () => boolean
   setDemoDismissed: (dismissed: boolean | ((prev: boolean) => boolean)) => void
+  recordInteraction: () => void
 
   // See-map prompt
   seeMapPromptVisible: () => boolean
@@ -498,6 +499,11 @@ export const useGraphState = (props: GraphViewProps): UseGraphStateReturn => {
     setDemoSeen: createSetter(setState, "demoSeen"),
     demoDismissed: createGetter(state, "demoDismissed"),
     setDemoDismissed: createSetter(setState, "demoDismissed"),
+    recordInteraction: () => {
+      if (!state.demoDismissed) {
+        setState("demoDismissed", true)
+      }
+    },
 
     // See-map prompt
     seeMapPromptVisible: createGetter(state, "seeMapPromptVisible"),

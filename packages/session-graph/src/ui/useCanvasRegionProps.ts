@@ -77,6 +77,7 @@ export function useCanvasRegionProps(
     modelForGroupMenu: () => GraphViewData
     graphSelection: UseGraphSelectionReturn
     handleRegionKeyDown: (event: KeyboardEvent) => void
+    recordInteraction: () => void
     error: () => string | undefined
     onBack: (() => void) | undefined
     diffSource: SessionGraphProps["diffSource"]
@@ -127,7 +128,7 @@ export function useCanvasRegionProps(
     selection: state.selection,
     select: state.select,
     onNodeDoubleClick: state.expandToGraph,
-    onBackgroundClick: () => state.select(undefined),
+    onBackgroundClick: () => { state.select(undefined); state.recordInteraction(); },
     onHover: state.onHover,
     onEdgeHover: state.onEdgeHover,
     onEdgeSelect: state.onEdgeSelect,
@@ -135,8 +136,8 @@ export function useCanvasRegionProps(
     onGroupMenu: state.onGroupMenu,
 
     // Layout interactions
-    onNodeMoved: state.moveNodes,
-    onNodeResized: state.resizeNode,
+    onNodeMoved: (nodes) => { state.moveNodes(nodes); state.recordInteraction(); },
+    onNodeResized: (resize) => { state.resizeNode(resize); state.recordInteraction(); },
     cardFacing: state.cardFacing,
     applyModel: state.applyModel,
     onRenderer: state.onRenderer,
@@ -171,7 +172,7 @@ export function useCanvasRegionProps(
     // Search
     searchOpen: state.searchOpen,
     searchInitial: state.searchInitial,
-    setSearchOpen: state.setSearchOpen,
+    setSearchOpen: (open) => { state.setSearchOpen(open); state.recordInteraction(); },
     jumpTo: state.jumpTo,
     contentIDs: state.contentIDs,
     palette: state.palette,
@@ -189,7 +190,7 @@ export function useCanvasRegionProps(
     // Gallery
     galleryOpen: state.galleryOpen,
     setGalleryOpen: state.setGalleryOpen,
-    changeLayout: state.changeLayout,
+    changeLayout: (layout) => { state.changeLayout(layout); state.recordInteraction(); },
 
     // Group menu
     groupMenu: state.groupMenu,

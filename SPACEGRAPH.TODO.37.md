@@ -111,10 +111,17 @@ the job, never the feature name.
 
 ### P0 — make the footage good
 
-- [ ] **Banner auto-dismiss.** "See this run" occupies the top strip for the whole take and appears
+- [x] **Banner auto-dismiss.** "See this run" occupies the top strip for the whole take and appears
       in every shot. Findings: `diagnose-7`, `chaos-1`. Auto-dismiss after the first interaction, or
       suppress while a take records. `packages/session-graph/src/ui/GraphChrome.tsx:387` and
       `useGraphState.ts:329`.
+      Implemented: Added `recordInteraction()` to `useGraphState` return type, called from:
+      - `onViewportChange` (pan/zoom) in SessionGraph.tsx
+      - `onBackgroundClick` in useCanvasRegionProps.ts
+      - `onNodeMoved` in useCanvasRegionProps.ts
+      - `onNodeResized` in useCanvasRegionProps.ts
+      - `setSearchOpen` in useCanvasRegionProps.ts
+      - `changeLayout` in useCanvasRegionProps.ts
 - [ ] **Camera beats.** Add helpers to `capture-explore.spec.ts`: push-in, orbit drift, whip-to-node,
       trace reveal. Slow beats to 3–5 s. Run `fit` after each layout change (the `chaos` take left
       the graph at 71%, small in frame).
