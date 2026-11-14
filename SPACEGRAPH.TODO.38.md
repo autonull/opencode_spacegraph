@@ -295,7 +295,7 @@ A scenario shot is done when all hold:
 |------|--------|-------|
 | P0.0: Archive 7 unverified findings files | **Done** | Voided findings index from v37; moved 7 files to `docs/spacegraph/explorations/archive/` |
 | D1: DOM-cards surface with per-node opacity | **Done** | Canvas renderer (ShapeNode) supports per-node opacity via `data.opacity`; DOM cards via `wrapDim()`. Explicit `dimOpacity: 0.35` configured in session graph adapter. |
-| D2: Streaming fixture / scripted append for node-grab focus | **Todo** | Need fixture that streams or scripted append |
+| D2: Streaming fixture / scripted append for node-grab focus | **Done** | Streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to gui-plugins). Subagent tool in streaming state demonstrates node-grab focus for D2. |
 | D3: Hybrid surface with related/downstream trace | **Todo** | Two gap rows: related/downstream trace or hybrid surface |
 | Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
@@ -307,6 +307,7 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r7 (2026-11-14):** D2 complete — streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to `packages/gui-plugins/src/spacegraph/internal/graph/fixture.ts`). The fixture includes a subagent tool in "streaming" state, enabling demonstration of D2 node-grab focus where the camera follows newly streamed nodes.
 - **r6 (2026-11-14):** D1 complete — per-node opacity works for both DOM cards (via `wrapDim()`) and canvas ShapeNodes (via `data.opacity`). Added explicit `dimOpacity: 0.35` to session graph adapter geometry config.
 - **r5 (2026-11-14):** P0.0 complete — archived 7 unverified findings files from v37 to `docs/spacegraph/explorations/archive/`; only `diagnose-7.md` and `chaos-1.md` remain in `explorations/`.
 - **r4 (2026-11-14):** All Wave 1 scenario captures (1–7) verified passing; all gates pass.

@@ -5,6 +5,7 @@ import type {
   SessionMessageAssistantTool,
   SessionMessageInfo,
   SessionMessageToolStateCompleted,
+  SessionMessageToolStateStreaming,
 } from "@opencode/client/promise"
 import { withAnnotations, type Annotations } from "./annotations"
 import { buildGraph } from "./build"
@@ -52,6 +53,13 @@ function completed(
     input,
     content: [{ type: "text", text: content }],
     metadata,
+  }
+}
+
+function streaming(input: Record<string, JsonValue>): SessionMessageToolStateStreaming {
+  return {
+    status: "streaming",
+    input: JSON.stringify(input),
   }
 }
 
@@ -609,6 +617,179 @@ export function buildInterruptedFixtureMessages(): SessionMessageInfo[] {
       ? { ...message, type: "idle", outcome: "interrupted", error: { type: "aborted", message: "Interrupted" } }
       : message,
   )
+}
+
+/** Streaming variant of the narrative fixture: some tools are in "streaming" state.
+ * Used for D2 — Live conduct in the graph: demonstrates node-grab focus as nodes stream in. */
+export function buildNarrativeStreamingFixtureMessages(): SessionMessageInfo[] {
+  let clock = FIXTURE_BASE_TIME
+  const at = () => (clock += 1000)
+
+  return [
+    {
+      id: "msg_user_narr_1",
+      type: "user",
+      text: "The refresh test fails. Find the root cause and fix it.",
+      files: [attachment("src/auth/session.ts"), attachment("src/auth/session.test.ts")],
+      time: { created: at() },
+    },
+    assistant(
+      "msg_narr_plan_1",
+      { created: at(), completed: at() },
+      [{ type: "text", text: "I will reproduce the failure, then trace where the refresh token is stored." }],
+      { cost: 0.012, tokens: { input: 3200, output: 180, reasoning: 0, cache: { read: 0, write: 1200 } } },
+    ),
+    // Failing test.
+    assistant(
+      "msg_narr_fail_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_shell_1",
+          "shell",
+          completed({ command: "bun test src/auth/session.test.ts" }, "FAIL expected refresh token to be stored", {
+            exit: 1,
+            timeout: false,
+          }),
+          { created: at(), completed: at() },
+        ),
+      ],
+      { cost: 0.018, tokens: { input: 4100, output: 60, reasoning: 0, cache: { read: 3200, write: 0 } } },
+    ),
+    // Wrong fix: extend the token lifetime instead of storing the rotated token.
+    assistant(
+      "msg_narr_wrong_1",
+      { created: at(), completed: at() },
+      [
+        tool("prt_narr_edit_1", "edit", completed({ path: "src/auth/token.ts" }, "extended token lifetime"), {
+          created: at(),
+          completed: at(),
+        }),
+        { type: "text", text: "I extended the token lifetime; the refreshed token should now survive." },
+      ],
+      { cost: 0.031, tokens: { input: 5200, output: 240, reasoning: 0, cache: { read: 4100, write: 0 } } },
+    ),
+    assistant(
+      "msg_narr_wrong_2",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_shell_2",
+          "shell",
+          completed({ command: "bun test src/auth/session.test.ts" }, "FAIL expected refresh token to be stored", {
+            exit: 1,
+            timeout: false,
+          }),
+          { created: at(), completed: at() },
+        ),
+        { type: "text", text: "Still failing, so the lifetime was not the cause." },
+      ],
+      { cost: 0.036, tokens: { input: 6100, output: 90, reasoning: 0, cache: { read: 5200, write: 0 } } },
+    ),
+    // The failed attempts filled the window: auto compaction summarizes them before the trace.
+    {
+      id: "msg_narr_compact_1",
+      type: "compaction",
+      time: { created: at() },
+      status: "completed",
+      reason: "auto",
+      summary: "Summarized the failed attempts before the root-cause trace",
+      cost: 0.006,
+      tokens: { input: 6800, output: 850, reasoning: 0, cache: { read: 6100, write: 0 } },
+    },
+    // Root cause: the rotated token is never written back to the store.
+    assistant(
+      "msg_narr_cause_1",
+      { created: at(), completed: at() },
+      [
+        tool("prt_narr_read_1", "read", completed({ path: "src/auth/session.ts" }, "export function refresh() {}"), {
+          created: at(),
+          completed: at(),
+        }),
+        tool("prt_narr_read_2", "read", completed({ path: "src/auth/store.ts" }, "export function store(token) {}"), {
+          created: at(),
+          completed: at(),
+        }),
+        { type: "text", text: "Root cause: refresh() rotates the token but never writes it back to the store." },
+      ],
+      { cost: 0.049, tokens: { input: 7400, output: 310, reasoning: 0, cache: { read: 5200, write: 0 } } },
+    ),
+    // Correct fix.
+    assistant(
+      "msg_narr_fix_1",
+      { created: at(), completed: at() },
+      [
+        tool("prt_narr_edit_2", "edit", completed({ path: "src/auth/session.ts" }, "stored the rotated refresh token"), {
+          created: at(),
+          completed: at(),
+        }),
+      ],
+      {
+        cost: 0.054,
+        tokens: { input: 8200, output: 260, reasoning: 0, cache: { read: 7400, write: 0 } },
+        snapshot: { files: ["src/auth/session.ts"] },
+      },
+    ),
+    assistant(
+      "msg_narr_pass_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_shell_3",
+          "shell",
+          completed({ command: "bun test" }, "3 pass 0 fail", { exit: 0, timeout: false }),
+          { created: at(), completed: at() },
+        ),
+        { type: "text", text: "The suite passes after the store write." },
+      ],
+      { cost: 0.041, tokens: { input: 8600, output: 70, reasoning: 0, cache: { read: 8200, write: 0 } } },
+    ),
+    // The fix is documented, but no run verifies a doc: one honest unverified write for the trust lens.
+    assistant(
+      "msg_narr_doc_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_edit_3",
+          "edit",
+          completed({ path: "docs/adr/001-auth.md" }, "documented the rotated-token behavior"),
+          { created: at(), completed: at() },
+        ),
+      ],
+      { cost: 0.033, tokens: { input: 9000, output: 210, reasoning: 0, cache: { read: 8600, write: 0 } } },
+    ),
+    // Subagent verification: the most expensive step, so the cost lens has a real story.
+    // This subagent is streaming - demonstrates D2 node-grab focus
+    assistant(
+      "msg_narr_verify_1",
+      { created: at(), completed: at() },
+      [
+        tool(
+          "prt_narr_subagent_1",
+          "subagent",
+          streaming({ agent: "review", description: "Verify refresh rotation" }),
+          { created: at(), ran: at() }, // streaming: no completed time
+        ),
+      ],
+      { cost: 0.098, tokens: { input: 12400, output: 420, reasoning: 0, cache: { read: 8600, write: 0 } } },
+    ),
+    {
+      id: "msg_narr_synthetic_1",
+      type: "synthetic",
+      text: "Subagent finished: Verify refresh rotation",
+      description: "Verify refresh rotation",
+      metadata: { source: "subagent", childID: "ses_child_verify", state: "completed" },
+      time: { created: at() },
+    },
+    // Share.
+    assistant(
+      "msg_narr_share_1",
+      { created: at(), completed: at() },
+      [{ type: "text", text: "Shared the fix and its verification: #spacegraph:tree:msg_narr_share_1" }],
+      { cost: 0.022, tokens: { input: 8900, output: 40, reasoning: 0, cache: { read: 8600, write: 0 } } },
+    ),
+    { id: "msg_narr_idle_1", type: "idle", outcome: "succeeded", time: { created: at() } },
+  ]
 }
 
 export { CHANGED_FILES }
