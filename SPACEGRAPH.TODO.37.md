@@ -50,7 +50,7 @@ Gates run beside the loop, not after it: benchmarks, listener-leak, capture re-b
 | Named take copy | Done (v36 r16) | `script/copy-capture-video.ts` |
 | Seeded explorer | Done (v36 r16) | `packages/app/e2e/graph/capture-explore.spec.ts` |
 | Takes | 9: all themes shot | `docs/spacegraph/video/takes/` (gitignored) |
-| Findings | 2 | `docs/spacegraph/explorations/` |
+| Findings | 9 | `docs/spacegraph/explorations/` |
 | Pixel gate | 54 frames pass | `capture.spec.ts` |
 | Capture re-bless | 4 known-variance frames at 0% | v36 r4 |
 | Listener-leak | 3 cases pass, 0 growth | `listener-leak.spec.ts` |
@@ -131,8 +131,9 @@ the job, never the feature name.
 - [x] **Shoot the remaining themes.** `delegate` (seed 3), `trust` (seed 5), `cost` (seed 7),
       `handoff` (seed 9), `return` (seed 11), `audit` (seed 13), `night` (seed 15).
       All 9 themes now have seeded takes captured.
-- [ ] **Write findings per take, same day.** Update the kill/park register when a pattern is parked
+- [x] **Write findings per take, same day.** Update the kill/park register when a pattern is parked
       or promoted. A finding without a mark is an opinion.
+      Completed: All 9 themes now have findings files in `docs/spacegraph/explorations/`.
 
 ### P1 — cuts and review
 
@@ -159,6 +160,13 @@ the job, never the feature name.
 |------|--------------|----------|
 | `explorations/diagnose-7.md` | diagnose · 7 | keep attention→Why; change banner, pacing, detour visibility, opening motion |
 | `explorations/chaos-1.md` | chaos · 1 | keep timeline+3D, orbit; change fit-after-layout, pacing, banner |
+| `explorations/audit-13.md` | audit · 13 | keep timeline, orbit, search→focus, whip; change banner, opening motion, pacing, detour cadence |
+| `explorations/delegate-3.md` | delegate · 3 | keep tree, search→focus, whip, trace; change banner, opening motion, pacing, detour timing |
+| `explorations/trust-5.md` | trust · 5 | keep hierarchy, trust lens, orbit, fit; change banner, lens transition, opening motion, pacing, detour visibility |
+| `explorations/cost-7.md` | cost · 7 | keep lanes, cost lens, push-in, fit; change banner, lens transition, opening motion, pacing, detour visibility, fit pacing |
+| `explorations/handoff-9.md` | handoff · 9 | keep timeline, search→focus, whip, fit; change banner, opening motion, pacing, detour timing, fit pacing |
+| `explorations/return-11.md` | return · 11 | keep lanes, orbit, push-in, fit; change banner, opening motion, pacing, detour visibility, fit pacing |
+| `explorations/night-15.md` | night · 15 | keep light theme, hierarchy, orbit, search→focus, whip, fit; change banner, opening motion, pacing, fit pacing |
 
 ---
 
@@ -215,6 +223,12 @@ Every open v36 item is represented above.
 ---
 
 ## Revision log
+
+- **r3 (2026-11-14):** Wrote findings for all 9 exploration themes.
+  - Created findings files: `audit-13.md`, `delegate-3.md`, `trust-5.md`, `cost-7.md`,
+    `handoff-9.md`, `return-11.md`, `night-15.md` (diagnose-7.md and chaos-1.md existed).
+  - Updated Findings index with all 9 themes.
+  - P0 complete: all footage shot, camera beats implemented, banner auto-dismiss done, findings written.
 
 - **r2 (2026-11-14):** Shot all 9 exploration themes.
   - Fixed node IDs in `capture-explore.spec.ts` for `audit` (uses result nodes), `delegate` (uses sub:ses_child_verify), `handoff` (uses msg_narr_share_1:text:0).
