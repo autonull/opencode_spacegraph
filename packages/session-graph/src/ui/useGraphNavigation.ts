@@ -59,7 +59,6 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
     onFilesChange,
     onPeekChange,
     setTrustLens,
-    onTrustLensChange,
     setCostLens,
     setCompactionAdvisor,
     onCompactionAdvisorChange,
@@ -129,10 +128,7 @@ export function useGraphNavigation(input: UseGraphNavigationInput): UseGraphNavi
   }
 
   const toggleTrustLens = () => {
-    setTrustLens((open: boolean) => {
-      onTrustLensChange?.(!open)
-      return !open
-    })
+    setTrustLens((open: boolean) => !open)
   }
 
   const toggleCostLens = () => {

@@ -419,7 +419,7 @@ export function createCardTemplate(theme: RenderTheme, options: CardTemplateOpti
 
     // Trust lens badge: shows on file nodes that are unverified (written but not read by verify phase)
     const trustBadge = options.unverifiedFiles?.has(node.id) && node.kind === "file"
-      ? `<span style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:${theme.warning};padding:1px 4px;border-radius:3px;background:${theme.warning}15;border:1px solid ${theme.warning}40" title="${safeEscapeHtml(options.copy?.writes?.(0) ?? "Unverified write")}">⚠</span>`
+      ? `<span data-slot="graph-trust-badge" style="flex:none;display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:${theme.warning};padding:1px 4px;border-radius:3px;background:${theme.warning}15;border:1px solid ${theme.warning}40" title="${safeEscapeHtml(options.copy?.writes?.(0) ?? "Unverified write")}">⚠</span>`
       : ""
 
     const pinned = options.pins?.has(node.id) === true

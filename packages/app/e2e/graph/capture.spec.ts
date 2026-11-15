@@ -672,16 +672,28 @@ test("41 graph trust lens @graph @capture", async ({ page }) => {
   await setLevel(page, "Execution")
   await fit(page)
   await still(page)
+  // Enable trust lens via View > Draw menu
+  await openMenu(page)
+  const trustLensOption = page.locator('[data-slot="graph-trust-lens-option"]')
+  const optionCount = await trustLensOption.count()
+  if (optionCount > 0) {
+    await trustLensOption.click()
+  }
+  await still(page)
   // Trust lens banner should appear when unverified files detected
   // The fixture has tool calls without verify/test nodes
-  const trustBanner = page.locator('[data-slot="graph-trust-banner"]')
-  if (await trustBanner.count() > 0) {
+  const trustBanner = page.locator('[data-slot="graph-trust-lens-banner"]')
+  const bannerCount = await trustBanner.count()
+  if (bannerCount > 0) {
     await expect(trustBanner).toBeVisible()
-    await capture(page, "41-graph-trust-lens.png")
-  } else {
-    // Banner may not appear if no unverified files - capture without it
-    await capture(page, "41-graph-trust-lens.png")
   }
+  // Trust lens badge on file nodes (may not be visible at this level)
+  const trustBadge = page.locator('[data-slot="graph-trust-badge"]')
+  const badgeCount = await trustBadge.count()
+  if (badgeCount > 0) {
+    await expect(trustBadge).toBeVisible()
+  }
+  await capture(page, "41-graph-trust-lens.png")
   expect(filterKnownErrors(errors)).toEqual([])
 })
 

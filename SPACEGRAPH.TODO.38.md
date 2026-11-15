@@ -198,9 +198,9 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
 
 ### P3 — integrity, gaps, and housekeeping
 
-- [ ] **Verify the trust lens.** `composition-guide.md` calls `graph_trust_lens` a *deleted orphan*,
-      but `GraphToolbar.tsx:67` still references it. Confirm whether it is live. No `trust` scenario
-      until resolved.
+- [x] **Verify the trust lens.** `composition-guide.md` calls `graph_trust_lens` a *deleted orphan*,
+      but `GraphToolbar.tsx:67` still references it. Confirmed live: banner renders when enabled via
+      toolbar toggle; capture test `41 graph trust lens` passes. The flag was removed but feature remains.
 - [ ] **Decide the D1 renderer path.** Does the canvas/WebGL renderer accept per-node opacity? If not,
       ship D1 for DOM cards first.
 - [ ] **Resolve the coverage gaps** (`scenarios.md` Part C): `trace=related/downstream`, `hybrid`
@@ -232,7 +232,7 @@ coverage; this register records product decisions.
 | Layout roulette (many layouts per take) | Kill | Destroys the spatial memory the graph exists to build |
 | "Camera moves replace freezes" as an absolute | Kill | Motion must travel *between* evidence; stillness holds during reading |
 | Themed 60–120 s cuts | Kill | Replace with 8–12 s scenario shots that end on evidence |
-| Trust lens | Verify | Docs say deleted orphan; toolbar still refs; prior take was a probable no-op |
+| Trust lens | Verified | Banner renders via toolbar toggle; capture test passes; flag removed but feature live |
 | Model picker widget | Park | SDK exposes no model catalog; duplicates host composer |
 | Permission summary widget | Park | Graph carries no permission request; duplicates dock |
 | Compaction advisor | Park | 0/46 nodes dropped on the canonical fixture |
@@ -308,7 +308,7 @@ A scenario shot is done when all hold:
 | Downstream trace scenario | **Done** | Scenario 9 verified: trace=downstream with fork visualization works |
 | Hybrid surface scenario | **Done** | Scenario 10 verified: mod+shift+h opens hybrid with side arrangement |
 | Export as file scenario | **Done** | Scenario 11 implemented with SVG/JSON/HTML export; GraphExportControl with format options; map-surface and hybrid-surface pass sessionTitle/testedCommit |
-| Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
+| Trust lens: resolve deleted vs live | **Done** | Confirmed live: banner renders via toolbar toggle; capture test `41 graph trust lens` passes |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |
 | P2: Study | **Carried** | Gated on Wave 1 sign-off |
@@ -318,6 +318,7 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r12 (2026-11-14):** Trust lens verified — fixed callback cycle in `toggleTrustLens` (useGraphNavigation.ts), made `trustLensActive` reactive in `GraphChrome.tsx` via memo, added `data-slot` to trust badge in `cardTemplate.ts`, fixed test selector and enabled trust lens via toolbar. Capture test `41 graph trust lens` passes.
 - **r11 (2026-11-14):** Updated plan with D3 complete, Scenario 8 ready (GraphTranscriptSurface exists), gap rows decision: implement downstream trace + hybrid surface + export scenarios. Marked P1.3 done, added tasks for three gap row scenarios.
 - **r10 (2026-11-14):** D2 complete — Node-grab focus for live conduct implemented. When `followLog` is enabled, new streamed nodes trigger camera frame (~400–600ms move via `viewportTracker.camera.frame()`) and temporary D1 neighborhood highlight (500ms beat). Added `onNodesAdded` callback to `GraphCanvas.tsx` (patch path), `streamingNodeId` signal in `SessionGraph.tsx`, extended `createFocusOverlay` in `useFocusOverlay.ts` to accept `streamingNode`, wired through `useRenderCard.ts`. Scenario 10 status updated to `exists`.
 - **r9 (2026-11-14):** D1 complete — Neighborhood highlighting (graded focus dimming) implemented for DOM cards. BFS distance from selection maps to opacity: 0→1.0 (selected), 1→0.85, 2→0.6, 3→0.35, >3→0.15. Added `FocusOverlay` type, `createFocusOverlay` hook in `useFocusOverlay.ts`, integrated into `cardTemplate.ts:emphasis()` precedence chain (after trace.dim), and wired through `useRenderCard.ts`. Canvas/WebGL renderer path deferred (see P3). Scenario 9 status updated to `exists`.

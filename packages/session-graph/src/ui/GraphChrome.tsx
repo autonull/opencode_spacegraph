@@ -12,8 +12,7 @@ import type {
 } from "@opencode/session-ui/graph"
 import type { RendererID } from "../canvas/renderer-registry"
 import type { RenderModel } from "@spacegraphjs/renderer"
-import { createMemo, type JSX } from "solid-js"
-import { Show } from "solid-js"
+import { createMemo, Show, type JSX } from "solid-js"
 import { useGraphViewContext } from "./GraphViewContext"
 import { GraphBreadcrumbs } from "./GraphBreadcrumbs"
 import { GraphCompareBar } from "./GraphCompareBar"
@@ -281,7 +280,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
   const demoDismissed = props.demoDismissed ?? false
   const seeMapPromptDismissed = props.seeMapPromptDismissed ?? false
   const showSeeMapPrompt = props.showSeeMapPrompt ?? false
-  const trustLensActive = props.trustLens ?? props.trustLensActive ?? false
+  const trustLensActive = createMemo(() => (props.trustLens ?? props.trustLensActive) ?? false)
   const shell = props.shell ?? "full"
   const followLogForScale = props.followLogForScale ?? ctx.followLog()
   const frameTurn = props.frameTurn ?? (() => props.frame)
@@ -329,7 +328,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
         onLayoutChange={ctx.changeLayout}
         files={ctx.files()}
         onToggleFiles={ctx.toggleFiles}
-        trustLens={trustLensActive}
+        trustLens={trustLensActive()}
         onToggleTrustLens={ctx.toggleTrustLens}
         costLens={props.costLens ?? ctx.costLens()}
         onToggleCostLens={
