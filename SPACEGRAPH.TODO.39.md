@@ -314,7 +314,7 @@ If a proposed lift needs any of these, it is not a lift.
 
 ## First PR
 
-**PR 1 — `@spacegraphjs/trace` only.**
+**PR 1 — `@spacegraphjs/trace` only.** ✅ DONE
 
 - Create the package.
 - Implement `classifyTrace` and the overlay helpers.
@@ -350,6 +350,13 @@ This order keeps every change reviewable and reversible.
 ---
 
 ## Revision log
+
+- **r1 (2026-11-15):** PR 1 complete — `@spacegraphjs/trace` package created.
+  - Package exports `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helpers.
+  - Tests pass with synthetic cause graph (14 tests).
+  - Second-host demo capability "trace" exercises all trace kinds.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run build` passes.
 
 - **r0 (2026-11-15):** v39 pivots from scenario production to library lifting.
   - Scope: trace, focus, collapse first; view state and search next; annotations/renderer/manual positions optional.
