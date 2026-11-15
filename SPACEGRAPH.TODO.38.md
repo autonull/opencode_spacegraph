@@ -307,7 +307,7 @@ A scenario shot is done when all hold:
 | Hybrid surface with related/downstream trace | **In Progress** | Two gap rows: downstream trace scenario + hybrid surface scenario (both needed per Part G) |
 | Downstream trace scenario | **Todo** | Add scenario demonstrating trace=downstream (fork visualization) |
 | Hybrid surface scenario | **Todo** | Add scenario demonstrating map beside transcript (side arrangement) |
-| Export as file scenario | **Todo** | Add scenario demonstrating SVG/JSON/HTML export |
+| Export as file scenario | **Done** | Scenario 11 implemented with SVG/JSON/HTML export; GraphExportControl with format options; map-surface and hybrid-surface pass sessionTitle/testedCommit |
 | Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |

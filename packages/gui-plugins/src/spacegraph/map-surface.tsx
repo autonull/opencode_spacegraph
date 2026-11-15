@@ -25,6 +25,9 @@ export function MapSurface(props: {
   const arrangement = () => props.model.arrangement(props.session)
   const arrangementSide = () => props.model.side(props.session)
 
+  const sessionTitle = props.session.server.data.session.get(props.session.id)?.title ?? "OpenCode Session"
+  const testedCommit = "unknown"
+
   return (
     <div class="relative size-full min-h-0" data-slot="spacegraph-surface-map">
       <SessionGraph
@@ -75,6 +78,8 @@ export function MapSurface(props: {
         onPaletteAction={(entry) => props.model.runPaletteAction(props.session, entry.action?.id ?? "")}
         onPaletteLens={(entry) => entry.lens && props.model.applyLensById(props.session, entry.lens.id)}
         onPaletteSurface={(entry) => entry.surface && props.model.select(props.session, entry.surface.id)}
+        sessionTitle={sessionTitle}
+        testedCommit={testedCommit}
       />
     </div>
   )

@@ -46,6 +46,9 @@ export function HybridSurface(props: {
   const preferredRenderer = () => props.model.renderer()
   const detailMode = () => props.model.detailMode(props.session)
 
+  const sessionTitle = props.session.server.data.session.get(props.session.id)?.title ?? "OpenCode Session"
+  const testedCommit = "unknown"
+
   return (
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
       <div class={transcriptClass()}>{props.transcript}</div>
@@ -97,6 +100,8 @@ export function HybridSurface(props: {
           onPaletteAction={(entry) => props.model.runPaletteAction(props.session, entry.action?.id ?? "")}
           onPaletteLens={(entry) => entry.lens && props.model.applyLensById(props.session, entry.lens.id)}
           onPaletteSurface={(entry) => entry.surface && props.model.select(props.session, entry.surface.id)}
+          sessionTitle={sessionTitle}
+          testedCommit={testedCommit}
         />
         <GraphToolbarViewControls
           i18n={i18n}

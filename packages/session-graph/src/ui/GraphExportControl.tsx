@@ -51,6 +51,7 @@ export const GraphExportControl = (props: GraphExportControlProps) => {
       type="button"
       data-slot={input.slot}
       data-value={input.value}
+      data-format={input.value}
       class="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-12-regular text-text-base hover:bg-surface-base-hover"
       onClick={(event) => {
         const menu = event.currentTarget.closest("details")
