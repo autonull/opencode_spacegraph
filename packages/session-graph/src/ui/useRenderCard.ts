@@ -29,9 +29,14 @@ export function useRenderCard(
     band?: () => "overview" | "execution" | "detail" | undefined
     pins: () => ReadonlySet<string>
     costLens: () => boolean
+    streamingNode?: () => string | undefined
   },
 ) {
-  const focusOverlay = createFocusOverlay(state.model, state.selection)
+  const focusOverlay = createFocusOverlay({
+    model: state.model,
+    selection: state.selection,
+    streamingNode: state.streamingNode,
+  })
 
   return createMemo(() => {
     const now = Date.now()

@@ -4,6 +4,7 @@ import type {
   Projection,
   RendererCapabilities,
   RenderModel,
+  RenderNode,
   RendererViewport,
   RenderTheme,
 } from "@spacegraphjs/renderer"
@@ -59,6 +60,8 @@ export type GraphCanvasProps = {
   reducedMotion?: boolean | (() => boolean)
   /** Register the instance on `window.SpaceGraph` and `SpaceGraph.instances` for developer tooling. Off by default. */
   global?: boolean | (() => boolean)
+  /** Called when new nodes are added via streaming patch. Receives the added nodes. */
+  onNodesAdded?: (nodes: readonly RenderNode[]) => void
 }
 
 const groupIDOf = (target: EventTarget | null) => {
@@ -120,6 +123,9 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         if (patchTimeout) clearTimeout(patchTimeout)
         patchTimeout = window.setTimeout(() => {
           renderer.applyPatch?.(patch)
+          if (patch.nodes.added.length > 0) {
+            props.onNodesAdded?.(patch.nodes.added)
+          }
           previousModel = model
           patchTimeout = null
         }, PATCH_DEBOUNCE_MS)

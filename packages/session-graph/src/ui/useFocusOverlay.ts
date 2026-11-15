@@ -13,28 +13,37 @@ import type { FocusOverlay } from "./cardTemplate"
  * - 3: 0.35 opacity
  * - >3: 0.15 opacity
  */
-export function createFocusOverlay(
-  model: () => GraphViewData,
-  selection: () => readonly string[],
-  maxDistance: number = 3,
-): () => FocusOverlay {
+export type FocusOverlayOptions = {
+  model: () => GraphViewData
+  selection: () => readonly string[]
+  /** Optional node ID being streamed (D2: temporarily highlight around new node) */
+  streamingNode?: () => string | undefined
+  maxDistance?: number
+}
+
+export function createFocusOverlay(options: FocusOverlayOptions): () => FocusOverlay {
+  const { model, selection, streamingNode, maxDistance = 3 } = options
   return createMemo<FocusOverlay>(() => {
     const selectedIds = selection()
-    if (selectedIds.length === 0) return new Map()
+    const streamingId = streamingNode?.()
+    const sourceIds = [...selectedIds]
+    if (streamingId) sourceIds.push(streamingId)
+
+    if (sourceIds.length === 0) return new Map()
 
     const graph = model()
     const distance = new Map<string, number>()
     const queue: Array<{ id: string; dist: number }> = []
 
-    // Initialize queue with selected nodes at distance 0
-    for (const id of selectedIds) {
+    // Initialize queue with selected/streaming nodes at distance 0
+    for (const id of sourceIds) {
       distance.set(id, 0)
       queue.push({ id, dist: 0 })
     }
 
-    // BFS from all selected nodes simultaneously
-    // This gives minimum distance to any selected node
-    const visited = new Set<string>(selectedIds)
+    // BFS from all source nodes simultaneously
+    // This gives minimum distance to any source node
+    const visited = new Set<string>(sourceIds)
 
     while (queue.length > 0) {
       const { id, dist } = queue.shift()!

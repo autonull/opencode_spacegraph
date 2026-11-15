@@ -2,6 +2,7 @@ import type {
   GraphRenderer,
   Projection,
   RenderTheme,
+  RenderNode,
 } from "@spacegraphjs/renderer"
 import type { DepthMode } from "@opencode/session-ui/graph"
 import type {
@@ -843,6 +844,9 @@ export const SessionGraph = (props: SessionGraphProps) => {
     viewportTracker.camera.frameReadable(turn)
   })
 
+  // D2: signal for the newly streamed node to apply temporary D1 focus highlighting
+  const [streamingNodeId, setStreamingNodeId] = createSignal<string | undefined>()
+
   // Width thresholds - use props.breakpoints or defaults
   const narrowThreshold = props.breakpoints?.narrow ?? 768
   const compactThreshold = props.breakpoints?.compact ?? 1030
@@ -971,6 +975,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
       i18n,
       pins,
       costLens,
+      streamingNode: () => streamingNodeId(),
     },
   )
 
@@ -1445,6 +1450,19 @@ export const SessionGraph = (props: SessionGraphProps) => {
       viewportTracker!.setResting(next)
       setViewport(next)
       recordInteraction()
+    },
+    onNodesAdded: (nodes: readonly RenderNode[]) => {
+      if (!followLog()) return
+      if (!rendererReady()) return
+      if (!viewportTracker) return
+      // Frame the newest node (last in the array)
+      const newestNode = nodes[nodes.length - 1]
+      if (newestNode) {
+        viewportTracker.camera.frame([newestNode.id])
+        // D2: apply temporary D1 focus highlighting around the new node
+        setStreamingNodeId(newestNode.id)
+        setTimeout(() => setStreamingNodeId(undefined), 500)
+      }
     },
     setViewport,
     viewportTracker: viewportTracker!,

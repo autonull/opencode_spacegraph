@@ -10,6 +10,7 @@ import type { GraphViewData, GraphNode, GraphEdge, DetailMode, Layout, ZoomLevel
 import type { RenderModel } from "@spacegraphjs/renderer"
 import type { RenderTheme } from "@spacegraphjs/renderer"
 import type { Projection } from "@spacegraphjs/renderer"
+import type { RenderNode } from "@spacegraphjs/renderer"
 import type { JSX } from "solid-js"
 import { createNodeAnchor } from "./graph-anchors"
 import type { UseGraphStateReturn } from "./useGraphState"
@@ -34,6 +35,7 @@ export function useCanvasRegionProps(
     onGroupMenu: (id: string, at: { x: number; y: number }) => void
     moveNodes: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
     resizeNode: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
+    onNodesAdded: (nodes: readonly RenderNode[]) => void
     cardFacing: () => "plane" | "camera"
     applyModel: (instance: GraphRenderer) => void
     preferredRenderer: () => import("../canvas/renderer-registry").RendererID | undefined
@@ -138,6 +140,7 @@ export function useCanvasRegionProps(
     // Layout interactions
     onNodeMoved: (nodes) => { state.moveNodes(nodes); state.recordInteraction(); },
     onNodeResized: (resize) => { state.resizeNode(resize); state.recordInteraction(); },
+    onNodesAdded: state.onNodesAdded,
     cardFacing: state.cardFacing,
     applyModel: state.applyModel,
     onRenderer: state.onRenderer,

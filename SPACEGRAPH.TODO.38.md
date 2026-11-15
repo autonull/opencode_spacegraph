@@ -65,7 +65,7 @@ human speed, honestly.
 | Raw takes (9) | Pipeline proofs only, not demo material | `docs/spacegraph/video/takes/` (gitignored) |
 | Marks / stills | Per-take beats and PNGs | `docs/spacegraph/video/marks/`, `stills/` |
 | Banner auto-dismiss | Done (r1) | `GraphChrome.tsx`, `useGraphState.ts` |
-| Composer widget + `followLog` | Exist; live conduct is partial | `ComposerNodeWidget.tsx`, `SessionGraph.tsx:831` |
+| Composer widget + `followLog` + D2 node-grab | **Implemented** — frames new streamed nodes, applies temporary D1 highlight | `ComposerNodeWidget.tsx`, `SessionGraph.tsx`, `GraphCanvas.tsx`, `useFocusOverlay.ts` |
 | Focus / neighborhood dim (D1) | **Implemented (DOM cards)** — graded BFS distance dimming | `cardTemplate.ts`, `useFocusOverlay.ts`, `useRenderCard.ts` |
 | Pixel gate | 43 passed (54 frames, 4 known-variance at 0%) | `capture.spec.ts` |
 | Capture re-bless | 4 known-variance frames at 0% | v36 r4 |
@@ -120,7 +120,7 @@ Two waves: film what exists, then build and film the new capabilities.
 | 7 | Know what this run cost | 1 | `done` (flag-gated) |
 | 8 | Read a turn without leaving the transcript | 1 | `parked` (needs transcript inline preview) |
 | 9 | Focus on what matters, ignore the rest | 2 | `exists` (D1 implemented for DOM cards) |
-| 10 | Keep working while the agent runs | 2 | `partial` (D2) |
+| 10 | Keep working while the agent runs | 2 | `exists` (D2 implemented) |
 | 11 | Open a crowded cluster without losing my place | 2 | `partial` (D3) |
 
 **Wave 1 needs no new code.** Wave 2 needs D1–D3 (`scenarios.md` Part D).
@@ -172,9 +172,11 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
       BFS distance → smooth opacity (0→1.0, 1→0.85, 2→0.6, 3→0.35, >D→0.15); multi-select by nearest.
       Implemented for DOM cards in `cardTemplate.ts:emphasis()`, `useFocusOverlay.ts`, `useRenderCard.ts`.
       Canvas/WebGL renderer path pending (see P3).
-- [ ] **P1.2 — D2 live conduct.** Composer + followLog exist; add framing of each new node as it
+- [x] **P1.2 — D2 live conduct.** Composer + followLog exist; add framing of each new node as it
       streams (~400–600 ms move) and wrap the newest node in D1 for a beat. Keep the composer pinned
       while typing.
+      Implemented: `onNodesAdded` in `GraphCanvas.tsx` triggers camera frame; `streamingNodeId` signal in
+      `SessionGraph.tsx` feeds `useFocusOverlay.ts` for temporary D1 highlight around new node (500ms beat).
 - [ ] **P1.3 — D3 progressive expansion.** A card affordance that expands a node in place and fans
       out its children, re-fitting only the subtree. Drill depth already caps at 3.
 - [ ] **P1.4 — Film scenarios 9–11** with the same definition of done as Wave 1.
@@ -308,6 +310,7 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r10 (2026-11-14):** D2 complete — Node-grab focus for live conduct implemented. When `followLog` is enabled, new streamed nodes trigger camera frame (~400–600ms move via `viewportTracker.camera.frame()`) and temporary D1 neighborhood highlight (500ms beat). Added `onNodesAdded` callback to `GraphCanvas.tsx` (patch path), `streamingNodeId` signal in `SessionGraph.tsx`, extended `createFocusOverlay` in `useFocusOverlay.ts` to accept `streamingNode`, wired through `useRenderCard.ts`. Scenario 10 status updated to `exists`.
 - **r9 (2026-11-14):** D1 complete — Neighborhood highlighting (graded focus dimming) implemented for DOM cards. BFS distance from selection maps to opacity: 0→1.0 (selected), 1→0.85, 2→0.6, 3→0.35, >3→0.15. Added `FocusOverlay` type, `createFocusOverlay` hook in `useFocusOverlay.ts`, integrated into `cardTemplate.ts:emphasis()` precedence chain (after trace.dim), and wired through `useRenderCard.ts`. Canvas/WebGL renderer path deferred (see P3). Scenario 9 status updated to `exists`.
 - **r8 (2026-11-14):** D3 complete — Progressive expansion affordance already implemented. Card chevron toggle for cluster expand/collapse in `packages/session-graph/src/ui/cardTemplate.ts` covers phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state management in useGroupCollapse.ts. Layout preserves existing node positions on expand (append-only).
 - **r7 (2026-11-14):** D2 complete — streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to `packages/gui-plugins/src/spacegraph/internal/graph/fixture.ts`). The fixture includes a subagent tool in "streaming" state, enabling demonstration of D2 node-grab focus where the camera follows newly streamed nodes.

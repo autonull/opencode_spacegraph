@@ -103,6 +103,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
         }}
         onNodeMoved={props.onNodeMoved}
         onNodeResized={props.onNodeResized}
+        onNodesAdded={props.onNodesAdded}
         onModelApplied={props.applyModel}
         onRenderer={(instance) => {
           props.onRenderer?.(instance)

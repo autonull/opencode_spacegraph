@@ -4,6 +4,7 @@ import type {
   RenderModel,
   RendererViewport,
   GraphRenderer,
+  RenderNode,
 } from "@spacegraphjs/renderer"
 import type {
   DetailMode,
@@ -51,6 +52,7 @@ export type GraphCanvasRegionProps = {
   // Layout interactions
   onNodeMoved: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
   onNodeResized: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
+  onNodesAdded: (nodes: readonly RenderNode[]) => void
   cardFacing: () => "plane" | "camera"
   applyModel: (instance: any) => void
   onRenderer?: (renderer: GraphRenderer | undefined) => void
@@ -181,6 +183,7 @@ export interface BuildCanvasRegionPropsInput {
   // Layout interactions
   onNodeMoved: (nodes: readonly { id: string; position: [number, number, number] }[]) => void
   onNodeResized: (resize: { id: string; size: [number, number]; position: [number, number, number] }) => void
+  onNodesAdded: (nodes: readonly RenderNode[]) => void
   cardFacing: () => "plane" | "camera"
   applyModel: (instance: any) => void
   onRenderer?: (renderer: GraphRenderer | undefined) => void
@@ -316,6 +319,7 @@ export function buildCanvasRegionProps(input: BuildCanvasRegionPropsInput): Grap
     // Layout interactions
     onNodeMoved: input.onNodeMoved,
     onNodeResized: input.onNodeResized,
+    onNodesAdded: input.onNodesAdded,
     cardFacing: input.cardFacing,
     applyModel: input.applyModel,
     onRenderer: input.onRenderer,
