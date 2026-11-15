@@ -283,7 +283,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.detailMode = detailMode
       })
     },
-    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "stacked",
+    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "side",
     side: (session: MountedSession): GraphSide => sessionValue(session)?.side ?? prefValue().side ?? "end",
     surface: (session: MountedSession) => sessionValue(session)?.surface,
     select: (session: MountedSession, id: string) => {

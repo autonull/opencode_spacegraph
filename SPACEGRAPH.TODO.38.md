@@ -304,9 +304,9 @@ A scenario shot is done when all hold:
 | D1: DOM-cards surface with per-node opacity | **Done** | Canvas renderer (ShapeNode) supports per-node opacity via `data.opacity`; DOM cards via `wrapDim()`. Explicit `dimOpacity: 0.35` configured in session graph adapter. |
 | D2: Streaming fixture / scripted append for node-grab focus | **Done** | Streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to gui-plugins). Subagent tool in streaming state demonstrates node-grab focus for D2. |
 | D3: Progressive expansion (expand cluster affordance) | **Done** | Card affordance (chevron) implemented in `packages/session-graph/src/ui/cardTemplate.ts` for phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state in useGroupCollapse.ts. Layout preserves positions on expand. |
-| Hybrid surface with related/downstream trace | **In Progress** | Two gap rows: downstream trace scenario + hybrid surface scenario (both needed per Part G) |
-| Downstream trace scenario | **Todo** | Add scenario demonstrating trace=downstream (fork visualization) |
-| Hybrid surface scenario | **Todo** | Add scenario demonstrating map beside transcript (side arrangement) |
+| Hybrid surface with related/downstream trace | **Done** | Both gap rows implemented and verified via e2e capture tests |
+| Downstream trace scenario | **Done** | Scenario 9 verified: trace=downstream with fork visualization works |
+| Hybrid surface scenario | **Done** | Scenario 10 verified: mod+shift+h opens hybrid with side arrangement |
 | Export as file scenario | **Done** | Scenario 11 implemented with SVG/JSON/HTML export; GraphExportControl with format options; map-surface and hybrid-surface pass sessionTitle/testedCommit |
 | Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
