@@ -16,6 +16,9 @@ import { text } from "./node-data"
 /** Safe escapeHtml that handles undefined/null. */
 const safeEscapeHtml = (value: string | undefined) => escapeHtml(value ?? "")
 import type { TraceOverlay } from "./overlay"
+
+/** Graded focus overlay: maps node ID to graph distance from the nearest selected node. */
+export type FocusOverlay = ReadonlyMap<string, number>
 import { formatAge, sourceLabel } from "./provenance"
 import { GLYPH, GLYPH_GROUP, CATEGORY_HUE, KIND_HUE, MONO_KINDS } from "./cardConstants"
 
@@ -141,6 +144,8 @@ export type CardTemplateOptions = {
   copy: CardCopy
   /** Trace overlay for focus+context highlighting. */
   trace?: TraceOverlay
+  /** Focus overlay for graded neighborhood highlighting (D1). Maps node ID to BFS distance from selection. */
+  focus?: FocusOverlay
   /** B1: the diff overlay for a parked view or a two-turn comparison. */
   diff?: { added: ReadonlySet<string>; removed: ReadonlySet<string>; changed: ReadonlySet<string> }
   /** B2: groups the reader has folded; their header toggle says "expand" instead. */
@@ -214,7 +219,7 @@ function diffFiles(node: GraphNode): string | undefined {
 
 /**
  * Computes the emphasis level for a card based on all active overlays.
- * Precedence (highest to lowest): diff.removed → trace.dim → focus.dim → diff.changed/added → selected/active → depth fade.
+ * Precedence (highest to lowest): diff.removed → trace.dim → focus.dim (graded) → diff.changed/added → selected/active → depth fade.
  * Returns { style: string, emphasis: string } where emphasis is the data-emphasis value.
  */
 function emphasis(
@@ -236,9 +241,21 @@ function emphasis(
   if (trace && !isLitNode) {
     return { style: "opacity:0.35;", emphasis: "dim" }
   }
-  // focus.dim - will be implemented in batch 1.3 (focus dimming)
-  // For now, check if node is in focus neighborhood (selected + 1-hop neighbors)
-  // This is a placeholder - the actual focus logic will be added in batch 1.3
+  // focus.dim (graded) - D1 neighborhood highlighting: BFS distance → smooth opacity
+  // distance 0 (selected) is handled by selected check below
+  // 1 → 0.85, 2 → 0.6, 3 → 0.35, >3 → 0.15
+  const focus = options.focus
+  if (focus) {
+    const distance = focus.get(node.id)
+    if (distance !== undefined && distance > 0) {
+      let opacity: number
+      if (distance === 1) opacity = 0.85
+      else if (distance === 2) opacity = 0.6
+      else if (distance === 3) opacity = 0.35
+      else opacity = 0.15
+      return { style: `opacity:${opacity};`, emphasis: "focus" }
+    }
+  }
   // diff.changed/added
   if (diffKind === "changed" || diffKind === "added") {
     return { style: "", emphasis: "changed" }

@@ -66,7 +66,7 @@ human speed, honestly.
 | Marks / stills | Per-take beats and PNGs | `docs/spacegraph/video/marks/`, `stills/` |
 | Banner auto-dismiss | Done (r1) | `GraphChrome.tsx`, `useGraphState.ts` |
 | Composer widget + `followLog` | Exist; live conduct is partial | `ComposerNodeWidget.tsx`, `SessionGraph.tsx:831` |
-| Focus / neighborhood dim | **Placeholder** — not built | `cardTemplate.ts:239-241` |
+| Focus / neighborhood dim (D1) | **Implemented (DOM cards)** — graded BFS distance dimming | `cardTemplate.ts`, `useFocusOverlay.ts`, `useRenderCard.ts` |
 | Pixel gate | 43 passed (54 frames, 4 known-variance at 0%) | `capture.spec.ts` |
 | Capture re-bless | 4 known-variance frames at 0% | v36 r4 |
 | Listener-leak | 3 cases pass, 0 growth | `listener-leak.spec.ts` |
@@ -119,7 +119,7 @@ Two waves: film what exists, then build and film the new capabilities.
 | 6 | Audit a long session fast | 1 | `done` |
 | 7 | Know what this run cost | 1 | `done` (flag-gated) |
 | 8 | Read a turn without leaving the transcript | 1 | `parked` (needs transcript inline preview) |
-| 9 | Focus on what matters, ignore the rest | 2 | `proposed` (D1) |
+| 9 | Focus on what matters, ignore the rest | 2 | `exists` (D1 implemented for DOM cards) |
 | 10 | Keep working while the agent runs | 2 | `partial` (D2) |
 | 11 | Open a crowded cluster without losing my place | 2 | `partial` (D3) |
 
@@ -168,10 +168,10 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
 
 ### P1 — build the new capabilities (Wave 2), then film
 
-- [ ] **P1.1 — D1 neighborhood highlighting.** Graded distance-based dimming from the selection:
+- [x] **P1.1 — D1 neighborhood highlighting.** Graded distance-based dimming from the selection:
       BFS distance → smooth opacity (0→1.0, 1→0.85, 2→0.6, 3→0.35, >D→0.15); multi-select by nearest.
-      Plug into the `cardTemplate.ts:emphasis()` precedence chain beside `trace.dim`. Decide the
-      renderer path first (DOM cards only, or per-node canvas opacity) — see P3.
+      Implemented for DOM cards in `cardTemplate.ts:emphasis()`, `useFocusOverlay.ts`, `useRenderCard.ts`.
+      Canvas/WebGL renderer path pending (see P3).
 - [ ] **P1.2 — D2 live conduct.** Composer + followLog exist; add framing of each new node as it
       streams (~400–600 ms move) and wrap the newest node in D1 for a beat. Keep the composer pinned
       while typing.
@@ -308,6 +308,7 @@ A scenario shot is done when all hold:
 
 ## Revision log
 
+- **r9 (2026-11-14):** D1 complete — Neighborhood highlighting (graded focus dimming) implemented for DOM cards. BFS distance from selection maps to opacity: 0→1.0 (selected), 1→0.85, 2→0.6, 3→0.35, >3→0.15. Added `FocusOverlay` type, `createFocusOverlay` hook in `useFocusOverlay.ts`, integrated into `cardTemplate.ts:emphasis()` precedence chain (after trace.dim), and wired through `useRenderCard.ts`. Canvas/WebGL renderer path deferred (see P3). Scenario 9 status updated to `exists`.
 - **r8 (2026-11-14):** D3 complete — Progressive expansion affordance already implemented. Card chevron toggle for cluster expand/collapse in `packages/session-graph/src/ui/cardTemplate.ts` covers phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state management in useGroupCollapse.ts. Layout preserves existing node positions on expand (append-only).
 - **r7 (2026-11-14):** D2 complete — streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to `packages/gui-plugins/src/spacegraph/internal/graph/fixture.ts`). The fixture includes a subagent tool in "streaming" state, enabling demonstration of D2 node-grab focus where the camera follows newly streamed nodes.
 - **r6 (2026-11-14):** D1 complete — per-node opacity works for both DOM cards (via `wrapDim()`) and canvas ShapeNodes (via `data.opacity`). Added explicit `dimOpacity: 0.35` to session graph adapter geometry config.

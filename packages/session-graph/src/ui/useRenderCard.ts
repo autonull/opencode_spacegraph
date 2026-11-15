@@ -4,6 +4,7 @@ import type { CardTemplate } from "../canvas/buildRenderModel"
 import { createCardTemplate } from "./cardTemplate"
 import { createCardCopy } from "./card-copy"
 import { fileRelations, tokenTotal, unverifiedFiles, costLens } from "@opencode/session-ui/graph"
+import { createFocusOverlay } from "./useFocusOverlay"
 
 export function useRenderCard(
   props: {
@@ -30,6 +31,8 @@ export function useRenderCard(
     costLens: () => boolean
   },
 ) {
+  const focusOverlay = createFocusOverlay(state.model, state.selection)
+
   return createMemo(() => {
     const now = Date.now()
     const selectedId = state.selection()[0]
@@ -88,6 +91,7 @@ export function useRenderCard(
           now,
           copy,
           trace: state.mergedTrace(),
+          focus: focusOverlay(),
           diff: state.comparison(),
           collapsedGroups: state.collapsedGroups(),
           positions: state.displayPositions(),
