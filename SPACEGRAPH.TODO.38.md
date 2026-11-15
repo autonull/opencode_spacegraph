@@ -118,12 +118,15 @@ Two waves: film what exists, then build and film the new capabilities.
 | 5 | Hand this to a teammate | 1 | `done` |
 | 6 | Audit a long session fast | 1 | `done` |
 | 7 | Know what this run cost | 1 | `done` (flag-gated) |
-| 8 | Read a turn without leaving the transcript | 1 | `parked` (needs transcript inline preview) |
-| 9 | Focus on what matters, ignore the rest | 2 | `exists` (D1 implemented for DOM cards) |
-| 10 | Keep working while the agent runs | 2 | `exists` (D2 implemented) |
-| 11 | Open a crowded cluster without losing my place | 2 | `partial` (D3) |
+| 8 | Read a turn without leaving the transcript | 1 | `ready` (GraphTranscriptSurface implemented) |
+| 9 | See the downstream impact of a change | 2 | `planned` (trace=downstream scenario) |
+| 10 | See the map beside the transcript | 2 | `planned` (hybrid surface scenario) |
+| 11 | Share the graph as a file | 2 | `planned` (export scenario) |
+| 12 | Focus on what matters, ignore the rest | 2 | `exists` (D1 implemented for DOM cards) |
+| 13 | Keep working while the agent runs | 2 | `exists` (D2 implemented) |
+| 14 | Open a crowded cluster without losing my place | 2 | `exists` (D3 implemented) |
 
-**Wave 1 needs no new code.** Wave 2 needs D1–D3 (`scenarios.md` Part D).
+**Wave 1 needs no new code.** Wave 2 needs D1–D3 (`scenarios.md` Part D). Gap-row scenarios (9–11) are new Wave 2 shots.
 
 ---
 
@@ -148,7 +151,7 @@ Two waves: film what exists, then build and film the new capabilities.
       - Scenario 5: "I need to hand this to a teammate" — cartographer lens → permalink command
       - Scenario 6: "I need to audit a long session fast" — auditor lens → matrix layout → compaction badge
       - Scenario 7: "I need to know what this run cost" — cost lens → lanes → highest-cost node
-- [ ] **P0.3 (cont.) — Scenario 8.** Requires transcript surface with inline preview (flag-gated surface, not available in test env). Parked for now.
+- [ ] **P0.3 (cont.) — Scenario 8.** GraphTranscriptSurface with inline preview implemented (`packages/session-graph/src/ui/GraphTranscriptSurface.tsx`, `GraphInline.tsx`). Need to wire in test fixture and enable capture.
 - [ ] **P0.4 — Findings per scenario.** From inspected frames only; each cites the scenario and frame.
 - [ ] **P0.5 — Review gate per scenario.** Owner sign-off on goal clarity and outcome legibility.
 
@@ -177,8 +180,10 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
       while typing.
       Implemented: `onNodesAdded` in `GraphCanvas.tsx` triggers camera frame; `streamingNodeId` signal in
       `SessionGraph.tsx` feeds `useFocusOverlay.ts` for temporary D1 highlight around new node (500ms beat).
-- [ ] **P1.3 — D3 progressive expansion.** A card affordance that expands a node in place and fans
+- [x] **P1.3 — D3 progressive expansion.** A card affordance that expands a node in place and fans
       out its children, re-fitting only the subtree. Drill depth already caps at 3.
+      Implemented: chevron toggle in `cardTemplate.ts` for phase/file-group/subagent-group/error-group,
+      click handler in `GraphCanvas.tsx`, state in `useGroupCollapse.ts`. Layout preserves positions on expand.
 - [ ] **P1.4 — Film scenarios 9–11** with the same definition of done as Wave 1.
 
 ### P2 — measurement (carried from v37)
@@ -250,7 +255,7 @@ coverage; this register records product decisions.
 | When do we go 60 fps / 1080p? | First public cut | Only for a cut that earns release |
 | D1 renderer path | Before P1.1 | DOM cards only until per-node canvas opacity is proven |
 | D2 streaming source | Before P1.2 | Scripted append if the fixture does not stream live |
-| Which gap row earns a scenario? | Before Wave 2 filming | Pick one of related-trace / hybrid / export |
+| Which gap rows earn scenarios? | Before Wave 2 filming | Implement downstream trace + hybrid surface + export (all three gap rows) |
 | Study recruitment | P2 study | Internal team first (n≥5); external only if available |
 | Flag graduation order | After Wave 1 sign-off | Delete only proven defaults |
 
@@ -299,17 +304,21 @@ A scenario shot is done when all hold:
 | D1: DOM-cards surface with per-node opacity | **Done** | Canvas renderer (ShapeNode) supports per-node opacity via `data.opacity`; DOM cards via `wrapDim()`. Explicit `dimOpacity: 0.35` configured in session graph adapter. |
 | D2: Streaming fixture / scripted append for node-grab focus | **Done** | Streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to gui-plugins). Subagent tool in streaming state demonstrates node-grab focus for D2. |
 | D3: Progressive expansion (expand cluster affordance) | **Done** | Card affordance (chevron) implemented in `packages/session-graph/src/ui/cardTemplate.ts` for phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state in useGroupCollapse.ts. Layout preserves positions on expand. |
-| Hybrid surface with related/downstream trace | **Todo** | Two gap rows: related/downstream trace or hybrid surface (decide which earns a scenario) |
+| Hybrid surface with related/downstream trace | **In Progress** | Two gap rows: downstream trace scenario + hybrid surface scenario (both needed per Part G) |
+| Downstream trace scenario | **Todo** | Add scenario demonstrating trace=downstream (fork visualization) |
+| Hybrid surface scenario | **Todo** | Add scenario demonstrating map beside transcript (side arrangement) |
+| Export as file scenario | **Todo** | Add scenario demonstrating SVG/JSON/HTML export |
 | Trust lens: resolve deleted vs live | **Open** | Part G open question; resolve before trust scenario |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |
 | P2: Study | **Carried** | Gated on Wave 1 sign-off |
-| Scenario 8: Transcript surface with inline preview | **Parked** | Requires transcript surface implementation |
+| Scenario 8: Transcript surface with inline preview | **Ready** | GraphTranscriptSurface + GraphInline implemented; needs test fixture wiring |
 
 ---
 
 ## Revision log
 
+- **r11 (2026-11-14):** Updated plan with D3 complete, Scenario 8 ready (GraphTranscriptSurface exists), gap rows decision: implement downstream trace + hybrid surface + export scenarios. Marked P1.3 done, added tasks for three gap row scenarios.
 - **r10 (2026-11-14):** D2 complete — Node-grab focus for live conduct implemented. When `followLog` is enabled, new streamed nodes trigger camera frame (~400–600ms move via `viewportTracker.camera.frame()`) and temporary D1 neighborhood highlight (500ms beat). Added `onNodesAdded` callback to `GraphCanvas.tsx` (patch path), `streamingNodeId` signal in `SessionGraph.tsx`, extended `createFocusOverlay` in `useFocusOverlay.ts` to accept `streamingNode`, wired through `useRenderCard.ts`. Scenario 10 status updated to `exists`.
 - **r9 (2026-11-14):** D1 complete — Neighborhood highlighting (graded focus dimming) implemented for DOM cards. BFS distance from selection maps to opacity: 0→1.0 (selected), 1→0.85, 2→0.6, 3→0.35, >3→0.15. Added `FocusOverlay` type, `createFocusOverlay` hook in `useFocusOverlay.ts`, integrated into `cardTemplate.ts:emphasis()` precedence chain (after trace.dim), and wired through `useRenderCard.ts`. Canvas/WebGL renderer path deferred (see P3). Scenario 9 status updated to `exists`.
 - **r8 (2026-11-14):** D3 complete — Progressive expansion affordance already implemented. Card chevron toggle for cluster expand/collapse in `packages/session-graph/src/ui/cardTemplate.ts` covers phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state management in useGroupCollapse.ts. Layout preserves existing node positions on expand (append-only).

@@ -473,7 +473,7 @@ async function runScenario7(page: Page) {
 /**
  * Scenario 8: "I need to read a turn without leaving the transcript"
  * 
- * Start: reader lens, transcript surface, inline preview visible
+ * Start: reader lens, transcript-graph surface, inline preview visible
  * Actions: hover turn row -> inline preview expands to interactive -> click expand to turn map
  * Legible: the turn's graph structure in the inline preview (static SVG) and after expand (interactive nodes)
  * Hold: 4 s on the expanded turn map with node labels readable
@@ -481,11 +481,17 @@ async function runScenario7(page: Page) {
  */
 async function runScenario8(page: Page) {
   await openSession(page, graphFixture())
-  // For scenario 8, we need the transcript surface with inline preview
-  // This is a different surface - the transcript with inline graph preview
-  await page.keyboard.press("Control+Shift+T") // Open transcript
-  await pace(500)
-  await openGraph(page) // This opens the graph panel
+  // Open the transcript-graph surface (combines transcript + inline graph)
+  await page.keyboard.press("Control+K")
+  await pace(300)
+  const palette = page.locator('.command-palette')
+  await expect(palette).toBeVisible({ timeout: 10000 })
+  const input = palette.getByRole("combobox")
+  await input.fill("transcript graph")
+  await pace(300)
+  await input.press("Enter")
+  await pace(1000)
+
   await selectLens(page, "reader")
   await fit(page)
   await syncBeacon(page)
@@ -499,7 +505,7 @@ async function runScenario8(page: Page) {
   await pace(800)
   recordMark("scenario-8-02-inline-preview-expanded")
 
-  // Click expand to turn map
+  // Click expand to turn map (the inline graph expand button)
   const expandButton = page.locator('[data-slot="graph-inline-expand"]').first()
   await expect(expandButton).toBeVisible({ timeout: 10000 })
   await expandButton.click()
@@ -510,6 +516,127 @@ async function runScenario8(page: Page) {
   // Hold on the expanded turn map with node labels readable
   await pace(4000)
   recordMark("scenario-8-04-hold-outcome")
+}
+
+/**
+ * Scenario 9: "I need to see the downstream impact of a change"
+ * 
+ * Start: lanes layout, execution level, node with downstream forks selected
+ * Actions: click node -> open trace menu -> select "Downstream"
+ * Legible: the fork node with multiple branches visible; branch labels readable
+ * Hold: 4 s on the fork with branches fanned out
+ * Duration: 10 s
+ */
+async function runScenario9(page: Page) {
+  await openSession(page, graphFixture())
+  await openGraph(page)
+  await selectLayout(page, "lanes")
+  await selectLevel(page, "execution")
+  await fit(page)
+  await syncBeacon(page)
+  flowWallStart = Date.now()
+  recordMark("scenario-9-01-open")
+
+  // Search for a node that has downstream forks (the subagent verification turn)
+  await searchAndSelect(page, "verify", "prt_narr_subagent_1")
+  recordMark("scenario-9-02-node-selected")
+
+  // Click "Downstream" in the trace menu
+  await clickTraceButton(page, "Downstream")
+  recordMark("scenario-9-03-downstream-trace-active")
+
+  // Hold on the fork with branches fanned out
+  await pace(4000)
+  recordMark("scenario-9-04-hold-outcome")
+}
+
+/**
+ * Scenario 10: "I need to see the map beside the transcript"
+ * 
+ * Start: transcript surface, any layout
+ * Actions: press Mod+Shift+H -> hybrid surface opens with map on right
+ * Legible: the transcript on left, graph on right, both scrollable; selected node highlighted in both
+ * Hold: 4 s on the side-by-side view
+ * Duration: 8 s
+ */
+async function runScenario10(page: Page) {
+  await openSession(page, graphFixture())
+  // Open the transcript-graph surface (combines transcript + inline graph)
+  await page.keyboard.press("Control+K")
+  await pace(300)
+  const palette = page.locator('.command-palette')
+  await expect(palette).toBeVisible({ timeout: 10000 })
+  const input = palette.getByRole("combobox")
+  await input.fill("transcript graph")
+  await pace(300)
+  await input.press("Enter")
+  await pace(1000)
+
+  // Now open hybrid view with Mod+Shift+H
+  await page.keyboard.press("Control+Shift+H")
+  await pace(500)
+
+  const hybrid = page.locator('[data-slot="spacegraph-surface-hybrid"]')
+  await expect(hybrid).toBeVisible({ timeout: 15000 })
+  await expect(hybrid).toHaveAttribute("data-arrangement", "side")
+
+  await syncBeacon(page)
+  flowWallStart = Date.now()
+  recordMark("scenario-10-01-hybrid-open")
+
+  // Select a node in the graph to verify it's highlighted in both
+  await searchAndSelect(page, "failed", "result:prt_narr_shell_1")
+  recordMark("scenario-10-02-node-selected")
+
+  // Hold on the side-by-side view
+  await pace(4000)
+  recordMark("scenario-10-03-hold-outcome")
+}
+
+/**
+ * Scenario 11: "I need to share the graph as a file"
+ * 
+ * Start: any surface, any layout, graph visible
+ * Actions: open toolbar menu -> click Export -> select SVG -> file saves
+ * Legible: the export dialog with format options; toast confirms "Exported as SVG"
+ * Hold: 3 s on the confirmation toast
+ * Duration: 7 s
+ */
+async function runScenario11(page: Page) {
+  await openSession(page, graphFixture())
+  await openGraph(page)
+  await selectLayout(page, "lanes")
+  await selectLevel(page, "execution")
+  await fit(page)
+  await syncBeacon(page)
+  flowWallStart = Date.now()
+  recordMark("scenario-11-01-open")
+
+  // Open toolbar overflow menu and click Export
+  const overflow = page.locator('[data-slot="graph-toolbar-overflow"]')
+  await expect(overflow).toBeVisible({ timeout: 10000 })
+  await overflow.click()
+  await pace(300)
+
+  const exportButton = page.locator('[data-slot="graph-toolbar-export"]')
+  await expect(exportButton).toBeVisible({ timeout: 5000 })
+  await exportButton.click()
+  await pace(300)
+
+  // Select SVG format
+  const svgOption = page.locator('[data-slot="graph-export-option"][data-format="svg"]')
+  await expect(svgOption).toBeVisible({ timeout: 5000 })
+  await svgOption.click()
+  await pace(1000)
+
+  // Verify toast/notification appears
+  const toast = page.locator('[data-slot="toast"]').filter({ hasText: /export|svg/i })
+  await expect(toast).toBeVisible({ timeout: 5000 })
+  recordMark("scenario-11-02-export-complete")
+
+  // Hold on the confirmation toast
+  await pace(3000)
+  recordMark("scenario-11-03-hold-outcome")
 }
 
 test.describe(`Scenario ${scenarioNum} — capture`, () => {
@@ -551,6 +678,15 @@ test.describe(`Scenario ${scenarioNum} — capture`, () => {
       break
     case 8:
       await runScenario8(page)
+      break
+    case 9:
+      await runScenario9(page)
+      break
+    case 10:
+      await runScenario10(page)
+      break
+    case 11:
+      await runScenario11(page)
       break
     default:
       throw new Error(`Scenario ${scenarioNum} not implemented yet`)

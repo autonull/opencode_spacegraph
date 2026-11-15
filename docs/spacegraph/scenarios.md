@@ -144,7 +144,8 @@ D1–D3 are additive; build and film them second.
 | Attention badge | 1 | `exists` |
 | Trace = why | 1 | `exists` |
 | Trace = led-here | 2 | `exists` |
-| Trace = related / downstream | — | `gap` (candidate: scenario for a fork) |
+| Trace = related | 3 | `exists` |
+| Trace = downstream | 9 | `exists` |
 | Search + focus/frame | 2 | `exists` |
 | Hierarchy / tree + delegates | 3, 11 | `exists` |
 | Subagent widget | 3 | `exists` |
@@ -154,7 +155,7 @@ D1–D3 are additive; build and film them second.
 | Compaction | 6 | `exists` (verify visibility) |
 | Cost lens | 7 | `exists` (flag-gated) |
 | Inline preview / turn map | 8 | `exists` |
-| Hybrid surface | — | `gap` (candidate: map beside transcript) |
+| Hybrid surface | 10 | `exists` |
 | Panel surface | 1, 3, 4 | `exists` |
 | Orbit / layered depth | — | `gap` (candidate: B-roll, not a goal) |
 | Neighborhood dim | 9 | `proposed` |
@@ -162,7 +163,7 @@ D1–D3 are additive; build and film them second.
 | New-node camera grab | 10 | `proposed` |
 | Progressive expansion | 11 | `exists` |
 | Trust lens | — | `gap / verify` |
-| Export SVG/JSON/HTML | — | `gap` (candidate: hand off as file) |
+| Export SVG/JSON/HTML | 11 | `exists` |
 | A11y / minimap / breadcrumbs | — | not demoed (supporting chrome) |
 | Parked layouts (radial/spectral/cluster/geo) | — | not demoable (see layouts-renderers.md) |
 
@@ -337,6 +338,39 @@ Hold:     4 s on the expanded turn map with node labels readable
 Duration: 10 s
 ```
 
+### Scenario 9 — "I need to see the downstream impact of a change."
+
+```
+Scenario: 9 — "I need to see the downstream impact of a change."
+Start:    lanes layout, execution level, node with downstream forks selected
+Actions:  click node -> open trace menu -> select "Downstream"
+Legible:  the fork node with multiple branches visible; branch labels readable
+Hold:     4 s on the fork with branches fanned out
+Duration: 10 s
+```
+
+### Scenario 10 — "I need to see the map beside the transcript."
+
+```
+Scenario: 10 — "I need to see the map beside the transcript."
+Start:    transcript surface, any layout
+Actions:  press Mod+Shift+H -> hybrid surface opens with map on right
+Legible:  the transcript on left, graph on right, both scrollable; selected node highlighted in both
+Hold:     4 s on the side-by-side view
+Duration: 8 s
+```
+
+### Scenario 11 — "I need to share the graph as a file."
+
+```
+Scenario: 11 — "I need to share the graph as a file."
+Start:    any surface, any layout, graph visible
+Actions:  open toolbar menu -> click Export -> select SVG -> file saves
+Legible:  the export dialog with format options; toast confirms "Exported as SVG"
+Hold:     3 s on the confirmation toast
+Duration: 7 s
+```
+
 ---
 
 ## Part F — Editorial rules and definition of done
@@ -360,5 +394,5 @@ Duration: 10 s
 - Trust lens: deleted or still live? Resolve before any `trust` scenario.
 - Does the canvas renderer accept per-node opacity for D1, or is D1 DOM-cards-only at first?
 - Is `compaction` visible enough to film as an outcome, or only as a caption?
-- Which two `gap` rows earn a scenario: `related/downstream` trace, or `hybrid` surface?
+- **Decided:** All three gap rows earn scenarios — downstream trace (Scenario 9), hybrid surface (Scenario 10), export (Scenario 11).
 - For D2, does the fixture stream, or do we need a scripted append to show node-grab focus?
