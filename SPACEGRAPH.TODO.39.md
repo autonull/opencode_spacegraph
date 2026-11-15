@@ -245,22 +245,23 @@ The host supplies the graph model, selection, zoom band, and optional controlled
 
 Do not start these until P0 and P1 are usable by a second host (currently satisfied).
 
-### Annotations / notes
+### Annotations / notes ✅ DONE (r11)
 
-- [ ] Lift generic annotation storage and overlay to `@spacegraphjs/overlays`.
-- [ ] Host supplies note-node creation and rendering.
+- [x] Lift generic annotation storage and overlay to `@spacegraphjs/overlays`.
+- [x] Host supplies note-node creation and rendering via `NoteNodePolicy`.
 
-### Renderer strategy
+### Renderer strategy ✅ DONE (r12)
 
-- [ ] Lift `chooseRendererStrategy` to `@spacegraphjs/adapter`.
-- [ ] Host supplies thresholds and available renderers.
-- [ ] Test: preview, canvas, WebGL, missing renderer.
+- [x] Lift `chooseRendererStrategy` to `@spacegraphjs/adapter`.
+- [x] Host supplies thresholds and available renderers.
+- [x] Test: preview, canvas, WebGL, missing renderer (11 tests).
 
-### Manual positions / undo-redo
+### Manual positions / undo-redo ✅ DONE (r13)
 
-- [ ] Evaluate whether this belongs in the library at all.
-- [ ] If yes, add a small editing package with positions, sizes, history, undo, redo.
-- [ ] If no, keep it in the host and record why.
+- [x] Evaluated: belongs in library as generic editing capability.
+- [x] Added `createManualPositionsManager` framework-agnostic core to `@spacegraphjs/overlays`.
+- [x] Added `useManualPositions` SolidJS hook.
+- [x] 13 tests covering positions, sizes, history, undo/redo, subscriptions, maxHistory.
 
 ---
 
@@ -332,6 +333,27 @@ If a proposed lift needs any of these, it is not a lift.
 ---
 
 ## Revision log
+
+- **r13 (2026-11-15):** P2 Manual positions / undo-redo — complete lift to `@spacegraphjs/overlays`.
+  - Added `createManualPositionsManager`, `useManualPositions` to `@spacegraphjs/overlays`.
+  - Added `ManualPositions`, `ManualPositionsSnapshot`, `ManualPositionsState`, `ManualPositionsConfig`, `ManualPositionsManager` types.
+  - 13 tests covering positions, sizes, history, undo/redo, subscriptions, maxHistory.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
+
+- **r12 (2026-11-15):** P2 Renderer strategy — complete lift to `@spacegraphjs/adapter`.
+  - Added `chooseRendererStrategy`, `canvasRendererFor`, `DEFAULT_RENDERER_STRATEGY_THRESHOLDS` to `@spacegraphjs/adapter`.
+  - Added `RendererStrategy`, `RendererStrategyThresholds`, `RendererStrategyOptions` types.
+  - 11 tests covering thresholds, custom options, cytoscape availability.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
+
+- **r11 (2026-11-15):** P2 Annotations — complete lift to `@spacegraphjs/overlays`.
+  - Added `Annotation`, `Annotations`, `AnnotationStore`, `NoteNodePolicy`, `createAnnotationStore`, `withAnnotations`, `createDefaultNoteNodePolicy` to `@spacegraphjs/overlays`.
+  - Added `useAnnotations` SolidJS hook with store sync, composer, save/edit/delete/copy operations.
+  - 33 tests covering store operations, withAnnotations transform, policy customization, default policy.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
 
 - **r10 (2026-11-15):** P1.2 Facets: saved queries & palette — complete lift to `@spacegraphjs/search`.
   - Added `SavedQuery`, `MAX_SAVED_QUERIES`, `savedQueryFacets`, `defaultSavedQueryLabel`, `saveQuery`, `removeQuery`, `isSavedQuery`, `normalizeSavedQueries` to `@spacegraphjs/search`.
