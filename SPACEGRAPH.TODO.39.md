@@ -2,7 +2,7 @@
 
 > **Status (2026-11-15):** v39 pivots from scenario production to library extraction. v38 remains frozen design history. The goal is to make generic graph behavior available to any SpaceGraphJS dependent, without importing OpenCode packages or vocabulary.
 >
-> **Completed (r1–r9):**
+> **Completed (r1–r10):**
 > - P0.1 Trace engine (`@spacegraphjs/trace`) ✅
 > - P0.2 Focus distance / neighborhood dim (`@spacegraphjs/overlays`) ✅
 > - P0.3 Group collapse / expand (`@spacegraphjs/kernel` + `@spacegraphjs/overlays`) ✅
@@ -15,8 +15,10 @@
 > - P1.2 Facets core (`@spacegraphjs/search` — applyFacets, composeScopes, facetsToQuery, facetsFromQuery, hasFacets, FacetAccessors) ✅
 > - P1.2 Facets: saved queries, palette (`@spacegraphjs/search` — SavedQuery, normalizeSavedQueries, saveQuery, removeQuery, isSavedQuery, paletteEntries, paletteGroup) ✅
 >
-> **Next (P1):**
-> - (P1.2 complete)
+> **Next (P2 — Optional):**
+> - Annotations / notes (`@spacegraphjs/overlays`)
+> - Renderer strategy (`@spacegraphjs/adapter`)
+> - Manual positions / undo-redo (evaluate; likely keep host-specific)
 
 ---
 
@@ -50,7 +52,7 @@ The OpenCode plugin becomes one consumer of the public API, not the reason the A
 5. **Parity before deletion.** Keep the OpenCode implementation until a parity test proves the library version produces the same result on the canonical fixture.
 6. **Public API or it did not happen.** Add the package export, types, TSDoc, README example, and tests in the same change.
 7. **Rebuild `dist`.** Local component tests consume committed `spacegraphjs` output. Run the package build after library changes.
-8. **No deprecation without a replacement.** If a public API moves, keep an alias marked `@deprecated` with “Removed in the next minor.”
+8. **No deprecation without a replacement.** If a public API moves, keep an alias marked `@deprecated` with "Removed in the next minor."
 
 ---
 
@@ -73,13 +75,13 @@ Do not re-implement these in the plugin. The remaining problem is behavior, not 
 
 | Behavior | Current source | Public home | Host adapter | Priority |
 |---|---|---|---|---|
-| Trace/causal overlay | `session-ui/src/graph/selectors.ts:189`, `:969` | New `@spacegraphjs/trace` | OpenCode trace policies | **P0** |
-| Focus distance / neighborhood dim | `session-graph/src/ui/useFocusOverlay.ts:24` | `@spacegraphjs/kernel` traversal + `@spacegraphjs/overlays` hook | OpenCode opacity defaults | **P0** |
-| Group collapse / expand | `session-ui/src/graph/collapse.ts:8`; hook `useGroupCollapse.ts:47` | `@spacegraphjs/kernel` model transform + overlays hook | OpenCode group naming | **P0** |
-| Spatial memory | `session-ui/src/graph/memory.ts:54`; hook `useSpatialMemory.ts:47` | `@spacegraphjs/kernel` state codec | OpenCode session key | P1 |
-| Permalink / deep link | `session-graph/src/ui/useGraphPermalink.ts:24` | `@spacegraphjs/navigation` codec | OpenCode hash route | P1 |
-| Facets / saved queries / palette | `session-ui/src/graph/facets.ts:59`, `palette.ts:90` | `@spacegraphjs/search` | OpenCode facet fields and actions | P1 |
-| Time travel | `session-ui/src/graph/time-travel.ts:20` | `@spacegraphjs/kernel` history helper | OpenCode checkpoint UI | P1 |
+| Trace/causal overlay | `session-ui/src/graph/selectors.ts:189`, `:969` | New `@spacegraphjs/trace` | OpenCode trace policies | **P0** ✅ |
+| Focus distance / neighborhood dim | `session-graph/src/ui/useFocusOverlay.ts:24` | `@spacegraphjs/overlays` | OpenCode opacity defaults | **P0** ✅ |
+| Group collapse / expand | `session-ui/src/graph/collapse.ts:8`; hook `useGroupCollapse.ts:47` | `@spacegraphjs/kernel` + `@spacegraphjs/overlays` | OpenCode group naming | **P0** ✅ |
+| Spatial memory | `session-ui/src/graph/memory.ts:54`; hook `useSpatialMemory.ts:47` | `@spacegraphjs/kernel` state codec | OpenCode session key | P1 ✅ |
+| Permalink / deep link | `session-graph/src/ui/useGraphPermalink.ts:24` | `@spacegraphjs/navigation` codec | OpenCode hash route | P1 ✅ |
+| Facets / saved queries / palette | `session-ui/src/graph/facets.ts:59`, `palette.ts:90` | `@spacegraphjs/search` | OpenCode facet fields and actions | P1 ✅ |
+| Time travel | `session-ui/src/graph/time-travel.ts:20` | `@spacegraphjs/kernel` history helper | OpenCode checkpoint UI | P1 ✅ |
 | Annotations / notes | `session-ui/src/graph/annotations.ts:21`; hook `useNotes.ts:27` | `@spacegraphjs/overlays` | OpenCode note rendering | P2 |
 | Renderer strategy | `session-ui/src/graph/renderer-strategy.ts:24` | `@spacegraphjs/adapter` policy helper | OpenCode thresholds | P2 |
 | Manual positions / undo | `session-graph/src/ui/useManualPositions.ts:16` | Evaluate; likely kernel or a small editing package | OpenCode interaction | P2 |
@@ -88,21 +90,24 @@ Do not re-implement these in the plugin. The remaining problem is behavior, not 
 
 ---
 
-## P0.1 — Trace engine ✅ DONE (r1)
+## P0.1 — Trace engine ✅ DONE (r1, r6)
 
 **Current source:** `packages/session-ui/src/graph/selectors.ts:189`, `:969`, `:1023`.
 
 **Target:** new package `@spacegraphjs/trace`, depending on `@spacegraphjs/kernel`.
 
-- Package created with `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helpers.
+- Package created with `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helpers (`litNodeIds`, `isLit`, `isAnswer`, `isEdgeVisible`, `isAnswerEdge`, `stepLitNode`, `copyTraceAsOutline`).
 - 14 tests pass with synthetic cause graph.
 - Second-host demo capability "trace" exercises all trace kinds.
 - No `@opencode/*` imports in the package.
 - `dist` rebuilt, `bun run build` passes.
+- Trace adapter in `@opencode/session-ui/src/graph/trace-adapter.ts` delegates to `@spacegraphjs/trace`.
+- Parity test verified identical output on canonical fixture.
+- Duplicated classification code removed from `session-ui/src/graph/selectors.ts`.
 
 ---
 
-## P0.2 — Focus distance / neighborhood dim ✅ DONE
+## P0.2 — Focus distance / neighborhood dim ✅ DONE (r3)
 
 **Current source:** `packages/session-graph/src/ui/useFocusOverlay.ts:24`.
 
@@ -146,7 +151,7 @@ The host supplies the graph model and selection; the library owns the BFS distan
 
 ---
 
-## P0.3 — Group collapse / expand ✅ DONE
+## P0.3 — Group collapse / expand ✅ DONE (r4)
 
 **Current source:** `packages/session-ui/src/graph/collapse.ts:8` (kernel transform) and `packages/session-graph/src/ui/useGroupCollapse.ts:47` (overlay hook).
 
@@ -195,111 +200,12 @@ The host supplies the graph model, selection, zoom band, and optional controlled
 - [x] Added `clusterOf` to `GraphNode` and `activeTurn` to `GraphViewData` in `@spacegraphjs/shared`.
 - [x] Second-host demo capability "collapse" exercises the kernel transform.
 - [x] `dist` rebuilt, typecheck and tests pass for kernel, overlays, shared, and trace.
-- [ ] Implement `classifyTrace` over generic nodes and edges.
-- [ ] Port `traceAnswerIds`/`traceContextIds`/answer-edge/visible-edge logic behind `TraceSpec`.
-- [ ] Add `litNodeIds`, `isLit`, `isAnswer`, `isEdgeVisible`, `isAnswerEdge`, `stepLitNode`, `copyTraceAsOutline`.
-- [ ] Add tests for: answer-only, answer+context, cycles, disconnected nodes, multiple edge kinds, stable order.
-- [ ] Add an OpenCode adapter in `session-ui` that supplies the trace policy and delegates to the package.
-- [ ] Add a parity test comparing the adapter to the current `classifyTrace` output on the canonical fixture.
-- [ ] Delete the duplicated classification code only after parity passes.
-- [ ] Add a second-host example: a three-node cause chain plus one downstream branch.
-- [ ] Run package tests, build `dist`, and update the package registry/docs.
-
-### Done when
-
-A non-OpenCode host imports `classifyTrace` from `@spacegraphjs/trace`, supplies its own `answer` function, and gets a usable overlay. No `@opencode/*` import exists in the package.
 
 ---
 
-## P0.2 — Focus distances and neighborhood overlay
+## P1 — View state and search ✅ DONE
 
-**Current source:** `packages/session-graph/src/ui/useFocusOverlay.ts:24`.
-
-**Target:** distance algorithm in `@spacegraphjs/kernel`; Solid hook in `@spacegraphjs/overlays`. If the package grows beyond one hook, promote it to `@spacegraphjs/focus`.
-
-### Public API
-
-```ts
-export type FocusSpec = {
-  sources: readonly NodeID[]
-  maxDistance?: number
-  direction?: "both" | "forward" | "backward"
-}
-
-export function focusDistances(graph: GraphViewData, spec: FocusSpec): ReadonlyMap<NodeID, number>
-export function focusOpacity(distance: number, stops: readonly number[]): number
-
-export type FocusOverlayOptions = {
-  graph: () => GraphViewData
-  selection: () => readonly NodeID[]
-  streamingNode?: () => NodeID | undefined
-  maxDistance?: number
-  opacity?: (distance: number) => number
-}
-
-export function createFocusOverlay(options: FocusOverlayOptions): () => FocusOverlay
-```
-
-The host keeps its current opacity ladder (`0.85`, `0.6`, `0.35`, `0.15`) as a policy. The library owns the BFS and the multi-source minimum-distance rule.
-
-### Tasks
-
-- [ ] Add `focusDistances` and `focusOpacity` to `@spacegraphjs/kernel`.
-- [ ] Add `createFocusOverlay` to `@spacegraphjs/overlays`.
-- [ ] Test: single source, multiple sources, streaming source, max distance, disconnected node, cycle, directed vs undirected.
-- [ ] Add an OpenCode adapter in `session-graph` that supplies the host opacity ladder.
-- [ ] Add a parity test on the canonical fixture: same selected IDs produce identical distance maps.
-- [ ] Remove the local BFS only after parity passes.
-- [ ] Add a second-host example: select one node, dim by distance.
-- [ ] Run package tests, build `dist`, update README.
-
-### Done when
-
-A second host can import `createFocusOverlay`, pass its own opacity function, and dim a graph without OpenCode types.
-
----
-
-## P0.3 — Group collapse / expansion
-
-**Current source:** `packages/session-ui/src/graph/collapse.ts:8`; interaction hook `packages/session-graph/src/ui/useGroupCollapse.ts:47`.
-
-**Target:** `@spacegraphjs/kernel` model transform; `@spacegraphjs/overlays` interaction hook when the hook is generic enough.
-
-### Public API
-
-```ts
-export type CollapsedGroups = ReadonlySet<NodeID>
-
-export function collapseGroups(graph: GraphViewData, collapsed: CollapsedGroups): GraphViewData
-export function expandGroups(graph: GraphViewData, expanded: CollapsedGroups): GraphViewData
-export function collapsedGroupMembers(graph: GraphViewData, collapsed: CollapsedGroups): ReadonlySet<NodeID>
-```
-
-`clusterOf` is already a generic member field in the kernel's `GraphViewData`. Keep OpenCode group naming and ambient-band policy in the host.
-
-### Tasks
-
-- [ ] Add `collapseGroups` to `@spacegraphjs/kernel` using `clusterOf`.
-- [ ] Preserve all non-member positions; remove incident edges; clear an active turn only when it is hidden.
-- [ ] Add `collapsedGroupMembers` for renderer/a11y use.
-- [ ] Test: empty set, one group, nested groups, missing member IDs, active turn hidden, edges to hidden members.
-- [ ] Add an OpenCode adapter for the current `collapseGroups`.
-- [ ] Parity test on the canonical fixture.
-- [ ] Lift `useGroupCollapse` only after the transform is public; keep its OpenCode band policy in the host.
-- [ ] Add a second-host example: toggle one group and keep every other position unchanged.
-- [ ] Run package tests, build `dist`, update README.
-
-### Done when
-
-A second host can collapse a group by ID and keep stable positions without importing OpenCode.
-
----
-
-## P1 — View state and search
-
-Do these after P0 packages are public and parity-tested.
-
-### P1.1 — Spatial memory and permalink
+### P1.1 — Spatial memory and permalink ✅ DONE (r5, r8)
 
 **Current:** `session-ui/src/graph/memory.ts:54`, `useSpatialMemory.ts:47`, `useGraphPermalink.ts:24`.
 
@@ -311,7 +217,7 @@ Do these after P0 packages are public and parity-tested.
 - [x] Test: round trip, unknown node, stale content hash, malformed JSON, storage failure, read-only secondary surface.
 - [x] Second-host proof: persist a frame, reload, restore positions/selection/camera.
 
-### P1.2 — Facets, saved queries, palette ✅ DONE
+### P1.2 — Facets, saved queries, palette ✅ DONE (r9, r10)
 
 **Current:** `session-ui/src/graph/facets.ts:59`, `palette.ts:90`, `saved-queries.ts`.
 
@@ -323,7 +229,7 @@ Do these after P0 packages are public and parity-tested.
 - [x] Lift the palette entry builder: `paletteEntries`, `paletteGroup`, `PaletteAction`, `PaletteLens`, `PaletteSurface`, `PaletteSources`, `PaletteEntry`, `PaletteEntryKind`, `PALETTE_GROUP_ORDER`, `PALETTE_NODE_LIMIT`.
 - [x] Second-host proof: filter a generic graph by one facet and save the query (gallery capability "facets").
 
-### P1.3 — Time travel
+### P1.3 — Time travel ✅ DONE (r2)
 
 **Current:** `session-ui/src/graph/time-travel.ts:20`.
 
@@ -337,7 +243,7 @@ Do these after P0 packages are public and parity-tested.
 
 ## P2 — Optional lifts
 
-Do not start these until P0 and P1 are usable by a second host.
+Do not start these until P0 and P1 are usable by a second host (currently satisfied).
 
 ### Annotations / notes
 
@@ -373,56 +279,55 @@ If a proposed lift needs any of these, it is not a lift.
 
 ---
 
-## Verification per lift
+## Verification per lift (all P0/P1 verified)
 
-- [ ] Package exports the new API from its root.
-- [ ] Types are exported and documented.
-- [ ] Tests run from the package directory.
-- [ ] `spacegraphjs/demo/second-host/` imports the package and renders the behavior.
-- [ ] No `@opencode/*` import in the package.
-- [ ] OpenCode adapter keeps domain policy and delegates the algorithm.
-- [ ] Parity test passes on the canonical fixture.
-- [ ] Old duplicate implementation is deleted.
-- [ ] `dist` is rebuilt.
-- [ ] Package README and top-level package table are updated.
-- [ ] `bun run check` passes from the repository root.
+- [x] Package exports the new API from its root.
+- [x] Types are exported and documented.
+- [x] Tests run from the package directory.
+- [x] `spacegraphjs/demo/second-host/` imports the package and renders the behavior.
+- [x] No `@opencode/*` import in the package.
+- [x] OpenCode adapter keeps domain policy and delegates the algorithm.
+- [x] Parity test passes on the canonical fixture.
+- [x] Old duplicate implementation is deleted.
+- [x] `dist` is rebuilt.
+- [x] Package README and top-level package table are updated.
+- [x] `bun run check` passes from the repository root.
 
 ---
 
-## First PR
+## PR Summary
 
-**PR 1 — `@spacegraphjs/trace` only.** ✅ DONE
-
+**PR 1 — `@spacegraphjs/trace` only.** ✅ DONE (r1)
 - Create the package.
 - Implement `classifyTrace` and the overlay helpers.
 - Add package tests with a synthetic cause graph.
 - Add a second-host demo.
 - Do not change `session-ui` yet.
 
-**PR 2 — Trace adapter.** ✅ DONE
-
+**PR 2 — Trace adapter.** ✅ DONE (r6)
 - Add the OpenCode trace policy.
 - Parity-test against the canonical fixture.
 - Delete the duplicated classifier.
 
-**PR 3 — Focus.**
-**PR 4 — Collapse.**
-
-This order keeps every change reviewable and reversible.
+**PR 3 — Focus.** ✅ DONE (r3)
+**PR 4 — Collapse.** ✅ DONE (r4)
+**PR 5 — View state (time travel).** ✅ DONE (r2)
+**PR 6 — Spatial memory & permalink.** ✅ DONE (r5, r8)
+**PR 7 — Facets, saved queries, palette.** ✅ DONE (r9, r10)
 
 ---
 
-## Open decisions
+## Open decisions (all resolved)
 
-| Decision | Default | Needed by |
+| Decision | Default | Status |
 |---|---|---|
-| Trace as new package or `kernel/trace` | New `@spacegraphjs/trace` | PR 1 |
-| Focus hook home | `@spacegraphjs/overlays`, promote later if needed | PR 3 |
-| Collapse hook home | Kernel transform first; overlays hook only if generic | PR 4 |
-| Content hash algorithm | Stable stringify + FNV-1a ✅ | P1.1 |
-| Permalink prefix ownership | Host supplies prefix | P1.1 |
-| Facet field access | Host-supplied `FacetAccessors` | P1.2 |
-| Manual positions | Evaluate; default keep host-specific | P2 |
+| Trace as new package or `kernel/trace` | New `@spacegraphjs/trace` | ✅ Resolved: New package |
+| Focus hook home | `@spacegraphjs/overlays`, promote later if needed | ✅ Resolved: `@spacegraphjs/overlays` |
+| Collapse hook home | Kernel transform first; overlays hook only if generic | ✅ Resolved: Both kernel + overlays |
+| Content hash algorithm | Stable stringify + FNV-1a ✅ | ✅ Resolved: FNV-1a |
+| Permalink prefix ownership | Host supplies prefix | ✅ Resolved: Host supplies prefix |
+| Facet field access | Host-supplied `FacetAccessors` | ✅ Resolved: `FacetAccessors` policy |
+| Manual positions | Evaluate; default keep host-specific | ✅ Deferred to P2 |
 
 ---
 
@@ -448,7 +353,7 @@ This order keeps every change reviewable and reversible.
   - Created `trace-adapter.ts` in `session-ui/src/graph/` that delegates to `@spacegraphjs/trace`.
   - Removed duplicated `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helper implementations from `session-ui/src/graph/selectors.ts`.
   - Updated `session-ui/src/graph/index.ts` to export trace functions from the adapter.
-  - Parity test in `session-ui/src/graph/trace-adapter.test.ts` verified identical output on canonical fixture.
+  - Parity test in `session-ui/src/graph/selectors.test.ts` verified identical output on canonical fixture.
   - Synced to `gui-plugins/src/spacegraph/internal/graph/` via `sync:graph` script.
   - Added `@spacegraphjs/trace` dependency to `gui-plugins/package.json`.
   - Graph parity tests pass; all `bun run typecheck` and tests pass.
