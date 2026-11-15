@@ -383,7 +383,7 @@ If a proposed lift needs any of these, it is not a lift.
 - Add a second-host demo.
 - Do not change `session-ui` yet.
 
-**PR 2 — Trace adapter.**
+**PR 2 — Trace adapter.** ✅ DONE
 
 - Add the OpenCode trace policy.
 - Parity-test against the canonical fixture.
@@ -411,6 +411,15 @@ This order keeps every change reviewable and reversible.
 ---
 
 ## Revision log
+
+- **r6 (2026-11-15):** PR 2 complete — Trace adapter in `@opencode/session-ui` and `@opencode/gui-plugins`.
+  - Created `trace-adapter.ts` in `session-ui/src/graph/` that delegates to `@spacegraphjs/trace`.
+  - Removed duplicated `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helper implementations from `session-ui/src/graph/selectors.ts`.
+  - Updated `session-ui/src/graph/index.ts` to export trace functions from the adapter.
+  - Parity test in `session-ui/src/graph/trace-adapter.test.ts` verified identical output on canonical fixture.
+  - Synced to `gui-plugins/src/spacegraph/internal/graph/` via `sync:graph` script.
+  - Added `@spacegraphjs/trace` dependency to `gui-plugins/package.json`.
+  - Graph parity tests pass; all `bun run typecheck` and tests pass.
 
 - **r5 (2026-11-15):** P1 Spatial memory — `graphContentHash`, `spatialMemoryKey`, `readSpatialMemory`, `writeSpatialMemory`, `decodeSpatialMemory`, `clearSpatialMemory`, `clearAllSpatialMemory` added to `@spacegraphjs/kernel`.
   - Exports FNV-1a based content hash, key generation, LRU-bounded storage codec.

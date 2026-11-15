@@ -55,6 +55,7 @@
     "@spacegraphjs/shared": "workspace:*",
     "@spacegraphjs/spacegraph-renderer": "workspace:*",
     "@spacegraphjs/svg-renderer": "workspace:*",
+    "@spacegraphjs/trace": "workspace:*",
     "@spacegraphjs/toolbar": "workspace:*",
     "@spacegraphjs/turn-map": "workspace:*",
     "@spacegraphjs/window-manager": "workspace:*",

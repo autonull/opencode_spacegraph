@@ -19,7 +19,7 @@ import {
   turnSubgraph,
   unverifiedFiles,
   why,
-} from "./selectors"
+} from "./index"
 import type { GraphEdge, GraphNode, GraphViewData } from "./model"
 
 const model = buildFixtureGraph()
