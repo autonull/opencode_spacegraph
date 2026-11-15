@@ -1,6 +1,6 @@
 # SpaceGraph: Scenarios (v38)
 
-> **Status (2026-11-15, r15):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. Housekeeping: removed superseded `stills/story-*`. **P0.4 complete:** findings per scenario written. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
+> **Status (2026-11-15, r16):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. **P0.4 complete:** findings per scenario written. **P2 Benchmarks blocked** — two proven root causes recorded in the P2 section. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
 
 ---
 
@@ -68,7 +68,7 @@ human speed, honestly.
 | Pixel gate | 43 passed (54 frames, 4 known-variance at 0%) | `capture.spec.ts` |
 | Capture re-bless | 4 known-variance frames at 0% | v36 r4 |
 | Listener-leak | 3 cases pass, 0 growth | `listener-leak.spec.ts` |
-| Benchmarks | Headless `--plan` works; timed runs escalated | see P2 |
+| Benchmarks | **Blocked** — two proven root causes (r16) | see P2 |
 | Study | Protocol committed; not started | `docs/spacegraph/study-protocol.md` |
 
 Capture and review (Wave 1 scenarios 1–7):
@@ -190,9 +190,27 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
 
 ### P2 — measurement (carried from v37)
 
-- [ ] **Benchmarks.** Headless `--plan` works. Resolve the strobe worktree monorepo blocker
-      (workspace packages `spacegraphjs`, `@opencode/*` not linked in detached worktrees) or record a
-      dated escalation with an owner. Do not assume headless is blocked; prove it.
+- [ ] **Benchmarks.** **Blocked (2026-11-15, proven).** Two independent failures:
+      1. **Worktree monorepo blocker.** `strobe bench --base origin/dev` creates a detached worktree
+         under `~/.local/share/strobe/builds/`, but `spacegraphjs` is a git submodule and the
+         worktree has neither the submodule content nor `node_modules`. `bun install` then fails with
+         `Workspace not found "spacegraphjs"` and `depends on workspace "@spacegraphjs/adapter"
+         … which is listed in bun.lock but not on disk`. The build command in `strobe.json` starts
+         with `git submodule update --init`, but `spacegraphjs` is not registered as a submodule in
+         the parent repo — it is a nested clone with its own `.git`. Fix: make `spacegraphjs` a real
+         submodule, or point `strobe.json` at a build step that does not need the workspace links.
+      2. **Graph benchmarks cannot reach the app.** `perf/graph-*.bench.ts` wait for
+         `[data-component="composer-editor"]` and time out after 60 s. `strobe look` against the
+         same served build shows `Can't reach this server` — the app shell loads but no API answers.
+         The bench serves `packages/app/dist` over `e2e/utils/serve.ts`, a static server with no
+         `/api`; the e2e mock (`mockOpenCodeServer`) only answers inside Playwright's route
+         interception, and the bench's `cached()` shim maps `page.route` onto strobe's `mock`, which
+         the e2e mock does not use. Fix: register the API through strobe's `ctx.mock` (or a static
+         server that proxies to a real opencode server) instead of Playwright routes.
+      Navigation benchmarks (`perf/navigation.bench.ts`) do start, but this machine's CPU
+      contention (other node/python processes at 1000%+) makes strobe's speed check fail repeatedly,
+      so no measurement completes. Close heavy apps before the next run.
+      Do not assume headless is blocked; prove it — the proof is above.
 - [ ] **Study.** n≥5 internal first. Tasks map to Diagnose, Audit, Delegate. Record success rate,
       time, wrong turns, preference. Enable the counters in `packages/session-ui/src/graph/study.ts`
       and review weekly; under 5% engagement after two weeks is a park candidate. **Gate:** the Wave 1
@@ -257,9 +275,10 @@ coverage; this register records product decisions.
 | When do we go 60 fps / 1080p? | First public cut | Only for a cut that earns release |
 | D1 renderer path | Before P1.1 | DOM cards only until per-node canvas opacity is proven |
 | D2 streaming source | Before P1.2 | Scripted append if the fixture does not stream live |
-| Which gap rows earn scenarios? | Before Wave 2 filming | Implement downstream trace + hybrid surface + export (all three gap rows) |
+| Which gap rows earn scenarios? | Before Wave 2 filming | **Resolved (r11):** all three — downstream trace, hybrid surface, export |
 | Study recruitment | P2 study | Internal team first (n≥5); external only if available |
 | Flag graduation order | After Wave 1 sign-off | Delete only proven defaults |
+| Benchmark isolation (r16) | Next P2 attempt | Serve a real opencode server and mock through strobe's `ctx.mock`; fix the `spacegraphjs` submodule first |
 
 ---
 
@@ -315,7 +334,7 @@ A scenario shot is done when all hold:
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
 | P0.4: Findings per scenario | **Done** | Written to `docs/spacegraph/findings/scenario-1.md`–`scenario-11.md` + `index.md` |
 | P0.5: Review gate per scenario | **Pending** | Owner sign-off on goal clarity and outcome legibility |
-| P2: Benchmarks | **Carried** | Unchanged from v37 |
+| P2: Benchmarks | **Blocked** | Two proven blockers (worktree submodule + mock/API isolation); see P2 section |
 | P2: Study | **Carried** | Gated on Wave 1 sign-off |
 | P3: Housekeeping | **Done** | Removed superseded `stills/story-*` (r14); `archive/` frozen. Compaction visibility remains open (Part G). |
 
@@ -360,6 +379,12 @@ A scenario shot is done when all hold:
   - Updated capture commands to use `GRAPH_CAPTURE_SCENARIO` / `GRAPH_CAPTURE_SCENARIO_NUM`.
   - Scenario 8 parked (requires transcript surface with inline preview).
   - Legacy `capture-explore.spec.ts` retained only as pipeline proof (rejected theme-based approach).
+- **r16 (2026-11-15):** P2 benchmarks investigated and proven blocked; plan clarifies the remaining work.
+  - **Blocker 1 — worktree monorepo:** `strobe bench --base origin/dev` creates a detached worktree; `spacegraphjs` is a nested clone (not a registered submodule), so `bun install` fails with `Workspace not found "spacegraphjs"`. `strobe.json`'s `git submodule update --init` cannot fix it.
+  - **Blocker 2 — graph benchmarks cannot reach the app:** `perf/graph-*.bench.ts` time out waiting for `[data-component="composer-editor"]`. `strobe look` on the same served build shows `Can't reach this server`: the bench serves `packages/app/dist` statically and the e2e mock answers only through Playwright's route interception, which the bench's `cached()` shim replaces with strobe's `mock`.
+  - Navigation benchmarks start but the machine's CPU contention (other processes at 1000%+) fails strobe's speed check repeatedly, so no measurement completes.
+  - No code change kept: the only candidate fix (seeding tabs in the graph bench fixture) did not resolve the failure, so it was reverted.
+  - Remaining: P0.5 (owner sign-off), P2 benchmarks, P2 study, compaction visibility (Part G).
 - **r15 (2026-11-15):** P0.4 complete — findings per scenario.
   - Findings for all 11 scenarios written to `docs/spacegraph/findings/scenario-1.md` through `scenario-11.md` with index at `docs/spacegraph/findings/index.md`.
   - Each finding cites the scenario and the inspected frame (hold-outcome frame from marks).
