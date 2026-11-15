@@ -1,6 +1,6 @@
 # SpaceGraph: Scenarios (v38)
 
-> **Status (2026-11-15, r13):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
+> **Status (2026-11-15, r14):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. Housekeeping: removed superseded `stills/story-*`. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
 
 ---
 
@@ -57,6 +57,7 @@ human speed, honestly.
 | Capability inventory with honest status | Written (v38 r0) | `scenarios.md` Part A |
 | Seeded explorer (random detours) | **Rejected as demo** (r8); keep only as pipeline proof | `packages/app/e2e/graph/capture-explore.spec.ts` |
 | Scenario captures (11 scenarios) | **Implemented** (v38 r13); all passing as automated e2e captures | `packages/app/e2e/graph/capture-scenario.spec.ts` |
+| `stills/story-*` superseded files | **Removed** (r14); housekeeping | `docs/spacegraph/video/stills/` |
 | Camera helpers (push-in, orbit, whip, trace) | Exist; must be repurposed to travel between evidence | `capture-explore.spec.ts` |
 | Continuous renderer + still extraction | Works; transcoding dropped, stills kept | `script/generate-demo-video.ts` |
 | Raw takes (9) | Pipeline proofs only, not demo material | `docs/spacegraph/video/takes/` (gitignored) |
@@ -115,10 +116,10 @@ Two waves: film what exists, then build and film the new capabilities.
 | 5 | Hand this to a teammate | 1 | `done` |
 | 6 | Audit a long session fast | 1 | `done` |
 | 7 | Know what this run cost | 1 | `done` (flag-gated) |
-| 8 | Read a turn without leaving the transcript | 1 | `ready` (GraphTranscriptSurface implemented) |
-| 9 | See the downstream impact of a change | 2 | `planned` (trace=downstream scenario) |
-| 10 | See the map beside the transcript | 2 | `planned` (hybrid surface scenario) |
-| 11 | Share the graph as a file | 2 | `planned` (export scenario) |
+| 8 | Read a turn without leaving the transcript | 1 | `done` (GraphTranscriptSurface + GraphInline wired; capture passing) |
+| 9 | See the downstream impact of a change | 2 | `done` (trace=downstream with fork visualization) |
+| 10 | See the map beside the transcript | 2 | `done` (hybrid surface, Mod+Shift+H, side arrangement) |
+| 11 | Share the graph as a file | 2 | `done` (Export: SVG/JSON/HTML via toolbar menu) |
 | 12 | Focus on what matters, ignore the rest | 2 | `exists` (D1 implemented for DOM cards) |
 | 13 | Keep working while the agent runs | 2 | `exists` (D2 implemented) |
 | 14 | Open a crowded cluster without losing my place | 2 | `exists` (D3 implemented) |
@@ -148,7 +149,7 @@ Two waves: film what exists, then build and film the new capabilities.
       - Scenario 5: "I need to hand this to a teammate" — cartographer lens → permalink command
       - Scenario 6: "I need to audit a long session fast" — auditor lens → matrix layout → compaction badge
       - Scenario 7: "I need to know what this run cost" — cost lens → lanes → highest-cost node
-- [ ] **P0.3 (cont.) — Scenario 8.** GraphTranscriptSurface with inline preview implemented (`packages/session-graph/src/ui/GraphTranscriptSurface.tsx`, `GraphInline.tsx`). Need to wire in test fixture and enable capture.
+- [x] **P0.3 (cont.) — Scenario 8.** GraphTranscriptSurface with inline preview implemented (`packages/session-graph/src/ui/GraphTranscriptSurface.tsx`, `GraphInline.tsx`). Test fixture wired; capture passing (`GRAPH_CAPTURE_SCENARIO_NUM=8`).
 - [ ] **P0.4 — Findings per scenario.** From inspected frames only; each cites the scenario and frame.
 - [ ] **P0.5 — Review gate per scenario.** Owner sign-off on goal clarity and outcome legibility.
 
@@ -181,7 +182,10 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
       out its children, re-fitting only the subtree. Drill depth already caps at 3.
       Implemented: chevron toggle in `cardTemplate.ts` for phase/file-group/subagent-group/error-group,
       click handler in `GraphCanvas.tsx`, state in `useGroupCollapse.ts`. Layout preserves positions on expand.
-- [ ] **P1.4 — Film scenarios 9–11** with the same definition of done as Wave 1.
+- [x] **P1.4 — Film scenarios 9–11** with the same definition of done as Wave 1.
+      - Scenario 9: "I need to see the downstream impact of a change" — trace=downstream with fork visualization
+      - Scenario 10: "I need to see the map beside the transcript" — hybrid surface, Mod+Shift+H, side arrangement
+      - Scenario 11: "I need to share the graph as a file" — Export via toolbar menu (SVG/JSON/HTML)
 
 ### P2 — measurement (carried from v37)
 
@@ -204,7 +208,7 @@ PLAYWRIGHT_BUILD=1 GRAPH_CAPTURE_SCENARIO=1 GRAPH_CAPTURE_SCENARIO_NUM=7 npx pla
       surface, `export` as a file. Add a scenario, park, or declare not-demoable — do not leave blank.
 - [ ] **Compaction visibility.** Decide whether compaction can be filmed as an outcome or only stated
       as a caption.
-- [ ] **Housekeeping.** Remove `stills/story-*` if superseded; keep `archive/` frozen.
+- [x] **Housekeeping.** Remove `stills/story-*` if superseded; keep `archive/` frozen.
 
 ---
 
@@ -312,7 +316,7 @@ A scenario shot is done when all hold:
 | P0.5: Review gate per scenario | **Pending** | Owner sign-off on goal clarity and outcome legibility |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |
 | P2: Study | **Carried** | Gated on Wave 1 sign-off |
-| P3: Housekeeping | **Open** | Remove superseded `stills/story-*`; decide compaction visibility |
+| P3: Housekeeping | **Done** | Removed superseded `stills/story-*` (r14); `archive/` frozen. Compaction visibility remains open (Part G). |
 
 ---
 
@@ -355,6 +359,17 @@ A scenario shot is done when all hold:
   - Updated capture commands to use `GRAPH_CAPTURE_SCENARIO` / `GRAPH_CAPTURE_SCENARIO_NUM`.
   - Scenario 8 parked (requires transcript surface with inline preview).
   - Legacy `capture-explore.spec.ts` retained only as pipeline proof (rejected theme-based approach).
+- **r14 (2026-11-15):** Housekeeping and status sync.
+  - All 11 scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures (`GRAPH_CAPTURE_SCENARIO_NUM=1..11`).
+  - Scenario 8 (transcript-graph surface) wired: fixed command palette interaction, added session diff mock handler, corrected expand button selector (`.graph-affordance-toggle`).
+  - Scenarios 9–11 (downstream trace, hybrid, export) verified passing.
+  - Removed superseded `stills/story-*` files from `docs/spacegraph/video/stills/`.
+  - Remaining: findings per scenario (P0.4), review gate (P0.5), compaction visibility decision (Part G), benchmarks (P2), study (P2).
+- **r13 (2026-11-15):** All 11 scenarios (Wave 1 + Wave 2) implemented and passing as automated e2e captures.
+  - Scenario 8 (transcript-graph surface) wired: fixed command palette interaction, added session diff mock handler, corrected expand button selector (`.graph-affordance-toggle`).
+  - Scenarios 9–11 (downstream trace, hybrid, export) verified passing.
+  - All capture tests pass with `GRAPH_CAPTURE_SCENARIO_NUM=1..11`.
+  - Remaining: findings per scenario (P0.4), review gate (P0.5), compaction visibility decision, housekeeping, benchmarks, study.
 - **r0 (2026-11-14):** Split v38 from v37 after the direction reset (v37 r8).
   - Refocused the demo from seeded random takes to **goal scenarios**; catalog in
     `docs/spacegraph/scenarios.md`.
