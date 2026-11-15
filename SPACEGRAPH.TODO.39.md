@@ -250,11 +250,11 @@ Do these after P0 packages are public and parity-tested.
 
 **Current:** `session-ui/src/graph/time-travel.ts:20`.
 
-- [ ] Add a small `GraphHistory` helper to `@spacegraphjs/kernel` over `SessionKernel.checkout`.
-- [ ] Support capture, checkout, fork, and a bounded snapshot list.
-- [ ] Keep OpenCode's UI labels and time-travel limit in the host.
-- [ ] Test: capture, checkout, fork, out-of-range version, snapshot eviction.
-- [ ] Second-host proof: step a graph backward and forward.
+- [x] Add a small `GraphHistory` helper to `@spacegraphjs/kernel` over `SessionKernel.checkout`.
+- [x] Support capture, checkout, fork, and a bounded snapshot list.
+- [x] Keep OpenCode's UI labels and time-travel limit in the host.
+- [x] Test: capture, checkout, fork, out-of-range version, snapshot eviction.
+- [x] Second-host proof: step a graph backward and forward.
 
 ---
 
@@ -350,6 +350,14 @@ This order keeps every change reviewable and reversible.
 ---
 
 ## Revision log
+
+- **r2 (2026-11-15):** P0 View state — `GraphHistory` added to `@spacegraphjs/kernel`.
+  - Exports `GraphHistory`, `createGraphHistory`, `GraphSnapshot`, `GraphHistoryConfig`.
+  - Supports capture, checkout, fork, bounded snapshot list with configurable limit.
+  - 18 tests covering capture, checkout, fork, out-of-range, pruning, fallback.
+  - Second-host demo capability "time-travel" exercises the API.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
 
 - **r1 (2026-11-15):** PR 1 complete — `@spacegraphjs/trace` package created.
   - Package exports `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helpers.
