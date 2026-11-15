@@ -2,7 +2,7 @@
 
 > **Status (2026-11-15):** v39 pivots from scenario production to library extraction. v38 remains frozen design history. The goal is to make generic graph behavior available to any SpaceGraphJS dependent, without importing OpenCode packages or vocabulary.
 >
-> **Completed (r1–r13):**
+> **Completed (r1–r14):**
 > - P0.1 Trace engine (`@spacegraphjs/trace`) ✅
 > - P0.2 Focus distance / neighborhood dim (`@spacegraphjs/overlays`) ✅
 > - P0.3 Group collapse / expand (`@spacegraphjs/kernel` + `@spacegraphjs/overlays`) ✅
@@ -17,8 +17,19 @@
 > - P2 Annotations / notes (`@spacegraphjs/overlays`) ✅
 > - P2 Renderer strategy (`@spacegraphjs/adapter`) ✅
 > - P2 Manual positions / undo-redo (`@spacegraphjs/overlays`) ✅
+> - **OpenCode adapters for all lifted features** ✅ (r14)
+>   - trace-adapter.ts → @spacegraphjs/trace
+>   - collapse-adapter.ts → @spacegraphjs/kernel
+>   - memory-adapter.ts → @spacegraphjs/kernel
+>   - facets-adapter.ts → @spacegraphjs/search
+>   - annotations-adapter.ts → @spacegraphjs/overlays
+>   - renderer-strategy-adapter.ts → @spacegraphjs/adapter
+>   - palette-adapter.ts → @spacegraphjs/search
+>   - saved-queries-adapter.ts → @spacegraphjs/search
+>   - navigation-adapter.ts → spacegraphjs/navigation (demo)
+> - gui-plugins sync updated ✅
 >
-> **All planned lifts complete.** No further work required for v39.
+> **All planned lifts and adapters complete.** No further work required for v39.
 
 ---
 
@@ -263,6 +274,35 @@ The host supplies the graph model, selection, zoom band, and optional controlled
 
 ---
 
+## r14 — OpenCode Adapters for All Lifted Features ✅ DONE
+
+**Session-ui adapters created:**
+- `trace-adapter.ts` → delegates to `@spacegraphjs/trace` (r6)
+- `collapse-adapter.ts` → delegates to `@spacegraphjs/kernel`
+- `memory-adapter.ts` → delegates to `@spacegraphjs/kernel`
+- `facets-adapter.ts` → delegates to `@spacegraphjs/search`
+- `annotations-adapter.ts` → delegates to `@spacegraphjs/overlays`
+- `renderer-strategy-adapter.ts` → delegates to `@spacegraphjs/adapter`
+- `palette-adapter.ts` → delegates to `@spacegraphjs/search`
+- `saved-queries-adapter.ts` → delegates to `@spacegraphjs/search`
+- `navigation-adapter.ts` → delegates to `spacegraphjs/navigation` (demo)
+
+**Session-ui changes:**
+- Updated `src/graph/index.ts` to export from adapters instead of original implementations
+- Added `@spacegraphjs/adapter`, `@spacegraphjs/kernel`, `@spacegraphjs/navigation`, `@spacegraphjs/overlays`, `@spacegraphjs/search`, `@spacegraphjs/shared` to dependencies
+- Created `navigation-adapter.ts` for session-ui typed navigation functions
+- Updated `selectors.ts` to use `navigation-adapter` instead of `spacegraphjs/navigation` directly
+
+**Gui-plugins sync:**
+- Ran `bun run sync:graph` to update bundled copy
+- All 58 graph modules synced
+- All tests pass (1165 pass)
+
+**Session-graph fixes:**
+- Added casts in `GraphSearch.tsx` for GraphNode type compatibility between library and session-ui types
+
+---
+
 ## Explicitly not lifting
 
 Keep these in OpenCode:
@@ -316,6 +356,7 @@ If a proposed lift needs any of these, it is not a lift.
 **PR 8 — Annotations.** ✅ DONE (r11)
 **PR 9 — Renderer strategy.** ✅ DONE (r12)
 **PR 10 — Manual positions / undo-redo.** ✅ DONE (r13)
+**PR 11 — OpenCode adapters for all lifted features.** ✅ DONE (r14)
 
 ---
 
@@ -334,6 +375,16 @@ If a proposed lift needs any of these, it is not a lift.
 ---
 
 ## Revision log
+
+- **r14 (2026-11-15):** OpenCode adapters for all lifted features — complete.
+  - Created 9 adapter files in `session-ui/src/graph/`: `collapse-adapter.ts`, `memory-adapter.ts`, `facets-adapter.ts`, `annotations-adapter.ts`, `renderer-strategy-adapter.ts`, `palette-adapter.ts`, `saved-queries-adapter.ts`, `navigation-adapter.ts`.
+  - Updated `session-ui/src/graph/index.ts` to export from adapters.
+  - Added `@spacegraphjs/adapter`, `@spacegraphjs/kernel`, `@spacegraphjs/navigation`, `@spacegraphjs/overlays`, `@spacegraphjs/search`, `@spacegraphjs/shared` to session-ui dependencies.
+  - Updated `session-ui/src/graph/selectors.ts` to use `navigation-adapter`.
+  - Fixed `saved-queries-adapter.ts` to pass knownKinds/knownStatuses/knownDomains for canonical ordering.
+  - Synced gui-plugins with `bun run sync:graph` (58 modules).
+  - Added casts in `session-graph/src/ui/GraphSearch.tsx` for GraphNode type compatibility.
+  - All typechecks pass, all tests pass (spacegraphjs 580, gui-plugins 1165, second-host 10).
 
 - **r13 (2026-11-15):** P2 Manual positions / undo-redo — complete lift to `@spacegraphjs/overlays`.
   - Added `createManualPositionsManager`, `useManualPositions` to `@spacegraphjs/overlays`.

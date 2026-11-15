@@ -107,13 +107,13 @@ export {
 export { nodeIndex, lookupNode, childIndex } from "./lookup"
 
 export { scopeModel } from "./view"
-export { collapseGroups } from "./collapse"
+export { collapseGroups, isGroup, getGroupIds } from "./collapse-adapter"
 export {
   noteNodeID,
   withAnnotations,
   type Annotation,
   type Annotations,
-} from "./annotations"
+} from "./annotations-adapter"
 
 export {
   buildFixtureGraph,
@@ -225,7 +225,7 @@ export {
   type FacetCount,
   type FacetCounts,
   type GraphFacets,
-} from "./facets"
+} from "./facets-adapter"
 export { compileNLQ, formatNLQResult, parseNLQ, type NLQDictionaries, type NLQOptions } from "./nlq"
 export {
   isSavedQuery,
@@ -235,7 +235,7 @@ export {
   saveQuery,
   savedQueryFacets,
   type SavedQuery,
-} from "./saved-queries"
+} from "./saved-queries-adapter"
 export { attention, type Attention, type AttentionTone } from "./attention"
 export {
   paletteEntries,
@@ -248,14 +248,14 @@ export {
   type PaletteLens,
   type PaletteSources,
   type PaletteSurface,
-} from "./palette"
+} from "./palette-adapter"
 export {
   canvasRendererFor,
   chooseRendererStrategy,
   RENDERER_STRATEGY_THRESHOLDS,
   type RendererStrategy,
   type RendererStrategyOptions,
-} from "./renderer-strategy"
+} from "./renderer-strategy-adapter"
 export {
   analyzeCompaction,
   estimateNodeTokens,
@@ -280,7 +280,7 @@ export {
   type SpatialMemoryKey,
   type SpatialMemoryRecord,
   type SpatialMemoryStore,
-} from "./memory"
+} from "./memory-adapter"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
 export {

@@ -88,14 +88,14 @@ export const GraphSearch = (props: GraphSearchProps) => {
 
     if (props.palette) {
       const entries = paletteEntries(props.model, q, props.palette).filter(
-        (entry) => entry.kind !== "node" || filteredNodes([entry.node!]).length > 0,
+        (entry) => entry.kind !== "node" || filteredNodes([entry.node! as import("@opencode/session-ui/graph").GraphNode]).length > 0,
       )
       return { compiled: "", entries }
     }
 
     if (!q) return { compiled: "", entries: [] }
 
-    const entries = filteredNodes(rankedSearch(props.model, q)).map((node) => nodeEntry(node))
+    const entries = filteredNodes(rankedSearch(props.model, q) as import("@opencode/session-ui/graph").GraphNode[]).map((node) => nodeEntry(node))
     return { compiled: "", entries }
   })
 
@@ -140,15 +140,17 @@ export const GraphSearch = (props: GraphSearchProps) => {
   const choose = (entry: PaletteEntry | undefined) => {
     if (!entry) return
     if (entry.kind === "node" && entry.node) {
+      // Cast from library GraphNode to session-ui GraphNode
+      const sessionNode = entry.node as import("@opencode/session-ui/graph").GraphNode;
       // Add search hit ring animation to the selected node
-      if ((entry.node as GraphNode & { className?: string }).className === undefined) {
-        const nodeWithClass = entry.node as GraphNode & { className?: string }
+      if ((sessionNode as GraphNode & { className?: string }).className === undefined) {
+        const nodeWithClass = sessionNode as GraphNode & { className?: string }
         nodeWithClass.className = "graph-search-hit"
         setTimeout(() => {
           delete nodeWithClass.className
         }, 200)
       }
-      props.onSelect(entry.node)
+      props.onSelect(sessionNode)
       return
     }
     if (entry.kind === "action") props.onAction?.(entry)

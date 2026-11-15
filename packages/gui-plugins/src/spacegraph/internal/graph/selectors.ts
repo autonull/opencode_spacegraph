@@ -1,7 +1,7 @@
 import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
-import { Navigation } from "spacegraphjs/navigation"
+import { search as navSearch, searchBy as navSearchBy } from "./navigation-adapter"
 import type { Confidence, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
 import { PROVENANCE_EDGE_KINDS, READ_EDGE_KINDS } from "./vocabulary"
@@ -464,7 +464,7 @@ export const searchText = (node: GraphNode) =>
   ].filter((value): value is string => !!value)
 
 export function search(model: GraphViewData, query: string): GraphNode[] {
-  return Navigation.search(model, query, searchText)
+  return navSearch(model, query)
 }
 
 /**
@@ -487,7 +487,7 @@ const rank = (node: GraphNode, needle: string): number => {
 }
 
 export function rankedSearch(model: GraphViewData, query: string): GraphNode[] {
-  return Navigation.searchBy(model, query, rank)
+  return navSearchBy(model, query, rank)
 }
 
 export type ChangedFile = {
