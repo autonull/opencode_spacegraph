@@ -1,6 +1,20 @@
 # SpaceGraph: Library Lift (v39)
 
 > **Status (2026-11-15):** v39 pivots from scenario production to library extraction. v38 remains frozen design history. The goal is to make generic graph behavior available to any SpaceGraphJS dependent, without importing OpenCode packages or vocabulary.
+>
+> **Completed (r1–r7):**
+> - P0.1 Trace engine (`@spacegraphjs/trace`) ✅
+> - P0.2 Focus distance / neighborhood dim (`@spacegraphjs/overlays`) ✅
+> - P0.3 Group collapse / expand (`@spacegraphjs/kernel` + `@spacegraphjs/overlays`) ✅
+> - P1 Spatial memory (`@spacegraphjs/kernel`) ✅
+> - P1 Time travel (`@spacegraphjs/kernel`) ✅
+> - Kernel boundary compliance (types.ts, no external deps) ✅
+> - Second-host demo & tests passing ✅
+> - Trace adapter in `@opencode/session-ui` with parity test ✅
+>
+> **Next (P1):**
+> - P1.1 Permalink / deep link (`@spacegraphjs/navigation` codec)
+> - P1.2 Facets, saved queries, palette (`@spacegraphjs/search` extensions)
 
 ---
 
@@ -411,6 +425,14 @@ This order keeps every change reviewable and reversible.
 ---
 
 ## Revision log
+
+- **r7 (2026-11-15):** Kernel boundary compliance & second-host test fixes.
+  - Added `types.ts` to `@spacegraphjs/kernel` with core graph types (`GraphNode`, `GraphEdge`, `GraphViewData`, `Position`, `GraphFacets`, `FacetCounts`, `ZoomLevel`) to satisfy "kernel dependency-free" boundary test.
+  - Updated `collapse.ts` and `collapse.test.ts` to import from local `./types` instead of `@spacegraphjs/shared`.
+  - Fixed vitest config with aliases for all `@spacegraphjs/*` packages and added Solid plugin for JSX support in overlays/shared.
+  - Fixed second-host gallery: added local `extractSubgraph`/`parsePatch` implementations, corrected imports (`computeFocusOverlay` from overlays, `CodeDiff` from shared), added `@spacegraphjs/shared` to diff capability modules.
+  - Updated second-host test expectations to match actual library surfaces used.
+  - All spacegraphjs tests (580) and boundary tests pass; all package typechecks pass.
 
 - **r6 (2026-11-15):** PR 2 complete — Trace adapter in `@opencode/session-ui` and `@opencode/gui-plugins`.
   - Created `trace-adapter.ts` in `session-ui/src/graph/` that delegates to `@spacegraphjs/trace`.
