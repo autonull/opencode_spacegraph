@@ -72,52 +72,113 @@ Do not re-implement these in the plugin. The remaining problem is behavior, not 
 
 ---
 
-## P0.1 — Trace engine
+## P0.1 — Trace engine ✅ DONE (r1)
 
 **Current source:** `packages/session-ui/src/graph/selectors.ts:189`, `:969`, `:1023`.
 
-**Target:** new package `@spacegraphjs/trace`, depending on `@spacegraphjs/kernel`. Alternative if package count is a concern: `@spacegraphjs/kernel/trace`. Prefer a separate package because trace is a published capability, not graph substrate.
+**Target:** new package `@spacegraphjs/trace`, depending on `@spacegraphjs/kernel`.
+
+- Package created with `classifyTrace`, `traceWhy`, `traceLedHere`, `traceRelated`, `traceDownstream`, and helpers.
+- 14 tests pass with synthetic cause graph.
+- Second-host demo capability "trace" exercises all trace kinds.
+- No `@opencode/*` imports in the package.
+- `dist` rebuilt, `bun run build` passes.
+
+---
+
+## P0.2 — Focus distance / neighborhood dim ✅ DONE
+
+**Current source:** `packages/session-graph/src/ui/useFocusOverlay.ts:24`.
+
+**Target:** `@spacegraphjs/overlays` — pure algorithm + SolidJS hook.
 
 ### Public API
 
-The package owns classification and traversal over a generic graph. The host supplies the answer selector.
-
 ```ts
-export type TraceKind = string
-export type TraceOverlay = {
-  answerIds: ReadonlySet<NodeID>
-  contextIds: ReadonlySet<NodeID>
-  answerEdgeIds: ReadonlySet<EdgeID>
-  visibleEdgeIds: ReadonlySet<EdgeID>
+export type FocusOverlay = Map<NodeID, number>
+export type FocusOverlayOptions = {
+  model: GraphViewData
+  selection: readonly NodeID[]
+  streamingNode?: NodeID
+  maxDistance?: number
 }
 
-export type TraceSpec = {
-  kind: TraceKind
-  from: NodeID
-  /** Host policy: which nodes answer this trace. */
-  answer: (graph: GraphViewData, from: NodeID) => Iterable<NodeID>
-  /** Host policy: nodes that give context but are not the answer. */
-  context?: (graph: GraphViewData, answers: ReadonlySet<NodeID>) => Iterable<NodeID>
-  /** Optional edge filter for visible context edges. */
-  edgeKinds?: readonly string[]
-}
+export function computeFocusOverlay(options: FocusOverlayOptions): FocusOverlay
+export function getFocusOpacity(distance: number): number
+export function isDimmed(distance: number | undefined, maxDistance: number): boolean
+export const FOCUS_OPACITY_STOPS: readonly number[]
 
-export function classifyTrace(graph: GraphViewData, spec: TraceSpec): TraceOverlay
-export function litNodeIds(overlay: TraceOverlay): ReadonlySet<NodeID>
-export function stepLitNode(overlay: TraceOverlay, current: NodeID | undefined, direction: 1 | -1): NodeID | undefined
-export function copyTraceAsOutline(
-  graph: GraphViewData,
-  overlay: TraceOverlay,
-  breadcrumbs: (graph: GraphViewData, id: NodeID) => readonly { label: string }[],
-): string
+// SolidJS hook
+export function useFocusOverlay(options: {
+  model: Accessor<GraphViewData>
+  selection: Accessor<readonly NodeID[]>
+  streamingNode?: Accessor<NodeID | undefined>
+  maxDistance?: number
+}): Accessor<FocusOverlay>
 ```
 
-The host keeps `why`, `forwardChain`, `downstreamChain`, `downstreamForks`, `evidenceFor`, and the OpenCode edge-kind presets. The library owns the overlay classification, lit-node helpers, step order, and outline formatting.
+The host supplies the graph model and selection; the library owns the BFS distance computation and opacity stops.
 
 ### Tasks
 
-- [ ] Create `spacegraphjs/packages/trace` with package metadata, `src/index.ts`, tests, README.
-- [ ] Define `GraphViewData`/`NodeID` imports from `@spacegraphjs/kernel`; do not copy types.
+- [x] Add `computeFocusOverlay`, `getFocusOpacity`, `isDimmed`, `FOCUS_OPACITY_STOPS` to `@spacegraphjs/overlays/src/focus.ts`.
+- [x] Add SolidJS hook `useFocusOverlay` to `@spacegraphjs/overlays/src/useFocusOverlay.ts`.
+- [x] Export from `@spacegraphjs/overlays/src/index.ts`.
+- [x] Add 14 tests in `@spacegraphjs/overlays/src/focus.test.ts`.
+- [x] Second-host demo capability "focus" exercises the API.
+- [x] `dist` rebuilt, typecheck and tests pass.
+
+---
+
+## P0.3 — Group collapse / expand ✅ DONE
+
+**Current source:** `packages/session-ui/src/graph/collapse.ts:8` (kernel transform) and `packages/session-graph/src/ui/useGroupCollapse.ts:47` (overlay hook).
+
+**Target:** `@spacegraphjs/kernel` model transform + `@spacegraphjs/overlays` hook.
+
+### Public API
+
+```ts
+// Kernel transform (in @spacegraphjs/kernel)
+export function collapseGroups(model: GraphViewData, collapsed: ReadonlySet<NodeID>): GraphViewData
+export function isGroup(node: GraphNode): boolean
+export function getGroupIds(model: GraphViewData): readonly NodeID[]
+
+// Overlay hook (in @spacegraphjs/overlays)
+export type GraphBand = 'overview' | 'execution' | 'detail'
+export type UseGroupCollapseOptions = {
+  model: Accessor<GraphViewData>
+  selection: Accessor<readonly NodeID[]>
+  band?: Accessor<GraphBand | undefined>
+  descendantSelected?: Accessor<boolean>
+  draggingDescendant?: Accessor<boolean>
+  explicitlyCollapsedGroups?: Accessor<ReadonlySet<NodeID>>
+  onExplicitlyCollapsedGroupsChange?: (groups: ReadonlySet<NodeID>) => void
+}
+export type UseGroupCollapseReturn = {
+  collapsedGroups: Accessor<ReadonlySet<NodeID>>
+  explicitlyCollapsedGroups: Accessor<ReadonlySet<NodeID>>
+  ambientFoldedGroups: Accessor<ReadonlySet<NodeID>>
+  selectedGroup: Accessor<{ id: NodeID; clusterOf?: readonly NodeID[] } | undefined>
+  toggleGroupByID: (id: NodeID) => void
+  toggleGroup: () => void
+  collapseOtherGroups: () => void
+  onPointerDown: () => void
+  onPointerUp: () => void
+}
+export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupCollapseReturn
+```
+
+The host supplies the graph model, selection, zoom band, and optional controlled state; the library owns the collapse transform and the interaction logic (explicit vs ambient collapse, pointer dwell, descendant protection).
+
+### Tasks
+
+- [x] Add `collapseGroups`, `isGroup`, `getGroupIds` to `@spacegraphjs/kernel/src/collapse.ts` with 12 tests.
+- [x] Add `useGroupCollapse` hook to `@spacegraphjs/overlays/src/useGroupCollapse.ts`.
+- [x] Export from both package index files.
+- [x] Added `clusterOf` to `GraphNode` and `activeTurn` to `GraphViewData` in `@spacegraphjs/shared`.
+- [x] Second-host demo capability "collapse" exercises the kernel transform.
+- [x] `dist` rebuilt, typecheck and tests pass for kernel, overlays, shared, and trace.
 - [ ] Implement `classifyTrace` over generic nodes and edges.
 - [ ] Port `traceAnswerIds`/`traceContextIds`/answer-edge/visible-edge logic behind `TraceSpec`.
 - [ ] Add `litNodeIds`, `isLit`, `isAnswer`, `isEdgeVisible`, `isAnswerEdge`, `stepLitNode`, `copyTraceAsOutline`.
@@ -226,13 +287,13 @@ Do these after P0 packages are public and parity-tested.
 
 **Current:** `session-ui/src/graph/memory.ts:54`, `useSpatialMemory.ts:47`, `useGraphPermalink.ts:24`.
 
-- [ ] Lift the storage codec to `@spacegraphjs/kernel` or a small `@spacegraphjs/state`: versioned record, key parts, read/write/clear, malformed-data handling.
-- [ ] Make the key namespace a host input. OpenCode supplies `session + layout + level + contentHash`.
-- [ ] Move `graphContentHash` behind a generic stable hash helper; keep the model shape host-defined.
+- [x] Lift the storage codec to `@spacegraphjs/kernel`: versioned record, key parts, read/write/clear, malformed-data handling.
+- [x] Make the key namespace a host input. OpenCode supplies `session + layout + level + contentHash`.
+- [x] Move `graphContentHash` behind a generic stable hash helper (FNV-1a); keep the model shape host-defined.
 - [ ] Add a `GraphDeepLink` codec to `@spacegraphjs/navigation`: encode/decode `{ layout, level, node }` with a host-supplied prefix.
 - [ ] Keep OpenCode's `#spacegraph:` scheme in the host.
 - [ ] Test: round trip, unknown node, stale content hash, malformed JSON, storage failure, read-only secondary surface.
-- [ ] Second-host proof: persist a frame, reload, restore positions/selection/camera.
+- [x] Second-host proof: persist a frame, reload, restore positions/selection/camera.
 
 ### P1.2 — Facets, saved queries, palette
 
@@ -342,7 +403,7 @@ This order keeps every change reviewable and reversible.
 | Trace as new package or `kernel/trace` | New `@spacegraphjs/trace` | PR 1 |
 | Focus hook home | `@spacegraphjs/overlays`, promote later if needed | PR 3 |
 | Collapse hook home | Kernel transform first; overlays hook only if generic | PR 4 |
-| Content hash algorithm | Stable stringify + FNV-1a | P1.1 |
+| Content hash algorithm | Stable stringify + FNV-1a ✅ | P1.1 |
 | Permalink prefix ownership | Host supplies prefix | P1.1 |
 | Facet field access | Host-supplied `FacetAccessors` | P1.2 |
 | Manual positions | Evaluate; default keep host-specific | P2 |
@@ -350,6 +411,29 @@ This order keeps every change reviewable and reversible.
 ---
 
 ## Revision log
+
+- **r5 (2026-11-15):** P1 Spatial memory — `graphContentHash`, `spatialMemoryKey`, `readSpatialMemory`, `writeSpatialMemory`, `decodeSpatialMemory`, `clearSpatialMemory`, `clearAllSpatialMemory` added to `@spacegraphjs/kernel`.
+  - Exports FNV-1a based content hash, key generation, LRU-bounded storage codec.
+  - 16 tests covering hash stability, key format, read/write/clear, pruning, decoding.
+  - Second-host demo capability "spatial-memory" exercises the API.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
+
+- **r4 (2026-11-15):** P0 Collapse — `collapseGroups` added to `@spacegraphjs/kernel`, `useGroupCollapse` added to `@spacegraphjs/overlays`.
+  - Kernel: exports `collapseGroups`, `isGroup`, `getGroupIds` with 12 tests.
+  - Overlays: exports `useGroupCollapse` hook with explicit/ambient collapse logic, pointer dwell, descendant protection.
+  - Shared: added `clusterOf` to `GraphNode` and `activeTurn` to `GraphViewData`.
+  - Second-host demo capability "collapse" exercises the kernel transform.
+  - No `@opencode/*` imports in the packages.
+  - All `dist` rebuilt, `bun run typecheck` and tests pass.
+
+- **r3 (2026-11-15):** P0 Focus — `computeFocusOverlay` + `useFocusOverlay` added to `@spacegraphjs/overlays`.
+  - Exports `computeFocusOverlay`, `getFocusOpacity`, `isDimmed`, `FOCUS_OPACITY_STOPS`, `useFocusOverlay`.
+  - Pure BFS distance algorithm with configurable maxDistance and streaming node support.
+  - 14 tests covering distances, maxDistance, multiple sources, opacity stops, dimmed check.
+  - Second-host demo capability "focus" exercises the API.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
 
 - **r2 (2026-11-15):** P0 View state — `GraphHistory` added to `@spacegraphjs/kernel`.
   - Exports `GraphHistory`, `createGraphHistory`, `GraphSnapshot`, `GraphHistoryConfig`.
