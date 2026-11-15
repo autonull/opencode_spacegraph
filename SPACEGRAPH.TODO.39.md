@@ -2,7 +2,7 @@
 
 > **Status (2026-11-15):** v39 pivots from scenario production to library extraction. v38 remains frozen design history. The goal is to make generic graph behavior available to any SpaceGraphJS dependent, without importing OpenCode packages or vocabulary.
 >
-> **Completed (r1–r7):**
+> **Completed (r1–r9):**
 > - P0.1 Trace engine (`@spacegraphjs/trace`) ✅
 > - P0.2 Focus distance / neighborhood dim (`@spacegraphjs/overlays`) ✅
 > - P0.3 Group collapse / expand (`@spacegraphjs/kernel` + `@spacegraphjs/overlays`) ✅
@@ -11,10 +11,11 @@
 > - Kernel boundary compliance (types.ts, no external deps) ✅
 > - Second-host demo & tests passing ✅
 > - Trace adapter in `@opencode/session-ui` with parity test ✅
+> - P1.1 Permalink / deep link (`@spacegraphjs/navigation` codec) ✅
+> - P1.2 Facets core (`@spacegraphjs/search` — applyFacets, composeScopes, facetsToQuery, facetsFromQuery, hasFacets, FacetAccessors) ✅
 >
 > **Next (P1):**
-> - P1.1 Permalink / deep link (`@spacegraphjs/navigation` codec)
-> - P1.2 Facets, saved queries, palette (`@spacegraphjs/search` extensions)
+> - P1.2 Facets: saved queries, palette
 
 ---
 
@@ -304,19 +305,19 @@ Do these after P0 packages are public and parity-tested.
 - [x] Lift the storage codec to `@spacegraphjs/kernel`: versioned record, key parts, read/write/clear, malformed-data handling.
 - [x] Make the key namespace a host input. OpenCode supplies `session + layout + level + contentHash`.
 - [x] Move `graphContentHash` behind a generic stable hash helper (FNV-1a); keep the model shape host-defined.
-- [ ] Add a `GraphDeepLink` codec to `@spacegraphjs/navigation`: encode/decode `{ layout, level, node }` with a host-supplied prefix.
-- [ ] Keep OpenCode's `#spacegraph:` scheme in the host.
-- [ ] Test: round trip, unknown node, stale content hash, malformed JSON, storage failure, read-only secondary surface.
+- [x] Add a `GraphDeepLink` codec to `@spacegraphjs/navigation`: encode/decode `{ layout, level, node }` with a host-supplied prefix.
+- [x] Keep OpenCode's `#spacegraph:` scheme in the host.
+- [x] Test: round trip, unknown node, stale content hash, malformed JSON, storage failure, read-only secondary surface.
 - [x] Second-host proof: persist a frame, reload, restore positions/selection/camera.
 
 ### P1.2 — Facets, saved queries, palette
 
 **Current:** `session-ui/src/graph/facets.ts:59`, `palette.ts:90`, `saved-queries.ts`.
 
-- [ ] Extend `@spacegraphjs/search` with `applyFacets`, `composeScopes`, `facetsToQuery`, `facetsFromQuery`, `hasFacets`.
-- [ ] Add a `FacetAccessors` policy: host supplies kind/status/domain extraction.
-- [ ] Keep OpenCode facet names and defaults in the host.
-- [ ] Add tests for scope composition: facets → keep-only → collapse.
+- [x] Extend `@spacegraphjs/search` with `applyFacets`, `composeScopes`, `facetsToQuery`, `facetsFromQuery`, `hasFacets`.
+- [x] Add a `FacetAccessors` policy: host supplies kind/status/domain extraction.
+- [x] Keep OpenCode facet names and defaults in the host.
+- [x] Add tests for scope composition: facets → keep-only → collapse.
 - [ ] Lift saved-query normalization and storage only if the key format is host-supplied.
 - [ ] Lift the palette entry builder only if the host supplies actions, lenses, and surfaces; keep the OpenCode palette as a thin adapter.
 - [ ] Second-host proof: filter a generic graph by one facet and save the query.
@@ -463,6 +464,18 @@ This order keeps every change reviewable and reversible.
   - Pure BFS distance algorithm with configurable maxDistance and streaming node support.
   - 14 tests covering distances, maxDistance, multiple sources, opacity stops, dimmed check.
   - Second-host demo capability "focus" exercises the API.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
+
+- **r9 (2026-11-15):** P1.2 Facets core — `applyFacets`, `composeScopes`, `facetsToQuery`, `facetsFromQuery`, `hasFacets`, `FacetAccessors` added to `@spacegraphjs/search`.
+  - Exports generic facet application, composition, serialization with host-supplied `FacetAccessors` policy.
+  - 54 tests covering applyFacets, keepOnly, composeScopes, facetCounts, facetsToQuery, facetsFromQuery, hasFacets.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run typecheck` and tests pass.
+
+- **r8 (2026-11-15):** P1.1 Permalink / deep link — `GraphDeepLink` codec added to `@spacegraphjs/navigation`.
+  - Exports `encodeDeepLink`, `decodeDeepLink`, `isDeepLink`, `createDeepLinkCodec` with host-supplied prefix.
+  - 12 tests covering encode, decode, round-trip, prefix matching.
   - No `@opencode/*` imports in the package.
   - `dist` rebuilt, `bun run typecheck` and tests pass.
 
