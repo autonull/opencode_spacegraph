@@ -13,9 +13,10 @@
 > - Trace adapter in `@opencode/session-ui` with parity test ✅
 > - P1.1 Permalink / deep link (`@spacegraphjs/navigation` codec) ✅
 > - P1.2 Facets core (`@spacegraphjs/search` — applyFacets, composeScopes, facetsToQuery, facetsFromQuery, hasFacets, FacetAccessors) ✅
+> - P1.2 Facets: saved queries, palette (`@spacegraphjs/search` — SavedQuery, normalizeSavedQueries, saveQuery, removeQuery, isSavedQuery, paletteEntries, paletteGroup) ✅
 >
 > **Next (P1):**
-> - P1.2 Facets: saved queries, palette
+> - (P1.2 complete)
 
 ---
 
@@ -310,7 +311,7 @@ Do these after P0 packages are public and parity-tested.
 - [x] Test: round trip, unknown node, stale content hash, malformed JSON, storage failure, read-only secondary surface.
 - [x] Second-host proof: persist a frame, reload, restore positions/selection/camera.
 
-### P1.2 — Facets, saved queries, palette
+### P1.2 — Facets, saved queries, palette ✅ DONE
 
 **Current:** `session-ui/src/graph/facets.ts:59`, `palette.ts:90`, `saved-queries.ts`.
 
@@ -318,9 +319,9 @@ Do these after P0 packages are public and parity-tested.
 - [x] Add a `FacetAccessors` policy: host supplies kind/status/domain extraction.
 - [x] Keep OpenCode facet names and defaults in the host.
 - [x] Add tests for scope composition: facets → keep-only → collapse.
-- [ ] Lift saved-query normalization and storage only if the key format is host-supplied.
-- [ ] Lift the palette entry builder only if the host supplies actions, lenses, and surfaces; keep the OpenCode palette as a thin adapter.
-- [ ] Second-host proof: filter a generic graph by one facet and save the query.
+- [x] Lift saved-query normalization and storage: `SavedQuery`, `normalizeSavedQueries`, `saveQuery`, `removeQuery`, `isSavedQuery`, `MAX_SAVED_QUERIES`.
+- [x] Lift the palette entry builder: `paletteEntries`, `paletteGroup`, `PaletteAction`, `PaletteLens`, `PaletteSurface`, `PaletteSources`, `PaletteEntry`, `PaletteEntryKind`, `PALETTE_GROUP_ORDER`, `PALETTE_NODE_LIMIT`.
+- [x] Second-host proof: filter a generic graph by one facet and save the query (gallery capability "facets").
 
 ### P1.3 — Time travel
 
@@ -426,6 +427,14 @@ This order keeps every change reviewable and reversible.
 ---
 
 ## Revision log
+
+- **r10 (2026-11-15):** P1.2 Facets: saved queries & palette — complete lift to `@spacegraphjs/search`.
+  - Added `SavedQuery`, `MAX_SAVED_QUERIES`, `savedQueryFacets`, `defaultSavedQueryLabel`, `saveQuery`, `removeQuery`, `isSavedQuery`, `normalizeSavedQueries` to `@spacegraphjs/search`.
+  - Added `PaletteAction`, `PaletteLens`, `PaletteSurface`, `PaletteSources`, `PaletteEntryKind`, `PaletteEntry`, `PALETTE_GROUP_ORDER`, `PALETTE_NODE_LIMIT`, `paletteEntries`, `paletteGroup` to `@spacegraphjs/search`.
+  - 28 tests covering saved queries (14) and palette (14).
+  - Second-host demo capability "facets" exercises the API.
+  - No `@opencode/*` imports in the package.
+  - `dist` rebuilt, `bun run check` and tests pass.
 
 - **r7 (2026-11-15):** Kernel boundary compliance & second-host test fixes.
   - Added `types.ts` to `@spacegraphjs/kernel` with core graph types (`GraphNode`, `GraphEdge`, `GraphViewData`, `Position`, `GraphFacets`, `FacetCounts`, `ZoomLevel`) to satisfy "kernel dependency-free" boundary test.
