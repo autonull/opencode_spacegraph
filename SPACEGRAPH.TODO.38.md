@@ -1,6 +1,6 @@
 # SpaceGraph: Scenarios (v38)
 
-> **Status (2026-11-15, r14):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. Housekeeping: removed superseded `stills/story-*`. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
+> **Status (2026-11-15, r15):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. Housekeeping: removed superseded `stills/story-*`. **P0.4 complete:** findings per scenario written. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
 
 ---
 
@@ -150,7 +150,8 @@ Two waves: film what exists, then build and film the new capabilities.
       - Scenario 6: "I need to audit a long session fast" — auditor lens → matrix layout → compaction badge
       - Scenario 7: "I need to know what this run cost" — cost lens → lanes → highest-cost node
 - [x] **P0.3 (cont.) — Scenario 8.** GraphTranscriptSurface with inline preview implemented (`packages/session-graph/src/ui/GraphTranscriptSurface.tsx`, `GraphInline.tsx`). Test fixture wired; capture passing (`GRAPH_CAPTURE_SCENARIO_NUM=8`).
-- [ ] **P0.4 — Findings per scenario.** From inspected frames only; each cites the scenario and frame.
+- [x] **P0.4 — Findings per scenario.** From inspected frames only; each cites the scenario and frame.
+      Findings written to `docs/spacegraph/findings/scenario-1.md` through `scenario-11.md` with index at `docs/spacegraph/findings/index.md`.
 - [ ] **P0.5 — Review gate per scenario.** Owner sign-off on goal clarity and outcome legibility.
 
 Capture commands (run from `packages/app`):
@@ -312,7 +313,7 @@ A scenario shot is done when all hold:
 | Trust lens: resolve deleted vs live | **Done** | Confirmed live: banner renders via toolbar toggle; capture test `41 graph trust lens` passes |
 | Scenario 8: Transcript surface with inline preview | **Done** | GraphTranscriptSurface + GraphInline implemented; test fixture wired; capture passing |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
-| P0.4: Findings per scenario | **Pending** | Extract from inspected frames; each cites scenario and frame |
+| P0.4: Findings per scenario | **Done** | Written to `docs/spacegraph/findings/scenario-1.md`–`scenario-11.md` + `index.md` |
 | P0.5: Review gate per scenario | **Pending** | Owner sign-off on goal clarity and outcome legibility |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |
 | P2: Study | **Carried** | Gated on Wave 1 sign-off |
@@ -359,17 +360,16 @@ A scenario shot is done when all hold:
   - Updated capture commands to use `GRAPH_CAPTURE_SCENARIO` / `GRAPH_CAPTURE_SCENARIO_NUM`.
   - Scenario 8 parked (requires transcript surface with inline preview).
   - Legacy `capture-explore.spec.ts` retained only as pipeline proof (rejected theme-based approach).
+- **r15 (2026-11-15):** P0.4 complete — findings per scenario.
+  - Findings for all 11 scenarios written to `docs/spacegraph/findings/scenario-1.md` through `scenario-11.md` with index at `docs/spacegraph/findings/index.md`.
+  - Each finding cites the scenario and the inspected frame (hold-outcome frame from marks).
+  - All findings derived from frames at 1440×900 resolution.
 - **r14 (2026-11-15):** Housekeeping and status sync.
   - All 11 scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures (`GRAPH_CAPTURE_SCENARIO_NUM=1..11`).
   - Scenario 8 (transcript-graph surface) wired: fixed command palette interaction, added session diff mock handler, corrected expand button selector (`.graph-affordance-toggle`).
   - Scenarios 9–11 (downstream trace, hybrid, export) verified passing.
   - Removed superseded `stills/story-*` files from `docs/spacegraph/video/stills/`.
   - Remaining: findings per scenario (P0.4), review gate (P0.5), compaction visibility decision (Part G), benchmarks (P2), study (P2).
-- **r13 (2026-11-15):** All 11 scenarios (Wave 1 + Wave 2) implemented and passing as automated e2e captures.
-  - Scenario 8 (transcript-graph surface) wired: fixed command palette interaction, added session diff mock handler, corrected expand button selector (`.graph-affordance-toggle`).
-  - Scenarios 9–11 (downstream trace, hybrid, export) verified passing.
-  - All capture tests pass with `GRAPH_CAPTURE_SCENARIO_NUM=1..11`.
-  - Remaining: findings per scenario (P0.4), review gate (P0.5), compaction visibility decision, housekeeping, benchmarks, study.
 - **r0 (2026-11-14):** Split v38 from v37 after the direction reset (v37 r8).
   - Refocused the demo from seeded random takes to **goal scenarios**; catalog in
     `docs/spacegraph/scenarios.md`.
