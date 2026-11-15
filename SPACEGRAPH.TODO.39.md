@@ -2,7 +2,7 @@
 
 > **Status (2026-11-15):** v39 pivots from scenario production to library extraction. v38 remains frozen design history. The goal is to make generic graph behavior available to any SpaceGraphJS dependent, without importing OpenCode packages or vocabulary.
 >
-> **Completed (r1–r10):**
+> **Completed (r1–r13):**
 > - P0.1 Trace engine (`@spacegraphjs/trace`) ✅
 > - P0.2 Focus distance / neighborhood dim (`@spacegraphjs/overlays`) ✅
 > - P0.3 Group collapse / expand (`@spacegraphjs/kernel` + `@spacegraphjs/overlays`) ✅
@@ -14,11 +14,11 @@
 > - P1.1 Permalink / deep link (`@spacegraphjs/navigation` codec) ✅
 > - P1.2 Facets core (`@spacegraphjs/search` — applyFacets, composeScopes, facetsToQuery, facetsFromQuery, hasFacets, FacetAccessors) ✅
 > - P1.2 Facets: saved queries, palette (`@spacegraphjs/search` — SavedQuery, normalizeSavedQueries, saveQuery, removeQuery, isSavedQuery, paletteEntries, paletteGroup) ✅
+> - P2 Annotations / notes (`@spacegraphjs/overlays`) ✅
+> - P2 Renderer strategy (`@spacegraphjs/adapter`) ✅
+> - P2 Manual positions / undo-redo (`@spacegraphjs/overlays`) ✅
 >
-> **Next (P2 — Optional):**
-> - Annotations / notes (`@spacegraphjs/overlays`)
-> - Renderer strategy (`@spacegraphjs/adapter`)
-> - Manual positions / undo-redo (evaluate; likely keep host-specific)
+> **All planned lifts complete.** No further work required for v39.
 
 ---
 
@@ -82,9 +82,9 @@ Do not re-implement these in the plugin. The remaining problem is behavior, not 
 | Permalink / deep link | `session-graph/src/ui/useGraphPermalink.ts:24` | `@spacegraphjs/navigation` codec | OpenCode hash route | P1 ✅ |
 | Facets / saved queries / palette | `session-ui/src/graph/facets.ts:59`, `palette.ts:90` | `@spacegraphjs/search` | OpenCode facet fields and actions | P1 ✅ |
 | Time travel | `session-ui/src/graph/time-travel.ts:20` | `@spacegraphjs/kernel` history helper | OpenCode checkpoint UI | P1 ✅ |
-| Annotations / notes | `session-ui/src/graph/annotations.ts:21`; hook `useNotes.ts:27` | `@spacegraphjs/overlays` | OpenCode note rendering | P2 |
-| Renderer strategy | `session-ui/src/graph/renderer-strategy.ts:24` | `@spacegraphjs/adapter` policy helper | OpenCode thresholds | P2 |
-| Manual positions / undo | `session-graph/src/ui/useManualPositions.ts:16` | Evaluate; likely kernel or a small editing package | OpenCode interaction | P2 |
+| Annotations / notes | `session-ui/src/graph/annotations.ts:21`; hook `useNotes.ts:27` | `@spacegraphjs/overlays` | OpenCode note rendering | P2 ✅ |
+| Renderer strategy | `session-ui/src/graph/renderer-strategy.ts:24` | `@spacegraphjs/adapter` policy helper | OpenCode thresholds | P2 ✅ |
+| Manual positions / undo | `session-graph/src/ui/useManualPositions.ts:16` | Evaluated; lifted to library as generic editing capability | OpenCode interaction | P2 ✅ |
 
 **First three are the priority.** Trace, focus, and collapse are the behaviors that make the graph answer causal questions. They are also small enough to lift without destabilizing the host.
 
@@ -226,7 +226,7 @@ The host supplies the graph model, selection, zoom band, and optional controlled
 - [x] Keep OpenCode facet names and defaults in the host.
 - [x] Add tests for scope composition: facets → keep-only → collapse.
 - [x] Lift saved-query normalization and storage: `SavedQuery`, `normalizeSavedQueries`, `saveQuery`, `removeQuery`, `isSavedQuery`, `MAX_SAVED_QUERIES`.
-- [x] Lift the palette entry builder: `paletteEntries`, `paletteGroup`, `PaletteAction`, `PaletteLens`, `PaletteSurface`, `PaletteSources`, `PaletteEntry`, `PaletteEntryKind`, `PALETTE_GROUP_ORDER`, `PALETTE_NODE_LIMIT`.
+- [x] Lift the palette entry builder: `paletteEntries`, `paletteGroup`, `PaletteAction`, `PaletteLens`, `PaletteSurface`, `PaletteSources`, `PaletteEntryKind`, `PaletteEntry`, `PALETTE_GROUP_ORDER`, `PALETTE_NODE_LIMIT`.
 - [x] Second-host proof: filter a generic graph by one facet and save the query (gallery capability "facets").
 
 ### P1.3 — Time travel ✅ DONE (r2)
@@ -241,9 +241,7 @@ The host supplies the graph model, selection, zoom band, and optional controlled
 
 ---
 
-## P2 — Optional lifts
-
-Do not start these until P0 and P1 are usable by a second host (currently satisfied).
+## P2 — Optional lifts ✅ ALL DONE
 
 ### Annotations / notes ✅ DONE (r11)
 
@@ -280,7 +278,7 @@ If a proposed lift needs any of these, it is not a lift.
 
 ---
 
-## Verification per lift (all P0/P1 verified)
+## Verification per lift (all P0/P1/P2 verified)
 
 - [x] Package exports the new API from its root.
 - [x] Types are exported and documented.
@@ -315,6 +313,9 @@ If a proposed lift needs any of these, it is not a lift.
 **PR 5 — View state (time travel).** ✅ DONE (r2)
 **PR 6 — Spatial memory & permalink.** ✅ DONE (r5, r8)
 **PR 7 — Facets, saved queries, palette.** ✅ DONE (r9, r10)
+**PR 8 — Annotations.** ✅ DONE (r11)
+**PR 9 — Renderer strategy.** ✅ DONE (r12)
+**PR 10 — Manual positions / undo-redo.** ✅ DONE (r13)
 
 ---
 
@@ -328,7 +329,7 @@ If a proposed lift needs any of these, it is not a lift.
 | Content hash algorithm | Stable stringify + FNV-1a ✅ | ✅ Resolved: FNV-1a |
 | Permalink prefix ownership | Host supplies prefix | ✅ Resolved: Host supplies prefix |
 | Facet field access | Host-supplied `FacetAccessors` | ✅ Resolved: `FacetAccessors` policy |
-| Manual positions | Evaluate; default keep host-specific | ✅ Deferred to P2 |
+| Manual positions | Evaluate; default keep host-specific | ✅ Resolved: Lifted to `@spacegraphjs/overlays` |
 
 ---
 
