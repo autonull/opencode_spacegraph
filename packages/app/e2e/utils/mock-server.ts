@@ -101,6 +101,7 @@ export interface MockServerConfig {
   onMessage?: (input: { sessionID: string; messageID: string }) => void
   onRevertStage?: (input: { sessionID: string; messageID: string }) => void
   onSession?: (sessionID: string) => void
+  sessionDiff?: (input: { sessionID: string; from?: string; to?: string; context?: number }) => unknown[]
   events?: () => OpenCodeEvent[]
   eventRetry?: number
   // Idle event streams send a comment every 15 s like the real server. Set false only to test the client's stall watchdog.
@@ -1477,6 +1478,17 @@ function mockHandlers(
             }
           })
         },
+        sessionDiff: (ctx) =>
+          Effect.succeed({
+            data: config.sessionDiff
+              ? config.sessionDiff({
+                  sessionID: ctx.params.sessionID,
+                  from: ctx.query.from,
+                  to: ctx.query.to,
+                  context: ctx.query.context,
+                })
+              : [],
+          }),
       }),
   )
 }

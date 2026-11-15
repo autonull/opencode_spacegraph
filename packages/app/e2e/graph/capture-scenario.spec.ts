@@ -41,6 +41,7 @@ function graphFixture() {
     directory,
     sessions: [{ id: sessionID, title: "Scenario graph" }],
     pageMessages: () => ({ items: buildNarrativeFixtureMessages() }),
+    vcsDiff: () => [],
   }
 }
 
@@ -489,35 +490,39 @@ async function runScenario8(page: Page) {
   const palette = page.locator('.command-palette')
   await expect(palette).toBeVisible({ timeout: 10000 })
   const input = palette.getByRole("combobox")
-  await input.fill("transcript graph")
-  await pace(300)
-  await input.press("Enter")
-  await pace(1000)
+  await input.fill("transcript")
+  await pace(500)
+  // Wait for command to appear in results
+  const commandRow = palette.locator('.command-palette-row:has-text("Show transcript (Graph)")').first()
+  await expect(commandRow).toBeVisible({ timeout: 10000 })
+  // Click the command instead of pressing Enter
+  await commandRow.click()
+  await pace(1500)
 
-  await selectLens(page, "reader")
-  await fit(page)
+  // Wait for transcript surface to render
+  await expect(page.locator('[data-slot="graph-transcript-surface"]')).toBeVisible({ timeout: 15000 })
+
   await syncBeacon(page)
   flowWallStart = Date.now()
   recordMark("scenario-8-01-open")
 
-  // Hover over a turn row to expand inline preview
-  const turnRow = page.locator('[data-slot="transcript-row"]').first()
+  // Hover over a turn row to show affordance bar with expand button
+  const turnRow = page.locator('.graph-transcript-row').first()
   await expect(turnRow).toBeVisible({ timeout: 10000 })
   await turnRow.hover()
-  await pace(800)
-  recordMark("scenario-8-02-inline-preview-expanded")
+  await pace(500)
 
-  // Click expand to turn map (the inline graph expand button)
-  const expandButton = page.locator('[data-slot="graph-inline-expand"]').first()
+  // Click expand button in affordance bar to expand inline graph (L2)
+  const expandButton = page.locator('.graph-affordance-toggle').first()
   await expect(expandButton).toBeVisible({ timeout: 10000 })
   await expandButton.click()
   await waitForStillCanvas(page)
   await pace(500)
-  recordMark("scenario-8-03-turn-map-expanded")
+  recordMark("scenario-8-02-turn-map-expanded")
 
   // Hold on the expanded turn map with node labels readable
   await pace(4000)
-  recordMark("scenario-8-04-hold-outcome")
+  recordMark("scenario-8-03-hold-outcome")
 }
 
 /**

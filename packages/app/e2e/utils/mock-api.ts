@@ -560,5 +560,13 @@ const Group = HttpApiGroup.make("mock")
       error: MockBadRequest.pipe(HttpApiSchema.status(400)),
     }),
   )
+  .add(
+    HttpApiEndpoint.get("sessionDiff", "/api/session/:sessionID/diff", {
+      params: SessionParams,
+      query: Query,
+      success: Json,
+      error: MockBadRequest.pipe(HttpApiSchema.status(400)),
+    }),
+  )
 
 export const MockApi = HttpApi.make("mock").add(Group)

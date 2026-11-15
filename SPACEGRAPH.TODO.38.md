@@ -1,9 +1,6 @@
 # SpaceGraph: Scenarios (v38)
 
-> **Status (2026-11-14, r0):** v37 is frozen design history. It proved the capture pipeline, but its
-> seeded random-detour takes are **rejected** — camera motion, not usefulness. v38 refocuses the
-> demo on **goal scenarios**. The catalog is `docs/spacegraph/scenarios.md`; this file is the
-> checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
+> **Status (2026-11-15, r13):** All 11 goal scenarios (Wave 1: 1–8, Wave 2: 9–11) implemented and passing as automated e2e captures. v37 is frozen design history. The catalog is `docs/spacegraph/scenarios.md`; this file is the checklist. v37's full r0–r8 trail stays in `SPACEGRAPH.TODO.37.md`.
 
 ---
 
@@ -59,7 +56,7 @@ human speed, honestly.
 | Goal scenario catalog + coverage matrix | Written (v38 r0) | `docs/spacegraph/scenarios.md` |
 | Capability inventory with honest status | Written (v38 r0) | `scenarios.md` Part A |
 | Seeded explorer (random detours) | **Rejected as demo** (r8); keep only as pipeline proof | `packages/app/e2e/graph/capture-explore.spec.ts` |
-| Scenario captures (7 scenarios) | **Implemented** (v38 r1); passing as automated e2e captures | `packages/app/e2e/graph/capture-scenario.spec.ts` |
+| Scenario captures (11 scenarios) | **Implemented** (v38 r13); all passing as automated e2e captures | `packages/app/e2e/graph/capture-scenario.spec.ts` |
 | Camera helpers (push-in, orbit, whip, trace) | Exist; must be repurposed to travel between evidence | `capture-explore.spec.ts` |
 | Continuous renderer + still extraction | Works; transcoding dropped, stills kept | `script/generate-demo-video.ts` |
 | Raw takes (9) | Pipeline proofs only, not demo material | `docs/spacegraph/video/takes/` (gitignored) |
@@ -305,19 +302,27 @@ A scenario shot is done when all hold:
 | D2: Streaming fixture / scripted append for node-grab focus | **Done** | Streaming fixture created: `buildNarrativeStreamingFixtureMessages()` in `packages/session-ui/src/graph/fixture.ts` (synced to gui-plugins). Subagent tool in streaming state demonstrates node-grab focus for D2. |
 | D3: Progressive expansion (expand cluster affordance) | **Done** | Card affordance (chevron) implemented in `packages/session-graph/src/ui/cardTemplate.ts` for phase, file-group, subagent-group, error-group. Click handler in GraphCanvas.tsx, state in useGroupCollapse.ts. Layout preserves positions on expand. |
 | Hybrid surface with related/downstream trace | **Done** | Both gap rows implemented and verified via e2e capture tests |
-| Downstream trace scenario | **Done** | Scenario 9 verified: trace=downstream with fork visualization works |
-| Hybrid surface scenario | **Done** | Scenario 10 verified: mod+shift+h opens hybrid with side arrangement |
-| Export as file scenario | **Done** | Scenario 11 implemented with SVG/JSON/HTML export; GraphExportControl with format options; map-surface and hybrid-surface pass sessionTitle/testedCommit |
+| Downstream trace scenario (9) | **Done** | Scenario 9 verified: trace=downstream with fork visualization works |
+| Hybrid surface scenario (10) | **Done** | Scenario 10 verified: mod+shift+h opens hybrid with side arrangement |
+| Export as file scenario (11) | **Done** | Scenario 11 implemented with SVG/JSON/HTML export; GraphExportControl with format options; map-surface and hybrid-surface pass sessionTitle/testedCommit |
 | Trust lens: resolve deleted vs live | **Done** | Confirmed live: banner renders via toolbar toggle; capture test `41 graph trust lens` passes |
+| Scenario 8: Transcript surface with inline preview | **Done** | GraphTranscriptSurface + GraphInline implemented; test fixture wired; capture passing |
 | Compaction visibility: film as outcome or caption only? | **Open** | Part G open question |
+| P0.4: Findings per scenario | **Pending** | Extract from inspected frames; each cites scenario and frame |
+| P0.5: Review gate per scenario | **Pending** | Owner sign-off on goal clarity and outcome legibility |
 | P2: Benchmarks | **Carried** | Unchanged from v37 |
 | P2: Study | **Carried** | Gated on Wave 1 sign-off |
-| Scenario 8: Transcript surface with inline preview | **Ready** | GraphTranscriptSurface + GraphInline implemented; needs test fixture wiring |
+| P3: Housekeeping | **Open** | Remove superseded `stills/story-*`; decide compaction visibility |
 
 ---
 
 ## Revision log
 
+- **r13 (2026-11-15):** All 11 scenarios (Wave 1 + Wave 2) implemented and passing as automated e2e captures.
+  - Scenario 8 (transcript-graph surface) wired: fixed command palette interaction, added session diff mock handler, corrected expand button selector (`.graph-affordance-toggle`).
+  - Scenarios 9–11 (downstream trace, hybrid, export) verified passing.
+  - All capture tests pass with `GRAPH_CAPTURE_SCENARIO_NUM=1..11`.
+  - Remaining: findings per scenario (P0.4), review gate (P0.5), compaction visibility decision, housekeeping, benchmarks, study.
 - **r12 (2026-11-14):** Trust lens verified — fixed callback cycle in `toggleTrustLens` (useGraphNavigation.ts), made `trustLensActive` reactive in `GraphChrome.tsx` via memo, added `data-slot` to trust badge in `cardTemplate.ts`, fixed test selector and enabled trust lens via toolbar. Capture test `41 graph trust lens` passes.
 - **r11 (2026-11-14):** Updated plan with D3 complete, Scenario 8 ready (GraphTranscriptSurface exists), gap rows decision: implement downstream trace + hybrid surface + export scenarios. Marked P1.3 done, added tasks for three gap row scenarios.
 - **r10 (2026-11-14):** D2 complete — Node-grab focus for live conduct implemented. When `followLog` is enabled, new streamed nodes trigger camera frame (~400–600ms move via `viewportTracker.camera.frame()`) and temporary D1 neighborhood highlight (500ms beat). Added `onNodesAdded` callback to `GraphCanvas.tsx` (patch path), `streamingNodeId` signal in `SessionGraph.tsx`, extended `createFocusOverlay` in `useFocusOverlay.ts` to accept `streamingNode`, wired through `useRenderCard.ts`. Scenario 10 status updated to `exists`.
