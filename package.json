@@ -139,7 +139,6 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@typescript/native": "catalog:",
-    "cytoscape": "3.35.0",
     "glob": "13.0.5",
     "husky": "9.1.7",
     "oxlint": "1.60.0",
