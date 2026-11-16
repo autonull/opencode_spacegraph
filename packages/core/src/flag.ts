@@ -75,7 +75,7 @@ export function resolve(input: {
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    const app = yield* App.Service
+    const app = yield* App.Metadata
     const config = yield* Config.Service
     const overrides = yield* Overrides
     const resolveEntries = (entries: readonly Entry[]) => resolve({ entries, channel: app.channel, overrides })

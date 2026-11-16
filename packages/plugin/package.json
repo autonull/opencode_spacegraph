@@ -63,9 +63,13 @@
     "@tsconfig/bun": "catalog:",
     "@tsconfig/node22": "catalog:",
     "@types/bun": "catalog:",
+    "@types/electron": "1.6.12",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "electron": "catalog:",
     "solid-js": "catalog:",
     "typescript": "catalog:",
-    "@typescript/native": "catalog:"
+    "vite": "8.3.8",
+    "vite-plugin-solid": "2.11.16"
   }
 }
