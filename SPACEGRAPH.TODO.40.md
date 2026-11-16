@@ -189,21 +189,22 @@ Latin-square counterbalancing (n 5–12), measures, McNemar/Wilcoxon analysis, e
 stop rules, and outcome disposition. Matching `STUDY_TASKS`/`StudyCounters` live in
 `packages/session-ui/src/graph/study.ts`. Study execution stays gated on demo-video sign-off.
 
-### P5.3 Upstream contribution ladder — IN PROGRESS (rung 1 complete)
+### P5.3 Upstream contribution ladder — IN PROGRESS (rung 2 complete)
 **Files:** `docs/spacegraph/upstream.md`, `docs/spacegraph/upstream-review.md`
 **Acceptance:** 
 - PR 1: Plugin surface APIs (`host-apis`, `registries`, `surfaces`) — minimal, reviewable. ✅
 - PR 2: Feature flags (`graph_*`) — schema only, no behavior. ✅
-- PR 3: `session-graph` as optional core package — lazy-loaded, tree-shakeable. — PENDING
+- PR 3: `session-graph` as optional core package — lazy-loaded, tree-shakeable. ✅
 - PR 4: `session-ui/graph` projection — behind flag, no transcript changes. — PENDING
-**Status:** PR 1 & 2 complete (rung 1: plugin surface APIs + feature flags). This commit adds:
+**Status:** PR 1, 2, & 3 complete (rung 1: plugin surface APIs + feature flags; rung 2: session-graph package). This commit adds:
 - `packages/plugin/src/gui/` SDK: SessionSurface, SessionLayer, Command, Panel, PanelTab, Slot, MobileView registries
 - `packages/core/src/flag.ts`: Flag service with OPENCODE_FLAGS / experimental.<key> / all_flags resolution
 - `packages/schema/src/config/flag.ts`: graph_* feature flag registry (cost lens, palette, attention, layout breadth, library renderers, time travel, compaction advisor)
 - `packages/schema/src/plugin.ts`: gui capability in Plugin.Features
 - `packages/schema/src/config/experimental.ts`: all_flags option
 - Fixes: session-graph GraphDiff.tsx diffTone() type narrowing, @spacegraphjs/diff workspace dependency
-Rungs 3–4 pending; will ship after rung 2 typechecks green.
+- `packages/session-graph/src/gui/index.tsx`: GUI plugin entry point registering SessionSurface (map, hybrid, transcript-graph), Command (toggle-graph, toggle-hybrid), Panel (map), Slot (session.header)
+Rungs 3–4 pending; will ship after rung 3 typechecks green.
 
 ---
 
@@ -244,7 +245,7 @@ P4.1 (overview default) ✅ ──→ P4.2 (expand/collapse) ✅
 P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
   app frames ✅ 44/44 · bundle map frame ✅
   rung 1 (plugin surfaces + flags) ✅
-  rung 2 (session-graph package) — PENDING
+  rung 2 (session-graph package) ✅
   rung 3 (app wiring) — PENDING
   rung 4 (hybrid affordance) — PENDING
 ```
