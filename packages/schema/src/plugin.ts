@@ -25,6 +25,7 @@ export const Features = Schema.Struct({
   server: Schema.Literal(true).pipe(optional),
   tui: Schema.Literal(true).pipe(optional),
   rpc: Schema.Literal(true).pipe(optional),
+  gui: Schema.Literal(true).pipe(optional),
 }).annotate({ identifier: "Plugin.Features" })
 export type Features = typeof Features.Type
 

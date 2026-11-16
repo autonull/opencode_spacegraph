@@ -1,5 +1,6 @@
 import { useI18n } from "@opencode/ui/context/i18n"
 import { diffTone, type CodeDiff, type CodeDiffSource } from "spacegraphjs/overlays"
+import type { DiffTone } from "@spacegraphjs/diff"
 import { For, Show, createEffect, createMemo } from "solid-js"
 
 /** One changed file of a finished turn, as reported by the host's turn-diff source. */
@@ -12,7 +13,7 @@ export type GraphDiff = CodeDiff
 export type GraphDiffSource = CodeDiffSource
 
 // The tone of a unified-diff line comes from the library; the classes are the host's.
-const TONE_CLASS = {
+const TONE_CLASS: Record<DiffTone, string> = {
   header: "text-text-weaker",
   added: "text-text-on-success-base",
   removed: "text-text-on-critical-base",
@@ -51,7 +52,7 @@ export const GraphDiffView = (props: { from: string; source?: GraphDiffSource })
                 </div>
                 <pre class="mt-1 max-h-64 overflow-auto rounded-sm bg-background-weak p-2 text-12-mono">
                   <For each={diff.patch.split("\n")}>
-                    {(line) => <div class={TONE_CLASS[diffTone(line)]}>{line || " "}</div>}
+                    {(line) => <div class={TONE_CLASS[diffTone(line) as DiffTone]}>{line || " "}</div>}
                   </For>
                 </pre>
               </div>

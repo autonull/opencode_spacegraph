@@ -36,7 +36,7 @@ export type PluginSource =
   | { type: "local"; path: string }
   | { type: "sdk" }
 
-export type PluginFeatures = { server?: true; tui?: true; rpc?: true }
+export type PluginFeatures = { server?: true; tui?: true; rpc?: true; gui?: true }
 
 export type PluginState = { status: "active" } | { status: "failed"; error: string; ref?: string }
 
@@ -2425,6 +2425,7 @@ export type ConfigEntry =
           portable_shell_scanner?: boolean
           todo?: boolean
           subagent_depth?: number
+          all_flags?: boolean
           policies?: Array<{
             action: "provider.use" | "tool.use" | "integration.use"
             resource: string
@@ -2488,7 +2489,7 @@ export type CredentialEntry = {
   value: CredentialValue
 }
 
-export type FormFields2 = [FormField1, ...Array<FormField1>]
+export type FormFields1 = [FormField1, ...Array<FormField1>]
 
 export type SessionsResponse = {
   data: Array<SessionInfo>
@@ -2547,7 +2548,7 @@ export type IntegrationKeyMethod = { type: "key"; label?: string; form?: FormFie
 
 export type IntegrationExternalMethod = { id: IntegrationMethodID; type: "external"; label: string; form?: FormFields }
 
-export type FormInfo1 = { id: FormID; sessionID: string; title: string; metadata?: FormMetadata1; fields: FormFields2 }
+export type FormInfo1 = { id: FormID; sessionID: string; title: string; metadata?: FormMetadata1; fields: FormFields1 }
 
 export type SessionMessageInfo =
   | SessionMessageAgentSelected

@@ -14,6 +14,9 @@ export class Info extends Schema.Class<Info>("ConfigExperimental.Info")({
   subagent_depth: NonNegativeInt.pipe(optional).annotate({
     description: "Maximum subagent nesting depth. Defaults to 1.",
   }),
+  all_flags: Schema.Boolean.pipe(optional).annotate({
+    description: "Enable all experimental feature flags. Defaults to false.",
+  }),
   policies: ConfigPolicy.Info.pipe(Schema.Array, optional).annotate({
     description: "Deprecated: use top-level policies. Ordered policies controlling access to configured resources",
   }),

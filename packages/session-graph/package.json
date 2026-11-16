@@ -18,6 +18,7 @@
     "@opencode/ui": "workspace:*",
     "@spacegraphjs/adapter": "workspace:*",
     "@spacegraphjs/cytoscape-renderer": "workspace:*",
+    "@spacegraphjs/diff": "workspace:*",
     "@spacegraphjs/renderer": "workspace:*",
     "@spacegraphjs/spacegraph-renderer": "workspace:*",
     "@spacegraphjs/svg-renderer": "workspace:*",
