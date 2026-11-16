@@ -259,6 +259,7 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 | Trust lens | Deleted orphan — verify before revive |
 | Parked layouts (radial, spectral, cluster, geo) | Not demoable, no scenario |
 | Cytoscape 3D parity | Cytoscape is 2D only; capability flags declare this |
+| Cytoscape renderer tests | Deprioritized — SpaceGraph renderer is primary; Cytoscape is optional 2D fallback only |
 | Real-time collaboration | Out of scope for v40 |
 | Mobile graph UX | Desktop-first; mobile = panel surface only |
 
@@ -290,6 +291,7 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 - **r21 (2026-11-16):** Blessed new capture baseline. `bun run graph:capture --mode=verify` now passes with 0 pixel diffs across all 44 app frames + 3 bundle frames. Fresh captures committed as new baseline in `docs/spacegraph/screenshots/`. Demo gate (P5.1) fully green.
 - **r22 (2026-11-16):** P5.3 rung 1 complete — Plugin surface APIs + feature flags. Added `packages/plugin/src/gui/` SDK (SessionSurface, SessionLayer, Command, Panel, PanelTab, Slot, MobileView), `packages/core/src/flag.ts` Flag service, `packages/schema/src/config/flag.ts` graph_* feature flags, `gui` capability in Plugin.Features, `all_flags` in ConfigExperimental. Fixed session-graph GraphDiff.tsx diffTone() type narrowing. Typechecks pass for session-graph, session-ui, schema, plugin. Unit tests pass (116/116 session-graph). Rungs 3–4 pending.
 - **r23 (2026-11-16):** Fixed Cytoscape renderer card rendering. In `@spacegraphjs/cytoscape-renderer`, `applyModel()` called `#syncCards()` before base class set `this.model`, so cards weren't created. Fixed by passing model explicitly to `#syncCards(model)` and making `#syncCards()` accept optional model parameter. All 24 cytoscape-renderer tests pass; session-graph cytoscape component test now passes.
+- **r24 (2026-11-16):** Deprioritized Cytoscape work. SpaceGraph renderer is the primary/default renderer with full 3D/WebGL support. Cytoscape is a 2D-only fallback (capability flags declare this). Component tests for Cytoscape are low priority; SpaceGraph renderer tests cover the main use case. Cytoscape remains an optional peer dependency with no effect when unused.
 
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅
