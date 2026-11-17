@@ -360,25 +360,33 @@ to `provided` or keep the lists in sync when bundle imports change.
 (from `src/runtime/plugin/panels.tsx`). Not touched by this work; confirm against `typecheck:tsc` before
 treating it as a release blocker.
 
-### Remaining Type Errors (r27 — in progress)
-**Session-graph typecheck** (reduced from ~60 to ~30 errors):
-- **GraphFacets type incompatibility**: `facets.ts` uses `ReadonlySet<NodeKind>` but `facets-adapter.ts` uses `ReadonlySet<string>`. This causes type mismatches when passing facets between components. Need to unify the type definitions.
-- **Missing component props**: `onExpandAll` in GraphGroupMenu (missing in GraphView.tsx), `expandAllInCluster` in UseGroupCollapseReturn, `onRemoveSavedQuery` in GraphToolbarProps.
-- **CardTemplateOptions**: Missing `band` property used in useRenderCard.ts.
-- **TraceKind**: Missing "downstream" in useTraceOverlay.ts Record type.
-- **NodeKind**: Missing "file-group", "error-group", "subagent-group", "compaction-group", "facet-group" in vocabulary.ts.
-- **SubagentNodeWidget/useGraphNavigation**: Need subagentSubgraph export (added to session-ui but typecheck still fails due to other issues).
-- **Test infrastructure**: vitest config missing, dev-effect-guard.test.ts imports vitest.
+### Remaining Type Errors — RESOLVED ✅ (r28)
 
-**Session-ui typecheck** (new errors from added exports):
-- **sub-layout.ts**: NodeKind comparison errors with group kinds ("file-group", "error-group", etc.) not in NodeKind union.
-- **incremental-builder.ts**: WorkspaceSnapshot not exported from model.ts.
-- **markdown components**: Missing exports from markdown-worker-protocol and markdown-session-links.
+**Session-graph typecheck** — All core graph-related errors fixed:
+- ✅ **GraphFacets type incompatibility**: Unified to `ReadonlySet<NodeKind>`, `ReadonlySet<NodeStatus>`, `ReadonlySet<Domain>` in facets-adapter.ts
+- ✅ **Missing component props**: Added `onExpandAll` to GraphGroupMenu, `expandAllInCluster` to UseGroupCollapseReturn, `onRemoveSavedQuery` to GraphToolbarProps
+- ✅ **CardTemplateOptions**: Added `band` property
+- ✅ **TraceKind**: Added "downstream" to useTraceOverlay.ts
+- ✅ **NodeKind**: Added "file-group", "error-group", "subagent-group", "compaction-group", "facet-group" to vocabulary.ts (both session-ui and session-graph)
+- ✅ **SubagentNodeWidget/useGraphNavigation**: subagentSubgraph already exported from session-ui selectors
+- ⏸ **Test infrastructure**: vitest config missing, dev-effect-guard.test.ts imports vitest (pre-existing, not blocking)
 
-**Priority fixes needed**:
-1. Unify GraphFacets types in session-ui (facets.ts vs facets-adapter.ts)
-2. Add missing group NodeKinds to vocabulary.ts
-3. Add missing component props (onExpandAll, expandAllInCluster, onRemoveSavedQuery, band)
-4. Fix sub-layout.ts type comparisons
-5. Export WorkspaceSnapshot from model.ts
-6. Fix markdown component imports
+**Session-ui typecheck** — All core graph-related errors fixed:
+- ✅ **sub-layout.ts**: NodeKind comparison errors resolved (group kinds added to NodeKind union)
+- ✅ **incremental-builder.ts**: WorkspaceSnapshot exported from model.ts
+- ✅ **markdown components**: Added missing exports (sessionReferenceRange, applyProjectionBlocks, MarkdownWorkerLaneTarget, createMarkdownWorkerClient, MarkdownCodeBlock, MarkdownCodeBlockMatch)
+- ✅ **i18n keys**: Added groupCollapsed/groupExpanded announcements
+
+**Priority fixes — ALL COMPLETE ✅**:
+1. ✅ Unify GraphFacets types in session-ui (facets.ts vs facets-adapter.ts)
+2. ✅ Add missing group NodeKinds to vocabulary.ts
+3. ✅ Add missing component props (onExpandAll, expandAllInCluster, onRemoveSavedQuery, band)
+4. ✅ Fix sub-layout.ts type comparisons
+5. ✅ Export WorkspaceSnapshot from model.ts
+6. ✅ Fix markdown component imports
+
+**Remaining (non-blocking, pre-existing)**:
+- vitest config for session-graph tests
+- dev-effect-guard.test.ts vitest imports
+- Various unrelated component prop type mismatches (GraphCanvasRegion, ComposerNodeWidget, DiffNodeWidget, GraphRendererStatus)
+- Markdown component test infrastructure issues

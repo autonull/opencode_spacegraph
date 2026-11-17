@@ -54,6 +54,7 @@ export function useTraceOverlay(options: UseTraceOverlayOptions): UseTraceOverla
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
       "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
       related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
+      downstream: i18n.t("ui.sessionGraph.trace.downstreamAnnouncement", { label }),
     }
     options.onAnnounce(messages[kind])
   }

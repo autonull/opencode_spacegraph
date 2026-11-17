@@ -36,6 +36,12 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     port: "detail",
     issue: "overview",
     note: "execution",
+    // Group kinds (P4.2 — progressive disclosure groups)
+    "file-group": "overview",
+    "error-group": "overview",
+    "subagent-group": "overview",
+    "compaction-group": "overview",
+    "facet-group": "overview",
   },
   edgeMinLevel: {
     "part-of": "overview",

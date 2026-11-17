@@ -732,13 +732,13 @@ export const SessionGraph = (props: SessionGraphProps) => {
     checkpoint: () => props.checkpoint,
     turnCount: () => props.turnCount,
     selection,
-    nodeLookup,
+    nodeByID: (id) => nodeLookup()(id),
   })
 
   const groupCollapse = useGroupCollapse({
     model,
     selection: () => selection(),
-    nodeLookup,
+    nodeLookup: nodeLookup(),
     descendantSelected: () => {
       const sel = selection()
       if (sel.length === 0) return false

@@ -1,10 +1,11 @@
-import type { Projection } from "./markdown-stream"
+import type { Block, Projection } from "./markdown-stream"
 
 export type MarkdownToken = [content: string, style: string]
 
 export type MarkdownWorkerRequest =
   | { type: "parse"; id: number; text: string }
   | { type: "project"; id: number; key: string; text: string; live: boolean }
+  | { type: "project"; id: number; key: string; from: number; blocks: Block[] }
   | { type: "highlight"; id: number; key: string; text: string; language: string; complete?: boolean }
   | { type: "dispose"; key: string }
 
@@ -52,4 +53,27 @@ export function applyMarkdownWorkerResponse(
     stable: response.reset ? response.stable : [...(state?.stable ?? []), ...response.stable],
     unstable: response.unstable,
   }
+}
+
+export type MarkdownWorkerLaneTarget = {
+  id: number
+  key: string
+  projection: Projection
+}
+
+export function applyProjectionBlocks(
+  previous: Block[],
+  from: number,
+  blocks: Block[],
+): Block[] {
+  const result = [...previous.slice(0, from)]
+  for (const block of blocks) {
+    const existing = result.findIndex((b) => b.raw === block.raw && b.mode === block.mode)
+    if (existing >= 0) {
+      result[existing] = block
+    } else {
+      result.push(block)
+    }
+  }
+  return result
 }

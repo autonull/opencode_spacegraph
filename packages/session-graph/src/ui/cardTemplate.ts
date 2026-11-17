@@ -52,6 +52,12 @@ const GLYPH: Record<NodeKind, string> = {
   port: "M4 4v8M12 4v8M4 8h8M8 12v3M8 1v3",
   issue: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 7.5v4M8 4.5v.5M8 12.5v.5",
   note: "M3 2h10v12l-3-2-3 2-3-2zM6 5h4M6 8h4",
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group": "M2 3h12v5H2zM6 3v5M10 3v5",
+  "error-group": "M8 2 1.5 13.5h13zM8 6v4M8 11.5v.5",
+  "subagent-group": "M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM2 13.5c0-2 1.6-3.5 3.5-3.5S9 11.5 9 13.5M11 7.5a1.6 1.6 0 1 0 0-3.2",
+  "compaction-group": "M2 4h12M4 8h8M6 12h4",
+  "facet-group": "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 7.5v4M8 4.5v.5",
 }
 
 /** A small stack glyph for phase/group nodes to indicate they contain members. */
@@ -94,6 +100,12 @@ const KIND_HUE: Record<NodeKind, number> = {
   port: 210,
   issue: 0,
   note: 265,
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group": 45,
+  "error-group": 0,
+  "subagent-group": 275,
+  "compaction-group": 220,
+  "facet-group": 220,
 }
 
 function hue(node: GraphNode): number {
@@ -216,6 +228,14 @@ export type CardTemplateOptions = {
   focus?: FocusOverlay
   /** Cost detail for a turn or session node. */
   cost?: (node: GraphNode) => string | undefined
+  /** The band (overview/execution/detail) for conditional rendering. */
+  band?: "overview" | "execution" | "detail" | undefined
+  /** Custom HTML renderer for node content. */
+  renderNodeHTML?: (node: GraphNode) => string | undefined
+  /** Set of unverified file node IDs. */
+  unverifiedFiles?: Set<string>
+  /** Pinned node IDs. */
+  pins?: ReadonlySet<string>
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""
@@ -495,7 +515,7 @@ export function copyableContent(node: GraphNode): string | undefined {
 export function createBandTemplate(
   theme: RenderTheme,
   rules?: EqualizerRuleSet,
-  options?: { copy?: CardCopy; collapsedGroups?: ReadonlySet<string> },
+  options?: { copy?: CardCopy; collapsedGroups?: ReadonlySet<string>; animatedGroups?: ReadonlySet<string> },
 ): BandTemplate {
   return (node: GraphNode, count: number, _bounds) => {
     const { solid, soft } = accentOf(node, rules)

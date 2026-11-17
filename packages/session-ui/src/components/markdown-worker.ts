@@ -280,3 +280,66 @@ function getWorker() {
 
   return worker
 }
+
+export type MarkdownWorkerPort = {
+  onmessage: ((event: MessageEvent<MarkdownWorkerResponse>) => void) | null
+  onerror: ((event: ErrorEvent) => void) | null
+  onmessageerror: ((event: MessageEvent) => void) | null
+  postMessage: (message: MarkdownWorkerRequest) => void
+  terminate: () => void
+}
+
+export function createMarkdownWorkerClient(spawn: () => MarkdownWorkerPort) {
+  const worker = spawn()
+  const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>()
+  let nextID = 0
+
+  worker.onmessage = (event: MessageEvent<MarkdownWorkerResponse>) => {
+    const id = event.data.id
+    const result = pending.get(id)
+    if (!result) return
+
+    pending.delete(id)
+    if (event.data.type === "error") {
+      result.reject(new Error(event.data.message))
+    } else {
+      result.resolve(event.data)
+    }
+  }
+
+  worker.onerror = (event) => {
+    pending.forEach((request) => request.reject(new Error(event.message || "Worker error")))
+    pending.clear()
+  }
+
+  return {
+    parseMarkdown(text: string, signal: AbortSignal): Promise<string> {
+      if (signal.aborted) return Promise.reject(new MarkdownWorkerDisposedError())
+      const id = ++nextID
+      return new Promise<string>((resolve, reject) => {
+        pending.set(id, { resolve, reject })
+        worker.postMessage({ type: "parse", id, text })
+      })
+    },
+    projectMarkdown(key: string, text: string, live: boolean): Promise<Projection> {
+      const id = ++nextID
+      return new Promise<Projection>((resolve, reject) => {
+        pending.set(id, { resolve, reject })
+        worker.postMessage({ type: "project", id, key, text, live })
+      })
+    },
+    highlightStreamingCode(key: string, text: string, language: string, complete = false): Promise<MarkdownWorkerState> {
+      const id = ++nextID
+      return new Promise<MarkdownWorkerState>((resolve, reject) => {
+        pending.set(id, { resolve, reject })
+        worker.postMessage({ type: "highlight", id, key, text, language, complete })
+      })
+    },
+    dispose(key: string) {
+      worker.postMessage({ type: "dispose", key })
+    },
+    terminate() {
+      worker.terminate()
+    },
+  }
+}

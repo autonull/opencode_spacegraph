@@ -64,6 +64,8 @@ export type GraphToolbarProps = {
   dispatchCommand?: (command: string) => void
   /** T17.1: the layout on screen; the host persists the choice. */
   layout?: Layout
+  /** The layouts the host exposes under its flags. */
+  layouts?: readonly Layout[]
   onLayoutChange?: (layout: Layout) => void
   /** LE.12: the file-first lens toggle (changed-files rail + bundled provenance); default off. */
   files?: boolean
@@ -138,6 +140,31 @@ export type GraphToolbarProps = {
   savedQueries?: readonly SavedQuery[]
   /** T27.1: callback when a new saved query is created. */
   onSaveQuery?: () => void
+  /** T27.1: callback when a saved query is removed. */
+  onRemoveSavedQuery?: (query: string) => void
+  /** T27.1: callback when a saved query is applied. */
+  onApplySavedQuery?: (query: SavedQuery) => void
+  /** Trust lens toggle. */
+  trustLens?: boolean
+  onToggleTrustLens?: () => void
+  /** Cost lens toggle. */
+  costLens?: boolean
+  onToggleCostLens?: () => void
+  /** Compaction advisor toggle. */
+  compactionAdvisor?: boolean
+  onToggleCompactionAdvisor?: (enabled: boolean) => void
+  /** Follow mode toggle. */
+  followMode?: "off" | "turn" | "node" | "node+focus"
+  onFollowModeChange?: (mode: "off" | "turn" | "node" | "node+focus") => void
+  /** P3.3: When enabled, new nodes arriving during streaming are automatically selected. */
+  selectNewOnStream?: boolean
+  onSelectNewOnStreamChange?: (selectNewOnStream: boolean) => void
+  /** P1.3: Neighborhood focus mode. */
+  focus?: boolean
+  onToggleFocus?: () => void
+  /** P2.2: Quick filter chips - composition mode (OR/AND). */
+  filterComposeMode?: "or" | "and"
+  onFilterComposeModeChange?: (mode: "or" | "and") => void
 }
 
 /**

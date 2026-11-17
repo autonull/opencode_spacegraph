@@ -9,7 +9,7 @@ import {
   SUBAGENT_TOOLS,
 } from "./vocabulary"
 
-export type { JsonValue, NodeKind, NodeStatus, PhaseCategory, ZoomLevel }
+export type { JsonValue, NodeKind, NodeStatus, PhaseCategory, ZoomLevel, WorkspaceSnapshot }
 
 /** A source range in a file. */
 export type Range = {

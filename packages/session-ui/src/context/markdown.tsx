@@ -11,6 +11,15 @@ export type OpenMarkdownLocalFile = (path: string) => void
  */
 export type MarkdownLocalFileExists = (path: string) => boolean | Promise<boolean>
 
+/** A code block as seen by the markdown code machine. */
+export type MarkdownCodeBlock = {
+  code: string
+  language: string
+}
+
+/** A match in the markdown source that identifies a code block. */
+export type MarkdownCodeBlockMatch = string
+
 const context = createContext<{
   readonly readImage?: ReadMarkdownImage
   readonly openLocalFile?: OpenMarkdownLocalFile

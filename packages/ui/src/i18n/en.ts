@@ -633,6 +633,13 @@ const source = {
   "ui.sessionGraph.trace.whyAnnouncement": "Why trace lit: {{label}} and its causes",
   "ui.sessionGraph.trace.ledHereAnnouncement": "Forward chain trace lit: {{label}} and what followed",
   "ui.sessionGraph.trace.relatedAnnouncement": "Related trace lit: {{label}} and its neighbors",
+  "ui.sessionGraph.trace.downstreamAnnouncement": "Downstream trace lit: {{label}} and what followed",
+  "ui.sessionGraph.trace.downstreamForkAnnouncement.one": "Downstream trace lit: {{label}} and {{count}} fork",
+  "ui.sessionGraph.trace.downstreamForkAnnouncement.other": "Downstream trace lit: {{label}} and {{count}} forks",
+  "ui.sessionGraph.a11y.groupCollapsed.one": "{{count}} group collapsed: {{label}} on {{surface}}",
+  "ui.sessionGraph.a11y.groupCollapsed.other": "{{count}} groups collapsed: {{label}} on {{surface}}",
+  "ui.sessionGraph.a11y.groupExpanded.one": "{{count}} group expanded: {{label}} on {{surface}}",
+  "ui.sessionGraph.a11y.groupExpanded.other": "{{count}} groups expanded: {{label}} on {{surface}}",
 } satisfies Record<string, string>
 
 export type Key = keyof typeof source

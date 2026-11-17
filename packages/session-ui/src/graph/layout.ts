@@ -148,6 +148,12 @@ const DEPTH: Record<NodeKind, number> = {
   port: 4,
   issue: 1,
   note: 2,
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group": 2,
+  "error-group": 2,
+  "subagent-group": 2,
+  "compaction-group": 2,
+  "facet-group": 2,
 }
 
 /**
@@ -236,6 +242,13 @@ function laneOf(node: GraphNode): Lane {
   if (node.kind === "test" || node.kind === "test-run") return "verify"
   if (node.kind === "process" || node.kind === "port") return "verify"
   if (node.kind === "issue") return "prompt"
+
+  // Group kinds (P4.2 — progressive disclosure groups)
+  if (node.kind === "file-group") return "artifacts"
+  if (node.kind === "error-group") return "narrative"
+  if (node.kind === "subagent-group") return "delegate"
+  if (node.kind === "compaction-group") return "narrative"
+  if (node.kind === "facet-group") return "artifacts"
 
   const category = phaseCategoryOf(node)
 

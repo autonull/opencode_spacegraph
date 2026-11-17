@@ -472,8 +472,8 @@ export const GraphView = (props: GraphViewProps) => {
   const comparisonHook = useComparison({
     model,
     liveModel: () => props.liveModel ?? model(),
-    checkpoint: props.checkpoint,
-    turnCount: props.turnCount,
+    checkpoint: () => props.checkpoint,
+    turnCount: () => props.turnCount,
     selection: () => selection.selection(),
     nodeByID: (id) => nodeByID(model(), id),
   })
@@ -481,7 +481,7 @@ export const GraphView = (props: GraphViewProps) => {
   const groupCollapse = useGroupCollapse({
     model,
     selection: () => selection.selection(),
-    nodeByID: (id) => model().nodes.find((n) => n.id === id),
+    nodeLookup: (id) => model().nodes.find((n) => n.id === id),
   })
 
   const selectionVerbs = useSelectionVerbs({
@@ -1775,6 +1775,7 @@ export const GraphView = (props: GraphViewProps) => {
       collapsedGroups={groupCollapse.collapsedGroups()}
       onToggleGroup={toggleGroupByID}
       onCollapseOthers={groupCollapse.collapseOtherGroups}
+      onExpandAll={groupCollapse.expandAllInCluster}
       onFrame={(id) => camera.frame([id])}
       onClose={() => setGroupMenu(undefined)}
     />

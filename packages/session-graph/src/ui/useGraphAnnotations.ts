@@ -188,14 +188,14 @@ export function useGraphAnnotations(options: UseGraphAnnotationsOptions): UseGra
     const node = nodeLookup()(from)
     const label = node?.label ?? from
     pushHistory(kind, from, label)
-    const forks = kind === "downstream" ? downstreamForks(options.model(), from) : []
+    const forks = kind === "downstream" ? downstreamForks(options.model(), from) : new Set<string>()
     const messages: Record<TraceKind, string> = {
       why: i18n.t("ui.sessionGraph.trace.whyAnnouncement", { label }),
       "led-here": i18n.t("ui.sessionGraph.trace.ledHereAnnouncement", { label }),
       related: i18n.t("ui.sessionGraph.trace.relatedAnnouncement", { label }),
       downstream:
-        forks.length > 0
-          ? i18n.plural("ui.sessionGraph.trace.downstreamForkAnnouncement", forks.length, { label })
+        forks.size > 0
+          ? i18n.plural("ui.sessionGraph.trace.downstreamForkAnnouncement", forks.size, { label })
           : i18n.t("ui.sessionGraph.trace.downstreamAnnouncement", { label }),
     }
     options.onAnnounce(messages[kind])

@@ -119,6 +119,12 @@ export const KIND_KEY = {
   port: "ui.sessionGraph.kind.port",
   issue: "ui.sessionGraph.kind.issue",
   note: "ui.sessionGraph.kind.note",
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group": "ui.sessionGraph.kind.fileGroup",
+  "error-group": "ui.sessionGraph.kind.errorGroup",
+  "subagent-group": "ui.sessionGraph.kind.subagentGroup",
+  "compaction-group": "ui.sessionGraph.kind.compactionGroup",
+  "facet-group": "ui.sessionGraph.kind.facetGroup",
 } as const satisfies Record<NodeKind, string>
 
 export const STATUS_KEY = {

@@ -53,6 +53,12 @@ const NODE_SHAPE: Record<NodeKind, Shape> = {
   port: "card",
   issue: "card",
   note: "card",
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group": "panel",
+  "error-group": "panel",
+  "subagent-group": "panel",
+  "compaction-group": "panel",
+  "facet-group": "panel",
 }
 
 const NODE_STATUS: Record<GraphNode["status"], NodeStatus> = {

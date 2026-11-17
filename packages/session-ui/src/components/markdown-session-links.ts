@@ -4,6 +4,14 @@ const sessionID = /(?<![A-Za-z0-9_])ses_[A-Za-z0-9]{26}(?![A-Za-z0-9_])/g
 
 const exactSessionID = /^ses_[A-Za-z0-9]{26}$/
 
+/** Normalize a Range into a Selection with the same start/end for clipboard operations. */
+export function sessionReferenceRange(range: Range): Selection {
+  const selection = document.getSelection()!
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return selection
+}
+
 export function markSessionLinks(root: HTMLElement) {
   if (!root.textContent?.includes("ses_")) return
 

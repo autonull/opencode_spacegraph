@@ -1,32 +1,43 @@
 import { createSignal, createMemo } from "solid-js"
-import { type GraphViewData } from "@opencode/session-ui/graph"
+import { type GraphViewData, type GraphNode } from "@opencode/session-ui/graph"
 
 export type UseGroupCollapseOptions = {
   model: () => GraphViewData
   selection: () => readonly string[]
-  nodeByID: (id: string) => { id: string; clusterOf?: string[] } | undefined
+  nodeLookup: (id: string) => GraphNode | undefined
+  explicitlyCollapsedGroups?: () => ReadonlySet<string>
+  onExplicitlyCollapsedGroupsChange?: (groups: ReadonlySet<string>) => void
+  instanceId?: string
+  descendantSelected?: () => boolean
+  draggingDescendant?: () => boolean
 }
 
 export type UseGroupCollapseReturn = {
   collapsedGroups: () => ReadonlySet<string>
+  explicitlyCollapsedGroups: () => ReadonlySet<string>
   selectedGroup: () => { id: string; clusterOf?: string[] } | undefined
   toggleGroupByID: (id: string) => void
   toggleGroup: () => void
   collapseOtherGroups: () => void
+  expandAllInCluster: () => void
 }
 
 export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupCollapseReturn {
-  const [collapsedGroups, setCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
+  const [localCollapsedGroups, setLocalCollapsedGroups] = createSignal<ReadonlySet<string>>(new Set())
+
+  const explicitlyCollapsedGroups = createMemo(() => 
+    options.explicitlyCollapsedGroups?.() ?? localCollapsedGroups()
+  )
 
   const selectedGroup = createMemo(() => {
     const id = options.selection()[0]
     if (!id) return undefined
-    const node = options.model().nodes.find((item) => item.id === id)
+    const node = options.nodeLookup(id)
     return node && (node.clusterOf?.length ?? 0) > 0 ? node : undefined
   })
 
   const toggleGroupByID = (id: string) =>
-    setCollapsedGroups((previous) => {
+    setLocalCollapsedGroups((previous) => {
       const next = new Set(previous)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -42,7 +53,7 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
   const collapseOtherGroups = () => {
     const group = selectedGroup()
     if (!group) return
-    setCollapsedGroups(
+    setLocalCollapsedGroups(
       new Set(
         options
           .model()
@@ -52,11 +63,23 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
     )
   }
 
+  const expandAllInCluster = () => {
+    const group = selectedGroup()
+    if (!group) return
+    setLocalCollapsedGroups((previous) => {
+      const next = new Set(previous)
+      next.delete(group.id)
+      return next
+    })
+  }
+
   return {
-    collapsedGroups,
+    collapsedGroups: explicitlyCollapsedGroups,
+    explicitlyCollapsedGroups,
     selectedGroup,
     toggleGroupByID,
     toggleGroup,
     collapseOtherGroups,
+    expandAllInCluster,
   }
 }

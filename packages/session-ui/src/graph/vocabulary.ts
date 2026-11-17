@@ -120,6 +120,12 @@ export const VOCABULARY_KEYS = {
     port: "ui.sessionGraph.kind.port",
     issue: "ui.sessionGraph.kind.issue",
     note: "ui.sessionGraph.kind.note",
+    // Group kinds (P4.2 — progressive disclosure groups)
+    "file-group": "ui.sessionGraph.kind.fileGroup",
+    "error-group": "ui.sessionGraph.kind.errorGroup",
+    "subagent-group": "ui.sessionGraph.kind.subagentGroup",
+    "compaction-group": "ui.sessionGraph.kind.compactionGroup",
+    "facet-group": "ui.sessionGraph.kind.facetGroup",
   } as const satisfies Record<NodeKind, string>,
 
   /** The outcomes a node can carry. */
@@ -208,6 +214,12 @@ export const NODE_KINDS = [
   "issue",
   // C1 — reader-authored note (a node like any other).
   "note",
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group",
+  "error-group",
+  "subagent-group",
+  "compaction-group",
+  "facet-group",
 ] as const
 
 export type NodeKind = (typeof NODE_KINDS)[number]
@@ -249,6 +261,12 @@ export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = {
   port: "runtime",
   issue: "work",
   note: "session",
+  // Group kinds (P4.2 — progressive disclosure groups)
+  "file-group": "session",
+  "error-group": "session",
+  "subagent-group": "session",
+  "compaction-group": "session",
+  "facet-group": "session",
 }
 
 /** The outcomes a node can carry. */

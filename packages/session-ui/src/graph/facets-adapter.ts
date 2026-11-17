@@ -2,6 +2,7 @@
 
 import type { GraphNode as SessionGraphNode, GraphViewData as SessionGraphViewData } from "./model";
 import { DOMAINS, NODE_KINDS, NODE_STATUSES } from "./vocabulary";
+import type { Domain, NodeKind, NodeStatus } from "./vocabulary";
 import { turnCost } from "./cost";
 import { collapseGroups } from "./collapse-adapter";
 import {
@@ -46,9 +47,9 @@ function computeCostlyNodes(model: SessionGraphViewData): Set<string> {
 // Session-ui specific GraphFacets type (uses specific unions)
 export type GraphFacets = {
   query: string;
-  kinds: ReadonlySet<string>; // NodeKind in session-ui
-  statuses: ReadonlySet<string>; // NodeStatus in session-ui
-  domains: ReadonlySet<string>; // Domain in session-ui
+  kinds: ReadonlySet<NodeKind>;
+  statuses: ReadonlySet<NodeStatus>;
+  domains: ReadonlySet<Domain>;
   // P2.1: Semantic quick filter facets
   failedTools?: boolean;
   fileWrites?: boolean;
