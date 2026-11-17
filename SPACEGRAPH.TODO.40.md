@@ -421,6 +421,12 @@ treating it as a release blocker.
 - Markdown component test infrastructure issues
 - **Architectural**: Plugin system (PluginRoot) initializes before TabsProvider/ServersProvider are rendered, causing context errors in capture tests. Requires restructuring provider hierarchy or deferring plugin initialization.
 
+**Next Session — Screenshot Generation (P5.1 Demo Gate)**:
+- Fix provider ordering in `packages/app/src/entry.tsx` so TabsProvider/ServersProvider wrap PluginRoot
+- Re-run `bun run graph:capture --mode=demo` to generate fresh screenshots in `docs/spacegraph/screenshots/`
+- Verify with `bun run graph:verify` (0 pixel diffs against baseline)
+- If baseline needs update, commit new screenshots as blessed baseline
+
 **Additional type fixes (r30 — 2026-11-17)**:
 - ✅ Fixed `@spacegraphjs/navigation` missing `@spacegraphjs/renderer` dependency (P1.2) — `RendererViewport` import now resolves
 
