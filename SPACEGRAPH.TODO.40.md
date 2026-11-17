@@ -419,3 +419,6 @@ treating it as a release blocker.
 - vitest config for session-graph tests
 - Various unrelated component prop type mismatches (GraphCanvasRegion, ComposerNodeWidget, DiffNodeWidget, GraphRendererStatus)
 - Markdown component test infrastructure issues
+
+**Additional type fixes (r30 — 2026-11-17)**:
+- ✅ Fixed `@spacegraphjs/navigation` missing `@spacegraphjs/renderer` dependency (P1.2) — `RendererViewport` import now resolves
