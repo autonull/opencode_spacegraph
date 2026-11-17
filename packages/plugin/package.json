@@ -16,6 +16,7 @@
     "./runtime": "./src/runtime.ts",
     "./tui": "./src/tui/index.ts",
     "./gui": "./src/gui/index.ts",
+    "./gui/solid": "./src/gui/solid.tsx",
     "./*": "./src/*.ts"
   },
   "imports": {

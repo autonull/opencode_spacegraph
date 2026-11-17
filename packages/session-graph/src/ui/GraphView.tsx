@@ -758,42 +758,6 @@ export const GraphView = (props: GraphViewProps) => {
     return parts.length > 0 ? parts.join(" · ") : undefined
   }
 
-  // displayPositions must be declared before rendererModel which uses it
-  const displayPositions = createMemo(() => {
-    const base = geometry().positions
-    if (Object.keys(manual.positions).length === 0) return base
-
-    const positions = new Map(base)
-    for (const [id, position] of Object.entries(manual.positions)) {
-      positions.set(id, { x: position[0], y: position[1], z: position[2] })
-    }
-    return positions
-  })
-
-  const renderCard = createMemo(() => {
-    // The age rules fade a card against the clock, so the cards are rebuilt with the model.
-    const now = Date.now()
-    const overlay = trace.traceOverlay()
-    return (
-      props.renderCard ??
-      createCardTemplate(theme(), {
-        tier: tier(),
-        selected: selection.selection()[0],
-        active: props.activeTurn,
-        related: relatedDetail,
-        rules: props.rules,
-        now,
-        copy,
-        trace: overlay ?? undefined,
-        diff: comparison(),
-        collapsedGroups: groupCollapse.collapsedGroups(),
-        positions: displayPositions(),
-      })
-    )
-  })
-  const renderBand = createMemo(() =>
-    createBandTemplate(theme(), undefined, { copy, collapsedGroups: groupCollapse.collapsedGroups() }),
-  )
   // T7: the tree re-centres a parent when a child is appended and the force simulation relaxes its
   // boxes, so both need the positions the last layout gave them. The view keeps them per view, so
   // a streamed session never moves a node the reader is looking at.
@@ -856,6 +820,43 @@ export const GraphView = (props: GraphViewProps) => {
     return next
   })
 
+  // displayPositions must be declared before rendererModel which uses it; geometry must be declared
+  // before displayPositions because Solid memos evaluate eagerly at creation.
+  const displayPositions = createMemo(() => {
+    const base = geometry().positions
+    if (Object.keys(manual.positions).length === 0) return base
+
+    const positions = new Map(base)
+    for (const [id, position] of Object.entries(manual.positions)) {
+      positions.set(id, { x: position[0], y: position[1], z: position[2] })
+    }
+    return positions
+  })
+
+  const renderCard = createMemo(() => {
+    // The age rules fade a card against the clock, so the cards are rebuilt with the model.
+    const now = Date.now()
+    const overlay = trace.traceOverlay()
+    return (
+      props.renderCard ??
+      createCardTemplate(theme(), {
+        tier: tier(),
+        selected: selection.selection()[0],
+        active: props.activeTurn,
+        related: relatedDetail,
+        rules: props.rules,
+        now,
+        copy,
+        trace: overlay ?? undefined,
+        diff: comparison(),
+        collapsedGroups: groupCollapse.collapsedGroups(),
+        positions: displayPositions(),
+      })
+    )
+  })
+  const renderBand = createMemo(() =>
+    createBandTemplate(theme(), undefined, { copy, collapsedGroups: groupCollapse.collapsedGroups() }),
+  )
   const moveNodes = (nodes: readonly { id: string; position: [number, number, number] }[]) => {
     // Capture state before first move in a drag sequence
     const hasChanges = nodes.some((n) => manual.positions[n.id] && manual.positions[n.id] !== n.position)

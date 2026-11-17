@@ -61,7 +61,7 @@ function SelectModelWithoutProviders(props: { count: number }) {
 
 export default {
   title: "App/Dialogs/Select Model",
-  id: "app-dialog-select-model",
+  id: "app-dialog-select-model-standalone",
   args: { count: names.length },
   argTypes: { count: { control: { type: "range", min: 0, max: names.length, step: 1 } } },
   render: (args: { count: number }) => (

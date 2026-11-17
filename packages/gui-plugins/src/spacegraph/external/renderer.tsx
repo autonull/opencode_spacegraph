@@ -49,8 +49,8 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     if (session) ctx.layout.open(`${ctx.id}:map`, session, { tab: "select" })
   }
 
-  const select = (id: string) => {
-    const session = ctx.sessions.current()
+  const select = (id: string, mounted?: MountedSession) => {
+    const session = mounted ?? ctx.sessions.current()
 
     if (!session) return
 
@@ -368,7 +368,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
             model={model}
             session={session}
             screen={screen}
-            onSplitView={() => select(`${ctx.id}.hybrid`)}
+            onSplitView={() => select(`${ctx.id}.hybrid`, session)}
             onOpenTranscript={handleOpenTranscript}
           />
         </Scope>

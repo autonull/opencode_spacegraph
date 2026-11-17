@@ -291,6 +291,7 @@ export default function SpacegraphPanel(props: {
           onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
           onSplitView={() => {}}
           preferredRenderer={props.model.renderer}
+          endInset={props.model.endInset()}
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}

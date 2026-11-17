@@ -77,7 +77,7 @@ const claudeWithProblem = (message: string): IntegrationInfo[] => [
 
 export default {
   title: "App/Dialogs/Connect Provider",
-  id: "app-dialog-connect-provider",
+  id: "app-dialog-connect-provider-standalone",
 }
 
 export const Picker = {

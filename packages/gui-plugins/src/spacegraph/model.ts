@@ -1,4 +1,5 @@
-import { createMemo } from "solid-js"
+import { createMemo, createSignal } from "solid-js"
+import { createMediaQuery } from "@solid-primitives/media"
 import type { MountedSession, SetupContext } from "@opencode/plugin/gui"
 import {
   GRAPH_ARRANGEMENTS,
@@ -33,7 +34,8 @@ import {
   type TimeTravelSnapshot,
   type Annotations,
   type CardDensity,
-} from "@opencode/session-ui/graph"
+  type WorkspaceSnapshot,
+} from "./internal/graph"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 import { computeFocusOverlay, getFocusOpacity } from "@spacegraphjs/overlays"
 import { BUILTIN_LENSES } from "./index"
@@ -53,6 +55,7 @@ function toLayoutStrategy(layout: Layout): LayoutStrategy {
 export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const store = (session: MountedSession) => ctx.stores.session(session)
   const prefs = ctx.stores.prefs
+  const isDesktop = createMediaQuery("(min-width: 768px)")
 
   const sessionValue = (session: MountedSession) => store(session).value as State
   const prefValue = () => prefs.value
@@ -62,6 +65,10 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
   /** Bounded per-session checkpoints for the time-travel scrubber. */
   const timeTravel = new Map<string, TimeTravelSnapshot[]>()
+  const [localCheckpoint, setLocalCheckpoint] = createSignal<number | undefined>()
+  const [snapshotVersion, setSnapshotVersion] = createSignal(0)
+  const workspaceSnapshots = new Map<string, WorkspaceSnapshot>()
+  const workspaceRequested = new Set<string>()
 
   const timeTravelEnabled = () => ctx.flags.enabled("graph_time_travel")
 
@@ -141,16 +148,28 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     const cached = graphMemos.get(session.id)
     if (cached) return cached
     const memo = createMemo<GraphViewData>(() => {
+      snapshotVersion()
       const status: { type: "busy" | "idle" } =
         session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
 
       const key = session.id
       const prev = graphState.get(key)
 
+      if (!workspaceRequested.has(key)) {
+        workspaceRequested.add(key)
+        void session.server.client["server.graph"]
+          .workspace({ location: { directory: session.directory }, scope: "session" })
+          .then((response) => {
+            workspaceSnapshots.set(key, response.data)
+            setSnapshotVersion((version) => version + 1)
+          })
+          .catch(() => undefined)
+      }
+
       const { graph: builtGraph, state } = buildGraphIncremental({
         messages: session.server.data.session.message.list(session.id),
         status,
-        snapshot: prev?.builderState.snapshot,
+        snapshot: workspaceSnapshots.get(key) ?? prev?.builderState?.snapshot,
         sessionID: prev?.builderState.sessionID,
         lineage: prev?.builderState.lineage,
         diffByTurn: prev?.builderState.diffByTurn,
@@ -371,6 +390,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       })
     },
     renderer: () => "spacegraph" as const,
+    endInset: () => (isDesktop() ? "104px" : undefined),
     cycleLevel: (session: MountedSession) => {
       const level = next(ZOOM_LEVELS, store(session).value?.level ?? "overview")
 
@@ -439,14 +459,14 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     costLensEnabled,
     density,
     /** The parked checkpoint index, or undefined for live. */
-    checkpoint: (session: MountedSession) => sessionValue(session)?.checkpoint,
+    checkpoint: (session: MountedSession) => localCheckpoint() ?? sessionValue(session)?.checkpoint,
     /** Whether the session is parked away from live. */
-    parked: (session: MountedSession) => sessionValue(session)?.checkpoint !== undefined,
+    parked: (session: MountedSession) => (localCheckpoint() ?? sessionValue(session)?.checkpoint) !== undefined,
     /** The checkpoint shown by the scrubber: the last turn when live, otherwise the parked index. */
     checkpointIndex: (session: MountedSession, model: GraphViewData) => {
       if (model.turns.length === 0) return undefined
 
-      const checkpoint = sessionValue(session)?.checkpoint
+      const checkpoint = localCheckpoint() ?? sessionValue(session)?.checkpoint
 
       if (checkpoint === undefined) return model.turns.length - 1
 
@@ -455,15 +475,16 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     /** Park at a turn, or return to live when the final turn is selected. */
     setCheckpoint: (session: MountedSession, index: number, turnCount: number) => {
       const checkpoint = turnCount <= 1 || index >= turnCount - 1 ? undefined : Math.max(0, Math.trunc(index))
+      setLocalCheckpoint(checkpoint)
       store(session).update((draft) => {
         draft.checkpoint = checkpoint
       })
     },
     /** The graph at the parked checkpoint, or the supplied live model when live. */
     graphAt: (session: MountedSession, model: GraphViewData) => {
-      const checkpoint = sessionValue(session)?.checkpoint
+      const checkpoint = localCheckpoint() ?? sessionValue(session)?.checkpoint
 
-      if (checkpoint === undefined || !timeTravelEnabled()) return model
+      if (checkpoint === undefined) return model
 
       return graphAtCheckpoint(model, timeTravel.get(session.id) ?? [], checkpoint)
     },

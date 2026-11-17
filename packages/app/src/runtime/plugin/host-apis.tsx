@@ -377,6 +377,8 @@ export function createHostApis() {
     flags: () => {
       const [flags, setFlags] = createSignal<Record<string, boolean>>({})
       const [loading, setLoading] = createSignal(true)
+      const channel = import.meta.env.VITE_OPENCODE_CHANNEL ?? "local"
+      const isDev = channel === "local" || channel === "dev"
 
       // Fetch config and resolve flags on mount
       createEffect(() => {
@@ -416,14 +418,10 @@ export function createHostApis() {
             for (const flag of knownFlags) {
               const override = experimental[flag]
               // Flags default to on in local/dev builds
-              const isDev = import.meta.env.VITE_OPENCODE_CHANNEL === "local" ||
-                import.meta.env.VITE_OPENCODE_CHANNEL === "dev"
               resolved[flag] = override ?? allFlags ?? isDev
             }
           } else {
             // No experimental config, use defaults based on channel
-            const isDev = import.meta.env.VITE_OPENCODE_CHANNEL === "local" ||
-              import.meta.env.VITE_OPENCODE_CHANNEL === "dev"
             const knownFlags = Object.keys(ConfigFlag.registry)
             for (const flag of knownFlags) {
               resolved[flag] = isDev

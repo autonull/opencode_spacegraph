@@ -85,11 +85,9 @@ export function HybridSurface(props: {
           frame={focused()}
           activeTurn={graph().activeTurn}
           liveModel={timeTravel() ? live() : undefined}
-          checkpoint={timeTravel() ? props.model.checkpointIndex(props.session, live()) : undefined}
-          turnCount={timeTravel() ? turnCount() : undefined}
-          onCheckpoint={
-            timeTravel() ? (index: number) => props.model.setCheckpoint(props.session, index, turnCount()) : undefined
-          }
+          checkpoint={props.model.checkpointIndex(props.session, live())}
+          turnCount={turnCount()}
+          onCheckpoint={(index: number) => props.model.setCheckpoint(props.session, index, turnCount())}
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
             const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
@@ -104,6 +102,7 @@ export function HybridSurface(props: {
           onArrangementChange={(next: GraphArrangement) => props.model.setArrangement(props.session, next)}
           onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
           preferredRenderer={preferredRenderer}
+          endInset={props.model.endInset()}
           enableCostLens={props.model.costLensEnabled()}
           enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
           chrome={true}

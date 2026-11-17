@@ -890,6 +890,7 @@ export function mountSessionRegionWithSurfaces(input: {
         setActive() {},
         close() {},
         remap() {},
+        target() {},
       }),
       closed: createClosedTabs(),
       open() {},

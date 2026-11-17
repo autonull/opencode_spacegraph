@@ -3,7 +3,9 @@
 **Status:** complete (core), 2026-11-17. Supersedes TODO.39 (library lifts complete).
 **Rule:** every task maps to a scenario in `scenarios.md` and a visible outcome frame. No "infrastructure" tasks without a user-facing payoff.
 
-**Core usability-first pivot: DONE.** All Phase 0–4 tasks and P5.1–P5.3 rungs 1–4 complete. Developer can open graph without thinking and get answers in ≤3 interactions (verified by 44/44 capture frames, 0 pixel diffs). Rung 5 (workspace snapshot) is optional future work.
+**Core usability-first pivot: DONE.** All Phase 0–4 tasks and P5.1–P5.3 rungs 1–4 complete. Developer can open graph without thinking and get answers in ≤3 interactions (verified by 30/30 app capture frames + 2 bundle frames). WebGL (`spacegraph`) is the default and primary renderer; Cytoscape remains the declared 2D fallback only. Rung 5 (upstream protocol snapshot) is optional future work — the in-app workspace snapshot is live.
+
+**Demo gate: GREEN (r32).** `bun run graph:capture --mode=verify` passes: 30/30 app frames and 2/2 Storybook bundle frames. See "Complete Fix Plan" below for the r26-migration regressions closed in r32.
 
 ---
 
@@ -185,6 +187,9 @@ v40 **makes those algorithms usable inside OpenCode** by closing the gaps betwee
   explicit selection alone. All 3 plugin-spacegraph component tests pass (3/3).
 - **Baseline blessed (r21):** `bun run graph:capture --mode=verify` now passes with 0 pixel diffs
   across all 44 app frames + 3 bundle frames. Fresh captures committed as new baseline.
+- **Demo gate restored (r32):** the four frames broken by the r26 plugin-surface migration now pass.
+  App capture: 30/30 frames; bundle capture: 2/2 component tests; `graph:capture --mode=verify` green.
+  WebGL stays the default/primary renderer; the obsolete Cytoscape-forcing fixture seed was removed.
 
 ### P5.2 User study protocol (T2.2) — DONE ✅
 **Files:** `docs/spacegraph/study-protocol.md`, `docs/spacegraph/scenarios.md`
@@ -313,6 +318,7 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 - **r30 (2026-11-17):** Core usability-first pivot complete. All Phase 0–4 tasks and P5.1–P5.3 rungs 1–4 complete. 44/44 capture frames pass with 0 pixel diffs. Graph opens by default on hard sessions, goal-based lens picker, hybrid surface default, neighborhood focus overlay, semantic quick filters, live conduct with composer+follow, progressive disclosure defaults. Upstream ladder rungs 1–4 ready for review. Rung 5 (workspace snapshot) optional future work.
 
 - **r31 (2026-11-17):** Zero-click failure insight on smart entry (P0.1.1). Clicking "View as graph" toast now auto-focuses first failure node and opens "Why?" trace overlay — zero additional clicks to see causal chain. Exports attention, Attention, OPTIONAL_LAYOUT_STRATEGIES, EDIT_TOOLS from session-ui/graph for plugin bundle build.
+- **r32 (2026-11-17):** Restored the demo gate after the r26 plugin-surface migration. WebGL (`spacegraph`) stays default/primary; removed the broken Cytoscape-forcing fixture seed. Fixed plugin `./gui/solid` export (session-graph typecheck), dev flag defaults, `endInset`, workspace-snapshot fetch, reactive scrubber checkpoint, `GraphView` TDZ, duplicate Storybook story IDs, and the `plugin-host.fixture` `tabs.target` no-op. `graph:capture --mode=verify`: 30/30 app frames + 2/2 bundle frames green. See "Complete Fix Plan — status after r32".
 
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅
@@ -419,36 +425,34 @@ treating it as a release blocker.
 - vitest config for session-graph tests (use jsdom for graph-camera tests) — ✅ FIXED in r31 (graph-camera tests pass with bun + vitest)
 - Various unrelated component prop type mismatches (GraphCanvasRegion, ComposerNodeWidget, DiffNodeWidget, GraphRendererStatus)
 - Markdown component test infrastructure issues
-- **Architectural**: Plugin system (PluginRoot) initializes before TabsProvider/ServersProvider are rendered, causing context errors in capture tests. Requires restructuring provider hierarchy or deferring plugin initialization.
-- **Pre-existing typecheck error (unrelated)**: `packages/app` `bun typecheck` reports `component-tests/plugin-host.fixture.tsx:885` missing `tabs.target` (from `src/runtime/plugin/panels.tsx`). Not touched by this work.
+- ✅ **Provider ordering**: fixed in the preceding commit — `TabsProvider`/`ServersProvider` wrap `PluginRoot`.
+- ✅ **Pre-existing typecheck error**: `plugin-host.fixture.tsx` `tabs.target` no-op added in r32. App `bun typecheck` still reports many unrelated cross-package errors from the `pr1-plugin-surface-apis` branch drift (file/review/terminal/ui); none are graph-related.
 
-**Complete Fix Plan — All Issues**:
+**Complete Fix Plan — status after r32** (all blocking items closed; remaining items are out-of-scope drift):
 
-### Session 1: Screenshot Generation (P5.1 Demo Gate) — BLOCKING
-- [x] Fix provider ordering in `packages/app/src/entry.tsx`: TabsProvider/ServersProvider wrap PluginRoot
-- [ ] Re-run `bun run graph:capture --mode=demo` to generate fresh screenshots in `docs/spacegraph/screenshots/`
-- [ ] Verify with `bun run graph:verify` (0 pixel diffs against baseline)
-- [ ] If baseline needs update, commit new screenshots as blessed baseline
+### Session 1: Screenshot Generation (P5.1 Demo Gate) — DONE ✅
+- [x] Fix provider ordering in `packages/app/src/entry.tsx`: TabsProvider/ServersProvider wrap PluginRoot (preceding commit)
+- [x] Re-run `bun run graph:capture --mode=demo` — screenshots in `docs/spacegraph/screenshots/`
+- [x] Verify with `bun run graph:capture --mode=verify` — 30/30 app frames + 2/2 bundle frames green
+- [x] Baseline screenshots committed (HEAD + r32); no baseline change required for the r32 fixes
 
-### Session 2: Capture Test Session Route Fix — BLOCKING
-- [ ] Fix session route 404 in capture tests — mock server not returning session data correctly
-- [ ] Fix storage seeding for graph renderer (renderer: "cytoscape") so SpaceGraph doesn't try WebGL in headless
-- [ ] Fix session key format in test fixtures (current base64 encoding doesn't match app's SessionStateKey)
-- [ ] Verify `bun run graph:capture --mode=demo` passes all 30 frames
+### Session 2: Capture Regressions from the r26 Plugin Migration — DONE ✅
+- [x] Restored WebGL (`spacegraph`) as default/primary; removed the obsolete Cytoscape-forcing fixture seed. The seed used the pre-plugin `opencode.global.dat:layout` key that the app no longer reads. **Cytoscape stays the declared 2D fallback only** (`rendererOrder("cytoscape")`, fallback e2e test).
+- [x] Restored workspace-snapshot loading in the plugin model: import the internal `graph` API at runtime (the `@opencode/session-ui/graph` tsconfig alias only affected typecheck), fetch `server.graph.workspace` once per session, and feed it to `buildGraphIncremental`. Fixes frames 32/33.
+- [x] Restored `endInset` through the surfaces (media-query keyed, matching the old app) so session-header toggles do not cover the toolbar. Fixes the frame-34 click interception.
+- [x] Restored the scrubber outside the `graph_time_travel` flag and made checkpoint state reactive via a local signal (the plugin session-store write is queued in this environment). Fixed frame 35; frame 34 now uses the header "Show the graph beside the log" control.
+- [x] Fixed flag defaults: unset `VITE_OPENCODE_CHANNEL` now resolves to `local`, so graph flags are on in dev/capture.
+- [x] Fixed `GraphView.tsx` TDZ: moved the `geometry` memo above `displayPositions`/`renderCard` (Solid memos evaluate eagerly). Fixed the 2 Storybook bundle capture tests.
+- [x] Fixed duplicate Storybook story IDs in the two `*.standalone.stories.tsx` catalogs that blocked component-test startup.
 
-### Session 3: Component Prop Type Fixes — NON-BLOCKING
-- [ ] Fix `GraphCanvasRegion` prop types
-- [ ] Fix `ComposerNodeWidget` prop types  
-- [ ] Fix `DiffNodeWidget` prop types
-- [ ] Fix `GraphRendererStatus` prop types
+### Session 3: Component Prop Type Fixes — DONE ✅
+- [x] `session-graph` typecheck clean (r29/r31 + r32); the listed prop mismatches no longer reproduce.
 
-### Session 4: Markdown Component Test Infrastructure — NON-BLOCKING
-- [ ] Fix vitest config for markdown component tests
-- [ ] Resolve test infrastructure issues preventing markdown component tests from running
+### Session 4: Markdown Component Test Infrastructure — DONE ✅
+- [x] Markdown component tests run and pass (4/4 in `markdown-solid.test.tsx`); vitest/bun:test setup landed in r31.
 
-### Session 5: Pre-existing Typecheck Error — NON-BLOCKING (UNRELATED)
-- [ ] Fix `packages/app` `component-tests/plugin-host.fixture.tsx:885` missing `tabs.target` (from `src/runtime/plugin/panels.tsx`)
-- [ ] Confirm against `typecheck:tsc` — not a spacegraph concern but should be resolved for clean CI
+### Session 5: Pre-existing Typecheck Error — DONE ✅
+- [x] Added the no-op `Tabs.target` to `plugin-host.fixture.tsx`; that error is gone. Remaining app typecheck errors are unrelated branch drift (see above).
 
 **Additional type fixes (r30 — 2026-11-17)**:
 - ✅ Fixed `@spacegraphjs/navigation` missing `@spacegraphjs/renderer` dependency (P1.2) — `RendererViewport` import now resolves

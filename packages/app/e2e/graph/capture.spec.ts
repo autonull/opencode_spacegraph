@@ -44,28 +44,12 @@ test.use({
 })
 
 function graphFixture() {
-  // Session key format: "local\0<base64_directory>/<sessionID>"
-  // base64Encode: URL-safe base64 (replace +/= with -/_)
-  const base64Directory = btoa(new TextEncoder().encode(directory).reduce((str, byte) => str + String.fromCharCode(byte), ""))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
-  const sessionKey = `local\u0000${base64Directory}/${sessionID}`
   return {
     name: "SessionGraph",
     directory,
     sessions: [{ id: sessionID, title: "Session graph" }],
     pageMessages: () => ({ items: buildFixtureMessages() }),
-    seed: {
-      storage: {
-        "opencode.global.dat:layout": {
-          sessionView: {
-            [sessionKey]: {
-              scroll: {},
-              graph: { renderer: "cytoscape" },
-            },
-          },
-        },
-      },
-    },
+    configEntries: [{ type: "document", info: { experimental: { all_flags: true } } }],
   }
 }
 
@@ -254,7 +238,7 @@ async function openGraph(page: Page, input = graphFixture()) {
   await settle(page)
   await page.getByRole("button", { name: "Toggle graph view" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "cytoscape")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
 }
 
 async function still(page: Page) {
@@ -656,8 +640,8 @@ test("34 graph surfaces", async ({ page }) => {
   const errors = trackPageErrors(page)
   await page.emulateMedia({ reducedMotion: "reduce" })
   await openGraph(page)
-  await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
-  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+  await page.getByRole("button", { name: "Show the graph beside the log" }).click()
+  await expect(page.locator('[data-slot="spacegraph-surface-hybrid"]')).toBeVisible()
   await setLevel(page, "Execution")
   await chooseProfile(page, "code")
   await fit(page)
@@ -675,11 +659,7 @@ test("35 graph scrubber", async ({ page }) => {
   await page.locator('[data-slot="graph-time-toggle"]').click()
   const scrubber = page.locator('[data-slot="session-graph-scrubber"] input')
   await expect(scrubber).toBeVisible()
-  await scrubber.evaluate((element) => {
-    const input = element as HTMLInputElement
-    input.value = "1"
-    input.dispatchEvent(new Event("input", { bubbles: true }))
-  })
+  await scrubber.press("Home")
   await expect(page.locator('[data-slot="session-graph-scrubber"] output')).toContainText("1")
   await fit(page)
   await still(page)
