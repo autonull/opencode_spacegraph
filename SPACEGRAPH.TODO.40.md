@@ -416,16 +416,33 @@ treating it as a release blocker.
 - ✅ Fixed `graph-parity.test.ts` to match session-ui's `buildGraphIncremental` API
 
 **Remaining (non-blocking, pre-existing)**:
-- vitest config for session-graph tests (use jsdom for graph-camera tests)
+- vitest config for session-graph tests (use jsdom for graph-camera tests) — ✅ FIXED in r31 (graph-camera tests pass with bun + vitest)
 - Various unrelated component prop type mismatches (GraphCanvasRegion, ComposerNodeWidget, DiffNodeWidget, GraphRendererStatus)
 - Markdown component test infrastructure issues
 - **Architectural**: Plugin system (PluginRoot) initializes before TabsProvider/ServersProvider are rendered, causing context errors in capture tests. Requires restructuring provider hierarchy or deferring plugin initialization.
+- **Pre-existing typecheck error (unrelated)**: `packages/app` `bun typecheck` reports `component-tests/plugin-host.fixture.tsx:885` missing `tabs.target` (from `src/runtime/plugin/panels.tsx`). Not touched by this work.
 
-**Next Session — Screenshot Generation (P5.1 Demo Gate)**:
-- Fix provider ordering in `packages/app/src/entry.tsx` so TabsProvider/ServersProvider wrap PluginRoot
-- Re-run `bun run graph:capture --mode=demo` to generate fresh screenshots in `docs/spacegraph/screenshots/`
-- Verify with `bun run graph:verify` (0 pixel diffs against baseline)
-- If baseline needs update, commit new screenshots as blessed baseline
+**Complete Fix Plan — All Issues**:
+
+### Session 1: Screenshot Generation (P5.1 Demo Gate) — BLOCKING
+- [ ] Fix provider ordering in `packages/app/src/entry.tsx`: TabsProvider/ServersProvider wrap PluginRoot
+- [ ] Re-run `bun run graph:capture --mode=demo` to generate fresh screenshots in `docs/spacegraph/screenshots/`
+- [ ] Verify with `bun run graph:verify` (0 pixel diffs against baseline)
+- [ ] If baseline needs update, commit new screenshots as blessed baseline
+
+### Session 2: Component Prop Type Fixes — NON-BLOCKING
+- [ ] Fix `GraphCanvasRegion` prop types
+- [ ] Fix `ComposerNodeWidget` prop types  
+- [ ] Fix `DiffNodeWidget` prop types
+- [ ] Fix `GraphRendererStatus` prop types
+
+### Session 3: Markdown Component Test Infrastructure — NON-BLOCKING
+- [ ] Fix vitest config for markdown component tests
+- [ ] Resolve test infrastructure issues preventing markdown component tests from running
+
+### Session 4: Pre-existing Typecheck Error — NON-BLOCKING (UNRELATED)
+- [ ] Fix `packages/app` `component-tests/plugin-host.fixture.tsx:885` missing `tabs.target` (from `src/runtime/plugin/panels.tsx`)
+- [ ] Confirm against `typecheck:tsc` — not a spacegraph concern but should be resolved for clean CI
 
 **Additional type fixes (r30 — 2026-11-17)**:
 - ✅ Fixed `@spacegraphjs/navigation` missing `@spacegraphjs/renderer` dependency (P1.2) — `RendererViewport` import now resolves
