@@ -14,7 +14,7 @@ import {
   type SetupContext,
 } from "@opencode/plugin/gui"
 import { createSignal, lazy, onCleanup, onMount, Show, Suspense, type ParentProps } from "solid-js"
-import { LAYOUTS } from "../internal/graph"
+import { LAYOUTS, failures } from "../internal/graph"
 import definition, { BUILTIN_LENSES, type BuiltinLensId } from ".."
 import { createSpacegraph } from "../model"
 import { MapSurface } from "../map-surface"
@@ -133,6 +133,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
   }
 
   // P0.1: Smart entry toast - offers graph view for hard sessions (attention, 50+ turns, failure chain)
+  // When clicked, opens hybrid surface with investigator lens, auto-focuses first failure, and opens "Why?" trace
   const SmartEntryWatch = (props: { session: MountedSession }) => {
     const shown = new Set<string>()
     createKeyed(
@@ -151,6 +152,16 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
               run: () => {
                 model.applyLensById(props.session, "investigator")
                 select(`${ctx.id}.hybrid`)
+                // Auto-focus first failure and open "Why?" trace after surface mounts
+                setTimeout(() => {
+                  const graphModel = model.graph(props.session)()
+                  const failureNodes = failures(graphModel)
+                  if (failureNodes.length > 0) {
+                    const firstFailure = failureNodes[0]
+                    model.focus(props.session, firstFailure.node.id)
+                    model.setTraceKind(props.session, "why")
+                  }
+                }, 100)
               },
             },
           ],

@@ -57,6 +57,7 @@ export {
   GRAPH_SIDES,
   LAYOUTS,
   LAYOUT_STRATEGIES,
+  OPTIONAL_LAYOUT_STRATEGIES,
   NODE_KINDS,
   NODE_STATUSES,
   PHASE_CATEGORIES,
@@ -77,6 +78,7 @@ export {
   type LayoutStrategy,
   type SummaryLayout,
   VOCABULARY_KEYS,
+  EDIT_TOOLS,
 } from "./vocabulary"
 
 export { nodeIndex, lookupNode, childIndex } from "./lookup"
@@ -228,6 +230,7 @@ export {
   TIME_TRAVEL_LIMIT,
 } from "./time-travel"
 
+export { attention, type Attention } from "./attention"
 export {
   downstreamChain,
   downstreamForks,
