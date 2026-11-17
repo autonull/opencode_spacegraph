@@ -10,6 +10,7 @@ export type GraphGroupMenuProps = {
   collapsedGroups: ReadonlySet<string>
   onToggleGroup: (id: string) => void
   onCollapseOthers: () => void
+  onExpandAll: () => void
   onFrame: (id: string) => void
   onClose: () => void
 }

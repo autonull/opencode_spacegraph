@@ -1,0 +1,18 @@
+[
+  {
+    "frame": "scenario-1-01-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "scenario-1-02-failure-selected",
+    "elapsed": 0.869
+  },
+  {
+    "frame": "scenario-1-03-why-trace-active",
+    "elapsed": 2.101
+  },
+  {
+    "frame": "scenario-1-04-hold-outcome",
+    "elapsed": 6.118
+  }
+]

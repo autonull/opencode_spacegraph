@@ -3,6 +3,7 @@ import { useI18n } from "@opencode/ui/context/i18n"
 export type GraphFallbackProps = {
   fallback: boolean
   error: string | undefined
+  rendererID?: string
 }
 
 export const GraphFallback = (props: GraphFallbackProps) => {

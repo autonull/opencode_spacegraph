@@ -1,0 +1,26 @@
+[
+  {
+    "frame": "night-00-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "night-01-hierarchy",
+    "elapsed": 1.138
+  },
+  {
+    "frame": "night-02-orbit-drift",
+    "elapsed": 6.142
+  },
+  {
+    "frame": "night-03-failure",
+    "elapsed": 8.098
+  },
+  {
+    "frame": "night-04-whip-to-failure",
+    "elapsed": 10.618
+  },
+  {
+    "frame": "night-05-fit",
+    "elapsed": 10.703
+  }
+]

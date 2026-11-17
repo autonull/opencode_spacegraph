@@ -84,7 +84,18 @@
     "remend": "catalog:",
     "shiki": "catalog:",
     "solid-js": "catalog:",
+    "@spacegraphjs/a11y": "workspace:*",
+    "@spacegraphjs/controls": "workspace:*",
+    "@spacegraphjs/compare": "workspace:*",
+    "@spacegraphjs/export": "workspace:*",
     "@spacegraphjs/kernel": "workspace:*",
+    "@spacegraphjs/navigation": "workspace:*",
+    "@spacegraphjs/overlays": "workspace:*",
+    "@spacegraphjs/search": "workspace:*",
+    "@spacegraphjs/shared": "workspace:*",
+    "@spacegraphjs/toolbar": "workspace:*",
+    "@spacegraphjs/trace": "workspace:*",
+    "@spacegraphjs/turn-map": "workspace:*",
     "spacegraphjs": "workspace:*",
     "strip-ansi": "7.1.2"
   }

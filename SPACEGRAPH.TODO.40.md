@@ -296,6 +296,7 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 - **r24 (2026-11-16):** Deprioritized Cytoscape work. SpaceGraph renderer is the primary/default renderer with full 3D/WebGL support. Cytoscape is a 2D-only fallback (capability flags declare this). Component tests for Cytoscape are low priority; SpaceGraph renderer tests cover the main use case. Cytoscape remains an optional peer dependency with no effect when unused.
 - **r25 (2026-11-16):** P5.3 PR 4 code complete — added `createMessageToTurnProjection` to `session-ui/graph/build.ts` and exported from index. Provides message→turn mapping without full graph build. App integration behind `experimental.sessionGraph` flag remains.
 - **r26 (2026-11-16):** P5.3 rung 4 complete — SessionSurfaceHost migration to plugin SDK surfaces. Replaced SessionGraphPanel custom composition with plugin-registered surfaces (map, hybrid, transcript-graph). Updated header toggle to use plugin surface state. Mobile graph toggle syncs with plugin surfaces. Permalink handling routes through plugin surfaces. Turn map overlay opens map surface via plugin API. Removed SessionGraphPanel and associated graph state from app layout. SessionSurfaceHost now consumes plugin surfaces via SessionSurface registry.
+- **r27 (2026-11-17):** Type system fixes for session-graph and session-ui. Added missing exports to session-ui/graph/index.ts: VOCABULARY_KEYS, trace adapter functions (classifyTrace, traceWhy, etc.), cost functions (costLens, tokenTotal, etc.), spatial memory functions (graphContentHash, readSpatialMemory, etc.), palette functions (paletteEntries, paletteGroup, etc.), subagentSubgraph, SavedQuery, CardDensity, viewportCardBudget, saveQuery, applySubLayouts, CompactionAnalysis/Node/measureCompaction. Added spacegraphjs package dependencies (a11y, controls, compare, export, navigation, overlays, shared, toolbar, trace, turn-map, window-manager) to session-ui and session-graph. Fixed GraphDetail traceKind to include "downstream". Fixed GraphSearch, GraphA11y, GraphGroupMenu, GraphStatusBar, GraphFallback, GraphToolbar component props. Added @tanstack/solid-virtual to session-graph. Fixed session-ui dom-budget exports. TypeScript errors reduced significantly; remaining issues are type incompatibilities between facets.ts and facets-adapter.ts, missing properties in some component props, and test infrastructure issues.
 
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅
@@ -358,3 +359,26 @@ to `provided` or keep the lists in sync when bundle imports change.
 `packages/app` `bun typecheck` reports `component-tests/plugin-host.fixture.tsx:885` missing `tabs.target`
 (from `src/runtime/plugin/panels.tsx`). Not touched by this work; confirm against `typecheck:tsc` before
 treating it as a release blocker.
+
+### Remaining Type Errors (r27 — in progress)
+**Session-graph typecheck** (reduced from ~60 to ~30 errors):
+- **GraphFacets type incompatibility**: `facets.ts` uses `ReadonlySet<NodeKind>` but `facets-adapter.ts` uses `ReadonlySet<string>`. This causes type mismatches when passing facets between components. Need to unify the type definitions.
+- **Missing component props**: `onExpandAll` in GraphGroupMenu (missing in GraphView.tsx), `expandAllInCluster` in UseGroupCollapseReturn, `onRemoveSavedQuery` in GraphToolbarProps.
+- **CardTemplateOptions**: Missing `band` property used in useRenderCard.ts.
+- **TraceKind**: Missing "downstream" in useTraceOverlay.ts Record type.
+- **NodeKind**: Missing "file-group", "error-group", "subagent-group", "compaction-group", "facet-group" in vocabulary.ts.
+- **SubagentNodeWidget/useGraphNavigation**: Need subagentSubgraph export (added to session-ui but typecheck still fails due to other issues).
+- **Test infrastructure**: vitest config missing, dev-effect-guard.test.ts imports vitest.
+
+**Session-ui typecheck** (new errors from added exports):
+- **sub-layout.ts**: NodeKind comparison errors with group kinds ("file-group", "error-group", etc.) not in NodeKind union.
+- **incremental-builder.ts**: WorkspaceSnapshot not exported from model.ts.
+- **markdown components**: Missing exports from markdown-worker-protocol and markdown-session-links.
+
+**Priority fixes needed**:
+1. Unify GraphFacets types in session-ui (facets.ts vs facets-adapter.ts)
+2. Add missing group NodeKinds to vocabulary.ts
+3. Add missing component props (onExpandAll, expandAllInCluster, onRemoveSavedQuery, band)
+4. Fix sub-layout.ts type comparisons
+5. Export WorkspaceSnapshot from model.ts
+6. Fix markdown component imports

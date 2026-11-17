@@ -36,7 +36,7 @@ function forwardChain(model: GraphViewData, id: string): GraphNode[] {
 }
 
 /** The trace kinds the host exposes. Each trace answers one question. */
-export type TraceKind = "why" | "led-here" | "related"
+export type TraceKind = "why" | "led-here" | "related" | "downstream"
 
 /** The result of classifying a trace overlay over the model. */
 export type TraceOverlay = {
@@ -73,7 +73,22 @@ function traceAnswerIds(model: GraphViewData, kind: TraceKind, from: string): Se
       for (const edge of outgoing(model, from)) result.add(edge.target)
       return result
     }
+    case "downstream": {
+      return downstreamForks(model, from)
+    }
   }
+}
+
+/** Compute downstream fork nodes: the immediate children of the source via sequence/produces/writes edges. */
+export function downstreamForks(model: GraphViewData, from: string): Set<string> {
+  const result = new Set<string>()
+  const downstreamEdgeKinds = new Set(["sequence", "produces", "writes"])
+  for (const edge of model.edges) {
+    if (edge.source !== from) continue
+    if (!downstreamEdgeKinds.has(edge.kind)) continue
+    result.add(edge.target)
+  }
+  return result
 }
 
 /** Compute context nodes (ancestors of answer nodes, up to root). */

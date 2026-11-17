@@ -1,0 +1,589 @@
+import { createMemo } from "solid-js"
+import type { MountedSession, SetupContext } from "@opencode/plugin/gui"
+import {
+  GRAPH_ARRANGEMENTS,
+  GRAPH_SIDES,
+  LAYOUTS,
+  LAYOUT_STRATEGIES,
+  OPTIONAL_LAYOUT_STRATEGIES,
+  ZOOM_LEVELS,
+  attention,
+  failures,
+  normalizeSavedQueries,
+  removeQuery,
+  saveQuery,
+  type DepthMode,
+  type GraphArrangement,
+  type GraphSide,
+  type Layout,
+  type LayoutStrategy,
+  type SavedQuery,
+  type ZoomLevel,
+  type DetailMode,
+  buildGraphIncremental,
+  captureTimeTravel,
+  graphAtCheckpoint,
+  layoutGraph,
+  withAnnotations,
+  type GraphLayout,
+  type GraphViewData,
+  type GraphFacets,
+  type PaletteSources,
+  type IncrementalBuilderState,
+  type TimeTravelSnapshot,
+  type Annotations,
+  type CardDensity,
+} from "@opencode/session-ui/graph"
+import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
+import { computeFocusOverlay, getFocusOpacity } from "@spacegraphjs/overlays"
+import { BUILTIN_LENSES } from "./index"
+import type definition from "./index"
+import type { State } from "./index"
+
+function next<T>(values: readonly T[], current: T) {
+  const index = values.indexOf(current)
+
+  return values[(index + 1) % values.length] ?? current
+}
+
+function toLayoutStrategy(layout: Layout): LayoutStrategy {
+  return LAYOUT_STRATEGIES.includes(layout as LayoutStrategy) ? (layout as LayoutStrategy) : "lanes"
+}
+
+export function createSpacegraph(ctx: SetupContext<typeof definition>) {
+  const store = (session: MountedSession) => ctx.stores.session(session)
+  const prefs = ctx.stores.prefs
+
+  const sessionValue = (session: MountedSession) => store(session).value as State
+  const prefValue = () => prefs.value
+
+  /** Incremental graph builder state per session. */
+  const graphState = new Map<string, { builderState: IncrementalBuilderState; layout: GraphLayout }>()
+
+  /** Bounded per-session checkpoints for the time-travel scrubber. */
+  const timeTravel = new Map<string, TimeTravelSnapshot[]>()
+
+  const timeTravelEnabled = () => ctx.flags.enabled("graph_time_travel")
+
+  const costLensEnabled = () => ctx.flags.enabled("graph_cost_lens")
+
+  const compactionAdvisorEnabled = () => ctx.flags.enabled("graph_compaction_advisor")
+
+  const paletteEnabled = () => ctx.flags.enabled("graph_palette")
+
+  const attentionEnabled = () => ctx.flags.enabled("graph_attention")
+
+  const layoutBreadthEnabled = () => ctx.flags.enabled("graph_layout_breadth")
+
+  /** The layouts the toolbar offers: optional arrangements need the flag and stay out otherwise. */
+  const availableLayouts = (): readonly Layout[] =>
+    layoutBreadthEnabled()
+      ? LAYOUTS
+      : LAYOUTS.filter(
+          (layout) => !OPTIONAL_LAYOUT_STRATEGIES.includes(layout as (typeof OPTIONAL_LAYOUT_STRATEGIES)[number]),
+        )
+
+  /** M4: the density profile scales the card budget; the canvas still owns the layout. */
+  const density = (): CardDensity => {
+    const profile = (prefValue().density as { profile?: CardDensity } | undefined)?.profile
+
+    return profile ?? "comfortable"
+  }
+
+  /** P1.3: Neighborhood focus mode - computes BFS distance opacity from selected nodes. */
+  const neighborhoodMode = (session: MountedSession): boolean =>
+    sessionValue(session)?.neighborhoodMode ?? false
+
+  const toggleNeighborhoodMode = (session: MountedSession) => {
+    store(session).update((draft) => {
+      draft.neighborhoodMode = !draft.neighborhoodMode
+    })
+  }
+
+  /** P3.1: Follow mode for live streaming updates - off, turn, node, node+focus. */
+  const followMode = (session: MountedSession): "off" | "turn" | "node" | "node+focus" =>
+    (sessionValue(session)?.followMode as "off" | "turn" | "node" | "node+focus") ?? "node+focus"
+
+  const setFollowMode = (session: MountedSession, mode: "off" | "turn" | "node" | "node+focus") => {
+    store(session).update((draft) => {
+      draft.followMode = mode
+    })
+  }
+
+  /** P1.2: Compute neighborhood opacity map for the current selection when neighborhood mode is on. */
+  const neighborhoodOpacityMemo = (session: MountedSession) => {
+    const live = graph(session)()
+    const focused = sessionValue(session)?.focused
+    const enabled = neighborhoodMode(session)
+
+    if (!enabled || !focused) return new Map<string, number>()
+
+    const focusOverlay = computeFocusOverlay({
+      model: live,
+      selection: [focused],
+      maxDistance: 3,
+    })
+
+    // Convert distance to opacity using the focus opacity stops
+    const opacityMap = new Map<string, number>()
+    for (const [nodeId, distance] of focusOverlay) {
+      opacityMap.set(nodeId, getFocusOpacity(distance))
+    }
+    // Selected node stays at 1.0 (not dimmed by neighborhood)
+    opacityMap.set(focused, 1)
+
+    return opacityMap
+  }
+
+  /** Shared graph memo - built incrementally per session, reused by panel, full-map, hybrid, etc. */
+  const graphMemos = new Map<string, () => GraphViewData>()
+  const graph = (session: MountedSession) => {
+    const cached = graphMemos.get(session.id)
+    if (cached) return cached
+    const memo = createMemo<GraphViewData>(() => {
+      const status: { type: "busy" | "idle" } =
+        session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
+
+      const key = session.id
+      const prev = graphState.get(key)
+
+      const { graph: builtGraph, state } = buildGraphIncremental({
+        messages: session.server.data.session.message.list(session.id),
+        status,
+        snapshot: prev?.builderState.snapshot,
+        sessionID: prev?.builderState.sessionID,
+        lineage: prev?.builderState.lineage,
+        diffByTurn: prev?.builderState.diffByTurn,
+        previousState: prev?.builderState,
+      })
+
+      // Compute incremental layout preserving previous positions
+      const layout = layoutGraph(builtGraph, {
+        strategy: toLayoutStrategy(sessionValue(session)?.layout ?? prefValue().layout ?? "lanes"),
+        previous: prev?.layout?.positions,
+      })
+
+      // Store the new state for next incremental update
+      graphState.set(key, { builderState: state, layout })
+
+      // Phase 19.4: capture the new turn checkpoints while the model still describes that turn.
+      if (timeTravelEnabled()) timeTravel.set(key, captureTimeTravel(builtGraph, timeTravel.get(key)))
+
+      return builtGraph
+    })
+    graphMemos.set(session.id, memo)
+    return memo
+  }
+
+  const api = {
+    focused: (session: MountedSession) => sessionValue(session)?.focused,
+    focus: (session: MountedSession, id: string | undefined) => {
+      store(session).update((draft) => {
+        draft.focused = id
+      })
+    },
+    level: (session: MountedSession): ZoomLevel => sessionValue(session)?.level ?? prefValue().level ?? "overview",
+    layout: (session: MountedSession): Layout => sessionValue(session)?.layout ?? prefValue().layout ?? "lanes",
+    depth: (session: MountedSession): DepthMode => sessionValue(session)?.depth ?? prefValue().depth ?? "flat",
+    detailMode: (session: MountedSession): DetailMode => sessionValue(session)?.detailMode ?? prefValue().detailMode ?? "panel",
+    /** P1.3: Neighborhood focus mode - dims nodes outside the selection's BFS neighborhood. */
+    neighborhoodMode,
+    /** P1.3: Toggle neighborhood focus mode. */
+    toggleNeighborhoodMode,
+    /** P1.2: Neighborhood opacity map for canvas renderer (BFS distance → opacity). */
+    neighborhoodOpacityMemo,
+    /** P3.1: Follow mode for live streaming updates. */
+    followMode,
+    /** P3.1: Set follow mode for live streaming updates. */
+    setFollowMode,
+    setLevel: (session: MountedSession, level: ZoomLevel) => {
+      store(session).update((draft) => {
+        draft.level = level
+      })
+    },
+    setLayout: (session: MountedSession, layout: Layout) => {
+      store(session).update((draft) => {
+        draft.layout = layout
+      })
+    },
+    /** M5.1/M5.3: the layouts the toolbar may offer under the current flags. */
+    availableLayouts,
+    paletteEnabled,
+    attentionEnabled,
+    layoutBreadthEnabled,
+    compactionAdvisorEnabled,
+    /** M5.1: the reader's saved questions, validated at the store boundary. */
+    savedQueries: (session: MountedSession): SavedQuery[] => normalizeSavedQueries(sessionValue(session)?.savedQueries),
+    setSavedQueries: (session: MountedSession, queries: readonly SavedQuery[]) => {
+      store(session).update((draft) => {
+        draft.savedQueries = normalizeSavedQueries(queries)
+      })
+    },
+    saveFacets: (session: MountedSession, facets: GraphFacets) => {
+      store(session).update((draft) => {
+        draft.savedQueries = saveQuery(normalizeSavedQueries(draft.savedQueries), facets)
+      })
+    },
+    removeSavedQuery: (session: MountedSession, query: string) => {
+      store(session).update((draft) => {
+        draft.savedQueries = removeQuery(normalizeSavedQueries(draft.savedQueries), query)
+      })
+    },
+    /** Apply a lens preset to the session without changing the reader's density or renderer. */
+    applyLens: (session: MountedSession, lens: { layout?: Layout; depth?: DepthMode; level?: ZoomLevel; detailMode?: DetailMode; files?: boolean }) => {
+      store(session).update((draft) => {
+        if (lens.layout) draft.layout = lens.layout
+        if (lens.depth) draft.depth = lens.depth
+        if (lens.level) draft.level = lens.level
+        if (lens.detailMode) draft.detailMode = lens.detailMode
+      })
+    },
+    applyLensById: (session: MountedSession, id: string) => {
+      const lens = [...BUILTIN_LENSES, ...(prefValue().userLenses ?? [])].find((entry) => entry.id === id)
+      if (!lens) return
+      api.applyLens(session, lens)
+      prefs.update((draft) => {
+        const surfaces = { ...(draft.surfaces ?? {}) }
+        const map = {
+          layout: lens.layout,
+          depth: lens.depth,
+          level: lens.level,
+          detailMode: lens.detailMode,
+          files: lens.files,
+          trace: lens.trace ?? undefined,
+          persist: true,
+        }
+
+        if (lens.surface === "map" || lens.surface === "hybrid") {
+          surfaces.map = map
+          if (lens.surface === "hybrid") surfaces.hybrid = map
+        }
+
+        draft.lens = id
+        draft.surfaces = surfaces
+        draft.renderer = { ...(draft.renderer as Record<string, unknown> | undefined), strategy: "spacegraph" }
+        draft.widgets = { ...(draft.widgets ?? {}), enabled: lens.widgets ?? false }
+        draft.density = { ...(draft.density as Record<string, unknown> | undefined), profile: "comfortable" }
+      })
+
+      if (lens.surface === "transcript") api.select(session, "transcript")
+      if (lens.surface === "map") api.select(session, `${ctx.id}.map`)
+      if (lens.surface === "hybrid") api.select(session, `${ctx.id}.hybrid`)
+    },
+    /** M5.2: the session's failure signal, shared by the badge, the toast, and the titlebar item. */
+    attention: (session: MountedSession) => attention(graph(session)()),
+    /** P0.1: checks if session qualifies for smart graph entry toast (≥1 attention, ≥50 turns, or failure chain). */
+    smartEntry: (session: MountedSession) => {
+      const model = graph(session)()
+      const signal = attention(model)
+      const turnCount = model.turns.length
+      // Failure chain: multiple failures in sequence
+      const failureChain = signal.errors >= 2 || signal.retries >= 2
+      return signal.count >= 1 || turnCount >= 50 || failureChain
+    },
+    /** M5.1: the commands the palette can run, plus the lenses and surfaces the host knows. */
+    paletteSources: (session: MountedSession): PaletteSources => {
+      const focused = sessionValue(session)?.focused
+      const surfaces = (ctx as { surfaces?: { list: () => readonly { id: string; title: string }[] } }).surfaces
+      const actions = [
+        { id: "surface.map", label: ctx.t("surface.map"), keywords: ["map", "graph"] },
+        { id: "surface.hybrid", label: ctx.t("surface.hybrid"), keywords: ["split", "transcript"] },
+        { id: "surface.transcript", label: ctx.t("surface.transcript"), keywords: ["log", "chat"] },
+        { id: "layout.next", label: ctx.t("command.layout"), keywords: ["arrange", "strategy"] },
+        { id: "level.next", label: ctx.t("command.level"), keywords: ["zoom", "detail"] },
+        { id: "failures", label: ctx.t("ui.sessionGraph.failureProgress.title"), keywords: ["error", "why"] },
+        { id: "permalink", label: ctx.t("command.permalink"), keywords: ["link", "share"] },
+        ...(focused
+          ? [
+              { id: "trace.why", label: ctx.t("ui.sessionGraph.trace.why"), keywords: ["cause", "trace"] },
+              { id: "pin.toggle", label: ctx.t("ui.sessionGraph.status.pin"), keywords: ["keep", "mark"] },
+            ]
+          : []),
+      ]
+
+      const lenses = [...BUILTIN_LENSES, ...(prefValue().userLenses ?? [])].map((lens) => ({
+        id: lens.id,
+        label: lens.name,
+        description: lens.description,
+      }))
+
+      return {
+        actions,
+        lenses,
+        surfaces:
+          surfaces && typeof surfaces.list === "function"
+            ? surfaces.list().map((surface) => ({ id: surface.id, label: surface.title }))
+            : undefined,
+      }
+    },
+    runPaletteAction: (session: MountedSession, id: string) => {
+      const focused = sessionValue(session)?.focused
+      if (id === "surface.map") return api.select(session, `${ctx.id}.map`)
+      if (id === "surface.hybrid") return api.select(session, `${ctx.id}.hybrid`)
+      if (id === "surface.transcript") return api.select(session, "transcript")
+      if (id === "layout.next") return api.cycleLayout(session)
+      if (id === "level.next") return api.cycleLevel(session)
+      if (id === "permalink") return api.copyPermalink(session)
+      if (id === "failures") {
+        const first = failures(graph(session)())[0]
+        if (!first) return
+        api.focus(session, first.node.id)
+        api.setDetailMode(session, "panel")
+        return
+      }
+      if (id === "trace.why" && focused) {
+        api.setTraceKind(session, "why")
+        api.setTraceSource(session, focused)
+        return
+      }
+      if (id === "pin.toggle" && focused) return api.togglePin(session, focused)
+    },
+    setDepth: (session: MountedSession, depth: DepthMode) => {
+      store(session).update((draft) => {
+        draft.depth = depth
+      })
+    },
+    setDetailMode: (session: MountedSession, detailMode: DetailMode) => {
+      store(session).update((draft) => {
+        draft.detailMode = detailMode
+      })
+    },
+    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "side",
+    side: (session: MountedSession): GraphSide => sessionValue(session)?.side ?? prefValue().side ?? "end",
+    surface: (session: MountedSession) => sessionValue(session)?.surface,
+    select: (session: MountedSession, id: string) => {
+      store(session).update((draft) => {
+        draft.surface = id
+      })
+      ctx.surfaces.select(id, session)
+    },
+    turnMap: (session: MountedSession) => sessionValue(session)?.turnMap ?? false,
+    toggleTurnMap: (session: MountedSession) => {
+      const nextVal = !store(session).value?.turnMap
+
+      store(session).update((draft) => {
+        draft.turnMap = nextVal
+      })
+    },
+    closeTurnMap: (session: MountedSession) => {
+      store(session).update((draft) => {
+        draft.turnMap = false
+      })
+    },
+    renderer: () => "spacegraph" as const,
+    cycleLevel: (session: MountedSession) => {
+      const level = next(ZOOM_LEVELS, store(session).value?.level ?? "overview")
+
+      store(session).update((draft) => {
+        draft.level = level
+      })
+    },
+    cycleLayout: (session: MountedSession) => {
+      const layout = next(LAYOUTS, store(session).value?.layout ?? "lanes")
+
+      store(session).update((draft) => {
+        draft.layout = layout
+      })
+    },
+    setArrangement: (session: MountedSession, arrangement: GraphArrangement) => {
+      store(session).update((draft) => {
+        draft.arrangement = arrangement
+      })
+    },
+    setSide: (session: MountedSession, side: GraphSide) => {
+      store(session).update((draft) => {
+        draft.side = side
+      })
+    },
+    cycleArrangement: (session: MountedSession) => {
+      const arrangement = next(GRAPH_ARRANGEMENTS, store(session).value?.arrangement ?? prefValue().arrangement ?? "stacked")
+
+      store(session).update((draft) => {
+        draft.arrangement = arrangement
+      })
+    },
+    toggleSide: (session: MountedSession) => {
+      const side = next(GRAPH_SIDES, store(session).value?.side ?? "end")
+
+      store(session).update((draft) => {
+        draft.side = side
+      })
+    },
+    copyPermalink: (session: MountedSession) => {
+      const node = store(session).value?.focused
+
+      if (!node) return
+
+      const layout = store(session).value?.layout ?? prefs.value.layout ?? "lanes"
+      location.hash = `spacegraph:${layout}:${node}`
+      void navigator.clipboard.writeText(location.href)
+    },
+    export: (session: MountedSession, format: "svg" | "json" | "html") => {
+      const g = graph(session)()
+      const withNotes = withAnnotations(g, (sessionValue(session)?.notes as Annotations) ?? {})
+      const level = store(session).value?.level ?? prefs.value.level ?? "execution"
+      const layoutStrategy = (store(session).value?.layout ?? prefs.value.layout ?? "lanes") as LayoutStrategy
+      const layout = layoutGraph(withNotes, { strategy: layoutStrategy })
+      const renderModel = buildRenderModel(withNotes, {
+        level,
+        positions: layout.positions,
+      })
+      const sessionTitle = session.server.data.session.get(session.id)?.title ?? "OpenCode Session"
+      const testedCommit = "unknown"
+      exportGraph(format, renderModel, { theme: DEFAULT_THEME, sessionTitle, testedCommit })
+    },
+    /** The shared graph memo for this session. */
+    graph,
+    /** Whether the host exposes the time-travel scrubber. */
+    timeTravelEnabled,
+    costLensEnabled,
+    density,
+    /** The parked checkpoint index, or undefined for live. */
+    checkpoint: (session: MountedSession) => sessionValue(session)?.checkpoint,
+    /** Whether the session is parked away from live. */
+    parked: (session: MountedSession) => sessionValue(session)?.checkpoint !== undefined,
+    /** The checkpoint shown by the scrubber: the last turn when live, otherwise the parked index. */
+    checkpointIndex: (session: MountedSession, model: GraphViewData) => {
+      if (model.turns.length === 0) return undefined
+
+      const checkpoint = sessionValue(session)?.checkpoint
+
+      if (checkpoint === undefined) return model.turns.length - 1
+
+      return Math.max(0, Math.min(checkpoint, model.turns.length - 1))
+    },
+    /** Park at a turn, or return to live when the final turn is selected. */
+    setCheckpoint: (session: MountedSession, index: number, turnCount: number) => {
+      const checkpoint = turnCount <= 1 || index >= turnCount - 1 ? undefined : Math.max(0, Math.trunc(index))
+      store(session).update((draft) => {
+        draft.checkpoint = checkpoint
+      })
+    },
+    /** The graph at the parked checkpoint, or the supplied live model when live. */
+    graphAt: (session: MountedSession, model: GraphViewData) => {
+      const checkpoint = sessionValue(session)?.checkpoint
+
+      if (checkpoint === undefined || !timeTravelEnabled()) return model
+
+      return graphAtCheckpoint(model, timeTravel.get(session.id) ?? [], checkpoint)
+    },
+
+    // Shared state accessors (Phase 17.2)
+    /** Get the trace kind for the session. */
+    traceKind: (session: MountedSession) => sessionValue(session)?.traceKind,
+    /** Set the trace kind for the session. */
+    setTraceKind: (session: MountedSession, kind: "why" | "led-here" | "related" | "downstream" | null) => {
+      store(session).update((draft) => {
+        draft.traceKind = kind ?? undefined
+      })
+    },
+    /** Get the trace source for the session. */
+    traceSource: (session: MountedSession) => sessionValue(session)?.traceSource,
+    /** Set the trace source for the session. */
+    setTraceSource: (session: MountedSession, source: string | null) => {
+      store(session).update((draft) => {
+        draft.traceSource = source ?? undefined
+      })
+    },
+    /** Get the trace history for the session. */
+    traceHistory: (session: MountedSession) => sessionValue(session)?.traceHistory ?? [],
+    /** Get the trace history index for the session. */
+    traceHistoryIndex: (session: MountedSession) => sessionValue(session)?.traceHistoryIndex ?? -1,
+    /** Push a trace history entry. */
+    pushTraceHistory: (session: MountedSession, entry: { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }, index: number) => {
+      store(session).update((draft) => {
+        const history = draft.traceHistory ?? []
+        const truncated = history.slice(0, index + 1)
+        draft.traceHistory = [...truncated, entry]
+        draft.traceHistoryIndex = index + 1
+      })
+    },
+    /** Set trace history index. */
+    setTraceHistoryIndex: (session: MountedSession, index: number) => {
+      store(session).update((draft) => {
+        draft.traceHistoryIndex = index
+      })
+    },
+    /** Get explicitly collapsed groups for the session. */
+    explicitlyCollapsedGroups: (session: MountedSession) => new Set(sessionValue(session)?.explicitlyCollapsedGroups ?? []) as ReadonlySet<string>,
+    /** Toggle explicit collapse state for a group. */
+    toggleExplicitlyCollapsedGroup: (session: MountedSession, groupId: string) => {
+      store(session).update((draft) => {
+        const groups = new Set(draft.explicitlyCollapsedGroups ?? [])
+        if (groups.has(groupId)) {
+          groups.delete(groupId)
+        } else {
+          groups.add(groupId)
+        }
+        draft.explicitlyCollapsedGroups = [...groups]
+      })
+    },
+    /** Collapse all other groups explicitly. */
+    collapseOtherGroupsExplicit: (session: MountedSession, currentGroupId: string, allGroupIds: string[]) => {
+      store(session).update((draft) => {
+        draft.explicitlyCollapsedGroups = allGroupIds.filter((id) => id !== currentGroupId)
+      })
+    },
+    /** Get notes for the session. */
+    notes: (session: MountedSession) => (sessionValue(session)?.notes as Annotations) ?? ({} as Annotations),
+    /** Set notes for the session. */
+    setNotes: (session: MountedSession, notes: Annotations) => {
+      store(session).update((draft) => {
+        draft.notes = notes as any
+      })
+    },
+    /** Update a single note. */
+    updateNote: (session: MountedSession, noteId: string, body: string) => {
+      store(session).update((draft) => {
+        const notes = { ...(draft.notes ?? {}) } as Annotations
+        if (body.trim().length === 0) {
+          delete notes[noteId]
+        } else {
+          notes[noteId] = { ...notes[noteId], body } as any
+        }
+        draft.notes = notes as any
+      })
+    },
+    /** Delete a note. */
+    deleteNote: (session: MountedSession, noteId: string) => {
+      store(session).update((draft) => {
+        const notes = { ...(draft.notes ?? {}) } as Annotations
+        delete notes[noteId]
+        draft.notes = notes as any
+      })
+    },
+    /** Add a new note. */
+    addNote: (session: MountedSession, note: { id: string; target: string; body: string; createdAt: number }) => {
+      store(session).update((draft) => {
+        const notes = { ...(draft.notes ?? {}) } as Annotations
+        notes[note.id] = note as any
+        draft.notes = notes as any
+      })
+    },
+    /** Pinned node ids for the session. */
+    pins: (session: MountedSession) => sessionValue(session)?.pins ?? [],
+    /** Replace the session's pinned node ids. */
+    setPins: (session: MountedSession, pins: readonly string[]) => {
+      store(session).update((draft) => {
+        draft.pins = [...pins]
+      })
+    },
+    /** Toggle one node's pin without rewriting the others. */
+    togglePin: (session: MountedSession, nodeID: string) => {
+      store(session).update((draft) => {
+        const pins = new Set(draft.pins ?? [])
+        if (pins.has(nodeID)) pins.delete(nodeID)
+        else pins.add(nodeID)
+        draft.pins = [...pins]
+      })
+    },
+    /** P0.2: Current lens ID for goal chips highlighting. */
+    lens: (session: MountedSession) => prefValue().lens ?? "navigator",
+    /** The plugin setup context (for flags, etc.). */
+    ctx,
+  }
+
+  return api
+}
+
+export type SpacegraphModel = ReturnType<typeof createSpacegraph>

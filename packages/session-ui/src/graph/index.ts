@@ -33,6 +33,7 @@ export {
 
 export {
   buildGraph,
+  buildGraphIncremental,
   buildSessionKernel,
   buildWorkspaceKernel,
   workspaceDeriver,
@@ -66,6 +67,7 @@ export {
   isSummaryLayout,
   isLogLayout,
   isSummaryOrLogLayout,
+  type DepthMode,
   type DetailFraming,
   type Domain,
   type DetailMode,
@@ -74,6 +76,7 @@ export {
   type Layout,
   type LayoutStrategy,
   type SummaryLayout,
+  VOCABULARY_KEYS,
 } from "./vocabulary"
 
 export { nodeIndex, lookupNode, childIndex } from "./lookup"
@@ -86,6 +89,53 @@ export {
   type Annotation,
   type Annotations,
 } from "./annotations"
+export {
+  paletteEntries,
+  paletteGroup,
+  type PaletteAction,
+  type PaletteLens,
+  type PaletteSurface,
+  type PaletteSources,
+  type PaletteEntryKind,
+  type PaletteEntry,
+  PALETTE_GROUP_ORDER,
+  PALETTE_NODE_LIMIT,
+} from "./palette-adapter"
+export {
+  classifyTrace,
+  traceWhy,
+  traceLedHere,
+  traceRelated,
+  traceDownstream,
+  litNodeIds,
+  isLit,
+  isAnswer,
+  isEdgeVisible,
+  isAnswerEdge,
+  stepLitNode,
+  copyTraceAsOutline,
+  type TraceKind,
+  type TraceOverlay,
+} from "./trace-adapter"
+export {
+  applySubLayouts,
+} from "./sub-layout"
+export {
+  analyzeCompaction,
+  filterByCompactionPriority,
+  getCompactionSummary,
+  measureCompaction,
+  type CompactionAnalysis,
+  type CompactionNode,
+} from "./compaction"
+export {
+  isSavedQuery,
+  removeQuery,
+  normalizeSavedQueries,
+  savedQueryFacets,
+  defaultSavedQueryLabel,
+  type SavedQuery,
+} from "./saved-queries-adapter"
 
 export {
   buildFixtureGraph,
@@ -116,8 +166,10 @@ export {
   sessionProgress,
   sessionOutline,
   subagentContributions,
+  subagentSubgraph,
   subtree,
   turnSubgraph,
+  unverifiedFiles,
   why,
   type ChangedFile,
   type Subgraph,
@@ -127,6 +179,15 @@ export {
 
 export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
 export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
+export {
+  costLens,
+  tokenTotal,
+  turnCost,
+  type CostTokens,
+  type TurnCost,
+  type SessionCost,
+  type CostLens,
+} from "./cost"
 export {
   applyFacets,
   composeScopes,
@@ -143,6 +204,22 @@ export {
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
 export { exportGraphFilename, exportGraphJSON } from "./export"
+export { type CardDensity, viewportCardBudget } from "./dom-budget"
+export { saveQuery } from "./saved-queries-adapter"
+export {
+  graphContentHash,
+  readSpatialMemory,
+  writeSpatialMemory,
+  clearSpatialMemory,
+  clearAllSpatialMemory,
+  decodeSpatialMemory,
+  spatialMemoryKey,
+  type SpatialMemoryKey,
+  type SpatialMemoryCamera,
+  type SpatialMemoryRecord,
+  type SpatialMemoryStore,
+  SPATIAL_MEMORY_PREFIX,
+} from "./memory-adapter"
 
 export {
   NAVIGATION_MNEMONICS,

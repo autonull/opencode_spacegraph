@@ -1,0 +1,396 @@
+export {
+  diffNodeID,
+  directoryNodeID,
+  errorNodeID,
+  fileNodeID,
+  messageNodeID,
+  normalizePath,
+  phaseCategoryForTool,
+  phaseCategoryOf,
+  phaseNodeID,
+  reasoningNodeID,
+  resultNodeID,
+  retryNodeID,
+  subagentNodeID,
+  subagentToolNodeID,
+  textNodeID,
+  toolNodeID,
+  turnNodeID,
+  type Confidence,
+  type EdgeKind,
+  type GraphEdge,
+  type GraphViewData,
+  type GraphNode,
+  type GraphSnapshotMeta,
+  type Provenance,
+  type SnapshotSource,
+  type WorkspaceSnapshot,
+  type NodeKind,
+  type NodeStatus,
+  type PhaseCategory,
+  type SessionLineage,
+  type ZoomLevel,
+} from "./model"
+
+export {
+  buildGraph,
+  buildGraphIncremental,
+  buildSessionKernel,
+  buildWorkspaceKernel,
+  workspaceDeriver,
+  workspaceDerivers,
+  WORKSPACE_STAGES,
+  type BuildGraphInput,
+  type BuildSessionInput,
+  type IncrementalBuildGraphInput,
+  type WorkspaceStage,
+} from "./build"
+
+export {
+  IncrementalGraphBuilder,
+  type IncrementalBuilderState,
+} from "./incremental-builder"
+
+export {
+  DEFAULT_GRAPH_LABELS,
+  resolveGraphLabels,
+  type GraphLabels,
+} from "./labels"
+
+export {
+  TIME_TRAVEL_LIMIT,
+  captureTimeTravel,
+  graphAtCheckpoint,
+  type TimeTravelSnapshot,
+} from "./time-travel"
+
+export {
+  CARD_SIZE,
+  COMPACT_SIZE,
+  CORE_LAYOUT_STRATEGIES,
+  DETAIL_MODES,
+  DOMAINS,
+  GRAPH_ARRANGEMENTS,
+  GRAPH_MODES,
+  GRAPH_SIDES,
+  LAYOUTS,
+  LAYOUT_STRATEGIES,
+  LAYOUT_INDENT_STEP,
+  LAYOUT_PADDING,
+  NODE_KINDS,
+  NODE_SHAPE,
+  NODE_STATUSES,
+  OPTIONAL_LAYOUT_STRATEGIES,
+  PHASE_CATEGORIES,
+  PHASE_LABELS,
+  PROVENANCE_EDGE_KINDS,
+  READ_EDGE_KINDS,
+  STRUCTURAL_KINDS,
+  SUMMARY_LAYOUTS,
+  ZOOM_LEVELS,
+  VOCABULARY_KEYS,
+  EDIT_TOOLS,
+  isSummaryLayout,
+  isLogLayout,
+  isSummaryOrLogLayout,
+  type DetailFraming,
+  type Domain,
+  type DetailMode,
+  type DepthMode,
+  type GraphArrangement,
+  type GraphSide,
+  type Layout,
+  type LayoutStrategy,
+  type SummaryLayout,
+} from "./vocabulary"
+
+export { nodeIndex, lookupNode, childIndex } from "./lookup"
+
+export { scopeModel } from "./view"
+export { collapseGroups, isGroup, getGroupIds } from "./collapse-adapter"
+export {
+  noteNodeID,
+  withAnnotations,
+  type Annotation,
+  type Annotations,
+} from "./annotations-adapter"
+
+export {
+  buildFixtureGraph,
+  buildFixtureGraphWithSnapshot,
+  buildFixtureMessages,
+  buildFixtureSnapshot,
+  buildInterruptedFixtureMessages,
+  buildNarrativeFixtureGraph,
+  buildNarrativeFixtureMessages,
+  buildNarrativeSnapshot,
+  CHANGED_FILES,
+  FIXTURE_BASE_TIME,
+  fixtureMessages,
+  narrativeAnnotations,
+  narrativeFixtureMessages,
+  narrativePins,
+} from "./fixture"
+
+export {
+  cohortEntry,
+  emptyStudyCounters,
+  formatStudy,
+  isStudyCohort,
+  MAX_STUDY_ANSWERS,
+  normalizeStudyCounters,
+  recordAnswer,
+  recordInlineToggle,
+  recordLensSwitch,
+  recordSurfaceOpen,
+  recordWhy,
+  STUDY_COHORTS,
+  STUDY_TASKS,
+  summarizeStudy,
+  type CohortEntry,
+  type StudyAnswer,
+  type StudyCohort,
+  type StudyCounters,
+  type StudySummary,
+  type StudyTask,
+} from "./study"
+
+export {
+  ancestors,
+  breadcrumbs,
+  changedFiles,
+  failures,
+  fileRelations,
+  forwardChain,
+  incoming,
+  neighbors,
+  neighborStep,
+  nodeByID,
+  openInTranscript,
+  outgoing,
+  rankedSearch,
+  search,
+  searchText,
+  sessionProgress,
+  sessionOutline,
+  shortestPath,
+  subagentContributions,
+  subagentSubgraph,
+  subtree,
+  turnSubgraph,
+  unverifiedFiles,
+  why,
+  downstreamChain,
+  downstreamForks,
+  evidenceFor,
+  type DownstreamStep,
+  type DownstreamFork,
+  type EvidenceKind,
+  type EvidenceItem,
+  type EvidenceGroup,
+  type ChangedFile,
+  type Subgraph,
+  type TranscriptRef,
+  type TurnStats,
+} from "./selectors"
+
+export {
+  classifyTrace,
+  traceWhy,
+  traceLedHere,
+  traceRelated,
+  traceDownstream,
+  litNodeIds,
+  stepLitNode,
+  copyTraceAsOutline,
+  isLit,
+  isAnswer,
+  isEdgeVisible,
+  isAnswerEdge,
+  type TraceKind,
+  type TraceOverlay,
+} from "./trace-adapter"
+
+export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
+export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
+export {
+  applyFacets,
+  composeScopes,
+  DEFAULT_FACETS,
+  facetCounts,
+  facetsFromQuery,
+  facetsToQuery,
+  hasFacets,
+  keepOnly,
+  type FacetCount,
+  type FacetCounts,
+  type GraphFacets,
+} from "./facets-adapter"
+export { compileNLQ, formatNLQResult, parseNLQ, type NLQDictionaries, type NLQOptions } from "./nlq"
+export {
+  isSavedQuery,
+  MAX_SAVED_QUERIES,
+  normalizeSavedQueries,
+  removeQuery,
+  saveQuery,
+  savedQueryFacets,
+  type SavedQuery,
+} from "./saved-queries-adapter"
+export { attention, type Attention, type AttentionTone } from "./attention"
+export {
+  paletteEntries,
+  paletteGroup,
+  PALETTE_GROUP_ORDER,
+  PALETTE_NODE_LIMIT,
+  type PaletteAction,
+  type PaletteEntry,
+  type PaletteEntryKind,
+  type PaletteLens,
+  type PaletteSources,
+  type PaletteSurface,
+} from "./palette-adapter"
+export {
+  canvasRendererFor,
+  chooseRendererStrategy,
+  RENDERER_STRATEGY_THRESHOLDS,
+  type RendererStrategy,
+  type RendererStrategyOptions,
+} from "./renderer-strategy-adapter"
+export {
+  analyzeCompaction,
+  estimateNodeTokens,
+  filterByCompactionPriority,
+  getCompactionSummary,
+  measureCompaction,
+  type CompactionAnalysis,
+  type CompactionMeasurement,
+  type CompactionNode,
+  type CompactionPriority,
+} from "./compaction"
+export {
+  clearAllSpatialMemory,
+  clearSpatialMemory,
+  decodeSpatialMemory,
+  graphContentHash,
+  readSpatialMemory,
+  spatialMemoryKey,
+  writeSpatialMemory,
+  SPATIAL_MEMORY_PREFIX,
+  type SpatialMemoryCamera,
+  type SpatialMemoryKey,
+  type SpatialMemoryRecord,
+  type SpatialMemoryStore,
+} from "./memory-adapter"
+export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
+export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
+export {
+  CARD_DENSITY_SCALE,
+  DOM_BUDGET,
+  DOM_BUDGET_VIEWPORT,
+  viewportCardBudget,
+  type CardDensity,
+  type DomBudgetLevel,
+} from "./dom-budget"
+export { exportGraphFilename, exportGraphJSON } from "./export"
+
+export {
+  NAVIGATION_MNEMONICS,
+  navigationHelp,
+  navigationResults,
+  navigationTargets,
+  nextNavigationTarget,
+  parseNavigation,
+  type NavigationMnemonic,
+} from "./navigation"
+
+export { Metrics, type GraphAction, type GraphActionCounts, type GraphMetrics } from "./metrics"
+export {
+  costLens,
+  tokenTotal,
+  turnCost,
+  type CostLens,
+  type CostTokens,
+  type SessionCost,
+  type TurnCost,
+} from "./cost"
+
+export { byProximity, sessionOrder } from "./budget"
+
+export {
+  clusterCount,
+  domBudget,
+  edgesAtLevel,
+  isClusterExpanded,
+  isVisibleAt,
+  labelMode,
+  LEVEL_RANK,
+  minLevelOf,
+  nodesAtLevel,
+  type LabelMode,
+} from "./levels"
+
+export {
+  applySubLayouts,
+  getSubLayoutPolicy,
+  phaseSubLayout,
+  errorSubLayout,
+  fileSubLayout,
+  subagentSubLayout,
+  defaultSubLayout,
+  type SubLayoutPolicy,
+  type ClusterBounds,
+} from "./sub-layout"
+
+export {
+  LANES,
+  computeIncremental,
+  interpolatePosition,
+  laneAnchors,
+  layoutGraph,
+  nodeSize,
+  type GraphLayout,
+  type IncrementalLayout,
+  type IncrementalLayoutOptions,
+  type Lane,
+  type LayoutMove,
+  type LayoutOptions,
+  type Position,
+} from "./layout"
+
+export {
+  logLayout,
+  logRows,
+  matrixColumn,
+  matrixLayout,
+  ribbonLayout,
+  summaryUnits,
+  turnRows,
+  type SummaryLayoutOptions,
+} from "./summary"
+
+export { scaleWindow, scopeToTurns, TURN_WINDOW, type ScaleWindow } from "./scale"
+
+export {
+  DETAIL_TIERS,
+  DETAIL_TIER_WIDTH,
+  detailTier,
+  type DetailTier,
+} from "./detail"
+
+export {
+  actionsFor,
+  capabilitiesFromSnapshot,
+  filterActionsByCapabilities,
+  type ActionKind,
+  type ActionSpec,
+} from "./actions"
+
+export {
+  EQUALIZER_PRESETS,
+  equalizerFade,
+  equalizerMatch,
+  equalizerScale,
+  ruleMatches,
+  type EqualizerRule,
+  type EqualizerRuleSet,
+} from "./equalizer"

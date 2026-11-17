@@ -1,0 +1,10 @@
+[
+  { "frame": 1, "file": "story-01-attention-badge.png", "hold": 3.0, "transition": 0.5, "narration": "A failing test. The attention badge on the graph immediately flags the problem - no scrolling through logs." },
+  { "frame": 2, "file": "story-02-why-trace.png", "hold": 3.5, "transition": 0.5, "narration": "One click on Why reveals the full causal trace: the failed shell command, its error output, and the retry that followed." },
+  { "frame": 3, "file": "story-03-palette-failed-tools.png", "hold": 3.0, "transition": 0.5, "narration": "Natural language search: type failed tools and jump straight to the failing command." },
+  { "frame": 4, "file": "story-04-shell-inspector.png", "hold": 3.0, "transition": 0.5, "narration": "The inspector shows the exact tool call, its input, and the error - all without leaving the map." },
+  { "frame": 5, "file": "story-05-wrong-fix-diff.png", "hold": 3.5, "transition": 0.5, "narration": "The diff widget reveals the agent's first attempt: extending token lifetime instead of fixing the store write." },
+  { "frame": 6, "file": "story-06-hierarchy-subagent.png", "hold": 3.0, "transition": 0.5, "narration": "Switch to hierarchy layout to see the delegation structure - the subagent that found the root cause." },
+  { "frame": 7, "file": "story-07-subagent-finding.png", "hold": 3.5, "transition": 0.5, "narration": "The subagent trace shows it read the session and store code, then identified the missing write-back." },
+  { "frame": 8, "file": "story-08-permalink.png", "hold": 3.0, "transition": 0.5, "narration": "Copy a permalink in one click - your teammate opens the map at this exact node and layout." }
+]

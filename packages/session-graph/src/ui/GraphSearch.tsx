@@ -1,4 +1,4 @@
-import type { GraphViewData, GraphNode } from "@opencode/session-ui/graph"
+import type { GraphViewData, GraphNode, PaletteSources, PaletteEntry } from "@opencode/session-ui/graph"
 import {
   navigationHelp,
   navigationResults,
@@ -14,6 +14,12 @@ export type GraphSearchProps = {
   onSelect: (node: GraphNode) => void
   onClose: () => void
   initialQuery?: string
+  contentIDs?: string[]
+  palette?: PaletteSources
+  onAction?: (entry: PaletteEntry) => void
+  onLens?: (entry: PaletteEntry) => void
+  onSurface?: (entry: PaletteEntry) => void
+  onSavedQuery?: (entry: PaletteEntry) => void
 }
 
 /**

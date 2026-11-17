@@ -1,0 +1,18 @@
+[
+  {
+    "frame": "scenario-5-01-open",
+    "elapsed": 0.001
+  },
+  {
+    "frame": "scenario-5-02-node-selected",
+    "elapsed": 0.967
+  },
+  {
+    "frame": "scenario-5-03-permalink-copied",
+    "elapsed": 3.102
+  },
+  {
+    "frame": "scenario-5-04-hold-outcome",
+    "elapsed": 6.108
+  }
+]

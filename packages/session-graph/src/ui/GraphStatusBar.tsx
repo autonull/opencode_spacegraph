@@ -16,6 +16,9 @@ export type GraphStatusBarProps = {
   compare?: { active: boolean; onCompare: () => void; onClear: () => void }
   /** B2: the selected node is a group; the verbs collapse it or every other group. */
   group?: { collapsed: boolean; onToggle: () => void; onCollapseOthers: () => void }
+  /** Whether the selection is pinned. */
+  pinned?: boolean
+  onTogglePin?: () => void
 }
 
 /**

@@ -15,6 +15,9 @@ import { text } from "./node-data"
 import type { TraceOverlay } from "./overlay"
 import { formatAge, sourceLabel } from "./provenance"
 
+/** Maps a node ID to its BFS distance from the nearest selected node. */
+export type FocusOverlay = Map<string, number>
+
 /**
  * RF.3 — the rich activity card. It is a host template (the render model stays neutral): a leading
  * kind glyph on a tinted chip, a single-line ellipsised label, a clamped summary, and status as a
@@ -182,6 +185,8 @@ export type CardCopy = {
   /** The header toggle's action on a group card. */
   collapseGroup: () => string
   expandGroup: () => string
+  /** Cost detail for a turn or session node. */
+  cost?: (detail: { tokens: number; tools: number; wallTime: number; streaming: boolean }) => string
 }
 
 export type CardTemplateOptions = {
@@ -207,6 +212,10 @@ export type CardTemplateOptions = {
   collapsedGroups?: ReadonlySet<string>
   /** Depth fade: positions map to calculate z-based fade for DOM cards. */
   positions?: ReadonlyMap<string, Position>
+  /** D1: neighborhood focus overlay mapping node IDs to BFS distance. */
+  focus?: FocusOverlay
+  /** Cost detail for a turn or session node. */
+  cost?: (node: GraphNode) => string | undefined
 }
 
 const firstLine = (value: string) => value.split("\n", 1)[0]?.trim() ?? ""

@@ -27,6 +27,8 @@ export type GraphCameraOptions = {
   cardWorldWidth: number
   /** The width a card must cover on the screen before the reader can read it. */
   readableWidth: number
+  /** Whether to respect the reader's reduced motion preference. */
+  reducedMotion?: () => boolean
 }
 
 /**

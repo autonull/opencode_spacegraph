@@ -13,6 +13,13 @@ export type GraphFacets = {
   kinds: ReadonlySet<NodeKind>
   statuses: ReadonlySet<NodeStatus>
   domains: ReadonlySet<Domain>
+  // P2.1: Semantic quick filter facets
+  failedTools?: boolean
+  fileWrites?: boolean
+  subagentCalls?: boolean
+  errors?: boolean
+  retries?: boolean
+  costlyNodes?: boolean
 }
 
 export type FacetCount = {
@@ -32,6 +39,12 @@ export const DEFAULT_FACETS: GraphFacets = {
   kinds: new Set(),
   statuses: new Set(),
   domains: new Set(["session"]),
+  failedTools: false,
+  fileWrites: false,
+  subagentCalls: false,
+  errors: false,
+  retries: false,
+  costlyNodes: false,
 }
 
 const KINDS = new Set<string>(NODE_KINDS)

@@ -46,3 +46,8 @@ export function createMessageToTurnProjection(input: {
 export { buildSessionKernel, type BuildSessionInput } from "./session-builder"
 export { WORKSPACE_STAGES, type WorkspaceStage } from "./session-builder"
 export { buildWorkspaceKernel, workspaceDeriver, workspaceDerivers } from "./workspace-derivers"
+
+/** Incremental build wrapper used by GraphTranscriptSurface. */
+export function buildGraphIncremental(input: { messages: SessionMessageInfo[]; status: SessionStatus }): { graph: GraphViewData } {
+  return { graph: buildGraph({ messages: input.messages, status: input.status }) }
+}

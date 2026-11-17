@@ -25,6 +25,7 @@ import {
   type Layout,
   type NodeKind,
   type NodeStatus,
+  type SavedQuery,
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
@@ -133,6 +134,10 @@ export type GraphToolbarProps = {
   endInset?: string
   /** T27.1: the model to derive domain presence from. */
   model?: GraphViewData
+  /** T27.1: saved queries for the palette. */
+  savedQueries?: readonly SavedQuery[]
+  /** T27.1: callback when a new saved query is created. */
+  onSaveQuery?: () => void
 }
 
 /**

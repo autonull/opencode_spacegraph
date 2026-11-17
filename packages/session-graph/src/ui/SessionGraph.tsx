@@ -1,0 +1,2068 @@
+import type {
+  GraphRenderer,
+  Projection,
+  RenderTheme,
+  RenderNode,
+} from "@spacegraphjs/renderer"
+import type { DepthMode } from "@opencode/session-ui/graph"
+import { computeFollowFrame } from "@spacegraphjs/navigation"
+import type {
+  DetailFraming,
+  DetailMode,
+  DetailTier,
+  EqualizerRule,
+  EqualizerRuleSet,
+  GraphArrangement,
+  GraphViewData,
+  GraphNode,
+  GraphSide,
+  Layout,
+  Position,
+  SpatialMemoryCamera,
+  ZoomLevel,
+  CardDensity,
+} from "@opencode/session-ui/graph"
+import { buildFixtureGraph, viewportCardBudget } from "@opencode/session-ui/graph"
+import { GraphActionTarget } from "./GraphActionTarget"
+import {
+  CARD_SIZE,
+  changedFiles,
+  withAnnotations,
+  type Annotations,
+  DETAIL_TIER_WIDTH,
+  detailTier,
+  facetsFromQuery,
+  facetsToQuery,
+  isSummaryLayout,
+  LAYOUTS,
+  Metrics,
+  nodeByID,
+  nodeIndex,
+  removeQuery,
+  saveQuery,
+  savedQueryFacets,
+  turnRows,
+  type PaletteEntry,
+  type PaletteSources,
+  type SavedQuery,
+} from "@opencode/session-ui/graph"
+import { createGraphBus } from "./graph-bus"
+import { registerGraphBus } from "./graph-router"
+import { createUniqueId } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+  type JSX,
+} from "solid-js"
+import { createStore, type SetStoreFunction } from "solid-js/store"
+import { type CardTemplate } from "../canvas/buildRenderModel"
+import { createBudgetedModel, createDrawnModel } from "../canvas/buildRenderModelHelpers"
+import type { RendererFactory, RendererID } from "../canvas/renderer-registry"
+import { createBandTemplate } from "./cardTemplate"
+import { useGroupBadgeAnimation } from "./useGroupBadgeAnimation"
+import { createCardCopy } from "./card-copy"
+import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
+import type { GraphDiffSource } from "./GraphDiff"
+import { GraphFileRail } from "./GraphFileRail"
+import { GraphCanvasRegion } from "./GraphCanvasRegion"
+import { GraphWindowManager } from "./GraphWindowManager"
+import { GraphChrome } from "./GraphChrome"
+import "./graph-cards.css"
+import "./graph-motion.css"
+import { buildAxisLabels } from "./axisLabels"
+import { sessionID } from "./node-data"
+import { createWidthThresholdTracker, mirror } from "./graph-utils"
+import { useComparison } from "./useComparison"
+import { useGroupCollapse } from "./useGroupCollapse"
+import { useEdgeKinds } from "./useEdgeKinds"
+import { useGraphKeyboard } from "./useGraphKeyboard"
+import { useGraphState } from "./useGraphState"
+import { useGraphSelection } from "./useGraphSelection"
+import { useGraphAnnotations } from "./useGraphAnnotations"
+import { useGraphSearch } from "./useGraphSearch"
+import { usePopover } from "./usePopover"
+import { createMergedTraceOverlay } from "./useMergedTraceOverlay"
+import { useNodeLookup } from "./useNodeLookup"
+import { useGraphExport } from "./useGraphExport"
+import { useGraphWindows } from "./useGraphWindows"
+import { useGraphDetailMode } from "./useGraphDetailMode"
+import { useGraphPermalink } from "./useGraphPermalink"
+import { useGraphNavigation } from "./useGraphNavigation"
+import { useGraphViewport } from "./useGraphViewport"
+import { renderInspectorPanel } from "./renderInspectorPanel"
+import { useBudgetCenter } from "./useBudgetCenter"
+import { useDebugMode } from "./useDebugMode"
+import { useInspectorResize } from "./useInspectorResize"
+import { useGraphViewModel } from "./useGraphViewModel"
+import { useRenderModel } from "./useRenderModel"
+import type { GraphWindowState } from "./GraphWindows"
+import { useTestHarness } from "./useTestHarness"
+import { useCapabilityFallback } from "./useCapabilityFallback"
+import { useFitEffects } from "./useFitEffects"
+import { createApplyModel } from "./useApplyModel"
+import { useGeometry } from "./useGeometry"
+import { useDisplayPositions } from "./useDisplayPositions"
+import { useRenderCard } from "./useRenderCard"
+import { createManualPositions } from "./useManualPositions"
+import { useCanvasRegionProps } from "./useCanvasRegionProps"
+import { useSpatialMemory } from "./useSpatialMemory"
+import { GraphViewProvider } from "./GraphViewContext"
+import type { RenderModel } from "@spacegraphjs/renderer"
+
+/**
+ * T1.18 — the legibility floor. A fit never shrinks an activity card below half its natural size, so
+ * a view that cannot show everything (the hierarchy outline, the file lens between the rail and the
+ * inspector) is panned instead of shrunk to text too small to read. Half size keeps the card's 13px
+ * label at 6.5px, the size the lane views are read at.
+ */
+export const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
+
+/**
+ * T11.2 (A) — the width the camera aims for when it frames the selected card: the closest tier's
+ * threshold with a margin, so the card lands inside the tier rather than on its edge. The card mode
+ * is the detail on the node, so the node's card is the one that says the most.
+ */
+export const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
+
+/**
+ * Props for the {@link SessionGraph} component.
+ *
+ * @public
+ */
+export type SessionGraphProps = {
+  model: GraphViewData
+  /** Defaults to the live host theme read from CSS tokens (U3.7). */
+  theme?: RenderTheme
+  level?: ZoomLevel
+  /** M4: the density profile the host persists; it scales the card budget. */
+  density?: CardDensity
+  projection?: Projection
+  /** LE.14: controlled depth spectrum (flat | layered | depth-stack | orbit); the host persists it. */
+  depth?: DepthMode
+  /** Controlled selection: when set, the graph mirrors it and reports changes through `onSelect`. */
+  selection?: string
+  preferredRenderer?: () => RendererID
+  /** Replaces an adapter factory (tests and stories); the registry still owns ordering and fallback. */
+  rendererOverrides?: Partial<Record<RendererID, RendererFactory>>
+  positions?: ReadonlyMap<string, Position>
+  /** T17.1: the controlled layout — the one axis that says how the map is drawn. The host persists it. */
+  layout?: Layout
+  /** The layouts the host exposes; optional arrangements stay out when their flag is off. */
+  layouts?: readonly Layout[]
+  /** The turn the map is pinned to (0-based), and how many turns the session has. */
+  checkpoint?: number
+  turnCount?: number
+  /** B1: the live model a parked checkpoint diffs against; the host still scopes `model` to the park. */
+  liveModel?: GraphViewData
+  onCheckpoint?: (index: number) => void
+  /** A2: the facet question carried by a permalink, in the `q=` grammar. */
+  facetQuery?: string
+  /** A2: the host turns the current facets into a shareable link. */
+  onCopyView?: (query: string) => void
+  /**
+   * M5.1: the graph palette's commands, lenses, and surfaces. The host owns what each entry runs;
+   * the view only ranks and lists them beside the nodes.
+   */
+  palette?: PaletteSources
+  onPaletteAction?: (entry: PaletteEntry) => void
+  onPaletteLens?: (entry: PaletteEntry) => void
+  onPaletteSurface?: (entry: PaletteEntry) => void
+  onPaletteSavedQuery?: (entry: PaletteEntry) => void
+  /** M5.1: the reader's saved questions, persisted by the host. */
+  savedQueries?: readonly SavedQuery[]
+  onSavedQueriesChange?: (queries: SavedQuery[]) => void
+  /**
+   * Where a selected node's detail is shown: nowhere, on the node itself, in a popover beside it, or
+   * in the side panel. The host persists the choice; the view mirrors it.
+   */
+  detailMode?: DetailMode
+  /** The transient peek at the node under the pointer; the host persists the choice. */
+  peek?: boolean
+  /** LE.12: the file-first lens (changed-files rail + bundled provenance edges); the host persists it. */
+  files?: boolean
+  /**
+   * How the map and the log meet in the hybrid. The host owns the geometry; the view only offers
+   * the choice in the toolbar, so the reader can move the map without leaving it.
+   */
+  arrangement?: GraphArrangement
+  onArrangementChange?: (arrangement: GraphArrangement) => void
+  /** Which side of the split the map takes. */
+  arrangementSide?: GraphSide
+  onArrangementSideChange?: (side: GraphSide) => void
+  /**
+   * The turn the reader is reading in the log, when the two are side by side. The map marks it, so
+   * the reader sees where they are in the session without leaving the log.
+   */
+  activeTurn?: string
+  /** T18.1: whether the map should frame the active turn from the log. */
+  followLog?: boolean
+  /** P3.1: Follow mode for live streaming updates - off, turn, node, node+focus. Default: "node+focus". */
+  followMode?: "off" | "turn" | "node" | "node+focus"
+  /** P3.1: Callback when follow mode changes. */
+  onFollowModeChange?: (mode: "off" | "turn" | "node" | "node+focus") => void
+  /** P3.3: When enabled, new nodes arriving during streaming are automatically selected. */
+  selectNewOnStream?: boolean
+  /** P3.3: Callback when selectNewOnStream changes. */
+  onSelectNewOnStreamChange?: (selectNewOnStream: boolean) => void
+  /** RF.8: host loader for a finished turn's changed-file diffs, shown on demand in the inspector. */
+  diffSource?: GraphDiffSource
+  /** Optional host renderer for a node's summary (for example MarkDown); falls back to plain text. */
+  renderSummary?: (node: GraphNode) => JSX.Element | undefined
+  renderCard?: CardTemplate
+  /** Optional host renderer for an interactive widget inside a node. Flag-gated (graph_node_widgets). */
+  renderNodeWidget?: (node: GraphNode) => JSX.Element | undefined
+  /** Optional host renderer for custom HTML content inside a node's card. The HTML is sanitized by the host. */
+  renderNodeHTML?: (node: GraphNode) => string | undefined
+  /** Reserved inline-end length for host chrome that floats over the panel's top-right corner. */
+  endInset?: string
+  /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
+  reducedMotion?: boolean
+  /** M6.2 — the surface name accessibility announcements carry. Defaults to the session map. */
+  surfaceLabel?: string
+  /**
+   * The node to select and frame. The view raises the semantic level when the node is hidden
+   * at the current one, then moves the camera to it once the model that carries it is applied.
+   */
+  frame?: string
+  /**
+   * A value that changes when the pane's shape changes — the host moved the map into the hybrid,
+   * say. The view frames the content again, because the old frame was made for another shape.
+   */
+  refitKey?: string
+  /** T3.5: the shareable link to the selected node; the inspector offers to copy it. */
+  link?: string
+  /** Exposes the live renderer so a host can drive the camera (T6.18/T6.19). */
+  onRenderer?: (renderer: GraphRenderer | undefined) => void
+  /** Fires when the renderer has been mounted with its id. */
+  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
+  /** Test harness for component tests — getters only. */
+  testHarness?: {
+    selected: () => string | undefined
+    select: (id: string | undefined) => void
+    setRenderer: (id: RendererID) => void
+    searchOpen: () => boolean
+    setSearchOpen: (open: boolean) => void
+    legendOpen: () => boolean
+    setLegendOpen: (open: boolean) => void
+    galleryOpen: () => boolean
+    setGalleryOpen: (open: boolean) => void
+    groupMenu: () => { id: string; x: number; y: number } | undefined
+    setGroupMenu: (menu: { id: string; x: number; y: number } | undefined) => void
+    detailMode: () => DetailMode
+    setDetailMode: (mode: DetailMode) => void
+    level: () => ZoomLevel
+    setLevel: (level: ZoomLevel) => void
+    // Camera methods for motion testing
+    fitContent: () => void
+    frameReadable: (id: string) => void
+    zoomBy: (delta: number) => void
+    pending: () => boolean
+    getViewport: () => { zoom: number; center: number[]; extent?: { width: number; height: number } } | undefined
+  }
+  onSelect?: (id: string | undefined) => void
+  onProjectionChange?: (projection: Projection) => void
+  onDepthChange?: (depth: DepthMode) => void
+  onLayoutChange?: (layout: Layout) => void
+  onFilesChange?: (files: boolean) => void
+  onTrustLensChange?: (trustLens: boolean) => void
+  /** Cost lens availability: the host enables it behind `graph_cost_lens`. */
+  enableCostLens?: boolean
+  /** Compaction advisor availability: the host enables it behind `graph_compaction_advisor`. */
+  enableCompactionAdvisor?: boolean
+  onCompactionAdvisorChange?: (compactionAdvisor: boolean) => void
+  /** P1.2: Per-node neighborhood opacity from focus overlay (BFS distance → opacity). */
+  neighborhoodOpacity?: ReadonlyMap<string, number> | (() => ReadonlyMap<string, number>)
+  /** P1.3: Neighborhood focus mode toggle. */
+  focus?: boolean
+  onToggleFocus?: () => void
+  onDetailModeChange?: (mode: DetailMode) => void
+  /** T17.4: the camera frames the selected node (the "card" framing behavior). */
+  detailFraming?: DetailFraming
+  /** T17.4: callback when the framing behavior changes. */
+  onDetailFramingChange?: (framing: DetailFraming) => void
+  onPeekChange?: (peek: boolean) => void
+  onOpenTranscript?: (id: string) => void
+  /**
+   * T6.5: opens another session — a delegation's child, a fork's origin, a child session's parent.
+   * The host owns the navigation; the graph only names the session.
+   */
+  onOpenSession?: (sessionID: string) => void
+  /** Opens the hybrid turn map (H6.2) for a turn; the toolbar offers it when a turn is selected. */
+  onTurnMap?: (turnID: string) => void
+  /**
+   * T12: the reader's windows over the map. The host owns them — it persists them per session — and
+   * the view only reports what the reader did to them.
+   */
+  windows?: readonly GraphWindowState[]
+  onWindowsChange?: (windows: GraphWindowState[]) => void
+  /** T12: the host opens a window. The view proposes its first placement; the host owns its lifetime. */
+  onOpenWindow?: (window: GraphWindowState) => void
+  /** T31 — action handlers from the host. */
+  onActionNavigate?: (target: GraphActionTarget) => void
+  onActionReveal?: (target: GraphActionTarget) => void
+  onActionCopy?: (text: string) => void
+  onActionRun?: (operation: { id: string; params: Record<string, unknown> }) => void
+  /**
+   * T15: the equalizer's rules. A size rule re-lays-out the map (the rules are part of the layout
+   * key, so the map moves like it does when the level changes); a style rule rebuilds the cards.
+   */
+  rules?: EqualizerRuleSet
+  /** T15.4: the equalizer's panel edits the rules; the host persists them per session. */
+  onRulesChange?: (rules: EqualizerRule[]) => void
+  onBack?: () => void
+  /**
+   * Puts the log beside the map. The host owns the arrangement; the view only offers the way into
+   * it, so a reader who wants both does not have to leave the map to get them.
+   */
+  onSplitView?: () => void
+  /** T3.4: session title for export metadata. */
+  sessionTitle?: string
+  /** T3.4: tested commit SHA for export metadata. */
+  testedCommit?: string
+  /**
+   * When false, hides all chrome (toolbar, breadcrumbs, status bar, inspector, windows, file rail).
+   * Defaults to true for backwards compatibility with GraphView.
+   * @default true
+   */
+  chrome?: boolean
+  /**
+   * Custom chrome renderer. Receives the GraphViewContext value.
+   * Only used when `chrome` is true.
+   */
+  chromeRenderer?: (ctx: ReturnType<typeof import("./GraphViewContext").useGraphViewContext>) => JSX.Element
+  /**
+   * Optional roots to scope the model to a subset (turns, subagent, search results)
+   * without changing selection semantics.
+   */
+  roots?: readonly GraphNode[]
+  /**
+   * Shell mode: "full" includes demo banner and empty-fixture fallback.
+   * "bare" removes them and applies min-h-0 layout suitable for inline boxes.
+   * @default "full"
+   */
+  shell?: "full" | "bare"
+  /**
+   * Responsive breakpoints. Defaults match current GraphView behavior.
+   */
+  breakpoints?: { narrow?: number; compact?: number; detail?: number }
+
+  /** Controlled trace state (Phase 17.2 shared state). */
+  traceKind?: "why" | "led-here" | "related" | "downstream" | null
+  onTraceKindChange?: (kind: "why" | "led-here" | "related" | "downstream" | null) => void
+  traceSource?: string | null
+  onTraceSourceChange?: (source: string | null) => void
+  traceHistory?: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]
+  onTraceHistoryChange?: (history: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]) => void
+  traceHistoryIndex?: number
+  onTraceHistoryIndexChange?: (index: number) => void
+
+  /** Controlled group collapse state (Phase 17.2 shared state). */
+  explicitlyCollapsedGroups?: ReadonlySet<string>
+  onExplicitlyCollapsedGroupsChange?: (groups: ReadonlySet<string>) => void
+
+  /**
+   * Whether this instance writes spatial memory. Secondary inline graphs read the session's frame
+   * but never overwrite it. Defaults to true for the primary surface.
+   */
+  spatialMemoryOwner?: boolean
+
+  /** Controlled notes/annotations state (Phase 17.2 shared state). */
+  notes?: Annotations
+  onNotesChange?: (notes: Annotations) => void
+
+  /** Durable pinned node ids, shared across every surface that renders the session. */
+  pins?: readonly string[]
+  onPinsChange?: (pins: readonly string[]) => void
+
+  /**
+   * How many nested drill-downs this surface allows. A node widget is depth 1, a popover 2, and the
+   * full map 3. The view refuses a fourth rather than mounting another graph inside itself.
+   */
+  maxDrillDepth?: number
+}
+
+/**
+ * The core graph surface (U3.8): canvas, overlays, a11y, and drill breadcrumb.
+ * Chrome (toolbar, inspector, status, windows, file rail) is composed by the host.
+ *
+ * @public
+ * @example
+ * ```tsx
+ * <SessionGraph
+ *   model={graphModel}
+ *   level={zoomLevel}
+ *   layout={layout}
+ *   depth={depthMode}
+ *   selection={selectedNodeId}
+ *   onSelect={setSelectedNodeId}
+ *   onLayoutChange={setLayout}
+ *   onDepthChange={setDepth}
+ *   surfaceLabel="Session map"
+ *   chrome={true}
+ * />
+ * ```
+ */
+export const SessionGraph = (props: SessionGraphProps) => {
+  const state = useGraphState(props)
+
+  // Instance identity for multi-graph isolation
+  const instanceId = createUniqueId()
+  const [isActiveInstance, setIsActiveInstance] = createSignal(false)
+  const bus = createGraphBus(instanceId)
+
+  // Reduced motion: track prefers-reduced-motion media query
+  const [reducedMotion, setReducedMotion] = createSignal(false)
+  onMount(() => {
+    if (typeof window === "undefined") return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReducedMotion(media.matches)
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+    media.addEventListener("change", handler)
+    onCleanup(() => media.removeEventListener("change", handler))
+  })
+
+  // Register bus with router and track active instance
+  onMount(() => {
+    const unregister = registerGraphBus(bus)
+    onCleanup(unregister)
+  })
+
+  const {
+    i18n,
+    a11yInstructionsId,
+    resolvedTheme,
+
+    level,
+    setLevel,
+    projection,
+    setProjection,
+    depth,
+    setDepth,
+    layout,
+    setLayout,
+    files,
+    setFiles,
+    setTrustLens,
+    detailMode,
+    setDetailMode,
+    detailFraming,
+    setDetailFraming,
+    peek,
+    setPeek,
+    followLog,
+    setFollowLog,
+    /** P3.1: Follow mode for live streaming updates */
+    followMode,
+    setFollowMode,
+    /** P3.3: When enabled, new nodes arriving during streaming are automatically selected. */
+    selectNewOnStream,
+    setSelectNewOnStream,
+    facets,
+    setFacets,
+
+    cardFacing,
+    toggleBillboard,
+    searchOpen,
+    setSearchOpen,
+    searchInitial,
+    setSearchInitial,
+    legendOpen,
+    setLegendOpen,
+    galleryOpen,
+    setGalleryOpen,
+    findInitialTab,
+    setFindInitialTab,
+
+    popoverDismissed,
+    setPopoverDismissed,
+
+    hovered,
+    setHovered,
+    edgeHovered,
+    setEdgeHovered,
+
+    capabilities,
+    setCapabilities,
+    rendererReady,
+    setRendererReady,
+    rendererID,
+    setRendererID,
+    error,
+    setError,
+
+    narrow,
+    setNarrow,
+    compact,
+    setCompact,
+    inspectorWidth,
+    setInspectorWidth,
+    inspectorSheetOpen,
+    setInspectorSheetOpen,
+    canvasSize,
+    setCanvasSize,
+
+    // Demo / first-run
+    demoDismissed,
+    setDemoDismissed,
+    recordInteraction,
+
+    // See-map prompt
+    seeMapPromptVisible,
+    setSeeMapPromptVisible,
+    seeMapPromptDismissed,
+    setSeeMapPromptDismissed,
+
+    // Trust lens
+    trustLens,
+    costLens,
+    compactionAdvisor,
+
+    // P1.3: Neighborhood focus mode
+    focus,
+    setFocus,
+    toggleFocus,
+
+    announce,
+  } = state
+
+  // M6.2 — every announcement says where it happened, so two graphs on one page are distinguishable.
+  const surfaceLabel = () => props.surfaceLabel ?? i18n.t("ui.sessionGraph.surface.map")
+
+  // M5.1: saved questions are controlled by the host; a standalone view keeps its own list.
+  const [localSavedQueries, setLocalSavedQueries] = createSignal<SavedQuery[]>([])
+  const savedQueries = () => props.savedQueries ?? localSavedQueries()
+  const changeSavedQueries = (next: SavedQuery[]) => {
+    if (props.onSavedQueriesChange) props.onSavedQueriesChange(next)
+    else setLocalSavedQueries(next)
+  }
+  const paletteSources = (): PaletteSources => ({
+    ...props.palette,
+    savedQueries: props.palette?.savedQueries ?? savedQueries(),
+  })
+
+  const manualPositions = createManualPositions()
+  const { manual, undoManual, redoManual, moveNodes, resizeNode, history, future } = manualPositions
+
+  // Model memo
+  const emptyModel: GraphViewData = {
+    root: "session",
+    nodes: [],
+    edges: [],
+    turns: [],
+    turnByMessageID: new Map(),
+  }
+  const [notesStore, setNotesStore] = createStore<Annotations>({})
+  // Use controlled notes when provided, otherwise local store
+  const notesSource = props.notes ?? notesStore
+  const [localPins, setLocalPins] = createSignal<ReadonlySet<string>>(new Set())
+  const pins = createMemo<ReadonlySet<string>>(() => (props.pins ? new Set(props.pins) : localPins()))
+  const model = createMemo(() => (props.model ? withAnnotations(props.model, notesSource) : emptyModel))
+
+  // Demo model for first-run: uses canonical fixture when no session data
+  const demoModel = createMemo(() => {
+    if (props.shell === "bare") return model()
+    if (demoDismissed()) return model()
+    if (props.model && props.model.nodes.length > 0) {
+      return model()
+    }
+    return buildFixtureGraph()
+  })
+
+  // See-map prompt: show when session has errors, compactions, or many turns (>10)
+  const showSeeMapPrompt = createMemo(() => {
+    if (props.shell === "bare") return false
+    if (seeMapPromptDismissed()) return false
+    if (!props.model) return false
+    const m = props.model
+    const hasErrors = m.nodes.some((n) => n.kind === "error" || n.status === "failed")
+    const hasCompactions = m.nodes.some((n) => n.kind === "compaction")
+    const manyTurns = (m.turns?.length ?? 0) > 10
+    return (hasErrors || hasCompactions || manyTurns) && !seeMapPromptVisible()
+  })
+
+  // Trust lens: highlight unverified files (written without later verify/test)
+  const trustLensActive = createMemo(() => trustLens())
+
+  // Shared node lookup for hooks
+  const nodeLookup = useNodeLookup(demoModel)
+
+  // Hooks for modular state/logic
+  const graphSelection = useGraphSelection({
+    model,
+    controlled: () => props.selection,
+    onSelect: (id) => props.onSelect?.(id),
+    onAnnounce: announce,
+  })
+
+  // P8.1: the vanilla library controller owns interaction state (selection + trail).
+  const selection = graphSelection.selection
+  const select = graphSelection.select
+  const selectionObj = { selection, select }
+
+  const togglePin = (nodeID: string | undefined) => {
+    if (!nodeID) return
+    const next = new Set(pins())
+    const pinned = next.has(nodeID)
+    if (pinned) next.delete(nodeID)
+    else next.add(nodeID)
+    if (props.onPinsChange) props.onPinsChange([...next])
+    else setLocalPins(next)
+    announce(i18n.t(pinned ? "ui.sessionGraph.status.unpinned" : "ui.sessionGraph.status.pinned"))
+  }
+
+  const maxDrillDepth = () => props.maxDrillDepth ?? 3
+
+  // Test harness for component tests
+  const { groupMenu, setGroupMenu } = useTestHarness(props, selectionObj, setRendererID)
+
+  // Create signals for controlled trace state (Phase 17.2 shared state)
+  // When controlled props are provided, create signals that mirror them
+  // Otherwise use local signals
+  const [localTraceKind, setLocalTraceKind] = createSignal<"why" | "led-here" | "related" | "downstream" | null>(null)
+  const [localTraceSource, setLocalTraceSource] = createSignal<string | null>(null)
+  const [localTraceHistory, setLocalTraceHistory] = createSignal<readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]>([])
+  const [localHistoryIndex, setLocalHistoryIndex] = createSignal(-1)
+
+  const traceKind = createMemo(() => props.traceKind ?? localTraceKind())
+  const setTraceKind = (kind: "why" | "led-here" | "related" | "downstream" | null) => {
+    if (props.onTraceKindChange) props.onTraceKindChange(kind)
+    else setLocalTraceKind(kind)
+  }
+  const traceSource = createMemo(() => props.traceSource ?? localTraceSource())
+  const setTraceSource = (source: string | null) => {
+    if (props.onTraceSourceChange) props.onTraceSourceChange(source)
+    else setLocalTraceSource(source)
+  }
+  const traceHistory = createMemo(() => props.traceHistory ?? localTraceHistory())
+  const setTraceHistory = (history: readonly { kind: "why" | "led-here" | "related" | "downstream"; source: string; label: string }[]) => {
+    if (props.onTraceHistoryChange) props.onTraceHistoryChange(history)
+    else setLocalTraceHistory(history)
+  }
+  const historyIndex = createMemo(() => props.traceHistoryIndex ?? localHistoryIndex())
+  const setHistoryIndex = (index: number) => {
+    if (props.onTraceHistoryIndexChange) props.onTraceHistoryIndexChange(index)
+    else setLocalHistoryIndex(index)
+  }
+
+  // Create signals for controlled group collapse state
+  const [localExplicitlyCollapsed, setLocalExplicitlyCollapsed] = createSignal<ReadonlySet<string>>(new Set())
+  const explicitlyCollapsedGroups = createMemo(() => 
+    props.explicitlyCollapsedGroups ? new Set(props.explicitlyCollapsedGroups) : localExplicitlyCollapsed()
+  )
+  const setExplicitlyCollapsedGroups = (groups: ReadonlySet<string>) => {
+    if (props.onExplicitlyCollapsedGroupsChange) props.onExplicitlyCollapsedGroupsChange(groups)
+    else setLocalExplicitlyCollapsed(groups)
+  }
+
+  // Create signals for controlled notes state
+  const controlledNotes = createMemo(() => props.notes ?? notesStore)
+  
+  // Create a SetStoreFunction wrapper for controlled notes
+  // This mimics the solid-js/store SetStoreFunction signature
+  const setControlledNotes: SetStoreFunction<Annotations> = ((...args: any[]) => {
+    if (!props.onNotesChange) {
+      // Fall back to local store
+      return (setNotesStore as any)(...args)
+    }
+    
+    // Handle different SetStoreFunction call signatures:
+    // 1. setNotes(produceFn) - functional update
+    // 2. setNotes(id, key, value) - path update  
+    // 3. setNotes(id, newValue) - object update
+    // 4. setNotes(newState) - full state replacement
+    
+    const currentNotes = props.notes ?? notesStore
+    let newNotes: Annotations
+    
+    if (typeof args[0] === "function") {
+      // Functional update: setNotes(produceFn)
+      const produceFn = args[0]
+      const draft = JSON.parse(JSON.stringify(currentNotes)) as Annotations
+      produceFn(draft)
+      newNotes = draft
+    } else if (args.length === 1) {
+      // Full state replacement: setNotes(newState)
+      newNotes = args[0] as Annotations
+    } else if (args.length === 2) {
+      // Object update: setNotes(id, newValue)
+      const [id, value] = args
+      newNotes = { ...currentNotes, [id]: value } as Annotations
+    } else if (args.length >= 3) {
+      // Path update: setNotes(id, key, value)
+      const [id, key, value] = args
+      const existing = currentNotes[id] || ({} as Annotations[string])
+      newNotes = {
+        ...currentNotes,
+        [id]: { ...existing, [key]: value }
+      } as Annotations
+    } else {
+      return
+    }
+    
+    props.onNotesChange(newNotes)
+  }) as SetStoreFunction<Annotations>
+
+  const annotations = useGraphAnnotations({
+    model,
+    selection,
+    onAnnounce: announce,
+    notes: controlledNotes(),
+    setNotes: setControlledNotes,
+    nodeLookup,
+    // Controlled trace state (Phase 17.2 shared state)
+    traceKind: traceKind,
+    onTraceKindChange: setTraceKind,
+    traceSource: traceSource,
+    onTraceSourceChange: setTraceSource,
+    traceHistory: traceHistory,
+    onTraceHistoryChange: setTraceHistory,
+    traceHistoryIndex: historyIndex,
+    onTraceHistoryIndexChange: setHistoryIndex,
+  })
+
+  const edgeKinds = useEdgeKinds({ model })
+
+  const comparisonHook = useComparison({
+    model,
+    liveModel: () => props.liveModel ?? model(),
+    checkpoint: () => props.checkpoint,
+    turnCount: () => props.turnCount,
+    selection,
+    nodeLookup,
+  })
+
+  const groupCollapse = useGroupCollapse({
+    model,
+    selection: () => selection(),
+    nodeLookup,
+    descendantSelected: () => {
+      const sel = selection()
+      if (sel.length === 0) return false
+      const modelNodes = model()
+      const selectedNode = modelNodes.nodes.find((n) => n.id === sel[0])
+      if (!selectedNode) return false
+      // Check if any group has this node as a descendant
+      for (const node of modelNodes.nodes) {
+        if (node.clusterOf?.includes(selectedNode.id)) return true
+      }
+      return false
+    },
+    draggingDescendant: () => false, // TODO: track dragging state
+    instanceId,
+    // Controlled group collapse state (Phase 17.2 shared state)
+    explicitlyCollapsedGroups: explicitlyCollapsedGroups,
+    onExplicitlyCollapsedGroupsChange: setExplicitlyCollapsedGroups,
+  })
+
+  // Phase 4.11: Track group collapse/expand for a11y announcement
+  const [groupAnnouncement, setGroupAnnouncement] = createSignal<string | undefined>()
+  const [prevCollapsedGroups, setPrevCollapsedGroups] = createSignal<ReadonlySet<string>>(groupCollapse.collapsedGroups())
+  createEffect(() => {
+    const current = groupCollapse.collapsedGroups()
+    const previous = prevCollapsedGroups()
+    const added = new Set([...current].filter((id) => !previous.has(id)))
+    const removed = new Set([...previous].filter((id) => !current.has(id)))
+
+    for (const id of added) {
+      const node = model().nodes.find((n) => n.id === id)
+      if (node) {
+        const count = node.clusterOf?.length ?? 0
+        setGroupAnnouncement(
+          i18n.plural("ui.sessionGraph.a11y.groupCollapsed", count, {
+            label: node.label,
+            surface: surfaceLabel(),
+          }),
+        )
+        // Clear after announcement
+        setTimeout(() => setGroupAnnouncement(undefined), 100)
+      }
+    }
+    for (const id of removed) {
+      const node = model().nodes.find((n) => n.id === id)
+      if (node) {
+        const count = node.clusterOf?.length ?? 0
+        setGroupAnnouncement(
+          i18n.plural("ui.sessionGraph.a11y.groupExpanded", count, {
+            label: node.label,
+            surface: surfaceLabel(),
+          }),
+        )
+        setTimeout(() => setGroupAnnouncement(undefined), 100)
+      }
+    }
+    setPrevCollapsedGroups(current)
+  })
+
+  // See-map prompt: show when session has errors, compactions, or many turns (>10)
+  createEffect(() => {
+    if (props.shell === "bare") return
+    if (seeMapPromptDismissed()) return
+    if (!props.model) return
+    const m = props.model
+    const hasErrors = m.nodes.some((n) => n.kind === "error" || n.status === "failed")
+    const hasCompactions = m.nodes.some((n) => n.kind === "compaction")
+    const manyTurns = (m.turns?.length ?? 0) > 10
+    if (hasErrors || hasCompactions || manyTurns) {
+      setSeeMapPromptVisible(true)
+    }
+  })
+
+  // T18.3: the auto detail mode threshold
+  const AUTO_DETAIL_THRESHOLD = props.breakpoints?.detail ?? 640
+  const [renderer, setRenderer] = createSignal<GraphRenderer | undefined>()
+  // eslint-disable-next-line no-unassigned-vars -- assigned via ref in JSX
+  let rootEl!: HTMLDivElement
+  let canvasRegionEl: HTMLDivElement | undefined
+  let controllerBound = false
+
+  // Debug mode: enabled via ?debug URL param or localStorage.debugGraph
+  const { debugMode } = useDebugMode()
+
+  // Inspector resize
+  const { startResize } = useInspectorResize({
+    inspectorWidth,
+    setInspectorWidth,
+    rootEl: () => rootEl,
+  })
+
+  // Model building (scoped, turnScoped, scale, counts, windowAnchor, selectedTurn, selectedTurns)
+  const {
+    scoped,
+    counts,
+    windowAnchor,
+    selectedTurn,
+    selectedTurns,
+  } = useGraphViewModel({
+    model: demoModel,
+    facets,
+    graphSelection,
+    groupCollapse,
+    comparisonHook,
+    frame: props.frame,
+    followLog,
+    activeTurn: props.activeTurn,
+  })
+
+  const comparison = comparisonHook.comparison
+
+  const compareSelectedTurns = comparisonHook.compareSelectedTurns
+  const clearComparison = comparisonHook.clearComparison
+
+  const toggleGroupByID = groupCollapse.toggleGroupByID
+
+  // T18.1: when followLog is enabled and the active turn changes, frame it.
+  const [lastFramedTurn, setLastFramedTurn] = createSignal<string>()
+  createEffect(() => {
+    if (!followLog()) return
+    const turn = props.activeTurn
+    if (!turn) return
+    if (lastFramedTurn() === turn) return
+    if (!rendererReady()) return
+    if (!viewportTracker) return
+    const current = viewportTracker.viewport()
+    if (!current) return
+    setLastFramedTurn(turn)
+    viewportTracker.camera.frameReadable(turn)
+  })
+
+  // D2: signal for the newly streamed node to apply temporary D1 focus highlighting
+  const [streamingNodeId, setStreamingNodeId] = createSignal<string | undefined>()
+
+  // Width thresholds - use props.breakpoints or defaults
+  const narrowThreshold = props.breakpoints?.narrow ?? 768
+  const compactThreshold = props.breakpoints?.compact ?? 1030
+  const widthThresholds = createWidthThresholdTracker(
+    () => rootEl,
+    { narrow: narrowThreshold, compact: compactThreshold }
+  )
+  onMount(() => {
+    if (!rootEl) return
+    widthThresholds.observe((flags: { narrow?: boolean; compact?: boolean }) => {
+      if (flags.narrow !== undefined) setNarrow(flags.narrow)
+      if (flags.compact !== undefined) setCompact(flags.compact)
+    })
+
+    const handleCopyTraceOutline = () => annotations.copyTraceOutline()
+    window.addEventListener("graph:copy-trace-outline", handleCopyTraceOutline)
+    onCleanup(() => window.removeEventListener("graph:copy-trace-outline", handleCopyTraceOutline))
+  })
+
+  // Canvas region size tracking
+  onMount(() => {
+    if (!canvasRegionEl) return
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setCanvasSize((current) => (current.width === width && current.height === height ? current : { width, height }))
+    })
+    observer.observe(canvasRegionEl)
+    onCleanup(() => observer.disconnect())
+  })
+
+  const theme = () => props.theme ?? resolvedTheme()
+  // T18.3: effective detail mode
+  const effectiveDetailMode = createMemo<DetailMode>(() => {
+    const mode = detailMode()
+    if (mode !== "auto") return mode
+    return canvasSize().width >= AUTO_DETAIL_THRESHOLD ? "panel" : "window"
+  })
+  const [tier, setTier] = createSignal<DetailTier>("mid")
+  createEffect(() => {
+    const width = cardScreenWidth()
+    const current = tier()
+    setTier(detailTier(width, current))
+  })
+  // T11.3 — file card details
+  const copy = createCardCopy(i18n)
+
+  // Phase 4.11: Track group badge animations for token bursts in folded groups
+  const animatedBadgeGroups = useGroupBadgeAnimation(demoModel, groupCollapse.collapsedGroups)
+
+  const renderBand = createMemo(() =>
+    createBandTemplate(theme(), undefined, {
+      copy,
+      collapsedGroups: groupCollapse.collapsedGroups(),
+      animatedGroups: animatedBadgeGroups(),
+    }),
+  )
+
+  // Compute layout using extracted helper
+  const sessionKey = createMemo(() => {
+    const root = nodeIndex(demoModel()).get(demoModel().root)
+    return root ? sessionID(root) ?? "session" : "session"
+  })
+
+  // Geometry
+  const geometry = useGeometry(demoModel, layout, level, () => props.rules, scoped, props.positions, sessionKey)
+
+  // Display positions
+  const displayPositions = useDisplayPositions(geometry, manual) as () => Map<string, Position>
+
+  // Spatial memory: restore the frame the reader left, when the map still has the same structure.
+  // The camera is applied by the fit effects after the renderer mounts, so the mount fit does not
+  // overwrite the stored view.
+  let pendingCamera: SpatialMemoryCamera | undefined
+  const takeRestoredCamera = () => {
+    const camera = pendingCamera
+    pendingCamera = undefined
+    return camera
+  }
+  useSpatialMemory({
+    model: demoModel,
+    layout,
+    level,
+    positions: displayPositions,
+    selection: () => selection()[0],
+    camera: () => {
+      const viewport = viewportTracker?.viewport()
+      if (!viewport) return undefined
+      return {
+        zoom: viewport.zoom,
+        center: [viewport.center[0], viewport.center[1], viewport.center[2] ?? 0],
+      }
+    },
+    collapsedGroups: () => groupCollapse.explicitlyCollapsedGroups(),
+    owner: props.spatialMemoryOwner ?? true,
+    onRestore: (record) => {
+      manualPositions.setManual("positions", record.positions)
+      if (record.selection && nodeByID(demoModel(), record.selection)) select(record.selection, false)
+      setExplicitlyCollapsedGroups(new Set(record.collapsedGroups))
+      pendingCamera = record.camera
+    },
+  })
+
+  // Merged trace overlay (explicit trace + focus dimming)
+  const mergedTrace = createMergedTraceOverlay(annotations, demoModel, level, () => selection())
+
+  // Render card
+  const renderCard = useRenderCard(
+    {
+      renderCard: props.renderCard,
+      renderNodeHTML: props.renderNodeHTML,
+      rules: () => props.rules,
+      activeTurn: props.activeTurn,
+      diffSource: props.diffSource,
+      renderSummary: props.renderSummary,
+    },
+    {
+      theme,
+      tier,
+      selection,
+      model: demoModel,
+      copy,
+      mergedTrace,
+      comparison,
+      collapsedGroups: groupCollapse.collapsedGroups,
+      displayPositions,
+      i18n,
+      pins,
+      costLens,
+      streamingNode: () => streamingNodeId(),
+    },
+  )
+
+  // LE.1: whether a structural change is waiting for the canvas to apply the matching model before we
+  // frame it. Streaming model updates leave it false, so they never refit.
+  const [needsFit, setNeedsFit] = createSignal(true)
+  // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
+  const viewAnnouncement = createMemo(() =>
+    i18n.t("ui.sessionGraph.a11y.view", {
+      level: i18n.t(VOCABULARY_KEYS.level[level()]),
+      layout: i18n.t(VOCABULARY_KEYS.layout[layout()]),
+      depth: i18n.t(VOCABULARY_KEYS.depth[depth()]),
+      surface: surfaceLabel(),
+    }),
+  )
+  // T1.11: the summary layouts name their axes; the node-link graph names itself.
+  const turnNumbers = createMemo(() => new Map(demoModel().turns.map((id, index) => [id, index + 1])))
+  const axisLabels = createMemo(() => buildAxisLabels(scoped(), turnRows(scoped(), level()), layout(), turnNumbers(), i18n.t))
+
+  // T17.2 — a summary draws the level's units, and a cluster yields to its members below the
+  // overview. The render model draws the same set, so the two cannot disagree.
+  const drawn = createDrawnModel(scoped, layout, level)
+
+  // T1.18: the fit keeps a legible minimum scale; the renderer zooms in rather than shrink the
+  // content past it, and the reader pans the rest.
+  const fitOptions = createMemo(() => ({
+    minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1],
+    insets: undefined,
+  }))
+
+  // Viewport tracker - initialized early so memos below can use it
+  // eslint-disable-next-line prefer-const -- initialized after cardScreenWidth memo which reads it
+  let viewportTracker: ReturnType<typeof useGraphViewport> | undefined
+  // Card screen width memo - reacts to viewport changes
+  const cardScreenWidth = createMemo(() => {
+    const extent = viewportTracker?.viewport()?.extent
+    const size = canvasSize()
+    if (!extent?.width || !size.width) return CARD_SIZE[0]
+    return (CARD_SIZE[0] * size.width) / extent.width
+  })
+
+  // Initialize viewport tracker
+  viewportTracker = useGraphViewport({
+    renderer,
+    displayPositions: () => displayPositions() ?? new Map(),
+    contentIDs: () => contentIDs?.() ?? [],
+    fitOptions: () => fitOptions() ?? { minScale: MIN_CARD_HEIGHT_PX / CARD_SIZE[1], insets: undefined },
+    cardScreenWidth,
+    CARD_SIZE,
+    READABLE_CARD_WIDTH,
+    capabilities: () => capabilities(),
+    reducedMotion: () => props.reducedMotion ?? reducedMotion(),
+  })
+
+
+  // Expose camera methods on testHarness for component tests
+  createEffect(() => {
+    if (!viewportTracker || !props.testHarness) return
+    props.testHarness.fitContent = () => viewportTracker!.camera.fitContent()
+    props.testHarness.frameReadable = (id: string) => viewportTracker!.camera.frameReadable(id)
+    props.testHarness.zoomBy = (delta: number) => viewportTracker!.camera.zoomBy(delta as 1 | -1)
+    props.testHarness.pending = () => viewportTracker!.camera.pending()
+    props.testHarness.getViewport = () => viewportTracker!.viewport()
+  })
+
+  // Graph permalink hook (needs viewportTracker)
+  const { raiseLevelForFrame, focusFrame } = useGraphPermalink({
+    model,
+    frame: props.frame,
+    level,
+    setLevel,
+    renderer,
+    viewportTracker: viewportTracker!,
+    rendererReady,
+    selection: selectionObj,
+  })
+
+  // Graph export hook
+  const { handleExport, exportSelection } = useGraphExport({
+    theme,
+    sessionTitle: props.sessionTitle,
+    testedCommit: props.testedCommit,
+    selection: selection,
+    ordered: () => ordered(),
+  })
+
+  // Graph windows hook
+  const { openWindow } = useGraphWindows({
+    canvasSize,
+    windows: () => props.windows ?? [],
+    onOpenWindow: props.onOpenWindow ?? (() => {}),
+  })
+
+  // T17.4: when detailMode is "window" (or "auto" resolving to window), open a window for the selected node's detail.
+  createEffect(() => {
+    if (effectiveDetailMode() !== "window") return
+    const id = selection()[0]
+    if (!id) return
+    openWindow("node", id)
+  })
+
+  // Graph detail mode hooks
+  const { changeDetailMode, changeDetailFraming, changeDepth, changeLayout } = useGraphDetailMode({
+    setDetailMode,
+    setDetailFraming,
+    setProjection,
+    setDepth,
+    setLayout,
+    onDetailModeChange: props.onDetailModeChange,
+    onDetailFramingChange: props.onDetailFramingChange,
+    onProjectionChange: props.onProjectionChange,
+    onDepthChange: props.onDepthChange,
+    onLayoutChange: props.onLayoutChange,
+    setPopoverDismissed,
+  })
+
+  // Sync compactionAdvisor state with windows array
+  createEffect(() => {
+    const windows = props.windows ?? []
+    const hasCompactionAdvisor = windows.some((w) => w.kind === "compactionAdvisor")
+    if (hasCompactionAdvisor !== compactionAdvisor()) {
+      state.setCompactionAdvisor(hasCompactionAdvisor)
+    }
+  })
+
+  // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
+  // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
+  // Gate budget recalculation on selection change or camera rest (not every viewport update).
+  const { budgetCenter } = useBudgetCenter({
+    selection: () => [...selection()],
+    displayPositions,
+    viewportTracker: () => viewportTracker,
+  })
+
+  const budget = createBudgetedModel(drawn, displayPositions, () => selection(), budgetCenter)
+
+  // T17.5 — the camera's resting place: the centre the camera last came to rest at. The card
+  // budget follows the camera, and a budget that changed on every frame would rebuild the map on
+  // every frame and make the cards churn under the reader's hand.
+  // The panel takes layout width and reframes the camera when it opens; the popover and the card do
+  // neither, so the map does not move under the reader when a node is selected.
+  const selectedNode = createMemo(() => {
+    const id = selection()[0]
+    return id ? nodeByID(demoModel(), id) : undefined
+  })
+
+  const inspectorOpen = createMemo(() => effectiveDetailMode() === "panel" && !!selectedNode() || (narrow() && inspectorSheetOpen()))
+
+  // Reactive zoom percent for toolbar
+  const zoomPercent = createMemo(() => viewportTracker!.camera.zoomPercent())
+
+  const setViewport = (vp: { zoom: number; center: number[] } | undefined) => {
+    if (!vp) {
+      viewportTracker!.setViewport(undefined)
+      return
+    }
+    const current = viewportTracker!.viewport()
+    const center = [vp.center[0], vp.center[1], vp.center[2] ?? 0] as const
+    if (
+      current &&
+      current.zoom === vp.zoom &&
+      current.center[0] === center[0] &&
+      current.center[1] === center[1] &&
+      (current.center[2] ?? 0) === center[2]
+    ) {
+      return
+    }
+    viewportTracker!.setViewport({
+      zoom: vp.zoom,
+      center: [...center],
+      extent: current?.extent,
+      band: current?.band,
+    })
+  }
+
+  // M4 — the card budget answers the viewport and the density profile, not only the level: a small
+  // pane spends fewer cards, a large display more. The camera chooses which nodes win the budget.
+  const cardBudget = createMemo(() =>
+    viewportCardBudget(level(), canvasSize(), props.density ?? "comfortable"),
+  )
+
+  // Build render model using extracted helper
+  const { renderModel, contentIDs, ordered } = useRenderModel({
+    model: demoModel,
+    layout,
+    level,
+    files,
+    displayPositions,
+    budget,
+    renderCard,
+    renderBand,
+    axisLabels,
+    windowAnchor,
+    i18n,
+    manualPositions: manual.positions,
+    manualSizes: manual.sizes,
+    hiddenEdgeKinds: edgeKinds.hiddenEdgeKinds,
+    drawn,
+    cardBudget,
+    neighborhoodOpacity: createMemo(() => {
+      const no = props.neighborhoodOpacity;
+      if (typeof no === "function") return no();
+      return no ?? new Map<string, number>();
+    }),
+  })
+
+  // B1 — the selection verbs. frameSelection and exportSelection need camera/ordered (defined later).
+  // B1 — the selection verbs. exportSelection needs camera/ordered (defined later).
+  const keepOnlySelection = graphSelection.keepOnlySelection
+  const copySelectedPaths = graphSelection.copySelectedPaths
+  const clearSelection = graphSelection.clearSelection
+
+  // Popover/peek logic extracted to hook
+  const {
+    popoverNode,
+    popoverPlacement,
+    popoverVisible,
+    peekFrame,
+    peekEdge,
+    noteTargetNode,
+    noteAnchor,
+    peekAnchor,
+    peekNode,
+    peekPlacement,
+  } = usePopover({
+    model,
+    peek,
+    effectiveDetailMode,
+    selectedNode,
+    hovered,
+    edgeHovered,
+    popoverDismissed,
+    selection: graphSelection.selection,
+    annotations,
+    renderer,
+    viewportTracker,
+    canvasSize,
+    cardScreenWidth,
+  })
+
+  // Graph navigation hook
+  const { expandToGraph, toggleFiles, togglePeek, toggleTrustLens, toggleCostLens, toggleCompactionAdvisor, dismissDetail, openInTranscript, fitSubtree, exitDrillDown, canDrillDown } = useGraphNavigation({
+    model,
+    layout,
+    setLayout,
+    setFiles,
+    setPeek,
+    onFilesChange: props.onFilesChange,
+    onPeekChange: props.onPeekChange,
+    setTrustLens: state.setTrustLens,
+    onTrustLensChange: props.onTrustLensChange,
+    setCostLens: state.setCostLens,
+    setCompactionAdvisor: state.setCompactionAdvisor,
+    onCompactionAdvisorChange: props.onCompactionAdvisorChange,
+    select,
+    viewportTracker: viewportTracker!,
+    renderer,
+    onOpenTranscript: props.onOpenTranscript,
+    popoverVisible,
+    setPopoverDismissed,
+    fitOptions,
+    enterDrillDown: state.enterDrillDown,
+    exitDrillDown: state.exitDrillDown,
+    canDrillDown: state.canDrillDown,
+    maxDrillDepth,
+    state,
+  })
+
+  // LE.12: the changed-files rail reads the model through the pure selector, so it tracks streaming.
+  const changedFilesList = createMemo(() => changedFiles(demoModel()))
+
+  const { openSearch, toggleSearch, jumpTo } = useGraphSearch({
+    searchOpen,
+    setSearchOpen,
+    searchInitial,
+    setSearchInitial,
+    model: demoModel,
+    selectedNode,
+    selection: graphSelection.selection,
+    select: graphSelection.select,
+    effectiveDetailMode,
+    inspectorSheetOpen,
+    setInspectorSheetOpen,
+    level,
+    setLevel,
+    viewportTracker,
+    openInTranscript,
+    i18n,
+  })
+
+  // Keyboard handling extracted to hook (must be after all dependencies are declared)
+  const { handleRegionKeyDown } = useGraphKeyboard({
+    model,
+    selection: () => selection(),
+    onSelect: (id, add) => select(id, add),
+    camera: {
+      fitContent: () => viewportTracker!.camera.fitContent(),
+      frameReadable: (id: string) => viewportTracker!.camera.frameReadable(id),
+      zoomBy: (delta: number) => viewportTracker!.camera.zoomBy(delta as 1 | -1),
+      pending: () => viewportTracker!.camera.pending(),
+    },
+    annotations,
+    graphSelection,
+    groupCollapse,
+    openWindow,
+    setFindInitialTab,
+    openSearch,
+    setLevel,
+    setGroupMenu,
+    groupMenu,
+    dismissDetail,
+    undoManual,
+    redoManual,
+    onGroupToggle: toggleGroupByID,
+    layouts: props.layouts ?? LAYOUTS,
+    changeLayout,
+    instanceId,
+    isActiveInstance,
+    setActiveInstance: setIsActiveInstance,
+  })
+
+  // Copy view URL with current query parameters
+  const copyView = () => {
+    const query = facetsToQuery(facets())
+    props.onCopyView?.(query)
+  }
+
+  // Mirror controlled props and handle capability fallback
+  function mirrorProps() {
+    mirror(() => props.level, setLevel)
+    mirror(() => props.projection, setProjection)
+    mirror(() => props.depth, setDepth)
+    mirror(() => props.layout, setLayout)
+    mirror(() => props.files, setFiles)
+    mirror(() => props.detailMode, setDetailMode)
+    mirror(() => props.peek, setPeek)
+    mirror(() => props.followLog, setFollowLog)
+    mirror(() => props.followMode, setFollowMode)
+    mirror(() => props.selectNewOnStream, setSelectNewOnStream)
+    mirror(
+      () => props.facetQuery,
+      (query) => setFacets(facetsFromQuery(query)),
+    )
+  }
+  mirrorProps()
+  useCapabilityFallback(capabilities, projection, depth, setProjection, setDepth)
+
+  // Fit effects (needsFit, selection framing, structural refit)
+  useFitEffects(
+    {
+      refitKey: props.refitKey,
+      arrangement: props.arrangement,
+      layout,
+      inspectorOpen,
+      files,
+      level,
+      projection,
+      depth,
+    },
+    {
+      renderer,
+      viewportTracker,
+      contentIDs,
+      fitOptions,
+      setNeedsFit,
+      needsFit,
+      detailFraming,
+      selection: selectionObj,
+      rendererReady,
+      inspectorOpen,
+      takeRestoredCamera,
+    },
+  )
+
+  // Apply model to renderer
+  const applyModel = createApplyModel(
+    raiseLevelForFrame,
+    focusFrame,
+    needsFit,
+    setNeedsFit,
+    viewportTracker,
+    contentIDs,
+    fitOptions,
+  )
+
+  // Build context object for GraphCanvasRegion
+  const canvasRegionProps = useCanvasRegionProps(props, {
+    model,
+    theme,
+    renderModel,
+    projection,
+    depth,
+    layout,
+    level,
+    selection: () => selection(),
+    select,
+    expandToGraph,
+    onHover: setHovered,
+    onEdgeHover: setEdgeHovered,
+    onEdgeSelect: (id: string) => {
+      const edge = model().edges.find((item) => item.id === id)
+      if (!edge) return
+      select(edge.source)
+      annotations.startTrace("related", edge.source)
+    },
+    onGroupToggle: toggleGroupByID,
+    onGroupMenu: (id: string, at: { x: number; y: number }) => {
+      const rect = canvasRegionEl?.getBoundingClientRect()
+      if (rect) setGroupMenu({ id, x: at.x - rect.left, y: at.y - rect.top })
+    },
+    moveNodes,
+    resizeNode,
+    cardFacing: () => cardFacing(),
+    applyModel,
+    preferredRenderer: props.preferredRenderer as () => "spacegraph" | undefined,
+    rendererOverrides: props.rendererOverrides,
+    reducedMotion: () => props.reducedMotion ?? reducedMotion(),
+    detailMode,
+    effectiveDetailMode,
+    files,
+    debugMode,
+    peekFrame,
+    peekEdge,
+    popoverVisible,
+    popoverNode,
+    popoverPlacement,
+    setPopoverDismissed,
+    annotations,
+    noteTargetNode,
+    noteAnchor,
+    searchOpen,
+    searchInitial,
+    setSearchOpen,
+    jumpTo,
+    contentIDs,
+    palette: paletteSources(),
+    onPaletteAction: props.onPaletteAction,
+    onPaletteLens: props.onPaletteLens,
+    onPaletteSurface: props.onPaletteSurface,
+    onPaletteSavedQuery: (entry: PaletteEntry) => {
+      if (entry.savedQuery) setFacets(savedQueryFacets(entry.savedQuery))
+      props.onPaletteSavedQuery?.(entry)
+    },
+    legendOpen,
+    setLegendOpen,
+    edgeKinds,
+    rules: () => props.rules,
+    galleryOpen,
+    setGalleryOpen,
+    changeLayout,
+    groupMenu,
+    setGroupMenu,
+    groupCollapse,
+    camera: viewportTracker!.camera,
+    toggleGroupByID,
+    modelForGroupMenu: model,
+    graphSelection,
+    handleRegionKeyDown,
+    recordInteraction,
+    error,
+    onBack: props.onBack,
+    diffSource: props.diffSource,
+    link: props.link,
+    onOpenTranscript: props.onOpenTranscript,
+    onOpenSession: props.onOpenSession,
+    onOpenWindow: openWindow,
+    onCopyView: copyView,
+    renderSummary: props.renderSummary,
+    viewAnnouncement,
+    groupAnnouncement,
+    ordered,
+    a11yInstructionsId,
+    surfaceLabel: surfaceLabel(),
+    announce,
+    i18n,
+    canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
+    onViewportChange: (next: any) => {
+      viewportTracker!.camera.report(next)
+      viewportTracker!.setResting(next)
+      setViewport(next)
+      recordInteraction()
+    },
+    onNodesAdded: (nodes: readonly RenderNode[]) => {
+      if (!rendererReady()) return
+      if (!viewportTracker) return
+      const currentViewport = viewportTracker.viewport()
+      if (!currentViewport) return
+
+      // P3.3: Select new nodes when streaming if selectNewOnStream is enabled
+      if (selectNewOnStream()) {
+        const newestNode = nodes[nodes.length - 1]
+        if (newestNode) {
+          graphSelection.select(newestNode.id)
+        }
+      }
+
+      // P3.1: Use follow mode to determine camera behavior
+      const mode = followMode()
+      if (mode === "off") return
+
+      // Convert RenderNode to GraphNode for computeFollowFrame
+      const graphNodes = nodes.map((n) => ({
+        id: n.id,
+        kind: n.kind,
+        label: n.label,
+        status: n.status ?? "neutral",
+      }))
+
+      // Get position function from displayPositions
+      const positionOf = (id: string) => {
+        const pos = displayPositions().get(id)
+        if (pos) return { x: pos.x, y: pos.y, z: pos.z ?? 0 }
+        return undefined
+      }
+
+      const followResult = computeFollowFrame({
+        newNodes: graphNodes,
+        currentViewport,
+        followMode: mode,
+        positionOf,
+      })
+
+      if (followResult) {
+        if (followResult.nodeId) {
+          // Use frame to focus the node - this will animate the camera
+          viewportTracker.camera.frame([followResult.nodeId])
+          // D2: apply temporary D1 focus highlighting for node+focus mode
+          if (followResult.applyFocusHighlight) {
+            setStreamingNodeId(followResult.nodeId)
+            setTimeout(() => setStreamingNodeId(undefined), followResult.focusHighlightDuration)
+          }
+        }
+      }
+    },
+    setViewport,
+    viewportTracker: viewportTracker!,
+    onRenderer: (r: GraphRenderer | undefined) => {
+      setRenderer(r)
+      props.onRenderer?.(r)
+      // Bind the GraphController to the renderer so selection changes propagate to the SpaceGraph core
+      if (r && !controllerBound) {
+        const selObj = graphSelection.selection
+        const controller = (selObj as unknown as { controller: import("spacegraphjs/control").GraphController }).controller
+        if (controller) {
+          controller.bind(r)
+          controllerBound = true
+        }
+      }
+    },
+    onRendererMounted: (renderer: GraphRenderer, id: RendererID) => {
+      setCapabilities(renderer.capabilities)
+      props.onRenderer?.(renderer)
+      props.onRendererMounted?.(renderer, id)
+    },
+    onReady: () => {
+      setRendererReady(true)
+    },
+    onError: setError,
+    // Drill-down (Phase 10.3)
+    exitDrillDown,
+    canDrillDown,
+    drillDownStack: state.drillDownStack,
+  })
+
+  // Build context value for GraphViewProvider
+  const contextValue = {
+    // Instance identity
+    instanceId,
+    bus,
+    isActiveInstance,
+    setActiveInstance: setIsActiveInstance,
+
+    // Model & theme
+    model,
+    theme,
+    level,
+    setLevel,
+    projection,
+    setProjection,
+    depth,
+    setDepth,
+    layout,
+    setLayout,
+    files,
+    setFiles,
+    trustLens,
+    setTrustLens,
+    costLens,
+    setCostLens: state.setCostLens,
+    compactionAdvisor,
+    setCompactionAdvisor: state.setCompactionAdvisor,
+    detailMode,
+    setDetailMode,
+    detailFraming,
+    setDetailFraming,
+    peek,
+    setPeek,
+    followLog,
+    setFollowLog,
+    /** P3.1: Follow mode for live streaming updates */
+    followMode,
+    setFollowMode,
+    /** P3.3: When enabled, new nodes arriving during streaming are automatically selected. */
+    selectNewOnStream,
+    setSelectNewOnStream,
+    /** P1.3: Neighborhood focus mode */
+    focus,
+    setFocus,
+    toggleFocus,
+    /** P2.2: Quick filter chips - composition mode (OR/AND) */
+    filterComposeMode: state.filterComposeMode,
+    setFilterComposeMode: state.setFilterComposeMode,
+    facets,
+    setFacets,
+
+    // Renderer
+    renderer: renderer(),
+    setRenderer,
+    rendererID: () => rendererID(),
+    setRendererID,
+    rendererReady,
+    setRendererReady,
+    fallback: () => false,
+    setFallback: () => {},
+    error,
+    setError,
+    capabilities: () => capabilities(),
+
+    // Responsive
+    narrow,
+    setNarrow,
+    compact,
+    setCompact,
+    inspectorWidth,
+    setInspectorWidth,
+    inspectorSheetOpen,
+    setInspectorSheetOpen,
+    canvasSize,
+    setCanvasSize,
+
+    // Selection & navigation
+    selection: graphSelection.selection,
+    select: graphSelection.select,
+    graphSelection,
+    annotations,
+    edgeKinds,
+    groupCollapse,
+    comparisonHook,
+
+    // Manual layout
+    manual: manualPositions.manual,
+    setManual: manualPositions.setManual,
+    manualHistory: manualPositions.history,
+    setManualHistory: () => {},
+    manualFuture: manualPositions.future,
+    setManualFuture: () => {},
+    pushHistory: manualPositions.pushHistory,
+    undoManual: manualPositions.undoManual,
+    redoManual: manualPositions.redoManual,
+
+    // Viewport
+    viewport: () => viewportTracker!.viewport(),
+    setViewport,
+    camera: () => viewportTracker!.camera,
+    viewportTracker: () => viewportTracker!,
+
+    // Overlays
+    peekFrame: () => peekFrame(),
+    peekEdge: () => peekEdge(),
+    noteTargetNode: () => noteTargetNode(),
+    noteAnchor,
+    effectiveDetailMode: () => effectiveDetailMode(),
+    popoverPlacement: () => popoverPlacement(),
+    popoverVisible: () => popoverVisible(),
+    popoverNode: () => popoverNode(),
+    setPopoverDismissed,
+    groupMenu: () => groupMenu(),
+    setGroupMenu,
+    toggleGroupByID,
+    selectedTurn: () => selectedTurn(),
+    toggleBillboard,
+    cardFacing,
+
+    // Render model
+    renderModel,
+    ordered,
+
+    // Computed values
+    displayPositions,
+    geometry: () => geometry(),
+    layoutHistory: () => new Map(),
+    sessionKey,
+    viewKey: () => instanceId,
+    sizedCard: (_node: GraphNode) => [CARD_SIZE[0], CARD_SIZE[1]] as const,
+    rulesKey: () => "",
+    needsFit: () => needsFit(),
+    setNeedsFit,
+    turnNumbers: () => turnNumbers(),
+    axisLabels: () => axisLabels(),
+    drawn: () => drawn(),
+    resting: () => viewportTracker!.resting(),
+    budget: () => budget(),
+    applyManualLayout: (m: RenderModel) => m,
+    contentIDs,
+    fitOptions,
+    inspectorOpen: () => inspectorOpen(),
+    cardScreenWidth: () => cardScreenWidth(),
+    peekNode: () => peekNode(),
+    peekAnchor,
+    peekPlacement: () => peekPlacement(),
+    changedFilesList: () => changedFilesList(),
+    fitSubtree,
+    windowAnchor: () => windowAnchor(),
+    activeTurn: () => props.activeTurn,
+    scopeBase: (source: GraphViewData) => source,
+    turnOf: (id: string | undefined) => id ? nodeByID(demoModel(), id)?.turnID : undefined,
+    scoped: () => scoped(),
+    counts: () => counts(),
+    comparison: () => comparison(),
+    compareSelectedTurns,
+    clearComparison,
+
+    // Handlers
+    changeDetailMode,
+    changeDetailFraming,
+    changeProjection: setProjection,
+    changeDepth,
+    changeLayout,
+    expandToGraph,
+    toggleFiles,
+    togglePeek,
+    toggleTrustLens,
+    toggleCostLens,
+    toggleCompactionAdvisor,
+    dismissDetail,
+    openInTranscript,
+    raiseLevelForFrame,
+    focusFrame: (r: GraphRenderer | undefined) => r,
+    framed: () => undefined,
+    setFramed: () => {},
+    openSearch,
+    toggleSearch,
+    searchOpen,
+    setSearchOpen,
+    searchInitial,
+    setSearchInitial,
+    legendOpen,
+    setLegendOpen,
+    galleryOpen,
+    setGalleryOpen,
+    findInitialTab,
+    setFindInitialTab,
+    a11yInstructionsId: () => a11yInstructionsId,
+    announce,
+    i18n: () => i18n,
+    refitKey: () => props.refitKey,
+    arrangement: () => props.arrangement,
+    handleRegionKeyDown,
+    setHovered,
+    setEdgeHovered,
+    onZoomOut: () => viewportTracker!.camera.zoomBy(-1),
+    onZoomIn: () => viewportTracker!.camera.zoomBy(1),
+    zoomPercent: () => zoomPercent(),
+    zoomOutDisabled: () => level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min,
+    zoomInDisabled: () => (viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max,
+    onFit: () => viewportTracker!.camera.fitContent(),
+    onCopyView: copyView,
+    onExport: handleExport,
+    onBack: props.onBack,
+    onSplitView: props.onSplitView,
+    endInset: () => props.endInset,
+    sessionTitle: () => props.sessionTitle,
+    testedCommit: () => props.testedCommit,
+    canvasRegionRef: (el: HTMLDivElement | undefined) => { canvasRegionEl = el },
+    rendererOverrides: () => props.rendererOverrides,
+    preferredRenderer: props.preferredRenderer as () => "spacegraph" | undefined,
+    onRenderer: props.onRenderer,
+    renderCard: () => props.renderCard,
+    renderSummary: () => props.renderSummary,
+    diffSource: () => props.diffSource,
+    link: () => props.link,
+    onOpenTranscript: props.onOpenTranscript,
+    onOpenSession: props.onOpenSession,
+    onActionNavigate: props.onActionNavigate,
+    onActionReveal: props.onActionReveal,
+    onActionCopy: props.onActionCopy,
+    onActionRun: props.onActionRun,
+    onOpenWindow: openWindow,
+    rules: () => props.rules,
+    onRulesChange: props.onRulesChange,
+    onSelect: props.onSelect,
+    onProjectionChange: props.onProjectionChange,
+    onDepthChange: props.onDepthChange,
+    onLayoutChange: props.onLayoutChange,
+    onFilesChange: props.onFilesChange,
+    onDetailModeChange: props.onDetailModeChange,
+    onDetailFramingChange: props.onDetailFramingChange,
+    onPeekChange: props.onPeekChange,
+    onTurnMap: props.onTurnMap,
+    applyModel,
+    selectedTurns: () => selectedTurns(),
+    scale: () => ({ x: 1, y: 1, z: 1 }),
+    viewportTrackerRef: () => ({ current: viewportTracker }),
+    cardScreenWidthSignal: () => ({ get: () => cardScreenWidth(), set: (_v: number) => {} }),
+    jumpTo,
+    // Additional handlers for GraphChrome
+    exportSelection,
+    onSearch: toggleSearch,
+  }
+
+  const showChrome = props.chrome ?? true
+
+  return (
+    <GraphViewProvider value={contextValue}>
+      <div
+        ref={rootEl}
+        data-component="session-graph"
+        data-slot="graph"
+        class="flex h-full w-full flex-col overflow-hidden"
+        classList={{ "min-h-0": props.shell === "bare" }}
+      >
+        {showChrome && (
+          <GraphChrome
+            show={true}
+            hideBelow={0}
+            checkpoint={props.checkpoint}
+            turnCount={props.turnCount}
+            onCheckpoint={props.onCheckpoint}
+            liveModel={props.liveModel}
+            onOpenWindow={openWindow}
+            onRulesChange={props.onRulesChange}
+            onTurnMap={props.onTurnMap ? () => {
+              const turnID = selectedTurn()
+              if (!turnID) return
+              Metrics.count("turn-map")
+              props.onTurnMap?.(turnID)
+            } : undefined}
+            onExpandGraph={
+              isSummaryLayout(layout()) && selection().length > 0
+                ? () => expandToGraph(selection()[0]!)
+                : undefined
+            }
+            onExport={handleExport}
+            renderModel={ordered()}
+            onBack={props.onBack}
+            onSplitView={props.onSplitView}
+            searching={searchOpen()}
+            compact={compact()}
+            endInset={props.endInset}
+            arrangement={props.arrangement}
+            onArrangementChange={props.onArrangementChange}
+            arrangementSide={props.arrangementSide}
+            onArrangementSideChange={props.onArrangementSideChange}
+            detailMode={detailMode()}
+            onDetailModeChange={changeDetailMode}
+            peek={peek()}
+            onPeekChange={setPeek}
+            followLog={followLog()}
+            onFollowLogChange={setFollowLog}
+            /** P3.1: Follow mode for live streaming updates */
+            followMode={followMode()}
+            onFollowModeChange={setFollowMode}
+            /** P3.3: When enabled, new nodes arriving during streaming are automatically selected. */
+            selectNewOnStream={selectNewOnStream()}
+            onSelectNewOnStreamChange={setSelectNewOnStream}
+            manualHistoryLength={history().length}
+            manualFutureLength={future().length}
+            onUndoManual={undoManual}
+            onRedoManual={redoManual}
+            zoomPercent={zoomPercent()}
+            onZoomOut={() => viewportTracker!.camera.zoomBy(-1)}
+            onZoomIn={() => viewportTracker!.camera.zoomBy(1)}
+            zoomOutDisabled={level() === "overview" || (viewportTracker!.viewport()?.zoom ?? 0) <= viewportTracker!.camera.zoomLimits().min}
+            zoomInDisabled={(viewportTracker!.viewport()?.zoom ?? 0) >= viewportTracker!.camera.zoomLimits().max}
+            onFit={viewportTracker!.camera.fitContent}
+            onCopyView={copyView}
+            legend={legendOpen()}
+            onToggleLegend={() => setLegendOpen((open) => !open)}
+            gallery={galleryOpen()}
+            onToggleGallery={() => setGalleryOpen((open) => !open)}
+            billboard={cardFacing() === "camera"}
+            onToggleBillboard={toggleBillboard}
+            detailFraming={detailFraming()}
+            onDetailFramingChange={changeDetailFraming}
+            layout={layout()}
+            layouts={props.layouts}
+            onLayoutChange={changeLayout}
+            files={files()}
+            onFilesChange={toggleFiles}
+            trustLens={trustLens()}
+            onTrustLensChange={toggleTrustLens}
+            enableCostLens={props.enableCostLens}
+            costLens={costLens()}
+            onToggleCostLens={toggleCostLens}
+            compactionAdvisor={compactionAdvisor()}
+            enableCompactionAdvisor={props.enableCompactionAdvisor}
+            onCompactionAdvisorChange={toggleCompactionAdvisor}
+            onSearch={toggleSearch}
+            savedQueries={savedQueries()}
+            onSaveQuery={() => changeSavedQueries(saveQuery(savedQueries(), facets()))}
+            onRemoveSavedQuery={(query: string) => changeSavedQueries(removeQuery(savedQueries(), query))}
+            onApplySavedQuery={(query: SavedQuery) => setFacets(savedQueryFacets(query))}
+            frame={props.frame}
+            activeTurn={props.activeTurn}
+            model={model()}
+            selectedTurn={selectedTurn}
+            selection={() => selection()}
+            comparisonHook={{
+              comparedTurns: () => comparisonHook.comparedTurns(),
+              comparison: () => comparison(),
+              compareSelectedTurns,
+              clearComparison,
+            }}
+            groupCollapse={{
+              selectedGroup: () => groupCollapse.selectedGroup(),
+              collapsedGroups: () => groupCollapse.collapsedGroups(),
+              toggleGroup: groupCollapse.toggleGroup,
+              collapseOtherGroups: groupCollapse.collapseOtherGroups,
+            }}
+            graphSelection={{
+              crumbs: () => graphSelection.crumbs(),
+              keepOnlySelection,
+              copySelectedPaths,
+              clearSelection,
+            }}
+            annotations={{
+              openNoteComposer: annotations.openNoteComposer,
+            }}
+            pinned={selection()[0] ? pins().has(selection()[0]!) : false}
+            onTogglePin={() => togglePin(selection()[0])}
+            error={error() as string | undefined}
+            demoDismissed={demoDismissed()}
+            seeMapPromptDismissed={seeMapPromptDismissed()}
+            showSeeMapPrompt={showSeeMapPrompt()}
+            trustLensActive={trustLensActive()}
+            i18n={i18n}
+            shell={props.shell}
+            followLogForScale={followLog()}
+            frameTurn={() => props.frame}
+            onDismissSeeMapPrompt={() => setSeeMapPromptDismissed(true)}
+            onDismissDemo={() => setDemoDismissed(true)}
+          />
+        )}
+        <div class="relative flex min-h-0 flex-1" classList={{ "flex-col": narrow() }}>
+          <Show when={files() && !isSummaryLayout(layout()) && !narrow()}>
+            <GraphFileRail
+              files={changedFilesList()}
+              selection={selection()}
+              onSelect={(id) => select(id)}
+            />
+          </Show>
+          <GraphCanvasRegion {...canvasRegionProps} renderNodeWidget={props.renderNodeWidget} />
+          <GraphWindowManager
+            windows={props.windows ?? []}
+            onWindowsChange={props.onWindowsChange ?? (() => {})}
+            onOpenWindow={props.onOpenWindow ?? (() => {})}
+            model={model}
+            theme={theme()}
+            layout={layout()}
+            setLayout={setLayout}
+            canvasSize={canvasSize()}
+            renderer={renderer()}
+            viewport={viewportTracker!.viewport()}
+            displayPositions={displayPositions}
+            selection={selectionObj}
+            annotations={annotations}
+            edgeKinds={edgeKinds}
+            comparison={comparisonHook}
+            diffSource={props.diffSource}
+            link={props.link}
+            onOpenTranscript={props.onOpenTranscript}
+            onOpenSession={props.onOpenSession}
+            onActionNavigate={props.onActionNavigate}
+            rules={props.rules ?? []}
+            onRulesChange={props.onRulesChange}
+            findInitialTab={findInitialTab()}
+            i18n={i18n}
+            renderSummary={props.renderSummary}
+            facets={facets()}
+            onFacetsChange={setFacets}
+          />
+          <Show when={narrow() && selectedNode() && !inspectorSheetOpen()}>
+            <button
+              type="button"
+              class="absolute bottom-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-surface-base shadow-lg border border-border-weaker-base text-text-base"
+              style={{ "inset-inline-end": "1rem" }}
+              onClick={() => setInspectorSheetOpen(true)}
+              aria-label={i18n.t("ui.sessionGraph.inspector.openSheet")}
+              data-slot="graph-inspector-fab"
+            >
+              <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 3h12v10H2zM7 3v10M11 3v10" />
+              </svg>
+            </button>
+          </Show>
+          <Show when={narrow() && inspectorSheetOpen()}>
+            {renderInspectorPanel({
+              i18n,
+              model,
+              selectedNode,
+              annotations,
+              diffSource: props.diffSource,
+              renderSummary: props.renderSummary,
+              link: props.link,
+              onCopyView: copyView,
+              onSelect: select,
+              onOpenTranscript: props.onOpenTranscript ? openInTranscript : undefined,
+              onOpenSession: props.onOpenSession,
+              openInTranscript,
+              sheet: true,
+              title: selectedNode()?.label ?? i18n.t("ui.sessionGraph.inspector.title"),
+              onClose: () => setInspectorSheetOpen(false),
+            })}
+          </Show>
+          <Show when={effectiveDetailMode() === "panel"}>
+            <Show when={inspectorOpen() && !narrow()}>
+              <div
+                data-slot="graph-inspector-resize"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={i18n.t("ui.sessionGraph.inspector.resize")}
+                style={{ width: '4px', 'min-width': '4px', 'flex-shrink': 0, 'flex-basis': '4px' }}
+                class="cursor-col-resize touch-none hover:bg-border-weaker-base"
+                onPointerDown={startResize}
+              />
+            </Show>
+            <div
+              classList={{
+                "shrink-0": true,
+                "h-0 w-0 overflow-hidden": !inspectorOpen(),
+                "w-full border-t border-border-weaker-base": !!(inspectorOpen() && narrow()),
+                "border-s border-border-weaker-base": !!(inspectorOpen() && !narrow()),
+              }}
+              style={
+                inspectorOpen() && !narrow()
+                  ? { width: `${inspectorWidth()}px`, "max-width": "60%" }
+                  : inspectorOpen() && narrow()
+                    ? { height: "50%" }
+                    : undefined
+              }
+              data-slot="graph-inspector-gutter"
+              data-collapsed={!inspectorOpen()}
+              data-layout={narrow() ? "sheet" : "side"}
+            >
+              {renderInspectorPanel({
+                i18n,
+                model,
+                selectedNode,
+                annotations,
+                diffSource: props.diffSource,
+                renderSummary: props.renderSummary,
+                link: props.link,
+                onCopyView: copyView,
+                onSelect: select,
+                onOpenTranscript: props.onOpenTranscript ? openInTranscript : undefined,
+                onOpenSession: props.onOpenSession,
+                openInTranscript,
+              })}
+            </div>
+          </Show>
+        </div>
+      </div>
+    </GraphViewProvider>
+  )
+}

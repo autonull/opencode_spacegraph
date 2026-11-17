@@ -10,6 +10,10 @@ export type GraphA11yProps = {
   instructionsId?: string
   /** T6.8: what the view changed (level, representation, depth); announced when it changes. */
   announcement?: string
+  /** Optional label for the current surface (map/hybrid/transcript). */
+  surfaceLabel?: string
+  /** Optional group announcement (collapsed/expanded). */
+  groupAnnouncement?: string
   onSelect: (id: string) => void
   onEscape?: () => void
 }
