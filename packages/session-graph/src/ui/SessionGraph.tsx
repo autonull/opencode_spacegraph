@@ -346,6 +346,11 @@ export type SessionGraphProps = {
    */
   shell?: "full" | "bare"
   /**
+   * Overrides the see-map prompt. Graph-first surfaces pass false; the prompt is meant for the
+   * transcript, where it points the reader at the map.
+   */
+  showSeeMapPrompt?: boolean
+  /**
    * Responsive breakpoints. Defaults match current GraphView behavior.
    */
   breakpoints?: { narrow?: number; compact?: number; detail?: number }
@@ -1555,8 +1560,9 @@ export const SessionGraph = (props: SessionGraphProps) => {
       props.onRenderer?.(renderer)
       props.onRendererMounted?.(renderer, id)
     },
-    onReady: () => {
+    onReady: (info: { fallback: boolean }) => {
       setRendererReady(true)
+      state.setFallback(info.fallback)
     },
     onError: setError,
     // Drill-down (Phase 10.3)
@@ -1623,8 +1629,8 @@ export const SessionGraph = (props: SessionGraphProps) => {
     setRendererID,
     rendererReady,
     setRendererReady,
-    fallback: () => false,
-    setFallback: () => {},
+    fallback: state.fallback,
+    setFallback: state.setFallback,
     error,
     setError,
     capabilities: () => capabilities(),
@@ -1934,7 +1940,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
             error={error() as string | undefined}
             demoDismissed={demoDismissed()}
             seeMapPromptDismissed={seeMapPromptDismissed()}
-            showSeeMapPrompt={showSeeMapPrompt()}
+            showSeeMapPrompt={props.showSeeMapPrompt ?? showSeeMapPrompt()}
             trustLensActive={trustLensActive()}
             i18n={i18n}
             shell={props.shell}

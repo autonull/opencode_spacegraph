@@ -259,7 +259,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
   // Default chrome rendering
   if (!shouldRender) return null
   
-  const capabilities = ctx.capabilities()
+  const capabilities = () => ctx.capabilities()
   const model = (typeof props.model === "function" ? props.model() : props.model) ?? ctx.model()
   const selectedTurn = props.selectedTurn ?? ctx.selectedTurn
   const selection = props.selection ?? ctx.selection
@@ -298,7 +298,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
   return (
     <>
       <GraphToolbar
-        capabilities={capabilities}
+        capabilities={capabilities()}
         renderer={ctx.rendererID()}
         level={ctx.level()}
         onLevel={ctx.setLevel}
@@ -436,7 +436,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
         </div>
       </Show>
       {/* Trust lens banner */}
-      <Show when={trustLensActive}>
+      <Show when={trustLensActive()}>
         <div
           data-slot="graph-trust-lens-banner"
           class="flex items-center justify-between px-4 py-2 border-b border-border-weaker-base bg-warning-bg"
@@ -500,7 +500,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
         level={ctx.level}
         onJumpTo={ctx.jumpTo}
       />
-      <GraphFallback fallback error={error as string | undefined} rendererID={ctx.rendererID()} />
+      <GraphFallback fallback={ctx.fallback()} error={error as string | undefined} rendererID={ctx.rendererID()} />
     </>
   )
 }

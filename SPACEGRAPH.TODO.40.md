@@ -5,7 +5,7 @@
 
 **Core usability-first pivot: DONE.** All Phase 0–4 tasks and P5.1–P5.3 rungs 1–4 complete. Developer can open graph without thinking and get answers in ≤3 interactions (verified by 30/30 app capture frames + 2 bundle frames). WebGL (`spacegraph`) is the default and primary renderer; Cytoscape remains the declared 2D fallback only. Rung 5 (upstream protocol snapshot) is optional future work — the in-app workspace snapshot is live.
 
-**Demo gate: GREEN (r32).** `bun run graph:capture --mode=verify` passes: 30/30 app frames and 2/2 Storybook bundle frames. See "Complete Fix Plan" below for the r26-migration regressions closed in r32.
+**Demo gate: GREEN (r32–r34).** `bun run graph:capture --mode=verify` passes: 30/30 app frames and 2/2 Storybook bundle frames. No false fallback banner, no empty toolbar band. See "Complete Fix Plan" below for the r26-migration regressions closed in r32.
 
 ---
 
@@ -319,6 +319,8 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 
 - **r31 (2026-11-17):** Zero-click failure insight on smart entry (P0.1.1). Clicking "View as graph" toast now auto-focuses first failure node and opens "Why?" trace overlay — zero additional clicks to see causal chain. Exports attention, Attention, OPTIONAL_LAYOUT_STRATEGIES, EDIT_TOOLS from session-ui/graph for plugin bundle build.
 - **r32 (2026-11-17):** Restored the demo gate after the r26 plugin-surface migration. WebGL (`spacegraph`) stays default/primary; removed the broken Cytoscape-forcing fixture seed. Fixed plugin `./gui/solid` export (session-graph typecheck), dev flag defaults, `endInset`, workspace-snapshot fetch, reactive scrubber checkpoint, `GraphView` TDZ, duplicate Storybook story IDs, and the `plugin-host.fixture` `tabs.target` no-op. `graph:capture --mode=verify`: 30/30 app frames + 2/2 bundle frames green. See "Complete Fix Plan — status after r32".
+- **r33 (2026-11-17):** Removed the false "SpaceGraph could not load; showing the 2D fallback renderer." banner from every graph frame. `GraphChrome` hardcoded `fallback` (always true) and `SessionGraph` ignored the renderer's `onReady` fallback info; both now read the real `fallback` state. `GraphFallback` now uses `<Show>` so a late `false → true` fallback is reactive, and `GraphChrome` passes capabilities as a getter so Cytoscape disables the orbit depth. The real fallback e2e case still shows the banner. Baseline screenshots regenerated.
+- **r34 (2026-11-17):** Removed the empty band under the graph toolbar: the trust-lens banner passed an accessor to `<Show when>` (always truthy) and the see-map prompt has no i18n keys in this shell. Trust lens is now evaluated, and graph-first surfaces pass `showSeeMapPrompt={false}`.
 
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅

@@ -292,6 +292,7 @@ export default function SpacegraphPanel(props: {
           onSplitView={() => {}}
           preferredRenderer={props.model.renderer}
           endInset={props.model.endInset()}
+          showSeeMapPrompt={false}
           chrome={true}
           shell="full"
           onOpenTranscript={props.onOpenTranscript}

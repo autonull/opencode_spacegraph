@@ -103,6 +103,7 @@ export function HybridSurface(props: {
           onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
           preferredRenderer={preferredRenderer}
           endInset={props.model.endInset()}
+          showSeeMapPrompt={false}
           enableCostLens={props.model.costLensEnabled()}
           enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
           chrome={true}

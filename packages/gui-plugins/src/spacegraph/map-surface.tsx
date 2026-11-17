@@ -69,6 +69,7 @@ export function MapSurface(props: {
         onSplitView={props.onSplitView}
         preferredRenderer={preferredRenderer}
         endInset={props.model.endInset()}
+        showSeeMapPrompt={false}
         enableCostLens={props.model.costLensEnabled()}
         enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
         chrome={true}
