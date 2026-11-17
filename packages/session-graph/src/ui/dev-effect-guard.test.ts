@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, spyOn, type Mock } from "bun:test"
 import { 
   createTrackedSignal, 
   enableDevMode, 
@@ -10,11 +10,11 @@ import {
 import { createRoot } from "solid-js"
 
 describe("dev-effect-guard", () => {
-  let warnSpy: ReturnType<typeof vi.spyOn> | null = null
+  let warnSpy: Mock<typeof console.warn> | null = null
 
   beforeEach(() => {
     enableDevMode()
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    warnSpy = spyOn(console, "warn").mockImplementation(() => {})
     __test__clearActiveReadSignals()
     __test__setActiveEffectName(null)
   })
@@ -41,7 +41,7 @@ describe("dev-effect-guard", () => {
 
   it("tracks signal reads during effect execution", () => {
     const [count, setCount] = createTrackedSignal(0, "count")
-    const [other, setOther] = createTrackedSignal(0, "other")
+    const [, setOther] = createTrackedSignal(0, "other")
 
     // Manually simulate effect execution
     __test__setActiveEffectName("test-effect")
@@ -59,7 +59,7 @@ describe("dev-effect-guard", () => {
     )
 
     // Reset
-    warnSpy.mockClear()
+    warnSpy!.mockClear()
     __test__clearActiveReadSignals()
 
     // Read count again

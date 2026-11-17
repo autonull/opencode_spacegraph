@@ -4,9 +4,11 @@ import type {
   Projection,
   RendererCapabilities,
   RenderModel,
+  RenderNode,
   RendererViewport,
   RenderTheme,
 } from "@spacegraphjs/renderer"
+import { diffRenderModels } from "@spacegraphjs/adapter"
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { mountRenderer, type MountedRenderer, type RendererFactory, type RendererID } from "./renderer-registry"
 
@@ -49,8 +51,16 @@ export type GraphCanvasProps = {
    * new nodes and positions exist (LE.1) instead of framing a stale layout.
    */
   onModelApplied?: (renderer: GraphRenderer) => void
+  /** Nodes the next model adds; a streaming host selects the newest and follows it. */
+  onNodesAdded?: (nodes: readonly RenderNode[]) => void
+  /** The renderer was mounted; a host keeps it for fit/focus without waiting for `onRenderer`. */
+  onRendererMounted?: (renderer: GraphRenderer, id: RendererID) => void
   /** Exposes the live renderer so a host can call `fit`/`focus`; `undefined` after teardown. */
   onRenderer?: (renderer: GraphRenderer | undefined) => void
+  /** When true, all camera animations (fit, focus, depth transitions) complete instantly without easing. */
+  reducedMotion?: boolean | (() => boolean)
+  /** Register the instance on `window.SpaceGraph` and `SpaceGraph.instances` for developer tooling. Off by default. */
+  global?: boolean | (() => boolean)
 }
 
 /**
@@ -63,6 +73,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
   let mounted: MountedRenderer | undefined
   let unsubscribers: (() => void)[] = []
   let generation = 0
+  let previousModel: RenderModel | undefined
   const [ready, setReady] = createSignal(false)
   // Depth defaults to the projection's coarse treatment; the adapter derives it at mount, so an unset
   // depth is not a conflict (LE.14).
@@ -76,6 +87,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
     props.onRenderer?.(undefined)
     mounted?.renderer.dispose()
     mounted = undefined
+    previousModel = undefined
     setReady(false)
   }
 
@@ -110,6 +122,7 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
         ]
         result.renderer.setModel(props.model)
         props.onModelApplied?.(result.renderer)
+        props.onRendererMounted?.(result.renderer, result.id)
         result.renderer.setSelection(props.selection ?? [])
         result.renderer.setDepth(depth())
         result.renderer.setCardFacing?.(cardFacing())
@@ -180,6 +193,12 @@ export const GraphCanvas = (props: GraphCanvasProps) => {
 
     if (!mounted) return
     mounted.renderer.setModel(model)
+    // Streaming additions only: report the nodes this model adds so the host selects the newest.
+    if (previousModel) {
+      const addedNodes = diffRenderModels(previousModel, model).nodes.added
+      if (addedNodes.length > 0) props.onNodesAdded?.(addedNodes)
+    }
+    previousModel = model
     props.onModelApplied?.(mounted.renderer)
   })
   createEffect(() => {

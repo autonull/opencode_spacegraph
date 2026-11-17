@@ -2,7 +2,7 @@ import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
 import { Navigation } from "spacegraphjs/navigation"
-import type { EdgeKind, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
+import type { Confidence, EdgeKind, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
 import { diffKernels } from "@spacegraphjs/kernel"
 import { graphModelToKernel } from "./view"
@@ -283,6 +283,138 @@ const rank = (node: GraphNode, needle: string): number => {
 
 export function rankedSearch(model: GraphViewData, query: string): GraphNode[] {
   return Navigation.searchBy(model, query, rank)
+}
+
+/**
+ * The edge kinds that propagate downstream: a step produces a result, writes a file, or a chain
+ * sequences to the next work. The trace follows these forward.
+ */
+const downstreamKinds = new Set<EdgeKind>(["sequence", "produces", "writes"])
+
+/** One step in a downstream trace: the node, the edge that reached it, and the edge's confidence. */
+export type DownstreamStep = { node: GraphNode; edge: GraphEdge; confidence: Confidence }
+
+/**
+ * A fork point inside a downstream trace: a reachable node with two or more distinct forward
+ * targets via downstream edges. Parallel edges to the same target are not a fork.
+ */
+export type DownstreamFork = {
+  node: GraphNode
+  branches: DownstreamStep[]
+}
+
+/** Evidence grouped by kind: the tools, files, or results that support a claim. */
+export type EvidenceKind = "tools" | "files" | "results"
+
+export type EvidenceItem = { node: GraphNode; edge: GraphEdge }
+
+export type EvidenceGroup = { kind: EvidenceKind; items: EvidenceItem[] }
+
+/**
+ * Downstream impact: every node reachable by following `sequence`/`produces`/`writes` edges
+ * forward, in breadth-first order with the edge that first reached it. Branches stay visible
+ * instead of picking one edge, so a forked chain never reads as a single confident path.
+ */
+export function downstreamChain(model: GraphViewData, from: string): DownstreamStep[] {
+  const result: DownstreamStep[] = []
+  const seen = new Set([from])
+  const nodes = nodeIndex(model)
+  const queue = [from]
+
+  for (let index = 0; index < queue.length; index++) {
+    const current = queue[index]
+
+    for (const edge of model.edges) {
+      if (edge.source !== current || !downstreamKinds.has(edge.kind)) continue
+
+      if (seen.has(edge.target)) continue
+
+      const node = nodes.get(edge.target)
+
+      if (!node) continue
+
+      seen.add(node.id)
+      queue.push(node.id)
+      result.push({ node, edge, confidence: edge.confidence })
+    }
+  }
+
+  return result
+}
+
+/**
+ * The fork points inside a downstream trace. A fork is a reachable node with at least two distinct
+ * forward targets; parallel edges to the same target are not a fork. The caller renders the
+ * branches instead of guessing which one the reader meant.
+ */
+export function downstreamForks(model: GraphViewData, from: string): DownstreamFork[] {
+  const nodes = nodeIndex(model)
+  const reachable = [from, ...downstreamChain(model, from).map((step) => step.node.id)]
+  const forks: DownstreamFork[] = []
+
+  for (const id of reachable) {
+    const node = nodes.get(id)
+
+    if (!node) continue
+
+    const branches: DownstreamStep[] = []
+    const targets = new Set<string>()
+
+    for (const edge of model.edges) {
+      if (edge.source !== id || !downstreamKinds.has(edge.kind) || targets.has(edge.target)) continue
+
+      const target = nodes.get(edge.target)
+      if (!target) continue
+
+      targets.add(edge.target)
+      branches.push({ node: target, edge, confidence: edge.confidence })
+    }
+
+    if (branches.length >= 2) {
+      forks.push({ node, branches })
+    }
+  }
+
+  return forks
+}
+
+/**
+ * The evidence behind a claim node. The claim's incident edges name the tools, files, and results
+ * the reader cites; the function groups them by kind and returns one group per kind with items.
+ */
+export function evidenceFor(model: GraphViewData, claimID: string): EvidenceGroup[] {
+  const claim = lookupNode(model, claimID)
+  if (!claim) return []
+
+  const byKind = new Map<EvidenceKind, EvidenceItem[]>()
+
+  for (const edge of model.edges) {
+    if (edge.source !== claimID && edge.target !== claimID) continue
+
+    const otherID = edge.source === claimID ? edge.target : edge.source
+    const other = lookupNode(model, otherID)
+    if (!other) continue
+
+    let kind: EvidenceKind | undefined
+
+    if (other.kind === "tool") kind = "tools"
+    else if (other.kind === "file" || other.kind === "diff" || other.kind === "directory") kind = "files"
+    else if (other.kind === "result" || other.kind === "test" || other.kind === "test-run") kind = "results"
+
+    if (!kind) continue
+
+    const items = byKind.get(kind) ?? []
+    items.push({ node: other, edge })
+    byKind.set(kind, items)
+  }
+
+  const result: EvidenceGroup[] = []
+
+  for (const [kind, items] of byKind) {
+    result.push({ kind, items })
+  }
+
+  return result
 }
 
 const READ_KINDS = new Set<EdgeKind>(["reads", "searches", "references"])

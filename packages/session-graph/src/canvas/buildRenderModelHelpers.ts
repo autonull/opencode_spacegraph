@@ -103,7 +103,6 @@ export function createRenderModelBuilder(options: BuildRenderModelOptions) {
       bands: !isSummary && currentLayout !== "hierarchy",
       edges: !isSummary,
       bundle: !isSummary && files(),
-      layout: currentLayout, // Pass layout to adapter for node filtering
       laneLabels:
         !isSummary && currentLayout === "lanes"
           ? laneAnchors().map((lane) => ({

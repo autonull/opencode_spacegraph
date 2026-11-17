@@ -222,6 +222,22 @@ export {
 } from "./memory-adapter"
 
 export {
+  captureTimeTravel,
+  graphAtCheckpoint,
+  type TimeTravelSnapshot,
+  TIME_TRAVEL_LIMIT,
+} from "./time-travel"
+
+export {
+  downstreamChain,
+  downstreamForks,
+  evidenceFor,
+  type DownstreamStep,
+  type DownstreamFork,
+  type EvidenceGroup,
+} from "./selectors"
+
+export {
   NAVIGATION_MNEMONICS,
   navigationHelp,
   navigationResults,

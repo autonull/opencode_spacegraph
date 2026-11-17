@@ -24,6 +24,8 @@ export type BuildRenderModelOptions = {
   bundle?: boolean
   /** Overrides the per-level DOM card budget; cards above it fall back to labels. */
   cardBudget?: number
+  /** Per-node neighborhood opacity from focus overlay (distance-based dimming). */
+  neighborhoodOpacity?: ReadonlyMap<string, number>
   /** Replaces the default card markup, e.g. with localized copy. */
   renderCard?: CardTemplate
   /** Replaces the default swimlane band markup. */
@@ -32,7 +34,7 @@ export type BuildRenderModelOptions = {
    * LE.10: localized lane labels (with the lanes layout's Y anchors) drawn as a non-interactive
    * gutter to the left of the content, so the spatial grammar is visible.
    */
-  laneLabels?: readonly { id: string; label: string; y: number }[]
+  laneLabels?: readonly { id: string; label: string; y: number; anchorNodeId?: string }[]
   /**
    * T1.11: non-interactive row/column captions for the summary representations, positioned in layout
    * space by the host (it owns the turn/category axes).

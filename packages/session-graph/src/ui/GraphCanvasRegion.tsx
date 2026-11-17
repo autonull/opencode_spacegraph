@@ -78,11 +78,11 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
         <GraphCanvas
         model={props.renderModel()}
         theme={props.theme()}
-        projection={props.projection}
-        depth={props.depth}
-        cardFacing={props.cardFacing}
+        projection={props.projection()}
+        depth={props.depth()}
+        cardFacing={props.cardFacing()}
         selection={props.selection()}
-        preferredRenderer={props.preferredRenderer}
+        preferredRenderer={props.preferredRenderer?.()}
         overrides={props.rendererOverrides}
         onSelect={(ids) => {
           props.setGroupMenu(undefined)
@@ -114,7 +114,7 @@ export const GraphCanvasRegion = (props: GraphCanvasRegionProps & {
         }}
         onReady={props.onReady}
         onViewportChange={props.onViewportChange}
-        onError={props.onError}
+        onError={(error) => props.onError(error instanceof Error ? error.message : error === undefined ? undefined : String(error))}
         reducedMotion={props.reducedMotion()}
         global={props.global()}
       />

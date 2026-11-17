@@ -108,7 +108,13 @@ export type ToolTextContent = { type: "text"; text: string }
 
 export type ToolFileContent = { type: "file"; uri: string; mime: string; name?: string | null }
 
-export type SessionStructuredError = { type: string; message: string; status?: number; response?: { body: string } }
+export type SessionStructuredError = {
+  type: string
+  message: string
+  status?: number
+  response?: { body: string }
+  retryAfterMs?: number
+}
 
 export type SessionActive = { type: "running" }
 
@@ -2424,6 +2430,20 @@ export type ConfigEntry =
         experimental?: {
           portable_shell_scanner?: boolean
           todo?: boolean
+          background_compaction?: boolean
+          media_blob?: boolean
+          schedules?: boolean
+          artifacts?: boolean
+          console_watches?: boolean
+          mcp_events?: boolean
+          codemode_vm?: boolean
+          graph_cost_lens?: boolean
+          graph_palette?: boolean
+          graph_attention?: boolean
+          graph_layout_breadth?: boolean
+          graph_library_renderers?: boolean
+          graph_time_travel?: boolean
+          graph_compaction_advisor?: boolean
           subagent_depth?: number
           all_flags?: boolean
           policies?: Array<{
@@ -2489,7 +2509,7 @@ export type CredentialEntry = {
   value: CredentialValue
 }
 
-export type FormFields1 = [FormField1, ...Array<FormField1>]
+export type FormFields2 = [FormField1, ...Array<FormField1>]
 
 export type SessionsResponse = {
   data: Array<SessionInfo>
@@ -2548,7 +2568,7 @@ export type IntegrationKeyMethod = { type: "key"; label?: string; form?: FormFie
 
 export type IntegrationExternalMethod = { id: IntegrationMethodID; type: "external"; label: string; form?: FormFields }
 
-export type FormInfo1 = { id: FormID; sessionID: string; title: string; metadata?: FormMetadata1; fields: FormFields1 }
+export type FormInfo1 = { id: FormID; sessionID: string; title: string; metadata?: FormMetadata1; fields: FormFields2 }
 
 export type SessionMessageInfo =
   | SessionMessageAgentSelected

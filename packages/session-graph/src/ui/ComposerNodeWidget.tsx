@@ -67,8 +67,7 @@ export const ComposerNodeWidget = (props: ComposerNodeWidgetProps) => {
           placeholder={props.readOnly
             ? i18n.t("ui.sessionGraph.composerWidget.readOnlyPlaceholder")
             : i18n.t("ui.sessionGraph.composerWidget.placeholder")}
-          appearance="small"
-          surface="layer-1"
+          appearance="base"
           leadingIcon={<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2L3 7l5 5" /></svg>}
           data-slot="composer-node-widget-input"
         />

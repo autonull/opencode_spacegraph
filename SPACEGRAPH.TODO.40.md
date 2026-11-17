@@ -298,6 +298,8 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 - **r26 (2026-11-16):** P5.3 rung 4 complete — SessionSurfaceHost migration to plugin SDK surfaces. Replaced SessionGraphPanel custom composition with plugin-registered surfaces (map, hybrid, transcript-graph). Updated header toggle to use plugin surface state. Mobile graph toggle syncs with plugin surfaces. Permalink handling routes through plugin surfaces. Turn map overlay opens map surface via plugin API. Removed SessionGraphPanel and associated graph state from app layout. SessionSurfaceHost now consumes plugin surfaces via SessionSurface registry.
 - **r27 (2026-11-17):** Type system fixes for session-graph and session-ui. Added missing exports to session-ui/graph/index.ts: VOCABULARY_KEYS, trace adapter functions (classifyTrace, traceWhy, etc.), cost functions (costLens, tokenTotal, etc.), spatial memory functions (graphContentHash, readSpatialMemory, etc.), palette functions (paletteEntries, paletteGroup, etc.), subagentSubgraph, SavedQuery, CardDensity, viewportCardBudget, saveQuery, applySubLayouts, CompactionAnalysis/Node/measureCompaction. Added spacegraphjs package dependencies (a11y, controls, compare, export, navigation, overlays, shared, toolbar, trace, turn-map, window-manager) to session-ui and session-graph. Fixed GraphDetail traceKind to include "downstream". Fixed GraphSearch, GraphA11y, GraphGroupMenu, GraphStatusBar, GraphFallback, GraphToolbar component props. Added @tanstack/solid-virtual to session-graph. Fixed session-ui dom-budget exports. TypeScript errors reduced significantly; remaining issues are type incompatibilities between facets.ts and facets-adapter.ts, missing properties in some component props, and test infrastructure issues.
 
+- **r29 (2026-11-17):** Comprehensive type fixes for session-graph, session-ui, gui-plugins, schema, and client. Added `grid` and `circular` layouts to vocabulary.ts across session-ui, session-graph, and gui-plugins internal copy. Added `neighborhoodOpacity` to `BuildRenderModelOptions` for focus overlay support (P1.2). Added missing exports to session-graph index.ts (SessionGraph, GraphTranscriptSurface, GraphToolbarViewControls, ComposerNodeWidget, SubagentNodeWidget, TodoNodeWidget, TerminalNodeWidget, DiffNodeWidget, exportGraph, text, count, flag, strings, formatProvenance, formatAge, sourceLabel, DEFAULT_THEME). Fixed GraphCanvas to support onNodesAdded for streaming additions (P3.3). Added missing i18n keys for widgets.diff in ui/en.ts. Fixed ComposerNodeWidget appearance from "small" to "base" and removed unsupported "surface" prop. Added cytoscape to RENDERER_LABELS in GraphRendererStatus. Fixed dev-effect-guard.test.ts to use bun:test instead of vitest; removed vitest.config.ts. Added missing type exports to session-ui selectors.ts (DownstreamStep, DownstreamFork, EvidenceGroup, downstreamChain, downstreamForks, evidenceFor). Added missing exports to session-ui index.ts (captureTimeTravel, graphAtCheckpoint, downstreamChain, downstreamForks, evidenceFor). Added retryAfterMs to SessionStructuredError in schema/session-error.ts. Fixed graph-parity.test.ts to match session-ui's buildGraphIncremental API. All core graph-related type errors resolved; session-graph, session-ui, and gui-plugins typecheck cleanly.
+
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅
 ### Demo Gate (P5.1) — RESOLVED ✅
@@ -385,8 +387,21 @@ treating it as a release blocker.
 5. ✅ Export WorkspaceSnapshot from model.ts
 6. ✅ Fix markdown component imports
 
+**Additional type fixes (r29 — 2026-11-17)**:
+- ✅ Added `grid` and `circular` layouts to vocabulary.ts (session-ui, session-graph, gui-plugins internal copy)
+- ✅ Added `neighborhoodOpacity` to `BuildRenderModelOptions` in session-graph for focus overlay (P1.2)
+- ✅ Added missing exports to session-graph index.ts: `SessionGraph`, `GraphTranscriptSurface`, `GraphToolbarViewControls`, `ComposerNodeWidget`, `SubagentNodeWidget`, `TodoNodeWidget`, `TerminalNodeWidget`, `DiffNodeWidget`, `exportGraph`, `text`, `count`, `flag`, `strings`, `formatProvenance`, `formatAge`, `sourceLabel`, `DEFAULT_THEME`
+- ✅ Fixed `GraphCanvas` to support `onNodesAdded` for streaming additions (P3.3)
+- ✅ Added missing i18n keys for `widgets.diff` in `ui/en.ts`
+- ✅ Fixed `ComposerNodeWidget` appearance from `"small"` to `"base"` and removed unsupported `"surface"` prop
+- ✅ Added `cytoscape` to `RENDERER_LABELS` in `GraphRendererStatus`
+- ✅ Fixed `dev-effect-guard.test.ts` to use `bun:test` instead of `vitest`; removed `vitest.config.ts`
+- ✅ Added missing type exports to session-ui `selectors.ts`: `DownstreamStep`, `DownstreamFork`, `EvidenceGroup`, `downstreamChain`, `downstreamForks`, `evidenceFor`
+- ✅ Added missing exports to session-ui `index.ts`: `captureTimeTravel`, `graphAtCheckpoint`, `downstreamChain`, `downstreamForks`, `evidenceFor`
+- ✅ Added `retryAfterMs` to `SessionStructuredError` in `schema/session-error.ts`
+- ✅ Fixed `graph-parity.test.ts` to match session-ui's `buildGraphIncremental` API
+
 **Remaining (non-blocking, pre-existing)**:
 - vitest config for session-graph tests
-- dev-effect-guard.test.ts vitest imports
 - Various unrelated component prop type mismatches (GraphCanvasRegion, ComposerNodeWidget, DiffNodeWidget, GraphRendererStatus)
 - Markdown component test infrastructure issues

@@ -7,13 +7,13 @@ import { buildGraph } from "@opencode/session-ui/graph"
 import { layoutGraph } from "@opencode/session-ui/graph"
 import { buildRenderModel } from "../src/canvas/buildRenderModel"
 import { diffRenderModels } from "@spacegraphjs/adapter"
-import type { SessionMessageInfo } from "@opencode/client/promise"
-import type { RenderModel, RenderModelPatch } from "@spacegraphjs/renderer"
+import type { JsonValue, SessionMessageAssistant, SessionMessageInfo } from "@opencode/client/promise"
+import type { RenderModelPatch } from "@spacegraphjs/renderer"
 
 const SIZES = [100, 1_000, 5_000]
 const MESSAGES_PER_TURN = 3
 
-function tool(id: string, name: string, input: Record<string, unknown>): SessionMessageInfo["content"][number] {
+function tool(id: string, name: string, input: Record<string, JsonValue>): SessionMessageAssistant["content"][number] {
     return {
         type: "tool",
         id,

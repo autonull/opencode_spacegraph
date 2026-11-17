@@ -98,6 +98,10 @@ describe("buildCanvasRegionProps reactive boundary", () => {
       setViewport: () => {},
       viewportTracker: {} as any,
       reducedMotion: () => false,
+      onNodesAdded: () => {},
+      exitDrillDown: () => {},
+      canDrillDown: () => false,
+      drillDownStack: () => [],
       global: () => false,
     }
 
@@ -195,6 +199,10 @@ describe("buildCanvasRegionProps reactive boundary", () => {
       setViewport: () => {},
       viewportTracker: {} as any,
       reducedMotion: () => false,
+      onNodesAdded: () => {},
+      exitDrillDown: () => {},
+      canDrillDown: () => false,
+      drillDownStack: () => [],
       global: () => false,
     }
 

@@ -13,6 +13,7 @@ export type GraphRendererStatusProps = {
 
 const RENDERER_LABELS: Record<RendererID, string> = {
   spacegraph: "SpaceGraph",
+  cytoscape: "Cytoscape",
 }
 
 export const GraphRendererStatus = (props: GraphRendererStatusProps) => {

@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test"
 import type { RenderModel } from "@spacegraphjs/renderer"
 import { canPatchRenderModel, modelUpdatePath } from "./model-apply"
 
-const node = (id: string, position: [number, number, number] = [0, 0, 0]) => ({
+const node = (id: string, position: [number, number, number] = [0, 0, 0], shape: "card" | "panel" | "dot" | "badge" | "group" = "card") => ({
   id,
   kind: "tool",
-  shape: "card" as const,
+  shape,
   position,
 })
 

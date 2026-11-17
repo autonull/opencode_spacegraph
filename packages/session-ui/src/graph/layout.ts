@@ -10,7 +10,7 @@ import type { GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from ".
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
 import { nodeIndex, parentIndex } from "./lookup"
-import { CARD_SIZE, COMPACT_SIZE, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
+import { CARD_SIZE, COMPACT_SIZE, CORE_LAYOUT_STRATEGIES, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
 
 export type { Position }
 
@@ -192,8 +192,14 @@ export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: numbe
 
 export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): GraphLayout {
   const config = options.nodeSizeFn ? { ...LAYOUT, nodeSizeFn: options.nodeSizeFn } : LAYOUT
+  // spacegraphjs Strategies only supports core strategies; optional strategies fall back to force
+  const strategy = options.strategy
+  const coreStrategy: "lanes" | "timeline" | "hierarchy" | "tree" | "force" =
+    strategy && (CORE_LAYOUT_STRATEGIES as readonly string[]).includes(strategy)
+      ? (strategy as "lanes" | "timeline" | "hierarchy" | "tree" | "force")
+      : "force"
   return Strategies.layoutGraph(model, config, {
-    strategy: options.strategy,
+    strategy: coreStrategy,
     gap: options.gap,
     laneGap: options.laneGap,
     turnGap: options.turnGap,
