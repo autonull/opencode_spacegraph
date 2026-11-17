@@ -2,7 +2,6 @@ import { useCommand, type CommandOption } from "@/shell/commands/command"
 import { adjacentTabKey } from "@/shell/titlebar/tab-order"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { previewSelectedLines } from "@opencode/session-ui/pierre/selection-bridge"
-import { Metrics } from "@opencode/session-ui/graph"
 import { useFile, selectionFromLines, type FileSelection } from "@/workspaces/files/model"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useLayout } from "@/shell/state/layout"
@@ -460,31 +459,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         keybind: "mod+shift+r",
         onSelect: () => actions.session.layout.view().side.toggle(),
       }),
-      viewCommand({
-        id: "graph.toggle",
-        title: language.t("command.graph.toggle"),
-        keybind: "mod+shift+g",
-        disabled: !enabled,
-        onSelect: () => {
-          const graph = actions.session.layout.graph()
-          // T2.3: a surface switch is an interaction the protocol measures.
-          Metrics.count("mode-switch")
-          graph.setMap(!graph.map())
-        },
-      }),
-      viewCommand({
-        id: "graph.hybrid",
-        title: language.t("command.graph.hybrid"),
-        keybind: "mod+shift+h",
-        disabled: !enabled,
-        onSelect: () => {
-          const graph = actions.session.layout.graph()
-          Metrics.count("mode-switch")
-          const next = !graph.sideBySide()
-          if (next) graph.setMap(true)
-          graph.setSideBySide(next)
-        },
-      }),
+      // Graph surface commands are provided by the session-graph plugin (toggle-graph, toggle-hybrid)
       viewCommand({
         id: "graph.projection",
         title: language.t("command.graph.projection"),

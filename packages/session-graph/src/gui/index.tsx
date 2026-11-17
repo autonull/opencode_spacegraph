@@ -2,7 +2,7 @@ import { Plugin } from "@opencode/plugin/gui"
 import { SessionSurface, Command, Panel, PanelTab, Slot } from "@opencode/plugin/gui/registries"
 import type { MountedSession, SessionScreen, SessionRef } from "@opencode/plugin/gui/host-apis"
 import type { JSX } from "solid-js"
-import { lazy, Suspense, createMemo, onCleanup } from "solid-js"
+import { lazy, Suspense, createMemo, onCleanup, createSignal, createEffect } from "solid-js"
 import { onIdle } from "@opencode/plugin/gui/builtin"
 import { buildGraph, turnNodeID, nodeByID } from "@opencode/session-ui/graph"
 import { usePlugin } from "@opencode/plugin/gui/solid"
@@ -12,6 +12,26 @@ import type { SessionStatus } from "@opencode/client/promise"
 const GraphView = lazy(() => import("../ui/GraphView").then((mod) => ({ default: mod.GraphView })))
 const TurnMapOverlay = lazy(() => import("../ui/TurnMapOverlay").then((mod) => ({ default: mod.TurnMapOverlay })))
 
+// Shared model builder for graph surfaces
+function useGraphModel(session: MountedSession) {
+  const messages = session.server.data.session.message.list(session.id)
+  const status = session.server.data.session.status(session.id)
+
+  const sessionStatus: SessionStatus =
+    status === "running" ? { type: "busy" } : { type: "idle" }
+
+  return createMemo(() =>
+    buildGraph({
+      messages,
+      status: sessionStatus,
+      sessionID: session.id,
+      lineage: undefined,
+      snapshot: undefined,
+      diffByTurn: undefined,
+    }),
+  )
+}
+
 // Wrapper component for TurnMapOverlay that builds the model from session data
 function TurnMapOverlayWrapper(props: {
   session: MountedSession
@@ -20,22 +40,7 @@ function TurnMapOverlayWrapper(props: {
   onClose: () => void
 }) {
   const ctx = usePlugin()
-  const messages = props.session.server.data.session.message.list(props.session.id)
-  const status = props.session.server.data.session.status(props.session.id)
-
-  const sessionStatus: SessionStatus =
-    status === "running" ? { type: "busy" } : { type: "idle" }
-
-  const model = createMemo(() =>
-    buildGraph({
-      messages,
-      status: sessionStatus,
-      sessionID: props.session.id,
-      lineage: undefined,
-      snapshot: undefined,
-      diffByTurn: undefined,
-    }),
-  )
+  const model = useGraphModel(props.session)
 
   // Get the active turn from the transcript
   const activeMessageID = props.screen.transcript.activeMessageID()
@@ -69,27 +74,92 @@ function TurnMapOverlayWrapper(props: {
   )
 }
 
-// Placeholder surface component for map/hybrid surfaces
-function GraphSurfacePlaceholder(props: {
+// Map surface: full-screen graph view
+function MapSurface(props: {
   session: MountedSession
   screen: SessionScreen
   transcript: JSX.Element
-  onBack: () => void
 }) {
   const ctx = usePlugin()
+  const model = useGraphModel(props.session)
+
+  // Selection state - use a signal that syncs with the model
+  const [selection, setSelection] = createSignal<string | undefined>()
+
+  // Refit key changes when surface is entered
+  const [refitKey] = createSignal(0)
+
+  return (
+    <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
+      <GraphView
+        model={model()}
+        selection={selection()}
+        onSelect={(id) => {
+          setSelection(id)
+        }}
+        onBack={() => ctx.surfaces.select("transcript", props.session)}
+        refitKey={String(refitKey())}
+        arrangement={undefined}
+        onArrangementChange={() => {}}
+        onSplitView={() => ctx.surfaces.select("hybrid", props.session)}
+      />
+    </Suspense>
+  )
+}
+
+// Hybrid surface: transcript + graph side by side
+function HybridSurface(props: {
+  session: MountedSession
+  screen: SessionScreen
+  transcript: JSX.Element
+}) {
+  const ctx = usePlugin()
+  const model = useGraphModel(props.session)
+
+  const [selection, setSelection] = createSignal<string | undefined>()
+  const [refitKey] = createSignal(0)
+  const [activeMessageID, setActiveMessageID] = createSignal<string | undefined>()
+
+  // Get active message from transcript
+  createEffect(() => {
+    const id = props.screen.transcript.activeMessageID()
+    if (id) {
+      setActiveMessageID(id)
+    }
+  })
+
+  // Compute active turn from active message
+  const activeTurn = createMemo(() => {
+    const messageID = activeMessageID()
+    if (!messageID) return undefined
+    const owner = model().turnByMessageID.get(messageID)
+    if (!owner) return undefined
+    return turnNodeID(owner)
+  })
 
   return (
     <div class="flex h-full flex-col overflow-hidden">
-      <div class="flex h-full items-center justify-center px-6 text-center">
-        <div class="flex flex-col items-center gap-4">
-          <div class="text-14-medium text-text">{ctx.t("session.graph.surface.placeholderTitle")}</div>
-          <div class="text-13-regular text-text-weak max-w-md">{ctx.t("session.graph.surface.placeholderDescription")}</div>
-          <button
-            class="mt-4 rounded-sm bg-v2-action-bg-base px-3 py-1.5 text-12-medium text-v2-action-text-base hover:bg-v2-action-bg-hover"
-            onClick={props.onBack}
-          >
-            {ctx.t("session.graph.back")}
-          </button>
+      <div class="flex h-full flex-1 overflow-hidden">
+        <div class="flex h-full w-full">
+          {/* Transcript on the left */}
+          <div class="flex h-full flex-1 min-w-0 overflow-hidden" style={{ "min-width": "280px" }}>
+            {props.transcript}
+          </div>
+          {/* Graph on the right */}
+          <div class="flex h-full w-full min-w-0 overflow-hidden" style={{ "min-width": "240px", width: "50%" }}>
+            <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
+              <GraphView
+                model={model()}
+                selection={selection()}
+                onSelect={(id) => setSelection(id)}
+                onBack={() => ctx.surfaces.select("transcript", props.session)}
+                refitKey={String(refitKey())}
+                arrangement="side"
+                activeTurn={activeTurn()}
+                followLog={true}
+              />
+            </Suspense>
+          </div>
         </div>
       </div>
     </div>
@@ -110,14 +180,7 @@ export default Plugin.define({
       order: 10,
       render({ session, screen, transcript }: { session: MountedSession; screen: SessionScreen; transcript: JSX.Element }) {
         return (
-          <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
-            <GraphSurfacePlaceholder
-              session={session}
-              screen={screen}
-              transcript={transcript}
-              onBack={() => ctx.surfaces.select("transcript", session)}
-            />
-          </Suspense>
+          <MapSurface session={session} screen={screen} transcript={transcript} />
         )
       },
     })
@@ -130,14 +193,7 @@ export default Plugin.define({
       order: 20,
       render({ session, screen, transcript }: { session: MountedSession; screen: SessionScreen; transcript: JSX.Element }) {
         return (
-          <Suspense fallback={<div data-slot="session-graph-loading" class="h-full w-full" />}>
-            <GraphSurfacePlaceholder
-              session={session}
-              screen={screen}
-              transcript={transcript}
-              onBack={() => ctx.surfaces.select("transcript", session)}
-            />
-          </Suspense>
+          <HybridSurface session={session} screen={screen} transcript={transcript} />
         )
       },
     })

@@ -44,9 +44,9 @@ import { ActiveSessionComposerRegion, createActiveSessionRegion } from "./compos
 import { SessionIdentityHeader } from "./session-identity-header"
 import { SessionReviewToggle } from "./header/session-header-actions"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
-import { SessionGraphView } from "./graph/session-graph-view"
-import { SessionGraphPanel } from "./graph/session-graph-panel"
 import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
+import { SessionSurfaceHost } from "./surface"
+import { sessionSurfaceID, selectSessionSurface } from "@/runtime/plugin/surfaces"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
 import { GraphMetricsReadout } from "./graph/graph-metrics-readout"
 import { SessionRunningMenu } from "./header/session-running-menu"
@@ -105,16 +105,32 @@ function SessionScreenContent(props: {
 
   const graph = session.layout.graph()
   const graphEnabled = () => settings.experimental.sessionGraph()
-  // The transcript is the baseline surface. The map is an independent surface, and `split` asks it to
-  // share the panel with the transcript. A narrow screen has room for one surface, so the map takes
-  // the panel alone even when a split was requested.
-  const mapVisible = createMemo(() => graphEnabled() && graph.map())
-  const splitVisible = createMemo(() => mapVisible() && graph.sideBySide() && isDesktop())
   const location = useLocation()
 
-  // T3.5: a graph permalink opens the map, so a shared link lands on the node it names. The map
-  // visibility is read untracked, so closing the map does not pull it back, and the flag is part of
-  // the sources, so a link opened before the settings load still opens the map.
+  // Sync app's graph state (map, sideBySide) with plugin surfaces
+  createEffect(
+    on(
+      () => [graph.map(), graph.sideBySide(), graphEnabled()] as const,
+      ([map, sideBySide, enabled]) => {
+        if (!enabled) return
+
+        const session = props.view()
+        if (!session) return
+
+        let targetSurface: "transcript" | "hybrid" | "map"
+        if (!map) targetSurface = "transcript"
+        else if (sideBySide) targetSurface = "hybrid"
+        else targetSurface = "map"
+
+        const currentSurfaceId = sessionSurfaceID(session)
+        if (currentSurfaceId !== targetSurface) {
+          selectSessionSurface(targetSurface, session)
+        }
+      },
+    ),
+  )
+
+  // T3.5: a graph permalink opens the map, so a shared link lands on the node it names.
   createEffect(
     on(
       () => [location.hash, graphEnabled()] as const,
@@ -123,9 +139,13 @@ function SessionScreenContent(props: {
 
         if (!graphPermalinkFromHash(hash)) return
 
-        if (untrack(graph.map)) return
+        const session = props.view()
+        if (!session) return
 
-        graph.setMap(true)
+        const currentSurfaceId = sessionSurfaceID(session)
+        if (currentSurfaceId === "transcript") {
+          selectSessionSurface("map", session)
+        }
       },
     ),
   )
@@ -138,13 +158,11 @@ function SessionScreenContent(props: {
 
   const openGraphTranscript = (messageID: string, partID?: string) => {
     // T2.3: the graph counts its own "return" action, so this switch is not counted twice.
-    graph.setMap(false)
+    const session = props.view()
+    if (session) {
+      selectSessionSurface("transcript", session)
+    }
     revealInLog(messageID, partID)
-  }
-
-  const leaveGraph = () => {
-    Metrics.count("mode-switch")
-    graph.setMap(false)
   }
 
   // T2.3: the interaction counter is opt-in through the URL, so a study measures instead of estimates.
@@ -361,11 +379,15 @@ function SessionScreenContent(props: {
           session={props.view()}
           sidebar={sidebar}
           onSelect={selectMobile}
-          graphActive={mapVisible()}
+          graphActive={graphEnabled() && graph.map()}
           onGraphToggle={graphEnabled() ? () => {
             if (mobileView() !== "session") selectMobile("session")
             Metrics.count("mode-switch")
-            graph.setMap(!graph.map())
+            const session = props.view()
+            if (session) {
+              const next = graph.map() && graph.sideBySide() ? "transcript" : "hybrid"
+              selectSessionSurface(next, session)
+            }
           } : undefined}
         />
       )}
@@ -429,42 +451,11 @@ function SessionScreenContent(props: {
               </SessionIdentityHeader>
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
-              <SessionGraphPanel
-                map={mapVisible()}
-                sideBySide={splitVisible()}
-                graph={() => (
-                  <SessionGraphView
-                    session={session}
-                    onBack={leaveGraph}
-                    onOpenTranscript={openGraphTranscript}
-                    onReveal={splitVisible() ? revealInLog : undefined}
-                    onSplitView={
-                      splitVisible()
-                        ? undefined
-                        : () => {
-                            Metrics.count("mode-switch")
-                            graph.setMap(true)
-                            graph.setSideBySide(true)
-                          }
-                    }
-                    activeMessageID={splitVisible() ? timeline.currentMessageId() : undefined}
-                    refitKey={splitVisible() ? "split" : "map"}
-                    arrangement={graph.arrangement()}
-                    onArrangementChange={graph.setArrangement}
-                    arrangementSide={graph.arrangementSide()}
-                    onArrangementSideChange={graph.setArrangementSide}
-                  />
-                )}
-                transcript={timelineView()}
-                arrangement={graph.arrangement()}
-                side={graph.arrangementSide()}
-                split={graph.split()}
-                onSplit={graph.setSplit}
-                pane={graph.pane()}
-                onPane={graph.setPane}
-                logTextScale={graph.logTextScale()}
-                onLogTextScale={graph.setLogTextScale}
-                onClose={leaveGraph}
+              <SessionSurfaceHost
+                session={props.view()}
+                screen={props.screen}
+                transcript={(active) => timelineView()}
+                composerInset={() => 0}
               />
             </Show>
           </Match>
@@ -680,9 +671,11 @@ function SessionScreenContent(props: {
                   onOpenFullGraph={(id) => {
                     Metrics.count("expand")
                     graph.setTurnMap(undefined)
-                    graph.setMap(true)
-                    graph.setSideBySide(false)
                     graph.setSelected(id)
+                    const session = props.view()
+                    if (session) {
+                      selectSessionSurface("map", session)
+                    }
                   }}
                 />
               </div>
