@@ -21,8 +21,14 @@ v40 **makes those algorithms usable inside OpenCode** by closing the gaps betwee
 ### P0.1 Auto-offer graph on hard sessions ✅
 **Scenario:** 1, 2, 3 (all investigative)
 **Files:** `packages/gui-plugins/src/spacegraph/model.ts`, `packages/gui-plugins/src/spacegraph/external/renderer.tsx`, `packages/gui-plugins/src/spacegraph/i18n/en.ts`, `packages/ui/src/i18n/en.ts`
-**Acceptance:** When a session has ≥1 attention badge OR ≥50 turns OR a failure chain, a non-modal toast appears: "View as graph →" (one click opens hybrid surface with investigator lens). **DONE**
-**Test:** `capture-scenario.spec.ts` — fixture with attention badge shows toast; click opens hybrid+ investigator.
+**Acceptance:** When a session has ≥1 attention badge OR ≥50 turns OR a failure chain, a non-modal toast appears: "View as graph →" (one click opens hybrid surface with investigator lens, auto-focuses first failure, opens "Why?" trace). **DONE**
+**Test:** `capture-scenario.spec.ts` — fixture with attention badge shows toast; click opens hybrid+ investigator + trace.
+
+### P0.1.1 Zero-click failure insight (new) ✅
+**Scenario:** 1 (why build broke)
+**Files:** `packages/gui-plugins/src/spacegraph/external/renderer.tsx`
+**Acceptance:** Clicking the smart-entry toast now auto-focuses the first failure node and opens the "Why?" trace overlay — zero additional clicks to see the causal chain. **DONE**
+**Test:** Manual verification — open failing session, click toast, see failure highlighted with trace active.
 
 ### P0.2 Goal-based lens picker (replace abstract names) ✅
 **Scenario:** 1–11 (all)
@@ -305,6 +311,8 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 - **r29 (2026-11-17):** Comprehensive type fixes for session-graph, session-ui, gui-plugins, schema, and client. Added `grid` and `circular` layouts to vocabulary.ts across session-ui, session-graph, and gui-plugins internal copy. Added `neighborhoodOpacity` to `BuildRenderModelOptions` for focus overlay support (P1.2). Added missing exports to session-graph index.ts (SessionGraph, GraphTranscriptSurface, GraphToolbarViewControls, ComposerNodeWidget, SubagentNodeWidget, TodoNodeWidget, TerminalNodeWidget, DiffNodeWidget, exportGraph, text, count, flag, strings, formatProvenance, formatAge, sourceLabel, DEFAULT_THEME). Fixed GraphCanvas to support onNodesAdded for streaming additions (P3.3). Added missing i18n keys for widgets.diff in ui/en.ts. Fixed ComposerNodeWidget appearance from "small" to "base" and removed unsupported "surface" prop. Added cytoscape to RENDERER_LABELS in GraphRendererStatus. Fixed dev-effect-guard.test.ts to use bun:test instead of vitest; removed vitest.config.ts. Added missing type exports to session-ui selectors.ts (DownstreamStep, DownstreamFork, EvidenceGroup, downstreamChain, downstreamForks, evidenceFor). Added missing exports to session-ui index.ts (captureTimeTravel, graphAtCheckpoint, downstreamChain, downstreamForks, evidenceFor). Added retryAfterMs to SessionStructuredError in schema/session-error.ts. Fixed graph-parity.test.ts to match session-ui's buildGraphIncremental API. All core graph-related type errors resolved; session-graph, session-ui, and gui-plugins typecheck cleanly.
 
 - **r30 (2026-11-17):** Core usability-first pivot complete. All Phase 0–4 tasks and P5.1–P5.3 rungs 1–4 complete. 44/44 capture frames pass with 0 pixel diffs. Graph opens by default on hard sessions, goal-based lens picker, hybrid surface default, neighborhood focus overlay, semantic quick filters, live conduct with composer+follow, progressive disclosure defaults. Upstream ladder rungs 1–4 ready for review. Rung 5 (workspace snapshot) optional future work.
+
+- **r31 (2026-11-17):** Zero-click failure insight on smart entry (P0.1.1). Clicking "View as graph" toast now auto-focuses first failure node and opens "Why?" trace overlay — zero additional clicks to see causal chain. Exports attention, Attention, OPTIONAL_LAYOUT_STRATEGIES, EDIT_TOOLS from session-ui/graph for plugin bundle build.
 
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅
