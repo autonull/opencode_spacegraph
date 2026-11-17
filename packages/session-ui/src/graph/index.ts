@@ -38,6 +38,7 @@ export {
   workspaceDeriver,
   workspaceDerivers,
   WORKSPACE_STAGES,
+  createMessageToTurnProjection,
   type BuildGraphInput,
   type BuildSessionInput,
   type WorkspaceStage,

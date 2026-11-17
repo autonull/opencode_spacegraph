@@ -195,9 +195,8 @@ stop rules, and outcome disposition. Matching `STUDY_TASKS`/`StudyCounters` live
 - PR 1: Plugin surface APIs (`host-apis`, `registries`, `surfaces`) — minimal, reviewable. ✅
 - PR 2: Feature flags (`graph_*`) — schema only, no behavior. ✅
 - PR 3: `session-graph` as optional core package — lazy-loaded, tree-shakeable. ✅
-- PR 4: `session-ui/graph` projection — behind flag, no transcript changes. — PENDING
-**Status:** PR 1, 2, & 3 complete (rung 1: plugin surface APIs + feature flags; rung 2: session-graph package; rung 3: app wiring). This commit adds:
-- `packages/plugin/src/gui/` SDK: SessionSurface, SessionLayer, Command, Panel, PanelTab, Slot, MobileView registries
+- PR 4: `session-ui/graph` projection — behind flag, no transcript changes. — CODE COMPLETE (createMessageToTurnProjection exported from session-ui/graph/build.ts)
+**Status:** PR 1, 2, & 3 complete (rung 1: plugin surface APIs + feature flags; rung 2: session-graph package; rung 3: app wiring). PR 4 code change done — exports `createMessageToTurnProjection` from `session-ui/graph` for message→turn mapping without full graph build. App integration behind `experimental.sessionGraph` flag remains.
 - `packages/core/src/flag.ts`: Flag service with OPENCODE_FLAGS / experimental.<key> / all_flags resolution
 - `packages/schema/src/config/flag.ts`: graph_* feature flag registry (cost lens, palette, attention, layout breadth, library renderers, time travel, compaction advisor)
 - `packages/schema/src/plugin.ts`: gui capability in Plugin.Features
@@ -205,7 +204,7 @@ stop rules, and outcome disposition. Matching `STUDY_TASKS`/`StudyCounters` live
 - Fixes: session-graph GraphDiff.tsx diffTone() type narrowing, @spacegraphjs/diff workspace dependency
 - `packages/session-graph/src/gui/index.tsx`: GUI plugin entry point registering SessionSurface (map, hybrid, transcript-graph), Command (toggle-graph, toggle-hybrid), Panel (map), Slot (session.header)
 - App wiring (rung 3) complete via existing SessionGraphPanel/SessionGraphToggle architecture: flag (`experimental.sessionGraph`), settings UI, mode switch, header toggle, and plugin commands (toggle-graph, toggle-hybrid) all functional.
-Rung 4 (hybrid affordance via SessionSurfaceHost) — PENDING; requires migration to plugin SDK surfaces.
+Rung 4 (hybrid affordance via SessionSurfaceHost) — PENDING; requires migration to plugin SDK surfaces. SessionGraphPanel in app uses own composition; plugin SDK surfaces (map, hybrid, transcript-graph) registered but not consumed by app.
 
 ---
 
@@ -249,6 +248,7 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
   rung 2 (session-graph package) ✅
   rung 3 (app wiring) ✅ — flag, settings, mode, toggle, commands via SessionGraphPanel
   rung 4 (hybrid affordance) — PENDING (SessionSurfaceHost migration)
+  PR 4 (session-ui/graph projection) — CODE COMPLETE (createMessageToTurnProjection)
 ```
 
 ---
@@ -294,6 +294,7 @@ P5.1 (film scenarios) ──→ P5.2 (study) ✅ ──→ P5.3 (upstream PRs)
 - **r22 (2026-11-16):** P5.3 rung 1 complete — Plugin surface APIs + feature flags. Added `packages/plugin/src/gui/` SDK (SessionSurface, SessionLayer, Command, Panel, PanelTab, Slot, MobileView), `packages/core/src/flag.ts` Flag service, `packages/schema/src/config/flag.ts` graph_* feature flags, `gui` capability in Plugin.Features, `all_flags` in ConfigExperimental. Fixed session-graph GraphDiff.tsx diffTone() type narrowing. Typechecks pass for session-graph, session-ui, schema, plugin. Unit tests pass (116/116 session-graph). Rungs 3–4 pending.
 - **r23 (2026-11-16):** Fixed Cytoscape renderer card rendering. In `@spacegraphjs/cytoscape-renderer`, `applyModel()` called `#syncCards()` before base class set `this.model`, so cards weren't created. Fixed by passing model explicitly to `#syncCards(model)` and making `#syncCards()` accept optional model parameter. All 24 cytoscape-renderer tests pass; session-graph cytoscape component test now passes.
 - **r24 (2026-11-16):** Deprioritized Cytoscape work. SpaceGraph renderer is the primary/default renderer with full 3D/WebGL support. Cytoscape is a 2D-only fallback (capability flags declare this). Component tests for Cytoscape are low priority; SpaceGraph renderer tests cover the main use case. Cytoscape remains an optional peer dependency with no effect when unused.
+- **r25 (2026-11-16):** P5.3 PR 4 code complete — added `createMessageToTurnProjection` to `session-ui/graph/build.ts` and exported from index. Provides message→turn mapping without full graph build. App integration behind `experimental.sessionGraph` flag remains.
 
 ## Known Issues / Blockers
 ### Graph Capture SSR Failure (Blocking P5.1) — RESOLVED ✅
