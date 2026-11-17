@@ -87,4 +87,6 @@ export const Script = {
     return team
   },
 }
+export { pack, npmDir, archiveDir } from "./pack.js"
+
 console.log(`opencode script`, JSON.stringify(Script, null, 2))

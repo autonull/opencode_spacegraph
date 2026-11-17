@@ -15,6 +15,7 @@ import {
   useTabs,
   type LayoutRoute,
 } from "@opencode/app/desktop"
+import { PluginRoot } from "@opencode/app/runtime/plugin/root"
 import { useTheme } from "@opencode/ui/theme/context"
 import type { BaseRouterProps } from "@solidjs/router"
 import { createEffect, createMemo, createResource, lazy, Show, Suspense } from "solid-js"
@@ -109,25 +110,27 @@ export function DesktopApp(props: { api: ElectronAPI; version: string }) {
 
     return (
       <Show when={ready()}>
-        <AppInterface servers={servers()} router={router}>
-          <DesktopStartupReady
-            routeReady={!initialRoute.loading && startup.onboardingReady}
-            onReady={() => setStartup("ready", true)}
-            onRoute={(route) => setStartup("route", route)}
-          />
-          <DesktopFirstLaunchOnboarding
-            api={props.api}
-            initialUrl={initialUrl}
-            pending={firstLaunch() ?? false}
-            onReady={() => setStartup("onboardingReady", true)}
-          />
-          <DesktopEffects api={props.api} />
-          <Suspense fallback={null}>
-            <Show when={initializationData(sidecar)} keyed>
-              {(server) => <MigrationStatus server={server} />}
-            </Show>
-          </Suspense>
-        </AppInterface>
+        <PluginRoot>
+          <AppInterface servers={servers()} router={router}>
+            <DesktopStartupReady
+              routeReady={!initialRoute.loading && startup.onboardingReady}
+              onReady={() => setStartup("ready", true)}
+              onRoute={(route) => setStartup("route", route)}
+            />
+            <DesktopFirstLaunchOnboarding
+              api={props.api}
+              initialUrl={initialUrl}
+              pending={firstLaunch() ?? false}
+              onReady={() => setStartup("onboardingReady", true)}
+            />
+            <DesktopEffects api={props.api} />
+            <Suspense fallback={null}>
+              <Show when={initializationData(sidecar)} keyed>
+                {(server) => <MigrationStatus server={server} />}
+              </Show>
+            </Suspense>
+          </AppInterface>
+        </PluginRoot>
       </Show>
     )
   }

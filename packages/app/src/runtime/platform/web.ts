@@ -1,11 +1,14 @@
 import { createBrowserDraftStore } from "@/runtime/persistence/drafts"
 import type { Platform } from "./platform"
+import type { Bridge } from "@opencode/gui-extensions/sdk/bridge"
 
 export function createWebPlatform(version: string) {
   const platform: Platform = {
     platform: "web",
     draftStore: createBrowserDraftStore(),
     version,
+    plugins: undefined,
+    extensions: undefined,
     openExternal(value) {
       if (!URL.canParse(value)) return
       const url = new URL(value)

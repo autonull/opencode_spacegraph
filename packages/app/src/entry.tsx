@@ -6,6 +6,7 @@ import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
 import { loadInitialLocale } from "@/runtime/i18n/language"
 import { PlatformProvider } from "@/runtime/platform/platform"
+import { PluginRoot } from "@/runtime/plugin/root"
 import { createWebPlatform } from "@/runtime/platform/web"
 import { isStandalone, PwaRoutePersistence, restorePwaRoute } from "@/runtime/platform/pwa"
 import { KeyboardInsets } from "@/runtime/platform/keyboard"
@@ -100,13 +101,15 @@ if (root instanceof HTMLElement && root.dataset.opencodeMounted === undefined) {
       () => (
         <PlatformProvider value={web.platform}>
           <AppBaseProviders locale={locale}>
-            <AppInterface
-              canonicalLocalServer={server ? ServerConnection.key(server) : undefined}
-              servers={server ? [server] : []}
-            >
-              <KeyboardInsets />
-              {standalone && <PwaRoutePersistence />}
-            </AppInterface>
+            <PluginRoot>
+              <AppInterface
+                canonicalLocalServer={server ? ServerConnection.key(server) : undefined}
+                servers={server ? [server] : []}
+              >
+                <KeyboardInsets />
+                {standalone && <PwaRoutePersistence />}
+              </AppInterface>
+            </PluginRoot>
           </AppBaseProviders>
         </PlatformProvider>
       ),

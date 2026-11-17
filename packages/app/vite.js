@@ -97,6 +97,8 @@ export default [
             "@betteroffice/fonts-cjk": fileURLToPath(
               new URL("../gui-extensions/src/microsoft-office/fonts-cjk.ts", import.meta.url),
             ),
+            // Use built plugin gui dist to avoid SolidJS transform issues with workspace source
+            "@opencode/plugin/gui": fileURLToPath(new URL("../plugin/dist/gui", import.meta.url)),
           },
         },
         define: {
@@ -106,7 +108,7 @@ export default [
           format: "es",
         },
         optimizeDeps: {
-          exclude: [...workerDeps, ...officeDeps],
+          exclude: [...workerDeps, ...officeDeps, "@opencode/plugin"],
           include: ["@opencode/session-ui > mermaid", "@opencode/session-ui > mermaid > katex"],
           rolldownOptions: { plugins: [bundleNestedWorkerDeps] },
         },

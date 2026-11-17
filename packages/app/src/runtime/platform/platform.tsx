@@ -115,6 +115,9 @@ type PlatformBase = {
 
   /** GUI extension bridge to the main-process extension host (desktop only). */
   extensions?: Bridge
+
+  /** Plugin bridge to the main-process plugin host (desktop only). */
+  plugins?: Bridge
 }
 
 export type Platform = PlatformBase &

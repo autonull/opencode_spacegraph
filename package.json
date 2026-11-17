@@ -47,7 +47,8 @@
       "packages/console/*",
       "packages/stats/*",
       "spacegraphjs",
-      "spacegraphjs/packages/*"
+      "spacegraphjs/packages/*",
+      "packages/gui-plugins"
     ],
     "catalog": {
       "@effect/opentelemetry": "4.0.1",
@@ -67,6 +68,7 @@
       "@shikijs/stream": "4.4.3",
       "@standard-schema/spec": "1.1.0",
       "ulid": "3.0.1",
+      "jsqr": "1.4.0",
       "@kobalte/core": "0.13.13",
       "@corvu/drawer": "0.2.4",
       "@types/luxon": "3.7.1",
