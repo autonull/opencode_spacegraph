@@ -1,6 +1,7 @@
 import { Popover } from "@kobalte/core/popover"
 import { Button } from "@opencode/ui/button"
-import { Icon, newIcons } from "@opencode/ui/icon"
+import { Icon } from "@opencode/ui/icon"
+import { newIcons } from "@opencode/ui/icons/new-icons"
 import type { IconName } from "@opencode/ui/icons/catalog"
 import { IconButton } from "@opencode/ui/icon-button"
 import { LineCommentEditor } from "@opencode/ui/line-comment"

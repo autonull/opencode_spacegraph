@@ -3003,6 +3003,10 @@ export type PtyNotFoundError = { readonly _tag: "PtyNotFoundError"; readonly pty
 export const isPtyNotFoundError = (value: unknown): value is PtyNotFoundError =>
   typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "PtyNotFoundError"
 
+export type PtyFeatureUnsupportedError = { readonly _tag: "PtyFeatureUnsupportedError"; readonly message: string }
+export const isPtyFeatureUnsupportedError = (value: unknown): value is PtyFeatureUnsupportedError =>
+  typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "PtyFeatureUnsupportedError"
+
 export type ForbiddenError = { readonly _tag: "ForbiddenError"; readonly message: string }
 export const isForbiddenError = (value: unknown): value is ForbiddenError =>
   typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "ForbiddenError"

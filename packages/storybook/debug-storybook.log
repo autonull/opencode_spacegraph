@@ -1,11 +1,11 @@
-[07:23:21.729] [INFO] storybook v10.4.4
-[07:23:22.445] [DEBUG] Getting package.json info for /home/me/opencode_spacegraph/packages/storybook/package.json...
-[07:23:23.886] [WARN] 🚨 Unable to index files:
+[10:01:52.643] [INFO] storybook v10.4.4
+[10:01:53.579] [DEBUG] Getting package.json info for /home/me/opencode_spacegraph/packages/storybook/package.json...
+[10:01:55.932] [WARN] 🚨 Unable to index files:
 - ../app/src/providers/connect/dialog.standalone.stories.tsx,../app/src/providers/connect/dialog.stories.tsx: Duplicate stories with id: app-dialog-connect-provider--picker
 - ../app/src/providers/connect/dialog.standalone.stories.tsx,../app/src/providers/connect/dialog.stories.tsx: Duplicate stories with id: app-dialog-connect-provider--api-key
 - ../app/src/providers/connect/dialog.standalone.stories.tsx,../app/src/providers/connect/dialog.stories.tsx: Duplicate stories with id: app-dialog-connect-provider--login-methods
 - ../app/src/providers/models/unpaid.standalone.stories.tsx,../app/src/providers/models/unpaid.stories.tsx: Duplicate stories with id: app-dialog-select-model--without-providers
-[07:23:23.892] [ERROR] Error: [38;2;241;97;97mUnable to index files:
+[10:01:55.939] [ERROR] Error: [38;2;241;97;97mUnable to index files:
 - ../app/src/providers/connect/dialog.standalone.stories.tsx,../app/src/providers/connect/dialog.stories.tsx: Duplicate stories with id: app-dialog-connect-provider--picker
 - ../app/src/providers/connect/dialog.standalone.stories.tsx,../app/src/providers/connect/dialog.stories.tsx: Duplicate stories with id: app-dialog-connect-provider--api-key
 - ../app/src/providers/connect/dialog.standalone.stories.tsx,../app/src/providers/connect/dialog.stories.tsx: Duplicate stories with id: app-dialog-connect-provider--login-methods
@@ -17,5 +17,5 @@
     at async withTelemetry (file:///home/me/opencode_spacegraph/node_modules/.bun/storybook@10.4.4+4dc57df3a72714d9/node_modules/storybook/dist/_node-chunks/chunk-TQLYOGGH.js:655:12)
     at async dev (file:///home/me/opencode_spacegraph/node_modules/.bun/storybook@10.4.4+4dc57df3a72714d9/node_modules/storybook/dist/bin/core.js:2735:3)
     at async _Command.<anonymous> (file:///home/me/opencode_spacegraph/node_modules/.bun/storybook@10.4.4+4dc57df3a72714d9/node_modules/storybook/dist/bin/core.js:2805:92)
-[07:23:23.895] [WARN] Broken build, fix the error above.
+[10:01:55.944] [WARN] Broken build, fix the error above.
 You may need to refresh the browser.

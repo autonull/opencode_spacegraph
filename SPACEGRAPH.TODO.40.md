@@ -416,9 +416,19 @@ treating it as a release blocker.
 - ✅ Fixed `graph-parity.test.ts` to match session-ui's `buildGraphIncremental` API
 
 **Remaining (non-blocking, pre-existing)**:
-- vitest config for session-graph tests
+- vitest config for session-graph tests (use jsdom for graph-camera tests)
 - Various unrelated component prop type mismatches (GraphCanvasRegion, ComposerNodeWidget, DiffNodeWidget, GraphRendererStatus)
 - Markdown component test infrastructure issues
+- **Architectural**: Plugin system (PluginRoot) initializes before TabsProvider/ServersProvider are rendered, causing context errors in capture tests. Requires restructuring provider hierarchy or deferring plugin initialization.
 
 **Additional type fixes (r30 — 2026-11-17)**:
 - ✅ Fixed `@spacegraphjs/navigation` missing `@spacegraphjs/renderer` dependency (P1.2) — `RendererViewport` import now resolves
+
+**Additional fixes (r31 — 2026-11-17)**:
+- ✅ Added `isPtyFeatureUnsupportedError` export to client generated types (fixes capture test module resolution)
+- ✅ Added `@testing-library/jest-dom` and vitest setup files to spacegraphjs packages (overlays, search, toolbar, root)
+- ✅ Fixed session-graph `graph-camera.ts` to use `options.reducedMotion` fallback for bun/vitest compatibility
+- ✅ Added `decodePersistentPtyMessage` and `persistentPtyFrame` exports to `@opencode/client/solid`
+- ✅ Fixed spacegraphjs motion exports to include solid utilities
+- ✅ Exported `newIcons` from `@opencode/ui/icons/new-icons`
+- ✅ Added `document-surface.css` export to `@opencode/ui` package.json

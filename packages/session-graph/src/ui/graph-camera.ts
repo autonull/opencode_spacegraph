@@ -99,7 +99,8 @@ export function createGraphCamera(options: GraphCameraOptions) {
     if (!instance) return
     const position = options.positionOf(id)
     const current = options.viewport()
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches || !position || !current) {
+    const prefersReducedMotion = options.reducedMotion?.() ?? window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    if (!prefersReducedMotion || !position || !current) {
       instance.focus(id)
       return
     }

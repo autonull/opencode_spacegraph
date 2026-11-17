@@ -101,3 +101,29 @@ export function closeSessionTab(current: SessionTabState, tab: string): SessionT
     preview,
   }
 }
+
+/**
+ * Determines which pane a tab belongs to based on the panel state.
+ * Returns "bottom" for the terminal/launcher tabs, "side" for everything else.
+ */
+export function sessionTabPane(current: SessionTabState, tab: string): "side" | "bottom" {
+  // The preview tab (launcher) goes to the bottom pane
+  if (current.preview === tab) return "bottom"
+
+  // Check if tab is in the tabs list - if so it's a side pane tab
+  if (current.tabs.all.includes(tab)) return "side"
+
+  // Default to side
+  return "side"
+}
+
+/**
+ * Returns the active tab for a given pane ("side" | "bottom").
+ */
+export function sessionPaneTab(current: SessionTabState, pane: "side" | "bottom"): string | undefined {
+  if (pane === "bottom") {
+    return current.preview
+  }
+  // For side pane, return the active tab
+  return current.tabs.active
+}

@@ -2,7 +2,7 @@ import type { IconName } from "./catalog"
 
 // Artwork for the "New icons" experiment. Each body is the inner markup of a 16×16 SVG drawn with `currentColor`,
 // such as `<path d="…" stroke="currentColor"/>`. An empty body keeps today's artwork for every name it replaces.
-const newIcons = {
+export const newIcons = {
   checkmark: `<path d="M4.5 7.5L7 11.5L11.5 4.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"/>`,
   "circle-checkmark": `<path d="M5 8L7.5 11L11 5.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"/><path d="M14.5 8C14.5 11.5899 11.5899 14.5 8 14.5C4.41015 14.5 1.5 11.5899 1.5 8C1.5 4.41015 4.41015 1.5 8 1.5C11.5899 1.5 14.5 4.41015 14.5 8Z" stroke="currentColor"/>`,
   search: `<path d="M11.5 7C11.5 9.48528 9.48528 11.5 7 11.5C4.51472 11.5 2.5 9.48528 2.5 7C2.5 4.51472 4.51472 2.5 7 2.5C9.48528 2.5 11.5 4.51472 11.5 7Z" stroke="currentColor"/><path d="M13.5 13.5L10.5 10.5" stroke-linecap="round" stroke="currentColor"/>`,
