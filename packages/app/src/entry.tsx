@@ -14,7 +14,7 @@ import en from "@/runtime/i18n/en"
 import zh from "@/runtime/i18n/zh"
 import { authFromToken } from "@/runtime/server/api"
 import pkg from "../package.json"
-import { ServerConnection } from "@/runtime/server/registry"
+import { ServerConnection, ServersProvider } from "@/runtime/server/registry"
 
 const getLocale = () => {
   if (typeof navigator === "undefined") return "en" as const
@@ -101,15 +101,20 @@ if (root instanceof HTMLElement && root.dataset.opencodeMounted === undefined) {
       () => (
         <PlatformProvider value={web.platform}>
           <AppBaseProviders locale={locale}>
-            <PluginRoot>
-              <AppInterface
-                canonicalLocalServer={server ? ServerConnection.key(server) : undefined}
-                servers={server ? [server] : []}
-              >
-                <KeyboardInsets />
-                {standalone && <PwaRoutePersistence />}
-              </AppInterface>
-            </PluginRoot>
+            <ServersProvider
+              canonicalLocalServer={server ? ServerConnection.key(server) : undefined}
+              servers={server ? [server] : []}
+            >
+              <PluginRoot>
+                <AppInterface
+                  canonicalLocalServer={server ? ServerConnection.key(server) : undefined}
+                  servers={server ? [server] : []}
+                >
+                  <KeyboardInsets />
+                  {standalone && <PwaRoutePersistence />}
+                </AppInterface>
+              </PluginRoot>
+            </ServersProvider>
           </AppBaseProviders>
         </PlatformProvider>
       ),

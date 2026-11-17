@@ -12,9 +12,9 @@ import { CommandProvider } from "@/shell/commands/command"
 import { DesktopCommands } from "@/shell/commands/desktop"
 import { GlobalProvider } from "@/runtime/server/runtime"
 import { LanguageProvider, UiI18nBridge, type Locale } from "@/runtime/i18n/language"
-import { ServerConnection, ServersProvider } from "@/runtime/server/registry"
+import { ServerConnection, ServersProvider, useServers } from "@/runtime/server/registry"
 import { SettingsProvider } from "@/settings/model"
-import { TabsProvider } from "@/shell/tabs/tabs"
+import { TabsProvider, useTabs } from "@/shell/tabs/tabs"
 import { ErrorPage } from "@/shell/errors/error"
 import { AppRoutes, File, preloadRoute } from "@/shell/routes/routes"
 import { ExtensionRoot } from "@/runtime/extension/root"
@@ -84,6 +84,9 @@ export function AppBaseProviders(
   )
 }
 
+// Internal component that provides the app interface without ServersProvider.
+// ServersProvider is now provided by the entry point so PluginRoot can be wrapped by it.
+// TabsProvider is created in the Root component (inside the router) so it can use router primitives.
 export function AppInterface(props: {
   children?: JSX.Element
   canonicalLocalServer?: ServerConnection.Key
@@ -107,12 +110,10 @@ export function AppInterface(props: {
   )
 
   return (
-    <ServersProvider canonicalLocalServer={props.canonicalLocalServer} servers={props.servers}>
-      <SettingsProvider>
-        <Dynamic component={props.router ?? Router} root={Root}>
-          <AppRoutes />
-        </Dynamic>
-      </SettingsProvider>
-    </ServersProvider>
+    <SettingsProvider>
+      <Dynamic component={props.router ?? Router} root={Root}>
+        <AppRoutes />
+      </Dynamic>
+    </SettingsProvider>
   )
 }

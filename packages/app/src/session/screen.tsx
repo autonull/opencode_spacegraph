@@ -119,8 +119,8 @@ function SessionScreenContent(props: {
 
         let targetSurface: "transcript" | "hybrid" | "map"
         if (!map) targetSurface = "transcript"
-        else if (sideBySide) targetSurface = "hybrid"
-        else targetSurface = "map"
+        else if (sideBySide) targetSurface = "spacegraph.hybrid"
+        else targetSurface = "spacegraph.map"
 
         const currentSurfaceId = sessionSurfaceID(session)
         if (currentSurfaceId !== targetSurface) {
@@ -144,7 +144,7 @@ function SessionScreenContent(props: {
 
         const currentSurfaceId = sessionSurfaceID(session)
         if (currentSurfaceId === "transcript") {
-          selectSessionSurface("map", session)
+          selectSessionSurface("spacegraph.map", session)
         }
       },
     ),
@@ -385,7 +385,7 @@ function SessionScreenContent(props: {
             Metrics.count("mode-switch")
             const session = props.view()
             if (session) {
-              const next = graph.map() && graph.sideBySide() ? "transcript" : "hybrid"
+              const next = graph.map() && graph.sideBySide() ? "transcript" : "spacegraph.hybrid"
               selectSessionSurface(next, session)
             }
           } : undefined}
@@ -674,7 +674,7 @@ function SessionScreenContent(props: {
                     graph.setSelected(id)
                     const session = props.view()
                     if (session) {
-                      selectSessionSurface("map", session)
+                      selectSessionSurface("spacegraph.map", session)
                     }
                   }}
                 />

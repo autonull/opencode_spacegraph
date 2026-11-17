@@ -48,6 +48,8 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     port: 3000,
+    // Disable HMR in test environment to avoid flaky dynamic import failures
+    hmr: process.env.VITE_OPENCODE_TEST_FIXTURES === "1" ? false : undefined,
   },
   build: (() => {
     const base: import("vite").BuildOptions = {

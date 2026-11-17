@@ -22,7 +22,8 @@ const PluginsContext = createContext<{
   reserved: () => readonly string[]
 }>()
 
-const PluginHotReload = import.meta.env.DEV ? lazy(() => import("./hmr")) : undefined
+const isTestEnv = import.meta.env.VITE_OPENCODE_TEST_FIXTURES === "1"
+const PluginHotReload = import.meta.env.DEV && !isTestEnv ? lazy(() => import("./hmr")) : undefined
 
 /** The ids of plugins on the app's own server whose GUI cannot load because a built-in plugin claims the id. */
 export function useReservedPlugins() {

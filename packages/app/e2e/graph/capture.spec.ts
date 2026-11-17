@@ -44,11 +44,28 @@ test.use({
 })
 
 function graphFixture() {
+  // Session key format: "local\0<base64_directory>/<sessionID>"
+  // base64Encode: URL-safe base64 (replace +/= with -/_)
+  const base64Directory = btoa(new TextEncoder().encode(directory).reduce((str, byte) => str + String.fromCharCode(byte), ""))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
+  const sessionKey = `local\u0000${base64Directory}/${sessionID}`
   return {
     name: "SessionGraph",
     directory,
     sessions: [{ id: sessionID, title: "Session graph" }],
     pageMessages: () => ({ items: buildFixtureMessages() }),
+    seed: {
+      storage: {
+        "opencode.global.dat:layout": {
+          sessionView: {
+            [sessionKey]: {
+              scroll: {},
+              graph: { renderer: "cytoscape" },
+            },
+          },
+        },
+      },
+    },
   }
 }
 
@@ -237,7 +254,7 @@ async function openGraph(page: Page, input = graphFixture()) {
   await settle(page)
   await page.getByRole("button", { name: "Toggle graph view" }).click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
-  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "spacegraph")
+  await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-renderer", "cytoscape")
 }
 
 async function still(page: Page) {

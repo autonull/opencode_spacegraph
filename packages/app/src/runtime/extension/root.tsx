@@ -16,7 +16,8 @@ import { createContext, useContext } from "solid-js"
 
 const HostApisContext = createContext<HostApis>()
 
-const ExtensionHotReload = import.meta.env.DEV ? lazy(() => import("./hmr")) : undefined
+const isTestEnv = import.meta.env.VITE_OPENCODE_TEST_FIXTURES === "1"
+const ExtensionHotReload = import.meta.env.DEV && !isTestEnv ? lazy(() => import("./hmr")) : undefined
 
 export function useHostApis() {
   const value = useContext(HostApisContext)

@@ -433,6 +433,12 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
           applyTheme(theme, store.themeId, store.mode, store.colorScheme)
         })
       },
+      settle: () => {
+        // Called when all plugins have loaded their themes.
+        // Ensures the current theme is applied (in case it was waiting for plugins).
+        const theme = store.themes[store.themeId]
+        if (theme) applyTheme(theme, store.themeId, store.mode, store.colorScheme)
+      },
     }
   },
 })

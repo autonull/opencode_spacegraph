@@ -1059,7 +1059,7 @@ function createHost(input: HostInput) {
       },
     },
     /** The sessions of open shell tabs, and the mounted one. */
-    sessions: (() => {
+    sessions: () => {
       const tabs = useTabs()
       const currentRoute = useCurrentRoute()
 
@@ -1114,7 +1114,7 @@ function createHost(input: HostInput) {
           }
         },
       }
-    })(),
+    },
   }
 }
 

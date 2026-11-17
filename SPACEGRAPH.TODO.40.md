@@ -425,22 +425,28 @@ treating it as a release blocker.
 **Complete Fix Plan — All Issues**:
 
 ### Session 1: Screenshot Generation (P5.1 Demo Gate) — BLOCKING
-- [ ] Fix provider ordering in `packages/app/src/entry.tsx`: TabsProvider/ServersProvider wrap PluginRoot
+- [x] Fix provider ordering in `packages/app/src/entry.tsx`: TabsProvider/ServersProvider wrap PluginRoot
 - [ ] Re-run `bun run graph:capture --mode=demo` to generate fresh screenshots in `docs/spacegraph/screenshots/`
 - [ ] Verify with `bun run graph:verify` (0 pixel diffs against baseline)
 - [ ] If baseline needs update, commit new screenshots as blessed baseline
 
-### Session 2: Component Prop Type Fixes — NON-BLOCKING
+### Session 2: Capture Test Session Route Fix — BLOCKING
+- [ ] Fix session route 404 in capture tests — mock server not returning session data correctly
+- [ ] Fix storage seeding for graph renderer (renderer: "cytoscape") so SpaceGraph doesn't try WebGL in headless
+- [ ] Fix session key format in test fixtures (current base64 encoding doesn't match app's SessionStateKey)
+- [ ] Verify `bun run graph:capture --mode=demo` passes all 30 frames
+
+### Session 3: Component Prop Type Fixes — NON-BLOCKING
 - [ ] Fix `GraphCanvasRegion` prop types
 - [ ] Fix `ComposerNodeWidget` prop types  
 - [ ] Fix `DiffNodeWidget` prop types
 - [ ] Fix `GraphRendererStatus` prop types
 
-### Session 3: Markdown Component Test Infrastructure — NON-BLOCKING
+### Session 4: Markdown Component Test Infrastructure — NON-BLOCKING
 - [ ] Fix vitest config for markdown component tests
 - [ ] Resolve test infrastructure issues preventing markdown component tests from running
 
-### Session 4: Pre-existing Typecheck Error — NON-BLOCKING (UNRELATED)
+### Session 5: Pre-existing Typecheck Error — NON-BLOCKING (UNRELATED)
 - [ ] Fix `packages/app` `component-tests/plugin-host.fixture.tsx:885` missing `tabs.target` (from `src/runtime/plugin/panels.tsx`)
 - [ ] Confirm against `typecheck:tsc` — not a spacegraph concern but should be resolved for clean CI
 
