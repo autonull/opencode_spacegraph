@@ -386,6 +386,68 @@ export type ConfigModelReasoning =
 
 export type ConfigShellOption = { path: string; name: string; acceptable: boolean }
 
+export type WorkspaceSnapshotDirectory = { path: string; parent?: string }
+
+export type WorkspaceSnapshotPackage = {
+  path: string
+  name?: string
+  version?: string
+  private?: boolean
+  scripts?: Array<string>
+  dependencies?: { [x: string]: string }
+  devDependencies?: { [x: string]: string }
+}
+
+export type WorkspaceSnapshotFile = {
+  path: string
+  status?: "added" | "modified" | "deleted"
+  doc?: boolean
+  config?: boolean
+}
+
+export type WorkspaceSnapshotHead = { branch?: string; sha?: string }
+
+export type WorkspaceSnapshotBase = { sha: string }
+
+export type WorkspaceSnapshotBranch = { name: string; sha: string; upstream?: string; remote?: boolean }
+
+export type WorkspaceSnapshotCommit = {
+  sha: string
+  short: string
+  message: string
+  author?: string
+  time?: number
+  files?: Array<string>
+}
+
+export type WorkspaceSnapshotRange = {
+  start: { line: number; character: number }
+  end: { line: number; character: number }
+}
+
+export type WorkspaceSnapshotProcess = {
+  id: string
+  pid?: number
+  command: string
+  cwd?: string
+  ports: Array<number>
+  startedAt?: number
+}
+
+export type WorkspaceSnapshotIssue = {
+  provider: string
+  repo?: string
+  number: string
+  title?: string
+  state?: string
+  url?: string
+}
+
+export type WorkspaceSnapshotMissing = {
+  source: "tree" | "vcs" | "packages" | "symbols" | "issues" | "processes" | "coverage"
+  reason: string
+}
+
 export type LocationPublicRef = { directory: AbsolutePath }
 
 export type FileSystemWrite = { path: AbsolutePath }
@@ -1018,6 +1080,16 @@ export type ConfigModelCapabilities = {
   output?: Array<string>
   temperature?: boolean
   reasoning?: ConfigModelReasoning
+}
+
+export type WorkspaceSnapshotSymbol = {
+  path: string
+  name: string
+  qualified: string
+  kind: "function" | "method" | "class" | "interface" | "type" | "variable" | "constant" | "module" | "enum"
+  range: WorkspaceSnapshotRange
+  signature?: string
+  origin: "parser" | "hunk"
 }
 
 export type SessionMessageLocationSwitched = {
@@ -2304,6 +2376,28 @@ export type AutomationTrigger =
 export type ArtifactContent = { info: ArtifactInfo; files: { [x: string]: string } }
 
 export type JobInfo = JobShell | JobSubagent | JobImage | JobCodeMode
+
+export type WorkspaceSnapshot = {
+  version: 1
+  revision: string
+  root: string
+  scope: "session" | "directory" | "workspace"
+  asOf: { tree?: number; vcs?: number; packages?: number; symbols?: number; processes?: number; issues?: number }
+  truncated: boolean
+  workspace: { name: string; path: string }
+  directories: Array<WorkspaceSnapshotDirectory>
+  packages: Array<WorkspaceSnapshotPackage>
+  files: Array<WorkspaceSnapshotFile>
+  head?: WorkspaceSnapshotHead
+  base?: WorkspaceSnapshotBase
+  branches: Array<WorkspaceSnapshotBranch>
+  commits: Array<WorkspaceSnapshotCommit>
+  symbols: Array<WorkspaceSnapshotSymbol>
+  processes: Array<WorkspaceSnapshotProcess>
+  issues: Array<WorkspaceSnapshotIssue>
+  missing: Array<WorkspaceSnapshotMissing>
+  capabilities: Array<string>
+}
 
 export type SessionInboxMove = {
   id: SessionMessageID
@@ -4946,6 +5040,14 @@ export type ConfigShellsOutput = Array<ConfigShellOption>
 export type ExperimentalConfigUpdateInput = { readonly shell: string | null }
 
 export type ExperimentalConfigUpdateOutput = void
+
+export type ServerGraphWorkspaceInput = {
+  readonly location?: { readonly directory?: string | undefined } | undefined
+  readonly scope?: "session" | "directory" | "workspace" | undefined
+  readonly paths?: string | undefined
+}
+
+export type ServerGraphWorkspaceOutput = { location: LocationPublicRef; data: WorkspaceSnapshot }
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
 export type SessionStatsInput = ExperimentalSessionStatsInput

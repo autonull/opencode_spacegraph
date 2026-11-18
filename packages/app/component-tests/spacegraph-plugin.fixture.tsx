@@ -1,73 +1,61 @@
-import { mountSessionSurfaceBundle, surfaceStorage, until } from "./plugin-host.fixture"
+import { buildFixtureMessages } from "@opencode/session-ui/graph"
+import { pluginDefinition } from "../src/runtime/plugin/module"
+import { mountSessionRegionWithSurfaces } from "./plugin-host.fixture"
 
-/**
- * Mounts the third-party plugin bundle's contributed surface through the app's production
- * `pluginDefinition` loader, selects the map or hybrid surface, and checks that the transcript
- * element survives the switch. Visual presentation is applied by the spec before capture.
- */
-async function mount(surface: "spacegraph.map" | "spacegraph.hybrid", bundleCode: string, messages: readonly any[]) {
-  const host = await mountSessionSurfaceBundle(bundleCode, surfaceStorage, messages)
-  const root = () => document.querySelector('[data-slot="surface-fixture"]') as HTMLElement | null
+const id = "spacegraph-external"
 
-  // Size the host before the renderer mounts: Three.js measures the canvas container once.
-  const container = root()
-  if (container) {
-    Object.assign(container.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483647",
-      width: "100vw",
-      height: "100vh",
-      padding: "24px",
-      background: "var(--v2-background-bg-base, #111)",
-    })
-  }
+function present(container: HTMLElement) {
+  Object.assign(container.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "2147483647",
+    width: "100vw",
+    height: "100vh",
+    padding: "24px",
+    background: "var(--v2-background-bg-base, #111)",
+  })
+}
 
-  await until(() => !!host.entries().includes("session-surface"))
+async function mount(code: string, surface: string) {
+  const plugin = await pluginDefinition(id, code)
 
-  const transcript = () => root()?.querySelector('[data-slot="transcript"]')
-  await until(() => !!transcript())
-  const original = transcript()!
-  original.setAttribute("data-marker", "kept")
+  const mounted = mountSessionRegionWithSurfaces({
+    definitions: [plugin],
+    active: `${id}:map`,
+    messages: buildFixtureMessages(),
+  })
 
-  host.select(surface)
+  await mounted.waitForReady()
+
+  const transcript = document.querySelector('[data-slot="session-transcript"]')
+  transcript?.setAttribute("data-marker", "kept")
+  mounted.selectSurface(surface)
+
   const selector = `[data-slot="${surface === "spacegraph.map" ? "spacegraph-surface-map" : "spacegraph-surface-hybrid"}"]`
-  await until(() => !!root()?.querySelector(selector))
+  const deadline = performance.now() + 20_000
 
-  const canvasEl = root()?.querySelector('[data-slot="spacegraph-graph-canvas"]')
-  const canvas = !!canvasEl
-  const selectedSurface = host.selected()
-
-  // The renderer mounts asynchronously (dynamic imports); wait for it to draw before capture.
-  if (canvasEl) {
-    const drawn = () => !!(canvasEl.querySelector("canvas,svg,[data-renderer]") || (canvasEl.firstElementChild?.children.length ?? 0) > 0)
-    const drawDeadline = performance.now() + 10_000
-    while (performance.now() < drawDeadline && !drawn()) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
-    }
+  while (performance.now() < deadline && !document.querySelector(selector)) {
+    await new Promise((resolve) => requestAnimationFrame(resolve))
   }
 
-  // Switch back to the transcript: the seam keeps the same DOM node alive across surfaces, then
-  // switch forward again so the caller sees the contributed surface for its screenshot.
-  host.select("transcript")
-  await until(() => !!transcript())
-  const transcriptKept = transcript() === original && original.getAttribute("data-marker") === "kept"
-  host.select(surface)
-  await until(() => !!root()?.querySelector(selector))
-
-  return {
-    rendered: !!root()?.querySelector(selector),
-    canvas,
-    transcriptKept,
-    error: root()?.querySelector('[data-slot="surface-error"]')?.textContent ?? null,
-    selected: selectedSurface,
+  const result = {
+    rendered: !!document.querySelector(selector),
+    canvas: !!document.querySelector('[data-slot="spacegraph-graph-canvas"]'),
+    transcriptKept: document.querySelector('[data-slot="session-transcript"]')?.getAttribute("data-marker") === "kept",
+    error: document.querySelector('[data-slot="surface-error"]')?.textContent ?? null,
+    selected: (document.querySelector(selector) ? surface : "transcript"),
   }
+
+  present(mounted.container)
+  return result
 }
 
-export async function mountPluginMap(bundleCode: string, messages: readonly any[]) {
-  return mount("spacegraph.map", bundleCode, messages)
+/** Mounts the third-party plugin bundle's map surface through the production loader. */
+export async function mountPluginMap(code: string) {
+  return mount(code, "spacegraph.map")
 }
 
-export async function mountPluginHybrid(bundleCode: string, messages: readonly any[]) {
-  return mount("spacegraph.hybrid", bundleCode, messages)
+/** Mounts the third-party plugin bundle's hybrid surface through the production loader. */
+export async function mountPluginHybrid(code: string) {
+  return mount(code, "spacegraph.hybrid")
 }

@@ -1,6 +1,20 @@
 import { DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
 
 export const dict = {
+  "command.graph.toggle": "Toggle graph view",
+  "command.graph.hybrid": "Show the graph beside the log",
+  "command.graph.projection": "Toggle graph 3D",
+  "command.graph.turnmap": "Open turn map",
+  "session.graph.error": "Couldn't open the graph view",
+  "session.graph.error.description": "The graph failed to load. The transcript is unaffected.",
+  "session.graph.back": "Back to transcript",
+  "session.graph.hybrid.pane.title": "Session graph",
+  "session.graph.hybrid.pane.close": "Close the graph",
+  "session.graph.hybrid.textSize": "Text size",
+  "session.graph.hybrid.textSize.aria": "Log text size",
+  "session.graph.hybrid.divider": "Resize the map and log panes",
+  "session.graph.turnMap.error": "Couldn't open the turn map",
+  "session.graph.turnMap.error.description": "The graph failed to load. The transcript is unaffected.",
   "experiment.voiceCalls": "Voice calls",
   "voice.call": "Call",
   "voice.mute": "Mute",
@@ -616,7 +630,8 @@ export const dict = {
   "tips.browse.description": "Let OpenCode work in your browser with your tabs, logins, and extensions.",
   "tips.browse.install": "Install",
   "tips.hex.title": "Use your voice",
-  "tips.hex.description": "Hex lets you hold a key and speak your prompts. It runs on your computer and works in any app.",
+  "tips.hex.description":
+    "Hex lets you hold a key and speak your prompts. It runs on your computer and works in any app.",
   "tips.hex.install": "Install Hex",
   "home.workspaceTip": "Start next session in a new workspace to keep changes isolated",
 
@@ -887,8 +902,7 @@ export const dict = {
   "settings.experimental.row.newQuestionUI.title": "New question UI",
   "settings.experimental.row.newQuestionUI.description": "Preview the keyboard-first question dock",
   "settings.experimental.row.tabGroups.title": "Tab groups",
-  "settings.experimental.row.tabGroups.description":
-    "Group session tabs in side tabs with inline session search",
+  "settings.experimental.row.tabGroups.description": "Group session tabs in side tabs with inline session search",
   "settings.experimental.row.sidebarOrganize.title": "Organize vertical sidebar",
   "settings.experimental.row.sidebarOrganize.description":
     "Choose how to organize sessions in side tabs. On desktop, Customize replaces Home with Settings in the sidebar.",
@@ -897,7 +911,8 @@ export const dict = {
   "settings.experimental.sidebarOrganize.customize": "Customize",
   "settings.experimental.sidebarOrganize.consolidated": "Consolidated",
   "settings.general.row.navigation.title": "Navigation",
-  "settings.general.row.navigation.description": "Keep the sessions you're working on as tabs, or see every session in one list.",
+  "settings.general.row.navigation.description":
+    "Keep the sessions you're working on as tabs, or see every session in one list.",
   "settings.general.row.navigation.tabs": "Tabs",
   "settings.general.row.navigation.list": "List",
   "settings.general.row.tabPosition.title": "Tab position",

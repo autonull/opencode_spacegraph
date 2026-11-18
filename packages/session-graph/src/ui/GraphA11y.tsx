@@ -1,0 +1,102 @@
+import { AccessibilityLayer, type AccessibleEdge, type AccessibleItem } from "spacegraphjs/a11y"
+import type { RenderModel } from "@spacegraphjs/renderer"
+import { useI18n } from "@opencode/ui/context/i18n"
+import { createEffect, onCleanup, onMount } from "solid-js"
+
+export type GraphA11yProps = {
+  model: RenderModel
+  selection?: readonly string[]
+  /** Anchors the wrapper's `aria-describedby`; the instructions live here. */
+  instructionsId?: string
+  /** T6.8: what the view changed (level, representation, depth); announced when it changes. */
+  announcement?: string
+  /** Optional label for the current surface (map/hybrid/transcript). */
+  surfaceLabel?: string
+  /** Optional group announcement (collapsed/expanded). */
+  groupAnnouncement?: string
+  onSelect: (id: string) => void
+  onEscape?: () => void
+}
+
+/**
+ * The accessibility mirror (U3.14). It mounts the library `AccessibilityLayer` — a visually hidden,
+ * ordered node list with roving tabindex, arrow traversal, Enter/Space selection, Escape, and an
+ * `aria-live` announcement — over the current render model, so keyboard users reach every node the
+ * canvas draws. The layer never imports a renderer, so it is identical in both.
+ *
+ * T4.7: the mirror also lists the connections and announces the ones of the selected node, so the
+ * structure of the graph is reachable and not only its nodes.
+ */
+export const GraphA11y = (props: GraphA11yProps) => {
+  const i18n = useI18n()
+  let container!: HTMLDivElement
+  let layer: AccessibilityLayer | undefined
+  let announced: string | undefined
+
+  const items = (): AccessibleItem[] =>
+    props.model.nodes
+      .filter((node) => node.interactive !== false)
+      .map((node) => ({
+        id: node.id,
+        label: node.label,
+        kind: node.kind,
+        status: node.status,
+        interactive: true,
+      }))
+
+  const edges = (): AccessibleEdge[] => {
+    const labels = new Map(props.model.nodes.map((node) => [node.id, node.label]))
+
+    return props.model.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      kind: edge.kind,
+      label: `${labels.get(edge.source) ?? edge.source} → ${labels.get(edge.target) ?? edge.target}`,
+    }))
+  }
+
+  onMount(() => {
+    layer = new AccessibilityLayer(container, {
+      label: i18n.t("ui.sessionGraph.a11y.label"),
+      edgeLabel: i18n.t("ui.sessionGraph.a11y.edgeLabel"),
+      onSelect: (id) => props.onSelect(id),
+      onEscape: () => props.onEscape?.(),
+      formatSelection: (labels) =>
+        labels.length
+          ? i18n.t("ui.sessionGraph.a11y.selected", { labels: labels.join(", ") })
+          : i18n.t("ui.sessionGraph.a11y.cleared"),
+      edgeAnnouncer: (connections) =>
+        connections.length
+          ? i18n.t("ui.sessionGraph.a11y.connections", { edges: connections.map((edge) => edge.label).join(", ") })
+          : "",
+    })
+    // The first view state is not a change, so it is not announced.
+    announced = props.announcement
+  })
+
+  createEffect(() => layer?.setItems(items()))
+  createEffect(() => layer?.setEdges(edges()))
+  createEffect(() => layer?.setSelected(props.selection ?? null))
+  // T6.8: the view says what it changed, so a screen-reader user knows the map moved.
+  createEffect(() => {
+    const message = props.announcement
+    if (!message || message === announced) return
+    announced = message
+    layer?.announce(message)
+  })
+
+  onCleanup(() => {
+    layer?.dispose()
+    layer = undefined
+  })
+
+  return (
+    <>
+      <p id={props.instructionsId} data-slot="graph-a11y-instructions" class="sr-only">
+        {i18n.t("ui.sessionGraph.a11y.instructions")}
+      </p>
+      <div ref={container} data-component="session-graph-a11y" data-slot="graph-a11y" />
+    </>
+  )
+}

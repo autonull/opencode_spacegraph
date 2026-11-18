@@ -4,6 +4,7 @@ import type {
   SessionStatus,
   ShellOutputInput,
   ShellOutputOutput,
+  WorkspaceSnapshot,
 } from "@opencode/client/promise"
 import { createSimpleContext } from "@opencode/ui/context"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
@@ -52,6 +53,12 @@ export type TurnDiffSource = {
   load: (input: TurnDiffInput) => void
 }
 
+/** The host's cache of the workspace snapshot the graph's derived domains read. */
+export type SnapshotSource = {
+  get(scope: "session" | "directory" | "workspace", paths?: string): WorkspaceSnapshot | undefined
+  load(scope: "session" | "directory" | "workspace", paths?: string): void
+}
+
 export type NavigateToSessionFn = (sessionID: string) => void
 
 export type SessionHrefFn = (sessionID: string) => string
@@ -75,6 +82,7 @@ export const {
     shellRunning?: (id: string) => boolean
     shellOutput?: (input: ShellOutputInput) => Promise<ShellOutputOutput>
     turnDiff?: TurnDiffSource
+    snapshot?: SnapshotSource
     readMedia?: ReadMediaUrlFn
     peekMedia?: PeekMediaUrlFn
     onNavigateToSession?: NavigateToSessionFn
@@ -99,6 +107,9 @@ export const {
       shellOutput: props.shellOutput,
       get turnDiff() {
         return props.turnDiff
+      },
+      get snapshot() {
+        return props.snapshot
       },
       readMedia: props.readMedia,
       peekMedia: props.peekMedia,

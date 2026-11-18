@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@opencode/session-graph",
+  "version": "2.0.32",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "bun test src",
+    "test:components": "playwright test --config playwright.components.config.ts"
+  },
+  "dependencies": {
+    "@opencode/session-ui": "workspace:*",
+    "@opencode/ui": "workspace:*",
+    "@spacegraphjs/a11y": "workspace:*",
+    "@spacegraphjs/adapter": "workspace:*",
+    "@spacegraphjs/controls": "workspace:*",
+    "@spacegraphjs/compare": "workspace:*",
+    "@spacegraphjs/cytoscape-renderer": "workspace:*",
+    "@spacegraphjs/diff": "workspace:*",
+    "@spacegraphjs/export": "workspace:*",
+    "@spacegraphjs/kernel": "workspace:*",
+    "@spacegraphjs/navigation": "workspace:*",
+    "@spacegraphjs/overlays": "workspace:*",
+    "@spacegraphjs/renderer": "workspace:*",
+    "@spacegraphjs/search": "workspace:*",
+    "@spacegraphjs/shared": "workspace:*",
+    "@spacegraphjs/spacegraph-renderer": "workspace:*",
+    "@spacegraphjs/svg-renderer": "workspace:*",
+    "@spacegraphjs/toolbar": "workspace:*",
+    "@spacegraphjs/trace": "workspace:*",
+    "@spacegraphjs/turn-map": "workspace:*",
+    "@spacegraphjs/window-manager": "workspace:*",
+    "@tanstack/solid-virtual": "3.13.2",
+    "solid-js": "catalog:",
+    "spacegraphjs": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@tsconfig/node22": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native": "catalog:",
+    "@types/three": "0.186.0",
+    "three": "0.186.1",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:"
+  }
+}

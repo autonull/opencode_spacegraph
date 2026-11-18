@@ -326,6 +326,8 @@ import type {
   ConfigShellsOutput,
   ExperimentalConfigUpdateInput,
   ExperimentalConfigUpdateOutput,
+  ServerGraphWorkspaceInput,
+  ServerGraphWorkspaceOutput,
 } from "./types.js"
 import { ClientError } from "./client-error.js"
 
@@ -2735,6 +2737,20 @@ export function make(options: ClientOptions) {
           {
             method: "GET",
             path: `/api/config/shell`,
+            successStatus: 200,
+            declaredStatuses: [400, 401, 404],
+            empty: false,
+          },
+          requestOptions,
+        ),
+    },
+    "server.graph": {
+      workspace: (input?: ServerGraphWorkspaceInput, requestOptions?: RequestOptions) =>
+        request<ServerGraphWorkspaceOutput>(
+          {
+            method: "GET",
+            path: `/api/graph/workspace`,
+            query: { location: input?.["location"], scope: input?.["scope"], paths: input?.["paths"] },
             successStatus: 200,
             declaredStatuses: [400, 401, 404],
             empty: false,

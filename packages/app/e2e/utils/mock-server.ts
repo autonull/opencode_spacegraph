@@ -945,6 +945,37 @@ function mockHandlers(
         configUpdate: () => noContent,
         websearchProviders: () =>
           Effect.sync(() => ({ location: location(config), data: resolve(config.websearchProviders ?? []) })),
+        // Minimal workspace snapshot for graph tests.
+        "graph.workspace": () =>
+          Effect.succeed({
+            location: location(config),
+            data: (Predicate.isFunction(config.graphWorkspace) ? config.graphWorkspace() : config.graphWorkspace) ?? {
+              version: 1,
+              revision: "mock-revision",
+              root: config.directory,
+              scope: "workspace",
+              asOf: {
+                tree: Date.now(),
+                vcs: Date.now(),
+                packages: Date.now(),
+                symbols: Date.now(),
+                processes: Date.now(),
+                issues: Date.now(),
+              },
+              truncated: false,
+              workspace: { name: "mock", path: config.directory },
+              directories: [],
+              packages: [],
+              files: [],
+              branches: [],
+              commits: [],
+              symbols: [],
+              processes: [],
+              issues: [],
+              missing: [],
+              capabilities: [],
+            },
+          }),
         // No scenario signs in to an OpenCode Console workspace, so none has usage limits.
         usageLimits: () => Effect.succeed({ location: location(config), data: null }),
         worktreeList: () =>

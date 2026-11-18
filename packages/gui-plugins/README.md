@@ -843,6 +843,7 @@ export const builtins = compose({
   "microsoft-office": { ...microsoftOffice, windowEntry: eager(microsoftOfficeRenderer) },
   sources: { ...sources, windowEntry: eager(sourcesRenderer) },
   goal: { ...goal, windowEntry: eager(goalRenderer) },
+  spacegraph: { ...spacegraph, windowEntry: eager(spacegraphRenderer) },
 })
 ```
 

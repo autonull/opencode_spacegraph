@@ -15,6 +15,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { showToast } from "@/shell/notifications/toast"
 import { SessionExportProvider } from "@/session/commands/export-session"
 import { createTurnDiffCache } from "@/session/timeline/turn-diffs"
+import { createSnapshotCache } from "@/session/graph/snapshot-cache"
 import { SessionReferenceMenu, type SessionReferenceMenuTarget } from "@/session/session-reference-menu"
 import { useSettings } from "@/settings/model"
 import {
@@ -199,6 +200,7 @@ export function SessionUIProvider(
   // the parent. A route without an open tab, such as one whose tab is closing, loads into a loose cache rather than
   // tab state nothing would remove.
   const looseTurnDiffs = createTurnDiffCache()
+  const snapshotCache = createSnapshotCache(serverSDK, () => props.directory, () => params.id)
 
   const turnDiffCache = createMemo(() => {
     const tab = params.id ? findSessionTab(tabs.store, props.server, params.id) : undefined
@@ -243,6 +245,7 @@ export function SessionUIProvider(
         readMedia={(uri, mime, signal) => serverSDK.media.load(uri, mime, signal)}
         peekMedia={(uri, mime) => serverSDK.media.peek(uri, mime)}
         turnDiff={turnDiff()}
+        snapshot={snapshotCache}
         onNavigateToSession={navigateToSession}
         onSessionHref={href}
       >

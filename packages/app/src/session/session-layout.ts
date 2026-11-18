@@ -7,6 +7,7 @@ import { useServerSDK } from "@/runtime/server/client"
 import { base64Encode } from "@opencode/util/encode"
 import { ServerConnection } from "@/runtime/server/registry"
 import { tabKey, useTabs } from "@/shell/tabs/tabs"
+import { graphLayoutFor } from "@/session/graph/graph-layout"
 
 const useSessionKey = () => {
   const params = useParams()
@@ -57,5 +58,6 @@ export const useSessionLayout = () => {
     }),
     tabs: createMemo(() => layout.tabs(sessionKey)),
     view: createMemo(() => layout.view(sessionKey, regions)),
+    graph: createMemo(() => graphLayoutFor(String(sessionKey()))),
   }
 }

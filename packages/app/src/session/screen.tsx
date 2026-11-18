@@ -51,6 +51,12 @@ import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-ac
 import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
 import { SessionSurfaceHost, SessionSurfacePicker } from "./surface"
+import { useLocation } from "@solidjs/router"
+import { Metrics } from "@opencode/session-ui/graph"
+import { SessionGraphToggle } from "./header/session-graph-toggle"
+import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
+import { graphPermalinkFromHash } from "./graph/graph-permalink"
+import { sessionSurfaceID, selectSessionSurface } from "@/runtime/plugin/surfaces"
 
 export function SessionScreenView(props: { session: SessionModel }) {
   // Link handling for the rest of the screen; each cached timeline provides its own for its session.
@@ -131,6 +137,35 @@ function SessionScreenContent(props: {
   const conversationVisible = createMemo(() => isDesktop() || mobileView() === "session")
 
   const timeline = createSessionTimelineInteraction(session, conversationVisible)
+
+  const graph = session.layout.graph()
+  const routerLocation = useLocation()
+
+  // Keep the app's graph state (map, split) in step with the surface the host shows.
+  createEffect(
+    on(
+      () => [graph.map(), graph.sideBySide()] as const,
+      ([map, sideBySide]) => {
+        const mounted = props.view()
+        if (!mounted) return
+
+        const target = !map ? "transcript" : sideBySide ? "spacegraph.hybrid" : "spacegraph.map"
+        if (sessionSurfaceID(mounted) !== target) selectSessionSurface(target, mounted)
+      },
+    ),
+  )
+
+  // T3.5: a graph permalink opens the map, so a shared link lands on the node it names.
+  createEffect(
+    on(
+      () => [routerLocation.hash, graph.map()] as const,
+      ([hash]) => {
+        if (!graphPermalinkFromHash(hash)) return
+        const mounted = props.view()
+        if (mounted && sessionSurfaceID(mounted) === "transcript") selectSessionSurface("spacegraph.map", mounted)
+      },
+    ),
+  )
 
   const timelineSearch = createTimelineSearchController({
     sessionID: session.identity.sessionID,
@@ -423,11 +458,7 @@ function SessionScreenContent(props: {
               <SessionIdentityHeader sessionID={session.identity.params.id ?? ""} session={session.data.info()} />
             </Show>
             <Show when={messagesReady() && session.identity.params.id}>
-              <SessionSurfaceHost
-                session={props.view()}
-                screen={props.screen}
-                transcript={() => timelineView()}
-              />
+              <SessionSurfaceHost session={props.view()} screen={props.screen} transcript={() => timelineView()} />
             </Show>
           </Match>
         </Switch>
@@ -465,6 +496,7 @@ function SessionScreenContent(props: {
               onPointerDown={hideTimelineScrollbar}
               onClick={hideTimelineScrollbar}
             >
+              <SessionGraphToggle />
               <SessionReviewToggle
                 onToggle={region.toggle}
                 glyph={(fill) => {
@@ -544,6 +576,28 @@ function SessionScreenContent(props: {
                 </div>
               </div>
             </div>
+          </Show>
+
+          {/* The turn map is the session's own overlay (H6.2): it covers the session panel, not the
+              side region. The wrapper carries the panel's own width so the overlay is scoped to the
+              panel it belongs to, and it sits above the floating header toggles. */}
+          <Show when={graph.turnMap()}>
+            {(turnID) => (
+              <div class="absolute inset-y-0 start-0 z-40" style={{ width: screen.panel.width() }}>
+                <SessionTurnMapOverlay
+                  session={session}
+                  turnID={turnID()}
+                  onClose={() => graph.setTurnMap(undefined)}
+                  onOpenFullGraph={(id) => {
+                    Metrics.count("expand")
+                    graph.setTurnMap(undefined)
+                    graph.setSelected(id)
+                    const mounted = props.view()
+                    if (mounted) selectSessionSurface("spacegraph.map", mounted)
+                  }}
+                />
+              </div>
+            )}
           </Show>
         </div>
 

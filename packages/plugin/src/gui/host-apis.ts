@@ -744,6 +744,22 @@ export interface MountedSession extends SessionRef {
   readonly background: readonly BackgroundTask[]
 }
 
+/** The routed session's transcript viewport, when the host exposes it. */
+export interface TranscriptScreen {
+  /**
+   * The message the transcript's viewport currently shows, or undefined while it follows the newest content. Reactive:
+   * call it where you use the value so a surface updates as the user scrolls.
+   */
+  activeMessageID(): string | undefined
+  /**
+   * Reveals a message in the transcript, scrolling it into view and leaving graph mode when it is active.
+   *
+   * @param messageID - The message to reveal.
+   * @param partID - The tool call inside the message to open, when known.
+   */
+  reveal(messageID: string, partID?: string): void
+}
+
 /**
  * The session screen: the app's view that shows the routed session, and stays the same object while it routes A, then
  * B, then A again. It follows the route on purpose: its files, comments and composer are the screen's workspace models,
@@ -757,6 +773,8 @@ export interface SessionScreen {
   readonly comment: Comments
   /** The routed session's composer. */
   readonly composer: Composer
+  /** The routed session's transcript viewport, when the host provides one. */
+  readonly transcript?: TranscriptScreen
 }
 
 /** The session screen, while it routes the mounted session. */

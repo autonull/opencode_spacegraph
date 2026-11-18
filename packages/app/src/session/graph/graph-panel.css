@@ -1,0 +1,9 @@
+/* The log's text can be scaled — in a split panel the log is narrow, and the reader wants it
+   bigger or smaller. The theme owns the sizes; this surface re-derives them from the theme's
+   unscaled values, so a theme that changes them scales with it. */
+[data-slot="session-graph-panel-log"] {
+  --font-size-small: calc(var(--text-size-small) * var(--text-scale, 1));
+  --font-size-base: calc(var(--text-size-base) * var(--text-scale, 1));
+  --font-size-large: calc(var(--text-size-large) * var(--text-scale, 1));
+  --font-size-x-large: calc(var(--text-size-x-large) * var(--text-scale, 1));
+}

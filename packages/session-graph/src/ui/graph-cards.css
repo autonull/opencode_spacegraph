@@ -1,0 +1,31 @@
+/**
+ * V116 — micro-actions: hover-only copy icon on cards.
+ */
+[data-component="session-graph-view"] [data-kind]:hover .card-copy-btn {
+  opacity: 1 !important;
+}
+
+.card-copy-btn:hover {
+  color: var(--text-strong) !important;
+}
+
+/**
+ * The map answers the pointer: a card lifts a little when the reader points at it, so the surface
+ * feels alive without moving the node or its edges.
+ */
+[data-component="session-graph-view"] [data-kind] {
+  transition: filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+[data-component="session-graph-view"] [data-kind]:hover {
+  filter: brightness(1.08);
+}
+
+[data-component="session-graph-view"] [data-kind][data-selected="true"]:hover {
+  filter: brightness(1.1);
+}
+
+/* A lane label is a caption, not a control: it takes no pointer and no hover lift. */
+[data-component="session-graph-view"] [data-lane] {
+  user-select: none;
+}

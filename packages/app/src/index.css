@@ -347,6 +347,24 @@
     [data-component="session-dropzone"][data-visible="true"] [data-slot="session-dropzone-stripes"] {
       animation: none;
     }
+
+    [data-component="session-graph-view"],
+    [data-component="session-graph-toolbar"],
+    [data-component="session-graph-window"],
+    [data-component="session-graph-find"],
+    [data-component="session-graph-inspector"],
+    [data-slot="graph-failure-progress"],
+    [data-slot="graph-compare-window"] {
+      animation: none !important;
+    }
+
+    [data-slot="graph-find"],
+    [data-slot="graph-failure-progress"],
+    [data-slot="graph-compare-window"],
+    [data-slot="graph-inspector"],
+    [data-slot="graph-window"] {
+      transition: none !important;
+    }
   }
 
   /* A mask fades the rows themselves, so the edges work over any background, including the dropdown's. */

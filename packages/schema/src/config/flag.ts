@@ -20,6 +20,13 @@ export const registry = {
     "Enable experimental MCP Events, a draft MCP extension: declare support to MCP servers and read the events of servers that offer them.",
   full_codemode:
     "Enable the full Code Mode work in progress. Off by default in every build, including local and dev; opt in with OPENCODE_FLAGS=full_codemode or experimental.full_codemode: true.",
+  graph_cost_lens: "Enable cost/budget lens.",
+  graph_palette: "Enable the graph palette over nodes, actions, lenses, and surfaces.",
+  graph_attention: "Enable failure attention badges, toasts, and the titlebar item.",
+  graph_layout_breadth: "Enable optional grid and circular graph layouts.",
+  graph_library_renderers: "Enable alternative renderer strategies (Cytoscape, etc.).",
+  graph_time_travel: "Enable time travel scrubber through incremental builder snapshots.",
+  graph_compaction_advisor: "Enable compaction preview advisor.",
 } as const satisfies Record<string, string>
 export type Key = keyof typeof registry
 

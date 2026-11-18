@@ -1,23 +1,24 @@
 import type { PluginInfo, SessionMessageInfo } from "@opencode/client/promise"
 import { DialogProvider, useDialog } from "@opencode/ui/context/dialog"
-import { Icon } from "@opencode/ui/icon"
 import { Menu } from "@opencode/ui/menu"
 import { Toast } from "@opencode/ui/toast"
 import {
+  Command,
   Panel,
   SessionSurface,
   type Appearance,
   type App,
-  type Context,
   type Keybinds,
   type MountedSession,
   type Router,
   type Servers,
+  type SessionRef,
   type SessionScreen,
+  type Surfaces,
   type Ipc,
   type IpcClient,
   type IpcSpec,
-  Plugin,
+  type Plugin,
   type Storage,
   type StoreOptions,
   type Workspaces,
@@ -25,6 +26,7 @@ import {
 import type { BuiltinLayout, BuiltinLocale } from "@opencode/plugin/gui/builtin"
 import {
   createComponent,
+  createEffect,
   createMemo,
   createRoot,
   createSignal,
@@ -48,7 +50,14 @@ import { createRegion, RegionContent } from "../src/runtime/plugin/panels"
 import { createSessionScreenLayout } from "../src/session/screen-layout"
 import type { SessionModel } from "../src/session/model"
 import { createClosedTabs } from "../src/runtime/plugin/closed-tabs"
-import { PluginLinks, PluginSlot, PluginStyles, PluginThemes } from "../src/runtime/plugin/render"
+import { PluginLinks, PluginSlot, PluginThemes } from "../src/runtime/plugin/render"
+import {
+  orderedSessionSurfaces,
+  selectSessionSurface,
+  sessionSurfaceID,
+  transcriptSurfaceID,
+  resolveSessionSurface,
+} from "../src/runtime/plugin/surfaces"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { ThemeProvider, useTheme, type ColorScheme } from "@opencode/ui/theme/context"
 import { persistedHandle } from "../src/runtime/plugin/stores"
@@ -56,8 +65,6 @@ import { LanguageProvider } from "../src/runtime/i18n/language"
 import { ExtensionPlugins } from "../src/runtime/plugin/extension-plugins"
 import { SessionPluginPills } from "../src/session/composer/plugin-pills"
 import { ui } from "../src/runtime/plugin/ui"
-import { SessionSurfaceHost } from "../src/session/surface"
-import { selectSessionSurface, sessionSurfaceID, transcriptSurfaceID } from "../src/runtime/plugin/surfaces"
 
 export {
   bindPlugin,
@@ -136,8 +143,9 @@ function fakeApis(storage: (plugin: string) => Storage): HostApiFactories {
     screen: () => ({ current: () => undefined }),
     surfaces: () => ({
       list: () => [],
-      current: () => transcriptSurfaceID,
-      select: () => undefined,
+      items: () => [],
+      current: () => "transcript",
+      select: () => {},
     }),
     layout: () => layout,
     storage,
@@ -587,7 +595,15 @@ export function mountSessionRegion(input: {
       pending: false,
       location: { directory: "/repo" },
       visit: {},
-      server: { data: { session: { message: { list: () => input.messages ?? [] } } } },
+      server: {
+        data: {
+          session: {
+            message: { list: () => input.messages ?? [] },
+            status: () => "idle",
+            get: () => undefined,
+          },
+        },
+      },
     }
 
     // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
@@ -612,8 +628,8 @@ export function mountSessionRegion(input: {
   function Region() {
     const host = usePluginHost()
     hosts.push(host)
-    // Every panel's `main` tab is stored, and `active` selected, as a strip restored after a reload.
-    const all = () => host.items(Panel).map((item) => `${item.plugin}:main`)
+    // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
+    const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
 
     const region = createRegion({
       region: "side",
@@ -632,6 +648,25 @@ export function mountSessionRegion(input: {
       closed: createClosedTabs(),
       open() {},
       side: () => ({ opened: () => true, toggle() {} }),
+    })
+
+    // Debug: log the region's pane entries
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("[Region] Pane entries:", pane.keys())
+      console.log("[Region] Pane selected:", pane.selected()?.key)
+    })
+
+    // Debug: check panel items
+    createEffect(() => {
+      const items = host.items(Panel)
+      console.log("[Region] Panel items:", items.map(item => `${item.plugin}:${item.value.id}`))
+    })
+
+    // Debug: check tabs
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("[Region] Tabs - all:", pane.keys(), "selected:", pane.selected()?.key)
     })
 
     return (
@@ -699,6 +734,31 @@ export function mountSessionRegion(input: {
     container,
   )
 
+  // Wait for the host to be ready (all plugins activated)
+  const waitForReady = async (timeout = 10000) => {
+    const start = performance.now()
+    while (performance.now() - start < timeout) {
+      const host = hosts[0]
+      if (host) {
+        const allActive = input.definitions.every(
+          (def) => host.status(def.id) === "active",
+        )
+        const anyFailed = input.definitions.some(
+          (def) => host.status(def.id) === "failed",
+        )
+        if (anyFailed) {
+          const failures = input.definitions
+            .filter((def) => host.status(def.id) === "failed")
+            .map((def) => `${def.id}: ${host.failure(def.id)?.error}`)
+          throw new Error(`Plugin(s) failed: ${failures.join(", ")}`)
+        }
+        if (allActive) return
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    throw new Error("Timed out waiting for host to be ready")
+  }
+
   return {
     container,
     /** Routes a session: the screen creates a new session object for it. */
@@ -708,6 +768,313 @@ export function mountSessionRegion(input: {
     /** The session each composer attachment reached, in order. */
     attached,
     status: (id: string) => hosts[0]?.status(id),
+    waitForReady,
+    /** Run a command by ID (e.g., "hybrid") by looking it up in the Command registry. */
+    runCommand: (id: string) => {
+      const host = hosts[0]
+      if (!host) return false
+      const commandItems = host.items(Command)
+      const command = commandItems.find((item) => item.value.id === id)?.value
+      if (!command) return false
+      try {
+        command.run?.()
+        return true
+      } catch {
+        return false
+      }
+    },
+    unmount: () => {
+      dispose()
+      container.remove()
+    },
+  }
+}
+
+/**
+ * A PluginHostProvider that includes the `surfaces` API in its HostApis.
+ */
+function RealHostWithSurfaces(props: ParentProps<{
+  definitions: readonly Entry[]
+  captured: Captured
+  mounted?: Interface
+  surfaces: Surfaces
+}>) {
+  const apis = createHostApis()
+  props.captured.apis = apis
+
+  if (props.mounted) onCleanup(apis.attach(props.mounted))
+
+  return (
+    <PluginHostProvider
+      definitions={() => props.definitions}
+      disabled={() => new Set<string>()}
+      // SAFETY: adding surfaces to the host APIs for testing
+      apis={{ ...apis.apis, surfaces: () => props.surfaces } as HostApiFactories & { surfaces: () => Surfaces }}
+      whenMounted={apis.whenMounted}
+    >
+      {props.children}
+    </PluginHostProvider>
+  )
+}
+
+/**
+ * Mounts the real host with `ctx.surfaces` API, and the session screen that renders plugin surfaces
+ * for the routed session. This is for testing plugins that contribute SessionSurface entries.
+ */
+export function mountSessionRegionWithSurfaces(input: {
+  definitions: readonly Entry[]
+  active: string
+  /** The routed session's messages, as its server holds them. */
+  messages?: readonly SessionMessageInfo[]
+}) {
+  const container = document.createElement("div")
+  document.body.appendChild(container)
+  const hosts: PluginHost[] = []
+  const captured: Captured = {}
+  const attached: string[] = []
+
+  const object = (id: string) => {
+    const value = {
+      key: `fixture\n${id}`,
+      id,
+      tab: id,
+      pending: false,
+      location: { directory: "/repo" },
+      visit: {},
+      server: {
+        data: {
+          session: {
+            message: { list: () => input.messages ?? [] },
+            status: () => "idle",
+            get: () => undefined,
+          },
+        },
+      },
+    }
+
+    // SAFETY: the region and slot pass the object through; the test's plugins read only `key`, `id` and the
+    // server's message list.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+    return value as unknown as MountedSession
+  }
+
+  const [view, setView] = createSignal(object("a"))
+  const [routed, setRouted] = createSignal(true)
+
+  const route = {
+    composer: { attach: () => void attached.push(view().id), update() {}, detach() {} },
+  }
+
+  // SAFETY: the test's plugin reads only `composer.attach` of the screen.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- see SAFETY above
+  const screen = route as unknown as SessionScreen
+
+  const sidebar = { opened: () => false, width: () => 0, transition: () => false, resize() {}, toggle() {} }
+
+  function Region() {
+    const host = usePluginHost()
+    hosts.push(host)
+    // Every panel's tab is stored with its actual id, and `active` selected, as a strip restored after a reload.
+    const all = () => host.items(Panel).map((item) => `${item.plugin}:${item.value.id}`)
+
+    const region = createRegion({
+      region: "side",
+      view,
+      screen,
+      tabs: () => ({
+        tabs: () => ({ all: all(), active: input.active }),
+        all,
+        active: () => input.active,
+        setAll() {},
+        setActive() {},
+        close() {},
+        remap() {},
+        target() {},
+      }),
+      closed: createClosedTabs(),
+      open() {},
+      side: () => ({ opened: () => true, toggle() {} }),
+    })
+
+    // Debug: log the region's pane entries
+    createEffect(() => {
+      const pane = region.pane("side")
+      console.log("Pane entries:", pane.keys())
+      console.log("Pane selected:", pane.selected()?.key)
+    })
+
+    return (
+      <Show when={host.ready()}>
+        <PluginSlot
+          at="session.panel.end"
+          input={{
+            get session() {
+              return view()
+            },
+            screen,
+          }}
+        />
+        <RegionContent
+          pane={region.pane("side")}
+          view={view()}
+          screen={screen}
+          frame={{
+            shown: () => true,
+            present: () => true,
+            placement: () => "side",
+            reserve: () => false,
+            animate: () => false,
+            sidebar,
+          }}
+        />
+      </Show>
+    )
+  }
+
+  // Surfaces API - provides session surfaces for plugins using the real surfaces implementation
+  const language = { t: (key: string) => key }
+
+  // The surfaces object - list() calls usePluginHost() at call time, which works because
+  // the plugin calls it during setup (inside a Solid owner) and FixtureSessionSurfaceHost
+  // calls it during render (also inside a Solid owner).
+  const surfaces: Surfaces = {
+    list: () => {
+      const host = usePluginHost()
+      const items = host?.items(SessionSurface).map((item) => item.value) ?? []
+      const result = orderedSessionSurfaces(items, language.t("session.surface.transcript"))
+      console.log("[surfaces.list] registered:", result.map(s => s.id))
+      return result
+    },
+    current: (session: SessionRef) => {
+      const id = sessionSurfaceID(session)
+      console.log("[surfaces.current] session.key:", session.key, "selected:", id)
+      return id
+    },
+    select: (id: string, session: SessionRef) => {
+      console.log("[surfaces.select] id:", id, "session.key:", session.key)
+      selectSessionSurface(id, session)
+      console.log("[surfaces.select] after select, sessionSurfaceID:", sessionSurfaceID(session))
+    },
+  }
+
+  // SessionSurfaceHost for the fixture - mirrors the real SessionSurfaceHost in packages/app/src/session/surface.tsx
+  function FixtureSessionSurfaceHost() {
+    const host = usePluginHost()
+    const transcript = <div data-slot="session-transcript">Transcript</div>
+
+    // Memo for the surfaces list (like the real SessionSurfaceHost)
+    const surfacesList = createMemo(() =>
+      orderedSessionSurfaces(
+        host?.items(SessionSurface).map((item) => item.value) ?? [],
+        language.t("session.surface.transcript"),
+      ),
+    )
+
+    // Single memo for the selected surface to avoid reactive loops
+    const selectedSurface = createMemo(() => {
+      const surfaceItems = surfacesList()
+      const selectedId = surfaces.current(view())
+      const surface = resolveSessionSurface(surfaceItems, selectedId)
+      return surface.id === transcriptSurfaceID ? undefined : surface
+    })
+
+    return (
+      <ErrorBoundary fallback={(err) => {
+        console.error("Surface render error:", err)
+        return <div data-slot="surface-error">Error: {String(err)}</div>
+      }}>
+        <div class="flex h-full min-h-0 flex-col" data-slot="session-surface-host">
+          {selectedSurface() ? (
+            <>
+              <div class="flex h-full min-h-0 flex-col">
+                {selectedSurface()!.render({ session: view(), screen, transcript })}
+              </div>
+              {selectedSurface()!.layers?.map((layer) =>
+                layer.render({ session: view(), screen, surface: selectedSurface()! })
+              )}
+            </>
+          ) : (
+            transcript
+          )}
+        </div>
+      </ErrorBoundary>
+    )
+  }
+
+  const dispose = render(
+    () => (
+      <LanguageProvider locale="en">
+        <PlatformProvider value={web}>
+          <DialogProvider>
+            <RealHostWithSurfaces
+              definitions={input.definitions}
+              captured={captured}
+              mounted={standIn({ current: () => (routed() ? view() : undefined), screen: () => screen })}
+              surfaces={surfaces}
+            >
+              <div class="flex h-full flex-col" style={{ height: "100vh" }}>
+                <FixtureSessionSurfaceHost />
+                <Region />
+              </div>
+            </RealHostWithSurfaces>
+          </DialogProvider>
+        </PlatformProvider>
+      </LanguageProvider>
+    ),
+    container,
+  )
+
+  // Wait for the host to be ready (all plugins activated)
+  const waitForReady = async (timeout = 10000) => {
+    const start = performance.now()
+    while (performance.now() - start < timeout) {
+      const host = hosts[0]
+      if (host) {
+        const allActive = input.definitions.every(
+          (def) => host.status(def.id) === "active",
+        )
+        const anyFailed = input.definitions.some(
+          (def) => host.status(def.id) === "failed",
+        )
+        if (anyFailed) {
+          const failures = input.definitions
+            .filter((def) => host.status(def.id) === "failed")
+            .map((def) => `${def.id}: ${host.failure(def.id)?.error}`)
+          throw new Error(`Plugin(s) failed: ${failures.join(", ")}`)
+        }
+        if (allActive) return
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    throw new Error("Timed out waiting for host to be ready")
+  }
+
+  return {
+    container,
+    /** Routes a session: the screen creates a new session object for it. */
+    route: (id: string) => setView(object(id)),
+    /** The route leaves while its old screen has not unmounted yet. */
+    leave: () => setRouted(false),
+    /** The session each composer attachment reached, in order. */
+    attached,
+    status: (id: string) => hosts[0]?.status(id),
+    waitForReady,
+    /** Select a session surface by id. */
+    selectSurface: (id: string) => surfaces.select(id, view()),
+    /** Run a command by ID (e.g., "hybrid") by looking it up in the Command registry. */
+    runCommand: (id: string) => {
+      const host = hosts[0]
+      if (!host) return false
+      const commandItems = host.items(Command)
+      const command = commandItems.find((item) => item.value.id === id)?.value
+      if (!command) return false
+      try {
+        command.run?.()
+        return true
+      } catch {
+        return false
+      }
+    },
     unmount: () => {
       dispose()
       container.remove()
@@ -832,22 +1199,6 @@ export function mountComposerPills(input: { definitions: readonly Entry[] }) {
   return {
     status: (id: string) => hosts[0]?.status(id),
     failure: (id: string) => hosts[0]?.failure(id),
-    unmount: () => {
-      dispose()
-      container.remove()
-    },
-  }
-}
-
-/** Mounts the app's own icon component outside every plugin and host, as any part of the app draws an icon by name. */
-export function mountAppIcon(name: string) {
-  const container = document.createElement("div")
-  container.dataset.testid = "app-icon"
-  document.body.appendChild(container)
-
-  const dispose = render(() => <Icon name={name} />, container)
-
-  return {
     unmount: () => {
       dispose()
       container.remove()
@@ -987,121 +1338,6 @@ export function mountHostApis(input: { definitions: readonly Entry[] }) {
     attach: () => void captured.apis?.attach(mounted),
     reload: (id: string) => hosts[0]?.reload(id),
     status: (id: string) => hosts[0]?.status(id),
-    unmount: () => {
-      dispose()
-      container.remove()
-    },
-  }
-}
-
-/**
- * Mounts the real host with one plugin contributing a session surface, then the host's render seam. The surface wraps
- * the transcript so a test can watch the same element move between surfaces.
- */
-export function mountSessionSurface() {
-  return mountSessionSurfaceWith({
-    id: "spike",
-    windowEntry: () =>
-      Promise.resolve({
-        default: (ctx: Context) => {
-          ctx.add(SessionSurface, {
-            id: "spike.map",
-            title: "Spike Map",
-            render: () => <div data-slot="spike-map">Spike Map</div>,
-          })
-        },
-      }),
-  })
-}
-
-/** Storage that answers store reads with in-memory values, for plugins that declare stores. */
-export function surfaceStorage(): Storage {
-  const memory = new Map<string, unknown>()
-  return {
-    store<S extends Schema.ConstraintCodec<object, unknown>>(key: string, options: StoreOptions<S>) {
-      const pair = persisted(Persist.global(`plugin.surface.${key}`), options.schema, options.initial)
-      return persistedHandle({ store: pair[0], set: pair[1], init: pair[3].promise })
-    },
-    memory: (_key, options) => {
-      const [value, set] = createStore(options.initial)
-      return [value, (mutation) => set(produce(mutation))] as const
-    },
-    remove(key: string) {
-      memory.delete(key)
-    },
-  }
-}
-
-/** Mounts a plugin from its real `./gui-experimental` CommonJS bundle, through the app's own `pluginDefinition`. */
-export async function mountSessionSurfaceBundle(
-  code: string,
-  storage: (plugin: string) => Storage = unused,
-  messages?: readonly SessionMessageInfo[],
-) {
-  const { pluginDefinition } = await import("../src/runtime/plugin/module")
-  return mountSessionSurfaceWith(await pluginDefinition("spike", code), storage, messages)
-}
-
-function mountSessionSurfaceWith(
-  definition: Entry,
-  storage: (plugin: string) => Storage = unused,
-  messages?: readonly SessionMessageInfo[],
-) {
-  const sessionMessages: readonly SessionMessageInfo[] = messages ?? []
-  const session = {
-    key: "surface-fixture\n1",
-    id: "ses_surface_fixture",
-    server: {
-      data: {
-        session: {
-          status: () => "idle",
-          get: () => ({ title: "SpaceGraph Fixture" }),
-          message: { list: () => sessionMessages },
-        },
-      },
-    },
-  } as unknown as MountedSession
-  const screen = {} as SessionScreen
-  const container = document.createElement("div")
-  document.body.appendChild(container)
-  const hosts: PluginHost[] = []
-  selectSessionSurface(transcriptSurfaceID, session)
-
-  function Capture() {
-    hosts.push(usePluginHost())
-    return null
-  }
-
-  const dispose = render(
-    () => (
-      <LanguageProvider locale="en">
-        <DialogProvider>
-          <PluginHostProvider
-            definitions={() => [definition]}
-            disabled={() => new Set<string>()}
-            apis={fakeApis(storage)}
-            whenMounted={mounted}
-          >
-            <PluginStyles />
-            <Capture />
-            <div data-slot="surface-fixture">
-              <SessionSurfaceHost
-                session={session}
-                screen={screen}
-                transcript={() => <div data-slot="transcript">Transcript</div>}
-              />
-            </div>
-          </PluginHostProvider>
-        </DialogProvider>
-      </LanguageProvider>
-    ),
-    container,
-  )
-
-  return {
-    entries: () => Object.keys(hosts[0]?.state.entries ?? {}),
-    select: (id: string) => selectSessionSurface(id, session),
-    selected: () => sessionSurfaceID(session),
     unmount: () => {
       dispose()
       container.remove()

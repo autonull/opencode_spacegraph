@@ -12,6 +12,9 @@
     "./timeline/detail": "./src/timeline/detail.ts",
     "./timeline/row": "./src/timeline/session-timeline-row.tsx",
     "./timeline": "./src/timeline/session-timeline.tsx",
+    "./graph": "./src/graph/index.ts",
+    "./graph/model": "./src/graph/model.ts",
+    "./graph/vocabulary": "./src/graph/vocabulary.ts",
     "./timeline-next": "./src/timeline-next/index.ts",
     "./basic-tool": "./src/components/basic-tool.tsx",
     "./copy": "./src/components/copy.ts",
@@ -86,6 +89,19 @@
     "dompurify": "3.4.17",
     "marked": "catalog:",
     "pele": "1.7.0",
-    "solid-js": "catalog:"
+    "solid-js": "catalog:",
+    "@spacegraphjs/a11y": "workspace:*",
+    "@spacegraphjs/adapter": "workspace:*",
+    "@spacegraphjs/controls": "workspace:*",
+    "@spacegraphjs/compare": "workspace:*",
+    "@spacegraphjs/export": "workspace:*",
+    "@spacegraphjs/kernel": "workspace:*",
+    "@spacegraphjs/navigation": "workspace:*",
+    "@spacegraphjs/overlays": "workspace:*",
+    "@spacegraphjs/search": "workspace:*",
+    "@spacegraphjs/shared": "workspace:*",
+    "@spacegraphjs/toolbar": "workspace:*",
+    "@spacegraphjs/trace": "workspace:*",
+    "@spacegraphjs/turn-map": "workspace:*"
   }
 }
