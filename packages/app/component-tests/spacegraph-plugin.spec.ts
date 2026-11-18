@@ -44,7 +44,7 @@ story("the plugin bundle renders the map surface and keeps the transcript mounte
     selected: "spacegraph.map",
   })
 
-  await page.screenshot({ path: `${screenshots}55-plugin-surface-map.png` })
+  await page.locator('[data-slot="surface-fixture"]').screenshot({ path: `${screenshots}55-plugin-surface-map.png` })
 })
 
 story("the plugin bundle renders the hybrid surface and keeps the transcript mounted", async ({ page }) => {
@@ -58,5 +58,5 @@ story("the plugin bundle renders the hybrid surface and keeps the transcript mou
     selected: "spacegraph.hybrid",
   })
 
-  await page.screenshot({ path: `${screenshots}56-plugin-surface-hybrid.png` })
+  await page.locator('[data-slot="surface-fixture"]').screenshot({ path: `${screenshots}56-plugin-surface-hybrid.png` })
 })

@@ -3,7 +3,7 @@ import type { GraphRenderer } from "@spacegraphjs/renderer"
 import type { WidgetRegistry } from "spacegraphjs/widgets"
 import { useI18n } from "./i18n"
 import { createEffect, createSignal, getOwner, onCleanup, onMount, runWithOwner, type Accessor } from "solid-js"
-import type { GraphViewData } from "../model"
+import type { GraphViewData, LayoutStrategy, ZoomLevel } from "../model"
 import { NodeWidgetLayer } from "./widgets/NodeWidgetLayer"
 
 /**
@@ -19,6 +19,8 @@ export function GraphCanvas(props: {
   class: string
   registry?: () => WidgetRegistry | undefined
   graph?: Accessor<GraphViewData>
+  layout?: LayoutStrategy
+  level?: ZoomLevel
 }) {
   let container!: HTMLDivElement
   const i18n = useI18n()
@@ -78,10 +80,11 @@ export function GraphCanvas(props: {
       }
 
       const makeModel = (graph: GraphViewData) => {
-        const layout = layoutGraph(graph, { level: "execution" })
+        const level = props.level ?? "execution"
+        const layout = layoutGraph(graph, { level, strategy: props.layout })
         return withWidgetRequests(
           buildRenderModel(graph, {
-            level: "execution",
+            level,
             positions: layout.positions,
             renderCard: createCardTemplate(DARK_THEME, { copy: createCardCopy(i18n) }),
           }),
@@ -91,9 +94,30 @@ export function GraphCanvas(props: {
 
       const initial = props.graph?.() ?? localGraph
       mounted.renderer.setModel(makeModel(initial))
+      // Frame the freshly mounted graph so it is visible without a manual fit; the renderer keeps the
+      // camera at the origin otherwise, pushing laid-out cards off-screen.
+      mounted.renderer.fit()
       setView(initial)
       setRenderer(mounted.renderer)
-      dispose = () => mounted.renderer.dispose()
+
+      // Host CSS can arrive after mount; keep the renderer's backing size in sync with the container
+      // and refit once it first becomes visible so cards are never drawn into a 0-height canvas.
+      let framed = container.getBoundingClientRect().height >= 1
+      const observer = new ResizeObserver(() => {
+        if (disposed) return
+        mounted.renderer.resize()
+        const height = container.getBoundingClientRect().height
+        if (!framed && height >= 1) {
+          framed = true
+          mounted.renderer.fit()
+        }
+      })
+      observer.observe(container)
+
+      dispose = () => {
+        observer.disconnect()
+        mounted.renderer.dispose()
+      }
 
       if (props.graph && owner) {
         runWithOwner(owner, () => createEffect(() => {
@@ -115,7 +139,7 @@ export function GraphCanvas(props: {
 
   return (
     <div class={props.class} data-slot="spacegraph-graph-canvas" style={{ position: "relative" }}>
-      <div ref={container} style={{ position: "absolute", inset: 0, "min-height": "360px" }} />
+      <div ref={container} style={{ position: "absolute", inset: 0, height: "100%", "min-height": "200px" }} />
       <NodeWidgetLayer
         renderer={renderer}
         contentIDs={() => view()?.nodes.map((node) => node.id) ?? []}

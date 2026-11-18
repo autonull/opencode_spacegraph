@@ -1,7 +1,7 @@
 import type { MountedSession, SessionScreen } from "@opencode/plugin/gui"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
 import { createMemo, createSignal, For, Show } from "solid-js"
-import { layoutGraph, navigationResults, rankedSearch, type GraphNode } from "../model"
+import { layoutGraph, navigationResults, rankedSearch, LAYOUT_STRATEGIES, type GraphNode, type LayoutStrategy, type ZoomLevel } from "../model"
 import type { SpacegraphModel } from "../plugin/model"
 import { createHostWidgetRegistry } from "../plugin/widget-host"
 import { GraphLegend, GraphToolbar, type ChromeInput } from "./chrome"
@@ -47,9 +47,14 @@ export function SessionGraph(props: {
 
   const live = props.model.graph(props.session)
   const graph = createMemo(() => props.model.graphAt(props.session, live()))
-  const positions = createMemo(() => layoutGraph(graph(), { level: "execution" }).positions)
+  const layoutStrategy = (): LayoutStrategy => {
+    const value = props.model.layout(props.session)
+    return LAYOUT_STRATEGIES.includes(value as LayoutStrategy) ? (value as LayoutStrategy) : "lanes"
+  }
+  const zoomLevel = (): ZoomLevel => props.model.level(props.session)
+  const positions = createMemo(() => layoutGraph(graph(), { level: zoomLevel(), strategy: layoutStrategy() }).positions)
   const renderModel = createMemo(() =>
-    buildRenderModel(graph(), { level: props.model.level(props.session), positions: positions() }),
+    buildRenderModel(graph(), { level: zoomLevel(), positions: positions() }),
   )
   const selection = () => {
     const id = props.model.focused(props.session)
@@ -331,7 +336,7 @@ export function SessionGraph(props: {
         <GraphFind model={chrome.model} session={chrome.session} graph={chrome.graph} onClose={() => setShowFind(false)} />
       </Show>
       <div class="sg-session-graph__body" ref={body}>
-        <GraphCanvas session={props.session} class="sg-session-graph__canvas" registry={registry} graph={graph} />
+        <GraphCanvas session={props.session} class="sg-session-graph__canvas" registry={registry} graph={graph} layout={layoutStrategy()} level={zoomLevel()} />
         <GraphA11y
           model={renderModel()}
           selection={focusedNode() ? [focusedNode()!.id] : []}
