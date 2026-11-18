@@ -223,6 +223,57 @@ export interface PanelTab {
   readonly tabbable?: boolean
 }
 
+/** A layer rendered above a session surface, inside the session panel, e.g. a status badge. */
+export interface SessionLayer {
+  /** The layer's id, unique within the surface. */
+  readonly id: string
+  /**
+   * Renders the layer once; its own reactivity updates it.
+   *
+   * @param input - The routed session, owning screen and the surface it decorates.
+   */
+  render(input: {
+    /** The routed session. */
+    readonly session: MountedSession
+    /** The session screen that owns the routed session. */
+    readonly screen: SessionScreen
+    /** The surface the layer is rendered above. */
+    readonly surface: SessionSurface
+  }): JSX.Element
+}
+
+/**
+ * A surface that owns the session body: the transcript or a plugin-provided view of it. The host gives the selected
+ * surface the transcript element, which stays mounted while surfaces switch.
+ */
+export interface SessionSurface {
+  /** The surface's id. The host reserves `transcript` for its own. */
+  readonly id: string
+  /** The surface's name, e.g. in a surface picker. */
+  readonly title: string
+  /** The surface's icon in a picker. */
+  readonly icon?: IconName
+  /** Surfaces list in ascending order. Defaults to 0. */
+  readonly order?: number
+  /**
+   * Renders the session body once; its own reactivity updates it.
+   *
+   * @param input - The routed session, owning screen and the stable transcript element. A surface that hides the
+   * transcript must keep it mounted, e.g. with `visibility: hidden` or an off-screen position, so its virtualizer and
+   * scroll position survive.
+   */
+  render(input: {
+    /** The routed session. */
+    readonly session: MountedSession
+    /** The session screen that owns the routed session. */
+    readonly screen: SessionScreen
+    /** The transcript element, constructed once per session and kept mounted across surface switches. */
+    readonly transcript: JSX.Element
+  }): JSX.Element
+  /** Layers rendered above the surface body, inside the session panel. */
+  readonly layers?: readonly SessionLayer[]
+}
+
 /** A panel's narrow-screen view. */
 export interface MobileView {
   /** The view's label in the switcher or the overflow menu. */
@@ -1067,6 +1118,16 @@ export const CodeBlock = Registry.define<CodeBlock>("code-block")
  * ```
  */
 export const CodeBlockAction = Registry.define<CodeBlockAction>("code-block-action")
+
+/**
+ * The registry of session surfaces. The host reserves `transcript` for its own surface.
+ *
+ * @example
+ * ```ts
+ * ctx.add(SessionSurface, { id: "map", title: ctx.t("map"), render: ({ transcript }) => <Map transcript={transcript} /> })
+ * ```
+ */
+export const SessionSurface = Registry.define<SessionSurface>("session-surface")
 
 /**
  * The registry of content for the host's slots (`SlotMap`).

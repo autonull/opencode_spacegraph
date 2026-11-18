@@ -1,0 +1,26 @@
+[
+  {
+    "frame": "cost-00-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "cost-01-lanes",
+    "elapsed": 1.144
+  },
+  {
+    "frame": "cost-02-cost-lens",
+    "elapsed": 1.65
+  },
+  {
+    "frame": "cost-03-push-in",
+    "elapsed": 4.66
+  },
+  {
+    "frame": "cost-04-detour",
+    "elapsed": 6.014
+  },
+  {
+    "frame": "cost-05-fit",
+    "elapsed": 6.179
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "frame": "scenario-3-01-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "scenario-3-02-subagent-selected",
+    "elapsed": 0.841
+  },
+  {
+    "frame": "scenario-3-03-delegates-expanded",
+    "elapsed": 2.002
+  },
+  {
+    "frame": "scenario-3-04-hold-outcome",
+    "elapsed": 7.016
+  }
+]

@@ -1,0 +1,789 @@
+diff --git a/packages/app/component-tests/fixtures/session-surface-plugin.cjs b/packages/app/component-tests/fixtures/session-surface-plugin.cjs
+new file mode 100644
+index 0000000000..219c4e71fc
+--- /dev/null
++++ b/packages/app/component-tests/fixtures/session-surface-plugin.cjs
+@@ -0,0 +1 @@
++"use strict";Object.defineProperties(exports,{__esModule:{value:!0},[Symbol.toStringTag]:{value:"Module"}});const i=require("solid-js/web"),t=require("@opencode/plugin/gui");var a=i.template("<div data-slot=spike-map>Spike Map ");const l=t.Plugin.define({setup(r){r.add(t.SessionSurface,{id:"spike.map",title:"Spike Map",render:({transcript:u})=>(()=>{var e=a();return e.firstChild,i.insert(e,u,null),e})()})}});exports.default=l;
+diff --git a/packages/app/component-tests/plugin-host.fixture.tsx b/packages/app/component-tests/plugin-host.fixture.tsx
+index a83d3bb766..9e5ca63e3b 100644
+--- a/packages/app/component-tests/plugin-host.fixture.tsx
++++ b/packages/app/component-tests/plugin-host.fixture.tsx
+@@ -5,8 +5,10 @@ import { Menu } from "@opencode/ui/menu"
+ import { Toast } from "@opencode/ui/toast"
+ import {
+   Panel,
++  SessionSurface,
+   type Appearance,
+   type App,
++  type Context,
+   type Keybinds,
+   type MountedSession,
+   type Router,
+@@ -15,7 +17,7 @@ import {
+   type Ipc,
+   type IpcClient,
+   type IpcSpec,
+-  type Plugin,
++  Plugin,
+   type Storage,
+   type StoreOptions,
+   type Workspaces,
+@@ -54,6 +56,8 @@ import { LanguageProvider } from "../src/runtime/i18n/language"
+ import { ExtensionPlugins } from "../src/runtime/plugin/extension-plugins"
+ import { SessionPluginPills } from "../src/session/composer/plugin-pills"
+ import { ui } from "../src/runtime/plugin/ui"
++import { SessionSurfaceHost } from "../src/session/surface"
++import { selectSessionSurface, sessionSurfaceID, transcriptSurfaceID } from "../src/runtime/plugin/surfaces"
+ 
+ export {
+   bindPlugin,
+@@ -130,6 +134,11 @@ function fakeApis(storage: (plugin: string) => Storage): HostApiFactories {
+     desktop: () => undefined,
+     sessions: () => ({ list: () => [], current: () => undefined }),
+     screen: () => ({ current: () => undefined }),
++    surfaces: () => ({
++      list: () => [],
++      current: () => transcriptSurfaceID,
++      select: () => undefined,
++    }),
+     layout: () => layout,
+     storage,
+     system: () => ({ copy: async () => {}, save: async () => false, openExternal() {} }),
+@@ -379,6 +388,7 @@ function standIn(overrides: Partial<Interface>): Interface {
+     current: () => undefined,
+     tabs: { list: () => [], open() {}, focus() {}, move() {}, close() {} },
+     screen: () => undefined,
++    surfaces: () => [],
+     scope: () => ServerScope.local,
+     scoped: () => undefined,
+     layout: {
+@@ -983,3 +993,78 @@ export function mountHostApis(input: { definitions: readonly Entry[] }) {
+     },
+   }
+ }
++
++/**
++ * Mounts the real host with one plugin contributing a session surface, then the host's render seam. The surface wraps
++ * the transcript so a test can watch the same element move between surfaces.
++ */
++export function mountSessionSurface() {
++  return mountSessionSurfaceWith({
++    id: "spike",
++    windowEntry: () =>
++      Promise.resolve({
++        default: (ctx: Context) => {
++          ctx.add(SessionSurface, {
++            id: "spike.map",
++            title: "Spike Map",
++            render: () => <div data-slot="spike-map">Spike Map</div>,
++          })
++        },
++      }),
++  })
++}
++
++/** Mounts a plugin from its real `./gui-experimental` CommonJS bundle, through the app's own `pluginDefinition`. */
++export async function mountSessionSurfaceBundle(code: string) {
++  const { pluginDefinition } = await import("../src/runtime/plugin/module")
++  return mountSessionSurfaceWith(await pluginDefinition("spike", code))
++}
++
++function mountSessionSurfaceWith(definition: Entry) {
++  const session = { key: "surface-fixture\n1" } as MountedSession
++  const screen = {} as SessionScreen
++  const container = document.createElement("div")
++  document.body.appendChild(container)
++  const hosts: PluginHost[] = []
++  selectSessionSurface(transcriptSurfaceID, session)
++
++  function Capture() {
++    hosts.push(usePluginHost())
++    return null
++  }
++
++  const dispose = render(
++    () => (
++      <LanguageProvider locale="en">
++        <DialogProvider>
++          <PluginHostProvider
++            definitions={() => [definition]}
++            disabled={() => new Set<string>()}
++            apis={fakeApis(unused)}
++            whenMounted={mounted}
++          >
++            <Capture />
++            <div data-slot="surface-fixture">
++              <SessionSurfaceHost
++                session={session}
++                screen={screen}
++                transcript={() => <div data-slot="transcript">Transcript</div>}
++              />
++            </div>
++          </PluginHostProvider>
++        </DialogProvider>
++      </LanguageProvider>
++    ),
++    container,
++  )
++
++  return {
++    entries: () => Object.keys(hosts[0]?.state.entries ?? {}),
++    select: (id: string) => selectSessionSurface(id, session),
++    selected: () => sessionSurfaceID(session),
++    unmount: () => {
++      dispose()
++      container.remove()
++    },
++  }
++}
+diff --git a/packages/app/component-tests/session-surface.spec.ts b/packages/app/component-tests/session-surface.spec.ts
+new file mode 100644
+index 0000000000..8297536564
+--- /dev/null
++++ b/packages/app/component-tests/session-surface.spec.ts
+@@ -0,0 +1,62 @@
++import { readFile } from "node:fs/promises"
++import { expect, sourceURL, story } from "../../stories/playwright/story"
++
++const fixture = sourceURL(new URL("./plugin-host.fixture.tsx", import.meta.url))
++
++story.beforeEach(async ({ mount }) => {
++  // Any story loads the app; the fixture mounts the real plugin host beside it.
++  await mount("ui-line-comment--editor")
++})
++
++story("a contributed session surface renders and the transcript survives the switch", async ({ page }) => {
++  const result = await page.evaluate(async (fixture) => {
++    const { mountSessionSurface, until } = await import(fixture)
++    const host = mountSessionSurface()
++    const root = () => document.querySelector('[data-slot="surface-fixture"]')
++    const transcript = () => root()?.querySelector('[data-slot="transcript"]')
++    const map = () => root()?.querySelector('[data-slot="spike-map"]')
++
++    await until(() => !!transcript() && !map())
++    const original = transcript()!
++    original.setAttribute("data-marker", "kept")
++
++    host.select("spike.map")
++    await until(() => !!map() && !transcript())
++    const rendered = map()!.textContent === "Spike Map"
++
++    host.select("transcript")
++    await until(() => !!transcript() && !map())
++    const sameTranscript = transcript() === original && original.getAttribute("data-marker") === "kept"
++
++    const selected = host.selected()
++    host.unmount()
++
++    return { rendered, sameTranscript, selected }
++  }, fixture)
++
++  expect(result).toEqual({ rendered: true, sameTranscript: true, selected: "transcript" })
++})
++
++story("a real gui-experimental bundle contributes a rendered session surface", async ({ page }) => {
++  const bundle = await readFile(new URL("./fixtures/session-surface-plugin.cjs", import.meta.url), "utf8")
++
++  const result = await page.evaluate(
++    async ({ fixture, bundle }) => {
++      const { mountSessionSurfaceBundle, until } = await import(fixture)
++      const host = await mountSessionSurfaceBundle(bundle)
++      const root = () => document.querySelector('[data-slot="surface-fixture"]')
++      const map = () => root()?.querySelector('[data-slot="spike-map"]')
++
++      await until(() => !!host.entries().includes("session-surface"))
++      host.select("spike.map")
++      await until(() => !!map())
++      const rendered = map()!.textContent?.startsWith("Spike Map") ?? false
++
++      host.unmount()
++      return { rendered }
++    },
++    { fixture, bundle },
++  )
++
++  expect(result).toEqual({ rendered: true })
++})
+diff --git a/packages/app/src/runtime/i18n/en.ts b/packages/app/src/runtime/i18n/en.ts
+index 9335b49977..58e48cb5c0 100644
+--- a/packages/app/src/runtime/i18n/en.ts
++++ b/packages/app/src/runtime/i18n/en.ts
+@@ -630,6 +630,7 @@ export const dict = {
+   "session.tab.new": "New tab",
+   "session.tab.unknown": "Unknown Session",
+   "session.panel.reviewAndFiles": "Review and files",
++  "session.surface.transcript": "Transcript",
+   "session.panel.bottom": "Bottom panel",
+   "session.panel.bottom.hide": "Hide bottom panel",
+   "session.error.notFound": "This session cannot be found",
+diff --git a/packages/app/src/runtime/plugin/host-apis.tsx b/packages/app/src/runtime/plugin/host-apis.tsx
+index bda8e4152b..38e799c1b8 100644
+--- a/packages/app/src/runtime/plugin/host-apis.tsx
++++ b/packages/app/src/runtime/plugin/host-apis.tsx
+@@ -31,6 +31,7 @@ import {
+   type ServerRef,
+   type SessionRef,
+   type SessionScreen,
++  type SessionSurface,
+   type ShellTab,
+   type Storage,
+   type StorageScope,
+@@ -57,6 +58,7 @@ import { formatKeybindParts, useCommand } from "@/shell/commands/command"
+ import { createMediaQuery } from "@solid-primitives/media"
+ import { useIsRouting, useLocation } from "@solidjs/router"
+ import { useLanguage } from "@/runtime/i18n/language"
++import { selectSessionSurface, sessionSurfaceID, transcriptSurfaceID } from "@/runtime/plugin/surfaces"
+ import {
+   createHostApiAttachState,
+   selectAttachAttempt,
+@@ -99,6 +101,7 @@ import { ui } from "./ui"
+ type Attached = {
+   sessions: Accessor<readonly SessionRef[]>
+   current: Accessor<MountedSession | undefined>
++  surfaces: Accessor<readonly SessionSurface[]>
+   tabs: Tabs
+   screen: Accessor<SessionScreen | undefined>
+   scope: (server: string) => ServerScope
+@@ -484,6 +487,11 @@ export function createHostApis() {
+       draft: (input) => write((value) => value.draft(input)),
+       command: (id) => write((value) => value.command(id)),
+     }),
++    surfaces: () => ({
++      list: () => current()?.surfaces() ?? [],
++      current: (session) => (current()?.surfaces() ? sessionSurfaceID(session) : transcriptSurfaceID),
++      select: (id, session) => write(() => selectSessionSurface(id, session)),
++    }),
+     embeds: () => embeds,
+     ui: () => ui,
+   }
+@@ -1160,6 +1168,7 @@ export function createPluginAttachment(apis: HostApis) {
+     notify,
+     mode: theme.mode,
+     screen,
++    surfaces: () => host.surfaces?.items() ?? [],
+     scope,
+     scoped: layout.sessionState.track,
+     project: (server, title) =>
+diff --git a/packages/app/src/runtime/plugin/host.tsx b/packages/app/src/runtime/plugin/host.tsx
+index 195e687731..d0a9b140db 100644
+--- a/packages/app/src/runtime/plugin/host.tsx
++++ b/packages/app/src/runtime/plugin/host.tsx
+@@ -47,6 +47,7 @@ import {
+   type Links,
+   type Live,
+   type Messages,
++  type MountedSession,
+   type Persisted,
+   type PluginOptions,
+   type Registry,
+@@ -55,11 +56,13 @@ import {
+   type IpcClient,
+   type IpcSpec,
+   type SessionRef,
++  type SessionSurface,
+   type SetupContext,
+   type Token,
+ } from "@opencode/plugin/gui"
+ import { OpenCode, type OpenCodeClient } from "@opencode/client/promise"
+ import { useLanguage } from "@/runtime/i18n/language"
++import { orderedSessionSurfaces, selectSessionSurface, sessionSurfaceID } from "@/runtime/plugin/surfaces"
+ import {
+   createPluginDialogState,
+   transitionPluginDialog,
+@@ -899,6 +902,21 @@ function createHost(input: HostInput) {
+         // SAFETY: a key the plugin's catalog lacks is one of the app's shared keys, such as `common.*`.
+         return language.plural(key as Parameters<typeof language.plural>[0], count, params)
+       },
++      surfaces: {
++        items: () => orderedSessionSurfaces(
++          (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
++          language.t("session.surface.transcript"),
++        ),
++        select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
++        current: (session: MountedSession) => {
++          const id = sessionSurfaceID(session)
++          const all = orderedSessionSurfaces(
++            (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
++            language.t("session.surface.transcript"),
++          )
++          return all.find((surface) => surface.id === id) ?? all[0]
++        },
++      },
+     }
+ 
+     // Each HostApi is created on the instance's first read of it.
+@@ -1033,6 +1051,22 @@ function createHost(input: HostInput) {
+     preload(session: SessionRef) {
+       selectPluginInstances(untrack(machine)).forEach((instance) => instance.preload(session))
+     },
++    /** The session surfaces contributed by plugins, plus the host's transcript surface. */
++    surfaces: {
++      items: () => orderedSessionSurfaces(
++        (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
++        language.t("session.surface.transcript"),
++      ),
++      select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
++      current: (session: MountedSession) => {
++        const id = sessionSurfaceID(session)
++        const all = orderedSessionSurfaces(
++          (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
++          language.t("session.surface.transcript"),
++        )
++        return all.find((surface) => surface.id === id) ?? all[0]
++      },
++    },
+     /** `next` replaces the definition, e.g. after a development hot update. */
+     reload: (id: string, next?: Entry) => dispatch({ type: "reload", id, next }),
+   }
+diff --git a/packages/app/src/runtime/plugin/surfaces.test.ts b/packages/app/src/runtime/plugin/surfaces.test.ts
+new file mode 100644
+index 0000000000..34a357ec9b
+--- /dev/null
++++ b/packages/app/src/runtime/plugin/surfaces.test.ts
+@@ -0,0 +1,40 @@
++import { expect, test } from "bun:test"
++import type { SessionRef, SessionSurface } from "@opencode/plugin/gui"
++import {
++  orderedSessionSurfaces,
++  resolveSessionSurface,
++  selectSessionSurface,
++  sessionSurfaceID,
++  transcriptSurfaceID,
++} from "./surfaces"
++
++const session = (key: string) => ({ key }) as SessionRef
++const surface = (id: string, order?: number): SessionSurface => ({ id, title: id, order, render: () => null })
++
++test("lists the host transcript first, then contributed surfaces in order", () => {
++  const all = orderedSessionSurfaces([surface("z", 2), surface("a", 1)], "Transcript")
++  expect(all.map((item) => item.id)).toEqual(["transcript", "a", "z"])
++  expect(all[0].title).toBe("Transcript")
++})
++
++test("ignores a contributed surface that claims the transcript id", () => {
++  const all = orderedSessionSurfaces([surface("transcript", -1), surface("map", 0)], "Transcript")
++  expect(all.map((item) => item.id)).toEqual(["transcript", "map"])
++})
++
++test("keeps each session's surface when another session routes or selects", () => {
++  const first = session("server\nfirst")
++  const second = session("server\nsecond")
++  selectSessionSurface("map", first)
++  expect(sessionSurfaceID(first)).toBe("map")
++  expect(sessionSurfaceID(second)).toBe(transcriptSurfaceID)
++  selectSessionSurface("other", second)
++  expect(sessionSurfaceID(first)).toBe("map")
++  expect(sessionSurfaceID(second)).toBe("other")
++})
++
++test("falls back to the transcript when the selected surface is gone", () => {
++  const all = orderedSessionSurfaces([surface("map")], "Transcript")
++  expect(resolveSessionSurface(all, "missing").id).toBe(transcriptSurfaceID)
++  expect(resolveSessionSurface(all, "map").id).toBe("map")
++})
+diff --git a/packages/app/src/runtime/plugin/surfaces.ts b/packages/app/src/runtime/plugin/surfaces.ts
+new file mode 100644
+index 0000000000..b13b00c23c
+--- /dev/null
++++ b/packages/app/src/runtime/plugin/surfaces.ts
+@@ -0,0 +1,35 @@
++import { createSignal } from "solid-js"
++import type { SessionRef, SessionSurface } from "@opencode/plugin/gui"
++
++/** The host's own surface: the session body the app renders without a plugin surface. */
++export const transcriptSurfaceID = "transcript"
++
++export function defaultSessionSurface(title: string): SessionSurface {
++  return { id: transcriptSurfaceID, title, render: (input) => input.transcript }
++}
++
++const [selected, setSelected] = createSignal<Readonly<Record<string, string>>>({})
++
++/** The surface a session has selected, keyed by `SessionRef.key` so routing away and back restores it. */
++export function sessionSurfaceID(session: SessionRef) {
++  return selected()[session.key] ?? transcriptSurfaceID
++}
++
++export function selectSessionSurface(id: string, session: SessionRef) {
++  setSelected((current) => (current[session.key] === id ? current : { ...current, [session.key]: id }))
++}
++
++/** The host's transcript and the contributed surfaces, in display order. Contributed `transcript` entries are ignored. */
++export function orderedSessionSurfaces(items: readonly SessionSurface[], transcriptTitle: string) {
++  return [
++    defaultSessionSurface(transcriptTitle),
++    ...items
++      .filter((item) => item.id !== transcriptSurfaceID)
++      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
++  ]
++}
++
++/** The surface with `id`, or the host's transcript when it is gone. */
++export function resolveSessionSurface(surfaces: readonly SessionSurface[], id: string) {
++  return surfaces.find((surface) => surface.id === id) ?? surfaces[0]
++}
+diff --git a/packages/app/src/session/screen.tsx b/packages/app/src/session/screen.tsx
+index 814ed52302..96cdcee20a 100644
+--- a/packages/app/src/session/screen.tsx
++++ b/packages/app/src/session/screen.tsx
+@@ -50,6 +50,7 @@ import { useServer } from "@/runtime/server/current"
+ import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
+ import { createTimelineCache } from "./timeline/cache"
+ import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
++import { SessionSurfaceHost, SessionSurfacePicker } from "./surface"
+ 
+ export function SessionScreenView(props: { session: SessionModel }) {
+   // Link handling for the rest of the screen; each cached timeline provides its own for its session.
+@@ -421,7 +422,13 @@ function SessionScreenContent(props: {
+             <Show when={isDesktop() && !messagesReady()}>
+               <SessionIdentityHeader sessionID={session.identity.params.id ?? ""} session={session.data.info()} />
+             </Show>
+-            <Show when={messagesReady() && session.identity.params.id}>{timelineView()}</Show>
++            <Show when={messagesReady() && session.identity.params.id}>
++              <SessionSurfaceHost
++                session={props.view()}
++                screen={props.screen}
++                transcript={() => timelineView()}
++              />
++            </Show>
+           </Match>
+         </Switch>
+       </div>
+@@ -465,6 +472,7 @@ function SessionScreenContent(props: {
+                   paintSideGlyph(sideMotion.closed())
+                 }}
+               />
++              <SessionSurfacePicker session={props.view()} />
+             </div>
+           </Show>
+           <div
+diff --git a/packages/app/src/session/surface.tsx b/packages/app/src/session/surface.tsx
+new file mode 100644
+index 0000000000..36318c0017
+--- /dev/null
++++ b/packages/app/src/session/surface.tsx
+@@ -0,0 +1,131 @@
++import { For, Show, createEffect, createMemo, on, onCleanup, untrack, type Accessor, type JSX } from "solid-js"
++import { IconButton } from "@opencode/ui/icon-button"
++import { Icon } from "@opencode/ui/icon"
++import { Menu } from "@opencode/ui/menu"
++import { Tooltip } from "@opencode/ui/tooltip"
++import { SessionSurface, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
++import { useLanguage } from "@/runtime/i18n/language"
++import { usePluginHost } from "@/runtime/plugin/host"
++import {
++  orderedSessionSurfaces,
++  resolveSessionSurface,
++  sessionSurfaceID,
++  selectSessionSurface,
++  transcriptSurfaceID,
++} from "@/runtime/plugin/surfaces"
++
++function contributed(host: ReturnType<typeof usePluginHost>, transcriptTitle: string) {
++  return orderedSessionSurfaces(
++    host.items(SessionSurface).map((item) => item.value),
++    transcriptTitle,
++  )
++}
++
++/** Renders the selected session surface, keeping the transcript mounted while surfaces switch. */
++export function SessionSurfaceHost(props: {
++  session: MountedSession
++  screen: SessionScreen
++  transcript: (active: Accessor<boolean>) => JSX.Element
++}) {
++  const host = usePluginHost()
++  const language = useLanguage()
++
++  const surfaces = createMemo(() => contributed(host, language.t("session.surface.transcript")))
++  const surface = createMemo(() => resolveSessionSurface(surfaces(), sessionSurfaceID(props.session)))
++  const custom = createMemo(() => (surface().id === transcriptSurfaceID ? undefined : surface()))
++  // Construct the transcript once: reading `custom` here would rebuild the element on every surface switch, so the
++  // virtualizer and scroll position would be lost. The `active` accessor still reads the current value when called.
++  const transcript = createMemo(() => untrack(() => props.transcript(() => !custom())))
++  const scroll = new Map<Element, { top: number; left: number }>()
++
++  createEffect(() => {
++    const node = transcript()
++
++    if (!(node instanceof Element)) return
++
++    const record = (event: Event) => {
++      if (!(event.target instanceof Element)) return
++      scroll.set(event.target, { top: event.target.scrollTop, left: event.target.scrollLeft })
++    }
++
++    node.addEventListener("scroll", record, true)
++    onCleanup(() => node.removeEventListener("scroll", record, true))
++  })
++
++  // Moving the transcript between surfaces resets its scroll containers, so restore the positions they reported.
++  createEffect(
++    on(
++      () => surface().id,
++      () => {
++        const entries = [...scroll]
++
++        if (!entries.length) return
++
++        requestAnimationFrame(() => {
++          for (const [element, position] of entries) {
++            element.scrollTop = position.top
++            element.scrollLeft = position.left
++          }
++        })
++      },
++      { defer: true },
++    ),
++  )
++
++  const content = createMemo(() => {
++    const selected = custom()
++
++    return selected
++      ? selected.render({ session: props.session, screen: props.screen, transcript: transcript() })
++      : transcript()
++  })
++
++  return (
++    <>
++      <Show when={custom()} fallback={content()}>
++        <div class="flex h-full min-h-0 flex-col">{content()}</div>
++      </Show>
++      <For each={custom()?.layers ?? []}>
++        {(layer) => layer.render({ session: props.session, screen: props.screen, surface: custom()! })}
++      </For>
++    </>
++  )
++}
++
++/** Picks the host transcript or a surface a plugin contributed to the session. */
++export function SessionSurfacePicker(props: { session: MountedSession }) {
++  const host = usePluginHost()
++  const language = useLanguage()
++  const surfaces = createMemo(() => contributed(host, language.t("session.surface.transcript")))
++  const current = () => sessionSurfaceID(props.session)
++
++  return (
++    <Show when={surfaces().length > 1}>
++      <Tooltip value={language.t("session.view.select")}>
++        <Menu gutter={6} placement="bottom-end">
++          <Menu.Trigger
++            as={IconButton}
++            type="button"
++            icon={<Icon name="dot-grid" />}
++            variant="ghost-muted"
++            size="large"
++            aria-label={language.t("session.view.select")}
++          />
++          <Menu.Portal>
++            <Menu.Content style={{ "min-width": "180px" }}>
++              <Menu.RadioGroup value={current()} onChange={(id) => selectSessionSurface(id, props.session)}>
++                <For each={surfaces()}>
++                  {(surface) => (
++                    <Menu.RadioItem value={surface.id} closeOnSelect>
++                      {surface.title}
++                    </Menu.RadioItem>
++                  )}
++                </For>
++              </Menu.RadioGroup>
++            </Menu.Content>
++          </Menu.Portal>
++        </Menu>
++      </Tooltip>
++    </Show>
++  )
++}
+diff --git a/packages/plugin/src/gui/context.ts b/packages/plugin/src/gui/context.ts
+index 334332bc7e..11c64fda87 100644
+--- a/packages/plugin/src/gui/context.ts
++++ b/packages/plugin/src/gui/context.ts
+@@ -33,6 +33,7 @@ import type {
+   SessionRef,
+   Sessions,
+   Storage,
++  Surfaces,
+   System,
+   Tabs,
+   Toasts,
+@@ -122,6 +123,15 @@ export interface Context extends BaseContext {
+    * ```
+    */
+   readonly screen: Screen
++  /**
++   * The session body views: the host's transcript and the surfaces plugins contribute.
++   *
++   * @example
++   * ```ts
++   * ctx.surfaces.select(`${ctx.id}.map`, session)
++   * ```
++   */
++  readonly surfaces: Surfaces
+   /**
+    * Stores for keys only known at runtime, and window-local memory. Declare `stores` for keys known up front.
+    *
+diff --git a/packages/plugin/src/gui/host-apis.ts b/packages/plugin/src/gui/host-apis.ts
+index 31ba09619c..17005da211 100644
+--- a/packages/plugin/src/gui/host-apis.ts
++++ b/packages/plugin/src/gui/host-apis.ts
+@@ -4,7 +4,7 @@ import type { Schema } from "effect"
+ import type { JSX } from "solid-js"
+ import type { Store } from "solid-js/store"
+ import type { Cleanup, OS, Persisted, StoreFrom } from "./core.js"
+-import type { IconName, Link, SessionPanelMenuItem } from "./registries.js"
++import type { IconName, Link, SessionPanelMenuItem, SessionSurface } from "./registries.js"
+ 
+ /**
+  * A server the app lists. One ref per id that follows the live connection: read `client`, `data` and `url` from it
+@@ -783,6 +783,28 @@ export interface Sessions {
+   current(): MountedSession | undefined
+ }
+ 
++/**
++ * The session body views: the host's transcript and the surfaces plugins contribute.
++ */
++export interface Surfaces {
++  /** The surfaces a session can show, in `order`, with the host's `transcript` first. Reactive. */
++  list(): readonly SessionSurface[]
++  /**
++   * The surface a session shows. Defaults to `transcript`; a stored id whose surface is gone reads `transcript`.
++   * Reactive.
++   *
++   * @param session - Any session.
++   */
++  current(session: SessionRef): string
++  /**
++   * Selects the surface a session shows. An unknown id leaves the selection unchanged.
++   *
++   * @param id - The surface's id.
++   * @param session - The session whose body changes.
++   */
++  select(id: string, session: SessionRef): void
++}
++
+ /**
+  * Where a panel key stands in a session.
+  * - `closed`: not in the strip.
+diff --git a/packages/plugin/src/gui/registries.ts b/packages/plugin/src/gui/registries.ts
+index 322a79f2d5..ba27b06768 100644
+--- a/packages/plugin/src/gui/registries.ts
++++ b/packages/plugin/src/gui/registries.ts
+@@ -223,6 +223,57 @@ export interface PanelTab {
+   readonly tabbable?: boolean
+ }
+ 
++/** A layer rendered above a session surface, inside the session panel, e.g. a status badge. */
++export interface SessionLayer {
++  /** The layer's id, unique within the surface. */
++  readonly id: string
++  /**
++   * Renders the layer once; its own reactivity updates it.
++   *
++   * @param input - The routed session, owning screen and the surface it decorates.
++   */
++  render(input: {
++    /** The routed session. */
++    readonly session: MountedSession
++    /** The session screen that owns the routed session. */
++    readonly screen: SessionScreen
++    /** The surface the layer is rendered above. */
++    readonly surface: SessionSurface
++  }): JSX.Element
++}
++
++/**
++ * A surface that owns the session body: the transcript or a plugin-provided view of it. The host gives the selected
++ * surface the transcript element, which stays mounted while surfaces switch.
++ */
++export interface SessionSurface {
++  /** The surface's id. The host reserves `transcript` for its own. */
++  readonly id: string
++  /** The surface's name, e.g. in a surface picker. */
++  readonly title: string
++  /** The surface's icon in a picker. */
++  readonly icon?: IconName
++  /** Surfaces list in ascending order. Defaults to 0. */
++  readonly order?: number
++  /**
++   * Renders the session body once; its own reactivity updates it.
++   *
++   * @param input - The routed session, owning screen and the stable transcript element. A surface that hides the
++   * transcript must keep it mounted, e.g. with `visibility: hidden` or an off-screen position, so its virtualizer and
++   * scroll position survive.
++   */
++  render(input: {
++    /** The routed session. */
++    readonly session: MountedSession
++    /** The session screen that owns the routed session. */
++    readonly screen: SessionScreen
++    /** The transcript element, constructed once per session and kept mounted across surface switches. */
++    readonly transcript: JSX.Element
++  }): JSX.Element
++  /** Layers rendered above the surface body, inside the session panel. */
++  readonly layers?: readonly SessionLayer[]
++}
++
+ /** A panel's narrow-screen view. */
+ export interface MobileView {
+   /** The view's label in the switcher or the overflow menu. */
+@@ -1068,6 +1119,16 @@ export const CodeBlock = Registry.define<CodeBlock>("code-block")
+  */
+ export const CodeBlockAction = Registry.define<CodeBlockAction>("code-block-action")
+ 
++/**
++ * The registry of session surfaces. The host reserves `transcript` for its own surface.
++ *
++ * @example
++ * ```ts
++ * ctx.add(SessionSurface, { id: "map", title: ctx.t("map"), render: ({ transcript }) => <Map transcript={transcript} /> })
++ * ```
++ */
++export const SessionSurface = Registry.define<SessionSurface>("session-surface")
++
+ /**
+  * The registry of content for the host's slots (`SlotMap`).
+  *
+diff --git a/packages/plugin/test/gui-host.test.ts b/packages/plugin/test/gui-host.test.ts
+index 67891dbbb6..dfa642c58b 100644
+--- a/packages/plugin/test/gui-host.test.ts
++++ b/packages/plugin/test/gui-host.test.ts
+@@ -1,9 +1,12 @@
+ import { describe, expect, test } from "bun:test"
+ import { evaluatePluginBundle, inertModule, pluginIdAvailable, type InertModule } from "../src/gui/host"
+ import { Contract } from "../src/gui/core"
++import { SessionSurface } from "../src/gui/registries"
+ import { define } from "../src/gui/plugin"
+ 
+-const modules = new Map<string, object>([["@opencode/plugin/gui", { Contract, Plugin: { define } }]])
++const modules = new Map<string, object>([
++  ["@opencode/plugin/gui", { Contract, Plugin: { define }, SessionSurface }],
++])
+ 
+ const evaluate = (code: string, process: "window" | "main" = "window") =>
+   evaluatePluginBundle(code, {
+@@ -68,6 +71,24 @@ describe("plugin GUI bundles", () => {
+   test("have at least one setup", () => {
+     expect(() => evaluate("exports.default = {}")).toThrow("must have a window `setup`")
+   })
++
++  test("let a bundle contribute a session surface through the shared registry", () => {
++    const bundle = evaluate(`
++      const sdk = require("@opencode/plugin/gui")
++      exports.default = sdk.Plugin.define({
++        setup(ctx) {
++          ctx.add(sdk.SessionSurface, { id: "map", title: "Map", render: () => null })
++        },
++      })
++    `)
++    const contributed: { id: string; title: string }[] = []
++    bundle.setup?.({
++      add: (registry: { id: string }, value: { id: string; title: string }) => {
++        if (registry.id === SessionSurface.id) contributed.push({ id: value.id, title: value.title })
++      },
++    } as never)
++    expect(contributed).toEqual([{ id: "map", title: "Map" }])
++  })
+ })
+ 
+ /** What a bundle's module scope reports back through the test's `probe` module. */

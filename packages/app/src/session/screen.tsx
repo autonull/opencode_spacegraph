@@ -50,6 +50,7 @@ import { useServer } from "@/runtime/server/current"
 import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
 import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
+import { SessionSurfaceHost, SessionSurfacePicker } from "./surface"
 
 export function SessionScreenView(props: { session: SessionModel }) {
   // Link handling for the rest of the screen; each cached timeline provides its own for its session.
@@ -421,7 +422,13 @@ function SessionScreenContent(props: {
             <Show when={isDesktop() && !messagesReady()}>
               <SessionIdentityHeader sessionID={session.identity.params.id ?? ""} session={session.data.info()} />
             </Show>
-            <Show when={messagesReady() && session.identity.params.id}>{timelineView()}</Show>
+            <Show when={messagesReady() && session.identity.params.id}>
+              <SessionSurfaceHost
+                session={props.view()}
+                screen={props.screen}
+                transcript={() => timelineView()}
+              />
+            </Show>
           </Match>
         </Switch>
       </div>
@@ -465,6 +472,7 @@ function SessionScreenContent(props: {
                   paintSideGlyph(sideMotion.closed())
                 }}
               />
+              <SessionSurfacePicker session={props.view()} />
             </div>
           </Show>
           <div

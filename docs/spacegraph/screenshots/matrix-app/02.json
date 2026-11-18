@@ -1,0 +1,10 @@
+{
+  "id": "layout=hierarchy&depth=depth-stack&level=execution&lens=all",
+  "values": {
+    "layout": "hierarchy",
+    "depth": "depth-stack",
+    "level": "execution",
+    "lens": "all"
+  },
+  "sha256": "0bbe85b3dd113a982d250613047c25f18944e4da42407c5df51db69d96a05175"
+}

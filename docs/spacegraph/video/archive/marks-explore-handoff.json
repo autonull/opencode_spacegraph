@@ -1,0 +1,26 @@
+[
+  {
+    "frame": "handoff-00-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "handoff-01-timeline",
+    "elapsed": 1.117
+  },
+  {
+    "frame": "handoff-02-share-search",
+    "elapsed": 1.974
+  },
+  {
+    "frame": "handoff-03-whip-to-share",
+    "elapsed": 3.978
+  },
+  {
+    "frame": "handoff-04-detour",
+    "elapsed": 4.831
+  },
+  {
+    "frame": "handoff-05-fit",
+    "elapsed": 4.966
+  }
+]

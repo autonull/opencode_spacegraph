@@ -1,0 +1,246 @@
+{
+  "axes": [
+    "layout",
+    "depth",
+    "level",
+    "lens"
+  ],
+  "total": 252,
+  "sampled": 12,
+  "strategy": "sampled",
+  "seed": 41,
+  "maxCells": 12,
+  "cells": [
+    {
+      "id": "layout=lanes&depth=flat&level=overview&lens=all",
+      "values": {
+        "layout": "lanes",
+        "depth": "flat",
+        "level": "overview",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=tree&depth=orbit&level=detail&lens=code",
+      "values": {
+        "layout": "tree",
+        "depth": "orbit",
+        "level": "detail",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=hierarchy&depth=depth-stack&level=execution&lens=all",
+      "values": {
+        "layout": "hierarchy",
+        "depth": "depth-stack",
+        "level": "execution",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=force&depth=orbit&level=execution&lens=all",
+      "values": {
+        "layout": "force",
+        "depth": "orbit",
+        "level": "execution",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=circular&depth=depth-stack&level=detail&lens=code",
+      "values": {
+        "layout": "circular",
+        "depth": "depth-stack",
+        "level": "detail",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=circular&depth=layered&level=overview&lens=all",
+      "values": {
+        "layout": "circular",
+        "depth": "layered",
+        "level": "overview",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=grid&depth=orbit&level=overview&lens=runtime",
+      "values": {
+        "layout": "grid",
+        "depth": "orbit",
+        "level": "overview",
+        "lens": "runtime"
+      }
+    },
+    {
+      "id": "layout=circular&depth=orbit&level=overview&lens=code",
+      "values": {
+        "layout": "circular",
+        "depth": "orbit",
+        "level": "overview",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=grid&depth=flat&level=overview&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "flat",
+        "level": "overview",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=grid&depth=depth-stack&level=execution&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "depth-stack",
+        "level": "execution",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=grid&depth=orbit&level=execution&lens=all",
+      "values": {
+        "layout": "grid",
+        "depth": "orbit",
+        "level": "execution",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=grid&depth=depth-stack&level=detail&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "depth-stack",
+        "level": "detail",
+        "lens": "code"
+      }
+    }
+  ],
+  "frames": [
+    {
+      "id": "layout=lanes&depth=flat&level=overview&lens=all",
+      "values": {
+        "layout": "lanes",
+        "depth": "flat",
+        "level": "overview",
+        "lens": "all"
+      },
+      "sha256": "be6487de7fae238eb09a6322c3edaff5dfb3d578d6415d192d96953d4bc98719"
+    },
+    {
+      "id": "layout=tree&depth=orbit&level=detail&lens=code",
+      "values": {
+        "layout": "tree",
+        "depth": "orbit",
+        "level": "detail",
+        "lens": "code"
+      },
+      "sha256": "ef82bcfca8475437de2668e7a0dcdde3012fdef220c329ca436bc936d25f10bc"
+    },
+    {
+      "id": "layout=hierarchy&depth=depth-stack&level=execution&lens=all",
+      "values": {
+        "layout": "hierarchy",
+        "depth": "depth-stack",
+        "level": "execution",
+        "lens": "all"
+      },
+      "sha256": "0bbe85b3dd113a982d250613047c25f18944e4da42407c5df51db69d96a05175"
+    },
+    {
+      "id": "layout=force&depth=orbit&level=execution&lens=all",
+      "values": {
+        "layout": "force",
+        "depth": "orbit",
+        "level": "execution",
+        "lens": "all"
+      },
+      "sha256": "54fe748d546725d4af85c802e8c9e273a42a8e1025c3274b935cc99311ef7692"
+    },
+    {
+      "id": "layout=circular&depth=depth-stack&level=detail&lens=code",
+      "values": {
+        "layout": "circular",
+        "depth": "depth-stack",
+        "level": "detail",
+        "lens": "code"
+      },
+      "sha256": "b0f3386e727025a239129efcec844b729cb49b123582e15c8c8c86bf87202111"
+    },
+    {
+      "id": "layout=circular&depth=layered&level=overview&lens=all",
+      "values": {
+        "layout": "circular",
+        "depth": "layered",
+        "level": "overview",
+        "lens": "all"
+      },
+      "sha256": "b63e563091ebe897eae86cd756690bb3a730006449c92e4b2991b93b4afe3d5e"
+    },
+    {
+      "id": "layout=grid&depth=orbit&level=overview&lens=runtime",
+      "values": {
+        "layout": "grid",
+        "depth": "orbit",
+        "level": "overview",
+        "lens": "runtime"
+      },
+      "sha256": "3e5f8cd6bbb999e061992ad18d72fbc0e4e6c5be7ab1873f48da5764e972f52e"
+    },
+    {
+      "id": "layout=circular&depth=orbit&level=overview&lens=code",
+      "values": {
+        "layout": "circular",
+        "depth": "orbit",
+        "level": "overview",
+        "lens": "code"
+      },
+      "sha256": "c9f664c38726dea956ea57bc731c84740a5221a7308a54df8b89da5361b6c651"
+    },
+    {
+      "id": "layout=grid&depth=flat&level=overview&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "flat",
+        "level": "overview",
+        "lens": "code"
+      },
+      "sha256": "37696db8f5a3d28c44b4683145b3b64147d749aa4e8c88111215d71470f7bd56"
+    },
+    {
+      "id": "layout=grid&depth=depth-stack&level=execution&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "depth-stack",
+        "level": "execution",
+        "lens": "code"
+      },
+      "sha256": "8ad735e5c834ee54c35b90bf431863a26a57b971dff3c9d68608dedbbf5afa45"
+    },
+    {
+      "id": "layout=grid&depth=orbit&level=execution&lens=all",
+      "values": {
+        "layout": "grid",
+        "depth": "orbit",
+        "level": "execution",
+        "lens": "all"
+      },
+      "sha256": "b81674e8fed4b7bc8844c7f0cdd8269d248f5c9d56c45cef34062fe1cbae6b7e"
+    },
+    {
+      "id": "layout=grid&depth=depth-stack&level=detail&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "depth-stack",
+        "level": "detail",
+        "lens": "code"
+      },
+      "sha256": "67331aa5f5a891eec94c1d832b14a51f873d936a9f663104922e02aa4a13e2a0"
+    }
+  ],
+  "duplicates": []
+}

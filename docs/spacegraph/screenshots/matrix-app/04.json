@@ -1,0 +1,10 @@
+{
+  "id": "layout=circular&depth=depth-stack&level=detail&lens=code",
+  "values": {
+    "layout": "circular",
+    "depth": "depth-stack",
+    "level": "detail",
+    "lens": "code"
+  },
+  "sha256": "b0f3386e727025a239129efcec844b729cb49b123582e15c8c8c86bf87202111"
+}

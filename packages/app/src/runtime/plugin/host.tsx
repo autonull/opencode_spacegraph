@@ -47,6 +47,7 @@ import {
   type Links,
   type Live,
   type Messages,
+  type MountedSession,
   type Persisted,
   type PluginOptions,
   type Registry,
@@ -55,11 +56,13 @@ import {
   type IpcClient,
   type IpcSpec,
   type SessionRef,
+  type SessionSurface,
   type SetupContext,
   type Token,
 } from "@opencode/plugin/gui"
 import { OpenCode, type OpenCodeClient } from "@opencode/client/promise"
 import { useLanguage } from "@/runtime/i18n/language"
+import { orderedSessionSurfaces, selectSessionSurface, sessionSurfaceID } from "@/runtime/plugin/surfaces"
 import {
   createPluginDialogState,
   transitionPluginDialog,
@@ -899,6 +902,21 @@ function createHost(input: HostInput) {
         // SAFETY: a key the plugin's catalog lacks is one of the app's shared keys, such as `common.*`.
         return language.plural(key as Parameters<typeof language.plural>[0], count, params)
       },
+      surfaces: {
+        items: () => orderedSessionSurfaces(
+          (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
+          language.t("session.surface.transcript"),
+        ),
+        select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
+        current: (session: MountedSession) => {
+          const id = sessionSurfaceID(session)
+          const all = orderedSessionSurfaces(
+            (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
+            language.t("session.surface.transcript"),
+          )
+          return all.find((surface) => surface.id === id) ?? all[0]
+        },
+      },
     }
 
     // Each HostApi is created on the instance's first read of it.
@@ -1032,6 +1050,22 @@ function createHost(input: HostInput) {
     /** Starts loading every active plugin's declared session stores for a session that mounts. */
     preload(session: SessionRef) {
       selectPluginInstances(untrack(machine)).forEach((instance) => instance.preload(session))
+    },
+    /** The session surfaces contributed by plugins, plus the host's transcript surface. */
+    surfaces: {
+      items: () => orderedSessionSurfaces(
+        (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
+        language.t("session.surface.transcript"),
+      ),
+      select: (id: string, session: MountedSession) => selectSessionSurface(id, session),
+      current: (session: MountedSession) => {
+        const id = sessionSurfaceID(session)
+        const all = orderedSessionSurfaces(
+          (state.entries["session-surface"]?.map((entry) => entry.value()) ?? []) as readonly SessionSurface[],
+          language.t("session.surface.transcript"),
+        )
+        return all.find((surface) => surface.id === id) ?? all[0]
+      },
     },
     /** `next` replaces the definition, e.g. after a development hot update. */
     reload: (id: string, next?: Entry) => dispatch({ type: "reload", id, next }),

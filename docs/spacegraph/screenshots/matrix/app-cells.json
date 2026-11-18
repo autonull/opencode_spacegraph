@@ -1,0 +1,123 @@
+{
+  "axes": [
+    "layout",
+    "depth",
+    "level",
+    "lens"
+  ],
+  "total": 252,
+  "sampled": 12,
+  "strategy": "sampled",
+  "seed": 41,
+  "maxCells": 12,
+  "cells": [
+    {
+      "id": "layout=lanes&depth=flat&level=overview&lens=all",
+      "values": {
+        "layout": "lanes",
+        "depth": "flat",
+        "level": "overview",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=tree&depth=orbit&level=detail&lens=code",
+      "values": {
+        "layout": "tree",
+        "depth": "orbit",
+        "level": "detail",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=hierarchy&depth=depth-stack&level=execution&lens=all",
+      "values": {
+        "layout": "hierarchy",
+        "depth": "depth-stack",
+        "level": "execution",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=force&depth=orbit&level=execution&lens=all",
+      "values": {
+        "layout": "force",
+        "depth": "orbit",
+        "level": "execution",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=circular&depth=depth-stack&level=detail&lens=code",
+      "values": {
+        "layout": "circular",
+        "depth": "depth-stack",
+        "level": "detail",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=circular&depth=layered&level=overview&lens=all",
+      "values": {
+        "layout": "circular",
+        "depth": "layered",
+        "level": "overview",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=grid&depth=orbit&level=overview&lens=runtime",
+      "values": {
+        "layout": "grid",
+        "depth": "orbit",
+        "level": "overview",
+        "lens": "runtime"
+      }
+    },
+    {
+      "id": "layout=circular&depth=orbit&level=overview&lens=code",
+      "values": {
+        "layout": "circular",
+        "depth": "orbit",
+        "level": "overview",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=grid&depth=flat&level=overview&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "flat",
+        "level": "overview",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=grid&depth=depth-stack&level=execution&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "depth-stack",
+        "level": "execution",
+        "lens": "code"
+      }
+    },
+    {
+      "id": "layout=grid&depth=orbit&level=execution&lens=all",
+      "values": {
+        "layout": "grid",
+        "depth": "orbit",
+        "level": "execution",
+        "lens": "all"
+      }
+    },
+    {
+      "id": "layout=grid&depth=depth-stack&level=detail&lens=code",
+      "values": {
+        "layout": "grid",
+        "depth": "depth-stack",
+        "level": "detail",
+        "lens": "code"
+      }
+    }
+  ]
+}

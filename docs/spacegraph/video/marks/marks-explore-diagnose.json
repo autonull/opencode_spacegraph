@@ -1,0 +1,18 @@
+[
+  {
+    "frame": "diagnose-00-open",
+    "elapsed": 0.001
+  },
+  {
+    "frame": "diagnose-01-failure",
+    "elapsed": 0.876
+  },
+  {
+    "frame": "diagnose-02-why-trace",
+    "elapsed": 1.973
+  },
+  {
+    "frame": "diagnose-03-recover",
+    "elapsed": 3.569
+  }
+]

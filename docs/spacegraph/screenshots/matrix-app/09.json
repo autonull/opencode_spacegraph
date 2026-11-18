@@ -1,0 +1,10 @@
+{
+  "id": "layout=grid&depth=depth-stack&level=execution&lens=code",
+  "values": {
+    "layout": "grid",
+    "depth": "depth-stack",
+    "level": "execution",
+    "lens": "code"
+  },
+  "sha256": "8ad735e5c834ee54c35b90bf431863a26a57b971dff3c9d68608dedbbf5afa45"
+}

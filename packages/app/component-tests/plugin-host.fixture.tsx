@@ -5,8 +5,10 @@ import { Menu } from "@opencode/ui/menu"
 import { Toast } from "@opencode/ui/toast"
 import {
   Panel,
+  SessionSurface,
   type Appearance,
   type App,
+  type Context,
   type Keybinds,
   type MountedSession,
   type Router,
@@ -15,7 +17,7 @@ import {
   type Ipc,
   type IpcClient,
   type IpcSpec,
-  type Plugin,
+  Plugin,
   type Storage,
   type StoreOptions,
   type Workspaces,
@@ -46,7 +48,7 @@ import { createRegion, RegionContent } from "../src/runtime/plugin/panels"
 import { createSessionScreenLayout } from "../src/session/screen-layout"
 import type { SessionModel } from "../src/session/model"
 import { createClosedTabs } from "../src/runtime/plugin/closed-tabs"
-import { PluginLinks, PluginSlot, PluginThemes } from "../src/runtime/plugin/render"
+import { PluginLinks, PluginSlot, PluginStyles, PluginThemes } from "../src/runtime/plugin/render"
 import { Markdown } from "@opencode/session-ui/markdown"
 import { ThemeProvider, useTheme, type ColorScheme } from "@opencode/ui/theme/context"
 import { persistedHandle } from "../src/runtime/plugin/stores"
@@ -54,6 +56,8 @@ import { LanguageProvider } from "../src/runtime/i18n/language"
 import { ExtensionPlugins } from "../src/runtime/plugin/extension-plugins"
 import { SessionPluginPills } from "../src/session/composer/plugin-pills"
 import { ui } from "../src/runtime/plugin/ui"
+import { SessionSurfaceHost } from "../src/session/surface"
+import { selectSessionSurface, sessionSurfaceID, transcriptSurfaceID } from "../src/runtime/plugin/surfaces"
 
 export {
   bindPlugin,
@@ -130,6 +134,11 @@ function fakeApis(storage: (plugin: string) => Storage): HostApiFactories {
     desktop: () => undefined,
     sessions: () => ({ list: () => [], current: () => undefined }),
     screen: () => ({ current: () => undefined }),
+    surfaces: () => ({
+      list: () => [],
+      current: () => transcriptSurfaceID,
+      select: () => undefined,
+    }),
     layout: () => layout,
     storage,
     system: () => ({ copy: async () => {}, save: async () => false, openExternal() {} }),
@@ -379,6 +388,7 @@ function standIn(overrides: Partial<Interface>): Interface {
     current: () => undefined,
     tabs: { list: () => [], open() {}, focus() {}, move() {}, close() {} },
     screen: () => undefined,
+    surfaces: () => [],
     scope: () => ServerScope.local,
     scoped: () => undefined,
     layout: {
@@ -977,6 +987,121 @@ export function mountHostApis(input: { definitions: readonly Entry[] }) {
     attach: () => void captured.apis?.attach(mounted),
     reload: (id: string) => hosts[0]?.reload(id),
     status: (id: string) => hosts[0]?.status(id),
+    unmount: () => {
+      dispose()
+      container.remove()
+    },
+  }
+}
+
+/**
+ * Mounts the real host with one plugin contributing a session surface, then the host's render seam. The surface wraps
+ * the transcript so a test can watch the same element move between surfaces.
+ */
+export function mountSessionSurface() {
+  return mountSessionSurfaceWith({
+    id: "spike",
+    windowEntry: () =>
+      Promise.resolve({
+        default: (ctx: Context) => {
+          ctx.add(SessionSurface, {
+            id: "spike.map",
+            title: "Spike Map",
+            render: () => <div data-slot="spike-map">Spike Map</div>,
+          })
+        },
+      }),
+  })
+}
+
+/** Storage that answers store reads with in-memory values, for plugins that declare stores. */
+export function surfaceStorage(): Storage {
+  const memory = new Map<string, unknown>()
+  return {
+    store<S extends Schema.ConstraintCodec<object, unknown>>(key: string, options: StoreOptions<S>) {
+      const pair = persisted(Persist.global(`plugin.surface.${key}`), options.schema, options.initial)
+      return persistedHandle({ store: pair[0], set: pair[1], init: pair[3].promise })
+    },
+    memory: (_key, options) => {
+      const [value, set] = createStore(options.initial)
+      return [value, (mutation) => set(produce(mutation))] as const
+    },
+    remove(key: string) {
+      memory.delete(key)
+    },
+  }
+}
+
+/** Mounts a plugin from its real `./gui-experimental` CommonJS bundle, through the app's own `pluginDefinition`. */
+export async function mountSessionSurfaceBundle(
+  code: string,
+  storage: (plugin: string) => Storage = unused,
+  messages?: readonly SessionMessageInfo[],
+) {
+  const { pluginDefinition } = await import("../src/runtime/plugin/module")
+  return mountSessionSurfaceWith(await pluginDefinition("spike", code), storage, messages)
+}
+
+function mountSessionSurfaceWith(
+  definition: Entry,
+  storage: (plugin: string) => Storage = unused,
+  messages?: readonly SessionMessageInfo[],
+) {
+  const sessionMessages: readonly SessionMessageInfo[] = messages ?? []
+  const session = {
+    key: "surface-fixture\n1",
+    id: "ses_surface_fixture",
+    server: {
+      data: {
+        session: {
+          status: () => "idle",
+          get: () => ({ title: "SpaceGraph Fixture" }),
+          message: { list: () => sessionMessages },
+        },
+      },
+    },
+  } as unknown as MountedSession
+  const screen = {} as SessionScreen
+  const container = document.createElement("div")
+  document.body.appendChild(container)
+  const hosts: PluginHost[] = []
+  selectSessionSurface(transcriptSurfaceID, session)
+
+  function Capture() {
+    hosts.push(usePluginHost())
+    return null
+  }
+
+  const dispose = render(
+    () => (
+      <LanguageProvider locale="en">
+        <DialogProvider>
+          <PluginHostProvider
+            definitions={() => [definition]}
+            disabled={() => new Set<string>()}
+            apis={fakeApis(storage)}
+            whenMounted={mounted}
+          >
+            <PluginStyles />
+            <Capture />
+            <div data-slot="surface-fixture">
+              <SessionSurfaceHost
+                session={session}
+                screen={screen}
+                transcript={() => <div data-slot="transcript">Transcript</div>}
+              />
+            </div>
+          </PluginHostProvider>
+        </DialogProvider>
+      </LanguageProvider>
+    ),
+    container,
+  )
+
+  return {
+    entries: () => Object.keys(hosts[0]?.state.entries ?? {}),
+    select: (id: string) => selectSessionSurface(id, session),
+    selected: () => sessionSurfaceID(session),
     unmount: () => {
       dispose()
       container.remove()

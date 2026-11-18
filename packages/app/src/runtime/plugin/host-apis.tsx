@@ -31,6 +31,7 @@ import {
   type ServerRef,
   type SessionRef,
   type SessionScreen,
+  type SessionSurface,
   type ShellTab,
   type Storage,
   type StorageScope,
@@ -57,6 +58,7 @@ import { formatKeybindParts, useCommand } from "@/shell/commands/command"
 import { createMediaQuery } from "@solid-primitives/media"
 import { useIsRouting, useLocation } from "@solidjs/router"
 import { useLanguage } from "@/runtime/i18n/language"
+import { selectSessionSurface, sessionSurfaceID, transcriptSurfaceID } from "@/runtime/plugin/surfaces"
 import {
   createHostApiAttachState,
   selectAttachAttempt,
@@ -99,6 +101,7 @@ import { ui } from "./ui"
 type Attached = {
   sessions: Accessor<readonly SessionRef[]>
   current: Accessor<MountedSession | undefined>
+  surfaces: Accessor<readonly SessionSurface[]>
   tabs: Tabs
   screen: Accessor<SessionScreen | undefined>
   scope: (server: string) => ServerScope
@@ -483,6 +486,11 @@ export function createHostApis() {
       project: (server, title) => write((value) => value.project(server, title)),
       draft: (input) => write((value) => value.draft(input)),
       command: (id) => write((value) => value.command(id)),
+    }),
+    surfaces: () => ({
+      list: () => current()?.surfaces() ?? [],
+      current: (session) => (current()?.surfaces() ? sessionSurfaceID(session) : transcriptSurfaceID),
+      select: (id, session) => write(() => selectSessionSurface(id, session)),
     }),
     embeds: () => embeds,
     ui: () => ui,
@@ -1160,6 +1168,7 @@ export function createPluginAttachment(apis: HostApis) {
     notify,
     mode: theme.mode,
     screen,
+    surfaces: () => host.surfaces?.items() ?? [],
     scope,
     scoped: layout.sessionState.track,
     project: (server, title) =>

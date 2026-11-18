@@ -1,0 +1,849 @@
+diff --git a/packages/app/src/runtime/i18n/en.ts b/packages/app/src/runtime/i18n/en.ts
+index 6e4d6c5cc7..4c33137615 100644
+--- a/packages/app/src/runtime/i18n/en.ts
++++ b/packages/app/src/runtime/i18n/en.ts
+@@ -82,7 +82,12 @@ export const dict = {
+   "command.context.addSelection": "Add selection to context",
+   "command.context.addSelection.description": "Add selected lines from the current file",
+   "command.input.focus": "Focus input",
++  "command.fileTree.toggle": "Toggle file tree",
+   "command.review.toggle": "Toggle review",
++  "command.graph.toggle": "Toggle graph view",
++  "command.graph.hybrid": "Show the graph beside the log",
++  "command.graph.projection": "Toggle graph 3D",
++  "command.graph.turnmap": "Open turn map",
+   "command.sidebar.toggle": "Toggle sidebar",
+   "command.sidebar.toggle.unread": "Toggle sidebar, unread sessions",
+   "command.bottom.toggle": "Toggle bottom panel",
+@@ -588,6 +593,17 @@ export const dict = {
+   "session.tab.new": "New tab",
+   "session.tab.unknown": "Unknown Session",
+   "session.panel.reviewAndFiles": "Review and files",
++  "session.graph.error": "Couldn't open the graph view",
++  "session.graph.error.description": "The graph failed to load. The transcript is unaffected.",
++  "session.graph.back": "Back to transcript",
++  "session.surface.transcript": "Transcript",
++  "session.graph.hybrid.pane.title": "Session graph",
++  "session.graph.hybrid.pane.close": "Close the graph",
++  "session.graph.hybrid.textSize": "Text size",
++  "session.graph.hybrid.textSize.aria": "Log text size",
++  "session.graph.hybrid.divider": "Resize the map and log panes",
++  "session.graph.turnMap.error": "Couldn't open the turn map",
++  "session.graph.turnMap.error.description": "The graph failed to load. The transcript is unaffected.",
+   "session.panel.bottom": "Bottom panel",
+   "session.panel.bottom.hide": "Hide bottom panel",
+   "session.error.notFound": "This session cannot be found",
+@@ -782,6 +798,8 @@ export const dict = {
+   "settings.tab.extensions": "Extensions",
+   "settings.tab.experimental": "Experimental",
+   "settings.experimental.description": "Try experimental features",
++  "settings.experimental.sessionGraph.title": "Session graph",
++  "settings.experimental.sessionGraph.description": "Visualize session structure as an interactive graph (requires reload)",
+   "settings.experimental.row.newIcons.title": "New icons",
+   "settings.experimental.row.newIcons.description": "Preview the updated icon set",
+   "settings.experimental.row.foldUserMessages.title": "Fold long messages",
+diff --git a/packages/app/src/runtime/plugin/host.tsx b/packages/app/src/runtime/plugin/host.tsx
+index 314ef0d759..9981e81eb4 100644
+--- a/packages/app/src/runtime/plugin/host.tsx
++++ b/packages/app/src/runtime/plugin/host.tsx
+@@ -28,6 +28,7 @@ import { useDialog } from "@opencode/ui/context/dialog"
+ import { pluralCategory, resolveTemplate } from "@opencode/ui/context/i18n"
+ import {
+   LinkHandler,
++  SessionSurface,
+   type BaseContext,
+   type Cleanup,
+   type Context,
+@@ -53,6 +54,12 @@ import { OpenCode, type OpenCodeClient } from "@opencode/client/promise"
+ import { useLanguage } from "@/runtime/i18n/language"
+ import { PluginAlertDialog, PluginConfirmDialog, PluginPromptDialog, PluginSelectDialog } from "./dialogs"
+ import { createSessionStore, whenLoaded } from "./stores"
++import {
++  orderedSessionSurfaces,
++  resolveSessionSurface,
++  selectSessionSurface,
++  sessionSurfaceID,
++} from "./surfaces"
+ 
+ type Contribution = { key: string; registry: string; plugin: string; value: Accessor<unknown> }
+ 
+@@ -96,7 +103,7 @@ type HostApiFactory<T> = (
+ 
+ /** The HostApis a window provides, by context property. The host itself provides `links` and `dialogs`. */
+ export type HostApiFactories = {
+-  readonly [K in Exclude<keyof HostApis, "links" | "dialogs">]: HostApiFactory<HostApis[K]>
++  readonly [K in Exclude<keyof HostApis, "links" | "dialogs" | "surfaces">]: HostApiFactory<HostApis[K]>
+ }
+ 
+ export type PluginStatus = "loading" | "active" | "failed" | "disabled"
+@@ -292,9 +299,20 @@ function createHost(input: HostInput) {
+ 
+   const dialog = useDialog()
+ 
++  const sessionSurfaces = () => orderedSessionSurfaces(list(SessionSurface), language.t("session.surface.transcript"))
++
+   const factories = {
+     ...input.apis,
+     links: () => links,
++    surfaces: () => ({
++      list: sessionSurfaces,
++      current: (session) => resolveSessionSurface(sessionSurfaces(), sessionSurfaceID(session)).id,
++      select: (id, session) => {
++        if (!sessionSurfaces().some((surface) => surface.id === id)) return
++
++        selectSessionSurface(id, session)
++      },
++    }),
+     // Bound to the instance that asked, so an older async call after a disable or reload opens and closes nothing.
+     dialogs: (plugin, _, context, register): Dialogs => {
+       // `ended` runs when the dialog closes, however it closes, and when it can no longer open.
+diff --git a/packages/app/src/runtime/plugin/mobile.tsx b/packages/app/src/runtime/plugin/mobile.tsx
+index dc626d3f13..1347035cf6 100644
+--- a/packages/app/src/runtime/plugin/mobile.tsx
++++ b/packages/app/src/runtime/plugin/mobile.tsx
+@@ -2,6 +2,7 @@ import { createMemo, For, lazy, Show, Suspense, type JSX } from "solid-js"
+ import { createStore } from "solid-js/store"
+ import { Tabs } from "@opencode/ui/tabs"
+ import { Icon } from "@opencode/ui/icon"
++import { IconButton } from "@opencode/ui/icon-button"
+ import { Panel, type PanelSidebar, type PanelTab, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
+ import { useLanguage } from "@/runtime/i18n/language"
+ import { usePluginHost } from "./host"
+@@ -56,6 +57,9 @@ export function MobileViewTabs(props: {
+   sidebar: PanelSidebar
+   bottom?: boolean
+   onSelect: (key: string) => void
++  /** T1.4: the graph mode switch, which has no header slot on narrow screens. */
++  graphActive?: boolean
++  onGraphToggle?: () => void
+ }): JSX.Element {
+   const language = useLanguage()
+ 
+@@ -124,6 +128,19 @@ export function MobileViewTabs(props: {
+           </Show>
+         </Tabs.List>
+       </Tabs>
++      <Show when={props.onGraphToggle}>
++        <IconButton
++          type="button"
++          variant="ghost-muted"
++          size="large"
++          class="shrink-0"
++          state={props.graphActive ? "pressed" : undefined}
++          onClick={props.onGraphToggle}
++          aria-label={language.t("command.graph.toggle")}
++          aria-pressed={props.graphActive}
++          icon={<Icon name="window-analytics" />}
++        />
++      </Show>
+       <Show when={store.loaded}>
+         <Suspense>
+           <MobilePanelDrawer
+diff --git a/packages/app/src/runtime/plugin/mounted-session.ts b/packages/app/src/runtime/plugin/mounted-session.ts
+index 6ae9f24e8d..d50de38609 100644
+--- a/packages/app/src/runtime/plugin/mounted-session.ts
++++ b/packages/app/src/runtime/plugin/mounted-session.ts
+@@ -20,6 +20,7 @@ import type {
+   ServerRef,
+   MountedSession,
+   SessionScreen,
++  TranscriptScreen,
+ } from "@opencode/plugin/gui"
+ import { useComments } from "@/composer/comments"
+ import { createComposerEditorActions } from "@/composer/editor/actions"
+@@ -297,11 +298,23 @@ export function createMountedSession(session: SessionModel) {
+     return view
+   }
+ 
++  // The transcript follows the route too, but the timeline it delegates to is created by the content after this screen
++  // exists, so its members read the binding the content installs through `bindTranscript`.
++  let transcriptImpl: TranscriptScreen | undefined
++
++  const transcript: TranscriptScreen = {
++    activeMessageID: () => transcriptImpl?.activeMessageID(),
++    reveal: (messageID, partID) => {
++      transcriptImpl?.reveal(messageID, partID)
++    },
++  }
++
+   // One object while this screen is mounted, whichever session it routes: its models follow the route.
+   const screen: SessionScreen = Object.freeze({
+     file: files,
+     comment,
+     composer: composerRef,
++    transcript,
+   })
+ 
+   const owner = getOwner()
+@@ -347,6 +360,10 @@ export function createMountedSession(session: SessionModel) {
+     screen,
+     view: mounted,
+     bindBackground: (tasks: Accessor<readonly BackgroundTask[]>) => setBackground(() => tasks),
++    // The content installs the transcript once it creates the timeline; until then the getters read undefined.
++    bindTranscript: (impl: TranscriptScreen) => {
++      transcriptImpl = impl
++    },
+     bindPrompt: (value: { quotable: Accessor<boolean>; focus: () => void; focused: () => boolean }) =>
+       setPrompt(() => value),
+   }
+diff --git a/packages/app/src/runtime/plugin/surfaces.test.ts b/packages/app/src/runtime/plugin/surfaces.test.ts
+new file mode 100644
+index 0000000000..48e55d5aae
+--- /dev/null
++++ b/packages/app/src/runtime/plugin/surfaces.test.ts
+@@ -0,0 +1,51 @@
++import { describe, expect, test } from "bun:test"
++import type { SessionRef, SessionSurface } from "@opencode/plugin/gui"
++import {
++  defaultSessionSurface,
++  orderedSessionSurfaces,
++  resolveSessionSurface,
++  selectSessionSurface,
++  sessionSurfaceID,
++} from "./surfaces"
++
++// SAFETY: the surface helpers read only the session key.
++const session = (key: string) => ({ key }) as SessionRef
++const surface = (id: string, order?: number): SessionSurface => ({
++  id,
++  title: id,
++  order,
++  render: (input) => input.transcript,
++})
++
++describe("session surfaces", () => {
++  test("lists the host transcript first, then contributions by order", () => {
++    const surfaces = orderedSessionSurfaces([surface("map", 2), surface("hybrid", 1)], "Transcript")
++
++    expect(surfaces.map((item) => item.id)).toEqual(["transcript", "hybrid", "map"])
++  })
++
++  test("ignores a contributed surface that claims the host id", () => {
++    expect(orderedSessionSurfaces([surface("transcript"), surface("map")], "Transcript").map((item) => item.id)).toEqual([
++      "transcript",
++      "map",
++    ])
++  })
++
++  test("falls back to the transcript when the selected surface is gone", () => {
++    const transcript = defaultSessionSurface("Transcript")
++
++    expect(resolveSessionSurface([transcript], "missing")).toBe(transcript)
++  })
++
++  test("keeps the selection per session", () => {
++    const first = session("first")
++    const second = session("second")
++
++    expect(sessionSurfaceID(first)).toBe("transcript")
++
++    selectSessionSurface("map", first)
++
++    expect(sessionSurfaceID(first)).toBe("map")
++    expect(sessionSurfaceID(second)).toBe("transcript")
++  })
++})
+diff --git a/packages/app/src/runtime/plugin/surfaces.ts b/packages/app/src/runtime/plugin/surfaces.ts
+new file mode 100644
+index 0000000000..b13b00c23c
+--- /dev/null
++++ b/packages/app/src/runtime/plugin/surfaces.ts
+@@ -0,0 +1,35 @@
++import { createSignal } from "solid-js"
++import type { SessionRef, SessionSurface } from "@opencode/plugin/gui"
++
++/** The host's own surface: the session body the app renders without a plugin surface. */
++export const transcriptSurfaceID = "transcript"
++
++export function defaultSessionSurface(title: string): SessionSurface {
++  return { id: transcriptSurfaceID, title, render: (input) => input.transcript }
++}
++
++const [selected, setSelected] = createSignal<Readonly<Record<string, string>>>({})
++
++/** The surface a session has selected, keyed by `SessionRef.key` so routing away and back restores it. */
++export function sessionSurfaceID(session: SessionRef) {
++  return selected()[session.key] ?? transcriptSurfaceID
++}
++
++export function selectSessionSurface(id: string, session: SessionRef) {
++  setSelected((current) => (current[session.key] === id ? current : { ...current, [session.key]: id }))
++}
++
++/** The host's transcript and the contributed surfaces, in display order. Contributed `transcript` entries are ignored. */
++export function orderedSessionSurfaces(items: readonly SessionSurface[], transcriptTitle: string) {
++  return [
++    defaultSessionSurface(transcriptTitle),
++    ...items
++      .filter((item) => item.id !== transcriptSurfaceID)
++      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
++  ]
++}
++
++/** The surface with `id`, or the host's transcript when it is gone. */
++export function resolveSessionSurface(surfaces: readonly SessionSurface[], id: string) {
++  return surfaces.find((surface) => surface.id === id) ?? surfaces[0]
++}
+diff --git a/packages/app/src/session/commands/use-session-commands.tsx b/packages/app/src/session/commands/use-session-commands.tsx
+index 680cb6d670..27522b76b9 100644
+--- a/packages/app/src/session/commands/use-session-commands.tsx
++++ b/packages/app/src/session/commands/use-session-commands.tsx
+@@ -138,7 +138,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
+   }
+ 
+   const navigateMessageByOffset = actions.navigateMessageByOffset
+-  const focusInput = actions.focusInput
+ 
+   const sessionCommand = withCategory(language.t("command.category.session"))
+   const projectCommand = withCategory(language.t("command.category.project"))
+@@ -532,7 +531,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
+       id: "input.focus",
+       title: language.t("command.input.focus"),
+       keybind: "ctrl+l",
+-      onSelect: focusInput,
++      onSelect: actions.focusInput,
+     }),
+   ]
+ 
+diff --git a/packages/app/src/session/screen.tsx b/packages/app/src/session/screen.tsx
+index dec2d00a19..480764dadf 100644
+--- a/packages/app/src/session/screen.tsx
++++ b/packages/app/src/session/screen.tsx
+@@ -15,7 +15,7 @@ import {
+ } from "solid-js"
+ import { createStore } from "solid-js/store"
+ import { ResizeHandle } from "@opencode/ui/resize-handle"
+-import type { BackgroundTask, MountedSession, SessionScreen } from "@opencode/plugin/gui"
++import type { BackgroundTask, MountedSession, SessionScreen, TranscriptScreen } from "@opencode/plugin/gui"
+ import { MessageTimeline } from "@/session/timeline/message-timeline"
+ import { ComposerDropzone } from "@/composer/dropzone"
+ import { useSettings } from "@/settings/model"
+@@ -47,7 +47,9 @@ import { SessionHeaderDrag, windowDragEnabled } from "./header/drag-area"
+ import { usePlatform } from "@/runtime/platform/platform"
+ import { useServer } from "@/runtime/server/current"
+ import { reviewGlyphFill, SessionReviewToggle } from "./header/session-header-actions"
++import { SessionSurfaceHost } from "./surface"
+ import { createTimelineCache } from "./timeline/cache"
++import { selectSessionSurface } from "@/runtime/plugin/surfaces"
+ import { createPanelMotion, holdLandingWidth, panelOpacity } from "@/shell/panel-motion"
+ 
+ export function SessionScreenView(props: { session: SessionModel }) {
+@@ -61,6 +63,7 @@ export function SessionScreenView(props: { session: SessionModel }) {
+         screen={mounted.screen}
+         view={mounted.view}
+         bindBackground={mounted.bindBackground}
++        bindTranscript={mounted.bindTranscript}
+         bindPrompt={mounted.bindPrompt}
+       />
+     </PluginLinks>
+@@ -73,6 +76,7 @@ function SessionScreenContent(props: {
+   view: Accessor<MountedSession>
+   screen: SessionScreen
+   bindBackground: (tasks: () => readonly BackgroundTask[]) => void
++  bindTranscript: (transcript: TranscriptScreen) => void
+   bindPrompt: (prompt: { quotable: () => boolean; focus: () => void; focused: () => boolean }) => void
+ }) {
+   const session = props.session
+@@ -122,6 +126,26 @@ function SessionScreenContent(props: {
+ 
+   const timeline = createSessionTimelineInteraction(session)
+ 
++  const view = props.view
++
++  // The hybrid's bridge: the log moves to a message while the map keeps the panel. The reader
++  // asked a question of the map and the log answers it in place.
++  const revealInLog = (messageID: string, partID?: string) => {
++    timeline.actions.revealMessage(messageID, partID)
++  }
++
++  const openGraphTranscript = (messageID: string, partID?: string) => {
++    const sessionRef = view()
++    if (sessionRef) selectSessionSurface("transcript", sessionRef)
++    revealInLog(messageID, partID)
++  }
++
++  // Surfaces outside the timeline (the session map panel) follow the transcript and reveal messages through it.
++  props.bindTranscript({
++    activeMessageID: timeline.currentMessageId,
++    reveal: openGraphTranscript,
++  })
++
+   const timelineSearch = createTimelineSearchController({
+     sessionID: session.identity.sessionID,
+     scrollRef: timeline.scroller,
+@@ -285,9 +309,13 @@ function SessionScreenContent(props: {
+         return view.id === source.identity.sessionID() ? view : previous
+       }, untrack(props.view))
+ 
++      // The log pane stays mounted and measured while the map takes the panel alone, so its
++      // virtualizer never remeasures from zero and keeps the reader's scroll position.
++      const combinedActive = createMemo(() => active())
++
+       return (
+         <MessageTimeline
+-          active={active()}
++          active={combinedActive()}
+           hideHeader={!isDesktop()}
+           registerHeaderGap={registerHeaderGap}
+           session={source}
+@@ -316,7 +344,7 @@ function SessionScreenContent(props: {
+           reveal={timeline.view.reveal}
+           setScrollToEnd={timeline.view.setScrollToEnd}
+           search={
+-            <Show when={active()}>
++            <Show when={combinedActive()}>
+               <TimelineSearchBar controller={timelineSearch} />
+             </Show>
+           }
+@@ -339,6 +367,8 @@ function SessionScreenContent(props: {
+           session={props.view()}
+           sidebar={sidebar}
+           onSelect={attachment.mobile.select}
++          graphActive={false}
++          onGraphToggle={undefined}
+         />
+       )}
+     </Show>
+@@ -419,7 +449,15 @@ function SessionScreenContent(props: {
+             <Show when={isDesktop() && !messagesReady()}>
+               <SessionIdentityHeader sessionID={session.identity.params.id ?? ""} session={session.data.info()} />
+             </Show>
+-            <Show when={messagesReady() && session.identity.params.id}>{timelineView()}</Show>
++            <Show when={messagesReady() && session.identity.params.id}>
++              <SessionSurfaceHost
++                session={props.view()}
++                screen={props.screen}
++                transcript={timelineView}
++                default={() => <> </>}
++                composerInset={timeline.inset}
++              />
++            </Show>
+           </Match>
+         </Switch>
+       </div>
+@@ -452,8 +490,8 @@ function SessionScreenContent(props: {
+           {/* Keep the control outside panel animations. */}
+           <Show when={isDesktop() && messagesReady() && session.identity.params.id}>
+             <div
+-              class="absolute end-3 top-0 z-30 h-12 flex items-center"
+-              data-slot="session-review-toggle"
++              class="absolute end-3 top-0 z-30 h-12 flex items-center gap-1"
++              data-slot="session-header-toggles"
+               onPointerDown={hideTimelineScrollbar}
+               onClick={hideTimelineScrollbar}
+             >
+@@ -537,7 +575,8 @@ function SessionScreenContent(props: {
+               </div>
+             </div>
+           </Show>
+-        </div>
++
++          </div>
+ 
+         {/* Hidden rather than unmounted while the user hides it, so its terminals keep their screens. */}
+         <Show when={isDesktop() && !!session.identity.params.id && bottomTabs()}>
+diff --git a/packages/app/src/session/session-identity-header.tsx b/packages/app/src/session/session-identity-header.tsx
+index 13395c0fad..abb5d57988 100644
+--- a/packages/app/src/session/session-identity-header.tsx
++++ b/packages/app/src/session/session-identity-header.tsx
+@@ -79,6 +79,7 @@ export function SessionHeaderLayout(
+           <span class="session-header-title-measure" aria-hidden="true">
+             <span>{props.title}</span>
+           </span>
++          <span role="heading" aria-level={2}>{props.title}</span>
+           {props.children}
+         </div>
+         {/* Each read of a JSX prop renders it again, so the actions render once, from the condition's value. */}
+diff --git a/packages/app/src/session/surface.tsx b/packages/app/src/session/surface.tsx
+new file mode 100644
+index 0000000000..7898285584
+--- /dev/null
++++ b/packages/app/src/session/surface.tsx
+@@ -0,0 +1,95 @@
++import { For, Show, createEffect, createMemo, on, onCleanup, type Accessor, type JSX } from "solid-js"
++import { SessionSurface, type MountedSession, type SessionScreen } from "@opencode/plugin/gui"
++import { useLanguage } from "@/runtime/i18n/language"
++import { usePluginHost } from "@/runtime/plugin/host"
++import {
++  orderedSessionSurfaces,
++  resolveSessionSurface,
++  sessionSurfaceID,
++  transcriptSurfaceID,
++} from "@/runtime/plugin/surfaces"
++
++/**
++ * The session body: the selected plugin surface, or the app's own transcript-map pane while the built-in plugin has
++ * not registered a surface yet. The transcript element is created once and moves with the selection.
++ */
++export function SessionSurfaceHost(props: {
++  session: MountedSession
++  screen: SessionScreen
++  transcript: (active: Accessor<boolean>) => JSX.Element
++  default: () => JSX.Element
++  /** The room the composer takes at the bottom; the transcript reserves it itself, a custom surface needs it here. */
++  composerInset?: Accessor<number>
++}) {
++  const host = usePluginHost()
++  const language = useLanguage()
++
++  const surfaces = createMemo(() =>
++    orderedSessionSurfaces(
++      host.items(SessionSurface).map((item) => item.value),
++      language.t("session.surface.transcript"),
++    ),
++  )
++
++  const surface = createMemo(() => resolveSessionSurface(surfaces(), sessionSurfaceID(props.session)))
++  const custom = createMemo(() => (surface().id === transcriptSurfaceID ? undefined : surface()))
++  const transcript = createMemo(() => props.transcript(() => true))
++  const scroll = new Map<Element, { top: number; left: number }>()
++
++  createEffect(() => {
++    const node = transcript()
++
++    if (!(node instanceof Element)) return
++
++    const record = (event: Event) => {
++      if (!(event.target instanceof Element)) return
++
++      scroll.set(event.target, { top: event.target.scrollTop, left: event.target.scrollLeft })
++    }
++
++    node.addEventListener("scroll", record, true)
++    onCleanup(() => node.removeEventListener("scroll", record, true))
++  })
++
++  // Moving the transcript between surfaces resets its scroll containers, so restore the positions they reported.
++  createEffect(
++    on(
++      () => surface().id,
++      () => {
++        const entries = [...scroll]
++
++        if (!entries.length) return
++
++        requestAnimationFrame(() => {
++          for (const [element, position] of entries) {
++            element.scrollTop = position.top
++            element.scrollLeft = position.left
++          }
++        })
++      },
++      { defer: true },
++    ),
++  )
++
++  const content = createMemo(() => {
++    const selected = custom()
++
++    if (!selected) return props.default()
++
++    return selected.render({ session: props.session, screen: props.screen, transcript: transcript() })
++  })
++
++  return (
++    <>
++      <Show when={custom()} fallback={content()}>
++        {/* The composer floats over the pane's bottom; a custom surface ends above it so its own controls stay clickable. */}
++        <div class="flex h-full min-h-0 flex-col" style={{ "padding-bottom": `${props.composerInset?.() ?? 0}px` }}>
++          {content()}
++        </div>
++      </Show>
++      <For each={custom()?.layers ?? []}>
++        {(layer) => layer.render({ session: props.session, screen: props.screen, surface: custom() ?? surface() })}
++      </For>
++    </>
++  )
++}
+diff --git a/packages/app/src/session/timeline/interaction.ts b/packages/app/src/session/timeline/interaction.ts
+index ecda246653..384a07dd74 100644
+--- a/packages/app/src/session/timeline/interaction.ts
++++ b/packages/app/src/session/timeline/interaction.ts
+@@ -407,6 +407,8 @@ export function createSessionTimelineInteraction(session: SessionModel) {
+       resume,
+       setActiveMessage,
+     },
++    // The message at the top of the viewport, for surfaces that follow the transcript (the session map panel).
++    currentMessageId: () => state.messageID,
+     inset: () => state.inset,
+     lastUserMessage: timeline.lastUserMessage,
+     resource: timeline.resource,
+diff --git a/packages/app/src/session/timeline/turn-diffs.ts b/packages/app/src/session/timeline/turn-diffs.ts
+index 271db22425..bb16fc1d02 100644
+--- a/packages/app/src/session/timeline/turn-diffs.ts
++++ b/packages/app/src/session/timeline/turn-diffs.ts
+@@ -26,5 +26,16 @@ export function createTurnDiffCache() {
+         )
+         .finally(() => loading.delete(id))
+     },
++    /** Get all loaded diffs, keyed by turn ID (without session prefix). */
++    getAllLoaded: () => {
++      const result = new Map<string, FileDiffInfo[]>()
++      for (const [key, value] of Object.entries(diffs)) {
++        if (value) {
++          const turnID = key.split("/")[1]
++          if (turnID) result.set(turnID, [...value] as FileDiffInfo[])
++        }
++      }
++      return result
++    },
+   }
+ }
+diff --git a/packages/app/src/session/timeline/virtualizer.tsx b/packages/app/src/session/timeline/virtualizer.tsx
+index 4574b78a1f..e6a9cb8ab3 100644
+--- a/packages/app/src/session/timeline/virtualizer.tsx
++++ b/packages/app/src/session/timeline/virtualizer.tsx
+@@ -220,6 +220,23 @@ export function createTimelineVirtualizer(input: Input) {
+     },
+   )
+   let scrollTop = 0
++  // The last unpinned offset. A surface that detaches and reattaches this scroll element without
++  // recreating the virtualizer loses the live scrollTop; restore this on reconnect.
++  let rememberedOffset = 0
++  // Detaching can happen before the browser delivers the scroll event for the user's last move, so
++  // snapshot the live offset when this timeline deactivates rather than relying on it.
++  createEffect(
++    on(
++      active,
++      (isActive) => {
++        const root = listRoot()
++
++        if (isActive || !root || input.pinned()) return
++        rememberedOffset = root.scrollTop
++      },
++      { defer: true },
++    ),
++  )
+   // A scroll arrived within the zoom slack of the end and may have reached it.
+   let endPending = false
+   let reportOffset: ((offset: number, scrolling: boolean) => void) | undefined
+@@ -287,6 +304,7 @@ export function createTimelineVirtualizer(input: Input) {
+         virtualContent?.querySelectorAll<HTMLDivElement>("[data-index]").forEach(virtualizer.measureElement)
+ 
+         if (input.pinned()) virtualizer.scrollToEnd()
++        else if (rememberedOffset > 0) virtualizer.scrollToOffset(rememberedOffset)
+         settleColdBottom()
+       })
+     },
+@@ -871,8 +889,13 @@ export function createTimelineVirtualizer(input: Input) {
+   // under a viewport that was already there. Merely resting near the end is not enough, otherwise
+   // a later scroll would overwrite an upward intent expressed a pixel short of the bottom.
+   const handleListScroll = (event: Event & { currentTarget: HTMLDivElement }) => {
+-    if (!active()) return
+     const root = event.currentTarget
++    // Record a detached view's offset: the reconnect restore reads it, and no later scroll event
++    // may arrive before the element is reattached.
++
++    if (!input.pinned()) rememberedOffset = root.scrollTop
++
++    if (!active()) return
+     const previousTop = scrollTop
+     const previousMaxScroll = maxScroll
+     scrollTop = root.scrollTop
+diff --git a/packages/app/src/shell/routes/session-ui-provider.tsx b/packages/app/src/shell/routes/session-ui-provider.tsx
+index aa7f4e6b1d..95f4a1659f 100644
+--- a/packages/app/src/shell/routes/session-ui-provider.tsx
++++ b/packages/app/src/shell/routes/session-ui-provider.tsx
+@@ -141,6 +141,7 @@ export function SessionUIProvider(
+         turnDiff={{
+           get: (input) => turnDiffs()?.get(input),
+           load: (input) => turnDiffs()?.load(input, () => serverSDK.api.session.diff(input)),
++          getAllLoaded: () => turnDiffs()?.getAllLoaded() ?? new Map(),
+         }}
+         onNavigateToSession={navigateToSession}
+         onSessionHref={href}
+diff --git a/packages/plugin/src/gui/context.ts b/packages/plugin/src/gui/context.ts
+index 651a0aff67..f9906c6cc7 100644
+--- a/packages/plugin/src/gui/context.ts
++++ b/packages/plugin/src/gui/context.ts
+@@ -31,6 +31,7 @@ import type {
+   SessionRef,
+   Sessions,
+   Storage,
++  Surfaces,
+   System,
+   Tabs,
+   Toasts,
+@@ -120,6 +121,15 @@ export interface Context extends BaseContext {
+    * ```
+    */
+   readonly screen: Screen
++  /**
++   * The session body views: the host's transcript and the surfaces plugins contribute.
++   *
++   * @example
++   * ```ts
++   * ctx.surfaces.select(`${ctx.id}.map`, session)
++   * ```
++   */
++  readonly surfaces: Surfaces
+   /**
+    * Stores for keys only known at runtime, and window-local memory. Declare `stores` for keys known up front.
+    *
+diff --git a/packages/plugin/src/gui/host-apis.ts b/packages/plugin/src/gui/host-apis.ts
+index f22fa830ed..a9931dac76 100644
+--- a/packages/plugin/src/gui/host-apis.ts
++++ b/packages/plugin/src/gui/host-apis.ts
+@@ -4,7 +4,7 @@ import type { Schema } from "effect"
+ import type { JSX } from "solid-js"
+ import type { Store } from "solid-js/store"
+ import type { Cleanup, OS, Persisted, StoreFrom } from "./core.js"
+-import type { IconName, Link, SessionPanelMenuItem } from "./registries.js"
++import type { IconName, Link, SessionPanelMenuItem, SessionSurface } from "./registries.js"
+ 
+ /**
+  * A server the app lists. One ref per id that follows the live connection: read `client`, `data` and `url` from it
+@@ -741,6 +741,26 @@ export interface MountedSession extends SessionRef {
+   readonly background: readonly BackgroundTask[]
+ }
+ 
++/**
++ * The routed session's transcript: the messages the user scrolls through, and the cursor that tracks them. It follows
++ * the route like `SessionScreen`, so its cursor and reveal action always belong to the session on screen. A surface that
++ * draws a session map uses it to link a map node back to its message and to follow the message the user is reading.
++ */
++export interface TranscriptScreen {
++  /**
++   * The message the transcript's viewport currently shows, or undefined while it follows the newest content.
++   * Reactive: call it where you use the value so the surface updates as the user scrolls.
++   */
++  activeMessageID(): string | undefined
++  /**
++   * Reveals a message in the transcript, scrolling it into view and leaving graph mode when it is active.
++   *
++   * @param messageID - The message to reveal.
++   * @param partID - The tool call inside the message to open, when known.
++   */
++  reveal(messageID: string, partID?: string): void
++}
++
+ /**
+  * The session screen: the app's view that shows the routed session, and stays the same object while it routes A, then
+  * B, then A again. It follows the route on purpose: its files, comments and composer are the screen's workspace models,
+@@ -754,6 +774,8 @@ export interface SessionScreen {
+   readonly comment: Comments
+   /** The routed session's composer. */
+   readonly composer: Composer
++  /** The routed session's transcript. */
++  readonly transcript: TranscriptScreen
+ }
+ 
+ /** The session screen, while it routes the mounted session. */
+@@ -780,6 +802,26 @@ export interface Sessions {
+   current(): MountedSession | undefined
+ }
+ 
++/** The session body views: the host's transcript and the surfaces plugins contribute. */
++export interface Surfaces {
++  /** The surfaces a session can show, in `order`, with the host's `transcript` first. Reactive. */
++  list(): readonly SessionSurface[]
++  /**
++   * The surface a session shows. Defaults to `transcript`; a stored id whose surface is gone reads `transcript`.
++   * Reactive.
++   *
++   * @param session - Any session.
++   */
++  current(session: SessionRef): string
++  /**
++   * Selects the surface a session shows. An unknown id leaves the selection unchanged.
++   *
++   * @param id - The surface's id.
++   * @param session - The session whose body changes.
++   */
++  select(id: string, session: SessionRef): void
++}
++
+ /**
+  * Where a panel key stands in a session.
+  * - `closed`: not in the strip.
+diff --git a/packages/plugin/src/gui/icon-name.ts b/packages/plugin/src/gui/icon-name.ts
+index 8a6dc62286..9a3bd4290e 100644
+--- a/packages/plugin/src/gui/icon-name.ts
++++ b/packages/plugin/src/gui/icon-name.ts
+@@ -76,6 +76,7 @@ export type IconName =
+   | "layout-right"
+   | "layout-right-full"
+   | "layout-right-partial"
++  | "levels"
+   | "link"
+   | "lock"
+   | "magnifying-glass"
+diff --git a/packages/plugin/src/gui/registries.ts b/packages/plugin/src/gui/registries.ts
+index 57df039607..06f3b8f6ad 100644
+--- a/packages/plugin/src/gui/registries.ts
++++ b/packages/plugin/src/gui/registries.ts
+@@ -673,6 +673,57 @@ export interface ComposerPill {
+   menu?(input: ComposerPillMenuProps): JSX.Element
+ }
+ 
++/** A layer rendered above a session surface, inside the session panel, e.g. a turn map. */
++export interface SessionLayer {
++  /** The layer's id, unique within the surface. */
++  readonly id: string
++  /**
++   * Renders the layer once; its own reactivity updates it.
++   *
++   * @param input - The routed session, owning screen and the surface it decorates.
++   */
++  render(input: {
++    /** The routed session. */
++    readonly session: MountedSession
++    /** The session screen that owns the routed session. */
++    readonly screen: SessionScreen
++    /** The surface the layer is rendered above. */
++    readonly surface: SessionSurface
++  }): JSX.Element
++}
++
++/**
++ * A surface that owns the session body: the transcript, a map, or a composition of both. The host gives the selected
++ * surface the transcript element, which stays mounted while surfaces switch.
++ */
++export interface SessionSurface {
++  /** The surface's id. The host reserves `transcript` for its own. */
++  readonly id: string
++  /** The surface's name, e.g. in a surface picker. */
++  readonly title: string
++  /** The surface's icon in a picker. */
++  readonly icon?: IconName
++  /** Surfaces list in ascending order. Defaults to 0. */
++  readonly order?: number
++  /**
++   * Renders the session body once; its own reactivity updates it.
++   *
++   * @param input - The routed session, owning screen and the stable transcript element. A surface that hides the
++   * transcript must keep it mounted, e.g. with `visibility: hidden` or an off-screen position, so its virtualizer and
++   * scroll position survive.
++   */
++  render(input: {
++    /** The routed session. */
++    readonly session: MountedSession
++    /** The session screen that owns the routed session. */
++    readonly screen: SessionScreen
++    /** The transcript element, constructed once per session and kept mounted across surface switches. */
++    readonly transcript: JSX.Element
++  }): JSX.Element
++  /** Layers rendered above the surface body, inside the session panel. */
++  readonly layers?: readonly SessionLayer[]
++}
++
+ /** The places a `Slot` renders, with the input each passes to `render`. */
+ export interface SlotMap {
+   /** Full-width strip under the window content, above toasts. */
+@@ -831,6 +882,16 @@ export const ComposerPill = Registry.define<ComposerPill>("composer-pill")
+  */
+ export const Slot = Registry.define<Slot>("slot")
+ 
++/**
++ * The registry of session surfaces: whole-body views such as a map or a transcript-map hybrid.
++ *
++ * @example
++ * ```ts
++ * ctx.add(SessionSurface, { id: "map", title: ctx.t("map"), render: ({ transcript }) => <Map transcript={transcript} /> })
++ * ```
++ */
++export const SessionSurface = Registry.define<SessionSurface>("session-surface")
++
+ /**
+  * The registry of CSS the host adds to the document while each item is contributed. Import the file with `?inline`.
+  *

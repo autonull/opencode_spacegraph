@@ -630,6 +630,7 @@ export const dict = {
   "session.tab.new": "New tab",
   "session.tab.unknown": "Unknown Session",
   "session.panel.reviewAndFiles": "Review and files",
+  "session.surface.transcript": "Transcript",
   "session.panel.bottom": "Bottom panel",
   "session.panel.bottom.hide": "Hide bottom panel",
   "session.error.notFound": "This session cannot be found",

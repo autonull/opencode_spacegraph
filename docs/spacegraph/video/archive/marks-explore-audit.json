@@ -1,0 +1,34 @@
+[
+  {
+    "frame": "audit-00-open",
+    "elapsed": 0
+  },
+  {
+    "frame": "audit-01-timeline",
+    "elapsed": 1.124
+  },
+  {
+    "frame": "audit-02-orbit-drift",
+    "elapsed": 5.143
+  },
+  {
+    "frame": "audit-03-wrong-fix",
+    "elapsed": 6.024
+  },
+  {
+    "frame": "audit-04-still-failing",
+    "elapsed": 7.167
+  },
+  {
+    "frame": "audit-05-correct-fix",
+    "elapsed": 8.02
+  },
+  {
+    "frame": "audit-06-whip-to-fix",
+    "elapsed": 10.031
+  },
+  {
+    "frame": "audit-07-detour",
+    "elapsed": 11.344
+  }
+]

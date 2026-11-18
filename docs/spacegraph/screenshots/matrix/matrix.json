@@ -1,0 +1,1432 @@
+{
+  "axes": [
+    "projection",
+    "depth",
+    "cardFacing",
+    "layout",
+    "rendererStrategy",
+    "lod",
+    "edgeLod",
+    "widgets",
+    "salience",
+    "emphasis",
+    "motion",
+    "motionVerb",
+    "cameraVerb",
+    "depthAxis",
+    "sceneFeature",
+    "sensory",
+    "source",
+    "view",
+    "level"
+  ],
+  "total": 3226206412800,
+  "sampled": 24,
+  "strategy": "sampled",
+  "seed": 41,
+  "maxCells": 24,
+  "cells": [
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "layered",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "depth-stack",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "orbit",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "layered",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "depth-stack",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "orbit",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "plane",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "camera",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "plane",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "camera",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "grid-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "circular-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "tree-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=hierarchical-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "hierarchical-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=radial-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "radial-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=spectral-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "spectral-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=cluster-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "cluster-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=geo-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "geo-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=timeline-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "timeline-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "grid-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "circular-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "tree-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      }
+    }
+  ],
+  "frames": [
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "e584c65168d766798f3f3436b2d41672676821f5b1db74068c386d0cdde234c8"
+    },
+    {
+      "id": "projection=2d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "layered",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "depth-stack",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "orbit",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "layered",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "depth-stack",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "orbit",
+        "cardFacing": "auto",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "plane",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "camera",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "plane",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "camera",
+        "layout": "force-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "grid-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "circular-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "tree-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=hierarchical-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "hierarchical-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=radial-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "radial-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=spectral-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "spectral-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=cluster-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "cluster-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=geo-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "geo-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=2d&depth=flat&cardFacing=auto&layout=timeline-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "2d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "timeline-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "grid-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "circular-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    },
+    {
+      "id": "projection=3d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+      "values": {
+        "projection": "3d",
+        "depth": "flat",
+        "cardFacing": "auto",
+        "layout": "tree-layout",
+        "rendererStrategy": "svg-preview",
+        "lod": "dot",
+        "edgeLod": "bundle",
+        "widgets": "none",
+        "salience": "none",
+        "emphasis": "none",
+        "motion": "full",
+        "motionVerb": "none",
+        "cameraVerb": "fit",
+        "depthAxis": "none",
+        "sceneFeature": "none",
+        "sensory": "none",
+        "source": "contract",
+        "view": "ribbon",
+        "level": "overview"
+      },
+      "sha256": "d4fdb824ff2debe26a78dfce3c70aed4c88487815e427d1c04aa1c4e47b3de19"
+    }
+  ],
+  "duplicates": [
+    {
+      "cells": [
+        "projection=2d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=flat&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=flat&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=layered&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=depth-stack&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=orbit&cardFacing=auto&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "cardFacing"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "cardFacing"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth",
+        "cardFacing"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=flat&cardFacing=plane&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth",
+        "cardFacing"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=flat&cardFacing=camera&layout=force-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=hierarchical-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=hierarchical-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=radial-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=radial-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=spectral-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=spectral-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=cluster-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=cluster-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=geo-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=geo-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=2d&depth=flat&cardFacing=auto&layout=timeline-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=2d&depth=flat&cardFacing=auto&layout=timeline-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=flat&cardFacing=auto&layout=grid-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth",
+        "layout"
+      ]
+    },
+    {
+      "cells": [
+        "projection=3d&depth=flat&cardFacing=auto&layout=circular-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview",
+        "projection=3d&depth=flat&cardFacing=auto&layout=tree-layout&rendererStrategy=svg-preview&lod=dot&edgeLod=bundle&widgets=none&salience=none&emphasis=none&motion=full&motionVerb=none&cameraVerb=fit&depthAxis=none&sceneFeature=none&sensory=none&source=contract&view=ribbon&level=overview"
+      ],
+      "differingAxes": [
+        "projection",
+        "depth",
+        "layout"
+      ]
+    }
+  ]
+}

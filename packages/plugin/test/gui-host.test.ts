@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { evaluatePluginBundle, inertModule, pluginIdAvailable, type InertModule } from "../src/gui/host"
 import { Contract } from "../src/gui/core"
+import { SessionSurface } from "../src/gui/registries"
 import { define } from "../src/gui/plugin"
 
-const modules = new Map<string, object>([["@opencode/plugin/gui", { Contract, Plugin: { define } }]])
+const modules = new Map<string, object>([
+  ["@opencode/plugin/gui", { Contract, Plugin: { define }, SessionSurface }],
+])
 
 const evaluate = (code: string, process: "window" | "main" = "window") =>
   evaluatePluginBundle(code, {
@@ -67,6 +70,24 @@ describe("plugin GUI bundles", () => {
 
   test("have at least one setup", () => {
     expect(() => evaluate("exports.default = {}")).toThrow("must have a window `setup`")
+  })
+
+  test("let a bundle contribute a session surface through the shared registry", () => {
+    const bundle = evaluate(`
+      const sdk = require("@opencode/plugin/gui")
+      exports.default = sdk.Plugin.define({
+        setup(ctx) {
+          ctx.add(sdk.SessionSurface, { id: "map", title: "Map", render: () => null })
+        },
+      })
+    `)
+    const contributed: { id: string; title: string }[] = []
+    bundle.setup?.({
+      add: (registry: { id: string }, value: { id: string; title: string }) => {
+        if (registry.id === SessionSurface.id) contributed.push({ id: value.id, title: value.title })
+      },
+    } as never)
+    expect(contributed).toEqual([{ id: "map", title: "Map" }])
   })
 })
 

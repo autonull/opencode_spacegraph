@@ -1,0 +1,122 @@
+[
+  {
+    "frame": "01-log.png",
+    "elapsed": 1.05
+  },
+  {
+    "frame": "02-graph-overview.png",
+    "elapsed": 2.713
+  },
+  {
+    "frame": "03-graph-execution.png",
+    "elapsed": 3.763
+  },
+  {
+    "frame": "04-graph-selected.png",
+    "elapsed": 4.564
+  },
+  {
+    "frame": "05-return-to-log.png",
+    "elapsed": 4.707
+  },
+  {
+    "frame": "06-graph-3d.png",
+    "elapsed": 5.847
+  },
+  {
+    "frame": "11-graph-timeline.png",
+    "elapsed": 7.332
+  },
+  {
+    "frame": "12-graph-hierarchy.png",
+    "elapsed": 8.076
+  },
+  {
+    "frame": "13-graph-narrow.png",
+    "elapsed": 9.567
+  },
+  {
+    "frame": "14-graph-light.png",
+    "elapsed": 11.061
+  },
+  {
+    "frame": "15-graph-ribbon.png",
+    "elapsed": 12.151
+  },
+  {
+    "frame": "16-graph-matrix.png",
+    "elapsed": 12.933
+  },
+  {
+    "frame": "17-graph-files.png",
+    "elapsed": 14.607
+  },
+  {
+    "frame": "18-graph-layered.png",
+    "elapsed": 15.753
+  },
+  {
+    "frame": "19-graph-depth-stack.png",
+    "elapsed": 16.517
+  },
+  {
+    "frame": "22-graph-turn-1.png",
+    "elapsed": 18.331
+  },
+  {
+    "frame": "23-graph-turn-2.png",
+    "elapsed": 19.815
+  },
+  {
+    "frame": "24-graph-failure-chain.png",
+    "elapsed": 21.272
+  },
+  {
+    "frame": "28-graph-tree.png",
+    "elapsed": 22.303
+  },
+  {
+    "frame": "29-graph-force.png",
+    "elapsed": 23.259
+  },
+  {
+    "frame": "31-graph-perspective.png",
+    "elapsed": 25.194
+  },
+  {
+    "frame": "34-graph-surfaces.png",
+    "elapsed": 26.085
+  },
+  {
+    "frame": "36-graph-trace-overlay.png",
+    "elapsed": 28.537
+  },
+  {
+    "frame": "37-graph-collapsed-group.png",
+    "elapsed": 30.991
+  },
+  {
+    "frame": "38-graph-hybrid.png",
+    "elapsed": 32.247
+  },
+  {
+    "frame": "39-graph-nlq-search.png",
+    "elapsed": 32.78
+  },
+  {
+    "frame": "40-graph-nlq-code-errors.png",
+    "elapsed": 33.131
+  },
+  {
+    "frame": "41-graph-trust-lens.png",
+    "elapsed": 33.24
+  },
+  {
+    "frame": "42-graph-permalink-copy.png",
+    "elapsed": 34.759
+  },
+  {
+    "frame": "43-graph-demo-map.png",
+    "elapsed": 35.659
+  }
+]

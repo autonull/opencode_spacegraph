@@ -1,0 +1,53 @@
+import type { Kernel } from "@spacegraphjs/kernel"
+import { runPipeline } from "@spacegraphjs/kernel"
+import type {
+  SessionMessageInfo,
+  SessionStatus,
+} from "@opencode/client/promise"
+import type { GraphViewData } from "./model"
+import { GraphBuilder, type BuildSessionInput } from "./session-builder"
+import { toGraphView, type GraphViewMeta } from "./view"
+import { workspaceDerivers } from "./workspace-derivers"
+import { Timeline } from "../private/timeline/projection"
+
+export type BuildGraphInput = BuildSessionInput | { kernel: Kernel; meta: GraphViewMeta }
+
+export function buildGraph(input: BuildGraphInput): GraphViewData {
+  if ("kernel" in input) return toGraphView(input.kernel, input.meta)
+  const builder = new GraphBuilder(
+    input.messages,
+    input.status,
+    input.snapshot,
+    input.sessionID,
+    input.lineage,
+  )
+  const session = builder.buildKernel()
+  const kernel = input.snapshot
+    ? runPipeline(workspaceDerivers(input.snapshot, input.diffByTurn), session, {
+        workspace: input.snapshot,
+      })
+    : session
+  return toGraphView(kernel, builder.meta())
+}
+
+/**
+ * Creates a projection that maps each message ID to its owning turn ID.
+ * This is the same projection the graph uses to link from the transcript to the graph.
+ * It can be used without building the full graph model.
+ */
+export function createMessageToTurnProjection(input: {
+  messages: SessionMessageInfo[]
+  status: SessionStatus
+}): Map<string, string> {
+  const { turnByMessageID } = Timeline.constructSessionMessageRows(input.messages, true, input.status)
+  return turnByMessageID
+}
+
+export { buildSessionKernel, type BuildSessionInput } from "./session-builder"
+export { WORKSPACE_STAGES, type WorkspaceStage } from "./session-builder"
+export { buildWorkspaceKernel, workspaceDeriver, workspaceDerivers } from "./workspace-derivers"
+
+/** Incremental build wrapper used by GraphTranscriptSurface. */
+export function buildGraphIncremental(input: { messages: SessionMessageInfo[]; status: SessionStatus }): { graph: GraphViewData } {
+  return { graph: buildGraph({ messages: input.messages, status: input.status }) }
+}

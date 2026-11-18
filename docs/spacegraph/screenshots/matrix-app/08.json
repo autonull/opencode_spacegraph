@@ -1,0 +1,10 @@
+{
+  "id": "layout=grid&depth=flat&level=overview&lens=code",
+  "values": {
+    "layout": "grid",
+    "depth": "flat",
+    "level": "overview",
+    "lens": "code"
+  },
+  "sha256": "37696db8f5a3d28c44b4683145b3b64147d749aa4e8c88111215d71470f7bd56"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "layout=circular&depth=layered&level=overview&lens=all",
+  "values": {
+    "layout": "circular",
+    "depth": "layered",
+    "level": "overview",
+    "lens": "all"
+  },
+  "sha256": "b63e563091ebe897eae86cd756690bb3a730006449c92e4b2991b93b4afe3d5e"
+}

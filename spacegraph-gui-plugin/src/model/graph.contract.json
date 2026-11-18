@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "fixtures": {
+    "session": {
+      "minimumNodes": 40,
+      "minimumEdges": 80,
+      "nodeKinds": [
+        "session",
+        "turn",
+        "message",
+        "file",
+        "tool",
+        "phase",
+        "subagent",
+        "notice",
+        "result",
+        "error",
+        "retry",
+        "diff"
+      ],
+      "edgeKinds": [
+        "part-of",
+        "references",
+        "sequence",
+        "reads",
+        "delegates",
+        "writes",
+        "produces",
+        "evidence"
+      ],
+      "forbiddenNodeKinds": [
+        "directory",
+        "package",
+        "commit",
+        "branch",
+        "symbol",
+        "process",
+        "port",
+        "issue"
+      ]
+    },
+    "workspace": {
+      "minimumNodes": 65,
+      "minimumEdges": 100,
+      "nodeKinds": [
+        "session",
+        "turn",
+        "message",
+        "file",
+        "tool",
+        "phase",
+        "subagent",
+        "notice",
+        "result",
+        "error",
+        "retry",
+        "diff",
+        "directory",
+        "package",
+        "commit",
+        "branch",
+        "symbol",
+        "process",
+        "port",
+        "issue"
+      ],
+      "edgeKinds": [
+        "part-of",
+        "references",
+        "sequence",
+        "reads",
+        "delegates",
+        "writes",
+        "produces",
+        "evidence",
+        "touches",
+        "points-at",
+        "listens-on"
+      ]
+    }
+  },
+  "invariants": [
+    "no-dangling-edges",
+    "unique-node-ids",
+    "unique-edge-ids",
+    "hyperedge-nodes-exist"
+  ]
+}
