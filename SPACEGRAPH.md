@@ -325,6 +325,10 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 
 > **Note:** SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages. The broader platform vision, roadmap, and exploratory R&D areas are documented in `spacegraphjs/README.vision.md`.
 
+### 6.3 OpenCode delivery: bundled, not published (r19, 2026-11-18)
+
+The OpenCode integration ships as a third-party GUI plugin, not as fork source. The plugin bundles the SpaceGraphJS packages and `three` into `dist/gui-experimental.cjs`; only app-provided modules (`effect`, `@opencode/plugin/gui`, `solid-js`, `solid-js/web`, `solid-js/store`, `@opencode/ui/*`) stay external. The unused `onnxruntime-web` vision path is aliased to an inert stub, keeping the bundle around 2.6 MB (~800 KB gzip). The `spacegraphjs/` repo remains an independent MIT library and is not published to npm for this delivery (TODO.41 r12). The OpenCode fork carries no SpaceGraph source; it carries only the generic `SessionSurface` seam until that seam is merged upstream. See `SPACEGRAPH.TODO.43.md`.
+
 ---
 
 ## 7. Implementation Status & Verification
@@ -462,6 +466,10 @@ Per-file justification in `docs/spacegraph/upstream-review.md` §5.
 - `docs/spacegraph/demos.md` — three demo surfaces, which to open
 - `docs/spacegraph/prototype.md` — release write-up with all measurements
 
+### 9.4 Plugin-only delivery (r18–r19 — current path)
+
+`SPACEGRAPH.TODO.43.md` supersedes the rung-3/4 fork patch above. The graph ships as a third-party `gui-experimental` plugin that registers two generic `SessionSurface`s (`spacegraph.map` and `spacegraph.hybrid`). The only host change is a small, generic `SessionSurface` registry + `Surfaces` API contributed upstream (`docs/spacegraph/upstream-session-surface.patch`, 14 files / 524 lines — the upstream PR, not the fork patch); the fork is otherwise free of SpaceGraph source. A real-browser component gate loads the committed bundle through `pluginDefinition` and asserts both surfaces render with the transcript preserved. PR submission and repo pushes remain pending explicit sign-off.
+
 ---
 
 ## 10. The Evidence Gap (Critical Path for Product Claim)
@@ -518,6 +526,10 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 - **T10.5** Fork landing page (banner), one compelling screenshot, release note, honest limitations
 - **T10.6** Shared state branch + tag
 - **T10.7** Stranger's path: `git clone <fork> && bun run graph:setup && bun run graph:dev`
+
+### 11.4 Current plan (r19, 2026-11-18) — plugin-only delivery
+
+`SPACEGRAPH.TODO.43.md` is the active closing plan; §11.1–11.3 above are the superseded fork-source path. Completed: the model and render-pipeline port, plugin GUI integration and chrome, tests, screenshots, and the app component gate; the fork is source-free on upstream `dev` (`3dc66ab6e5`) plus the generic seam patch. Remaining, all needing explicit sign-off: (1) the Phase 5 app graph e2e against a desktop/Bridge harness (the web harness has no `Bridge`, so it cannot seed an external plugin from config); (2) pushing the fork to a new origin branch, the plugin to its own repo, and the library `main` separately; (3) submitting the upstream `SessionSurface` PR. Do not submit the PR or create/push repos without asking.
 
 ---
 
