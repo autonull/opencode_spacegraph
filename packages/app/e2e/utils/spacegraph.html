@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <div id="root" style="display: flex; flex-direction: column; height: 100dvh"></div>
+    <script type="module">
+      import { mount } from "./spacegraph.fixture.tsx"
+      const params = new URLSearchParams(location.search)
+      mount({
+        server: params.get("server"),
+        path: params.get("path") ?? undefined,
+      })
+    </script>
+  </body>
+</html>

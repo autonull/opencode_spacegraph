@@ -529,7 +529,7 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 
 ### 11.4 Current plan (r19, 2026-11-18) — plugin-only delivery
 
-`SPACEGRAPH.TODO.43.md` is the active closing plan; §11.1–11.3 above are the superseded fork-source path. Completed: the model and render-pipeline port, plugin GUI integration and chrome, tests, screenshots, and the app component gate; the fork is source-free on upstream `dev` (`3dc66ab6e5`) plus the generic seam patch. Remaining, all needing explicit sign-off: (1) the Phase 5 app graph e2e against a desktop/Bridge harness (the web harness has no `Bridge`, so it cannot seed an external plugin from config); (2) pushing the fork to a new origin branch, the plugin to its own repo, and the library `main` separately; (3) submitting the upstream `SessionSurface` PR. Do not submit the PR or create/push repos without asking.
+`SPACEGRAPH.TODO.43.md` is the active closing plan; §11.1–11.3 above are the superseded fork-source path. Completed: the model and render-pipeline port, plugin GUI integration and chrome, tests, screenshots, the app component gate, and the web app graph e2e (r20); the fork is source-free on upstream `dev` (`3dc66ab6e5`) plus the generic seam patch. The web e2e installs the bundle through a fixture-supplied `Bridge`; no desktop process is needed. Remaining, all needing explicit sign-off: (1) pushing the fork to a new origin branch, the plugin to its own repo, and the library `main` separately; (2) submitting the upstream `SessionSurface` PR. Do not submit the PR or create/push repos without asking.
 
 ---
 

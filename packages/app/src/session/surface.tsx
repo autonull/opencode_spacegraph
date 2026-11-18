@@ -72,17 +72,18 @@ export function SessionSurfaceHost(props: {
     ),
   )
 
-  const content = createMemo(() => {
-    const selected = custom()
-
-    return selected
-      ? selected.render({ session: props.session, screen: props.screen, transcript: transcript() })
-      : transcript()
-  })
+  const content = createMemo(() =>
+    custom()?.render({ session: props.session, screen: props.screen, transcript: transcript() }),
+  )
 
   return (
     <>
-      <Show when={custom()} fallback={content()}>
+      {/* Kept in one stable container: moving the live transcript between branches of a Show makes Solid reconcile a
+          node that is an ancestor of its new parent, and destroys the timeline's scroll position. */}
+      <div data-slot="session-transcript" style={{ display: custom() ? "none" : "contents" }}>
+        {transcript()}
+      </div>
+      <Show when={custom()}>
         <div class="flex h-full min-h-0 flex-col">{content()}</div>
       </Show>
       <For each={custom()?.layers ?? []}>

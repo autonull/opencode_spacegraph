@@ -12,9 +12,6 @@ export function MapSurface(props: {
   return (
     <div class="sg-map-canvas" data-slot="spacegraph-surface-map">
       <SessionGraph model={props.model} session={props.session} screen={props.screen} class="sg-map-canvas" />
-      <div aria-hidden="true" style={{ position: "absolute", width: "1px", height: "1px", overflow: "hidden", "clip-path": "inset(50%)" }}>
-        {props.transcript}
-      </div>
     </div>
   )
 }
