@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { expect, sourceURL, story } from "../../stories/playwright/story"
 
 // Proves the third-party plugin bundle loads through the production plugin
@@ -13,6 +14,8 @@ const code = readFileSync(
 const messages = JSON.parse(
   readFileSync(new URL("./fixtures/spacegraph-messages.json", import.meta.url), "utf8"),
 )
+// Canonical gallery frames live in docs, not in Playwright's gitignored test-results.
+const screenshots = fileURLToPath(new URL("../../../docs/spacegraph/screenshots/", import.meta.url))
 
 story.use({ viewport: { width: 1440, height: 900 }, colorScheme: "dark", locale: "en-US" })
 
@@ -30,7 +33,7 @@ async function load(page: import("@playwright/test").Page, name: "mountPluginMap
   )
 }
 
-story("the plugin bundle renders the map surface and keeps the transcript mounted", async ({ page }, testInfo) => {
+story("the plugin bundle renders the map surface and keeps the transcript mounted", async ({ page }) => {
   const result = await load(page, "mountPluginMap")
 
   expect(result).toEqual({
@@ -41,12 +44,10 @@ story("the plugin bundle renders the map surface and keeps the transcript mounte
     selected: "spacegraph.map",
   })
 
-  const shot = testInfo.outputPath("spacegraph-map.png")
-  await page.screenshot({ path: shot })
-  await testInfo.attach("spacegraph-map", { path: shot, contentType: "image/png" })
+  await page.screenshot({ path: `${screenshots}55-plugin-surface-map.png` })
 })
 
-story("the plugin bundle renders the hybrid surface and keeps the transcript mounted", async ({ page }, testInfo) => {
+story("the plugin bundle renders the hybrid surface and keeps the transcript mounted", async ({ page }) => {
   const result = await load(page, "mountPluginHybrid")
 
   expect(result).toEqual({
@@ -57,7 +58,5 @@ story("the plugin bundle renders the hybrid surface and keeps the transcript mou
     selected: "spacegraph.hybrid",
   })
 
-  const shot = testInfo.outputPath("spacegraph-hybrid.png")
-  await page.screenshot({ path: shot })
-  await testInfo.attach("spacegraph-hybrid", { path: shot, contentType: "image/png" })
+  await page.screenshot({ path: `${screenshots}56-plugin-surface-hybrid.png` })
 })
