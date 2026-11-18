@@ -49,7 +49,8 @@ export function storyIndex(roots: string[]): Plugin {
         `const files = [${files.map((file) => `() => import(${JSON.stringify(file)})`).join(",\n")}]`,
         `const stories = ${JSON.stringify(Object.fromEntries(entries.map(([story, file, name]) => [story, [file, name]])))}`,
         "export function findStory(id) {",
-        "  const entry = stories[id]",
+        // Storybook also accepted a component id, which showed its first story; keep that spelling working.
+        "  const entry = stories[id] ?? Object.entries(stories).find(([key]) => key.startsWith(id + '--'))?.[1]",
         "  return entry && { load: files[entry[0]], name: entry[1], file: paths[entry[0]] }",
         "}",
       ].join("\n")

@@ -1,7 +1,8 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status:** Plan written only; no execution. Supersedes the delivery model of `SPACEGRAPH.TODO.43.md`
-and keeps its verified restore (`r22`–`r23`).
+**Status (r1):** Plan verified against the tree and against `SPACEGRAPH.md`; two verification-harness
+defects fixed; missing phases added. No consolidation executed yet. Supersedes the delivery model of
+`SPACEGRAPH.TODO.43.md` and keeps its verified restore (`r22`–`r23`).
 **Extends:** `SPACEGRAPH.TODO.43.md` (r22 restore, r23 wiring). Reference: `SPACEGRAPH.TODO.41.md`
 (the capability manifest) and `SPACEGRAPH.md` §6/§9/§11.
 **Goal:** one copy of every artefact, full functional parity with the pre-today fork, and two visual
@@ -28,7 +29,27 @@ repo pushes without explicit sign-off.
 | The plugin can read app contexts | `packages/gui-plugins/src/file/artifact-view.tsx:25` imports `@opencode/session-ui/context/markdown` | The plugin can call `useData()` directly |
 
 Registered gates today: `bun run check` **58/58**, `session-graph` **136/136**, graph model **358
-pass / 19 pre-existing fail**, app graph e2e **2/2**, capture **29/31**.
+pass / 19 pre-existing fail**, app graph e2e **2/2**, capture **29/31**, `test:components`
+**74/77** (was **0/77** before the r1 harness repair).
+
+### 1.1 Doc-to-code audit of `SPACEGRAPH.md`
+
+| Doc claim | Code today | Verdict |
+|-----------|-----------|---------|
+| §3.2 model package `session-ui/src/graph` | All named modules exist (`vocabulary`, `model`, `build`, `lookup`, `levels`, `layout`, `summary`, `selectors`, `fixture`) | Correct |
+| §3.2 host modules `session-graph/src/ui` | All named modules exist (`GraphView`, `graph-camera`, `graph-selection`, `graph-anchors`, `graph-windows`, `cardTemplate`, `card-copy`, `node-data`, `GraphDetail`) | Correct |
+| §4.1–4.5 node/edge/level/layout/selector semantics | Implemented and tested | Correct |
+| §5.1 hybrid panel `app/src/session/graph/session-graph-panel.tsx` owns arrangements, log text size and the bridge | The file exists but has **0 importers**; the plugin's `HybridSurface` is a fixed 50/50 split with no arrangements, text-size slider or reveal bridge | **Stale doc + missing behaviour** |
+| §5.2 turn-map overlay scoped to the panel | Wired in `session/screen.tsx` with `screen.panel.width()` | Correct |
+| §5.3 inline SVG subgraph | `TurnMapInlineGraph` exists; not injected into timeline rows, as documented | Correct |
+| §5.4 side panel `gui-extensions/session-map` compact SVG overview | No built-in side-panel extension; `gui-plugins/src/spacegraph/panel.tsx` is a full map panel | **Stale doc + missing surface** |
+| §5.5 permalinks `#graph:<nodeID>` | `graph-permalink.ts` wired in `session/screen.tsx` | Correct |
+| §7.1 `bun run graph:verify` as the full gate | It cannot pass (`test:components` 3 failures; capture 29/31) and its Storybook step predates the `packages/stories` harness | **Broken gate command** |
+| §7.2 test commands | Correct commands, except the component step now needs the story roots (fixed r1) | Correct after r1 |
+| §6.3/§9.4/§11.4 plugin-only delivery, fork source-free | Contradicts the authorised fork delivery | **Stale doc, to rewrite** |
+
+**Conclusion:** the graph and UI module tables are accurate; the delivery sections and the hybrid/side
+panel sections are not. The plan must restore the missing surfaces *and* correct the doc.
 
 ---
 
@@ -50,6 +71,24 @@ Delete: `spacegraph-gui-plugin/`, `packages/plugins/spacegraph/`, the 3 dead app
 rich `graph-layout.ts` fields, and the `graphFlagEnabled` stub.
 
 Budget: the fork patch stays at the seam + model + plugin registration. No new copy is introduced.
+
+---
+
+## 2.5 Phase 0 — Make the verification gates runnable
+
+`graph:verify` could not pass before this phase: the `packages/stories` harness did not serve
+`session-graph` stories, so all 77 component tests timed out on an empty `#story-root`.
+
+1. **Done (r1):** add `"session-graph"` to the story roots and the dependency-scan glob in
+   `packages/stories/vite.config.ts`.
+2. **Done (r1):** let `findStory` resolve a component id to its first story in
+   `packages/stories/src/index-plugin.ts`, so the pre-today `mount("session-graph-view")` spelling works.
+3. **Remaining:** fix the 3 failing component tests: `graph-refine` inspector resize (wide) and bottom
+   sheet height (narrow), and the hostile-markup test that expects the card DOM.
+4. Replace the stale Storybook step in `script/graph-verify.ts` with `packages/stories`
+   (`bun run --cwd packages/session-graph test:components`).
+
+**Gate:** `test:components` **77/77**.
 
 ---
 
@@ -166,6 +205,52 @@ source remains except the seam, `graph-permalink.ts`, `snapshot-cache.ts` and th
 
 ---
 
+## 9.1 Phase 8 — Restore the hybrid composition (§5.1)
+
+`SPACEGRAPH.md` §5.1 promises a hybrid where the log is the map's home, with `stacked`/`side`/`floating`
+arrangements, a log text-size control, and a bridge that reveals a picked node in the log. Today the plugin's
+`HybridSurface` is a fixed 50/50 split with no arrangements, no text-size slider and no bridge, and the app's
+`session-graph-panel.tsx` that implements them has **0 importers**.
+
+1. Choose one owner: the plugin's `HybridSurface` (surfaces are plugin-owned) and record it in the doc.
+2. Keep the transcript mounted in one stable container and compose it with CSS order, never by re-parenting.
+3. Add the three arrangements, the log text-size control and the bridge (`onOpenTranscript` from a picked node,
+   using the Phase 5 reveal seam).
+4. Delete `packages/app/src/session/graph/session-graph-panel.tsx` and `graph-panel.css`.
+5. Add an e2e test: each arrangement renders the log and the map; a picked node reveals its message.
+
+**Gate:** the hybrid e2e passes for `stacked`, `side` and `floating`; the log keeps its scroll position.
+
+---
+
+## 9.2 Phase 9 — Restore the side panel (§5.4)
+
+§5.4 promises a compact SVG overview in the side panel. Today the plugin contributes a full map `Panel`, and
+the `gui-extensions/session-map` package no longer exists.
+
+1. Add a compact overview to the plugin's panel: `nodesAtLevel("overview")` + `layoutGraph` + the static SVG
+   renderer, highlighting the active turn and revealing a message on pick.
+2. Register it as its own `PanelTab` so the panel keeps the full map beside it.
+3. Update §5.4 to name the plugin's panel, not `gui-extensions/session-map`.
+
+**Gate:** the side strip `+` menu opens the compact overview; picking a node reveals its message.
+
+---
+
+## 9.3 Phase 10 — Reconcile `SPACEGRAPH.md`
+
+The design doc is the project's argument; it must match the code.
+
+1. Rewrite §5.1 (hybrid owner), §5.4 (side panel owner) and §7.1 (`graph:verify` steps).
+2. Rewrite §6.3/§9.4/§11.4: the delivery is a **fork** synced to upstream `dev`, not a plugin-only bundle;
+   the `SessionSurface` seam is the only generic host change.
+3. Keep §3.2/§4.0/§4.1–4.5 unchanged; the audit found them correct.
+4. Add the r22/r23 result (capture 29/31 → 31/31 after Phase 4) to §7.1 and remove the superseded claims.
+
+**Gate:** every command and package named in `SPACEGRAPH.md` exists and passes, or the doc says it is deferred.
+
+---
+
 ## 10. Risks and mitigations
 
 | Risk | Mitigation |
@@ -185,10 +270,14 @@ source remains except the seam, `graph-permalink.ts`, `snapshot-cache.ts` and th
 1. One editable model (`session-ui/src/graph`), one generated copy, and a green `check:graph` gate.
 2. No rejected delivery in the tree: `spacegraph-gui-plugin/` and `packages/plugins/spacegraph/` are gone.
 3. App graph source is only the seam, `graph-permalink.ts`, `snapshot-cache.ts` and the two booleans.
-4. Root `check`, `session-graph`, `gui-plugins`, app unit and app graph e2e are green.
+4. Root `check`, `session-graph` unit **136/136**, `test:components` **77/77**, `gui-plugins`, app
+   unit and app graph e2e are green.
 5. Capture is **31/31**, and every frame matches or improves on its pre-upgrade counterpart.
 6. `graph-parity.test.ts` is green; the 19 pre-existing model failures are fixed or documented.
-7. This plan and `SPACEGRAPH.md` record the result. No PR and no pushes without sign-off.
+7. `bun run graph:verify` runs every step and passes end to end.
+8. `SPACEGRAPH.md` matches the code: the hybrid (§5.1), the side panel (§5.4), the delivery (§6.3/§9.4/§11.4)
+   and the gate commands (§7.1) are correct.
+9. This plan records the result. No PR and no pushes without sign-off.
 
 ---
 
@@ -197,10 +286,13 @@ source remains except the seam, `graph-permalink.ts`, `snapshot-cache.ts` and th
 1. Read `SPACEGRAPH.TODO.43.md` r22/r23 and this file.
 2. The fork base is upstream `dev` plus the `SessionSurface` seam, the model in `session-ui/src/graph`,
    and the built-in plugin in `gui-plugins/src/spacegraph`.
-3. `bun run check` is 58/58; capture is 29/31 with `32`/`33` failing on the plugin's missing snapshot.
-4. Start at Phase 1 (delete the rejected deliveries), then Phase 2 (regenerate the copy and gate it).
-5. Phases 3–6 are independent after Phase 2; Phase 7 runs last.
+3. `bun run check` is 58/58; capture is 29/31 with `32`/`33` failing on the plugin's missing snapshot;
+   `test:components` is 74/77 after the r1 harness repair.
+4. Start at Phase 0 (finish the 3 component tests and the `graph:verify` step), then Phase 1, then Phase 2.
+5. Phases 3–6 are independent after Phase 2; Phase 7 runs last, then Phases 8–10.
 6. Safety ref: `backup/plugin-r21-pre-restore` and `backup/plugin-r17-pre-sync` stay until the work lands.
+7. A new session must read §1.1: model and UI module maps are right; §5.1, §5.4, §6.3, §9.4, §11.4 and
+   §7.1 of `SPACEGRAPH.md` are not.
 
 ---
 
@@ -211,3 +303,13 @@ source remains except the seam, `graph-permalink.ts`, `snapshot-cache.ts` and th
   to one state owner, feed the snapshot to the plugin for the two missing frames, restore the transcript
   reveal seam, retire the flag stub and dead app code, then verify against the pre-upgrade screenshots.
   No execution.
+
+- **r1 (2026-11-18):** Verified the plan against the tree and `SPACEGRAPH.md`. Found and fixed two
+  verification-harness defects that made the component gate unrunnable: `packages/stories/vite.config.ts` omitted
+  `session-graph` from its story roots and dependency scan, and `findStory` did not accept a component id. Result:
+  `test:components` **0/77 → 74/77**; the 3 remaining failures are the inspector resize, the narrow bottom-sheet
+  height and the hostile-markup card. Added the doc-to-code audit (§1.1) and three missing phases: repair the
+  verification harness (Phase 0), restore the hybrid composition (Phase 8), restore the side panel (Phase 9) and
+  reconcile `SPACEGRAPH.md` (Phase 10). Confirmed §3.2/§4.0 module maps are correct, §5.1/§5.4 name orphaned
+  app modules, §6.3/§9.4/§11.4 still describe plugin-only delivery, and §7.1's `graph:verify` cannot pass.
+  No consolidation executed.
