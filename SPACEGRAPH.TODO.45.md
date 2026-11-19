@@ -27,7 +27,7 @@ backwards-compatibility aliases without sign-off (§10 R6).
 
 ---
 
-## 0.1 Progress ledger (r5, 2026-11-19)
+## 0.1 Progress ledger (r6, 2026-11-19)
 
 The live tracker. Tick a wiring item only when it is reachable on every surface that declares it,
 localised, and test-pinned (§6.1 rule). "◐" means partially done.
@@ -35,7 +35,7 @@ localised, and test-pinned (§6.1 rule). "◐" means partially done.
 | Phase | Scope | Status | Notes |
 |-------|-------|--------|-------|
 | 0 — Evidence gate | UX-31 study | ☐ Not started | Owner decision 1 blocks Phases 4–7 |
-| 1 — Truth/safety/focus | RW-01, RW-02 + library/host/plugin items | ◐ In progress | Both P0 wiring items done this pass; library a11y/keyboard + host + overlay remain |
+| 1 — Truth/safety/focus | RW-01, RW-02 + library/host/plugin items | ◐ In progress | Both P0 wiring items closed and e2e-confirmed in r5/r6; library a11y/keyboard + host + overlay remain |
 | 2 — Ergonomics/command | RW-05…RW-09, F-14…16, F-20 | ☐ Not started | |
 | 3 — Visual system | UX-13…21, UX-26…30, F-29 | ☐ Not started | |
 | 4 — Immersive live conduct | RW-03, RW-04, F-01…04, F-13 | ☐ Not started | Gated on Phase 0 win or experimental |
@@ -44,7 +44,7 @@ localised, and test-pinned (§6.1 rule). "◐" means partially done.
 | 7 — Share/learn/collaborate | RW-11…13, F-17…22, F-28 mobile | ☐ Not started | |
 | 8 — Verification/doc parity | F-26, F-27 | ☐ Not started | |
 
-**Closed this pass (Phase 1 wiring):**
+**Closed in r5 (Phase 1 wiring):**
 
 - **RW-02 (P0) — per-turn diff.** `SpacegraphModel.diffSource(session)` loads
   `session.diff({ sessionID, from })` on demand, cached per session and guarded against duplicate
@@ -67,6 +67,22 @@ localised, and test-pinned (§6.1 rule). "◐" means partially done.
     and 1 new `hasFacets` case in `session-ui/src/graph/facets.test.ts` (11 pass in that file).
     `bun run check:graph` green after re-syncing the generated copy.
 
+**Closed in r6 (finish RW-01 — reachable, localised, test-pinned):**
+
+- **Reactive chip state.** `GraphFilterChips` captured `isActive` as a plain boolean inside `<For>`,
+  so the pressed class and `aria-pressed` never updated even though the facet pipeline narrowed the
+  map. Read through the props proxy in JSX (`isActive()`); the e2e test failed before this fix and
+  passes after it. This was the last reason a chip could look inert while the map changed.
+- **Localisation.** Added the 17 missing `ui.sessionGraph.toolbar.filter*` keys to the app dictionary
+  (`packages/ui/src/i18n/en.ts`). The chips now show "Failed tools", "File writes", "Any"/"All" etc.
+  instead of raw `ui.sessionGraph.*` keys; no non-English keys added (English fallback applies).
+- **Stable DOM contract.** Semantic chip buttons carry `data-slot="graph-facet-semantic"` and
+  `data-value={key}`, matching the kind/status chip convention.
+- **Confirmation test.** New app e2e case in `packages/app/e2e/graph/session-graph.spec.ts`: clicking
+  "File writes" sets `aria-pressed`, shows the live `7/7` count, drops every tool node, keeps file
+  nodes, and shrinks the map. It runs in built mode; the full graph spec is 42 passed / 3 skipped.
+  Panel-surface confirmation is still owed (see below).
+
 **Remaining in Phase 1 (do not call the phase done until closed):**
 
 1. Library: remove global `Tab` interception; unify focus with the a11y mirror; camera modifier/focus
@@ -74,13 +90,14 @@ localised, and test-pinned (§6.1 rule). "◐" means partially done.
 2. Host: show real renderer errors; wire or remove renderer/reduced-motion settings; 13 px floor;
    light-theme contrast; keyboard resize and minimap.
 3. Plugin: adopt `TurnMapOverlay` for the turn-map layer; focus restore and scrim dismiss.
-4. Confirmation tests: app e2e/component assertion that clicking a semantic chip narrows the map on
-   map and panel (not only unit coverage of the grammar).
+4. Confirm the semantic chip on the **panel** surface too — the r6 e2e case covers the map surface;
+   the side-panel surface still needs the same assertion.
 
-**Gate health (r5):** `bun run check` is not yet green repo-wide — `@opencode/merman` fails on a
-pre-existing `renderBlock`/`MarkdownOptions` mismatch and turbo exits with SIGSEGV; neither is caused
-by this work. Package-level typechecks for all touched packages, `check:graph`, and the two facet
-test files are green.
+**Gate health (r6):** `bun run check` is not yet green repo-wide — `@opencode/merman` fails on a
+pre-existing `renderBlock`/`MarkdownOptions` mismatch, turbo exits with SIGSEGV, and this worktree's
+e2e/session-graph typechecks report pre-existing CSS-module and Solid `jsxDEV` errors. None is caused
+by this work. Green: `packages/ui` typecheck, `packages/session-graph` typecheck (`tsc -b`),
+`session-ui` facet tests (11 pass), the new e2e case, and the full graph e2e spec (42 pass).
 
 ---
 
@@ -459,7 +476,8 @@ parallel with it. Phases 4–7 are gated on a Phase 0 win, or ship explicitly as
    light-theme contrast; keyboard resize and minimap.
 3. Plugin: adopt `TurnMapOverlay`; focus restore and scrim dismiss.
 4. ~~Remove or implement the two dead controls: facet chips/OR-AND (RW-01) and per-turn diff
-   (RW-02, supply `diffSource`).~~ **[DONE r5]** Both implemented — see §0.1; confirmation e2e still owed.
+   (RW-02, supply `diffSource`).~~ **[DONE r5/r6]** Both implemented, localised and map-e2e-confirmed
+   (§0.1); the same chip assertion on the panel surface is still owed.
 
 **Gate:** keyboard-only five tasks; Tab-out works; no key collisions; errors explain themselves; 13 px
 and AA contrast assertions green; no dead control.
@@ -644,3 +662,9 @@ implementation per concept.
   `GraphFilterChips` in `GraphToolbar` on every surface). Added `composeMode` to the library's
   `GraphFacets`, fixed the library's bare-token round-trip, and pinned behavior with 7 new unit tests.
   Re-synced the generated graph copy (`check:graph` green). Added §0.1 progress ledger. No push, no PR.
+- **r6 (2026-11-19):** Finished RW-01. Fixed a Solid reactivity bug in `GraphFilterChips` — `isActive`
+  was a captured boolean, so the pressed class and `aria-pressed` froze at first render while the map
+  still narrowed; the new e2e case caught it and now passes. Added 17 `ui.sessionGraph.toolbar.filter*`
+  English keys to the app dictionary (chips no longer show raw keys) and a `data-slot`/`data-value`
+  DOM contract on semantic chips. Added an app e2e confirmation case; full graph spec is 42 pass /
+  3 skipped. Updated §0.1 ledger and remaining Phase 1 work. No push, no PR.

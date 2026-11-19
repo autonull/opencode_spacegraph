@@ -258,6 +258,27 @@ test("filters the map with a facet chip and keeps the answer addressable", async
   expect(errors).toEqual([])
 })
 
+test("a semantic filter chip narrows the map and reports its live count", async ({ page }) => {
+  const errors = trackPageErrors(page)
+  await openGraph(page, graphFixture())
+
+  const allNodes = await page.locator(`${canvasHost} [data-kind]`).count()
+  expect(allNodes).toBeGreaterThan(0)
+
+  const facets = await openFacets(page)
+  const writes = facets.locator('[data-slot="graph-facet-semantic"][data-value="fileWrites"]')
+  await writes.click()
+  await expect(writes).toHaveAttribute("aria-pressed", "true")
+  // The badge is the live kept/total count from the facet pipeline, not a hardcoded label.
+  await expect(writes).toContainText("7/7")
+
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="tool"]`).count()).toBe(0)
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind="file"]`).count()).toBeGreaterThan(0)
+  await expect.poll(() => page.locator(`${canvasHost} [data-kind]`).count()).toBeLessThan(allNodes)
+
+  expect(errors).toEqual([])
+})
+
 test("switches the lens by preset and by domain toggles", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())

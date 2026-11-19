@@ -167,13 +167,16 @@ export const GraphFilterChips = (props: GraphFilterChipsProps) => {
       <div class="flex flex-wrap gap-1.5" role="group" aria-label={i18n.t("ui.sessionGraph.toolbar.filterAria")}>
         <For each={SEMANTIC_FILTERS}>
           {(filter) => {
-            const isActive = props.facets[filter.key] === true
+            // Read through the props proxy in JSX: a captured boolean freezes the pressed state.
+            const isActive = () => props.facets[filter.key] === true
             const count = getCount(filter.key)
             return (
               <button
                 type="button"
+                data-slot="graph-facet-semantic"
+                data-value={filter.key}
                 class={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-12-regular transition-colors whitespace-nowrap ${
-                  isActive
+                  isActive()
                     ? "bg-primary-base text-primary-contrast font-medium"
                     : "text-text-base hover:bg-surface-base-hover"
                 }`}
@@ -184,7 +187,7 @@ export const GraphFilterChips = (props: GraphFilterChipsProps) => {
                     handleComposeModeChange(composeMode() === "or" ? "and" : "or")
                   }
                 }}
-                aria-pressed={isActive}
+                aria-pressed={isActive()}
                 aria-label={i18n.t(filter.ariaKey)}
                 title={i18n.t(filter.ariaKey)}
               >
@@ -194,7 +197,7 @@ export const GraphFilterChips = (props: GraphFilterChipsProps) => {
                 <span>{i18n.t(filter.labelKey)}</span>
                 {count && count.total > 0 && (
                   <span class={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-10-medium ${
-                    isActive ? "bg-primary-contrast/20 text-primary-contrast" : "bg-surface-base-hover text-text-weak"
+                    isActive() ? "bg-primary-contrast/20 text-primary-contrast" : "bg-surface-base-hover text-text-weak"
                   }`}>
                     {count.kept}/{count.total}
                   </span>
