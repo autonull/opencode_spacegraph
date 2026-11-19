@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For } from "solid-js"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Icon } from "@opencode/ui/icon"
-import type { GraphFacets } from "@opencode/session-ui/graph"
+import type { GraphFacets, FacetCounts } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
 
 export type SemanticFilterKey = "failedTools" | "fileWrites" | "subagentCalls" | "errors" | "retries" | "costlyNodes"
@@ -58,14 +58,7 @@ export type GraphFilterChipsProps = {
   /** Callback when facets change */
   onFacetsChange: (facets: GraphFacets) => void
   /** Facet counts for badges */
-  counts?: {
-    failedTools?: { total: number; kept: number }
-    fileWrites?: { total: number; kept: number }
-    subagentCalls?: { total: number; kept: number }
-    errors?: { total: number; kept: number }
-    retries?: { total: number; kept: number }
-    costlyNodes?: { total: number; kept: number }
-  }
+  counts?: FacetCounts
   /** Whether to show in compact mode */
   compact?: boolean
   /** Current composition mode: "or" | "and" */
@@ -110,8 +103,15 @@ export const GraphFilterChips = (props: GraphFilterChipsProps) => {
     props.onComposeModeChange?.(mode)
   }
 
-  const getCount = (key: SemanticFilterKey) => {
-    return props.counts?.[key]
+  const getCount = (key: SemanticFilterKey): { total: number; kept: number } | undefined => {
+    switch (key) {
+      case "failedTools": return props.counts?.failedTools
+      case "fileWrites": return props.counts?.fileWrites
+      case "subagentCalls": return props.counts?.subagentCalls
+      case "errors": return props.counts?.errors
+      case "retries": return props.counts?.retries
+      case "costlyNodes": return props.counts?.costlyNodes
+    }
   }
 
   if (props.compact) {

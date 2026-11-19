@@ -73,6 +73,8 @@ export function HybridSurface(props: {
   const setFollowMode = (mode: "off" | "turn" | "node" | "node+focus") =>
     props.model.setFollowMode(props.session, mode)
 
+  const diffSource = () => props.model.diffSource(props.session)
+
   // P0.2: Current lens for goal chips highlighting
   const currentLens = createMemo(() => props.model.lens(props.session))
   // P0.2: Handle goal chip selection - apply the corresponding lens
@@ -158,6 +160,8 @@ export function HybridSurface(props: {
           onPaletteSurface={(entry) => entry.surface && props.model.select(props.session, entry.surface.id)}
           sessionTitle={sessionTitle}
           testedCommit={testedCommit}
+          // RW-02: per-turn diff source for the inspector
+          diffSource={diffSource()}
           // P1.3: Neighborhood focus mode
           neighborhoodOpacity={neighborhoodOpacity()}
           focus={neighborhoodMode()}

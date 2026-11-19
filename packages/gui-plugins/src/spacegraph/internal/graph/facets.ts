@@ -20,6 +20,8 @@ export type GraphFacets = {
   errors?: boolean
   retries?: boolean
   costlyNodes?: boolean
+  /** How active semantic filters compose: "or" (default) keeps a node matching any, "and" requires all. */
+  composeMode?: "or" | "and"
 }
 
 export type FacetCount = {
@@ -28,10 +30,22 @@ export type FacetCount = {
   total: number
 }
 
+export type SemanticFacetCount = {
+  total: number
+  kept: number
+}
+
 export type FacetCounts = {
   kinds: FacetCount[]
   statuses: FacetCount[]
   domains: FacetCount[]
+  // P2.1: Semantic quick filter counts
+  failedTools?: SemanticFacetCount
+  fileWrites?: SemanticFacetCount
+  subagentCalls?: SemanticFacetCount
+  errors?: SemanticFacetCount
+  retries?: SemanticFacetCount
+  costlyNodes?: SemanticFacetCount
 }
 
 export const DEFAULT_FACETS: GraphFacets = {
@@ -45,6 +59,7 @@ export const DEFAULT_FACETS: GraphFacets = {
   errors: false,
   retries: false,
   costlyNodes: false,
+  composeMode: "or",
 }
 
 const KINDS = new Set<string>(NODE_KINDS)
@@ -60,10 +75,34 @@ const matchesKinds = (node: GraphNode, facets: GraphFacets) =>
 const matchesStatus = (node: GraphNode, facets: GraphFacets) =>
   facets.statuses.size === 0 || facets.statuses.has(node.status)
 
-const matchesFacets = (node: GraphNode, facets: GraphFacets) =>
-  matchNeedle(node, facets.query.trim().toLowerCase()) &&
-  matchesKinds(node, facets) &&
-  matchesStatus(node, facets)
+/** RW-01: semantic quick-filter predicates, keyed by their active facet flag. */
+const SEMANTIC_MATCHERS: readonly [keyof GraphFacets, (node: GraphNode) => boolean][] = [
+  ["failedTools", (node) => node.kind === "tool" && node.status === "failed"],
+  ["fileWrites", (node) => node.kind === "diff" || (node.kind === "file" && !!node.data?.path)],
+  ["subagentCalls", (node) => node.kind === "subagent"],
+  ["errors", (node) => node.kind === "error"],
+  ["retries", (node) => node.kind === "retry"],
+  ["costlyNodes", (node) => node.kind === "turn"],
+]
+
+const activeSemanticMatchers = (facets: GraphFacets) =>
+  SEMANTIC_MATCHERS.filter(([key]) => facets[key] === true).map(([, match]) => match)
+
+const matchesSemantic = (node: GraphNode, facets: GraphFacets) => {
+  const active = activeSemanticMatchers(facets)
+  if (active.length === 0) return true
+  return facets.composeMode === "and"
+    ? active.every((match) => match(node))
+    : active.some((match) => match(node))
+}
+
+const matchesFacets = (node: GraphNode, facets: GraphFacets) => {
+  const matchesStandard =
+    matchNeedle(node, facets.query.trim().toLowerCase()) &&
+    matchesKinds(node, facets) &&
+    matchesStatus(node, facets)
+  return matchesStandard && matchesSemantic(node, facets)
+}
 
 /**
  * The model with the facets applied. The domain facet goes through the one scope pipeline; the
@@ -122,6 +161,10 @@ const countGroup = (
 /** Live kept/total counts per facet value, each excluding its own group so a chip says what it adds. */
 export const facetCounts = (model: GraphViewData, facets: GraphFacets): FacetCounts => {
   const scoped = scopeModel(model, facets.domains)
+  const semanticCount = (matcher: (node: GraphNode) => boolean): SemanticFacetCount => {
+    const members = scoped.nodes.filter(matcher)
+    return { total: members.length, kept: members.filter((node) => matchesFacets(node, facets)).length }
+  }
   return {
     kinds: countGroup(scoped.nodes, NODE_KINDS, (node) => node.kind, facets, (current) => ({
       ...current,
@@ -138,6 +181,12 @@ export const facetCounts = (model: GraphViewData, facets: GraphFacets): FacetCou
       facets,
       (current) => ({ ...current, domains: new Set(DOMAINS) }),
     ),
+    failedTools: semanticCount((node) => node.kind === "tool" && node.status === "failed"),
+    fileWrites: semanticCount((node) => node.kind === "diff" || (node.kind === "file" && !!node.data?.path)),
+    subagentCalls: semanticCount((node) => node.kind === "subagent"),
+    errors: semanticCount((node) => node.kind === "error"),
+    retries: semanticCount((node) => node.kind === "retry"),
+    costlyNodes: semanticCount((node) => node.kind === "turn"),
   }
 }
 
@@ -151,6 +200,8 @@ const encode = (name: string, values: Iterable<string>) => {
   return list.length > 0 ? `${name}:${list.join(",")}` : undefined
 }
 
+const SEMANTIC_KEYS = ["failedTools", "fileWrites", "subagentCalls", "errors", "retries", "costlyNodes"] as const
+
 /** Serialize facets into the `q=` grammar: free text plus `kind:`/`status:`/`domain:` tokens. */
 export const facetsToQuery = (facets: GraphFacets): string => {
   const values = [
@@ -158,6 +209,8 @@ export const facetsToQuery = (facets: GraphFacets): string => {
     encode("kind", orderedValues(facets.kinds, NODE_KINDS)),
     encode("status", orderedValues(facets.statuses, NODE_STATUSES)),
     encode("domain", orderedValues(facets.domains, DOMAINS)),
+    ...SEMANTIC_KEYS.filter((key) => facets[key] === true),
+    facets.composeMode === "and" ? "compose:and" : undefined,
   ].filter((value): value is string => !!value)
   return values.join(" ")
 }
@@ -168,12 +221,15 @@ export const facetsFromQuery = (query: string): GraphFacets => {
   const kinds = new Set<NodeKind>()
   const statuses = new Set<NodeStatus>()
   const domains = new Set<Domain>(["session"])
+  const semantic: Partial<GraphFacets> = {}
+  let composeMode: "or" | "and" = "or"
 
   for (const token of query.trim().split(/\s+/)) {
     if (!token) continue
     const separator = token.indexOf(":")
     if (separator <= 0) {
-      text.push(token)
+      if ((SEMANTIC_KEYS as readonly string[]).includes(token)) semantic[token as (typeof SEMANTIC_KEYS)[number]] = true
+      else text.push(token)
       continue
     }
     const name = token.slice(0, separator)
@@ -190,14 +246,21 @@ export const facetsFromQuery = (query: string): GraphFacets => {
       for (const value of values) if (DOMAINS_SET.has(value)) domains.add(value as Domain)
       continue
     }
+    if (name === "compose" && values.includes("and")) {
+      composeMode = "and"
+      continue
+    }
     text.push(token)
   }
 
-  return { ...DEFAULT_FACETS, query: text.join(" "), kinds, statuses, domains }
+  return { ...DEFAULT_FACETS, ...semantic, query: text.join(" "), kinds, statuses, domains, composeMode }
 }
 
 export const hasFacets = (facets: GraphFacets) =>
-  facets.query.trim().length > 0 || facets.kinds.size > 0 || facets.statuses.size > 0
+  facets.query.trim().length > 0 ||
+  facets.kinds.size > 0 ||
+  facets.statuses.size > 0 ||
+  SEMANTIC_KEYS.some((key) => facets[key] === true)
 
 /**
  * Compose the scope pipeline: facets → keepOnly → collapseGroups.

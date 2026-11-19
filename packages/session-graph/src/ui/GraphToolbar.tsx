@@ -29,6 +29,7 @@ import {
   type ZoomLevel,
 } from "@opencode/session-ui/graph"
 import { GraphIconButton } from "./GraphIconButton"
+import { GraphFilterChips } from "./GraphFilterChips"
 import { ARRANGEMENT_KEY, DEPTH_KEY, DETAIL_MODE_KEY, DOMAIN_KEY, KIND_KEY, LAYOUT_KEY, LEVEL_KEY, SIDE_KEY, STATUS_KEY } from "./vocabulary"
 
 export type GraphToolbarProps = {
@@ -250,12 +251,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
   const changeFacets = (next: Partial<GraphFacets>) => {
     const current = facets()
     if (!current) return
-    props.onFacetsChange?.({
-      query: next.query ?? current.query,
-      kinds: next.kinds ?? current.kinds,
-      statuses: next.statuses ?? current.statuses,
-      domains: next.domains ?? current.domains,
-    })
+    props.onFacetsChange?.({ ...current, ...next })
   }
   const toggleDomain = (domain: Domain) => {
     const current = new Set(facets()?.domains ?? [])
@@ -431,6 +427,19 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
             aria-label={i18n.t("ui.sessionGraph.facets.placeholder")}
             onInput={(event) => changeFacets({ query: event.currentTarget.value })}
           />
+          <Show when={facets()}>
+            {(current) => (
+              <div data-slot="graph-toolbar-filter-group" class="border-b border-border-weaker-base pb-2">
+                <GraphFilterChips
+                  facets={current()}
+                  onFacetsChange={(next) => props.onFacetsChange?.(next)}
+                  counts={props.facetCounts}
+                  composeMode={current().composeMode ?? "or"}
+                  onComposeModeChange={(mode) => changeFacets({ composeMode: mode })}
+                />
+              </div>
+            )}
+          </Show>
           <div class="flex max-h-72 flex-col gap-2 overflow-y-auto">
             <div data-slot="graph-facet-kinds" class="flex flex-col">
               <div class="px-1 py-1 text-11-medium uppercase tracking-wide text-text-weak">

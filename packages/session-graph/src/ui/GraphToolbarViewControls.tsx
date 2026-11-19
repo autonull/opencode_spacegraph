@@ -6,7 +6,7 @@ import { ToolbarMenu } from "./ToolbarMenu"
 import { GraphGoalChips } from "./GraphGoalChips"
 import { GraphFilterChips } from "./GraphFilterChips"
 import { VOCABULARY_KEYS } from "@opencode/session-ui/graph"
-import type { DetailFraming, DetailMode, GraphArrangement, GraphSide, GraphViewData, GraphFacets } from "@opencode/session-ui/graph"
+import type { DetailFraming, DetailMode, GraphArrangement, GraphSide, GraphViewData, GraphFacets, FacetCounts } from "@opencode/session-ui/graph"
 import { GraphQuestionsControl } from "./GraphQuestionsControl"
 import { GraphExportControl } from "./GraphExportControl"
 
@@ -75,14 +75,7 @@ export type GraphToolbarViewControlsProps = {
   /** P2.2: Quick filter chips - callback when facets change. */
   onFacetsChange?: (facets: GraphFacets) => void
   /** P2.2: Quick filter chips - facet counts for badges. */
-  facetCounts?: {
-    failedTools?: { total: number; kept: number }
-    fileWrites?: { total: number; kept: number }
-    subagentCalls?: { total: number; kept: number }
-    errors?: { total: number; kept: number }
-    retries?: { total: number; kept: number }
-    costlyNodes?: { total: number; kept: number }
-  }
+  facetCounts?: FacetCounts
   /** P2.2: Quick filter chips - composition mode (OR/AND). */
   filterComposeMode?: "or" | "and"
   /** P2.2: Quick filter chips - callback when composition mode changes. */

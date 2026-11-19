@@ -35,7 +35,8 @@ import {
   type Annotations,
   type CardDensity,
 } from "./internal/graph"
-import type { WorkspaceSnapshot } from "@opencode/client/promise"
+import type { FileDiffInfo, WorkspaceSnapshot } from "@opencode/client/promise"
+import type { GraphDiffSource } from "@opencode/session-graph"
 import { computeFocusOverlay, getFocusOpacity } from "@spacegraphjs/overlays"
 import { BUILTIN_LENSES } from "./index"
 import type definition from "./index"
@@ -68,6 +69,39 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const [snapshotVersion, setSnapshotVersion] = createSignal(0)
   const workspaceSnapshots = new Map<string, WorkspaceSnapshot>()
   const workspaceRequested = new Set<string>()
+
+  /** Per-session diff data loaded on demand via the session diff API. */
+  const diffCaches = new Map<string, Map<string, FileDiffInfo[]>>()
+  const diffLoading = new Map<string, Set<string>>()
+
+  /**
+   * DiffSource over the session's live server client. Only data is cached by session id; the source
+   * object is cheap and made per call so it never holds a stale ServerRef after a re-authenticate.
+   */
+  const createDiffSource = (session: MountedSession): GraphDiffSource => ({
+    load: (from: string) => {
+      const cache = diffCaches.get(session.id) ?? new Map()
+      const loading = diffLoading.get(session.id) ?? new Set()
+
+      if (cache.has(from) || loading.has(from)) return
+
+      loading.add(from)
+      diffLoading.set(session.id, loading)
+
+      session.server.client.session
+        .diff({ sessionID: session.id, from })
+        .then((diffs) => {
+          cache.set(from, diffs)
+          diffCaches.set(session.id, cache)
+          loading.delete(from)
+        })
+        .catch(() => {
+          loading.delete(from)
+        })
+    },
+    get: (from: string) => diffCaches.get(session.id)?.get(from),
+  })
+
   const capability = (key: keyof Capabilities) => prefValue().capabilities?.[key] ?? true
   const timeTravelEnabled = () => capability("timeTravel")
   const costLensEnabled = () => capability("costLens")
@@ -624,6 +658,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.pins = [...pins]
       })
     },
+    /** DiffSource for per-turn diffs in the inspector. */
+    diffSource: (session: MountedSession): GraphDiffSource => createDiffSource(session),
     /** P0.2: Current lens ID for goal chips highlighting. */
     lens: (session: MountedSession) => prefValue().lens ?? "navigator",
     /** The plugin setup context (for flags, etc.). */

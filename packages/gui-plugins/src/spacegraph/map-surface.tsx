@@ -50,6 +50,8 @@ export function MapSurface(props: {
   const setFollowMode = (mode: "off" | "turn" | "node" | "node+focus") =>
     props.model.setFollowMode(props.session, mode)
 
+  const diffSource = () => props.model.diffSource(props.session)
+
   const sessionTitle = props.session.server.data.session.get(props.session.id)?.title ?? "OpenCode Session"
   const testedCommit = "unknown"
 
@@ -117,6 +119,8 @@ export function MapSurface(props: {
         onPaletteSurface={(entry) => entry.surface && props.model.select(props.session, entry.surface.id)}
         sessionTitle={sessionTitle}
         testedCommit={testedCommit}
+        // RW-02: per-turn diff source for the inspector
+        diffSource={diffSource()}
         // P1.3: Neighborhood focus mode
         neighborhoodOpacity={neighborhoodOpacity()}
         focus={neighborhoodMode()}

@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.45.md — The immersive agentic workspace plan
 
-**Status (2026-11-19): r4 draft for review.** `SPACEGRAPH.TODO.44.md` (r8) closes the engineering
+**Status (2026-11-19): r5 — implementation started (see §0.1 progress ledger).** `SPACEGRAPH.TODO.44.md` (r8) closes the engineering
 track: the fork is synced, every gate is green, and only owner sign-off remains. This plan is the
 product track that follows it. It keeps the audit baseline (r0 of this file) and raises the target
 from "a good graph view" to **an immersive, high-bandwidth workspace for agentic development**.
@@ -24,6 +24,63 @@ backwards-compatibility aliases without sign-off (§10 R6).
 3. Merged → **`214cfea187`**. `bun run generate` in `packages/client` produced no diff;
    `packages/schema` typecheck clean (131 files). `upstream/dev` is an ancestor of HEAD.
 4. No graph source was touched upstream. `bun.lock`/`package.json`/generated types auto-merged cleanly.
+
+---
+
+## 0.1 Progress ledger (r5, 2026-11-19)
+
+The live tracker. Tick a wiring item only when it is reachable on every surface that declares it,
+localised, and test-pinned (§6.1 rule). "◐" means partially done.
+
+| Phase | Scope | Status | Notes |
+|-------|-------|--------|-------|
+| 0 — Evidence gate | UX-31 study | ☐ Not started | Owner decision 1 blocks Phases 4–7 |
+| 1 — Truth/safety/focus | RW-01, RW-02 + library/host/plugin items | ◐ In progress | Both P0 wiring items done this pass; library a11y/keyboard + host + overlay remain |
+| 2 — Ergonomics/command | RW-05…RW-09, F-14…16, F-20 | ☐ Not started | |
+| 3 — Visual system | UX-13…21, UX-26…30, F-29 | ☐ Not started | |
+| 4 — Immersive live conduct | RW-03, RW-04, F-01…04, F-13 | ☐ Not started | Gated on Phase 0 win or experimental |
+| 5 — Investigation bandwidth | RW-10, F-05…12 | ☐ Not started | |
+| 6 — Scale/performance | F-23…25 | ☐ Not started | |
+| 7 — Share/learn/collaborate | RW-11…13, F-17…22, F-28 mobile | ☐ Not started | |
+| 8 — Verification/doc parity | F-26, F-27 | ☐ Not started | |
+
+**Closed this pass (Phase 1 wiring):**
+
+- **RW-02 (P0) — per-turn diff.** `SpacegraphModel.diffSource(session)` loads
+  `session.diff({ sessionID, from })` on demand, cached per session and guarded against duplicate
+  requests. Wired as `diffSource` into `SessionGraph` on map, hybrid and panel surfaces. The
+  inspector's diff section now has a real source instead of silently rendering nothing. Typecheck
+  green in `gui-plugins`, `session-graph` and `session-ui`.
+- **RW-01 (P0) — semantic quick filters.** The chips were cosmetic: with no text/kind/status filter
+  active, `applyFacets` matched every node, so a chip changed nothing. Fixed end to end:
+  - Grammar: `composeMode?: "or" | "and"` added to `GraphFacets` in the `spacegraphjs` shared types,
+    `session-ui/src/graph/facets.ts`, and the generated `gui-plugins` model copy; the `compose:and`
+    token round-trips through `facetsToQuery`/`facetsFromQuery`.
+  - Filtering: standard and semantic facet groups now compose with AND; the semantic group composes
+    by `composeMode` (OR keeps a node matching any active filter, AND requires all). `facetCounts`
+    now returns live semantic counts. The same fix is in the library (`@spacegraphjs/search`) and both
+    host copies.
+  - Reachability: `GraphFilterChips` is mounted inside `GraphToolbar`'s facets menu; `GraphChrome`
+    renders that toolbar on map, hybrid and panel, so the chips are on every surface. The legacy
+    `GraphToolbarViewControls` copy stays dormant (no `facets` prop passed in `hybrid-surface`).
+  - Tests: 6 new cases in `spacegraphjs/packages/search/src/facets.test.ts` (35 pass in that file)
+    and 1 new `hasFacets` case in `session-ui/src/graph/facets.test.ts` (11 pass in that file).
+    `bun run check:graph` green after re-syncing the generated copy.
+
+**Remaining in Phase 1 (do not call the phase done until closed):**
+
+1. Library: remove global `Tab` interception; unify focus with the a11y mirror; camera modifier/focus
+   guard; fix `flyBack()`; canvas-local minimap hit-testing.
+2. Host: show real renderer errors; wire or remove renderer/reduced-motion settings; 13 px floor;
+   light-theme contrast; keyboard resize and minimap.
+3. Plugin: adopt `TurnMapOverlay` for the turn-map layer; focus restore and scrim dismiss.
+4. Confirmation tests: app e2e/component assertion that clicking a semantic chip narrows the map on
+   map and panel (not only unit coverage of the grammar).
+
+**Gate health (r5):** `bun run check` is not yet green repo-wide — `@opencode/merman` fails on a
+pre-existing `renderBlock`/`MarkdownOptions` mismatch and turbo exits with SIGSEGV; neither is caused
+by this work. Package-level typechecks for all touched packages, `check:graph`, and the two facet
+test files are green.
 
 ---
 
@@ -401,8 +458,8 @@ parallel with it. Phases 4–7 are gated on a Phase 0 win, or ship explicitly as
 2. Host: show real renderer errors; wire or remove renderer/reduced-motion settings; 13 px floor;
    light-theme contrast; keyboard resize and minimap.
 3. Plugin: adopt `TurnMapOverlay`; focus restore and scrim dismiss.
-4. Remove or implement the two dead controls: facet chips/OR-AND (RW-01) and per-turn diff
-   (RW-02, supply `diffSource`).
+4. ~~Remove or implement the two dead controls: facet chips/OR-AND (RW-01) and per-turn diff
+   (RW-02, supply `diffSource`).~~ **[DONE r5]** Both implemented — see §0.1; confirmation e2e still owed.
 
 **Gate:** keyboard-only five tasks; Tab-out works; no key collisions; errors explain themselves; 13 px
 and AA contrast assertions green; no dead control.
@@ -581,3 +638,9 @@ implementation per concept.
   booleans are typed and defaulted but absent from `matchesFacets`), RW-02 (`diffSource` has zero
   occurrences under the plugin), and RW-07 (`GraphSearch` declares palette/action/lens/surface props and
   never reads them).
+- **r5 (2026-11-19):** First implementation pass. Closed RW-02 (wired a per-session, on-demand
+  `diffSource` through map/hybrid/panel) and RW-01 (implemented the compose-mode grammar, made semantic
+  filters actually narrow via standard-AND-semantic composition, added semantic counts, and mounted
+  `GraphFilterChips` in `GraphToolbar` on every surface). Added `composeMode` to the library's
+  `GraphFacets`, fixed the library's bare-token round-trip, and pinned behavior with 7 new unit tests.
+  Re-synced the generated graph copy (`check:graph` green). Added §0.1 progress ledger. No push, no PR.

@@ -259,6 +259,8 @@ export default function SpacegraphPanel(props: {
           widgetRegistry={widgetRegistry}
           enableCostLens={true}
           enableCompactionAdvisor={props.model.compactionAdvisorEnabled()}
+          // RW-02: per-turn diff source for the inspector
+          diffSource={props.model.diffSource(props.session)}
           // P1.3: Neighborhood focus mode
           neighborhoodOpacity={neighborhoodOpacity()}
           focus={neighborhoodMode()}

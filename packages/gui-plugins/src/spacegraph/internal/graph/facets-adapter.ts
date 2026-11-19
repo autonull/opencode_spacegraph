@@ -57,6 +57,8 @@ export type GraphFacets = {
   errors?: boolean;
   retries?: boolean;
   costlyNodes?: boolean;
+  /** How active semantic filters compose: "or" (default) keeps a node matching any, "and" requires all. */
+  composeMode?: "or" | "and";
 };
 
 export type FacetCount = {
