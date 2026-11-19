@@ -65,9 +65,9 @@ function matchText(query: string, value: string | undefined, base: number): Matc
   const haystack = value.toLowerCase()
   const needle = query.toLowerCase()
   const index = haystack.indexOf(needle)
-    if (index < 0) return undefined
+  if (index < 0) return undefined
   const boundary = index === 0 || /\s|-|_|:|\//.test(haystack[index - 1] ?? "")
-    return { score: base + (index === 0 ? 20 : 0) + (boundary ? 10 : 0) }
+  return { score: base + (index === 0 ? 20 : 0) + (boundary ? 10 : 0) }
 }
 
 function matchEntry(
@@ -76,7 +76,7 @@ function matchEntry(
   base: number,
 ): Match | undefined {
   const words = input.keywords?.join(" ")
-    return (
+  return (
     matchText(query, input.label, base + 20) ??
     matchText(query, words, base) ??
     matchText(query, input.detail, base - 10)
@@ -113,27 +113,27 @@ export function paletteEntries(
 
   for (const action of sources.actions ?? []) {
     const match = needle ? matchEntry(needle, action, 60) : { score: 60 }
-        if (match) entries.push({ id: `action:${action.id}`, kind: "action", label: action.label, detail: action.detail, score: match.score, action })
+    if (match) entries.push({ id: `action:${action.id}`, kind: "action", label: action.label, detail: action.detail, score: match.score, action })
   }
 
   for (const saved of sources.savedQueries ?? []) {
     const match = needle ? matchEntry(needle, { label: saved.label, keywords: [saved.query] }, 50) : { score: 70 }
-        if (match) entries.push({ id: `saved:${saved.query}`, kind: "saved-query", label: saved.label, detail: saved.query, score: match.score, savedQuery: saved })
+    if (match) entries.push({ id: `saved:${saved.query}`, kind: "saved-query", label: saved.label, detail: saved.query, score: match.score, savedQuery: saved })
   }
 
   for (const lens of sources.lenses ?? []) {
     const match = needle ? matchEntry(needle, { label: lens.label, detail: lens.description }, 40) : { score: 50 }
-        if (match) entries.push({ id: `lens:${lens.id}`, kind: "lens", label: lens.label, detail: lens.description, score: match.score, lens })
+    if (match) entries.push({ id: `lens:${lens.id}`, kind: "lens", label: lens.label, detail: lens.description, score: match.score, lens })
   }
 
   for (const surface of sources.surfaces ?? []) {
     const match = needle ? matchEntry(needle, { label: surface.label }, 30) : { score: 40 }
-        if (match) entries.push({ id: `surface:${surface.id}`, kind: "surface", label: surface.label, score: match.score, surface })
+    if (match) entries.push({ id: `surface:${surface.id}`, kind: "surface", label: surface.label, score: match.score, surface })
   }
 
   return entries.sort((a, b) => {
     const group = PALETTE_GROUP_ORDER.indexOf(a.kind) - PALETTE_GROUP_ORDER.indexOf(b.kind)
-        return group !== 0 ? group : b.score - a.score
+    return group !== 0 ? group : b.score - a.score
   })
 }
 

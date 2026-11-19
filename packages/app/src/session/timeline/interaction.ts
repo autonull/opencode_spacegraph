@@ -428,6 +428,7 @@ export function createSessionTimelineInteraction(session: SessionModel, visible:
       setActiveMessage,
     },
     inset: () => state.inset,
+    activeMessageID: () => cursorMessageID(cursor.state()),
     lastUserMessage: timeline.lastUserMessage,
     resource: timeline.resource,
     ready: timeline.ready,

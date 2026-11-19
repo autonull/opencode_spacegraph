@@ -16,12 +16,12 @@ export type CohortEntry = {
 /** The first surface and lens a participant sees for a cohort. */
 export function cohortEntry(cohort: StudyCohort): CohortEntry {
   if (cohort === "reader-first") return { surface: "transcript", lens: "reader" }
-    if (cohort === "map-first") return { surface: "map", lens: "cartographer" }
-    return { surface: "hybrid", lens: "navigator" }
+  if (cohort === "map-first") return { surface: "map", lens: "cartographer" }
+  return { surface: "hybrid", lens: "navigator" }
 }
 
 export function isStudyCohort(value: unknown): value is StudyCohort {
-    return typeof value === "string" && (STUDY_COHORTS as readonly string[]).includes(value)
+  return typeof value === "string" && (STUDY_COHORTS as readonly string[]).includes(value)
 }
 
 export type StudyTask = {
@@ -92,26 +92,26 @@ export function emptyStudyCounters(): StudyCounters {
 }
 
 function count(value: unknown): number {
-    return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0
 }
 
 function counts(value: unknown): Record<string, number> {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
 
   const next: Record<string, number> = {}
-    for (const [key, entry] of Object.entries(value)) {
+  for (const [key, entry] of Object.entries(value)) {
     const amount = count(entry)
-        if (amount > 0) next[key] = amount
+    if (amount > 0) next[key] = amount
   }
-    return next
+  return next
 }
 
 /** Validates the persisted counters at the session-store boundary. */
 export function normalizeStudyCounters(value: unknown): StudyCounters {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return emptyStudyCounters()
+  if (!value || typeof value !== "object" || Array.isArray(value)) return emptyStudyCounters()
 
   const answers = "answers" in value && Array.isArray(value.answers) ? value.answers : []
-    return {
+  return {
     version: 1,
     surfaceOpens: counts("surfaceOpens" in value ? value.surfaceOpens : undefined),
     lensSwitches: counts("lensSwitches" in value ? value.lensSwitches : undefined),
@@ -119,16 +119,16 @@ export function normalizeStudyCounters(value: unknown): StudyCounters {
     inlineCollapses: count("inlineCollapses" in value ? value.inlineCollapses : undefined),
     why: count("why" in value ? value.why : undefined),
     answers: answers.flatMap((entry) => {
-            if (!entry || typeof entry !== "object") return []
-            const label = "label" in entry && typeof entry.label === "string" ? entry.label.trim() : ""
+      if (!entry || typeof entry !== "object") return []
+      const label = "label" in entry && typeof entry.label === "string" ? entry.label.trim() : ""
       const ms = "ms" in entry ? count(entry.ms) : 0
-            return label && ms > 0 ? [{ label, ms }] : []
+      return label && ms > 0 ? [{ label, ms }] : []
     }).slice(-MAX_STUDY_ANSWERS),
   }
 }
 
 function bump(values: Record<string, number>, key: string): Record<string, number> {
-    return { ...values, [key]: (values[key] ?? 0) + 1 }
+  return { ...values, [key]: (values[key] ?? 0) + 1 }
 }
 
 export function recordSurfaceOpen(counters: StudyCounters, surface: string): StudyCounters {
@@ -151,7 +151,7 @@ export function recordWhy(counters: StudyCounters): StudyCounters {
 
 export function recordAnswer(counters: StudyCounters, label: string, ms: number): StudyCounters {
   const trimmed = label.trim()
-    if (!trimmed || !Number.isFinite(ms) || ms <= 0) return counters
+  if (!trimmed || !Number.isFinite(ms) || ms <= 0) return counters
 
   return {
     ...counters,
@@ -175,12 +175,12 @@ function median(values: readonly number[]): number {
   if (values.length === 0) return 0
   const sorted = [...values].sort((a, b) => a - b)
   const middle = Math.floor(sorted.length / 2)
-    return sorted.length % 2 === 0 ? Math.round((sorted[middle - 1]! + sorted[middle]!) / 2) : sorted[middle]!
+  return sorted.length % 2 === 0 ? Math.round((sorted[middle - 1]! + sorted[middle]!) / 2) : sorted[middle]!
 }
 
 export function summarizeStudy(counters: StudyCounters): StudySummary {
   const toggles = counters.inlineExpands + counters.inlineCollapses
-    return {
+  return {
     opens: Object.values(counters.surfaceOpens).reduce((sum, value) => sum + value, 0),
     expands: counters.inlineExpands,
     collapses: counters.inlineCollapses,
@@ -196,5 +196,5 @@ export function summarizeStudy(counters: StudyCounters): StudySummary {
 export function formatStudy(counters: StudyCounters): string {
   const summary = summarizeStudy(counters)
   const seconds = Math.round(summary.medianAnswerMs / 100) / 10
-    return `Open ${summary.opens} · Expand ${summary.expands}/${summary.expands + summary.collapses} · Why ${summary.why} · Lens ${summary.lensSwitches} · Answer ${summary.answers ? `${seconds}s` : "—"}`
+  return `Open ${summary.opens} · Expand ${summary.expands}/${summary.expands + summary.collapses} · Why ${summary.why} · Lens ${summary.lensSwitches} · Answer ${summary.answers ? `${seconds}s` : "—"}`
 }

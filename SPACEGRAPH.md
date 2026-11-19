@@ -257,14 +257,14 @@ log is never detached: the reader's place in the transcript survives every move 
 
 | Piece | What it does |
 |-------|--------------|
-| **the panel** (`packages/app/src/session/graph/session-graph-panel.tsx`) | owns the composition: the log's pane is the log's *home*, and the map is arranged around it with CSS order rather than by moving nodes — so entering the hybrid never detaches the transcript |
-| **the arrangements** | `stacked` (the map above the log), `side` (the map beside it), `floating` (the map over it, movable and resizable). The reader picks one; the map offers the choice in its **Draw** menu |
-| **the bridge** | picking a node in the map reveals its message in the log without leaving either; the log's active turn is marked on the map, so the reader sees where they are in the session |
-| **the log's text size** | a slider at the top of the log's pane: in a split panel the log is narrow, and the reader wants it bigger or smaller without leaving the map |
-| **the way in** | the map's toolbar offers "show the log beside the map", and `graph.hybrid` (`mod+shift+h`) toggles the mode |
+| **the surface** (`packages/gui-plugins/src/spacegraph/hybrid-surface.tsx`) | owns the composition: the host-supplied transcript stays in one stable container, and the map is arranged around it with CSS order rather than by moving nodes — so entering the hybrid never detaches the transcript |
+| **the arrangements** | `stacked` (the map above the log), `side` (the map beside it), `floating` (the map over it). The plugin's per-session `State` stores the choice; the map toolbar offers the picker |
+| **the bridge** | picking a node in the map calls `SessionScreen.transcript.reveal`, which scrolls the log to its message; the log's active turn comes from the same seam, with the model's active turn as fallback |
+| **the log's text size** | a slider in the hybrid surface scales the transcript theme font sizes through `--text-scale`; the value lives in the plugin's per-session `State` |
+| **the way in** | the app's session-header toggle (the generic `SessionSurface` choice) and `graph.hybrid` (`mod+shift+h`) select the hybrid surface |
 
-The arrangement is the map's business only in name: the panel owns the geometry, and the map's
-toolbar names the choice. Nothing about the composition is hard-coded into the map view.
+The plugin owns the geometry and the presentation state; the app contributes only the transcript
+element and the optional viewport seam. Nothing about the composition is hard-coded into the map view.
 
 ### 5.2 Turn-map overlay (`mod+alt+t`)
 
@@ -280,12 +280,11 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 - Non-interactive, five-node turn subset
 - Not injected into timeline rows — avoids timeline coupling
 
-### 5.4 Side panel (`gui-extensions/session-map`)
+### 5.4 Side panel (`packages/gui-plugins/src/spacegraph/side-overview.tsx`)
 
-- Compact SVG overview: turns + phase clusters from `layoutGraph` + `nodesAtLevel("overview")`
-- Highlights transcript's active turn → last pick → model's `activeTurn`
-- Reveals message when node picked (uses `SessionScreen.transcript` SDK surface)
-- Opened from side strip `+` menu
+- Compact SVG overview: `nodesAtLevel("overview")` + `layoutGraph` + the static SVG renderer, as its own `Overview` tab beside the full map panel
+- Picking a node reveals its message through `SessionScreen.transcript.reveal`
+- Opened from the side strip's `+` menu; the full map stays the fallback tab
 
 ### 5.5 Permalinks (`#graph:<nodeID>`)
 
@@ -325,9 +324,8 @@ toolbar names the choice. Nothing about the composition is hard-coded into the m
 
 > **Note:** SpaceGraphJS is developed in `spacegraphjs/` (sibling repo, MIT) and published as independent packages. The broader platform vision, roadmap, and exploratory R&D areas are documented in `spacegraphjs/README.vision.md`.
 
-### 6.3 OpenCode delivery: bundled, not published (r19, 2026-11-18)
-
-The OpenCode integration ships as a third-party GUI plugin, not as fork source. The plugin bundles the SpaceGraphJS packages and `three` into `dist/gui-experimental.cjs`; only app-provided modules (`effect`, `@opencode/plugin/gui`, `solid-js`, `solid-js/web`, `solid-js/store`, `@opencode/ui/*`) stay external. The unused `onnxruntime-web` vision path is aliased to an inert stub, keeping the bundle around 2.6 MB (~800 KB gzip). The `spacegraphjs/` repo remains an independent MIT library and is not published to npm for this delivery (TODO.41 r12). The OpenCode fork carries no SpaceGraph source; it carries only the generic `SessionSurface` seam until that seam is merged upstream. See `SPACEGRAPH.TODO.43.md`.
+### 6.3 OpenCode delivery: fork source, synced to upstream (r24, 2026-11-18)
+The integration is a fork based on upstream `dev`, not a third-party bundle. The editable graph model lives in `packages/session-ui/src/graph`; a generated copy in `packages/gui-plugins/src/spacegraph/internal/graph` is produced by `bun script/sync-graph.ts` and gated by `check:graph` in the root `check` task. The built-in GUI plugin in `packages/gui-plugins/src/spacegraph` owns the surfaces, panel, settings and presentation state. The only generic host changes are the `SessionSurface` seam and its optional `SessionScreen.transcript` viewport. The `spacegraphjs/` repo remains an independent MIT library. See `SPACEGRAPH.TODO.44.md`.
 
 ---
 
@@ -344,7 +342,7 @@ The OpenCode integration ships as a third-party GUI plugin, not as fork source. 
 | Export (SVG/JSON/standalone HTML) | ✅ Complete | Contract demo, component test |
 | Security/escaping suite | ✅ Complete | 13 unit + browser tests, sanitization contract |
 | Performance budget (linear pipeline, 60-turn window) | ✅ Measured | `graph:scale` benchmark, guard tests |
-| Capture matrix (31 frames, 5 layouts × 4 depths × contexts) | ✅ Committed | `graph:capture --mode=verify` asserts set |
+| Capture matrix (31 frames, 5 layouts × 4 depths × contexts) | ✅ Committed | `graph:capture --mode=verify` asserts set; 31/31 after the r22/r23 restore and the snapshot fix (was 29/31) |
 | Library published + clean consumer proof | ✅ Done | `test:publish` packs → external `node_modules` → mounts both adapters |
 | Second host (framework-free, plain TS) | ✅ Running | `spacegraphjs/demo/second-host/` |
 | Direct mouse interaction (pan, zoom, pick, frame, drag) | ✅ Complete | Library unit + Playwright e2e; app e2e in `e2e/graph/` |
@@ -466,9 +464,8 @@ Per-file justification in `docs/spacegraph/upstream-review.md` §5.
 - `docs/spacegraph/demos.md` — three demo surfaces, which to open
 - `docs/spacegraph/prototype.md` — release write-up with all measurements
 
-### 9.4 Plugin-only delivery (r18–r19 — current path)
-
-`SPACEGRAPH.TODO.43.md` supersedes the rung-3/4 fork patch above. The graph ships as a third-party `gui-experimental` plugin that registers two generic `SessionSurface`s (`spacegraph.map` and `spacegraph.hybrid`). The only host change is a small, generic `SessionSurface` registry + `Surfaces` API contributed upstream (`docs/spacegraph/upstream-session-surface.patch`, 14 files / 524 lines — the upstream PR, not the fork patch); the fork is otherwise free of SpaceGraph source. A real-browser component gate loads the committed bundle through `pluginDefinition` and asserts both surfaces render with the transcript preserved. PR submission and repo pushes remain pending explicit sign-off.
+### 9.4 Fork delivery (r24 — current path)
+`SPACEGRAPH.TODO.44.md` is the active closing plan and supersedes the plugin-only path of `SPACEGRAPH.TODO.43.md`. The graph ships as fork source: one editable model in `session-ui`, one generated copy in the built-in `gui-plugins/src/spacegraph`, and a small generic `SessionSurface` seam in the app. The rejected third-party deliveries were deleted; the browser capture and app graph e2e gates exercise the built-in plugin directly. PR submission and repo pushes remain pending explicit sign-off.
 
 ---
 
@@ -527,9 +524,8 @@ If the graph does not beat the transcript on the five tasks, **stop feature work
 - **T10.6** Shared state branch + tag
 - **T10.7** Stranger's path: `git clone <fork> && bun run graph:setup && bun run graph:dev`
 
-### 11.4 Current plan (r19, 2026-11-18) — plugin-only delivery
-
-`SPACEGRAPH.TODO.43.md` is the active closing plan; §11.1–11.3 above are the superseded fork-source path. Completed: the model and render-pipeline port, plugin GUI integration and chrome, tests, screenshots, the app component gate, and the web app graph e2e (r20); the fork is source-free on upstream `dev` (`3dc66ab6e5`) plus the generic seam patch. The web e2e installs the bundle through a fixture-supplied `Bridge`; no desktop process is needed. Remaining, all needing explicit sign-off: (1) pushing the fork to a new origin branch, the plugin to its own repo, and the library `main` separately; (2) submitting the upstream `SessionSurface` PR. Do not submit the PR or create/push repos without asking.
+### 11.4 Current plan (r24, 2026-11-18) — fork source
+`SPACEGRAPH.TODO.44.md` is the active closing plan. Completed: the model and render pipeline, the built-in plugin and its surfaces, the consolidated state owner, the generated-copy gate, the transcript reveal seam, the two previously missing capture frames (31/31), the hybrid text-size control and the side overview tab. Remaining, all needing explicit sign-off: pushing the fork branch and submitting the upstream `SessionSurface` PR. Do not submit the PR or push repos without asking.
 
 ---
 

@@ -80,8 +80,26 @@ export function HybridSurface(props: {
 
   return (
     <div class={root()} data-slot="spacegraph-surface-hybrid" data-arrangement={arrangement()}>
-      <div class={transcriptClass()}>{props.transcript}</div>
+      <div class={transcriptClass()} data-slot="spacegraph-hybrid-log" style={{ "--text-scale": props.model.logTextScale(props.session) }}>
+        {props.transcript}
+      </div>
       <div class={mapClass()}>
+        <div
+          class="absolute end-2 top-2 z-20 flex items-center gap-2 rounded-md border border-v2-border-border-base bg-v2-background-bg-base px-2 py-1 text-11-regular"
+          data-slot="hybrid-text-size"
+        >
+          <span>{i18n.t("hybrid.textSize")}</span>
+          <input
+            type="range"
+            min="0.8"
+            max="1.4"
+            step="0.05"
+            value={props.model.logTextScale(props.session)}
+            aria-label={i18n.t("hybrid.textSizeTooltip")}
+            onInput={(event) => props.model.setLogTextScale(props.session, Number(event.currentTarget.value))}
+            class="w-20"
+          />
+        </div>
         <SessionGraph
           surfaceLabel={i18n.t("surface.hybrid")}
           model={graph()}

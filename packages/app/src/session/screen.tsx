@@ -15,7 +15,7 @@ import {
 } from "solid-js"
 import { createStore } from "solid-js/store"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
-import type { BackgroundTask, MountedSession, SessionScreen } from "@opencode/plugin/gui"
+import type { BackgroundTask, MountedSession, SessionScreen, TranscriptScreen } from "@opencode/plugin/gui"
 import { MessageTimeline } from "@/session/timeline/message-timeline"
 import { ComposerDropzone } from "@/composer/dropzone"
 import { useSettings } from "@/settings/model"
@@ -52,15 +52,19 @@ import { createTimelineCache } from "./timeline/cache"
 import { createPanelMotion, holdLandingWidth, panelOpacity, setPanelResizing } from "@/shell/panel-motion"
 import { SessionSurfaceHost, SessionSurfacePicker } from "./surface"
 import { useLocation } from "@solidjs/router"
-import { Metrics } from "@opencode/session-ui/graph"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
-import { SessionTurnMapOverlay } from "./graph/turn-map-overlay"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
 import { sessionSurfaceID, selectSessionSurface } from "@/runtime/plugin/surfaces"
 
 export function SessionScreenView(props: { session: SessionModel }) {
   // Link handling for the rest of the screen; each cached timeline provides its own for its session.
-  const mounted = createMountedSession(props.session)
+  // The viewport lives in the content component, so bind it once that component sets up.
+  let transcriptViewport: TranscriptScreen | undefined
+  const transcript: TranscriptScreen = {
+    activeMessageID: () => transcriptViewport?.activeMessageID(),
+    reveal: (messageID, partID) => transcriptViewport?.reveal(messageID, partID),
+  }
+  const mounted = createMountedSession(props.session, { transcript })
 
   return (
     <PluginLinks session={mounted.view()}>
@@ -70,6 +74,9 @@ export function SessionScreenView(props: { session: SessionModel }) {
         view={mounted.view}
         bindBackground={mounted.bindBackground}
         bindPrompt={mounted.bindPrompt}
+        bindTranscript={(viewport) => {
+          transcriptViewport = viewport
+        }}
       />
     </PluginLinks>
   )
@@ -82,6 +89,7 @@ function SessionScreenContent(props: {
   screen: SessionScreen
   bindBackground: (tasks: () => readonly BackgroundTask[]) => void
   bindPrompt: (prompt: { quotable: () => boolean; focus: () => void; focused: () => boolean }) => void
+  bindTranscript: (viewport: TranscriptScreen) => void
 }) {
   const session = props.session
   const language = useLanguage()
@@ -137,6 +145,10 @@ function SessionScreenContent(props: {
   const conversationVisible = createMemo(() => isDesktop() || mobileView() === "session")
 
   const timeline = createSessionTimelineInteraction(session, conversationVisible)
+  props.bindTranscript({
+    activeMessageID: timeline.activeMessageID,
+    reveal: timeline.actions.revealMessage,
+  })
 
   const graph = session.layout.graph()
   const routerLocation = useLocation()
@@ -578,27 +590,6 @@ function SessionScreenContent(props: {
             </div>
           </Show>
 
-          {/* The turn map is the session's own overlay (H6.2): it covers the session panel, not the
-              side region. The wrapper carries the panel's own width so the overlay is scoped to the
-              panel it belongs to, and it sits above the floating header toggles. */}
-          <Show when={graph.turnMap()}>
-            {(turnID) => (
-              <div class="absolute inset-y-0 start-0 z-40" style={{ width: screen.panel.width() }}>
-                <SessionTurnMapOverlay
-                  session={session}
-                  turnID={turnID()}
-                  onClose={() => graph.setTurnMap(undefined)}
-                  onOpenFullGraph={(id) => {
-                    Metrics.count("expand")
-                    graph.setTurnMap(undefined)
-                    graph.setSelected(id)
-                    const mounted = props.view()
-                    if (mounted) selectSessionSurface("spacegraph.map", mounted)
-                  }}
-                />
-              </div>
-            )}
-          </Show>
         </div>
 
         {/* Hidden rather than unmounted while the user hides it, so its terminals keep their screens. */}

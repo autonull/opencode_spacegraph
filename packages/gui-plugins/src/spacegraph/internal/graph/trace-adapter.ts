@@ -28,7 +28,6 @@ import {
   copyTraceAsOutline as traceCopyTraceAsOutline,
 } from "@spacegraphjs/trace";
 
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 const provenanceEdgeKinds = new Set<GraphEdge["kind"]>([
   "writes",
   "reads",
@@ -36,7 +35,6 @@ const provenanceEdgeKinds = new Set<GraphEdge["kind"]>([
   "evidence",
 ]);
 
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 const readEdgeKinds = new Set<GraphEdge["kind"]>(["reads", "searches", "references"]);
 
 const downstreamEdgeKinds: Set<string> = new Set(["sequence", "produces", "writes"]);
@@ -56,7 +54,7 @@ function toTraceNode(node: GraphNode): TraceNode {
     derived: node.derived,
     minLevel: node.minLevel,
     clusterOf: node.clusterOf,
-        data: node.data as Record<string, unknown> | undefined,
+    data: node.data as Record<string, unknown> | undefined,
   };
 }
 
@@ -68,7 +66,7 @@ function toTraceEdge(edge: GraphEdge): TraceEdge {
     target: edge.target,
     confidence: edge.confidence,
     label: edge.label,
-        data: edge.data as Record<string, unknown> | undefined,
+    data: edge.data as Record<string, unknown> | undefined,
   };
 }
 
@@ -84,10 +82,10 @@ function toTraceModel(model: GraphViewData): TraceModel {
 }
 
 function createTraversal(model: TraceModel): TraceTraversal {
-    const nodeIndexMap = nodeIndex(model as any);
-    const parentIndexMap = parentIndex(model as any);
-    const childIndexMap = childIndex(model as any);
-    const sequenceIndexMap = sequenceIndex(model as any);
+  const nodeIndexMap = nodeIndex(model as any);
+  const parentIndexMap = parentIndex(model as any);
+  const childIndexMap = childIndex(model as any);
+  const sequenceIndexMap = sequenceIndex(model as any);
 
   return {
     incoming: (m: TraceModel, id: string) => m.edges.filter((e) => e.target === id),
@@ -97,50 +95,50 @@ function createTraversal(model: TraceModel): TraceTraversal {
       const parents = parentIndexMap;
       const nodes = nodeIndexMap;
       let current = id;
-            for (;;) {
+      for (;;) {
         const parent = parents.get(current);
-                if (!parent) break;
+        if (!parent) break;
         const node = nodes.get(parent);
-                if (!node) break;
+        if (!node) break;
         result.push(node);
         current = parent;
       }
-            return result;
+      return result;
     },
     forwardChain: (m: TraceModel, id: string) => {
       const result: TraceNode[] = [];
       const seq = sequenceIndexMap;
       const nodes = nodeIndexMap;
       let current = id;
-            for (;;) {
+      for (;;) {
         const next = seq.next.get(current);
-                if (!next) break;
+        if (!next) break;
         const node = nodes.get(next);
-                if (!node) break;
+        if (!node) break;
         result.push(node);
         current = next;
       }
-            return result;
+      return result;
     },
     downstreamChain: (m: TraceModel, id: string) => {
       const result: { node: TraceNode; edge: TraceEdge; confidence: string }[] = [];
       const seen = new Set([id]);
       const nodes = nodeIndexMap;
       const queue = [id];
-            for (let index = 0; index < queue.length; index++) {
+      for (let index = 0; index < queue.length; index++) {
         const current = queue[index];
-                for (const edge of m.edges) {
+        for (const edge of m.edges) {
           if (edge.source !== current) continue;
-                    if (!downstreamEdgeKinds.has(edge.kind)) continue;
-                    if (seen.has(edge.target)) continue;
+          if (!downstreamEdgeKinds.has(edge.kind)) continue;
+          if (seen.has(edge.target)) continue;
           const node = nodes.get(edge.target);
-                    if (!node) continue;
+          if (!node) continue;
           seen.add(edge.target);
           queue.push(edge.target);
           result.push({ node, edge, confidence: edge.confidence ?? "explicit" });
         }
       }
-            return result;
+      return result;
     },
     nodeIndex: () => nodeIndexMap,
     parentIndex: () => parentIndexMap,
@@ -159,7 +157,7 @@ function createVocabulary(): TraceVocabulary {
 
 function createConfig(model: GraphViewData): TraceConfig {
   const traceModel = toTraceModel(model);
-    return {
+  return {
     model: traceModel,
     traversal: createTraversal(traceModel),
     vocabulary: createVocabulary(),
@@ -169,31 +167,31 @@ function createConfig(model: GraphViewData): TraceConfig {
 /** Classify a trace overlay over the model using @spacegraphjs/trace. */
 export function classifyTrace(model: GraphViewData, kind: TraceKind, from: string): TraceOverlay {
   const config = createConfig(model);
-    return traceClassifyTrace(config, kind, from);
+  return traceClassifyTrace(config, kind, from);
 }
 
 /** Build a trace overlay for "Why?" — the edges that point at the node, its ancestors, and sequence predecessor. */
 export function traceWhy(model: GraphViewData, from: string): TraceOverlay {
   const config = createConfig(model);
-    return traceTraceWhy(config, from);
+  return traceTraceWhy(config, from);
 }
 
 /** Build a trace overlay for "What led here?" — the forward chain in the turn's sequence. */
 export function traceLedHere(model: GraphViewData, from: string): TraceOverlay {
   const config = createConfig(model);
-    return traceTraceLedHere(config, from);
+  return traceTraceLedHere(config, from);
 }
 
 /** Build a trace overlay for "Related" — incoming and outgoing neighbors. */
 export function traceRelated(model: GraphViewData, from: string): TraceOverlay {
   const config = createConfig(model);
-    return traceTraceRelated(config, from);
+  return traceTraceRelated(config, from);
 }
 
 /** Build a trace overlay for "Downstream impact" — follow sequence/produces/writes edges forward. */
 export function traceDownstream(model: GraphViewData, from: string): TraceOverlay {
   const config = createConfig(model);
-    return traceTraceDownstream(config, from);
+  return traceTraceDownstream(config, from);
 }
 
 /** Get all lit node IDs (answer + context) for a trace overlay. */

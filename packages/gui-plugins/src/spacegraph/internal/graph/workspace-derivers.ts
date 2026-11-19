@@ -1,5 +1,4 @@
-import type { FileDiffInfo } from "@opencode/client/promise"
-import type { WorkspaceSnapshot } from "./model"
+import type { FileDiffInfo, WorkspaceSnapshot } from "@opencode/client/promise"
 import { defineDeriver, inputToken, Kernel, pipe, runPipeline } from "@spacegraphjs/kernel"
 import { GraphBuilder, WORKSPACE_STAGES, type WorkspaceStage } from "./session-builder"
 

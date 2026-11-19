@@ -1,128 +1,6 @@
+import type { JsonValue, WorkspaceSnapshot } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import type { Domain, NodeKind, NodeStatus, PhaseCategory, ZoomLevel } from "./vocabulary"
-
-export type JsonValue = import("@opencode/client/promise").JsonValue
-
-/** T29.1 — workspace snapshot: plain JSON, versioned, stamped per source. */
-export type Source = "tree" | "vcs" | "packages" | "symbols" | "issues" | "processes" | "coverage"
-
-export type SymbolKind =
-  | "function" | "method" | "class" | "interface" | "type" | "variable" | "constant" | "module" | "enum"
-
-export type SnapshotScope = "session" | "directory" | "workspace"
-
-export type Range = {
-  start: { line: number; character: number }
-  end: { line: number; character: number }
-}
-
-export type Directory = {
-  path: string
-  parent?: string
-}
-
-export type Package = {
-  path: string
-  name?: string
-  version?: string
-  private?: boolean
-  scripts?: string[]
-  dependencies?: Record<string, string>
-  devDependencies?: Record<string, string>
-}
-
-export type FileEntry = {
-  path: string
-  status?: "added" | "modified" | "deleted"
-  doc?: boolean
-  config?: boolean
-}
-
-export type Head = {
-  branch?: string
-  sha?: string
-}
-
-export type Base = { sha: string }
-
-export type Branch = {
-  name: string
-  sha: string
-  upstream?: string
-  remote?: boolean
-}
-
-export type Commit = {
-  sha: string
-  short: string
-  message: string
-  author?: string
-  time?: number
-  files?: string[]
-}
-
-export type SymbolEntry = {
-  path: string
-  name: string
-  qualified: string
-  kind: SymbolKind
-  range: Range
-  signature?: string
-  origin: "parser" | "hunk"
-}
-
-export type Process = {
-  id: string
-  pid?: number
-  command: string
-  cwd?: string
-  ports: number[]
-  startedAt?: number
-}
-
-export type Issue = {
-  provider: string
-  repo?: string
-  number: string
-  title?: string
-  state?: string
-  url?: string
-}
-
-export type Missing = {
-  source: Source
-  reason: string
-}
-
-export type WorkspaceSnapshot = {
-  version: 1
-  revision: string
-  root: string
-  scope: SnapshotScope
-  asOf: {
-    tree?: number
-    vcs?: number
-    packages?: number
-    symbols?: number
-    processes?: number
-    issues?: number
-  }
-  truncated: boolean
-  workspace: { name: string; path: string }
-  directories: Directory[]
-  packages: Package[]
-  files: FileEntry[]
-  head?: Head
-  base?: Base
-  branches: Branch[]
-  commits: Commit[]
-  symbols: SymbolEntry[]
-  processes: Process[]
-  issues: Issue[]
-  missing: Missing[]
-  capabilities: string[]
-}
-
 import {
   EDIT_TOOLS,
   PHASE_CATEGORIES,
@@ -131,7 +9,13 @@ import {
   SUBAGENT_TOOLS,
 } from "./vocabulary"
 
-export type { NodeKind, NodeStatus, PhaseCategory, ZoomLevel }
+export type { JsonValue, NodeKind, NodeStatus, PhaseCategory, ZoomLevel, WorkspaceSnapshot }
+
+/** A source range in a file. */
+export type Range = {
+  start: { line: number; character: number }
+  end: { line: number; character: number }
+}
 
 export type Confidence = "explicit" | "structural" | "inferred"
 
@@ -298,17 +182,11 @@ export function phaseCategoryForTool(name: string): PhaseCategory {
   return "result"
 }
 
-const STATIC_PHASE_CATEGORY: Partial<Record<NodeKind, PhaseCategory>> = {
-  subagent: "delegate",
-}
-
 /** The phase category of a node that participates in a phase (tool, subagent, or phase cluster). */
 export function phaseCategoryOf(node: GraphNode): PhaseCategory | undefined {
   if (node.kind === "phase") return Option.getOrUndefined(decodePhaseCategory(node.data?.category))
 
-  const staticCategory = STATIC_PHASE_CATEGORY[node.kind]
-
-  if (staticCategory) return staticCategory
+  if (node.kind === "subagent") return "delegate"
 
   if (node.kind === "tool") {
     const name = decodeString(node.data?.name)

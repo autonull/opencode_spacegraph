@@ -11,7 +11,7 @@
 // its Storybook story, because the app has no renderer switch yet (see the plan's V5.4 note).
 import { $ } from "bun"
 import { createHash } from "node:crypto"
-import { existsSync, writeFileSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { mkdtemp } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -59,28 +59,6 @@ if (mode !== "baseline") {
     .cwd(spacegraphjs)
     .env({ ...process.env, SG_CAPTURE_DIR: join(dir, "matrix") })
 
-  // P5.1 on the OpenCode surface: the same sampler feeds the axes the app toolbar owns. The spec
-  // writes one frame and one JSON per cell; the report below is assembled from those cells.
-  await $`bun script/app-matrix.ts`.cwd(root)
-  await $`bun run test:e2e -- e2e/graph/capture-matrix.spec.ts --reporter=line --workers=1`
-    .cwd(app)
-    .env({ ...process.env, GRAPH_CAPTURE_DIR: dir })
-
-  const pad = (index: number) => String(index).padStart(2, "0")
-  const appCells = JSON.parse(await Bun.file(join(screenshots, "matrix", "app-cells.json")).text())
-  const appFrames: { id: string; values: Record<string, string>; sha256: string }[] = []
-  for (const index of appCells.cells.keys()) {
-    appFrames.push(JSON.parse(await Bun.file(join(dir, "matrix-app", `${pad(index)}.json`)).text()))
-  }
-  const appHashes = new Map<string, string[]>()
-  for (const [index, frame] of appFrames.entries()) {
-    appHashes.set(frame.sha256, [...(appHashes.get(frame.sha256) ?? []), pad(index)])
-  }
-  const appDuplicates = [...appHashes.values()].filter((names) => names.length > 1)
-  writeFileSync(
-    join(dir, "matrix-app.json"),
-    JSON.stringify({ ...appCells, frames: appFrames, duplicates: appDuplicates }, null, 2) + "\n",
-  )
 }
 
 if (mode === "verify") {
@@ -163,37 +141,6 @@ if (mode === "verify") {
     `graph:capture: cartesian matrix ${cartesian.strategy}, ${cartesian.sampled} cells, ${cartesian.duplicates.length} reported no-ops`,
   )
 
-  // The app matrix is a second consumer of the sampler. Its committed frames must exist, and fresh
-  // captures must keep a distinct picture for every change in a picture axis (lens is a filter and
-  // may legitimately be a visual no-op on the fixture).
-  const appCells = JSON.parse(await Bun.file(join(screenshots, "matrix", "app-cells.json")).text())
-  const pad = (index: number) => String(index).padStart(2, "0")
-  const committedAppFrames = appCells.cells.map((_: unknown, index: number) =>
-    join(screenshots, "matrix-app", `${pad(index)}.json`),
-  )
-  const missingApp = committedAppFrames.filter((path) => !existsSync(path))
-  if (appCells.sampled < 10 || missingApp.length) {
-    console.error(
-      `graph:capture: committed app matrix is incomplete (${appCells.sampled} cells, ${missingApp.length} missing)`,
-    )
-    process.exit(1)
-  }
-  const appReport = JSON.parse(await Bun.file(join(dir, "matrix-app.json")).text())
-  if (new Set(appReport.frames.map((frame: { sha256: string }) => frame.sha256)).size < 10) {
-    console.error("graph:capture: the app matrix repeats too many frames")
-    process.exit(1)
-  }
-  for (const names of appReport.duplicates as string[][]) {
-    const group = names.map((name) => appReport.frames[Number.parseInt(name, 10)])
-    const differing = ["layout", "depth", "level"].filter(
-      (axis) => new Set(group.map((frame) => frame.values[axis])).size > 1,
-    )
-    if (differing.length) {
-      console.error(`graph:capture: app matrix frames repeat across ${differing.join(",")}: ${names.join(" = ")}`)
-      process.exit(1)
-    }
-  }
-  console.log(`graph:capture: app matrix ${appCells.sampled} cells, ${appReport.duplicates.length} reported no-ops`)
 
   console.log(`graph:capture: verify passed; fresh captures in ${dir}`)
 } else {

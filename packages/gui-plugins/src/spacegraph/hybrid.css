@@ -1,0 +1,8 @@
+/* The log's text scale is a hybrid-surface presentation only. The theme owns the unscaled sizes;
+   this surface re-derives them so a theme change scales with it. */
+[data-slot="spacegraph-hybrid-log"] {
+  --font-size-small: calc(var(--text-size-small) * var(--text-scale, 1));
+  --font-size-base: calc(var(--text-size-base) * var(--text-scale, 1));
+  --font-size-large: calc(var(--text-size-large) * var(--text-scale, 1));
+  --font-size-x-large: calc(var(--text-size-x-large) * var(--text-scale, 1));
+}

@@ -10,5 +10,5 @@ export const exportGraphFilename = (goal?: string): string => {
     ?.toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    return slug ? `spacegraph-${slug}.json` : "spacegraph.json"
+  return slug ? `spacegraph-${slug}.json` : "spacegraph.json"
 }

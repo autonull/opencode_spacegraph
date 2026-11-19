@@ -82,43 +82,43 @@ const decodeFilePath = Schema.decodeUnknownOption(Schema.Struct({ path: Schema.S
 
 function truncate(text: string, max = 80) {
   const single = text.replace(/\s+/g, " ").trim()
-    return single.length > max ? `${single.slice(0, max - 1)}…` : single
+  return single.length > max ? `${single.slice(0, max - 1)}…` : single
 }
 
 function terminalOutput(text: string | undefined): string | null {
   if (!text) return null
-    return stripAnsi(text).replace(/\r\n?/g, "\n")
+  return stripAnsi(text).replace(/\r\n?/g, "\n")
 }
 
 function stringField(record: Record<string, JsonValue>, key: string) {
   const value = Option.getOrUndefined(decodeString(record[key]))
-    return value ? value : undefined
+  return value ? value : undefined
 }
 
 function toolInput(tool: SessionMessageAssistantTool): Record<string, JsonValue> {
   if (tool.state.status === "streaming") {
-        return Option.getOrElse(decodeJsonObject(tool.state.input), () => ({})) as Record<string, JsonValue>
+    return Option.getOrElse(decodeJsonObject(tool.state.input), () => ({})) as Record<string, JsonValue>
   }
-    return tool.state.input
+  return tool.state.input
 }
 
 function toolMetadata(tool: SessionMessageAssistantTool): Record<string, JsonValue> {
   if (!("metadata" in tool.state)) return {}
-    return tool.state.metadata ?? {}
+  return tool.state.metadata ?? {}
 }
 
 function rootData(sessionID?: string, lineage?: SessionLineage): Record<string, JsonValue> | undefined {
   const data: Record<string, JsonValue> = {}
-    if (sessionID) data.sessionID = sessionID
-    if (lineage?.forkedFrom) {
+  if (sessionID) data.sessionID = sessionID
+  if (lineage?.forkedFrom) {
     data.forkedFrom = lineage.forkedFrom.sessionID
-        if (lineage.forkedFrom.boundary) {
+    if (lineage.forkedFrom.boundary) {
       data.forkBoundary = lineage.forkedFrom.boundary.messageID
       data.forkBoundaryType = lineage.forkedFrom.boundary.type
     }
   }
-    if (lineage?.parentSessionID) data.parentSessionID = lineage.parentSessionID
-    return Object.keys(data).length > 0 ? data : undefined
+  if (lineage?.parentSessionID) data.parentSessionID = lineage.parentSessionID
+  return Object.keys(data).length > 0 ? data : undefined
 }
 
 export interface IncrementalBuilderState {
@@ -168,7 +168,7 @@ export class IncrementalGraphBuilder {
     this.messages = messages
     this.status = status
     this.labels = resolveGraphLabels(labels)
-        if (previousState) {
+    if (previousState) {
       this.state = previousState
       this.state.messages = messages
       this.state.status = status
@@ -227,7 +227,7 @@ export class IncrementalGraphBuilder {
     state.nodesByID.set(SESSION_NODE_ID, state.nodes[0])
 
     state.goal = messages.find((message) => message.type === "user")?.text
-        if (state.goal) state.nodesByID.get(SESSION_NODE_ID)!.summary = truncate(state.goal)
+    if (state.goal) state.nodesByID.get(SESSION_NODE_ID)!.summary = truncate(state.goal)
 
     return state
   }
@@ -246,11 +246,11 @@ export class IncrementalGraphBuilder {
 
     for (const message of this.messages) {
       const owner = turnByMessageID.get(message.id)
-            if (owner === message.id) openers.set(message.id, message)
+      if (owner === message.id) openers.set(message.id, message)
     }
 
     const startIndex = this.processedMessageCount
-        for (let i = startIndex; i < this.messages.length; i++) {
+    for (let i = startIndex; i < this.messages.length; i++) {
       const message = this.messages[i]
       const owner = turnByMessageID.get(message.id)
       const turnID = this.ensureTurn(openers.get(owner ?? message.id) ?? message, owner)
@@ -277,7 +277,7 @@ export class IncrementalGraphBuilder {
     if (!this.state.goal) {
       const opener = this.messages.find((message) => message.type === "assistant")
       const textPart = opener?.content.find((part) => part.type === "text")
-            if (textPart?.type === "text") this.state.nodesByID.get(SESSION_NODE_ID)!.summary = truncate(textPart.text)
+      if (textPart?.type === "text") this.state.nodesByID.get(SESSION_NODE_ID)!.summary = truncate(textPart.text)
     }
 
     const activeOwner = activeMessageID ? turnByMessageID.get(activeMessageID) : undefined
@@ -306,7 +306,7 @@ export class IncrementalGraphBuilder {
   ): Kernel {
     const builder = new IncrementalGraphBuilder([], { type: "idle" }, undefined, undefined, undefined, diffByTurn)
     builder.seed(kernel)
-        switch (stage) {
+    switch (stage) {
       case "files":
         builder.attachFiles(snapshot)
         break
@@ -338,7 +338,7 @@ export class IncrementalGraphBuilder {
         builder.attachIssues(snapshot)
         break
     }
-        return builder.buildKernel(kernel.version + 1)
+    return builder.buildKernel(kernel.version + 1)
   }
 
   private seed(kernel: Kernel) {
@@ -355,25 +355,25 @@ export class IncrementalGraphBuilder {
       this.state.nodes.push(graphNode)
       this.state.nodeIDs.add(graphNode.id)
       this.state.nodesByID.set(graphNode.id, graphNode)
-            if (graphNode.kind === "file") {
+      if (graphNode.kind === "file") {
         const path = graphNode.data?.path
-                if (typeof path === "string") {
+        if (typeof path === "string") {
           this.state.fileNodes.set(normalizePath(path), graphNode.id)
-                    if (graphNode.provenance === undefined) this.state.touchedFiles.add(normalizePath(path))
+          if (graphNode.provenance === undefined) this.state.touchedFiles.add(normalizePath(path))
         }
       }
     }
-        for (const edge of kernel.edges) {
+    for (const edge of kernel.edges) {
       const graphEdge = toGraphEdge(edge)
       this.state.edges.push(graphEdge)
       this.state.edgeIDs.add(graphEdge.id)
     }
-        this.state.constructed = true
+    this.state.constructed = true
   }
 
   buildKernel(version = 0): Kernel {
     this.constructIncremental()
-        return new Kernel({
+    return new Kernel({
       nodes: this.state.nodes.map(toKernelNode),
       edges: this.state.edges.map(toKernelEdge),
       hyperedges: [],
@@ -383,15 +383,15 @@ export class IncrementalGraphBuilder {
 
   meta(): GraphViewMeta {
     this.constructIncremental()
-        const meta: GraphViewMeta = {
+    const meta: GraphViewMeta = {
       root: SESSION_NODE_ID,
       turns: this.state.turns,
       turnByMessageID: this.state.turnByMessageID,
     }
 
     if (this.state.goal !== undefined) meta.goal = this.state.goal
-        if (this.state.activeTurn !== undefined) meta.activeTurn = this.state.activeTurn
-        if (this.state.snapshot !== undefined) {
+    if (this.state.activeTurn !== undefined) meta.activeTurn = this.state.activeTurn
+    if (this.state.snapshot !== undefined) {
       meta.workspaceRoot = this.state.snapshot.root
       meta.snapshot = {
         revision: this.state.snapshot.revision,
@@ -409,7 +409,7 @@ export class IncrementalGraphBuilder {
 
   private attachFiles(snapshot: WorkspaceSnapshot) {
     const newFiles = buildFileNodes(snapshot, this.state.fileNodes)
-        for (const { node, normalized } of newFiles) {
+    for (const { node, normalized } of newFiles) {
       this.state.fileNodes.set(normalized, node.id)
       this.addNode(node)
     }
@@ -417,9 +417,9 @@ export class IncrementalGraphBuilder {
 
   private attachDirectories(snapshot: WorkspaceSnapshot) {
     const dirData = buildDirectoryNodes(this.state.fileNodes, this.state.touchedFiles, snapshot)
-        for (const { node, edges } of dirData) {
+    for (const { node, edges } of dirData) {
       if (node.id) this.addNode(node)
-            for (const edge of edges) this.addEdge(edge)
+      for (const edge of edges) this.addEdge(edge)
     }
   }
 
@@ -429,20 +429,20 @@ export class IncrementalGraphBuilder {
 
   private attachCommits(snapshot: WorkspaceSnapshot) {
     const { nodes, edges } = buildCommitNodesAndEdges(snapshot, this.state.fileNodes)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const node of nodes) this.addNode(node)
+    for (const edge of edges) this.addEdge(edge)
   }
 
   private attachBranches(snapshot: WorkspaceSnapshot) {
     const { nodes, edges } = buildBranchNodesAndEdges(snapshot, this.state.nodeIDs)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const node of nodes) this.addNode(node)
+    for (const edge of edges) this.addEdge(edge)
   }
 
   private attachSymbols(snapshot: WorkspaceSnapshot) {
     const { nodes, edges } = buildSymbolNodesAndEdges(snapshot, this.state.fileNodes)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const node of nodes) this.addNode(node)
+    for (const edge of edges) this.addEdge(edge)
   }
 
   private symbolsFromHunk(patch: string, filePath: string): Array<{
@@ -472,7 +472,7 @@ export class IncrementalGraphBuilder {
       const line = lines[i]
 
       const hunkHeaderMatch = line.match(/^@@\s*-(\d+)(?:,(\d+))?\s*\+(\d+)(?:,(\d+))?\s*@@/)
-            if (hunkHeaderMatch) {
+      if (hunkHeaderMatch) {
         lineNumber = Number(hunkHeaderMatch[3]) - 1
         continue
       }
@@ -480,7 +480,7 @@ export class IncrementalGraphBuilder {
       lineNumber++
 
       const classMatch = line.match(/^\+\s*(?:export\s+)?(?:abstract\s+)?(?:class|interface)\s+(\w+)/)
-            if (classMatch) {
+      if (classMatch) {
         const className = classMatch[1]
         symbols.push({
           name: className,
@@ -494,9 +494,9 @@ export class IncrementalGraphBuilder {
       }
 
       const funcMatch = line.match(/^\+\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
-            if (funcMatch) {
+      if (funcMatch) {
         const name = funcMatch[1] || funcMatch[2]
-                if (name) {
+        if (name) {
           symbols.push({
             name,
             qualified: currentClass ? `${currentClass}.${name}` : name,
@@ -505,13 +505,13 @@ export class IncrementalGraphBuilder {
             origin: "hunk",
           })
         }
-                continue
+        continue
       }
 
       const methodMatch = line.match(/^\+\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{?/)
-            if (methodMatch && currentClass) {
+      if (methodMatch && currentClass) {
         const name = methodMatch[1]
-                if (!["constructor", "get", "set", "static", "public", "private", "protected"].includes(name)) {
+        if (!["constructor", "get", "set", "static", "public", "private", "protected"].includes(name)) {
           symbols.push({
             name,
             qualified: `${currentClass}.${name}`,
@@ -520,11 +520,11 @@ export class IncrementalGraphBuilder {
             origin: "hunk",
           })
         }
-                continue
+        continue
       }
 
       const arrowMatch = line.match(/^\+\s*(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
-            if (arrowMatch && currentClass) {
+      if (arrowMatch && currentClass) {
         const name = arrowMatch[1]
         symbols.push({
           name,
@@ -537,9 +537,9 @@ export class IncrementalGraphBuilder {
       }
 
       const deletedFuncMatch = line.match(/^-\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
-            if (deletedFuncMatch) {
+      if (deletedFuncMatch) {
         const name = deletedFuncMatch[1] || deletedFuncMatch[2]
-                if (name) {
+        if (name) {
           symbols.push({
             name,
             qualified: currentClass ? `${currentClass}.${name}` : name,
@@ -550,11 +550,11 @@ export class IncrementalGraphBuilder {
             deleted: true,
           })
         }
-                continue
+        continue
       }
 
       const anonMatch = line.match(/^\+\s*(?:const|let|var)\s*[A-Z_a-z][A-Z_a-z0-9]*\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
-            if (anonMatch) {
+      if (anonMatch) {
         symbols.push({
           name: "anonymous",
           qualified: `${filePath}:${lineNumber}:0`,
@@ -566,7 +566,7 @@ export class IncrementalGraphBuilder {
       }
 
       const braceMatch = line.match(/^\+(\s*)\}\s*$/)
-            if (braceMatch && braceMatch[1].length <= 1) {
+      if (braceMatch && braceMatch[1].length <= 1) {
         currentClass = undefined
       }
     }
@@ -581,8 +581,8 @@ export class IncrementalGraphBuilder {
       this.state.fileNodes,
       this.symbolsFromHunk.bind(this),
     )
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const node of nodes) this.addNode(node)
+    for (const edge of edges) this.addEdge(edge)
   }
 
   private attachProcesses(snapshot: WorkspaceSnapshot) {
@@ -591,8 +591,8 @@ export class IncrementalGraphBuilder {
 
   private attachPorts(snapshot: WorkspaceSnapshot) {
     const { nodes, edges } = buildPortNodesAndEdges(snapshot)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const node of nodes) this.addNode(node)
+    for (const edge of edges) this.addEdge(edge)
   }
 
   private attachIssues(snapshot: WorkspaceSnapshot) {
@@ -605,13 +605,13 @@ export class IncrementalGraphBuilder {
     for (const node of this.state.nodes) {
       if (node.kind !== "file") continue
       const path = node.data?.path
-            if (typeof path !== "string") continue
+      if (typeof path !== "string") continue
 
       const dirPath = path.lastIndexOf("/") > 0 ? path.slice(0, path.lastIndexOf("/")) : "."
       const normalized = normalizePath(dirPath)
 
       const existing = filesByDir.get(normalized)
-            if (existing) existing.push(node.id)
+      if (existing) existing.push(node.id)
       else filesByDir.set(normalized, [node.id])
     }
 
@@ -619,7 +619,7 @@ export class IncrementalGraphBuilder {
       if (fileIds.length < 2) continue
 
       const id = `file-group:${dirPath.replace(/\//g, ":")}`
-            if (this.state.nodeIDs.has(id)) continue
+      if (this.state.nodeIDs.has(id)) continue
 
       let writes = 0
       let reads = 0
@@ -628,7 +628,7 @@ export class IncrementalGraphBuilder {
       for (const fileId of fileIds) {
         for (const edge of this.state.edges) {
           if (edge.target !== fileId) continue
-                    if (edge.kind === "writes") writes++
+          if (edge.kind === "writes") writes++
           else if (edge.kind === "reads") reads++
           else if (edge.kind === "searches") searches++
         }
@@ -656,16 +656,16 @@ export class IncrementalGraphBuilder {
 
   private deriveErrorChainGroups(): void {
     const errorNodes = this.state.nodes.filter((node) => node.kind === "error")
-        if (errorNodes.length === 0) return
+    if (errorNodes.length === 0) return
 
     const errorsByTurn = new Map<string, string[]>()
 
     for (const errorNode of errorNodes) {
       const turnID = errorNode.turnID
-            if (!turnID) continue
+      if (!turnID) continue
 
       const existing = errorsByTurn.get(turnID)
-            if (existing) existing.push(errorNode.id)
+      if (existing) existing.push(errorNode.id)
       else errorsByTurn.set(turnID, [errorNode.id])
     }
 
@@ -679,12 +679,12 @@ export class IncrementalGraphBuilder {
           if (edge.target === errorId && edge.kind === "evidence") {
             chainMembers.add(edge.source)
           }
-                    if (edge.source === errorId && edge.kind === "evidence") {
+          if (edge.source === errorId && edge.kind === "evidence") {
             chainMembers.add(edge.target)
           }
-                    if (edge.source === errorId && edge.kind === "sequence") {
+          if (edge.source === errorId && edge.kind === "sequence") {
             const targetNode = this.state.nodesByID.get(edge.target)
-                        if (targetNode?.kind === "retry") chainMembers.add(edge.target)
+            if (targetNode?.kind === "retry") chainMembers.add(edge.target)
           }
         }
       }
@@ -696,15 +696,15 @@ export class IncrementalGraphBuilder {
       }
 
       const members = [...chainMembers]
-            if (members.length < 2) continue
+      if (members.length < 2) continue
 
       const id = `error-group:${turnID}`
-            if (this.state.nodeIDs.has(id)) continue
+      if (this.state.nodeIDs.has(id)) continue
 
       let evidenceRoot: string | undefined
-            for (const memberId of members) {
+      for (const memberId of members) {
         const node = this.state.nodesByID.get(memberId)
-                if (node?.kind === "tool" || node?.kind === "result") {
+        if (node?.kind === "tool" || node?.kind === "result") {
           for (const edge of this.state.edges) {
             if (edge.source === memberId && edge.kind === "evidence" && errorIds.includes(edge.target)) {
               evidenceRoot = memberId
@@ -712,7 +712,7 @@ export class IncrementalGraphBuilder {
             }
           }
         }
-                if (evidenceRoot) break
+        if (evidenceRoot) break
       }
 
       this.addNode({
@@ -734,16 +734,16 @@ export class IncrementalGraphBuilder {
 
   private deriveSubagentGroups(): void {
     const subagentNodes = this.state.nodes.filter((node) => node.kind === "subagent")
-        if (subagentNodes.length === 0) return
+    if (subagentNodes.length === 0) return
 
     const subagentsBySession = new Map<string, string[]>()
 
     for (const node of subagentNodes) {
       const childSessionID = node.data?.childSessionID
-            if (typeof childSessionID !== "string") continue
+      if (typeof childSessionID !== "string") continue
 
       const existing = subagentsBySession.get(childSessionID)
-            if (existing) existing.push(node.id)
+      if (existing) existing.push(node.id)
       else subagentsBySession.set(childSessionID, [node.id])
     }
 
@@ -751,7 +751,7 @@ export class IncrementalGraphBuilder {
       if (subagentIds.length === 0) continue
 
       const id = `subagent-group:${childSessionID}`
-            if (this.state.nodeIDs.has(id)) continue
+      if (this.state.nodeIDs.has(id)) continue
 
       this.addNode({
         id,
@@ -766,7 +766,7 @@ export class IncrementalGraphBuilder {
         },
       })
       const firstSubagent = this.state.nodesByID.get(subagentIds[0])
-            if (firstSubagent?.turnID) {
+      if (firstSubagent?.turnID) {
         this.partOf(id, firstSubagent.turnID)
       } else {
         this.partOf(id, SESSION_NODE_ID)
@@ -851,9 +851,9 @@ export class IncrementalGraphBuilder {
   private diffForFile(turnID: string | undefined, path: string): FileDiffInfo | undefined {
     if (!turnID || !this.state.diffByTurn) return undefined
     const diffs = this.state.diffByTurn.get(turnID)
-        if (!diffs) return undefined
+    if (!diffs) return undefined
     const normalized = normalizePath(path)
-        return diffs.find((d) => normalizePath(d.file) === normalized)
+    return diffs.find((d) => normalizePath(d.file) === normalized)
   }
 
   private ensureTurn(opener: SessionMessageInfo, owner: string | undefined): string {
@@ -893,7 +893,7 @@ export class IncrementalGraphBuilder {
 
     if (current?.category === category) {
       current.members.push(childID)
-            return
+      return
     }
 
     const ordinal = (this.state.phaseOrdinalsByTurn.get(turnID) ?? 0) + 1
@@ -1116,7 +1116,7 @@ export class IncrementalGraphBuilder {
       : currentToolFailed(tool)
         ? "failed"
         : "success"
-        const category = timelineCategory(tool) ?? (SUBAGENT_TOOLS.has(tool.name) ? "subagents" : "tools")
+    const category = timelineCategory(tool) ?? (SUBAGENT_TOOLS.has(tool.name) ? "subagents" : "tools")
 
     if (SUBAGENT_TOOLS.has(tool.name)) {
       const { metadata, input } = toolFacts(tool)
@@ -1169,7 +1169,7 @@ export class IncrementalGraphBuilder {
     if (SHELL_TOOLS.has(tool.name)) {
       const resultID = resultNodeID(tool.id)
 
-            const resultLabel = status === "failed" ? "failed" : status === "running" ? "running" : "ok"
+      const resultLabel = status === "failed" ? "failed" : status === "running" ? "running" : "ok"
 
       this.attach(
         this.baseNode(resultID, "result", turnID, {
@@ -1310,11 +1310,11 @@ export class IncrementalGraphBuilder {
       this.addEdge({ kind: "delegates", source: nodeID, target: childNodeID, confidence: "explicit" })
   }
 
-    private readonly provenanceStrategies: ProvenanceStrategies = {
+  private readonly provenanceStrategies: ProvenanceStrategies = {
     read: (tool, toolID, turnID) => {
       const { input } = toolFacts(tool)
       const path = stringField(input, "path")
-            if (path) this.addEdge({ kind: "reads", source: toolID, target: this.requireFile(path), confidence: "explicit" })
+      if (path) this.addEdge({ kind: "reads", source: toolID, target: this.requireFile(path), confidence: "explicit" })
     },
     edit: (tool, toolID, turnID) => this.recordWriteProvenance(tool, toolID, turnID),
     write: (tool, toolID, turnID) => this.recordWriteProvenance(tool, toolID, turnID),
@@ -1324,28 +1324,28 @@ export class IncrementalGraphBuilder {
 
   private recordProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
     const strategy = this.provenanceStrategies[tool.name]
-        if (strategy) {
+    if (strategy) {
       strategy(tool, toolID, turnID)
-            return
+      return
     }
 
     if (SEARCH_TOOLS.has(tool.name)) {
       const { input } = toolFacts(tool)
       const scope = stringField(input, "path")
-            if (scope) this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
+      if (scope) this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
     }
   }
 
   private recordWriteProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
     const { input, metadata } = toolFacts(tool)
     const path = stringField(input, "path")
-        if (path) this.addWritesEdge(toolID, turnID, path)
-        for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
+    if (path) this.addWritesEdge(toolID, turnID, path)
+    for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
   }
 
   private recordMetadataWritesProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
     const { metadata } = toolFacts(tool)
-        for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
+    for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
   }
 
   private addWritesEdge(toolID: string, turnID: string, path: string) {
@@ -1371,56 +1371,56 @@ function toolFacts(tool: SessionMessageAssistantTool) {
 
 function metadataFilePaths(metadata: Record<string, JsonValue>): string[] {
   const files = metadata.files
-    if (!Array.isArray(files)) return []
-    return files.flatMap((file) => {
+  if (!Array.isArray(files)) return []
+  return files.flatMap((file) => {
     const path = Option.getOrUndefined(decodeString(file))
-        if (path) return [path]
+    if (path) return [path]
     const object = Option.getOrUndefined(decodeFilePath(file))
-        return object ? [object.path] : []
+    return object ? [object.path] : []
   })
 }
 
 function attachmentPaths(files: readonly PromptFileAttachment[] | undefined): string[] {
   if (!files) return []
-    return files.flatMap((file) => {
+  return files.flatMap((file) => {
     const path = file.mention?.text ?? (file.source.type === "uri" ? file.source.uri : undefined)
-        return path ? [path] : []
+    return path ? [path] : []
   })
 }
 
 function shellStatus(message: SessionMessageShell): NodeStatus {
   if (message.status === "running") return "running"
-    if (message.status === "killed") return "interrupted"
-    if (message.status === "timeout") return "failed"
-    if (message.status === "exited" && message.exit !== undefined && message.exit !== 0) return "failed"
-    return "success"
+  if (message.status === "killed") return "interrupted"
+  if (message.status === "timeout") return "failed"
+  if (message.status === "exited" && message.exit !== undefined && message.exit !== 0) return "failed"
+  return "success"
 }
 
 function compactionStatus(message: Extract<SessionMessageInfo, { type: "compaction" }>): NodeStatus {
   if (message.status === "completed") return "success"
-    if (message.status === "failed") return "failed"
-    return "running"
+  if (message.status === "failed") return "failed"
+  return "running"
 }
 
 function compactionSummary(message: Extract<SessionMessageInfo, { type: "compaction" }>): string | undefined {
   if (message.status === "failed") return message.error?.message ? truncate(message.error.message, 200) : undefined
-    return message.summary ? truncate(message.summary, 200) : undefined
+  return message.summary ? truncate(message.summary, 200) : undefined
 }
 
 function compactionReplays(message: Extract<SessionMessageInfo, { type: "compaction" }>): boolean {
   if (message.status !== "completed") return false
-    return message.native !== undefined && "messages" in message.native
+  return message.native !== undefined && "messages" in message.native
 }
 
 function noticeLabel(message: GraphNotice) {
   if (message.type === "synthetic") return truncate(message.description ?? message.text)
-    if (message.type === "skill") return `Skill: ${message.name}`
-    return truncate(message.text)
+  if (message.type === "skill") return `Skill: ${message.name}`
+  return truncate(message.text)
 }
 
 function noticeSummary(message: GraphNotice) {
   if (message.type === "skill") return undefined
-    return message.text
+  return message.text
 }
 
 function isInterrupted(error: SessionMessageAssistant["error"]) {

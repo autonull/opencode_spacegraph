@@ -74,7 +74,7 @@ export function summaryUnits(model: GraphViewData, level: ZoomLevel): Set<string
 
   for (const node of model.nodes) {
     if (!isVisibleAt(node, level)) continue
-        if (yieldsToMembers(node, nodes, level)) continue
+    if (yieldsToMembers(node, nodes, level)) continue
     units.add(node.id)
   }
 
@@ -131,7 +131,7 @@ function turnOrder(nodes: readonly GraphNode[]): GraphNode[] {
 function yieldsToMembers(node: GraphNode, nodes: ReadonlyMap<string, GraphNode>, level: ZoomLevel) {
   if (node.kind !== "phase") return false
   // At the overview the phase stands for its work; below it the work stands for itself.
-    if (!isClusterExpanded(level)) return false
+  if (!isClusterExpanded(level)) return false
 
   return (node.clusterOf ?? []).some((id) => {
     const member = nodes.get(id)
@@ -144,24 +144,23 @@ function yieldsToMembers(node: GraphNode, nodes: ReadonlyMap<string, GraphNode>,
  * The category each member inherits from the cluster that stands for it. The model carries the
  * membership on the cluster, so the map is built once per model.
  */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 const CLUSTER_CATEGORIES = new WeakMap<readonly GraphNode[], ReadonlyMap<string, PhaseCategory>>()
 
 function clusterCategories(model: GraphViewData): ReadonlyMap<string, PhaseCategory> {
-  const nodes = model.nodes
-  const cached = CLUSTER_CATEGORIES.get(nodes)
-    if (cached) return cached
+  const cached = CLUSTER_CATEGORIES.get(model.nodes)
+
+  if (cached) return cached
 
   const categories = new Map<string, PhaseCategory>()
 
-  for (const node of nodes) {
+  for (const node of model.nodes) {
     if (node.kind !== "phase") continue
     const category = phaseCategoryOf(node)
-        if (!category) continue
-        for (const member of node.clusterOf ?? []) categories.set(member, category)
+    if (!category) continue
+    for (const member of node.clusterOf ?? []) categories.set(member, category)
   }
 
-  CLUSTER_CATEGORIES.set(nodes, categories)
+  CLUSTER_CATEGORIES.set(model.nodes, categories)
 
   return categories
 }

@@ -20,6 +20,7 @@ import type {
   ServerRef,
   MountedSession,
   SessionScreen,
+  TranscriptScreen,
 } from "@opencode/plugin/gui"
 import { useComments } from "@/composer/comments"
 import { createComposerEditorActions } from "@/composer/editor/actions"
@@ -50,7 +51,7 @@ type ObjectRoot = { dispose?: () => void }
  * The routed session as plugins see it: one frozen object per routed session, a new one each time the screen
  * routes another session, and the `SessionScreen` that owns the route-following files, comments and composer.
  */
-export function createMountedSession(session: SessionModel) {
+export function createMountedSession(session: SessionModel, options: { transcript?: TranscriptScreen } = {}) {
   const file = useFile()
   const comments = useComments()
   const composer = useComposerState()
@@ -347,6 +348,7 @@ export function createMountedSession(session: SessionModel) {
     file: files,
     comment,
     composer: composerRef,
+    transcript: options.transcript,
   })
 
   const owner = getOwner()

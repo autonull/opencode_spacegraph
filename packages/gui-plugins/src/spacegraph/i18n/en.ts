@@ -168,5 +168,10 @@ export default {
   "lensGoal.exploreStructure": "Explore structure",
   "lensGoal.exploreStructureDesc": "Whole-session shape, layouts, legend, spatial overview",
   "lensGoal.handoff": "Hand off to teammate",
-  "lensGoal.handoffDesc": "Copy permalink to current selection for sharing"
+  "lensGoal.handoffDesc": "Copy permalink to current selection for sharing",
+  "hybrid.textSize": "Log text size",
+  "hybrid.textSizeTooltip": "Scale the transcript text in the hybrid view",
+  "panel.overview.title": "Overview",
+  "panel.overview.hint": "Pick a node to open its message in the transcript.",
+  "panel.overview.open": "Open full map"
 }

@@ -1,10 +1,11 @@
 import type { JsonValue } from "@opencode/client/promise"
 import { Option, Schema } from "effect"
 import { extractSubgraph } from "spacegraphjs/overlays"
-import { search as navSearch, searchBy as navSearchBy } from "./navigation-adapter"
-import type { Confidence, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
+import { Navigation } from "spacegraphjs/navigation"
+import type { Confidence, EdgeKind, GraphViewData, GraphEdge, GraphNode, NodeKind } from "./model"
 import { childIndex, lookupNode, nodeIndex, parentIndex, sequenceIndex } from "./lookup"
-import { PROVENANCE_EDGE_KINDS, READ_EDGE_KINDS } from "./vocabulary"
+import { diffKernels } from "@spacegraphjs/kernel"
+import { graphModelToKernel } from "./view"
 
 export type Subgraph = {
   nodes: GraphNode[]
@@ -16,30 +17,9 @@ export type TranscriptRef = {
   partID?: string
 }
 
-/** Counts of key node kinds in a node array. Used for session/turn statistics. */
-export function countNodeKinds(nodes: GraphNode[]): {
-  filesTouched: Set<string>
-  toolsRun: number
-  errors: number
-  retries: number
-} {
-  const filesTouched = new Set<string>()
-  let toolsRun = 0
-  let errors = 0
-  let retries = 0
-
-  for (const node of nodes) {
-        if (node.kind === "file" && node.data?.path) filesTouched.add(node.data.path as string)
-        if (node.kind === "tool") toolsRun++
-        if (node.kind === "error") errors++
-        if (node.kind === "retry") retries++
-  }
-
-    return { filesTouched, toolsRun, errors, retries }
+export function nodeByID(model: GraphViewData, id: string) {
+  return lookupNode(model, id)
 }
-
-/** Alias for lookupNode (for backward compatibility). */
-export const nodeByID = lookupNode
 
 export function incoming(model: GraphViewData, id: string) {
   return model.edges.filter((edge) => edge.target === id)
@@ -165,12 +145,14 @@ export function breadcrumbs(model: GraphViewData, id: string, seen: Set<string> 
   return owner ? [...breadcrumbs(model, owner.id, seen), node] : [node]
 }
 
+const PROVENANCE: ReadonlySet<EdgeKind> = new Set(["writes", "reads", "produces", "searches", "compacts", "evidence"])
+
 function provenanceOwner(model: GraphViewData, node: GraphNode): GraphNode | undefined {
   const related = model.edges.filter((edge) => edge.source === node.id || edge.target === node.id)
 
   const ordered = [
-    ...related.filter((edge) => PROVENANCE_EDGE_KINDS.has(edge.kind)),
-    ...related.filter((edge) => !PROVENANCE_EDGE_KINDS.has(edge.kind)),
+    ...related.filter((edge) => PROVENANCE.has(edge.kind)),
+    ...related.filter((edge) => !PROVENANCE.has(edge.kind)),
   ]
 
   for (const edge of ordered) {
@@ -263,19 +245,70 @@ export function forwardChain(model: GraphViewData, id: string): GraphNode[] {
   return result
 }
 
-/** One step of a downstream trace: the node reached and the edge that reached it. */
+const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))
+
+/** The text a search matches against: the label, the summary, and the tool's name, path, and command. */
+export const searchText = (node: GraphNode) =>
+  [
+    node.label,
+    node.summary,
+    dataString(node.data?.name),
+    dataString(node.data?.path),
+    dataString(node.data?.command),
+    node.data?.input ? JSON.stringify(node.data.input) : undefined,
+  ].filter((value): value is string => !!value)
+
+export function search(model: GraphViewData, query: string): GraphNode[] {
+  return Navigation.search(model, query, searchText)
+}
+
+/**
+ * A2 — ranked search. The host decides what a match is worth; the kernel orders. The scorer is
+ * deliberately coarse: a label prefix beats a label hit, which beats a tool name, a path, and the
+ * body. Ties keep model order (the sort is stable), so the same query reads the same every time.
+ */
+const rank = (node: GraphNode, needle: string): number => {
+  const label = node.label.toLowerCase()
+  if (label.startsWith(needle)) return 0
+  if (label.includes(needle)) return 1
+
+  const name = dataString(node.data?.name)?.toLowerCase()
+  if (name?.includes(needle)) return 2
+
+  const path = dataString(node.data?.path)?.toLowerCase()
+  if (path?.includes(needle)) return 3
+
+  return searchText(node).join("\n").toLowerCase().includes(needle) ? 4 : -1
+}
+
+export function rankedSearch(model: GraphViewData, query: string): GraphNode[] {
+  return Navigation.searchBy(model, query, rank)
+}
+
+/**
+ * The edge kinds that propagate downstream: a step produces a result, writes a file, or a chain
+ * sequences to the next work. The trace follows these forward.
+ */
+const downstreamKinds = new Set<EdgeKind>(["sequence", "produces", "writes"])
+
+/** One step in a downstream trace: the node, the edge that reached it, and the edge's confidence. */
 export type DownstreamStep = { node: GraphNode; edge: GraphEdge; confidence: Confidence }
 
-/** A downstream node with more than one forward branch. */
+/**
+ * A fork point inside a downstream trace: a reachable node with two or more distinct forward
+ * targets via downstream edges. Parallel edges to the same target are not a fork.
+ */
 export type DownstreamFork = {
-  /** The node where the chain splits. */
   node: GraphNode
-  /** One step per distinct branch target, in model edge order. */
   branches: DownstreamStep[]
 }
 
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
-const downstreamKinds = new Set<GraphEdge["kind"]>(["sequence", "produces", "writes"])
+/** Evidence grouped by kind: the tools, files, or results that support a claim. */
+export type EvidenceKind = "tools" | "files" | "results"
+
+export type EvidenceItem = { node: GraphNode; edge: GraphEdge }
+
+export type EvidenceGroup = { kind: EvidenceKind; items: EvidenceItem[] }
 
 /**
  * Downstream impact: every node reachable by following `sequence`/`produces`/`writes` edges
@@ -331,166 +364,60 @@ export function downstreamForks(model: GraphViewData, from: string): DownstreamF
       if (edge.source !== id || !downstreamKinds.has(edge.kind) || targets.has(edge.target)) continue
 
       const target = nodes.get(edge.target)
-
       if (!target) continue
 
       targets.add(edge.target)
       branches.push({ node: target, edge, confidence: edge.confidence })
     }
 
-    if (branches.length > 1) forks.push({ node, branches })
+    if (branches.length >= 2) {
+      forks.push({ node, branches })
+    }
   }
 
   return forks
 }
 
-/** The groups an evidence panel shows, in reading order. */
-export type EvidenceKind = "tools" | "files" | "results"
-
-/** One node that supports a claim, with the edge that connects it. */
-export type EvidenceItem = { node: GraphNode; edge: GraphEdge }
-
-/** Evidence for a claim, grouped by what the supporting node is. */
-export type EvidenceGroup = { kind: EvidenceKind; items: EvidenceItem[] }
-
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
-const EVIDENCE_EDGE_KINDS = new Set<GraphEdge["kind"]>([
-  "evidence",
-  "produces",
-  "writes",
-  "reads",
-  "searches",
-  "references",
-  "covers",
-  "executes",
-])
-
-const evidenceKindOf = (node: GraphNode): EvidenceKind | undefined => {
-  if (node.kind === "tool" || node.kind === "subagent") return "tools"
-
-  if (
-    node.kind === "file" ||
-    node.kind === "directory" ||
-    node.kind === "package" ||
-    node.kind === "commit" ||
-    node.kind === "branch"
-  )
-    return "files"
-
-  if (
-    node.kind === "result" ||
-    node.kind === "error" ||
-    node.kind === "test-run" ||
-    node.kind === "test" ||
-    node.kind === "issue"
-  )
-    return "results"
-
-  return undefined
-}
-
 /**
- * The tool calls, files, and results that support a claim, grouped for the inspector. A claim's
- * direct causal parents are evidence; when a parent is a tool, its own produced, written, and read
- * facts join the panel one hop out. The first edge that reaches a node wins, so model order decides
- * confidence and ties stay stable.
+ * The evidence behind a claim node. The claim's incident edges name the tools, files, and results
+ * the reader cites; the function groups them by kind and returns one group per kind with items.
  */
 export function evidenceFor(model: GraphViewData, claimID: string): EvidenceGroup[] {
-  const nodes = nodeIndex(model)
-  const claim = nodes.get(claimID)
-
+  const claim = lookupNode(model, claimID)
   if (!claim) return []
 
-  const groups: Record<EvidenceKind, Map<string, EvidenceItem>> = {
-    tools: new Map(),
-    files: new Map(),
-    results: new Map(),
-  }
-
-  const add = (node: GraphNode, edge: GraphEdge) => {
-    const kind = evidenceKindOf(node)
-
-    if (!kind || node.id === claimID) return
-
-    const group = groups[kind]
-
-    if (!group.has(node.id)) group.set(node.id, { node, edge })
-  }
+  const byKind = new Map<EvidenceKind, EvidenceItem[]>()
 
   for (const edge of model.edges) {
-    if (edge.target !== claimID || !EVIDENCE_EDGE_KINDS.has(edge.kind)) continue
+    if (edge.source !== claimID && edge.target !== claimID) continue
 
-    const source = nodes.get(edge.source)
+    const otherID = edge.source === claimID ? edge.target : edge.source
+    const other = lookupNode(model, otherID)
+    if (!other) continue
 
-    if (!source) continue
+    let kind: EvidenceKind | undefined
 
-    add(source, edge)
+    if (other.kind === "tool") kind = "tools"
+    else if (other.kind === "file" || other.kind === "diff" || other.kind === "directory") kind = "files"
+    else if (other.kind === "result" || other.kind === "test" || other.kind === "test-run") kind = "results"
 
-    if (evidenceKindOf(source) !== "tools") continue
+    if (!kind) continue
 
-    for (const product of model.edges) {
-      if (product.source !== source.id || !EVIDENCE_EDGE_KINDS.has(product.kind)) continue
-
-      const node = nodes.get(product.target)
-
-      if (node) add(node, product)
-    }
+    const items = byKind.get(kind) ?? []
+    items.push({ node: other, edge })
+    byKind.set(kind, items)
   }
 
-  for (const edge of model.edges) {
-    if (edge.source !== claimID || !EVIDENCE_EDGE_KINDS.has(edge.kind)) continue
+  const result: EvidenceGroup[] = []
 
-    const node = nodes.get(edge.target)
-
-    if (node) add(node, edge)
+  for (const [kind, items] of byKind) {
+    result.push({ kind, items })
   }
 
-  return (["tools", "files", "results"] as const).flatMap((kind) => {
-    const items = [...groups[kind].values()]
-
-    return items.length > 0 ? [{ kind, items }] : []
-  })
+  return result
 }
 
-const dataString = (value: JsonValue | undefined) => Option.getOrUndefined(Schema.decodeUnknownOption(Schema.String)(value))
-
-/** The text a search matches against: the label, the summary, and the tool's name, path, and command. */
-export const searchText = (node: GraphNode) =>
-  [
-    node.label,
-    node.summary,
-    dataString(node.data?.name),
-    dataString(node.data?.path),
-    dataString(node.data?.command),
-    node.data?.input ? JSON.stringify(node.data.input) : undefined,
-  ].filter((value): value is string => !!value)
-
-export function search(model: GraphViewData, query: string): GraphNode[] {
-  return navSearch(model, query)
-}
-
-/**
- * A2 — ranked search. The host decides what a match is worth; the kernel orders. The scorer is
- * deliberately coarse: a label prefix beats a label hit, which beats a tool name, a path, and the
- * body. Ties keep model order (the sort is stable), so the same query reads the same every time.
- */
-const rank = (node: GraphNode, needle: string): number => {
-  const label = node.label.toLowerCase()
-    if (label.startsWith(needle)) return 0
-    if (label.includes(needle)) return 1
-
-  const name = dataString(node.data?.name)?.toLowerCase()
-    if (name?.includes(needle)) return 2
-
-  const path = dataString(node.data?.path)?.toLowerCase()
-    if (path?.includes(needle)) return 3
-
-  return searchText(node).join("\n").toLowerCase().includes(needle) ? 4 : -1
-}
-
-export function rankedSearch(model: GraphViewData, query: string): GraphNode[] {
-  return navSearchBy(model, query, rank)
-}
+const READ_KINDS = new Set<EdgeKind>(["reads", "searches", "references"])
 
 export type ChangedFile = {
   id: string
@@ -530,7 +457,7 @@ export function changedFiles(model: GraphViewData): ChangedFile[] {
   }
 
   for (const edge of model.edges) {
-    if (nodes.get(edge.target)?.kind !== "file" || !READ_EDGE_KINDS.has(edge.kind)) continue
+    if (nodes.get(edge.target)?.kind !== "file" || !READ_KINDS.has(edge.kind)) continue
     byID.get(edge.target)?.readers.push(edge.source)
   }
 
@@ -538,18 +465,14 @@ export function changedFiles(model: GraphViewData): ChangedFile[] {
 }
 
 /**
- * Files that were written (have incoming `writes`/`produces` edges) but never verified: no node in
- * a "verify" phase cluster reads them, and no passing verify run follows their last write. These
- * are "unverified writes" — files created or modified without a subsequent passing test or
- * verification run. A write after a passing run goes back to unverified until a run passes again.
+ * Files that were written (have incoming `writes`/`produces` edges) but not read by any
+ * node in a "verify" phase cluster. These are "unverified writes" — files created or
+ * modified without subsequent test/verification runs.
  */
 export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
   const nodes = nodeIndex(model)
-  const position = new Map(model.nodes.map((node, index) => [node.id, index]))
   const byID = new Map<string, ChangedFile>()
   const order: string[] = []
-  const lastWriteAt = new Map<string, number>()
-  let lastVerifiedAt = -1
 
   // Find all "verify" phase nodes
   const verifyPhaseNodes = model.nodes.filter(
@@ -558,17 +481,15 @@ export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
 
   // Collect all node IDs in verify phase clusters
   const verifyClusterNodeIDs = new Set<string>()
-    for (const phase of verifyPhaseNodes) {
+  for (const phase of verifyPhaseNodes) {
     if (phase.clusterOf) {
       for (const id of phase.clusterOf) verifyClusterNodeIDs.add(id)
     }
   }
 
-  // First pass: collect files that were written (have writes/produces edges) and where their
-  // last write sits, so a later passing run can be compared against it.
-  for (let index = 0; index < model.edges.length; index++) {
-    const edge = model.edges[index]
-        if (nodes.get(edge.target)?.kind !== "file") continue
+  // First pass: collect files that were written (have writes/produces edges)
+  for (const edge of model.edges) {
+    if (nodes.get(edge.target)?.kind !== "file") continue
 
     if (edge.kind !== "writes" && edge.kind !== "produces") continue
 
@@ -582,32 +503,19 @@ export function unverifiedFiles(model: GraphViewData): ChangedFile[] {
     }
 
     entry.writers.push(edge.source)
-    // A turn-end diff node is a rollup of writes the turn already made, not a new write: it must
-    // not push a file's last write past the run that verified it.
-        if (nodes.get(edge.source)?.kind !== "diff") {
-      const at = position.get(edge.source) ?? -1
-      lastWriteAt.set(edge.target, Math.max(lastWriteAt.get(edge.target) ?? -1, at))
-    }
-  }
-
-  // A passing verify run verifies every write that came before it.
-  for (const node of model.nodes) {
-    if (node.kind !== "result" || node.status !== "success") continue
-        if (!verifyClusterNodeIDs.has(node.id)) continue
-    lastVerifiedAt = Math.max(lastVerifiedAt, position.get(node.id) ?? -1)
   }
 
   // Second pass: collect readers from verify phase nodes only
   for (const edge of model.edges) {
-    if (nodes.get(edge.target)?.kind !== "file" || !READ_EDGE_KINDS.has(edge.kind)) continue
-        if (!verifyClusterNodeIDs.has(edge.source)) continue
+    if (nodes.get(edge.target)?.kind !== "file" || !READ_KINDS.has(edge.kind)) continue
+    if (!verifyClusterNodeIDs.has(edge.source)) continue
     byID.get(edge.target)?.readers.push(edge.source)
   }
 
-  // Return only files that were written and never verified afterwards
-    return order
+  // Return only files that have writers but no readers from verify phases
+  return order
     .map((id) => byID.get(id)!)
-    .filter((file) => file.writers.length > 0 && file.readers.length === 0 && (lastWriteAt.get(file.id) ?? -1) > lastVerifiedAt)
+    .filter((file) => file.writers.length > 0 && file.readers.length === 0)
 }
 
 /** The message/part a node points back to in the transcript, when it has one. */
@@ -630,11 +538,11 @@ export function failures(model: GraphViewData): Array<{
   turnNumber: number
 }> {
   const turnNumbers = new Map(model.turns.map((id, index) => [id, index + 1]))
-    return model.nodes
+  return model.nodes
     .filter((node) => node.kind === "error" || node.kind === "retry")
     .map((node) => {
       const turnID = node.turnID ?? model.turns[0]
-            return {
+      return {
         node,
         turnID,
         turnLabel: node.turnID ? lookupNode(model, node.turnID)?.label ?? turnID : "Session",
@@ -655,9 +563,21 @@ export function sessionProgress(model: GraphViewData): {
   errors: number
   retries: number
 } {
-  const { filesTouched, toolsRun, errors, retries } = countNodeKinds(model.nodes)
+  const filesTouched = new Set<string>()
+  let toolsRun = 0
+  let errors = 0
+  let retries = 0
 
-    return {
+  for (const node of model.nodes) {
+    if (node.kind === "file" && node.data?.path) {
+      filesTouched.add(node.data.path as string)
+    }
+    if (node.kind === "tool") toolsRun++
+    if (node.kind === "error") errors++
+    if (node.kind === "retry") retries++
+  }
+
+  return {
     turns: model.turns.length,
     filesTouched: filesTouched.size,
     toolsRun,
@@ -699,12 +619,11 @@ export function sessionOutline(model: GraphViewData): Array<{
     const turnNode = turnMap.get(turnID)
     const turnLabel = turnNode?.label ?? `Turn ${turnNumbers.get(turnID)}`
     const turnChildren = children.get(turnID) ?? []
-        const phases = turnChildren
+    const phases = turnChildren
       .map((id) => nodeByID(model, id))
       .filter((node): node is GraphNode => !!node && node.kind === "phase")
       .map((phase) => ({
         id: phase.id,
-        // SAFETY: `category` is always a string when present per GraphPhaseData schema
         category: phase.data?.category as string ?? "unknown",
         label: phase.label,
       }))
@@ -730,9 +649,9 @@ export function subagentContributions(model: GraphViewData): Map<string, { files
 
     while (queue.length > 0) {
       const current = queue.shift()!
-            if (descendantIds.has(current)) continue
+      if (descendantIds.has(current)) continue
       descendantIds.add(current)
-            for (const child of children.get(current) ?? []) queue.push(child)
+      for (const child of children.get(current) ?? []) queue.push(child)
     }
 
     let files = 0
@@ -741,10 +660,10 @@ export function subagentContributions(model: GraphViewData): Map<string, { files
 
     for (const id of descendantIds) {
       const descNode = nodeIndexMap.get(id)
-            if (!descNode) continue
+      if (!descNode) continue
       nodes++
-            if (descNode.kind === "file") files++
-            if (descNode.kind === "tool") tools++
+      if (descNode.kind === "file") files++
+      if (descNode.kind === "tool") tools++
     }
 
     contributions.set(node.id, { files, tools, nodes })
@@ -771,8 +690,8 @@ export function fileRelations(model: GraphViewData): Map<
     if (edge.kind === "reads") current.reads++
     else {
       current.writes++
-            if (edge.data?.additions) current.additions += edge.data.additions
-            if (edge.data?.deletions) current.deletions += edge.data.deletions
+      if (edge.data?.additions) current.additions += edge.data.additions
+      if (edge.data?.deletions) current.deletions += edge.data.deletions
     }
 
     relations.set(edge.target, current)
@@ -780,7 +699,7 @@ export function fileRelations(model: GraphViewData): Map<
 
   // Add totalActivity
   const result = new Map<string, { reads: number; writes: number; additions: number; deletions: number; totalActivity: number }>()
-    for (const [id, rel] of relations) {
+  for (const [id, rel] of relations) {
     result.set(id, { ...rel, totalActivity: rel.reads + rel.writes })
   }
 
@@ -795,6 +714,70 @@ export type TurnStats = {
   errors: number
   retries: number
   durationMs: number
+}
+
+/**
+ * Extended reviewChanges with per-turn stats for the Compare window.
+ */
+export function reviewChanges(before: GraphViewData, after: GraphViewData): {
+  added: readonly string[]
+  removed: readonly string[]
+  changed: readonly string[]
+  turnStats: TurnStats[]
+} {
+  const diff = diffKernels(graphModelToKernel(before), graphModelToKernel(after))
+  const baseChanges = {
+    added: diff.nodes.added.map((node) => node.id),
+    removed: diff.nodes.removed.map((node) => node.id),
+    changed: diff.nodes.changed.map((change) => change.id),
+  }
+
+  // Compute per-turn stats
+  const turnStats: TurnStats[] = []
+  const beforeTurns = new Map(before.turns.map((id, index) => [id, index]))
+  const afterTurns = new Map(after.turns.map((id, index) => [id, index]))
+  const allTurns = new Set([...before.turns, ...after.turns])
+
+  for (const turnID of allTurns) {
+    const beforeTurnEntry = beforeTurns.get(turnID)
+    const afterTurnEntry = afterTurns.get(turnID)
+    const beforeTurn = beforeTurnEntry !== undefined ? beforeTurnEntry : -1
+    const afterTurn = afterTurnEntry !== undefined ? afterTurnEntry : -1
+
+    // If turn exists in both, compute stats
+    if (beforeTurn !== -1 && afterTurn !== -1) {
+      const turnNodes = before.nodes.filter((n) => n.turnID === turnID)
+      const filesTouched = new Set<string>()
+      let toolsRun = 0
+      let errors = 0
+      let retries = 0
+      let minTime = Infinity
+      let maxTime = -Infinity
+
+      for (const node of turnNodes) {
+        if (node.kind === "file" && node.data?.path) filesTouched.add(node.data.path as string)
+        if (node.kind === "tool") toolsRun++
+        if (node.kind === "error") errors++
+        if (node.kind === "retry") retries++
+        if (node.time) {
+          minTime = Math.min(minTime, node.time)
+          maxTime = Math.max(maxTime, node.time)
+        }
+      }
+
+      turnStats.push({
+        turnID,
+        turnNumber: beforeTurn + 1,
+        filesTouched: filesTouched.size,
+        toolsRun,
+        errors,
+        retries,
+        durationMs: maxTime > minTime ? maxTime - minTime : 0,
+      })
+    }
+  }
+
+  return { ...baseChanges, turnStats }
 }
 
 /**

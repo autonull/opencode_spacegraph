@@ -1,4 +1,4 @@
-import type { GraphNode, EdgeKind } from "./model"
+import type { GraphNode } from "./model"
 import type { Lane } from "./layout"
 import type { GraphEdge } from "./model"
 
@@ -124,7 +124,7 @@ export const VOCABULARY_KEYS = {
     port: "ui.sessionGraph.kind.port",
     issue: "ui.sessionGraph.kind.issue",
     note: "ui.sessionGraph.kind.note",
-    // Group kinds for fractal unfold (Phase 4.5)
+    // Group kinds (P4.2 — progressive disclosure groups)
     "file-group": "ui.sessionGraph.kind.fileGroup",
     "error-group": "ui.sessionGraph.kind.errorGroup",
     "subagent-group": "ui.sessionGraph.kind.subagentGroup",
@@ -218,7 +218,7 @@ export const NODE_KINDS = [
   "issue",
   // C1 — reader-authored note (a node like any other).
   "note",
-  // Group kinds for fractal unfold (Phase 4.5) — RESERVED: not yet created by builders
+  // Group kinds (P4.2 — progressive disclosure groups)
   "file-group",
   "error-group",
   "subagent-group",
@@ -265,7 +265,7 @@ export const DOMAIN_OF_KIND: Record<NodeKind, Domain> = {
   port: "runtime",
   issue: "work",
   note: "session",
-  // Group kinds for fractal unfold
+  // Group kinds (P4.2 — progressive disclosure groups)
   "file-group": "session",
   "error-group": "session",
   "subagent-group": "session",
@@ -299,49 +299,24 @@ export const PHASE_LABELS: Record<PhaseCategory, string> = {
  */
 export const STRUCTURAL_KINDS: ReadonlySet<NodeKind> = new Set(["session", "turn", "phase", "error", "retry"])
 
-/**
- * Edge kinds that represent provenance (file activity). Used to trace why a file changed.
- * These are the edges that connect tools to files.
- */
-export const PROVENANCE_EDGE_KINDS: ReadonlySet<EdgeKind> = new Set([
-  "writes",
-  "reads",
-  "produces",
-  "searches",
-  "compacts",
-  "evidence",
-])
-
-/**
- * Edge kinds that represent reading a file (as opposed to writing).
- * Used for the changed-files rail to find readers of a file.
- */
-export const READ_EDGE_KINDS: ReadonlySet<EdgeKind> = new Set(["reads", "searches", "references"])
-
 /** The tools that delegate work to another agent. */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 export const SUBAGENT_TOOLS = new Set(["subagent", "task"])
 
 /** The tools that run a command. */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 export const SHELL_TOOLS = new Set(["shell", "execute", "bash"])
 
 /** The tools that search the workspace. */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 export const SEARCH_TOOLS = new Set(["glob", "grep", "list"])
 
-/** The tools that change a file or task state. */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
-export const EDIT_TOOLS = new Set(["edit", "write", "patch", "apply_patch", "todowrite"])
+/** The tools that change a file. */
+export const EDIT_TOOLS = new Set(["edit", "write", "patch", "apply_patch"])
 
 /** The tools that read a file. */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 export const READ_TOOLS = new Set(["read", "glob", "grep", "list", "webfetch"])
 
 /**
  * How the map is drawn. The layout strategies are the session's policy over the library's
- * geometries, so the vocabulary names them all in one place. The optional strategies are
- * deterministic session-local arrangements; a host exposes them only when its preference agrees.
+ * geometries, so the vocabulary names them all in one place.
  */
 export const CORE_LAYOUT_STRATEGIES = ["lanes", "timeline", "hierarchy", "tree", "force"] as const
 
@@ -359,10 +334,6 @@ export const SUMMARY_LAYOUTS = ["ribbon", "matrix"] as const
 
 export type SummaryLayout = (typeof SUMMARY_LAYOUTS)[number]
 
-/** O(1) summary layout lookup. */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
-const SUMMARY_LAYOUT_SET = new Set(SUMMARY_LAYOUTS)
-
 /**
  * T17.1 — one layout axis. The node-link strategies and the session's summary layouts answer the
  * same question — how are the nodes arranged — so they are one list, chosen the same way, and the
@@ -374,7 +345,7 @@ export type Layout = (typeof LAYOUTS)[number]
 
 /** Whether a layout is a summary: the session's own grammar, not the library's node-link geometry. */
 export function isSummaryLayout(layout: Layout): layout is SummaryLayout {
-    return SUMMARY_LAYOUT_SET.has(layout as SummaryLayout)
+  return (SUMMARY_LAYOUTS as readonly Layout[]).includes(layout)
 }
 
 /** Whether a layout is the log layout: the session's reading order as a vertical spine. */
@@ -384,7 +355,7 @@ export function isLogLayout(layout: Layout): layout is "log" {
 
 /** Whether a layout is a summary or log layout (host-level geometry, not node-link). */
 export function isSummaryOrLogLayout(layout: Layout): layout is SummaryLayout | "log" {
-    return SUMMARY_LAYOUT_SET.has(layout as SummaryLayout) || layout === "log"
+  return isSummaryLayout(layout) || isLogLayout(layout)
 }
 
 /** Where a selected node's detail is shown. The modes are alternatives, not stages. */
@@ -421,51 +392,6 @@ export const CARD_SIZE: readonly [number, number] = [220, 72]
 
 /** The box a structural chip occupies (session, turn, phase, error, retry). */
 export const COMPACT_SIZE: readonly [number, number] = [132, 44]
-
-/** Horizontal distance between hierarchy levels (indentation step). */
-export const LAYOUT_INDENT_STEP = 120
-
-/** Extra room around a turn column. */
-export const LAYOUT_PADDING = 48
-
-/**
- * Shape each node kind renders as. Structural kinds are compact panels; activity kinds are DOM cards.
- * This is the single source of truth for the renderer contract — layout.ts and the adapter both read it.
- */
-export const NODE_SHAPE: Record<NodeKind, "panel" | "card" | "badge"> = {
-  session: "panel",
-  turn: "card",
-  phase: "card",
-  message: "card",
-  reasoning: "panel",
-  tool: "card",
-  file: "card",
-  directory: "card",
-  subagent: "card",
-  result: "card",
-  error: "badge",
-  retry: "badge",
-  compaction: "panel",
-  notice: "panel",
-  diff: "card",
-  // T19-T26 derived kinds
-  package: "card",
-  commit: "card",
-  branch: "card",
-  symbol: "card",
-  test: "card",
-  "test-run": "card",
-  process: "card",
-  port: "card",
-  issue: "card",
-  note: "card",
-  // Group kinds for fractal unfold (Phase 4.5)
-  "file-group": "card",
-  "error-group": "card",
-  "subagent-group": "card",
-  "compaction-group": "card",
-  "facet-group": "card",
-} as const
 
 /** T30.1 — a node's domain, unless the snapshot placed it elsewhere (an untouched file). */
 export function nodeDomain(node: GraphNode): Domain {

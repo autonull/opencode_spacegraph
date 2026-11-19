@@ -206,6 +206,12 @@
       "rules": {
         "no-restricted-imports": "off"
       }
+    },
+    {
+      "files": ["packages/gui-plugins/src/spacegraph/internal/graph/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ],
   "ignorePatterns": [

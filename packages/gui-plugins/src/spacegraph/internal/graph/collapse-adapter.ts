@@ -43,15 +43,15 @@ export const collapseGroups = (
   model: SessionGraphViewData,
   collapsed: ReadonlySet<string>,
 ): SessionGraphViewData => {
-    return kernelCollapseGroups(model as unknown as KernelGraphViewData, collapsed) as unknown as SessionGraphViewData;
+  return kernelCollapseGroups(model as unknown as KernelGraphViewData, collapsed) as unknown as SessionGraphViewData;
 };
 
 /** Check if a node is a group (has clusterOf members). Delegates to @spacegraphjs/kernel. */
 export const isGroup = (node: SessionGraphNode): boolean => {
-    return kernelIsGroup(node as unknown as KernelGraphNode);
+  return kernelIsGroup(node as unknown as KernelGraphNode);
 };
 
 /** Get all group node IDs from the model. Delegates to @spacegraphjs/kernel. */
 export const getGroupIds = (model: SessionGraphViewData): readonly string[] => {
-    return kernelGetGroupIds(model as unknown as KernelGraphViewData);
+  return kernelGetGroupIds(model as unknown as KernelGraphViewData);
 };

@@ -20,14 +20,14 @@ export const zoomModel = (
   const expanded =
     expansion === undefined
       ? undefined
-            : typeof expansion === "function"
+      : typeof expansion === "function"
         ? (node: Node) => expansion(toGraphNode(node))
         : expansion
-    const zoomed = deriveZoom(graphModelToKernel(model), {
+  const zoomed = deriveZoom(graphModelToKernel(model), {
     levelOf: (node) => toGraphNode(node).minLevel ?? "detail",
     rank: ZOOM_RANK,
     level,
     expansion: expanded,
   })
-    return toGraphView(zoomed, graphViewMeta(model))
+  return toGraphView(zoomed, graphViewMeta(model))
 }

@@ -77,7 +77,7 @@ export const applyNodeBudget = (
   budget: VisibilityBudget = DEFAULT_BUDGET,
 ): GraphViewData => {
   if (model.nodes.length <= budget.maxNodes) return model
-    return toGraphView(budgetKernel(graphModelToKernel(model), budget), graphViewMeta(model))
+  return toGraphView(budgetKernel(graphModelToKernel(model), budget), graphViewMeta(model))
 }
 
 /**
@@ -90,7 +90,7 @@ export const degreeBudget = (
 ): VisibilityBudget => {
   const relations = fileRelations(model)
   const hub = Math.max(0, ...[...relations.values()].map((relation) => relation.reads + relation.writes))
-    return {
+  return {
     ...DEFAULT_BUDGET,
     weights: {
       ...DEFAULT_BUDGET.weights,

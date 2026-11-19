@@ -23,9 +23,9 @@ export type RendererStrategyOptions = {
  */
 export function chooseRendererStrategy(nodeCount: number, options: RendererStrategyOptions = {}): RendererStrategy {
   if (nodeCount < RENDERER_STRATEGY_THRESHOLDS.preview) return "svg-preview"
-    if (nodeCount <= RENDERER_STRATEGY_THRESHOLDS.canvas) return "spacegraph"
-    if (options.cytoscape) return "cytoscape"
-    return "spacegraph"
+  if (nodeCount <= RENDERER_STRATEGY_THRESHOLDS.canvas) return "spacegraph"
+  if (options.cytoscape) return "cytoscape"
+  return "spacegraph"
 }
 
 /** Map the policy onto the renderer ids the canvas registry can mount. */

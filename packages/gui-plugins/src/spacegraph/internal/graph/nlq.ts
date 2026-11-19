@@ -83,11 +83,11 @@ function mergeSynonyms<T extends string>(
   if (!extra) return base
 
   const merged: Record<T, readonly string[]> = { ...base }
-    for (const value of validValues) {
+  for (const value of validValues) {
     const words = extra[value]
-        if (words?.length) merged[value] = [...new Set([...(base[value] ?? []), ...words])]
+    if (words?.length) merged[value] = [...new Set([...(base[value] ?? []), ...words])]
   }
-    return merged
+  return merged
 }
 
 function matchSynonyms<T extends string>(
@@ -102,10 +102,10 @@ function matchSynonyms<T extends string>(
 
   for (const canonical of validValues) {
     const alts = synonyms[canonical]
-        if (!alts) continue
-        for (const alt of alts) {
+    if (!alts) continue
+    for (const alt of alts) {
       let tokenMatched = false
-            for (const t of tokens) {
+      for (const t of tokens) {
         if (options?.exactOnly) {
           if (t === alt) {
             tokenMatched = true
@@ -120,15 +120,15 @@ function matchSynonyms<T extends string>(
           }
         }
       }
-            if (tokenMatched || tokenSet.has(alt)) {
+      if (tokenMatched || tokenSet.has(alt)) {
         matched.push(canonical)
-                if (tokenSet.has(alt)) matchedTokens.push(alt)
+        if (tokenSet.has(alt)) matchedTokens.push(alt)
         break
       }
     }
   }
 
-    return { matches: [...new Set(matched)], matchedTokens: [...new Set(matchedTokens)] }
+  return { matches: [...new Set(matched)], matchedTokens: [...new Set(matchedTokens)] }
 }
 
 function extractFreeText(tokens: string[], consumed: Set<string>): string {
@@ -157,16 +157,16 @@ export function compileNLQ(input: string, options: NLQOptions = {}): GraphFacets
   const domains = new Set<Domain>(["session"])
 
   const { matches: kindMatches, matchedTokens: kindTokens } = matchSynonyms(remainingTokens, kindSynonyms, NODE_KINDS)
-    for (const k of kindMatches) kinds.add(k)
-    for (const t of kindTokens) consumed.add(t)
+  for (const k of kindMatches) kinds.add(k)
+  for (const t of kindTokens) consumed.add(t)
 
   const { matches: statusMatches, matchedTokens: statusTokens } = matchSynonyms(remainingTokens, statusSynonyms, NODE_STATUSES, { exactOnly: true })
-    for (const s of statusMatches) statuses.add(s)
-    for (const t of statusTokens) consumed.add(t)
+  for (const s of statusMatches) statuses.add(s)
+  for (const t of statusTokens) consumed.add(t)
 
   const { matches: domainMatches, matchedTokens: domainTokens } = matchSynonyms(remainingTokens, domainSynonyms, DOMAINS)
-    for (const d of domainMatches) domains.add(d)
-    for (const t of domainTokens) consumed.add(t)
+  for (const d of domainMatches) domains.add(d)
+  for (const t of domainTokens) consumed.add(t)
 
   const query = extractFreeText(remainingTokens, consumed)
 
@@ -175,6 +175,12 @@ export function compileNLQ(input: string, options: NLQOptions = {}): GraphFacets
     kinds,
     statuses,
     domains,
+    failedTools: false,
+    fileWrites: false,
+    subagentCalls: false,
+    errors: false,
+    retries: false,
+    costlyNodes: false,
   }
 }
 
@@ -182,9 +188,9 @@ export function formatNLQResult(facets: GraphFacets): string {
   const parts: string[] = []
 
   if (facets.query) parts.push(facets.query)
-    if (facets.kinds.size > 0) parts.push(`kind:${[...facets.kinds].join(",")}`)
-    if (facets.statuses.size > 0) parts.push(`status:${[...facets.statuses].join(",")}`)
-    if (facets.domains.size > 0 && facets.domains.size < DOMAINS.length) {
+  if (facets.kinds.size > 0) parts.push(`kind:${[...facets.kinds].join(",")}`)
+  if (facets.statuses.size > 0) parts.push(`status:${[...facets.statuses].join(",")}`)
+  if (facets.domains.size > 0 && facets.domains.size < DOMAINS.length) {
     parts.push(`domain:${[...facets.domains].join(",")}`)
   }
 
@@ -194,5 +200,5 @@ export function formatNLQResult(facets: GraphFacets): string {
 export function parseNLQ(input: string, options: NLQOptions = {}): { facets: GraphFacets; queryString: string } {
   const facets = compileNLQ(input, options)
   const queryString = formatNLQResult(facets)
-    return { facets, queryString }
+  return { facets, queryString }
 }

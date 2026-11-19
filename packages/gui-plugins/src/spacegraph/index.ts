@@ -43,6 +43,17 @@ const WidgetPreferences = Schema.Struct({
   permissionPrompt: Schema.optional(Schema.Boolean),
 })
 
+/** Persisted capability gates. Absent means on, so the fork keeps every capability available. */
+const CapabilitiesSchema = Schema.Struct({
+  timeTravel: Schema.optional(Schema.Boolean),
+  costLens: Schema.optional(Schema.Boolean),
+  compactionAdvisor: Schema.optional(Schema.Boolean),
+  palette: Schema.optional(Schema.Boolean),
+  attention: Schema.optional(Schema.Boolean),
+  layoutBreadth: Schema.optional(Schema.Boolean),
+})
+export type Capabilities = Schema.Schema.Type<typeof CapabilitiesSchema>
+
 /** Full SpacegraphPreferences schema for Phase 18 (used for lens definitions and settings). */
 export const SpacegraphPreferences = Schema.Struct({
   /** Active lens ID (builtin or user-defined). */
@@ -234,6 +245,7 @@ const State = Schema.Struct({
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
   detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
+  logTextScale: Schema.optional(Schema.Number),
   turnMap: Schema.optional(Schema.Boolean),
   surface: Schema.optional(Schema.String),
   /** Parked time-travel checkpoint (zero-based turn index); absent means live. */
@@ -269,6 +281,7 @@ const Prefs = Schema.Struct({
   arrangement: Schema.optional(Schema.Literals(GRAPH_ARRANGEMENTS)),
   side: Schema.optional(Schema.Literals(GRAPH_SIDES)),
   detailMode: Schema.optional(Schema.Literals(DETAIL_MODES)),
+  logTextScale: Schema.optional(Schema.Number),
   // Phase 18 additions
   lens: Schema.optional(Schema.String),
   surfaces: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
@@ -276,6 +289,7 @@ const Prefs = Schema.Struct({
   renderer: Schema.optional(Schema.Unknown),
   budgets: Schema.optional(Schema.Unknown),
   widgets: Schema.optional(WidgetPreferences),
+  capabilities: Schema.optional(CapabilitiesSchema),
   i18n: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   userLenses: Schema.optional(Schema.Array(LensDefinition)),
 })

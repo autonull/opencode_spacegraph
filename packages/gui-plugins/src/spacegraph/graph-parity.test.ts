@@ -108,7 +108,7 @@ describe("bundled graph parity", () => {
     expect(bundled.unverifiedFiles(fixture), "unverifiedFiles").toEqual(source.unverifiedFiles(fixture))
   })
 
-  test("reviews changes identically, including per-turn stats", () => {
+  test("reviews changes identically", () => {
     const before = source.buildFixtureGraph()
 
     const after: GraphViewData = { ...before, nodes: before.nodes.filter((_, index) => index !== 3) }
@@ -116,7 +116,7 @@ describe("bundled graph parity", () => {
     const expected = source.reviewChanges(before, after)
 
     expect(bundled.reviewChanges(before, after)).toEqual(expected)
-    expect(expected.turnStats?.length ?? 0).toBeGreaterThan(0)
+    expect(expected.removed.length).toBeGreaterThan(0)
   })
 
   test("projects the review model identically", () => {

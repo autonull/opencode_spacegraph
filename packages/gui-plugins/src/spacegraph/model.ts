@@ -1,6 +1,4 @@
-import { createMemo, createSignal } from "solid-js"
-// Graph flags default on in local/dev builds; keep the fork capabilities available.
-const graphFlagEnabled = (_key: string) => true
+import { createMemo, createRoot, createSignal } from "solid-js"
 import { createMediaQuery } from "@solid-primitives/media"
 import type { MountedSession, SetupContext } from "@opencode/plugin/gui"
 import {
@@ -23,7 +21,7 @@ import {
   type SavedQuery,
   type ZoomLevel,
   type DetailMode,
-  buildGraphIncremental,
+  buildGraph,
   captureTimeTravel,
   graphAtCheckpoint,
   layoutGraph,
@@ -32,17 +30,16 @@ import {
   type GraphViewData,
   type GraphFacets,
   type PaletteSources,
-  type IncrementalBuilderState,
   type TimeTravelSnapshot,
   type Annotations,
   type CardDensity,
-  type WorkspaceSnapshot,
 } from "./internal/graph"
+import type { WorkspaceSnapshot } from "@opencode/client/promise"
 import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 import { computeFocusOverlay, getFocusOpacity } from "@spacegraphjs/overlays"
 import { BUILTIN_LENSES } from "./index"
 import type definition from "./index"
-import type { State } from "./index"
+import type { Capabilities, State } from "./index"
 
 function next<T>(values: readonly T[], current: T) {
   const index = values.indexOf(current)
@@ -62,8 +59,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const sessionValue = (session: MountedSession) => store(session).value as State
   const prefValue = () => prefs.value
 
-  /** Incremental graph builder state per session. */
-  const graphState = new Map<string, { builderState: IncrementalBuilderState; layout: GraphLayout }>()
+  /** Layout state per session; positions carry the previous frame into the next build. */
+  const graphState = new Map<string, { layout: GraphLayout }>()
 
   /** Bounded per-session checkpoints for the time-travel scrubber. */
   const timeTravel = new Map<string, TimeTravelSnapshot[]>()
@@ -71,18 +68,13 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const [snapshotVersion, setSnapshotVersion] = createSignal(0)
   const workspaceSnapshots = new Map<string, WorkspaceSnapshot>()
   const workspaceRequested = new Set<string>()
-
-  const timeTravelEnabled = () => graphFlagEnabled("graph_time_travel")
-
-  const costLensEnabled = () => graphFlagEnabled("graph_cost_lens")
-
-  const compactionAdvisorEnabled = () => graphFlagEnabled("graph_compaction_advisor")
-
-  const paletteEnabled = () => graphFlagEnabled("graph_palette")
-
-  const attentionEnabled = () => graphFlagEnabled("graph_attention")
-
-  const layoutBreadthEnabled = () => graphFlagEnabled("graph_layout_breadth")
+  const capability = (key: keyof Capabilities) => prefValue().capabilities?.[key] ?? true
+  const timeTravelEnabled = () => capability("timeTravel")
+  const costLensEnabled = () => capability("costLens")
+  const compactionAdvisorEnabled = () => capability("compactionAdvisor")
+  const paletteEnabled = () => capability("palette")
+  const attentionEnabled = () => capability("attention")
+  const layoutBreadthEnabled = () => capability("layoutBreadth")
 
   /** The layouts the toolbar offers: optional arrangements need the flag and stay out otherwise. */
   const availableLayouts = (): readonly Layout[] =>
@@ -149,7 +141,9 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
   const graph = (session: MountedSession) => {
     const cached = graphMemos.get(session.id)
     if (cached) return cached
-    const memo = createMemo<GraphViewData>(() => {
+    // The memo is cached per session and shared by surfaces. Keep it in a persistent root so a
+    // surface remount cannot dispose it: a disposed memo would miss the snapshot arriving later.
+    const memo = createRoot(() => createMemo<GraphViewData>(() => {
       snapshotVersion()
       const status: { type: "busy" | "idle" } =
         session.server.data.session.status(session.id) === "running" ? { type: "busy" } : { type: "idle" }
@@ -168,14 +162,11 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
           .catch(() => undefined)
       }
 
-      const { graph: builtGraph, state } = buildGraphIncremental({
+      const builtGraph = buildGraph({
         messages: session.server.data.session.message.list(session.id),
         status,
-        snapshot: workspaceSnapshots.get(key) ?? prev?.builderState?.snapshot,
-        sessionID: prev?.builderState.sessionID,
-        lineage: prev?.builderState.lineage,
-        diffByTurn: prev?.builderState.diffByTurn,
-        previousState: prev?.builderState,
+        snapshot: workspaceSnapshots.get(key),
+        sessionID: session.id,
       })
 
       // Compute incremental layout preserving previous positions
@@ -184,14 +175,14 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         previous: prev?.layout?.positions,
       })
 
-      // Store the new state for next incremental update
-      graphState.set(key, { builderState: state, layout })
+      // Store the new layout for the next build
+      graphState.set(key, { layout })
 
       // Phase 19.4: capture the new turn checkpoints while the model still describes that turn.
       if (timeTravelEnabled()) timeTravel.set(key, captureTimeTravel(builtGraph, timeTravel.get(key)))
 
       return builtGraph
-    })
+    }))
     graphMemos.set(session.id, memo)
     return memo
   }
@@ -367,6 +358,12 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
     setDetailMode: (session: MountedSession, detailMode: DetailMode) => {
       store(session).update((draft) => {
         draft.detailMode = detailMode
+      })
+    },
+    logTextScale: (session: MountedSession) => sessionValue(session)?.logTextScale ?? prefValue().logTextScale ?? 1,
+    setLogTextScale: (session: MountedSession, scale: number) => {
+      store(session).update((draft) => {
+        draft.logTextScale = scale
       })
     },
     arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "side",

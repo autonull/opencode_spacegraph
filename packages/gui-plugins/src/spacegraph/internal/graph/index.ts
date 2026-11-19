@@ -24,7 +24,6 @@ export {
   type GraphSnapshotMeta,
   type Provenance,
   type SnapshotSource,
-  type WorkspaceSnapshot,
   type NodeKind,
   type NodeStatus,
   type PhaseCategory,
@@ -40,81 +39,105 @@ export {
   workspaceDeriver,
   workspaceDerivers,
   WORKSPACE_STAGES,
+  createMessageToTurnProjection,
   type BuildGraphInput,
   type BuildSessionInput,
-  type IncrementalBuildGraphInput,
   type WorkspaceStage,
 } from "./build"
 
 export {
-  IncrementalGraphBuilder,
-  type IncrementalBuilderState,
-} from "./incremental-builder"
-
-export {
-  DEFAULT_GRAPH_LABELS,
-  resolveGraphLabels,
-  type GraphLabels,
-} from "./labels"
-
-export {
-  TIME_TRAVEL_LIMIT,
-  captureTimeTravel,
-  graphAtCheckpoint,
-  type TimeTravelSnapshot,
-} from "./time-travel"
-
-export {
   CARD_SIZE,
-  COMPACT_SIZE,
-  CORE_LAYOUT_STRATEGIES,
-  DETAIL_MODES,
   DOMAINS,
   DOMAIN_OF_KIND,
+  nodeDomain,
+  COMPACT_SIZE,
+  DETAIL_MODES,
   GRAPH_ARRANGEMENTS,
   GRAPH_MODES,
   GRAPH_SIDES,
   LAYOUTS,
   LAYOUT_STRATEGIES,
-  LAYOUT_INDENT_STEP,
-  LAYOUT_PADDING,
-  NODE_KINDS,
-    NODE_SHAPE,
-  NODE_STATUSES,
   OPTIONAL_LAYOUT_STRATEGIES,
+  NODE_KINDS,
+  NODE_STATUSES,
   PHASE_CATEGORIES,
   PHASE_LABELS,
-  PROVENANCE_EDGE_KINDS,
-  READ_EDGE_KINDS,
   STRUCTURAL_KINDS,
   SUMMARY_LAYOUTS,
   ZOOM_LEVELS,
-  VOCABULARY_KEYS,
-  EDIT_TOOLS,
   isSummaryLayout,
   isLogLayout,
   isSummaryOrLogLayout,
+  type DepthMode,
   type DetailFraming,
   type Domain,
   type DetailMode,
-  type DepthMode,
   type GraphArrangement,
   type GraphSide,
   type Layout,
   type LayoutStrategy,
   type SummaryLayout,
+  VOCABULARY_KEYS,
+  EDIT_TOOLS,
 } from "./vocabulary"
 
 export { nodeIndex, lookupNode, childIndex } from "./lookup"
 
 export { scopeModel } from "./view"
-export { collapseGroups, isGroup, getGroupIds } from "./collapse-adapter"
+export { collapseGroups } from "./collapse"
 export {
   noteNodeID,
   withAnnotations,
   type Annotation,
   type Annotations,
-} from "./annotations-adapter"
+} from "./annotations"
+export {
+  paletteEntries,
+  paletteGroup,
+  type PaletteAction,
+  type PaletteLens,
+  type PaletteSurface,
+  type PaletteSources,
+  type PaletteEntryKind,
+  type PaletteEntry,
+  PALETTE_GROUP_ORDER,
+  PALETTE_NODE_LIMIT,
+} from "./palette-adapter"
+export {
+  classifyTrace,
+  traceWhy,
+  traceLedHere,
+  traceRelated,
+  traceDownstream,
+  litNodeIds,
+  isLit,
+  isAnswer,
+  isEdgeVisible,
+  isAnswerEdge,
+  stepLitNode,
+  copyTraceAsOutline,
+  type TraceKind,
+  type TraceOverlay,
+} from "./trace-adapter"
+export {
+  applySubLayouts,
+} from "./sub-layout"
+export {
+  analyzeCompaction,
+  filterByCompactionPriority,
+  getCompactionSummary,
+  measureCompaction,
+  type CompactionAnalysis,
+  type CompactionNode,
+} from "./compaction"
+export {
+  isSavedQuery,
+  removeQuery,
+  normalizeSavedQueries,
+  savedQueryFacets,
+  defaultSavedQueryLabel,
+  type SavedQuery,
+} from "./saved-queries-adapter"
 
 export {
   buildFixtureGraph,
@@ -122,39 +145,10 @@ export {
   buildFixtureMessages,
   buildFixtureSnapshot,
   buildInterruptedFixtureMessages,
-  buildNarrativeFixtureGraph,
-  buildNarrativeFixtureMessages,
-  buildNarrativeSnapshot,
   CHANGED_FILES,
   FIXTURE_BASE_TIME,
   fixtureMessages,
-  narrativeAnnotations,
-  narrativeFixtureMessages,
-  narrativePins,
 } from "./fixture"
-
-export {
-  cohortEntry,
-  emptyStudyCounters,
-  formatStudy,
-  isStudyCohort,
-  MAX_STUDY_ANSWERS,
-  normalizeStudyCounters,
-  recordAnswer,
-  recordInlineToggle,
-  recordLensSwitch,
-  recordSurfaceOpen,
-  recordWhy,
-  STUDY_COHORTS,
-  STUDY_TASKS,
-  summarizeStudy,
-  type CohortEntry,
-  type StudyAnswer,
-  type StudyCohort,
-  type StudyCounters,
-  type StudySummary,
-  type StudyTask,
-} from "./study"
 
 export {
   ancestors,
@@ -162,7 +156,6 @@ export {
   changedFiles,
   failures,
   fileRelations,
-  forwardChain,
   incoming,
   neighbors,
   neighborStep,
@@ -174,46 +167,29 @@ export {
   searchText,
   sessionProgress,
   sessionOutline,
-  shortestPath,
   subagentContributions,
   subagentSubgraph,
   subtree,
   turnSubgraph,
   unverifiedFiles,
   why,
-  downstreamChain,
-  downstreamForks,
-  evidenceFor,
-  type DownstreamStep,
-  type DownstreamFork,
-  type EvidenceKind,
-  type EvidenceItem,
-  type EvidenceGroup,
   type ChangedFile,
   type Subgraph,
   type TranscriptRef,
   type TurnStats,
 } from "./selectors"
 
-export {
-  classifyTrace,
-  traceWhy,
-  traceLedHere,
-  traceRelated,
-  traceDownstream,
-  litNodeIds,
-  stepLitNode,
-  copyTraceAsOutline,
-  isLit,
-  isAnswer,
-  isEdgeVisible,
-  isAnswerEdge,
-  type TraceKind,
-  type TraceOverlay,
-} from "./trace-adapter"
-
 export { reviewChanges, reviewModel, type ReviewChanges } from "./review"
 export { PROFILE_PRESETS, applyProfile, type ProfileID, type ProfilePreset } from "./profiles"
+export {
+  costLens,
+  tokenTotal,
+  turnCost,
+  type CostTokens,
+  type TurnCost,
+  type SessionCost,
+  type CostLens,
+} from "./cost"
 export {
   applyFacets,
   composeScopes,
@@ -226,73 +202,43 @@ export {
   type FacetCount,
   type FacetCounts,
   type GraphFacets,
-} from "./facets-adapter"
-export { compileNLQ, formatNLQResult, parseNLQ, type NLQDictionaries, type NLQOptions } from "./nlq"
-export {
-  isSavedQuery,
-  MAX_SAVED_QUERIES,
-  normalizeSavedQueries,
-  removeQuery,
-  saveQuery,
-  savedQueryFacets,
-  type SavedQuery,
-} from "./saved-queries-adapter"
-export { attention, type Attention, type AttentionTone } from "./attention"
-export {
-  paletteEntries,
-  paletteGroup,
-  PALETTE_GROUP_ORDER,
-  PALETTE_NODE_LIMIT,
-  type PaletteAction,
-  type PaletteEntry,
-  type PaletteEntryKind,
-  type PaletteLens,
-  type PaletteSources,
-  type PaletteSurface,
-} from "./palette-adapter"
-export {
-  canvasRendererFor,
-  chooseRendererStrategy,
-  RENDERER_STRATEGY_THRESHOLDS,
-  type RendererStrategy,
-  type RendererStrategyOptions,
-} from "./renderer-strategy-adapter"
-export {
-  analyzeCompaction,
-  estimateNodeTokens,
-  filterByCompactionPriority,
-  getCompactionSummary,
-  measureCompaction,
-  type CompactionAnalysis,
-  type CompactionMeasurement,
-  type CompactionNode,
-  type CompactionPriority,
-} from "./compaction"
-export {
-  clearAllSpatialMemory,
-  clearSpatialMemory,
-  decodeSpatialMemory,
-  graphContentHash,
-  readSpatialMemory,
-  spatialMemoryKey,
-  writeSpatialMemory,
-  SPATIAL_MEMORY_PREFIX,
-  type SpatialMemoryCamera,
-  type SpatialMemoryKey,
-  type SpatialMemoryRecord,
-  type SpatialMemoryStore,
-} from "./memory-adapter"
+} from "./facets"
 export { ZOOM_RANK, zoomModel, type ZoomExpansion } from "./adaptive"
 export { DEFAULT_BUDGET, applyNodeBudget, degreeBudget, type VisibilityBudget } from "./budget"
-export {
-  CARD_DENSITY_SCALE,
-  DOM_BUDGET,
-  DOM_BUDGET_VIEWPORT,
-  viewportCardBudget,
-  type CardDensity,
-  type DomBudgetLevel,
-} from "./dom-budget"
 export { exportGraphFilename, exportGraphJSON } from "./export"
+export { type CardDensity, viewportCardBudget } from "./dom-budget"
+export { saveQuery } from "./saved-queries-adapter"
+export {
+  graphContentHash,
+  readSpatialMemory,
+  writeSpatialMemory,
+  clearSpatialMemory,
+  clearAllSpatialMemory,
+  decodeSpatialMemory,
+  spatialMemoryKey,
+  type SpatialMemoryKey,
+  type SpatialMemoryCamera,
+  type SpatialMemoryRecord,
+  type SpatialMemoryStore,
+  SPATIAL_MEMORY_PREFIX,
+} from "./memory-adapter"
+
+export {
+  captureTimeTravel,
+  graphAtCheckpoint,
+  type TimeTravelSnapshot,
+  TIME_TRAVEL_LIMIT,
+} from "./time-travel"
+
+export { attention, type Attention } from "./attention"
+export {
+  downstreamChain,
+  downstreamForks,
+  evidenceFor,
+  type DownstreamStep,
+  type DownstreamFork,
+  type EvidenceGroup,
+} from "./selectors"
 
 export {
   NAVIGATION_MNEMONICS,
@@ -305,15 +251,6 @@ export {
 } from "./navigation"
 
 export { Metrics, type GraphAction, type GraphActionCounts, type GraphMetrics } from "./metrics"
-export {
-  costLens,
-  tokenTotal,
-  turnCost,
-  type CostLens,
-  type CostTokens,
-  type SessionCost,
-  type TurnCost,
-} from "./cost"
 
 export { byProximity, sessionOrder } from "./budget"
 
@@ -331,24 +268,13 @@ export {
 } from "./levels"
 
 export {
-  applySubLayouts,
-  getSubLayoutPolicy,
-  phaseSubLayout,
-  errorSubLayout,
-  fileSubLayout,
-  subagentSubLayout,
-  defaultSubLayout,
-  type SubLayoutPolicy,
-  type ClusterBounds,
-} from "./sub-layout"
-
-export {
   LANES,
   computeIncremental,
   interpolatePosition,
   laneAnchors,
   layoutGraph,
   nodeSize,
+  type ClusterBounds,
   type GraphLayout,
   type IncrementalLayout,
   type IncrementalLayoutOptions,

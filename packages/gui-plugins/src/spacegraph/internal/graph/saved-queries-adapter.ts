@@ -26,12 +26,12 @@ const serializeOptions: SavedQuerySerializeOptions = {
 
 /** Convert a saved query to facets. Delegates to @spacegraphjs/search. */
 export const savedQueryFacets = (query: SavedQuery): GraphFacets => {
-    return searchSavedQueryFacets(query, serializeOptions) as GraphFacets;
+  return searchSavedQueryFacets(query, serializeOptions) as GraphFacets;
 };
 
 /** Default label for a saved query. Delegates to @spacegraphjs/search. */
 export const defaultSavedQueryLabel = (facets: GraphFacets): string => {
-    return searchDefaultSavedQueryLabel(facets as any, serializeOptions);
+  return searchDefaultSavedQueryLabel(facets as any, serializeOptions);
 };
 
 /**
@@ -44,7 +44,7 @@ export function saveQuery(
   facets: GraphFacets,
   label = defaultSavedQueryLabel(facets),
 ): SavedQuery[] {
-    return searchSaveQuery(queries, facets as any, label, serializeOptions);
+  return searchSaveQuery(queries, facets as any, label, serializeOptions);
 }
 
 /** Remove a saved query by its serialized query string. Delegates to @spacegraphjs/search. */
@@ -54,7 +54,7 @@ export function removeQuery(queries: readonly SavedQuery[], query: string): Save
 
 /** Check if the current facets match a saved query. Delegates to @spacegraphjs/search. */
 export function isSavedQuery(queries: readonly SavedQuery[], facets: GraphFacets): boolean {
-    return searchIsSavedQuery(queries, facets as any, serializeOptions);
+  return searchIsSavedQuery(queries, facets as any, serializeOptions);
 }
 
 /** Validates the persisted list at the store boundary; malformed rows are dropped, duplicates collapse. */

@@ -16,7 +16,8 @@
   "scripts": {
     "typecheck": "bun check --no-script -b",
     "typecheck:tsc": "tsc -b",
-    "test": "bun test"
+    "check:graph": "bun script/sync-graph.ts --check",
+    "test": "bun run check:graph && bun test"
   },
   "dependencies": {
     "@betteroffice/docx": "0.4.3",

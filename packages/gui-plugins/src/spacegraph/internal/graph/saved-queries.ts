@@ -30,8 +30,8 @@ export function saveQuery(
   const query = facetsToQuery(facets)
   const trimmed = label.trim()
   const next = [{ label: trimmed.length > 0 ? trimmed : query, query }]
-    for (const entry of queries) if (entry.query !== query) next.push(entry)
-    return next.slice(0, MAX_SAVED_QUERIES)
+  for (const entry of queries) if (entry.query !== query) next.push(entry)
+  return next.slice(0, MAX_SAVED_QUERIES)
 }
 
 export function removeQuery(queries: readonly SavedQuery[], query: string): SavedQuery[] {
@@ -40,7 +40,7 @@ export function removeQuery(queries: readonly SavedQuery[], query: string): Save
 
 export function isSavedQuery(queries: readonly SavedQuery[], facets: GraphFacets): boolean {
   const query = facetsToQuery(facets)
-    return queries.some((entry) => entry.query === query)
+  return queries.some((entry) => entry.query === query)
 }
 
 /** Validates the persisted list at the store boundary; malformed rows are dropped, duplicates collapse. */
@@ -49,14 +49,14 @@ export function normalizeSavedQueries(value: unknown): SavedQuery[] {
 
   const seen = new Set<string>()
   const queries: SavedQuery[] = []
-    for (const entry of value) {
-        if (!entry || typeof entry !== "object") continue
-        const label = "label" in entry && typeof entry.label === "string" ? entry.label.trim() : ""
-        const query = "query" in entry && typeof entry.query === "string" ? entry.query.trim() : ""
-        if (!query || seen.has(query)) continue
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue
+    const label = "label" in entry && typeof entry.label === "string" ? entry.label.trim() : ""
+    const query = "query" in entry && typeof entry.query === "string" ? entry.query.trim() : ""
+    if (!query || seen.has(query)) continue
     seen.add(query)
     queries.push({ label: label.length > 0 ? label : query, query })
-        if (queries.length === MAX_SAVED_QUERIES) break
+    if (queries.length === MAX_SAVED_QUERIES) break
   }
-    return queries
+  return queries
 }

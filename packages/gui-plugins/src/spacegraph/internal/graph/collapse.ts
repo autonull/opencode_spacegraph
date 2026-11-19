@@ -11,12 +11,12 @@ export const collapseGroups = (
 ): GraphViewData => {
   if (collapsed.size === 0) return model
   const hidden = new Set<string>()
-    for (const node of model.nodes) {
+  for (const node of model.nodes) {
     if (!collapsed.has(node.id)) continue
-        for (const member of node.clusterOf ?? []) hidden.add(member)
+    for (const member of node.clusterOf ?? []) hidden.add(member)
   }
-    if (hidden.size === 0) return model
-    return {
+  if (hidden.size === 0) return model
+  return {
     ...model,
     nodes: model.nodes.filter((node) => !hidden.has(node.id)),
     edges: model.edges.filter((edge) => !hidden.has(edge.source) && !hidden.has(edge.target)),

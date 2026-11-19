@@ -24,18 +24,18 @@ export const noteNodeID = (id: string) => `note:${id}`;
  */
 export const withAnnotations = (model: GraphViewData, annotations: Annotations): GraphViewData => {
   const policy = createOpenCodeNoteNodePolicy();
-    const result = overlaysWithAnnotations(model as any, annotations as any, policy);
-    return {
+  const result = overlaysWithAnnotations(model as any, annotations as any, policy);
+  return {
     ...model,
-        nodes: result.nodes as GraphNode[],
-        edges: result.edges as GraphEdge[],
+    nodes: result.nodes as GraphNode[],
+    edges: result.edges as GraphEdge[],
   };
 };
 
 /** OpenCode-specific note node policy. */
 function createOpenCodeNoteNodePolicy(): NoteNodePolicy<string> {
   const basePolicy = createDefaultNoteNodePolicy<string>("note:");
-    return {
+  return {
     ...basePolicy,
     noteNodeID: (annotationID: string) => `note:${annotationID}`,
     createNoteNode: (
@@ -44,15 +44,15 @@ function createOpenCodeNoteNodePolicy(): NoteNodePolicy<string> {
       policy: NoteNodePolicy<string>,
     ) => {
       const turnID = targetNode.kind === "turn" ? targetNode.id : targetNode.turnID;
-            return {
+      return {
         id: policy.noteNodeID(annotation.id),
         kind: "note",
         label: annotation.body.split("\n")[0] || annotation.body,
         summary: annotation.body,
         status: "neutral",
         minLevel: "execution",
-                ...(turnID === undefined ? {} : { turnID }),
-                ...(annotation.createdAt === undefined ? {} : { time: annotation.createdAt }),
+        ...(turnID === undefined ? {} : { turnID }),
+        ...(annotation.createdAt === undefined ? {} : { time: annotation.createdAt }),
         data: { noteID: annotation.id, target: annotation.target },
       };
     },

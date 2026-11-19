@@ -19,7 +19,6 @@ export const NAVIGATION_MNEMONICS = [
   { key: "i", labelKey: "ui.sessionGraph.nav.issue", kinds: ["issue"] },
 ] as const satisfies readonly NavigationMnemonic[]
 
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 const byKey = new Map<string, NavigationMnemonic>(
   NAVIGATION_MNEMONICS.map((mnemonic) => [mnemonic.key, mnemonic]),
 )
@@ -29,17 +28,17 @@ export const navigationHelp = () =>
 
 export const parseNavigation = (query: string): NavigationMnemonic | undefined => {
   const match = query.trim().toLowerCase().match(/^g\s*([a-z])$/)
-    return match ? byKey.get(match[1]!) : undefined
+  return match ? byKey.get(match[1]!) : undefined
 }
 
 export const navigationTargets = (model: GraphViewData, mnemonic: NavigationMnemonic): GraphNode[] => {
   const kinds = new Set<NodeKind>(mnemonic.kinds)
-    return model.nodes.filter((node) => kinds.has(node.kind))
+  return model.nodes.filter((node) => kinds.has(node.kind))
 }
 
 export const navigationResults = (model: GraphViewData, query: string): GraphNode[] | undefined => {
   const mnemonic = parseNavigation(query)
-    return mnemonic ? navigationTargets(model, mnemonic) : undefined
+  return mnemonic ? navigationTargets(model, mnemonic) : undefined
 }
 
 export const nextNavigationTarget = (
@@ -48,7 +47,7 @@ export const nextNavigationTarget = (
   current?: string,
 ): GraphNode | undefined => {
   const targets = navigationTargets(model, mnemonic)
-    if (targets.length === 0) return undefined
+  if (targets.length === 0) return undefined
   const index = current === undefined ? -1 : targets.findIndex((node) => node.id === current)
-    return targets[(index + 1) % targets.length]
+  return targets[(index + 1) % targets.length]
 }

@@ -348,7 +348,6 @@
       animation: none;
     }
 
-    [data-component="session-graph-view"],
     [data-component="session-graph-toolbar"],
     [data-component="session-graph-window"],
     [data-component="session-graph-find"],

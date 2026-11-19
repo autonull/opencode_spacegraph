@@ -7,8 +7,8 @@ import type {
   SessionMessageInfo,
   SessionMessageShell,
   SessionStatus,
+  WorkspaceSnapshot,
 } from "@opencode/client/promise"
-import type { WorkspaceSnapshot } from "./model"
 import { Kernel } from "@spacegraphjs/kernel"
 import { Option, Schema } from "effect"
 import stripAnsi from "strip-ansi"
@@ -19,6 +19,7 @@ import {
   SESSION_NODE_ID,
   decodeString,
   diffNodeID,
+  directoryNodeID,
   errorNodeID,
   fileNodeID,
   messageNodeID,
@@ -38,28 +39,13 @@ import {
   type GraphNode,
   type NodeStatus,
   type PhaseCategory,
+  type Provenance,
   type Range,
   type SessionLineage,
-  type ZoomLevel,
 } from "./model"
 import { toGraphEdge, toGraphNode, toKernelEdge, toKernelNode, type GraphViewMeta } from "./view"
 import { PHASE_LABELS, SEARCH_TOOLS, SHELL_TOOLS, SUBAGENT_TOOLS } from "./vocabulary"
 import { resolveGraphLabels, type GraphLabels } from "./labels"
-import {
-  buildFileNodes,
-  buildDirectoryNodes,
-  buildPackageNodes,
-  buildCommitNodesAndEdges,
-  buildBranchNodesAndEdges,
-  buildSymbolNodesAndEdges,
-  buildHunkSymbolNodesAndEdges,
-  buildProcessNodes,
-  buildPortNodesAndEdges,
-  buildIssueNodes,
-} from "./workspace-attachments"
-
-type ProvenanceStrategy = (tool: SessionMessageAssistantTool, toolID: string, turnID: string) => void
-type ProvenanceStrategies = Record<string, ProvenanceStrategy>
 
 /**
  * The message types the model reads as work. Everything else the session says is a *notice*: a
@@ -109,10 +95,6 @@ function stringField(record: Record<string, JsonValue>, key: string) {
   const value = Option.getOrUndefined(decodeString(record[key]))
 
   return value ? value : undefined
-}
-
-function jsonRecord(value: JsonValue | undefined): Record<string, JsonValue> | undefined {
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : undefined
 }
 
 function toolInput(tool: SessionMessageAssistantTool): Record<string, JsonValue> {
@@ -206,12 +188,12 @@ export class GraphBuilder {
   private readonly lastErrorByTurn = new Map<string, string>()
   /** T31.1 — per-turn file diffs for writes edge payload labels. */
   private readonly diffByTurn?: Map<string, FileDiffInfo[]>
+  private readonly labels: GraphLabels
   private previousTurn: string | undefined
   private readonly goal: string | undefined
   private turnByMessageID = new Map<string, string>()
   private activeTurn: string | undefined
   private constructed = false
-  private readonly labels: GraphLabels
 
   constructor(
     private readonly messages: SessionMessageInfo[],
@@ -295,11 +277,6 @@ export class GraphBuilder {
     this.turnByMessageID = turnByMessageID
     this.activeTurn = activeTurn
     this.constructed = true
-
-    // Derive additional group kinds after all nodes/edges are built
-    this.deriveFileGroups()
-    this.deriveErrorChainGroups()
-    this.deriveSubagentGroups()
   }
 
   static buildWorkspaceStage(
@@ -310,7 +287,7 @@ export class GraphBuilder {
   ): Kernel {
     const builder = new GraphBuilder([], { type: "idle" }, undefined, undefined, undefined, diffByTurn)
     builder.seed(kernel)
-        switch (stage) {
+    switch (stage) {
       case "files":
         builder.attachFiles(snapshot)
         break
@@ -342,7 +319,7 @@ export class GraphBuilder {
         builder.attachIssues(snapshot)
         break
     }
-        return builder.buildKernel(kernel.version + 1)
+    return builder.buildKernel(kernel.version + 1)
   }
 
   private seed(kernel: Kernel) {
@@ -353,31 +330,30 @@ export class GraphBuilder {
     this.nodesByID.clear()
     this.fileNodes.clear()
     this.touchedFiles.clear()
-
     for (const node of kernel.nodes) {
       const graphNode = toGraphNode(node)
       this.nodes.push(graphNode)
       this.nodeIDs.add(graphNode.id)
       this.nodesByID.set(graphNode.id, graphNode)
-            if (graphNode.kind === "file") {
+      if (graphNode.kind === "file") {
         const path = graphNode.data?.path
-                if (typeof path === "string") {
+        if (typeof path === "string") {
           this.fileNodes.set(normalizePath(path), graphNode.id)
-                    if (graphNode.provenance === undefined) this.touchedFiles.add(normalizePath(path))
+          if (graphNode.provenance === undefined) this.touchedFiles.add(normalizePath(path))
         }
       }
     }
-        for (const edge of kernel.edges) {
+    for (const edge of kernel.edges) {
       const graphEdge = toGraphEdge(edge)
       this.edges.push(graphEdge)
       this.edgeIDs.add(graphEdge.id)
     }
-        this.constructed = true
+    this.constructed = true
   }
 
   buildKernel(version = 0): Kernel {
     this.construct()
-        return new Kernel({
+    return new Kernel({
       nodes: this.nodes.map(toKernelNode),
       edges: this.edges.map(toKernelEdge),
       hyperedges: [],
@@ -387,24 +363,23 @@ export class GraphBuilder {
 
   meta(): GraphViewMeta {
     this.construct()
-        const meta: GraphViewMeta = {
+    return {
       root: SESSION_NODE_ID,
+      ...(this.goal === undefined ? {} : { goal: this.goal }),
       turns: this.turns,
       turnByMessageID: this.turnByMessageID,
+      ...(this.activeTurn === undefined ? {} : { activeTurn: this.activeTurn }),
+      ...(this.snapshot === undefined
+        ? {}
+        : {
+            workspaceRoot: this.snapshot.root,
+            snapshot: {
+              revision: this.snapshot.revision,
+              asOf: this.snapshot.asOf,
+              missing: this.snapshot.missing,
+            },
+          }),
     }
-
-    if (this.goal !== undefined) meta.goal = this.goal
-        if (this.activeTurn !== undefined) meta.activeTurn = this.activeTurn
-        if (this.snapshot !== undefined) {
-      meta.workspaceRoot = this.snapshot.root
-      meta.snapshot = {
-        revision: this.snapshot.revision,
-        asOf: this.snapshot.asOf,
-        missing: this.snapshot.missing,
-      }
-    }
-
-    return meta
   }
 
   /**
@@ -413,52 +388,209 @@ export class GraphBuilder {
    * byte-identical. Edges use the existing `part-of` vocabulary; no new layout geometry is needed.
    */
   private attachFiles(snapshot: WorkspaceSnapshot) {
-    const newFiles = buildFileNodes(snapshot, this.fileNodes)
-        for (const { node, normalized } of newFiles) {
-      this.fileNodes.set(normalized, node.id)
-      this.addNode(node)
+    const snapshotFileMeta = new Map<string, { config?: boolean; doc?: boolean }>()
+    for (const file of snapshot.files) {
+      const normalized = normalizePath(file.path)
+      if (file.config || file.doc) {
+        snapshotFileMeta.set(normalized, { config: file.config, doc: file.doc })
+      }
+    }
+
+    for (const file of snapshot.files) {
+      const normalized = normalizePath(file.path)
+      const existingId = this.fileNodes.get(normalized)
+      if (existingId) {
+        const meta = snapshotFileMeta.get(normalized)
+        if (meta) {
+          const node = this.nodesByID.get(existingId)!
+          node.data = this.filterDefined({ ...node.data, config: meta.config, doc: meta.doc })
+        }
+        continue
+      }
+      const id = fileNodeID(normalized)
+      this.fileNodes.set(normalized, id)
+      this.addNode({
+        id,
+        kind: "file",
+        label: normalized,
+        status: "neutral",
+        domain: "directories",
+        provenance: this.provenanceForSource(snapshot, "tree"),
+        data: this.filterDefined({
+          path: normalized,
+          config: snapshotFileMeta.get(normalized)?.config,
+          doc: snapshotFileMeta.get(normalized)?.doc,
+        }),
+      })
     }
   }
 
   private attachDirectories(snapshot: WorkspaceSnapshot) {
-    const dirData = buildDirectoryNodes(this.fileNodes, this.touchedFiles, snapshot)
-        for (const { node, edges } of dirData) {
-      if (node.id) this.addNode(node)
-            for (const edge of edges) this.addEdge(edge)
+    const counts = new Map<string, { fileCount: number; touchedCount: number }>()
+    for (const file of this.fileNodes.keys()) {
+      const touched = this.touchedFiles.has(file)
+      for (const directory of parentPaths(file)) {
+        const count = counts.get(directory) ?? { fileCount: 0, touchedCount: 0 }
+        count.fileCount += 1
+        if (touched) count.touchedCount += 1
+        counts.set(directory, count)
+      }
+    }
+
+    const directories = [...counts.keys()].sort((a, b) => depth(a) - depth(b) || a.localeCompare(b))
+    for (const directory of directories) {
+      const count = counts.get(directory)!
+      this.addNode({
+        id: directoryNodeID(directory),
+        kind: "directory",
+        label: directory.slice(directory.lastIndexOf("/") + 1),
+        status: "neutral",
+        minLevel: "overview",
+        domain: "directories",
+        provenance: this.provenanceForSource(snapshot, "tree"),
+        data: { path: directory, fileCount: count.fileCount, touchedCount: count.touchedCount },
+      })
+    }
+
+    for (const [file, id] of this.fileNodes) {
+      const parent = parentPath(file)
+      if (parent) this.partOf(id, directoryNodeID(parent), "structural")
+    }
+
+    for (const directory of directories) {
+      const parent = parentPath(directory)
+      if (parent) this.partOf(directoryNodeID(directory), directoryNodeID(parent), "structural")
     }
   }
 
   /** T22.1 — package nodes from snapshot packages array. */
   private attachPackages(snapshot: WorkspaceSnapshot) {
-    for (const node of buildPackageNodes(snapshot)) this.addNode(node)
+    for (const pkg of snapshot.packages) {
+      this.addNode({
+        id: `pkg:${normalizePath(pkg.path)}`,
+        kind: "package",
+        label: pkg.name ?? pkg.path,
+        status: "neutral",
+        minLevel: "overview",
+        domain: "directories",
+        provenance: this.provenanceForSource(snapshot, "packages"),
+        data: this.filterDefined({
+          path: pkg.path,
+          name: pkg.name,
+          version: pkg.version,
+          scripts: pkg.scripts,
+          dependencies: pkg.dependencies,
+          devDependencies: pkg.devDependencies,
+        }),
+      })
+    }
   }
 
   /** T20.1 — commit nodes from snapshot commits array. */
   private attachCommits(snapshot: WorkspaceSnapshot) {
-    const { nodes, edges } = buildCommitNodesAndEdges(snapshot, this.fileNodes)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const commit of snapshot.commits) {
+      const id = `commit:${commit.sha}`
+      this.addNode({
+        id,
+        kind: "commit",
+        label: commit.short,
+        status: "neutral",
+        minLevel: "execution",
+        domain: "history",
+        provenance: this.provenanceForSource(snapshot, "vcs"),
+        data: this.filterDefined({
+          sha: commit.sha,
+          message: commit.message,
+          author: commit.author,
+          time: commit.time,
+          files: commit.files,
+        }),
+      })
+      if (commit.files) {
+        for (const file of commit.files) {
+          const fileId = this.fileNodes.get(normalizePath(file))
+          if (fileId) this.addEdge({ kind: "touches", source: id, target: fileId, confidence: "explicit" })
+        }
+      }
+    }
+    if (snapshot.base?.sha) {
+      const baseId = `commit:${snapshot.base.sha}`
+      this.addNode({
+        id: baseId,
+        kind: "commit",
+        label: `base (${snapshot.base.sha.slice(0, 7)})`,
+        status: "neutral",
+        minLevel: "execution",
+        domain: "history",
+        provenance: this.provenanceForSource(snapshot, "vcs"),
+        data: { sha: snapshot.base.sha, isBase: true },
+      })
+    }
   }
 
   /** T20.2 — branch nodes from snapshot branches array. */
   private attachBranches(snapshot: WorkspaceSnapshot) {
-    const { nodes, edges } = buildBranchNodesAndEdges(snapshot, this.nodeIDs)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const branch of snapshot.branches) {
+      const id = `branch:${branch.name}`
+      this.addNode({
+        id,
+        kind: "branch",
+        label: branch.name,
+        status: branch.name === snapshot.head?.branch ? "running" : "neutral",
+        minLevel: "execution",
+        domain: "history",
+        provenance: this.provenanceForSource(snapshot, "vcs"),
+        data: this.filterDefined({
+          name: branch.name,
+          sha: branch.sha,
+          upstream: branch.upstream,
+          remote: branch.remote,
+        }),
+      })
+      // points-at edge to commit
+      const commitId = `commit:${branch.sha}`
+      if (this.nodeIDs.has(commitId)) {
+        this.addEdge({ kind: "points-at", source: id, target: commitId, confidence: "explicit" })
+      }
+    }
   }
 
   /** T21.1/T21.2 — symbol nodes from snapshot symbols array. */
   private attachSymbols(snapshot: WorkspaceSnapshot) {
-    const { nodes, edges } = buildSymbolNodesAndEdges(snapshot, this.fileNodes)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const sym of snapshot.symbols) {
+      const id = `symbol:${normalizePath(sym.path)}#${sym.qualified}`
+      this.addNode({
+        id,
+        kind: "symbol",
+        label: sym.name,
+        status: "neutral",
+        minLevel: "execution",
+        domain: "code",
+        provenance: this.provenanceForSource(snapshot, "symbols"),
+        data: this.filterDefined({
+          path: sym.path,
+          name: sym.name,
+          qualified: sym.qualified,
+          kind: sym.kind,
+          range: sym.range,
+          signature: sym.signature,
+          origin: sym.origin,
+        }),
+      })
+      // part-of file
+      const fileId = this.fileNodes.get(normalizePath(sym.path))
+      if (fileId) this.partOf(id, fileId, "structural")
+    }
   }
 
   /**
    * T21.1 — extract symbols from a unified diff patch by parsing hunk headers.
    * Parses `@@ -oldStart,oldCount +newStart,newCount @@ [context]` to find function/class names.
    */
-  private symbolsFromHunk(patch: string, filePath: string): Array<{
+  private symbolsFromHunk(
+    patch: string,
+    filePath: string,
+  ): Array<{
     name: string
     qualified: string
     kind: "function" | "class" | "method"
@@ -486,7 +618,7 @@ export class GraphBuilder {
 
       // Track line numbers from the hunk header
       const hunkHeaderMatch = line.match(/^@@\s*-(\d+)(?:,(\d+))?\s*\+(\d+)(?:,(\d+))?\s*@@/)
-            if (hunkHeaderMatch) {
+      if (hunkHeaderMatch) {
         lineNumber = Number(hunkHeaderMatch[3]) - 1 // newStart is 1-based
         continue
       }
@@ -496,7 +628,7 @@ export class GraphBuilder {
 
       // Detect class/interface declarations to qualify method names
       const classMatch = line.match(/^\+\s*(?:export\s+)?(?:abstract\s+)?(?:class|interface)\s+(\w+)/)
-            if (classMatch) {
+      if (classMatch) {
         const className = classMatch[1]
         // Create symbol for the class itself
         symbols.push({
@@ -511,10 +643,12 @@ export class GraphBuilder {
       }
 
       // Detect function declarations (including async, generators)
-      const funcMatch = line.match(/^\+\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
-            if (funcMatch) {
+      const funcMatch = line.match(
+        /^\+\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/,
+      )
+      if (funcMatch) {
         const name = funcMatch[1] || funcMatch[2]
-                if (name) {
+        if (name) {
           symbols.push({
             name,
             qualified: currentClass ? `${currentClass}.${name}` : name,
@@ -523,15 +657,15 @@ export class GraphBuilder {
             origin: "hunk",
           })
         }
-                continue
+        continue
       }
 
       // Detect method declarations (inside class)
       const methodMatch = line.match(/^\+\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{?/)
-            if (methodMatch && currentClass) {
+      if (methodMatch && currentClass) {
         const name = methodMatch[1]
         // Skip common non-method keywords
-                if (!["constructor", "get", "set", "static", "public", "private", "protected"].includes(name)) {
+        if (!["constructor", "get", "set", "static", "public", "private", "protected"].includes(name)) {
           symbols.push({
             name,
             qualified: `${currentClass}.${name}`,
@@ -540,12 +674,12 @@ export class GraphBuilder {
             origin: "hunk",
           })
         }
-                continue
+        continue
       }
 
       // Detect arrow functions assigned to properties (class fields)
       const arrowMatch = line.match(/^\+\s*(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
-            if (arrowMatch && currentClass) {
+      if (arrowMatch && currentClass) {
         const name = arrowMatch[1]
         symbols.push({
           name,
@@ -558,10 +692,12 @@ export class GraphBuilder {
       }
 
       // Detect deleted functions (lines starting with - that look like function declarations)
-      const deletedFuncMatch = line.match(/^-\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/)
-            if (deletedFuncMatch) {
+      const deletedFuncMatch = line.match(
+        /^-\s*(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/,
+      )
+      if (deletedFuncMatch) {
         const name = deletedFuncMatch[1] || deletedFuncMatch[2]
-                if (name) {
+        if (name) {
           symbols.push({
             name,
             qualified: currentClass ? `${currentClass}.${name}` : name,
@@ -572,12 +708,12 @@ export class GraphBuilder {
             deleted: true,
           })
         }
-                continue
+        continue
       }
 
       // Detect anonymous/arrow functions without a name (heuristic: => or function() without name)
       const anonMatch = line.match(/^\+\s*(?:const|let|var)\s*[A-Z_a-z][A-Z_a-z0-9]*\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/)
-            if (anonMatch) {
+      if (anonMatch) {
         // Use line:col as qualified name for anonymous functions
         symbols.push({
           name: "anonymous",
@@ -593,7 +729,7 @@ export class GraphBuilder {
       // Class-level: +} or + } (0-1 spaces after +)
       // Method-level: +  } (2+ spaces after +)
       const braceMatch = line.match(/^\+(\s*)\}\s*$/)
-            if (braceMatch && braceMatch[1].length <= 1) {
+      if (braceMatch && braceMatch[1].length <= 1) {
         currentClass = undefined
       }
     }
@@ -603,230 +739,124 @@ export class GraphBuilder {
 
   /** T21.1 — extract and attach hunk symbols from per-turn diffs. */
   private attachHunkSymbols(diffByTurn: Map<string, FileDiffInfo[]>) {
-    const { nodes, edges } = buildHunkSymbolNodesAndEdges(
-      diffByTurn,
-      this.nodeIDs,
-      this.fileNodes,
-      this.symbolsFromHunk.bind(this),
-    )
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const [_turnID, diffs] of diffByTurn) {
+      for (const diff of diffs) {
+        const symbols = this.symbolsFromHunk(diff.patch, diff.file)
+        for (const sym of symbols) {
+          const id = `symbol:${normalizePath(diff.file)}#${sym.qualified}`
+          // Skip if already added (from snapshot)
+          if (this.nodeIDs.has(id)) continue
+
+          this.addNode({
+            id,
+            kind: "symbol",
+            label: sym.name,
+            status: sym.deleted ? "failed" : "neutral",
+            minLevel: "execution",
+            domain: "code",
+            provenance: { source: "tree", confidence: "inferred" },
+            data: this.filterDefined({
+              path: diff.file,
+              name: sym.name,
+              qualified: sym.qualified,
+              kind: sym.kind,
+              range: sym.range,
+              signature: sym.signature,
+              origin: sym.origin,
+              deleted: sym.deleted,
+            }),
+          })
+          // part-of file
+          const fileId = this.fileNodes.get(normalizePath(diff.file))
+          if (fileId) this.partOf(id, fileId, "structural")
+        }
+      }
+    }
   }
 
   /** T23.1/T23.2 — process and port nodes from snapshot. */
   private attachProcesses(snapshot: WorkspaceSnapshot) {
-    for (const node of buildProcessNodes(snapshot)) this.addNode(node)
+    for (const proc of snapshot.processes) {
+      const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
+      this.addNode({
+        id: procId,
+        kind: "process",
+        label: proc.command,
+        status: "running",
+        minLevel: "detail",
+        domain: "runtime",
+        provenance: this.provenanceForSource(snapshot, "processes"),
+        data: this.filterDefined({
+          pid: proc.pid,
+          command: proc.command,
+          cwd: proc.cwd,
+          ports: proc.ports,
+          startedAt: proc.startedAt,
+        }),
+      })
+    }
   }
 
   private attachPorts(snapshot: WorkspaceSnapshot) {
-    const { nodes, edges } = buildPortNodesAndEdges(snapshot)
-        for (const node of nodes) this.addNode(node)
-        for (const edge of edges) this.addEdge(edge)
+    for (const proc of snapshot.processes) {
+      const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
+      for (const port of proc.ports) {
+        const portId = `port:${port}`
+        this.addNode({
+          id: portId,
+          kind: "port",
+          label: `Port ${port}`,
+          status: "neutral",
+          minLevel: "detail",
+          domain: "runtime",
+          provenance: this.provenanceForSource(snapshot, "processes"),
+          data: { port, processId: procId },
+        })
+        this.addEdge({ kind: "listens-on", source: procId, target: portId, confidence: "inferred" })
+      }
+    }
   }
 
   /** T25.1 — issue nodes from snapshot. */
   private attachIssues(snapshot: WorkspaceSnapshot) {
-    for (const node of buildIssueNodes(snapshot)) this.addNode(node)
-  }
-
-  /**
-   * Derive file groups: group files by their parent directory path.
-   * Each file group contains files under the same directory root.
-   */
-  private deriveFileGroups(): void {
-    // Group file nodes by their parent directory
-    const filesByDir = new Map<string, string[]>()
-
-    for (const node of this.nodes) {
-      if (node.kind !== "file") continue
-      const path = node.data?.path
-            if (typeof path !== "string") continue
-
-      const dirPath = path.lastIndexOf("/") > 0 ? path.slice(0, path.lastIndexOf("/")) : "."
-      const normalized = normalizePath(dirPath)
-
-      const existing = filesByDir.get(normalized)
-            if (existing) existing.push(node.id)
-      else filesByDir.set(normalized, [node.id])
-    }
-
-    // Create a file group node for each directory with files
-    for (const [dirPath, fileIds] of filesByDir) {
-      if (fileIds.length < 2) continue // Only group if multiple files
-
-      const id = `file-group:${dirPath.replace(/\//g, ":")}`
-            if (this.nodeIDs.has(id)) continue
-
-      // Count writes/reads for the group
-      let writes = 0
-      let reads = 0
-      let searches = 0
-
-      for (const fileId of fileIds) {
-        for (const edge of this.edges) {
-          if (edge.target !== fileId) continue
-                    if (edge.kind === "writes") writes++
-          else if (edge.kind === "reads") reads++
-          else if (edge.kind === "searches") searches++
-        }
-      }
-
+    for (const issue of snapshot.issues) {
+      const id = `issue:${issue.provider}:${issue.repo ?? "unknown"}#${issue.number}`
       this.addNode({
         id,
-        kind: "file-group",
-        label: dirPath === "." ? this.labels.root : dirPath,
-        status: writes > 0 ? "success" : "neutral",
-        derived: true,
+        kind: "issue",
+        label: issue.title ?? `#${issue.number}`,
+        status: issue.state === "closed" ? "success" : "neutral",
         minLevel: "overview",
-        clusterOf: fileIds,
-        data: {
-          groupPath: dirPath,
-          writes,
-          reads,
-          searches,
-          verifyStatus: "pending",
-        },
+        domain: "work",
+        provenance: this.provenanceForSource(snapshot, "issues"),
+        data: this.filterDefined({
+          provider: issue.provider,
+          repo: issue.repo,
+          number: issue.number,
+          title: issue.title,
+          state: issue.state,
+          url: issue.url,
+        }),
       })
-      this.partOf(id, SESSION_NODE_ID)
     }
   }
 
-  /**
-   * Derive error-chain groups: group errors with their evidence and retries.
-   * An error group contains the failing tool, the error node, and any retry nodes.
-   */
-  private deriveErrorChainGroups(): void {
-    // Find all error nodes
-    const errorNodes = this.nodes.filter((node) => node.kind === "error")
-        if (errorNodes.length === 0) return
-
-    // Group by turn - each turn can have one error chain
-    const errorsByTurn = new Map<string, string[]>()
-
-    for (const errorNode of errorNodes) {
-      const turnID = errorNode.turnID
-            if (!turnID) continue
-
-      const existing = errorsByTurn.get(turnID)
-            if (existing) existing.push(errorNode.id)
-      else errorsByTurn.set(turnID, [errorNode.id])
+  /** Filter out undefined values from an object for JsonValue compliance. */
+  private filterDefined(obj: Record<string, unknown>): Record<string, JsonValue> {
+    const result: Record<string, JsonValue> = {}
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) result[key] = value as JsonValue
     }
-
-    for (const [turnID, errorIds] of errorsByTurn) {
-      // Collect the full chain: error nodes + their evidence sources + retries
-      const chainMembers = new Set<string>()
-
-      for (const errorId of errorIds) {
-        chainMembers.add(errorId)
-
-        // Find evidence edges pointing to this error
-        for (const edge of this.edges) {
-          if (edge.target === errorId && edge.kind === "evidence") {
-            chainMembers.add(edge.source)
-          }
-                    if (edge.source === errorId && edge.kind === "evidence") {
-            chainMembers.add(edge.target)
-          }
-          // Include retry nodes
-                    if (edge.source === errorId && edge.kind === "sequence") {
-            const targetNode = this.nodesByID.get(edge.target)
-                        if (targetNode?.kind === "retry") chainMembers.add(edge.target)
-          }
-        }
-      }
-
-      // Also find the tool that caused the error (via produces edge)
-      for (const edge of this.edges) {
-        if (errorIds.includes(edge.target) && edge.kind === "produces") {
-          chainMembers.add(edge.source)
-        }
-      }
-
-      const members = [...chainMembers]
-            if (members.length < 2) continue // Only group if there's a chain
-
-      const id = `error-group:${turnID}`
-            if (this.nodeIDs.has(id)) continue
-
-      // Find the evidence root (the tool that caused the error)
-      let evidenceRoot: string | undefined
-            for (const memberId of members) {
-        const node = this.nodesByID.get(memberId)
-                if (node?.kind === "tool" || node?.kind === "result") {
-          // Check if this node has an evidence edge to an error
-          for (const edge of this.edges) {
-            if (edge.source === memberId && edge.kind === "evidence" && errorIds.includes(edge.target)) {
-              evidenceRoot = memberId
-              break
-            }
-          }
-        }
-                if (evidenceRoot) break
-      }
-
-      this.addNode({
-        id,
-        kind: "error-group",
-        label: this.labels.errorChain,
-        status: "failed",
-        derived: true,
-        minLevel: "overview",
-        clusterOf: members,
-        data: {
-          evidenceRoot: evidenceRoot ?? null,
-          turnID,
-        },
-      })
-      this.partOf(id, turnID)
-    }
+    return result
   }
 
-  /**
-   * Derive subagent groups: group subagent nodes by their child session.
-   * Each subagent group contains the subagent node and its related nodes.
-   */
-  private deriveSubagentGroups(): void {
-    const subagentNodes = this.nodes.filter((node) => node.kind === "subagent")
-        if (subagentNodes.length === 0) return
-
-    // Group by childSessionID
-    const subagentsBySession = new Map<string, string[]>()
-
-    for (const node of subagentNodes) {
-      const childSessionID = node.data?.childSessionID
-            if (typeof childSessionID !== "string") continue
-
-      const existing = subagentsBySession.get(childSessionID)
-            if (existing) existing.push(node.id)
-      else subagentsBySession.set(childSessionID, [node.id])
-    }
-
-    for (const [childSessionID, subagentIds] of subagentsBySession) {
-      if (subagentIds.length === 0) continue
-
-      const id = `subagent-group:${childSessionID}`
-            if (this.nodeIDs.has(id)) continue
-
-      this.addNode({
-        id,
-        kind: "subagent-group",
-        label: this.labels.subagent,
-        status: "neutral",
-        derived: true,
-        minLevel: "overview",
-        clusterOf: subagentIds,
-        data: {
-          childSessionID,
-        },
-      })
-      // Find the parent turn (first subagent's turn)
-      const firstSubagent = this.nodesByID.get(subagentIds[0])
-            if (firstSubagent?.turnID) {
-        this.partOf(id, firstSubagent.turnID)
-      } else {
-        this.partOf(id, SESSION_NODE_ID)
-      }
-    }
+  private provenanceForSource(
+    snapshot: WorkspaceSnapshot,
+    source: "tree" | "vcs" | "packages" | "symbols" | "processes" | "issues",
+  ): Provenance | undefined {
+    const asOf = snapshot.asOf[source]
+    if (asOf === undefined) return undefined
+    return { source, asOf, confidence: "inferred" }
   }
 
   private addNode(node: GraphNode): GraphNode {
@@ -912,9 +942,9 @@ export class GraphBuilder {
   private diffForFile(turnID: string | undefined, path: string): FileDiffInfo | undefined {
     if (!turnID || !this.diffByTurn) return undefined
     const diffs = this.diffByTurn.get(turnID)
-        if (!diffs) return undefined
+    if (!diffs) return undefined
     const normalized = normalizePath(path)
-        return diffs.find((d) => normalizePath(d.file) === normalized)
+    return diffs.find((d) => normalizePath(d.file) === normalized)
   }
 
   /** The parent turn node for a message, creating it on first sight of its opener. */
@@ -928,7 +958,7 @@ export class GraphBuilder {
       this.addNode({
         id,
         kind: "turn",
-        label: isShell ? truncate(opener.command) : opener.type === "user" ? truncate(opener.text) : this.labels.turn,
+        label: isShell ? truncate(opener.command) : opener.type === "user" ? truncate(opener.text) : "Turn",
         status: "neutral",
         turnID: id,
         messageID: owner,
@@ -991,60 +1021,26 @@ export class GraphBuilder {
     this.lastErrorByTurn.set(turnID, nodeID)
   }
 
-  /** Builds the common node fields shared by all `attach` calls. */
-  private baseNode(
-    id: string,
-    kind: GraphNode["kind"],
-    turnID: string,
-    options: {
-      label: string
-      summary?: string
-      status?: GraphNode["status"]
-      messageID?: string
-      partID?: string
-      toolID?: string
-      time?: number
-      minLevel?: ZoomLevel
-      data?: Record<string, JsonValue>
-    },
-  ): GraphNode {
-    return {
-      id,
-      kind,
-      label: options.label,
-      summary: options.summary,
-      status: options.status ?? "neutral",
-      turnID,
-      messageID: options.messageID,
-      partID: options.partID,
-      toolID: options.toolID,
-      time: options.time,
-      minLevel: options.minLevel ?? "execution",
-      data: options.data,
-    }
-  }
-
-  private appendUserPrompt(
-    message: Extract<SessionMessageInfo, { type: "user" }>,
-    turnID: string,
-    steered: boolean,
-  ) {
+  private appendUserPrompt(message: Extract<SessionMessageInfo, { type: "user" }>, turnID: string, steered: boolean) {
     const nodeID = messageNodeID(message.id)
 
     this.attach(
-      this.baseNode(nodeID, "message", turnID, {
+      {
+        id: nodeID,
+        kind: "message",
         label: truncate(message.text),
         summary: message.text,
+        status: "neutral",
+        turnID,
         messageID: message.id,
         time: message.time.created,
         minLevel: steered ? "execution" : "overview",
         data: steered ? { role: "user", steered: true } : { role: "user" },
-      }),
+      },
       turnID,
     )
 
-    if (!steered && this.goal && message.text === this.goal)
-      this.nodesByID.get(turnID)!.label = truncate(message.text)
+    if (!steered && this.goal && message.text === this.goal) this.nodesByID.get(turnID)!.label = truncate(message.text)
 
     for (const file of attachmentPaths(message.files))
       this.addEdge({ kind: "references", source: nodeID, target: this.requireFile(file), confidence: "explicit" })
@@ -1055,14 +1051,18 @@ export class GraphBuilder {
     const status = shellStatus(message)
 
     this.attach(
-      this.baseNode(nodeID, "message", turnID, {
+      {
+        id: nodeID,
+        kind: "message",
         label: truncate(message.command),
         summary: message.command,
         status: status === "failed" ? "failed" : "neutral",
+        turnID,
         messageID: message.id,
         time: message.time.created,
+        minLevel: "execution",
         data: { role: "shell", command: message.command },
-      }),
+      },
       turnID,
       { phase: "verify" },
     )
@@ -1070,19 +1070,23 @@ export class GraphBuilder {
     const resultID = resultNodeID(message.id)
 
     this.attach(
-      this.baseNode(resultID, "result", turnID, {
+      {
+        id: resultID,
+        kind: "result",
         label: message.status === "exited" ? `exit ${message.exit ?? 0}` : message.status,
         summary: message.output?.output ? truncate(message.output.output, 200) : undefined,
         status,
+        turnID,
         messageID: message.id,
         time: message.time.completed ?? message.time.created,
+        minLevel: "execution",
         data: {
           exit: message.exit ?? null,
           timeout: message.status === "timeout",
           truncated: message.output?.truncated ?? null,
           output: terminalOutput(message.output?.output),
         },
-      }),
+      },
       turnID,
       { produces: nodeID, phase: "verify" },
     )
@@ -1110,13 +1114,18 @@ export class GraphBuilder {
       if (content.type === "text") {
         if (!content.text.trim()) continue
         this.attach(
-          this.baseNode(textNodeID(message.id, textOrdinal++), "message", turnID, {
+          {
+            id: textNodeID(message.id, textOrdinal++),
+            kind: "message",
             label: truncate(content.text),
             summary: content.text,
+            status: "neutral",
+            turnID,
             messageID: message.id,
             time: message.time.created,
+            minLevel: "execution",
             data: { role: "assistant" },
-          }),
+          },
           turnID,
         )
         continue
@@ -1126,14 +1135,18 @@ export class GraphBuilder {
         if (!content.text.trim()) continue
         const nodeID = reasoningNodeID(message.id, reasoningOrdinal++)
         this.attach(
-          this.baseNode(nodeID, "reasoning", turnID, {
+          {
+            id: nodeID,
+            kind: "reasoning",
             label: truncate(content.text),
             summary: content.text,
+            status: "neutral",
+            turnID,
             messageID: message.id,
             partID: nodeID,
             time: content.time?.created ?? message.time.created,
             minLevel: "detail",
-          }),
+          },
           turnID,
         )
         continue
@@ -1149,14 +1162,18 @@ export class GraphBuilder {
       const nodeID = errorNodeID(message.id, "assistant")
 
       this.attach(
-        this.baseNode(nodeID, "error", turnID, {
-          label: interrupted ? this.labels.interrupted : truncate(message.error.message),
+        {
+          id: nodeID,
+          kind: "error",
+          label: interrupted ? "Interrupted" : truncate(message.error.message),
           summary: message.error.message,
           status: interrupted ? "interrupted" : "failed",
+          turnID,
           messageID: message.id,
           time: message.time.completed ?? message.time.created,
+          minLevel: "execution",
           data: { type: message.error.type },
-        }),
+        },
         turnID,
       )
       this.noteError(turnID, nodeID)
@@ -1166,13 +1183,18 @@ export class GraphBuilder {
       const nodeID = retryNodeID(message.id, message.retry.attempt)
 
       this.attach(
-        this.baseNode(nodeID, "retry", turnID, {
+        {
+          id: nodeID,
+          kind: "retry",
           label: `Retry #${message.retry.attempt}`,
           summary: message.retry.error.message,
+          status: "neutral",
+          turnID,
           messageID: message.id,
           time: message.retry.at,
+          minLevel: "execution",
           data: { attempt: message.retry.attempt },
-        }),
+        },
         turnID,
       )
 
@@ -1180,59 +1202,11 @@ export class GraphBuilder {
 
       if (evidence) this.addEdge({ kind: "evidence", source: evidence, target: nodeID, confidence: "structural" })
     }
-
-    this.recordUsage(turnID, message)
-  }
-
-  /**
-   * The cost lens reads measured usage from the turn, so the model records what the provider
-   * reported instead of re-counting nodes later. A streaming step records a range: the numbers are
-   * a lower bound until the step completes.
-   */
-  private recordUsage(turnID: string, message: SessionMessageAssistant) {
-    const node = this.nodesByID.get(turnID)
-
-    if (!node) return
-
-    const prior = jsonRecord(node.data?.usage)
-    const priorTokens = jsonRecord(prior?.tokens)
-        const number = (value: Record<string, JsonValue> | undefined, key: string) =>
-            typeof value?.[key] === "number" ? (value[key] as number) : 0
-
-        const completedAt = message.time.completed ?? (typeof prior?.completedAt === "number" ? prior.completedAt : undefined)
-        const startedAt = Math.min(
-            typeof prior?.startedAt === "number" ? prior.startedAt : message.time.created,
-      message.time.created,
-    )
-
-    node.data = {
-      ...node.data,
-      usage: {
-        tokens: {
-          input: number(priorTokens, "input") + (message.tokens?.input ?? 0),
-          output: number(priorTokens, "output") + (message.tokens?.output ?? 0),
-          reasoning: number(priorTokens, "reasoning") + (message.tokens?.reasoning ?? 0),
-          cacheRead: number(priorTokens, "cacheRead") + (message.tokens?.cache.read ?? 0),
-          cacheWrite: number(priorTokens, "cacheWrite") + (message.tokens?.cache.write ?? 0),
-        },
-        cost: number(prior, "cost") + (message.cost ?? 0),
-        wallTime: completedAt === undefined ? number(prior, "wallTime") : completedAt - startedAt,
-        tools: number(prior, "tools") + message.content.filter((content) => content.type === "tool").length,
-        steps: number(prior, "steps") + 1,
-        streaming: prior?.streaming === true || message.time.completed === undefined,
-        startedAt,
-        completedAt: completedAt ?? null,
-      },
-    }
   }
 
   private appendTool(tool: SessionMessageAssistantTool, message: SessionMessageAssistant, turnID: string) {
-    const status = tool.state.status === "streaming" || tool.state.status === "running"
-      ? "running"
-      : currentToolFailed(tool)
-        ? "failed"
-        : "success"
-        const category = timelineCategory(tool) ?? (SUBAGENT_TOOLS.has(tool.name) ? "subagents" : "tools")
+    const status = toolStatus(tool)
+    const category = toolCategory(tool)
 
     if (SUBAGENT_TOOLS.has(tool.name)) {
       const { metadata, input } = toolFacts(tool)
@@ -1240,10 +1214,13 @@ export class GraphBuilder {
       const nodeID = childID ? subagentNodeID(childID) : subagentToolNodeID(tool.id)
 
       this.attach(
-        this.baseNode(nodeID, "subagent", turnID, {
-          label: stringField(input, "description") ?? stringField(input, "agent") ?? this.labels.subagent,
+        {
+          id: nodeID,
+          kind: "subagent",
+          label: stringField(input, "description") ?? stringField(input, "agent") ?? "Subagent",
           summary: stringField(input, "prompt"),
           status,
+          turnID,
           messageID: message.id,
           partID: tool.id,
           toolID: tool.id,
@@ -1254,7 +1231,7 @@ export class GraphBuilder {
             agent: stringField(input, "agent") ?? null,
             childSessionID: childID ?? null,
           },
-        }),
+        },
         turnID,
         { phase: "delegate" },
       )
@@ -1268,16 +1245,20 @@ export class GraphBuilder {
     const { input, metadata, error, output } = toolFacts(tool)
 
     this.attach(
-      this.baseNode(nodeID, "tool", turnID, {
+      {
+        id: nodeID,
+        kind: "tool",
         label: tool.name,
         summary: output ? truncate(output, 200) : error ? truncate(error) : undefined,
         status,
+        turnID,
         messageID: message.id,
         partID: tool.id,
         toolID: tool.id,
         time: tool.time.created,
+        minLevel: "execution",
         data: { name: tool.name, category, input },
-      }),
+      },
       turnID,
       { phase: phaseCategoryForTool(tool.name) },
     )
@@ -1285,19 +1266,21 @@ export class GraphBuilder {
     if (SHELL_TOOLS.has(tool.name)) {
       const resultID = resultNodeID(tool.id)
 
-            const resultLabel = status === "failed" ? "failed" : status === "running" ? "running" : "ok"
-
       this.attach(
-        this.baseNode(resultID, "result", turnID, {
-          label: resultLabel,
+        {
+          id: resultID,
+          kind: "result",
+          label: toolResultLabel(status),
           summary: output ? truncate(output, 400) : error,
           status,
+          turnID,
           messageID: message.id,
           partID: tool.id,
           toolID: tool.id,
           time: tool.time.completed ?? tool.time.created,
+          minLevel: "execution",
           data: { exit: metadata.exit ?? null, timeout: metadata.timeout === true, output: terminalOutput(output) },
-        }),
+        },
         turnID,
         { produces: nodeID, phase: "verify" },
       )
@@ -1311,14 +1294,18 @@ export class GraphBuilder {
       const errorID = errorNodeID(message.id, tool.id)
 
       this.attach(
-        this.baseNode(errorID, "error", turnID, {
+        {
+          id: errorID,
+          kind: "error",
           label: truncate(error),
           summary: error,
           status: "failed",
+          turnID,
           messageID: message.id,
           partID: tool.id,
           time: tool.time.completed ?? tool.time.created,
-        }),
+          minLevel: "execution",
+        },
         turnID,
         { produces: nodeID },
       )
@@ -1333,26 +1320,34 @@ export class GraphBuilder {
       const nodeID = errorNodeID(message.id, "idle")
 
       this.attach(
-        this.baseNode(nodeID, "error", turnID, {
+        {
+          id: nodeID,
+          kind: "error",
           label: truncate(message.error.message),
           summary: message.error.message,
           status: "failed",
+          turnID,
           messageID: message.id,
           time: message.time.created,
+          minLevel: "execution",
           data: { type: message.error.type },
-        }),
+        },
         turnID,
       )
       this.noteError(turnID, nodeID)
     } else if (message.outcome === "interrupted") {
       this.attach(
-        this.baseNode(errorNodeID(message.id, "idle"), "error", turnID, {
-          label: this.labels.interrupted,
+        {
+          id: errorNodeID(message.id, "idle"),
+          kind: "error",
+          label: "Interrupted",
           summary: message.error?.message,
           status: "interrupted",
+          turnID,
           messageID: message.id,
           time: message.time.created,
-        }),
+          minLevel: "execution",
+        },
         turnID,
       )
     }
@@ -1364,12 +1359,17 @@ export class GraphBuilder {
     const nodeID = diffNodeID(message.id)
 
     this.attach(
-      this.baseNode(nodeID, "diff", turnID, {
-        label: this.labels.filesChanged(files.size),
+      {
+        id: nodeID,
+        kind: "diff",
+        label: `${files.size} file${files.size === 1 ? "" : "s"} changed`,
+        status: "neutral",
+        turnID,
         messageID: message.id,
         time: message.time.created,
+        minLevel: "execution",
         data: { files: [...files].sort() },
-      }),
+      },
       turnID,
     )
 
@@ -1381,16 +1381,20 @@ export class GraphBuilder {
     const nodeID = messageNodeID(message.id)
 
     this.attach(
-      this.baseNode(nodeID, "compaction", turnID, {
-        label: message.status === "completed" ? this.labels.compactedContext : this.labels.compaction(message.status),
+      {
+        id: nodeID,
+        kind: "compaction",
+        label: message.status === "completed" ? "Compacted context" : `Compaction ${message.status}`,
         summary: compactionSummary(message),
         status: compactionStatus(message),
+        turnID,
         messageID: message.id,
         time: message.time.created,
+        minLevel: "execution",
         // T6.5: a compaction either replaces the context with a summary or replays a provider's
         // replacement window. The two are different facts about what the agent can still see.
         data: { reason: message.reason, replayed: compactionReplays(message) },
-      }),
+      },
       turnID,
     )
 
@@ -1405,9 +1409,13 @@ export class GraphBuilder {
     const childID = stringField(metadata, "childID") ?? stringField(metadata, "sessionID")
 
     this.attach(
-      this.baseNode(nodeID, "notice", turnID, {
+      {
+        id: nodeID,
+        kind: "notice",
         label: noticeLabel(message),
         summary: noticeSummary(message),
+        status: "neutral",
+        turnID,
         messageID: message.id,
         time: message.time.created,
         minLevel: "detail",
@@ -1418,7 +1426,7 @@ export class GraphBuilder {
           source: stringField(metadata, "source") ?? null,
           childSessionID: childID ?? null,
         },
-      }),
+      },
       turnID,
     )
 
@@ -1432,56 +1440,82 @@ export class GraphBuilder {
       this.addEdge({ kind: "delegates", source: nodeID, target: childNodeID, confidence: "explicit" })
   }
 
-  /** Strategy for recording provenance edges for a tool. */
-    private readonly provenanceStrategies: ProvenanceStrategies = {
-    read: (tool, toolID, turnID) => {
-      const { input } = toolFacts(tool)
-      const path = stringField(input, "path")
-            if (path) this.addEdge({ kind: "reads", source: toolID, target: this.requireFile(path), confidence: "explicit" })
-    },
-    edit: (tool, toolID, turnID) => this.recordWriteProvenance(tool, toolID, turnID),
-    write: (tool, toolID, turnID) => this.recordWriteProvenance(tool, toolID, turnID),
-    patch: (tool, toolID, turnID) => this.recordMetadataWritesProvenance(tool, toolID, turnID),
-    apply_patch: (tool, toolID, turnID) => this.recordMetadataWritesProvenance(tool, toolID, turnID),
-  }
-
   /** The files a tool touched, as provenance edges. */
   private recordProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
-    const strategy = this.provenanceStrategies[tool.name]
-        if (strategy) {
-      strategy(tool, toolID, turnID)
-            return
+    const { input, metadata } = toolFacts(tool)
+
+    if (tool.name === "read") {
+      const path = stringField(input, "path")
+
+      if (path) this.addEdge({ kind: "reads", source: toolID, target: this.requireFile(path), confidence: "explicit" })
+
+      return
+    }
+
+    if (tool.name === "edit" || tool.name === "write") {
+      const path = stringField(input, "path")
+
+      if (path) {
+        const diff = this.diffForFile(turnID, path)
+        this.addEdge({
+          kind: "writes",
+          source: toolID,
+          target: this.recordFile(turnID, path),
+          confidence: "explicit",
+          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+        })
+      }
+
+      for (const file of metadataFilePaths(metadata)) {
+        const diff = this.diffForFile(turnID, file)
+        this.addEdge({
+          kind: "writes",
+          source: toolID,
+          target: this.recordFile(turnID, file),
+          confidence: "explicit",
+          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+        })
+      }
+
+      return
+    }
+
+    if (tool.name === "patch" || tool.name === "apply_patch") {
+      for (const file of metadataFilePaths(metadata)) {
+        const diff = this.diffForFile(turnID, file)
+        this.addEdge({
+          kind: "writes",
+          source: toolID,
+          target: this.recordFile(turnID, file),
+          confidence: "explicit",
+          data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
+        })
+      }
+
+      return
     }
 
     if (SEARCH_TOOLS.has(tool.name)) {
-      const { input } = toolFacts(tool)
       const scope = stringField(input, "path")
-            if (scope) this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
+
+      if (scope)
+        this.addEdge({ kind: "searches", source: toolID, target: this.requireFile(scope), confidence: "explicit" })
+
+      return
     }
   }
+}
 
-  private recordWriteProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
-    const { input, metadata } = toolFacts(tool)
-    const path = stringField(input, "path")
-        if (path) this.addWritesEdge(toolID, turnID, path)
-        for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
-  }
+function toolCategory(tool: SessionMessageAssistantTool) {
+  return timelineCategory(tool) ?? (SUBAGENT_TOOLS.has(tool.name) ? "subagents" : "tools")
+}
 
-  private recordMetadataWritesProvenance(tool: SessionMessageAssistantTool, toolID: string, turnID: string) {
-    const { metadata } = toolFacts(tool)
-        for (const file of metadataFilePaths(metadata)) this.addWritesEdge(toolID, turnID, file)
-  }
+function toolStatus(tool: SessionMessageAssistantTool): NodeStatus {
+  if (tool.state.status === "streaming" || tool.state.status === "running") return "running"
 
-  private addWritesEdge(toolID: string, turnID: string, path: string) {
-    const diff = this.diffForFile(turnID, path)
-    this.addEdge({
-      kind: "writes",
-      source: toolID,
-      target: this.recordFile(turnID, path),
-      confidence: "explicit",
-      data: diff ? { additions: diff.additions, deletions: diff.deletions } : undefined,
-    })
-  }
+  if (currentToolFailed(tool)) return "failed"
+
+  return "success"
 }
 
 function toolFacts(tool: SessionMessageAssistantTool) {
@@ -1556,6 +1590,14 @@ function compactionReplays(message: Extract<SessionMessageInfo, { type: "compact
   return message.native !== undefined && "messages" in message.native
 }
 
+function toolResultLabel(status: NodeStatus) {
+  if (status === "failed") return "failed"
+
+  if (status === "running") return "running"
+
+  return "ok"
+}
+
 function noticeLabel(message: GraphNotice) {
   if (message.type === "synthetic") return truncate(message.description ?? message.text)
 
@@ -1578,6 +1620,21 @@ function isNotice(message: SessionMessageInfo): message is GraphNotice {
   return !ACTIVITY_MESSAGE_TYPES.some((type) => type === message.type)
 }
 
+function parentPath(file: string) {
+  const normalized = normalizePath(file)
+  const slash = normalized.lastIndexOf("/")
+  return slash === -1 ? "" : normalized.slice(0, slash)
+}
+
+function parentPaths(file: string) {
+  const parts = normalizePath(file).split("/")
+  return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))
+}
+
+function depth(directory: string) {
+  return directory.split("/").length
+}
+
 /**
  * Builds the graph model. `sessionID` is optional: when the host knows the session, the root node
  * carries it (T3.6) so an exported map names its session. The root id stays literal, so nothing
@@ -1593,7 +1650,7 @@ export type BuildSessionInput = {
   snapshot?: WorkspaceSnapshot
   /** T21.1 — per-turn file diffs for hunk symbol extraction. */
   diffByTurn?: Map<string, FileDiffInfo[]>
-  /** M6.7 — the copy the builder writes; absent keeps the English defaults. */
+  /** Host-supplied user-visible copy; absent keeps the English defaults. */
   labels?: Partial<GraphLabels>
 }
 

@@ -31,10 +31,10 @@ export const PROFILE_PRESETS = [
 
 export const applyProfile = (model: GraphViewData, profile: ProfilePreset): GraphViewData => {
   const scoped = scopeModel(model, new Set(profile.domains))
-    if (!profile.statuses || profile.statuses.length === 0) return scoped
+  if (!profile.statuses || profile.statuses.length === 0) return scoped
   const statuses = new Set(profile.statuses)
   const kept = new Set(scoped.nodes.filter((node) => statuses.has(node.status)).map((node) => node.id))
-    return {
+  return {
     ...scoped,
     nodes: scoped.nodes.filter((node) => kept.has(node.id)),
     edges: scoped.edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)),

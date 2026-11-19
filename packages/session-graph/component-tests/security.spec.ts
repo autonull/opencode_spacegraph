@@ -28,8 +28,9 @@ story("keeps hostile markup inert in the canvas and the inspector", async ({ mou
   await expect(host.locator("script")).toHaveCount(0)
   await expect(host.locator("img")).toHaveCount(0)
 
-  // The payload is still readable, as text.
-  await expect(host.locator(".html-node-container").filter({ hasText: "<script>" })).toHaveCount(1)
+  // The payload is still readable as text in the card's title. The visible label is shortened by
+  // `shortLabel`, which splits on the "/" in the closing tag, so assert the full escaped value there.
+  await expect(host.locator('[data-kind="tool"][title="<script>window.__xss = 1</script>"]')).toHaveCount(1)
 
   // The inspector shows the same label as text, never as markup.
   const inspector = root.locator('[data-slot="graph-inspector"]')
@@ -41,7 +42,7 @@ story("keeps hostile markup inert in the canvas and the inspector", async ({ mou
   await expect(host).toHaveAttribute("data-graph-renderer", "cytoscape", { timeout: 30_000 })
 
   const cards = host.locator('[data-slot="cytoscape-card"]')
-  await expect(cards.filter({ hasText: "<script>" })).toHaveCount(1)
+  await expect(cards.locator('[data-kind="tool"][title="<script>window.__xss = 1</script>"]')).toHaveCount(1)
   await expect(cards.locator("script")).toHaveCount(0)
   await expect(cards.locator("img")).toHaveCount(0)
   expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined()

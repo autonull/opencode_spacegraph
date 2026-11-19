@@ -9,17 +9,17 @@ export function provenanceForSource(
   source: "tree" | "vcs" | "packages" | "symbols" | "processes" | "issues",
 ): Provenance | undefined {
   const asOf = snapshot.asOf[source]
-    if (asOf === undefined) return undefined
-    return { source, asOf, confidence: "inferred" }
+  if (asOf === undefined) return undefined
+  return { source, asOf, confidence: "inferred" }
 }
 
 /** Filter out undefined values from an object for JsonValue compliance. */
 export function filterDefined(obj: Record<string, unknown>): Record<string, JsonValue> {
   const result: Record<string, JsonValue> = {}
-    for (const [key, value] of Object.entries(obj)) {
-        if (value !== undefined) result[key] = value as JsonValue
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) result[key] = value as JsonValue
   }
-    return result
+  return result
 }
 
 /** Build file nodes from workspace snapshot. */
@@ -28,22 +28,22 @@ export function buildFileNodes(
   existingFileNodes: Map<string, string>,
 ): Array<{ node: GraphNode; normalized: string }> {
   const snapshotFileMeta = new Map<string, { config?: boolean; doc?: boolean }>()
-    for (const file of snapshot.files) {
+  for (const file of snapshot.files) {
     const normalized = normalizePath(file.path)
-        if (file.config || file.doc) {
+    if (file.config || file.doc) {
       snapshotFileMeta.set(normalized, { config: file.config, doc: file.doc })
     }
   }
 
   const result: Array<{ node: GraphNode; normalized: string }> = []
-    for (const file of snapshot.files) {
+  for (const file of snapshot.files) {
     const normalized = normalizePath(file.path)
     const existingId = existingFileNodes.get(normalized)
-        if (existingId) {
+    if (existingId) {
       // Existing node - meta update handled by caller
       continue
     }
-        const id = fileNodeID(normalized)
+    const id = fileNodeID(normalized)
     result.push({
       normalized,
       node: {
@@ -61,7 +61,7 @@ export function buildFileNodes(
       },
     })
   }
-    return result
+  return result
 }
 
 /** Build directory nodes from file paths. */
@@ -71,13 +71,13 @@ export function buildDirectoryNodes(
   snapshot: WorkspaceSnapshot,
 ): Array<{ node: GraphNode; edges: GraphEdge[] }> {
   const counts = new Map<string, { fileCount: number; touchedCount: number }>()
-    for (const file of fileNodes.keys()) {
+  for (const file of fileNodes.keys()) {
     const touched = touchedFiles.has(file)
     const parts = normalizePath(file).split("/")
-        for (const directory of parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))) {
+    for (const directory of parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"))) {
       const count = counts.get(directory) ?? { fileCount: 0, touchedCount: 0 }
       count.fileCount += 1
-            if (touched) count.touchedCount += 1
+      if (touched) count.touchedCount += 1
       counts.set(directory, count)
     }
   }
@@ -107,7 +107,7 @@ export function buildDirectoryNodes(
     const normalized = normalizePath(file)
     const slash = normalized.lastIndexOf("/")
     const parent = slash === -1 ? "" : normalized.slice(0, slash)
-        if (parent) {
+    if (parent) {
       const targetId = directoryNodeID(parent)
       result.push({
         node: { id: "", kind: "file", label: "", status: "neutral" }, // placeholder, only edges used
@@ -121,7 +121,7 @@ export function buildDirectoryNodes(
     const normalized = normalizePath(directory)
     const slash = normalized.lastIndexOf("/")
     const parent = slash === -1 ? "" : normalized.slice(0, slash)
-        if (parent) {
+    if (parent) {
       const sourceId = directoryNodeID(directory)
       const targetId = directoryNodeID(parent)
       result.push({
@@ -175,16 +175,16 @@ export function buildCommitNodesAndEdges(
       provenance: provenanceForSource(snapshot, "vcs"),
       data: filterDefined({ sha: commit.sha, message: commit.message, author: commit.author, time: commit.time, files: commit.files }),
     })
-        if (commit.files) {
+    if (commit.files) {
       for (const file of commit.files) {
         const fileId = fileNodes.get(normalizePath(file))
-                if (fileId) {
+        if (fileId) {
           edges.push({ id: `touches:${id}->${fileId}`, kind: "touches", source: id, target: fileId, confidence: "explicit" })
         }
       }
     }
   }
-    if (snapshot.base?.sha) {
+  if (snapshot.base?.sha) {
     const baseId = `commit:${snapshot.base.sha}`
     nodes.push({
       id: baseId,
@@ -197,7 +197,7 @@ export function buildCommitNodesAndEdges(
       data: { sha: snapshot.base.sha, isBase: true },
     })
   }
-    return { nodes, edges }
+  return { nodes, edges }
 }
 
 /** Build branch nodes and edges from snapshot. */
@@ -221,11 +221,11 @@ export function buildBranchNodesAndEdges(
       data: filterDefined({ name: branch.name, sha: branch.sha, upstream: branch.upstream, remote: branch.remote }),
     })
     const commitId = `commit:${branch.sha}`
-        if (existingNodeIds.has(commitId)) {
+    if (existingNodeIds.has(commitId)) {
       edges.push({ id: `points-at:${id}->${commitId}`, kind: "points-at", source: id, target: commitId, confidence: "explicit" })
     }
   }
-    return { nodes, edges }
+  return { nodes, edges }
 }
 
 /** Build symbol nodes and edges from snapshot. */
@@ -249,11 +249,11 @@ export function buildSymbolNodesAndEdges(
       data: filterDefined({ path: sym.path, name: sym.name, qualified: sym.qualified, kind: sym.kind, range: sym.range, signature: sym.signature, origin: sym.origin }),
     })
     const fileId = fileNodes.get(normalizePath(sym.path))
-        if (fileId) {
+    if (fileId) {
       edges.push({ id: `part-of:${id}->${fileId}`, kind: "part-of", source: id, target: fileId, confidence: "structural" })
     }
   }
-    return { nodes, edges }
+  return { nodes, edges }
 }
 
 /** Build hunk symbol nodes and edges from per-turn diffs. */
@@ -277,9 +277,9 @@ export function buildHunkSymbolNodesAndEdges(
   for (const [_turnID, diffs] of diffByTurn) {
     for (const diff of diffs) {
       const symbols = symbolsFromHunk(diff.patch, diff.file)
-            for (const sym of symbols) {
+      for (const sym of symbols) {
         const id = `symbol:${normalizePath(diff.file)}#${sym.qualified}`
-                if (existingNodeIds.has(id)) continue
+        if (existingNodeIds.has(id)) continue
 
         nodes.push({
           id,
@@ -301,20 +301,20 @@ export function buildHunkSymbolNodesAndEdges(
           }),
         })
         const fileId = fileNodes.get(normalizePath(diff.file))
-                if (fileId) {
+        if (fileId) {
           edges.push({ id: `part-of:${id}->${fileId}`, kind: "part-of", source: id, target: fileId, confidence: "structural" })
         }
       }
     }
   }
-    return { nodes, edges }
+  return { nodes, edges }
 }
 
 /** Build process nodes from snapshot. */
 export function buildProcessNodes(snapshot: WorkspaceSnapshot): GraphNode[] {
   return snapshot.processes.map((proc) => {
     const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
-        return {
+    return {
       id: procId,
       kind: "process" as const,
       label: proc.command,
@@ -334,7 +334,7 @@ export function buildPortNodesAndEdges(snapshot: WorkspaceSnapshot): { nodes: Gr
 
   for (const proc of snapshot.processes) {
     const procId = proc.id.startsWith("proc:") ? proc.id : `proc:${proc.id}`
-        for (const port of proc.ports) {
+    for (const port of proc.ports) {
       const portId = `port:${port}`
       nodes.push({
         id: portId,
@@ -349,7 +349,7 @@ export function buildPortNodesAndEdges(snapshot: WorkspaceSnapshot): { nodes: Gr
       edges.push({ id: `listens-on:${procId}->${portId}`, kind: "listens-on", source: procId, target: portId, confidence: "inferred" })
     }
   }
-    return { nodes, edges }
+  return { nodes, edges }
 }
 
 /** Build issue nodes from snapshot. */

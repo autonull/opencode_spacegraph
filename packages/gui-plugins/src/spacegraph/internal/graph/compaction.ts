@@ -99,7 +99,7 @@ export function analyzeCompaction(model: GraphViewData): CompactionAnalysis {
     }
 
     // Phases that are decision-making phases
-        if (node.kind === "phase" && node.data?.category && DECISION_PHASES.has(node.data.category as string)) {
+    if (node.kind === "phase" && node.data?.category && DECISION_PHASES.has(node.data.category as string)) {
       decisionSpine.add(node.id)
       continue
     }
@@ -130,9 +130,9 @@ export function analyzeCompaction(model: GraphViewData): CompactionAnalysis {
 
   // Also include nodes that lead to decision spine nodes (evidence chain)
   const expandedSpine = new Set(decisionSpine)
-    for (const nodeId of decisionSpine) {
+  for (const nodeId of decisionSpine) {
     const incoming = incomingEdges.get(nodeId) ?? []
-        for (const edge of incoming) {
+    for (const edge of incoming) {
       if (CAUSAL_EDGE_KINDS.has(edge.kind)) {
         expandedSpine.add(edge.source)
       }
@@ -159,7 +159,7 @@ export function analyzeCompaction(model: GraphViewData): CompactionAnalysis {
       // Check if this message has tool calls or other important content
       const outgoing = outgoingEdges.get(node.id) ?? []
       const hasTools = outgoing.some((e) => e.kind === "part-of" || e.kind === "produces")
-            if (hasTools) {
+      if (hasTools) {
         priority = "normal"
         reason = "Message with tool activity"
         stats.normal++
@@ -177,7 +177,7 @@ export function analyzeCompaction(model: GraphViewData): CompactionAnalysis {
       const outgoing = outgoingEdges.get(node.id) ?? []
       const hasWrites = outgoing.some((e) => e.kind === "writes")
       const hasError = outgoing.some((e) => e.kind === "evidence")
-            if (hasWrites || hasError) {
+      if (hasWrites || hasError) {
         priority = "high"
         reason = "Tool with writes or errors"
         stats.high++
@@ -219,7 +219,7 @@ export function filterByCompactionPriority(
 
   return analysis.nodes.filter((node) => {
     const nodeIndex = priorityOrder.indexOf(node.compactionPriority)
-        return nodeIndex <= minIndex
+    return nodeIndex <= minIndex
   })
 }
 
@@ -242,9 +242,9 @@ export function estimateNodeTokens(node: GraphNode): number {
   const data = node.data ? { ...node.data } : undefined
   // The cost lens records measured usage on the turn. It is not context the model reads, so it
   // stays out of the compaction estimate.
-    if (data) delete data.usage
+  if (data) delete data.usage
   const content = `${node.label}\n${node.summary ?? ""}\n${data && Object.keys(data).length > 0 ? JSON.stringify(data) : ""}`
-    return Math.max(1, Math.ceil(content.length / 4))
+  return Math.max(1, Math.ceil(content.length / 4))
 }
 
 /**
@@ -257,11 +257,11 @@ export function measureCompaction(
 ): CompactionMeasurement {
   const kept = new Set(filterByCompactionPriority(analysis, minPriority).map((node) => node.id))
   const totalTokens = analysis.nodes.reduce((sum, node) => sum + estimateNodeTokens(node), 0)
-    const keptTokens = analysis.nodes.reduce(
+  const keptTokens = analysis.nodes.reduce(
     (sum, node) => (kept.has(node.id) ? sum + estimateNodeTokens(node) : sum),
     0,
   )
-    const decisionSpineRetained = analysis.decisionSpine.filter((id) => kept.has(id)).length
+  const decisionSpineRetained = analysis.decisionSpine.filter((id) => kept.has(id)).length
   const droppedTokens = totalTokens - keptTokens
 
   return {

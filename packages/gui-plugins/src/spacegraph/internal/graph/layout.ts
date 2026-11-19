@@ -10,7 +10,7 @@ import type { GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from ".
 import { phaseCategoryOf } from "./model"
 import { isVisibleAt } from "./levels"
 import { nodeIndex, parentIndex } from "./lookup"
-import { CARD_SIZE, COMPACT_SIZE, LAYOUT_INDENT_STEP, LAYOUT_PADDING, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
+import { CARD_SIZE, COMPACT_SIZE, CORE_LAYOUT_STRATEGIES, STRUCTURAL_KINDS, type LayoutStrategy } from "./vocabulary"
 
 export type { Position }
 
@@ -113,7 +113,7 @@ export const computeIncremental = (
   const prior = previous === undefined ? undefined : "positions" in previous ? previous.positions : previous
   const layout = layoutGraph(model, { ...options, previous: prior })
   const incremental = diffPositions(layout.positions, prior)
-    return {
+  return {
     layout,
     added: incremental.added,
     removed: incremental.removed,
@@ -148,7 +148,7 @@ const DEPTH: Record<NodeKind, number> = {
   port: 4,
   issue: 1,
   note: 2,
-  // Group kinds for fractal unfold (Phase 4.5)
+  // Group kinds (P4.2 — progressive disclosure groups)
   "file-group": 2,
   "error-group": 2,
   "subagent-group": 2,
@@ -177,11 +177,11 @@ const LAYOUT: LayoutConfig<GraphNode, GraphEdge, Lane> = {
   geometry: {
     standardSize: CARD_SIZE,
     // Indent step must be large enough to read at fit; 120px gives a clear visual hierarchy.
-    indentStep: LAYOUT_INDENT_STEP,
+    indentStep: 120,
     // The depth levels the hierarchy outline budgets for (session, turn, work, artifact).
     depthLevels: 4,
     // The extra room around a turn column.
-    padding: LAYOUT_PADDING,
+    padding: 48,
   },
 }
 
@@ -191,12 +191,15 @@ export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: numbe
 }
 
 export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): GraphLayout {
-  if (options.strategy === "grid") return gridLayout(model, options)
-    if (options.strategy === "circular") return circularLayout(model, options)
-
   const config = options.nodeSizeFn ? { ...LAYOUT, nodeSizeFn: options.nodeSizeFn } : LAYOUT
-    return Strategies.layoutGraph(model, config, {
-    strategy: options.strategy,
+  // spacegraphjs Strategies only supports core strategies; optional strategies fall back to force
+  const strategy = options.strategy
+  const coreStrategy: "lanes" | "timeline" | "hierarchy" | "tree" | "force" =
+    strategy && (CORE_LAYOUT_STRATEGIES as readonly string[]).includes(strategy)
+      ? (strategy as "lanes" | "timeline" | "hierarchy" | "tree" | "force")
+      : "force"
+  return Strategies.layoutGraph(model, config, {
+    strategy: coreStrategy,
     gap: options.gap,
     laneGap: options.laneGap,
     turnGap: options.turnGap,
@@ -213,157 +216,52 @@ export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): 
   })
 }
 
-/**
- * Grid and circular are optional, deterministic session arrangements. They consume the same model
- * and level as the library strategies, so a host can expose them without a second layout engine.
- */
-const optionalLayoutNodes = (model: GraphViewData): GraphNode[] => [...model.nodes]
-
-const optionalNodeSize = (node: GraphNode, options: LayoutOptions): readonly [number, number] =>
-  options.nodeSizeFn?.(node) ?? (options.level === "overview" ? COMPACT_SIZE : nodeSize(node))
-
-function boundingLayout(
-  model: GraphViewData,
-  options: LayoutOptions,
-  strategy: "grid" | "circular",
-  positions: Map<string, Position>,
-): GraphLayout {
-  const nodes = optionalLayoutNodes(model)
-  const sizes = new Map(nodes.map((node) => [node.id, optionalNodeSize(node, options)]))
-  const placed = nodes.filter((node) => positions.has(node.id))
-    const bounds = placed.reduce(
-    (current, node) => {
-      const position = positions.get(node.id)!
-      const [width, height] = sizes.get(node.id)!
-            return {
-        min: {
-          x: Math.min(current.min.x, position.x - width / 2),
-          y: Math.min(current.min.y, position.y - height / 2),
-          z: Math.min(current.min.z, position.z),
-        },
-        max: {
-          x: Math.max(current.max.x, position.x + width / 2),
-          y: Math.max(current.max.y, position.y + height / 2),
-          z: Math.max(current.max.z, position.z),
-        },
-      }
-    },
-    { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
-  )
-
-  return { positions, clusters: new Map(), bounds, strategy }
-}
-
-/** Row-major packing in model order: a square grid unless the host chooses the column count. */
-function gridLayout(model: GraphViewData, options: LayoutOptions): GraphLayout {
-  const nodes = optionalLayoutNodes(model)
-  const columns = Math.max(1, options.columns ?? Math.ceil(Math.sqrt(nodes.length || 1)))
-  const gap = options.gap ?? 32
-  const rowGap = options.rowGap ?? options.laneGap ?? 32
-  const sizes = nodes.map((node) => optionalNodeSize(node, options))
-  const columnWidths = Array.from({ length: columns }, () => 0)
-  const rowHeights = Array.from({ length: Math.ceil(nodes.length / columns) }, () => 0)
-
-  sizes.forEach(([width, height], index) => {
-    const column = index % columns
-    const row = Math.floor(index / columns)
-    columnWidths[column] = Math.max(columnWidths[column] ?? 0, width)
-    rowHeights[row] = Math.max(rowHeights[row] ?? 0, height)
-  })
-
-  const xOf = (column: number) =>
-    columnWidths.slice(0, column).reduce((sum, width) => sum + width + gap, 0)
-    const yOf = (row: number) =>
-    -rowHeights.slice(0, row).reduce((sum, height) => sum + height + rowGap, 0)
-    const positions = new Map<string, Position>()
-
-  nodes.forEach((node, index) => {
-    positions.set(node.id, { x: xOf(index % columns), y: yOf(Math.floor(index / columns)), z: 0 })
-  })
-
-  return boundingLayout(model, options, "grid", positions)
-}
-
-/** Even spacing around one circle, ordered by the model so a streamed session appends along the arc. */
-function circularLayout(model: GraphViewData, options: LayoutOptions): GraphLayout {
-  const nodes = optionalLayoutNodes(model)
-  const gap = options.gap ?? 32
-  const sizes = nodes.map((node) => optionalNodeSize(node, options))
-  const circumference = sizes.reduce((sum, [width]) => sum + width + gap, 0)
-  const radius = Math.max(240, circumference / (Math.PI * 2))
-  const positions = new Map<string, Position>()
-
-  nodes.forEach((node, index) => {
-    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(1, nodes.length)
-    positions.set(node.id, {
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius,
-      z: 0,
-    })
-  })
-
-  return boundingLayout(model, options, "circular", positions)
-}
-
-const LANE_BY_KIND: Partial<Record<NodeKind, Lane>> = {
-  session: "prompt",
-  turn: "prompt",
-  phase: "phases",
-  file: "artifacts",
-  diff: "artifacts",
-  directory: "artifacts",
-  result: "verify",
-  reasoning: "narrative",
-  notice: "narrative",
-  compaction: "narrative",
-  note: "narrative",
-  error: "narrative",
-  retry: "narrative",
-  // T19-T26 derived kinds
-  package: "artifacts",
-  commit: "artifacts",
-  branch: "artifacts",
-  symbol: "artifacts",
-  test: "verify",
-  "test-run": "verify",
-  process: "verify",
-  port: "verify",
-  issue: "prompt",
-}
-
 function laneOf(node: GraphNode): Lane {
+  if (node.kind === "session" || node.kind === "turn") return "prompt"
+
+  if (node.kind === "phase") return "phases"
+
+  if (node.kind === "file" || node.kind === "diff" || node.kind === "directory") return "artifacts"
+
   if (node.kind === "message") {
     const role = node.data?.role
-        if (role === "user") return "prompt"
-        if (role === "shell") return "verify"
-        return "narrative"
+
+    if (role === "user") return "prompt"
+
+    if (role === "shell") return "verify"
+
+    return "narrative"
   }
 
-  const staticLane = LANE_BY_KIND[node.kind]
-    if (staticLane) return staticLane
+  if (node.kind === "result") return "verify"
+
+  if (node.kind === "reasoning" || node.kind === "notice" || node.kind === "compaction") return "narrative"
+
+  if (node.kind === "note") return "narrative"
+
+  if (node.kind === "error" || node.kind === "retry") return "narrative"
+
+  // T19-T26 derived kinds
+  if (node.kind === "package") return "artifacts"
+  if (node.kind === "commit" || node.kind === "branch") return "artifacts"
+  if (node.kind === "symbol") return "artifacts"
+  if (node.kind === "test" || node.kind === "test-run") return "verify"
+  if (node.kind === "process" || node.kind === "port") return "verify"
+  if (node.kind === "issue") return "prompt"
+
+  // Group kinds (P4.2 — progressive disclosure groups)
+  if (node.kind === "file-group") return "artifacts"
+  if (node.kind === "error-group") return "narrative"
+  if (node.kind === "subagent-group") return "delegate"
+  if (node.kind === "compaction-group") return "narrative"
+  if (node.kind === "facet-group") return "artifacts"
 
   const category = phaseCategoryOf(node)
-    if (category === "explore" || category === "edit" || category === "verify" || category === "delegate") {
+
+  if (category === "explore" || category === "edit" || category === "verify" || category === "delegate")
     return category
-  }
 
   return "artifacts"
-}
-
-/**
- * Memoize a computation on a model object using WeakMap.
- * Returns the cached result or computes and caches it.
- */
-function memoize<T, Model extends object>(
-  cache: WeakMap<Model, T>,
-  model: Model,
-  compute: () => T,
-): T {
-  const cached = cache.get(model)
-    if (cached) return cached
-  const result = compute()
-  cache.set(model, result)
-    return result
 }
 
 /**
@@ -371,32 +269,35 @@ function memoize<T, Model extends object>(
  * answer is the same for every call on the same model, so it is built once per model — asking each
  * file for its owner one edge at a time was quadratic in the size of the session (T6.6).
  */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 const FILE_OWNERS = new WeakMap<object, ReadonlyMap<string, string>>()
 
 function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }) {
-  return memoize(FILE_OWNERS, model, () => {
-    const nodes = nodeIndex(model)
-    const owners = new Map<string, string>()
+  const cached = FILE_OWNERS.get(model)
 
-    const claim = (node: string, turn: string | undefined) => {
-      if (turn === undefined || owners.has(node)) return
-      owners.set(node, turn)
-    }
+  if (cached) return cached
 
-    // A write names the turn that produced the file, so it outranks the file's other incident edges.
-    for (const edge of model.edges) {
-      if (edge.kind !== "writes") continue
-      claim(edge.target, nodes.get(edge.source)?.turnID)
-    }
+  const nodes = nodeIndex(model)
+  const owners = new Map<string, string>()
 
-    for (const edge of model.edges) {
-      claim(edge.target, nodes.get(edge.source)?.turnID)
-      claim(edge.source, nodes.get(edge.target)?.turnID)
-    }
+  const claim = (node: string, turn: string | undefined) => {
+    if (turn === undefined || owners.has(node)) return
+    owners.set(node, turn)
+  }
 
-    return owners
-  })
+  // A write names the turn that produced the file, so it outranks the file's other incident edges.
+  for (const edge of model.edges) {
+    if (edge.kind !== "writes") continue
+    claim(edge.target, nodes.get(edge.source)?.turnID)
+  }
+
+  for (const edge of model.edges) {
+    claim(edge.target, nodes.get(edge.source)?.turnID)
+    claim(edge.source, nodes.get(edge.target)?.turnID)
+  }
+
+  FILE_OWNERS.set(model, owners)
+
+  return owners
 }
 
 /**
@@ -404,27 +305,29 @@ function fileOwners(model: { nodes: readonly GraphNode[]; edges: readonly GraphE
  * what came before it. A link is a claim about the session's shape, not about cause, so the
  * inferred edges stay out of it.
  */
-// ast-grep-ignore: gui-plugin-no-module-state -- pure ported model constant, not plugin state
 const NEIGHBOURS = new WeakMap<object, ReadonlyMap<string, readonly string[]>>()
 
 function neighbours(model: { nodes: readonly GraphNode[]; edges: readonly GraphEdge[] }, id: string) {
-  const links = memoize(NEIGHBOURS, model, () => {
-    const map = new Map<string, string[]>()
+  const cached = NEIGHBOURS.get(model)
 
-    const link = (from: string, to: string) => {
-      const existing = map.get(from)
-            if (existing) existing.push(to)
-      else map.set(from, [to])
-    }
+  if (cached) return cached.get(id) ?? []
 
-    for (const edge of model.edges) {
-      if (edge.kind !== "part-of" && edge.kind !== "sequence") continue
-      link(edge.source, edge.target)
-      link(edge.target, edge.source)
-    }
+  const links = new Map<string, string[]>()
 
-    return map
-  })
+  const link = (from: string, to: string) => {
+    const existing = links.get(from)
+
+    if (existing) existing.push(to)
+    else links.set(from, [to])
+  }
+
+  for (const edge of model.edges) {
+    if (edge.kind !== "part-of" && edge.kind !== "sequence") continue
+    link(edge.source, edge.target)
+    link(edge.target, edge.source)
+  }
+
+  NEIGHBOURS.set(model, links)
 
   return links.get(id) ?? []
 }

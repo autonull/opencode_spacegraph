@@ -20,14 +20,14 @@ export const noteNodeID = (id: string) => `note:${id}`
  */
 export const withAnnotations = (model: GraphViewData, annotations: Annotations): GraphViewData => {
   const entries = Object.values(annotations)
-    if (entries.length === 0) return model
+  if (entries.length === 0) return model
   const nodes = new Map(model.nodes.map((node) => [node.id, node]))
   const noteNodes: GraphNode[] = []
   const noteEdges: GraphEdge[] = []
 
   for (const annotation of entries) {
     const target = nodes.get(annotation.target)
-        if (!target) continue
+    if (!target) continue
     const id = noteNodeID(annotation.id)
     const turnID = target.kind === "turn" ? target.id : target.turnID
     noteNodes.push({
@@ -37,8 +37,8 @@ export const withAnnotations = (model: GraphViewData, annotations: Annotations):
       summary: annotation.body,
       status: "neutral",
       minLevel: "execution",
-            ...(turnID === undefined ? {} : { turnID }),
-            ...(annotation.createdAt === undefined ? {} : { time: annotation.createdAt }),
+      ...(turnID === undefined ? {} : { turnID }),
+      ...(annotation.createdAt === undefined ? {} : { time: annotation.createdAt }),
       data: { noteID: annotation.id, target: annotation.target },
     })
     noteEdges.push({

@@ -35,7 +35,7 @@
     "@spacegraphjs/trace": "workspace:*",
     "@spacegraphjs/turn-map": "workspace:*",
     "@spacegraphjs/window-manager": "workspace:*",
-    "@tanstack/solid-virtual": "3.13.2",
+    "@tanstack/solid-virtual": "catalog:",
     "solid-js": "catalog:",
     "spacegraphjs": "workspace:*"
   },

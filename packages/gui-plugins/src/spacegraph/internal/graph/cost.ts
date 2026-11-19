@@ -46,10 +46,10 @@ const ZERO_TOKENS: CostTokens = {
 }
 
 const numberField = (value: JsonValue | undefined): number =>
-    typeof value === "number" && Number.isFinite(value) ? value : 0
+  typeof value === "number" && Number.isFinite(value) ? value : 0
 
 const tokenField = (value: JsonValue | undefined, key: string): number => {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return 0
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return 0
 
   return numberField(value[key])
 }
@@ -59,7 +59,7 @@ export function turnCost(node: GraphNode): TurnCost | undefined {
   if (node.kind !== "turn" || !node.data) return undefined
 
   const usage = node.data.usage
-    if (typeof usage !== "object" || usage === null || Array.isArray(usage)) return undefined
+  if (typeof usage !== "object" || usage === null || Array.isArray(usage)) return undefined
 
   const tokens = usage.tokens
 
@@ -105,7 +105,7 @@ export function costLens(model: GraphViewData): CostLens {
 
   for (const node of model.nodes) {
     const cost = turnCost(node)
-        if (!cost) continue
+    if (!cost) continue
     turns.set(node.id, cost)
     session = addTurn(session, cost)
   }

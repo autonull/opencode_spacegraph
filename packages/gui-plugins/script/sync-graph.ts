@@ -31,6 +31,14 @@ const BUNDLED_MODULES = [
 
 /** Graph sources that are not part of the bundle: tests and the CLI-only exporter. */
 const EXCLUDED = new Set(["export-cli.ts"])
+/** `message/current-tool-state.ts` imports `ToolProps` only for two field types. The full renderer is
+ * a Solid component tree and is not part of this bundle, so the copy carries a type-only shim. */
+const TOOL_PROPS_SHIM = `// Generated type-only shim; see script/sync-graph.ts.
+export interface ToolProps {
+  input: Record<string, unknown>
+  metadata: Record<string, unknown>
+}
+`
 
 const REWRITES: Array<[string, string]> = [
   ['from "../timeline/', 'from "./timeline/'],
@@ -49,6 +57,7 @@ async function generate() {
       files.set(name, flatten(await readFile(path.join(SOURCE_GRAPH, name), "utf8")))
 
   for (const name of BUNDLED_MODULES) files.set(name, await readFile(path.join(SOURCE, name), "utf8"))
+  files.set("tools/tool-renderer.ts", TOOL_PROPS_SHIM)
 
   return files
 }

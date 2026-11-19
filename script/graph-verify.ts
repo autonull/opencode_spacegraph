@@ -6,7 +6,7 @@
 //   - the framework-agnostic view controller and the React/Solid bindings (spacegraphjs Vitest),
 //   - the four dependency-free/leaf packages (contract, SpaceGraph, Cytoscape, SVG) and the model
 //     adapter,
-//   - the browser contract + graph view through the session-graph Storybook harness,
+//   - the browser contract + graph view through the packages/stories component harness,
 //   - the capture suite in verify mode (fresh renders into a temp dir; committed set asserted).
 //
 // Runs the library steps with its own toolchain (`vitest`), the OpenCode steps with `bun`.

@@ -1,5 +1,4 @@
 import { CARD_SIZE } from "./vocabulary"
-import { CARD_LINE_WORLD, DETAIL_HYSTERESIS, DETAIL_READING_PX } from "./detail-constants"
 
 /**
  * Where a selected node's detail is shown. The modes are alternatives, not stages: a reader picks
@@ -26,17 +25,19 @@ export type DetailTier = (typeof DETAIL_TIERS)[number]
  */
 export const CARD_WORLD_WIDTH = CARD_SIZE[0]
 
+export const CARD_LINE_WORLD = { label: 13, summary: 12, detail: 11, content: 10 } as const
+
 /**
  * The reading size: the screen size at which a line of a card is readable. It is a judgement about
  * the reader, and the author is the reader — this one number moves every threshold below.
  */
-export { DETAIL_READING_PX, CARD_LINE_WORLD } from "./detail-constants"
+export const DETAIL_READING_PX = 9
 
 /** The card width at which a line of `world` world units reads at `reading` screen pixels. */
 const widthFor = (world: number, reading = DETAIL_READING_PX) => (reading * CARD_WORLD_WIDTH) / world
 
 /** How far past a boundary a card must travel before it changes tier. */
-const HYSTERESIS = DETAIL_HYSTERESIS
+const HYSTERESIS = 0.05
 
 /**
  * The card widths, in screen pixels, at which a card changes tier. A boundary is the width at

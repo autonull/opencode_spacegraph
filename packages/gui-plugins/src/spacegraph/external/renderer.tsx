@@ -7,6 +7,7 @@ import {
   SessionSurface,
   SettingsPage,
   Slot,
+  Style,
   TitlebarItem,
   type MountedSession,
   type PanelTab,
@@ -20,13 +21,16 @@ import definition, { BUILTIN_LENSES, type BuiltinLensId } from ".."
 import { createSpacegraph } from "../model"
 import { MapSurface } from "../map-surface"
 import { HybridSurface } from "../hybrid-surface"
+import { SideOverview } from "../side-overview"
 import { TurnMapLayer } from "../turn-map-layer"
 import { MapDialog, TurnMapDialog } from "./dialogs"
 import { createUiI18n, I18nContext } from "./i18n"
+import hybridStyles from "../hybrid.css?inline"
 
 type Surfaces = SetupContext<typeof definition>["surfaces"]
 
 const setup: Plugin.Setup<typeof definition> = (ctx) => {
+  ctx.add(Style, hybridStyles)
   const i18n = createUiI18n({
     locale: () => ctx.locale.locale(),
     t: (key, params) => ctx.t(key, params),
@@ -212,6 +216,15 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     id: "map",
     get title() {
       return ctx.t("panel.title")
+    },
+    draggable: false,
+    closable: "compact",
+    fallback: true,
+  }
+  const overviewTab: PanelTab = {
+    id: "overview",
+    get title() {
+      return ctx.t("panel.overview.title")
     },
     draggable: false,
     closable: "compact",
@@ -914,16 +927,30 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       kind: "menu",
       icon: "branch-out",
     },
-    list: (input) => (input.open.includes("map") ? [tab] : []),
+    list: (input) => (input.open.includes("map") ? [tab, overviewTab] : []),
     render: (input) => (
       <Scope>
         <Suspense>
-          <SpacegraphPanel
-            model={model}
-            session={input.session}
-            screen={input.screen}
-            onOpenTranscript={handleOpenTranscript}
-          />
+          <Show
+            when={input.tab.id === "overview"}
+            fallback={
+              <SpacegraphPanel
+                model={model}
+                session={input.session}
+                screen={input.screen}
+                onOpenTranscript={handleOpenTranscript}
+              />
+            }
+          >
+            <SideOverview
+              model={model.graph(input.session)()}
+              onPick={(nodeID) => {
+                const node = model.graph(input.session)().nodes.find((entry) => entry.id === nodeID)
+                if (node?.messageID) handleOpenTranscript(node.messageID)
+              }}
+              onOpenFull={() => model.select(input.session, `${ctx.id}.map`)}
+            />
+          </Show>
         </Suspense>
       </Scope>
     ),

@@ -1,7 +1,6 @@
 import { Levels, type LabelMode, type LevelConfig } from "spacegraphjs/levels"
 import type { EdgeKind, GraphEdge, GraphViewData, GraphNode, NodeKind, ZoomLevel } from "./model"
 import { nodeIndex } from "./lookup"
-import { DOM_BUDGET } from "./dom-budget"
 
 /**
  * Semantic zoom policy (§5.4). The model carries each node's own `minLevel`; this table supplies the
@@ -37,7 +36,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     port: "detail",
     issue: "overview",
     note: "execution",
-    // Group kinds for fractal unfold (Phase 4.5)
+    // Group kinds (P4.2 — progressive disclosure groups)
     "file-group": "overview",
     "error-group": "overview",
     "subagent-group": "overview",
@@ -65,7 +64,7 @@ const LEVELS: LevelConfig<ZoomLevel, NodeKind, EdgeKind, GraphNode, GraphEdge> =
     executes: "execution",
     annotates: "execution",
   },
-  domBudget: DOM_BUDGET,
+  domBudget: { overview: 12, execution: 40, detail: 24 },
   isClusterExpanded: (level) => level !== "overview",
   edgeFilterFn: (model, level, focus, candidates, visible) => {
     const nodes = nodeIndex(model)

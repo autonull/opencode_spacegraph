@@ -8,9 +8,7 @@ import type {
   SessionStatus,
 } from "@opencode/client/promise"
 import { Effect, Option, Predicate, Schema } from "effect"
-// oxlint-disable-next-line no-restricted-imports -- ported pure projection needs createComputed for synchronous derivation
 import { createComputed, createMemo, createSignal, mapArray, type Accessor } from "solid-js"
-// oxlint-disable-next-line no-restricted-imports -- internal helper within the same ported graph model, not another built-in plugin
 import {
   currentContentDefaultOpen,
   currentToolFailed,
@@ -284,8 +282,8 @@ export namespace Timeline {
 
     const turns: Turn[] = []
     const turnByUserID = new Map<string, Turn>()
-    // The graph reads ownership from this single walk: message id -> owning turn id (execution
-    // opener). A steered prompt maps to the opener that began the execution it joined.
+    // The graph reads ownership from this walk: message id -> owning turn id (execution opener).
+    // A steered prompt maps to the opener that began the execution it joined.
     const turnByMessageID = new Map<string, string>()
     const leading: Notice[] = []
     let current: Turn | undefined

@@ -1,8 +1,8 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status (r1):** Plan verified against the tree and against `SPACEGRAPH.md`; two verification-harness
-defects fixed; missing phases added. No consolidation executed yet. Supersedes the delivery model of
-`SPACEGRAPH.TODO.43.md` and keeps its verified restore (`r22`–`r23`).
+**Status (r2):** Consolidation executed. Phases 0–10 are done; every gate this plan owns is green
+(root `check`, `graph:verify`, `graph:capture --mode=verify` at 31/31, component 77/77, parity 8/8).
+Supersedes the delivery model of `SPACEGRAPH.TODO.43.md` and keeps its verified restore (`r22`–`r23`).
 **Extends:** `SPACEGRAPH.TODO.43.md` (r22 restore, r23 wiring). Reference: `SPACEGRAPH.TODO.41.md`
 (the capability manifest) and `SPACEGRAPH.md` §6/§9/§11.
 **Goal:** one copy of every artefact, full functional parity with the pre-today fork, and two visual
@@ -11,6 +11,24 @@ frames that pre-today never captured. The fork stays a fork, synced to upstream 
 Delete what duplicates. Never keep two editable copies.
 **Standing scope:** fork, not plugin-only. The SpaceGraph source stays in the fork. No upstream PR and no
 repo pushes without explicit sign-off.
+
+---
+
+## Progress (r2)
+
+| Phase | Status | Evidence |
+|-------|--------|----------|
+| 0 — Verification harness | Done | `test:components` 77/77; Tailwind `@source` now includes `session-graph/src`; security test asserts the escaped `title` |
+| 1 — Delete rejected deliveries | Done | `spacegraph-gui-plugin/`, `packages/plugins/spacegraph/`, two bundle specs, the dead e2e util and 5 stubs removed; `bun.lock` cleaned |
+| 2 — Regenerate and gate the copy | Done | 59 generated modules; `check:graph` added to the package and root `check`; parity 8/8; `model.ts` adapted to the canonical `buildGraph` API |
+| 3 — One state owner | Done | app `graph-layout.ts` reduced to `map` / `sideBySide`; plugin `State` owns presentation state |
+| 4 — Workspace snapshot | Done | the cached graph memo now lives in a persistent root, so a surface remount cannot lose the snapshot; frames `32`/`33` pass |
+| 5 — Transcript reveal seam | Done | `SessionScreen.transcript` is provided by the host from the timeline interaction |
+| 6 — Flag stub and dead app code | Done | capability gates read persisted plugin prefs; 5 dead app graph files and `graph-panel.css` deleted |
+| 7 — Verification and parity | Done | root `check` 57/57, `graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, no frame regressed |
+| 8 — Hybrid composition | Done | arrangements and bridge were already plugin-owned; log text-size control and `hybrid.css` added |
+| 9 — Side panel | Done | `Overview` panel tab renders the static SVG overview and reveals a message on pick |
+| 10 — Reconcile `SPACEGRAPH.md` | Done | §5.1, §5.4, §6.3, §7.1, §9.4 and §11.4 now describe the fork |
 
 ---
 
@@ -281,18 +299,32 @@ The design doc is the project's argument; it must match the code.
 
 ---
 
-## 12. Fresh-session handoff checklist
+## 12. Fresh-session handoff
 
-1. Read `SPACEGRAPH.TODO.43.md` r22/r23 and this file.
-2. The fork base is upstream `dev` plus the `SessionSurface` seam, the model in `session-ui/src/graph`,
+The plan is complete. Use this section as the sign-off runbook, not as a to-do list.
+
+1. Gates to re-run before sign-off: root `bun run check`, `bun run graph:verify`,
+   `bun run graph:capture --mode=verify`, `packages/session-graph` `test:components`.
+2. The fork base is upstream `dev` plus the `SessionSurface` seam, the model in
+   `packages/session-ui/src/graph`, the generated copy in `gui-plugins/src/spacegraph/internal/graph`
    and the built-in plugin in `gui-plugins/src/spacegraph`.
-3. `bun run check` is 58/58; capture is 29/31 with `32`/`33` failing on the plugin's missing snapshot;
-   `test:components` is 74/77 after the r1 harness repair.
-4. Start at Phase 0 (finish the 3 component tests and the `graph:verify` step), then Phase 1, then Phase 2.
-5. Phases 3–6 are independent after Phase 2; Phase 7 runs last, then Phases 8–10.
-6. Safety ref: `backup/plugin-r21-pre-restore` and `backup/plugin-r17-pre-sync` stay until the work lands.
-7. A new session must read §1.1: model and UI module maps are right; §5.1, §5.4, §6.3, §9.4, §11.4 and
-   §7.1 of `SPACEGRAPH.md` are not.
+3. Safety refs `backup/plugin-r21-pre-restore` and `backup/plugin-r17-pre-sync` are no longer needed
+   for the consolidation, but keep them until the fork branch is pushed.
+4. Do not push or open a PR without explicit sign-off.
+
+### Remaining work (not on the critical path)
+
+- **Sign-off only:** push the fork branch and submit the upstream `SessionSurface` PR.
+- **Pre-existing test debt, unchanged by this plan (measured against clean `HEAD`):** `session-ui`
+  graph model 358 pass / 19 fail (layout golden positions, determinism, level-aware overview, cost
+  lens, facets, narrative fixture, build-cost guard and sub-layout round-trip — fixture/expectation
+  drift from the fork); `session-graph` unit 136/32; app unit 2287/53; the app graph keeper e2e
+  suites fail at baseline in this environment. Triage these as separate work; none regressed here.
+  `gui-plugins` improved from 1145/8 to 1152/1.
+- **Environment notes (not committed):** a stale Vite dep cache originally resolved
+  `@tanstack/virtual-core` 3.13.2; `session-graph` now uses the catalog 3.13.37, matching the app and
+  the patched virtual-core, so capture runs cleanly. The `spacegraphjs` matrix step needs a
+  Playwright headless-shell binary; one is linked locally outside the repo.
 
 ---
 
@@ -313,3 +345,13 @@ The design doc is the project's argument; it must match the code.
   reconcile `SPACEGRAPH.md` (Phase 10). Confirmed §3.2/§4.0 module maps are correct, §5.1/§5.4 name orphaned
   app modules, §6.3/§9.4/§11.4 still describe plugin-only delivery, and §7.1's `graph:verify` cannot pass.
   No consolidation executed.
+
+- **r2 (2026-11-18):** Executed the plan through Phase 10. Fixed the harness defect (missing
+  `session-graph` Tailwind source) and the hostile-markup card assertion; deleted both rejected
+  plugin trees and their dead tests; regenerated and gated the graph copy and adapted `model.ts` to
+  the canonical `buildGraph` API; collapsed app graph state to the two surface booleans; fixed the
+  persistent graph memo so the workspace snapshot reaches frames `32`/`33`; provided the host
+  transcript seam; replaced the flag stub with persisted prefs; added the hybrid text-size control
+  and the side overview tab; reconciled `SPACEGRAPH.md`; removed stale app-matrix wiring from the
+  capture script. Results: root `check` 57/57, `graph:verify` all steps, capture verify 31/31,
+  component 77/77, parity 8/8. Pre-existing test debt recorded in §12. No push or PR.

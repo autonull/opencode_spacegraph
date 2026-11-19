@@ -1,63 +1,54 @@
 import type { Kernel } from "@spacegraphjs/kernel"
 import { runPipeline } from "@spacegraphjs/kernel"
+import type { SessionMessageInfo, SessionStatus } from "@opencode/client/promise"
 import type { GraphViewData } from "./model"
 import { GraphBuilder, type BuildSessionInput } from "./session-builder"
-import { IncrementalGraphBuilder, type IncrementalBuilderState } from "./incremental-builder"
 import { toGraphView, type GraphViewMeta } from "./view"
 import { workspaceDerivers } from "./workspace-derivers"
+import { Timeline } from "./timeline/projection"
 
 export type BuildGraphInput = BuildSessionInput | { kernel: Kernel; meta: GraphViewMeta }
 
-export interface IncrementalBuildGraphInput extends BuildSessionInput {
-  previousState?: IncrementalBuilderState
-}
-
 export function buildGraph(input: BuildGraphInput): GraphViewData {
   if ("kernel" in input) return toGraphView(input.kernel, input.meta)
-    const builder = new GraphBuilder(
-    input.messages,
-    input.status,
-    input.snapshot,
-    input.sessionID,
-    input.lineage,
-    undefined,
-    input.labels,
-  )
-    const session = builder.buildKernel()
-
-  const kernel = input.snapshot
-    ? runPipeline(workspaceDerivers(input.snapshot, input.diffByTurn), session, {
-        workspace: input.snapshot,
-      })
-    : session
-    return toGraphView(kernel, builder.meta())
-}
-
-export function buildGraphIncremental(input: IncrementalBuildGraphInput): { graph: GraphViewData; state: IncrementalBuilderState } {
-  const builder = new IncrementalGraphBuilder(
+  const builder = new GraphBuilder(
     input.messages,
     input.status,
     input.snapshot,
     input.sessionID,
     input.lineage,
     input.diffByTurn,
-    input.previousState,
-    input.labels,
+    "labels" in input ? input.labels : undefined,
   )
-    const kernel = builder.buildKernel()
-
-  const finalKernel = input.snapshot
-    ? runPipeline(workspaceDerivers(input.snapshot, input.diffByTurn), kernel, {
+  const session = builder.buildKernel()
+  const kernel = input.snapshot
+    ? runPipeline(workspaceDerivers(input.snapshot, input.diffByTurn), session, {
         workspace: input.snapshot,
       })
-    : kernel
-    return {
-    graph: toGraphView(finalKernel, builder.meta()),
-    state: builder.getState(),
-  }
+    : session
+  return toGraphView(kernel, builder.meta())
+}
+
+/**
+ * Creates a projection that maps each message ID to its owning turn ID.
+ * This is the same projection the graph uses to link from the transcript to the graph.
+ * It can be used without building the full graph model.
+ */
+export function createMessageToTurnProjection(input: {
+  messages: SessionMessageInfo[]
+  status: SessionStatus
+}): Map<string, string> {
+  const { turnByMessageID } = Timeline.constructSessionMessageRows(input.messages, true, input.status)
+  return turnByMessageID
 }
 
 export { buildSessionKernel, type BuildSessionInput } from "./session-builder"
 export { WORKSPACE_STAGES, type WorkspaceStage } from "./session-builder"
 export { buildWorkspaceKernel, workspaceDeriver, workspaceDerivers } from "./workspace-derivers"
-export { IncrementalGraphBuilder, type IncrementalBuilderState } from "./incremental-builder"
+
+/** Incremental build wrapper used by GraphTranscriptSurface. */
+export function buildGraphIncremental(input: { messages: SessionMessageInfo[]; status: SessionStatus }): {
+  graph: GraphViewData
+} {
+  return { graph: buildGraph({ messages: input.messages, status: input.status }) }
+}
