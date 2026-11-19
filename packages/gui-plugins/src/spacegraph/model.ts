@@ -380,8 +380,8 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.logTextScale = scale
       })
     },
-    // Match cycleArrangement's base: a reader who has not chosen one starts stacked.
-    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "stacked",
+    // The hybrid opens side by side: the log stays readable while the map answers the question.
+    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "side",
     side: (session: MountedSession): GraphSide => sessionValue(session)?.side ?? prefValue().side ?? "end",
     surface: (session: MountedSession) => sessionValue(session)?.surface,
     /** Remember a host-driven surface switch so it survives a reload. Does not re-select it. */

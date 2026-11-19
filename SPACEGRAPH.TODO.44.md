@@ -1,6 +1,6 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status (r7):** Fully green, independently re-verified from a fresh session (§12). Phases 0–10 are
+**Status (r8):** Fully green, independently re-verified from a fresh session (§12). Phases 0–10 are
 done; every gate and every package suite passes: root `check` 57/57, `graph:verify` all steps, capture
 verify 31/31 + 2/2 + matrix, component 77/77,
 `session-ui` graph 377/377, app graph e2e 44/44, `session-graph` 136/0, `gui-plugins` 1164/0,
@@ -53,6 +53,22 @@ source changed. Root `check` 57/57 (all cached) and `graph:verify` all 16 steps 
 Definition of Done 1–8; the only outstanding action is the owner-gated sign-off in §12 (DoD 9 forbids
 push/PR without it). Untracked `.vite` caches under `packages/posts/`, `services/www/` and the nested
 `spacegraphjs` git repo are local build artifacts, not part of the change set.
+
+**Parity pass (r8):** compared the committed capture set against the pre-sync baseline
+(`backup/plugin-r17-pre-sync`, 7c4f994f8c): 30 frames differed, several by 30–50%. The built-in
+plugin had accumulated four overlay affordances the clean pre-sync plugin never had — a failure
+toast, a "View session as graph" smart-entry toast, a duplicate composer pill and a titlebar
+badge — all firing on the canonical fixture and obscuring the transcript and map. Removed them
+and scoped the remaining map entry point to a narrow-screen composer pill (the app's own header
+toggle covers desktop). Restored the pre-sync `side` hybrid default, which had drifted to
+`stacked`. Measured against the pre-sync baseline, all 30 frames moved closer (hybrid frame `34`:
+29.6% → 13.0% differing pixels); the residual differences are upstream app chrome (breadcrumb,
+header icons) and the intentional r5 fixture enrichment, neither a graph regression. Fixed the
+narrow-hybrid usability defect where the compact overflow menu was clipped and the log pane
+intercepted its clicks. The screenshot set was regenerated from the final code. Full gates re-run
+green: root `check` 57/57, `graph:verify` all steps, capture verify, app graph e2e (the two
+remaining e2e failures were the documented Vite dynamic-import cold-start flake; both passed on
+re-run). No push or PR.
 
 ---
 
@@ -473,3 +489,14 @@ regenerated with `bun script/sync-graph.ts`; `check:graph` and root `check` are 
   Done 1–8 and that the single remaining action is the owner-gated push + PR (§12, DoD 9). Updated the
   status and §12 to make that explicit and to identify untracked `.vite`/nested-repo artifacts as local
   build output. No push or PR.
+
+- **r8 (2026-11-19):** Functional and visual parity pass against the pre-sync capture baseline
+  (`backup/plugin-r17-pre-sync`). Removed the four overlay affordances the built-in plugin had added
+  since pre-sync (failure toast, smart-entry toast, duplicate composer pill, titlebar failure badge)
+  and their dead i18n copy; scoped the remaining map composer action to narrow screens, where the
+  app's desktop header toggle is absent. Restored the `side` hybrid default. Fixed the narrow-hybrid
+  overflow-menu clipping and log-pane pointer interception so the compact map stays usable. All 30
+  previously differing capture frames moved closer to the baseline (frame `34` 29.6% → 13.0%); no
+  frame regressed. Regenerated the screenshot set. Full gates green: root `check` 57/57, `graph:verify`
+  all steps, capture verify, app graph e2e (two failures were the Vite dynamic-import cold-start
+  flake and passed on re-run). No push or PR.

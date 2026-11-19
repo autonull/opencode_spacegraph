@@ -604,7 +604,7 @@ test("shows the map and the log together, and the reader chooses how they meet",
 
   const hybrid = page.locator(hybridPanel)
   await expect(hybrid).toBeVisible()
-  await expect(hybrid).toHaveAttribute("data-arrangement", "stacked")
+  await expect(hybrid).toHaveAttribute("data-arrangement", "side")
   await expect(hybrid.locator(canvasHost)).toBeVisible()
   await expect(page.locator(hybridLog)).toBeVisible()
   // The log is still the log, and the map is still the map.
@@ -615,8 +615,8 @@ test("shows the map and the log together, and the reader chooses how they meet",
 
   // The arrangement is the reader's choice, and it lives in the map's own Draw menu.
   await openMenu(page)
-  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="side"]`).click()
-  await expect(hybrid).toHaveAttribute("data-arrangement", "side")
+  await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="stacked"]`).click()
+  await expect(hybrid).toHaveAttribute("data-arrangement", "stacked")
 
   await openMenu(page)
   await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="floating"]`).click()
@@ -667,8 +667,11 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
   await expect(page.locator(hybridPanel)).toBeVisible()
 
-  // The oldest turn's answer, picked in the map.
+  // The oldest turn's answer, picked in the map. The narrow hybrid map folds search into overflow.
+  await openMenu(page)
   await page.getByRole("button", { name: "Search the graph" }).click()
+  // A native details menu does not close itself on a child click; close it so it cannot cover the dialog.
+  await page.locator('[data-slot="graph-toolbar-overflow"] > summary').click()
   const search = page.getByRole("dialog", { name: "Search the graph" })
   await search.getByRole("combobox").fill("Fix the authentication test failures")
   await search.locator('[data-node-id="msg:msg_user_1"]').click()

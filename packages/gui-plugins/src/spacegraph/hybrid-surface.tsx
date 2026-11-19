@@ -39,7 +39,7 @@ export function HybridSurface(props: {
 
     if (stacked()) return "h-1/3 shrink-0 border-t border-v2-border-border-base"
 
-    return `w-2/5 shrink-0 border-v2-border-border-base ${side() === "start" ? "order-first border-r" : "order-last border-l"}`
+    return `relative z-10 w-2/5 shrink-0 border-v2-border-border-base ${side() === "start" ? "order-first border-r" : "order-last border-l"}`
   })
 
   const live = props.model.graph(props.session)

@@ -1,14 +1,11 @@
 import {
   Command,
   ComposerPill,
-  createKeyed,
   MenuItem,
   Panel,
   SessionSurface,
   SettingsPage,
-  Slot,
   Style,
-  TitlebarItem,
   type MountedSession,
   type PanelTab,
   type Plugin,
@@ -17,7 +14,7 @@ import {
 // oxlint-disable-next-line no-restricted-imports -- mirrors and restores host surface selection; the SDK's keyed providers have no equivalent for this session-scoped write
 import { createEffect, createSignal, lazy, onCleanup, onMount, Show, Suspense, type ParentProps } from "solid-js"
 // oxlint-disable-next-line no-restricted-imports -- internal graph vocabulary within the same plugin, not another built-in plugin
-import { LAYOUTS, failures } from "../internal/graph"
+import { LAYOUTS } from "../internal/graph"
 import definition, { BUILTIN_LENSES, type BuiltinLensId } from ".."
 import { createSpacegraph } from "../model"
 import { GraphLoadBoundary } from "../graph-boundary"
@@ -130,105 +127,22 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     }
   }
 
-  // M5.2: failures are announced as a toast (no sound) once per newly seen failure node.
-  const AttentionWatch = (props: { session: MountedSession }) => {
-    const seen = new Set<string>()
-    let primed = false
-    createKeyed(
-      () => (model.attentionEnabled() ? model.attention(props.session).ids.join("|") : ""),
-      () => {
-        if (!model.attentionEnabled()) return
-        const signal = model.attention(props.session)
-        if (!primed) {
-          for (const id of signal.ids) seen.add(id)
-          primed = true
-          return
-        }
-        const fresh = signal.ids.filter((id) => !seen.has(id))
-        if (fresh.length === 0) return
-        for (const id of fresh) seen.add(id)
-        ctx.toast.show({
-          variant: "error",
-          title: ctx.t("ui.sessionGraph.attention.toastTitle"),
-          description: signal.latest?.label ?? ctx.t("ui.sessionGraph.attention.toastDescription"),
-        })
-      },
-    )
-    return null
-  }
+  // The app's header graph toggle is desktop-only. On narrow screens the composer is the only
+  // persistent room for a map entry point, so contribute the action there instead.
+  ctx.add(ComposerPill, {
+    id: "map-turn",
+    show: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
+      if (!input.session) return undefined
+      if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) return undefined
+      const messages = input.session.server.data.session.message.list(input.session.id)
+      if (!messages.length) return undefined
 
-  // P0.1: Smart entry toast - offers graph view for hard sessions (attention, 50+ turns, failure chain)
-  // When clicked, opens hybrid surface with investigator lens, auto-focuses first failure, and opens "Why?" trace
-  const SmartEntryWatch = (props: { session: MountedSession }) => {
-    const shown = new Set<string>()
-    createKeyed(
-      () => model.smartEntry(props.session) ? "show" : "hide",
-      () => {
-        if (!model.smartEntry(props.session)) return
-        if (shown.has(props.session.id)) return
-        shown.add(props.session.id)
-        ctx.toast.show({
-          variant: "default",
-          title: ctx.t("ui.sessionGraph.smartEntry.toastTitle"),
-          description: ctx.t("ui.sessionGraph.smartEntry.toastDescription"),
-          actions: [
-            {
-              label: ctx.t("ui.sessionGraph.smartEntry.toastAction"),
-              run: () => {
-                model.applyLensById(props.session, "investigator")
-                select(`${ctx.id}.hybrid`)
-                // Auto-focus first failure and open "Why?" trace after surface mounts
-                setTimeout(() => {
-                  const graphModel = model.graph(props.session)()
-                  const failureNodes = failures(graphModel)
-                  if (failureNodes.length > 0) {
-                    const firstFailure = failureNodes[0]
-                    model.focus(props.session, firstFailure.node.id)
-                    model.setTraceKind(props.session, "why")
-                  }
-                }, 100)
-              },
-            },
-          ],
-        })
-      },
-    )
-    return null
-  }
-
-  // Phase 16.3: session.header slot - "Open this turn" toggle
-  ctx.add(Slot, {
-    at: "session.header",
-    order: 30,
-    render: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
-      const signal = () => (model.attentionEnabled() ? model.attention(input.session) : undefined)
-      return (
-        <div class="flex items-center gap-2" data-slot="session-header-graph-toggle">
-          <AttentionWatch session={input.session} />
-          <SmartEntryWatch session={input.session} />
-          <button
-            type="button"
-            class="text-13-regular leading-[var(--line-height-compact)] text-v2-text-text-muted hover:text-v2-text-text-base transition-colors"
-            onClick={() => select(`${ctx.id}.map`)}
-            title={ctx.t("session.header.mapTurn.tooltip")}
-            aria-label={ctx.t("session.header.mapTurn.tooltip")}
-          >
-            <svg class="w-4 h-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-              <path d="M4 4h8v8H4V4zm1 1v6h6V5H5zm5 5H6v-1h4v1z" />
-            </svg>
-            <span>{ctx.t("session.header.mapTurn.label")}</span>
-          </button>
-          <Show when={(signal()?.count ?? 0) > 0}>
-            <span
-              data-slot="session-header-graph-failures"
-              class="rounded-full bg-v2-state-bg-danger px-1.5 text-11-medium text-v2-state-fg-danger"
-              title={ctx.t("ui.sessionGraph.attention.title")}
-            >
-              {signal()?.count}
-            </span>
-          </Show>
-        </div>
-      )
+      return {
+        label: ctx.t("session.header.mapTurn.label"),
+        icon: "branch-out" as const,
+        tone: "success" as const,
+        run: () => select(`${ctx.id}.map`, input.session),
+      }
     },
   })
 
@@ -249,49 +163,6 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     draggable: false,
     closable: "compact",
   }
-
-  // Phase 16.3: ComposerPill - "Open this turn" action for active turn
-  ctx.add(ComposerPill, {
-    id: "map-turn",
-    show: (input: { session: import("@opencode/plugin/gui").MountedSession }) => {
-      const session = input.session
-      if (!session) return undefined
-
-      // Show only when there's an active turn to map
-      // We can check if there are messages in the session
-      const messages = session.server.data.session.message.list(session.id)
-      if (!messages.length) return undefined
-
-      const count = model.attentionEnabled() ? model.attention(session).count : 0
-
-      return {
-        label: count > 0 ? `${ctx.t("session.header.mapTurn.label")} (${count})` : ctx.t("session.header.mapTurn.label"),
-        icon: "branch-out" as const,
-        tone: count > 0 ? ("danger" as const) : ("success" as const),
-        run: () => select(`${ctx.id}.map`),
-      }
-    },
-  })
-
-  // M5.2: a titlebar pill for a session with failures; the toast is the quieter channel.
-  ctx.add(TitlebarItem, () => {
-    if (!model.attentionEnabled()) return
-    const session = ctx.sessions.current()
-    if (!session) return
-    const signal = model.attention(session)
-    if (!signal.latest) return
-
-    return {
-      id: "graph-failures",
-      label: ctx.plural("ui.sessionGraph.attention", signal.count),
-      title: ctx.t("ui.sessionGraph.attention.titlebar"),
-      icon: "outline-hexagonal-warning" as const,
-      run: () => {
-        model.focus(session, signal.latest?.nodeID)
-        select(`${ctx.id}.map`)
-      },
-    }
-  })
 
   const openMapDialog = (session: MountedSession, title: string) => {
     const screen = ctx.screen.current()

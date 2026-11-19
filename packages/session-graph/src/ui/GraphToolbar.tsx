@@ -919,7 +919,7 @@ export const GraphToolbar = (props: GraphToolbarProps) => {
       <Show
         when={!props.compact}
         fallback={
-          <ToolbarMenu slot="graph-toolbar-overflow" label={i18n.t("ui.sessionGraph.toolbar.more")} icon="outline-dots">
+          <ToolbarMenu slot="graph-toolbar-overflow" label={i18n.t("ui.sessionGraph.toolbar.more")} icon="outline-dots" align="start">
             {viewControls()}
             {commandControls()}
           </ToolbarMenu>
