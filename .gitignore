@@ -13,6 +13,7 @@ dist
 dist-node
 ts-dist
 .turbo
+.astro
 .typecheck-profiles
 **/.serena
 .serena/
