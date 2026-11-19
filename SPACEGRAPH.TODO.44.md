@@ -324,14 +324,13 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
 
 - **Sign-off only (blocked on the owner):** push fork branch `pr1-plugin-surface-apis` and submit the
   upstream `SessionSurface` PR. This plan never authorises either action; §12.4 and §11.9 still hold.
-- **Pre-existing test debt, unchanged by this plan (measured against clean `HEAD`, triage as separate
-  work; none regressed here):** `session-ui` graph model 358 pass / 19 fail (layout golden positions,
-  determinism, level-aware overview, cost lens, facets, narrative fixture, build-cost guard and
-  sub-layout round-trip — fixture/expectation drift from the fork); app unit 2287/53; the app graph
-  keeper e2e suites fail at baseline in this environment. `gui-plugins` improved from 1145/8 to
-  1152/1. `session-graph` unit is **not** debt: its canonical `test` (`bun test src`) is 136 pass /
-  0 fail, and `graph:verify` runs that step green; an earlier "136/32" figure came from a
-  non-canonical run and is discarded.
+- **Pre-existing test debt, unchanged by this plan (triage in the next subsection; none regressed
+  here):** `session-ui` graph model 358 pass / 19 fail. The app suites are **not** debt: full runs give
+  unit 2798/0 and browser 359/0; the earlier "2287/53" figure was stale. `session-graph` unit is
+  **not** debt: its canonical `test` (`bun test src`) is 136 pass / 0 fail, and `graph:verify` runs
+  that step green; an earlier "136/32" figure came from a non-canonical run and is discarded. The app
+  graph keeper e2e suites fail at baseline in this environment. `gui-plugins` improved from 1145/8
+  to 1152/1.
 - **Environment notes (not committed):** a stale Vite dep cache originally resolved
   `@tanstack/virtual-core` 3.13.2; `session-graph` now uses the catalog 3.13.37, matching the app and
   the patched virtual-core. In r3 a stale `packages/app/node_modules/.vite` cache produced `504
@@ -341,6 +340,20 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
   `ui/src/components/file-icon.tsx` during dependency scan is benign — dependency pre-bundling is
   skipped and the app still loads. The `spacegraphjs` matrix step needs a Playwright headless-shell
   binary; one is linked locally outside the repo.
+
+### Triage of the 19 `session-ui` graph-model failures (r4)
+
+`packages/session-ui/src/graph` was not touched by the consolidation (r2) or since r0, so all 19
+failures predate this plan. Reclassified from `bun test src/graph` (358 pass / 19 fail):
+
+| Class | Count | Failures | Disposition |
+|-------|-------|----------|-------------|
+| Real bug | 2 | `facets — an empty query is the default lens…`; `saved queries — a saved row round-trips…` | `DEFAULT_FACETS` sets the six P2.1 semantic fields (`failedTools`, `fileWrites`, `subagentCalls`, `errors`, `retries`, `costlyNodes`) but `facetsFromQuery()` never sets them, so both round-trips drop them. Fix the parser, not the tests. |
+| Performance regression candidate | 1 | `graph model — build cost` | 2524 ms against a deliberately generous 250 ms guard (10×). Profile the build/layout walk; do not raise the budget without evidence. |
+| Fixture / expectation drift | 16 | 9 layout (golden positions, determinism, 4 lane/anchoring/cluster/band assertions, 3 level-aware overview), 2 cost lens, 2 M7 narrative, compaction advisor, scale window, sub-layout radial fan | Tests assert coordinates, cluster emission, `streaming`/`usage` fields and fixture contents from before the fork's SpaceGraphJS layout strategy. Regenerate expectations or restore the fields, case by case. |
+
+No code changed in r4 — classification only. The two real bugs and the performance candidate are the
+recommended entry points if this debt is scheduled as separate work.
 
 ---
 
@@ -381,3 +394,9 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
   the stale `session-graph` 136/32 debt figure to 136/0, recorded the Vite-cache finding in §12, and
   sharpened §12's remaining-work list (sign-off is blocked on the owner; debt is separate work).
   No push or PR.
+
+- **r4 (2026-11-19):** Triaged the pre-existing test debt; no code changed. Confirmed
+  `session-ui/src/graph` was untouched by r2, so its 19 failures predate the consolidation: 2 real
+  facet round-trip bugs, 1 build-cost regression candidate (2524 ms vs 250 ms) and 16 fixture/layout
+  expectation drift cases. Corrected stale figures: app unit/browser are 2798/0 and 359/0 (not
+  2287/53); `session-graph` 136/0 (not 136/32). Triage table added to §12. No push or PR.
