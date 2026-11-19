@@ -192,12 +192,16 @@ export function laneAnchors(options: LayoutOptions = {}): { name: Lane; y: numbe
 
 export function layoutGraph(model: GraphViewData, options: LayoutOptions = {}): GraphLayout {
   const config = options.nodeSizeFn ? { ...LAYOUT, nodeSizeFn: options.nodeSizeFn } : LAYOUT
-  // spacegraphjs Strategies only supports core strategies; optional strategies fall back to force
+  // spacegraphjs Strategies only supports core strategies. An omitted strategy is lanes (the
+  // library's own default and the only strategy that preserves the append-only invariants); an
+  // explicitly requested optional strategy falls back to force.
   const strategy = options.strategy
   const coreStrategy: "lanes" | "timeline" | "hierarchy" | "tree" | "force" =
-    strategy && (CORE_LAYOUT_STRATEGIES as readonly string[]).includes(strategy)
-      ? (strategy as "lanes" | "timeline" | "hierarchy" | "tree" | "force")
-      : "force"
+    !strategy
+      ? "lanes"
+      : (CORE_LAYOUT_STRATEGIES as readonly string[]).includes(strategy)
+        ? (strategy as "lanes" | "timeline" | "hierarchy" | "tree" | "force")
+        : "force"
   return Strategies.layoutGraph(model, config, {
     strategy: coreStrategy,
     gap: options.gap,

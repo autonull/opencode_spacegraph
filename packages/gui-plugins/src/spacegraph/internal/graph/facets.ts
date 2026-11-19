@@ -193,7 +193,7 @@ export const facetsFromQuery = (query: string): GraphFacets => {
     text.push(token)
   }
 
-  return { query: text.join(" "), kinds, statuses, domains }
+  return { ...DEFAULT_FACETS, query: text.join(" "), kinds, statuses, domains }
 }
 
 export const hasFacets = (facets: GraphFacets) =>

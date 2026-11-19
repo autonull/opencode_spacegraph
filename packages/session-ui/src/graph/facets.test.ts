@@ -16,6 +16,7 @@ const model = buildFixtureGraph()
 describe("facets — one question, one scope", () => {
   test("the query grammar round-trips canonical facets", () => {
     const facets: GraphFacets = {
+      ...DEFAULT_FACETS,
       query: "token auth",
       kinds: new Set(["file", "tool"]),
       statuses: new Set(["failed", "running"]),

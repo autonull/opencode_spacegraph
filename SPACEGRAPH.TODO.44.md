@@ -1,10 +1,12 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status (r3):** Consolidation executed and independently re-verified. Phases 0–10 are done; every gate
-this plan owns is green (root `check` 57/57, `graph:verify` all steps, `graph:capture --mode=verify`
-at 31/31, component 77/77, parity 8/8). The only r3 finding was a stale Vite dependency cache
-(environment, not committed); see §12. Supersedes the delivery model of `SPACEGRAPH.TODO.43.md` and
-keeps its verified restore (`r22`–`r23`).
+**Status (r5):** Consolidation and full repair complete. Phases 0–10 are done and every known failure
+is fixed: root `check` 57/57, `graph:verify` all steps, `graph:capture --mode=verify` 31/31,
+component 77/77, `session-ui` graph model 377/377, parity 8/8. All source fixes live in
+`packages/session-ui/src/graph` and were regenerated into the plugin copy; `check:graph` is clean.
+Screenshots were regenerated from the fixed code. Only sign-off (push + PR) remains, blocked on the
+owner. Supersedes the delivery model of `SPACEGRAPH.TODO.43.md` and keeps its verified restore
+(`r22`–`r23`).
 **Extends:** `SPACEGRAPH.TODO.43.md` (r22 restore, r23 wiring). Reference: `SPACEGRAPH.TODO.41.md`
 (the capability manifest) and `SPACEGRAPH.md` §6/§9/§11.
 **Goal:** one copy of every artefact, full functional parity with the pre-today fork, and two visual
@@ -35,6 +37,11 @@ repo pushes without explicit sign-off.
 **Re-verified (r3):** from clean `HEAD` on branch `pr1-plugin-surface-apis`, root `check` 57/57,
 `graph:verify` all 16 steps (component 77/77, capture verify 31/31 + 2/2 + matrix), `session-graph`
 unit 136 pass / 0 fail. No tracked source changed in r3; the fix was to clear a stale Vite cache (§12).
+
+**Repaired (r5):** all 19 `session-ui` graph-model failures fixed at root cause (§12); the package is
+377/377 and suite runtime fell from ~4 s to 0.5 s. Full gate set re-run green: root `check` 57/57,
+`graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77. Screenshots regenerated
+from the fixed code and two frames visually verified.
 
 ---
 
@@ -324,13 +331,12 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
 
 - **Sign-off only (blocked on the owner):** push fork branch `pr1-plugin-surface-apis` and submit the
   upstream `SessionSurface` PR. This plan never authorises either action; §12.4 and §11.9 still hold.
-- **Pre-existing test debt, unchanged by this plan (triage in the next subsection; none regressed
-  here):** `session-ui` graph model 358 pass / 19 fail. The app suites are **not** debt: full runs give
-  unit 2798/0 and browser 359/0; the earlier "2287/53" figure was stale. `session-graph` unit is
-  **not** debt: its canonical `test` (`bun test src`) is 136 pass / 0 fail, and `graph:verify` runs
-  that step green; an earlier "136/32" figure came from a non-canonical run and is discarded. The app
-  graph keeper e2e suites fail at baseline in this environment. `gui-plugins` improved from 1145/8
-  to 1152/1.
+- **Resolved in r5 (details below):** the `session-ui` graph model is 377/377; every failure triaged
+  in r4 was fixed at root cause, not by relaxing assertions. Full app unit/browser runs are 2798/0
+  and 359/0, `session-graph` is 136/0, and `gui-plugins` is 1152/1 (one unrelated terminal-test error
+  and one Bun/solid `jsxDEV` toolchain error). The earlier 2287/53, 136/32 and 358/19 figures were
+  stale or non-canonical and are discarded. The app graph keeper e2e suites still fail at baseline in
+  this environment; that is unchanged and unrelated to the graph model.
 - **Environment notes (not committed):** a stale Vite dep cache originally resolved
   `@tanstack/virtual-core` 3.13.2; `session-graph` now uses the catalog 3.13.37, matching the app and
   the patched virtual-core. In r3 a stale `packages/app/node_modules/.vite` cache produced `504
@@ -341,19 +347,23 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
   skipped and the app still loads. The `spacegraphjs` matrix step needs a Playwright headless-shell
   binary; one is linked locally outside the repo.
 
-### Triage of the 19 `session-ui` graph-model failures (r4)
+### Repairs (r5)
 
-`packages/session-ui/src/graph` was not touched by the consolidation (r2) or since r0, so all 19
-failures predate this plan. Reclassified from `bun test src/graph` (358 pass / 19 fail):
+All 19 r4 failures were fixed at root cause. `packages/session-ui/src/graph` is the single editable
+source; `bun script/sync-graph.ts` regenerated the plugin copy and `check:graph` is clean.
 
-| Class | Count | Failures | Disposition |
-|-------|-------|----------|-------------|
-| Real bug | 2 | `facets — an empty query is the default lens…`; `saved queries — a saved row round-trips…` | `DEFAULT_FACETS` sets the six P2.1 semantic fields (`failedTools`, `fileWrites`, `subagentCalls`, `errors`, `retries`, `costlyNodes`) but `facetsFromQuery()` never sets them, so both round-trips drop them. Fix the parser, not the tests. |
-| Performance regression candidate | 1 | `graph model — build cost` | 2524 ms against a deliberately generous 250 ms guard (10×). Profile the build/layout walk; do not raise the budget without evidence. |
-| Fixture / expectation drift | 16 | 9 layout (golden positions, determinism, 4 lane/anchoring/cluster/band assertions, 3 level-aware overview), 2 cost lens, 2 M7 narrative, compaction advisor, scale window, sub-layout radial fan | Tests assert coordinates, cluster emission, `streaming`/`usage` fields and fixture contents from before the fork's SpaceGraphJS layout strategy. Regenerate expectations or restore the fields, case by case. |
+| Fix | Root cause | Failures resolved |
+|-----|-----------|-------------------|
+| `facetsFromQuery()` returns the full `GraphFacets` shape | Parser dropped the six P2.1 semantic fields set by `DEFAULT_FACETS` | 2 facet round-trips |
+| `layoutGraph()` defaults to `lanes`, not `force` | `layout.ts` fell back to force for an omitted strategy, breaking append-only, provenance anchoring, turn bands, overview sizing and scale stability; force is also intentionally O(n²) | 10 layout + build cost (11) |
+| Regenerate `hierarchy`/`tree`/`force` golden entries | Those three predated the SpaceGraphJS library migration; the other six keys already matched | layout golden |
+| Restore `recordUsage()` in `session-builder.ts` | Commit `17dd1f0947` dropped the usage projection while the cost lens stayed wired into production | 2 cost lens + narrative usage (3) |
+| Restore `lastWriteAt`/`lastVerifiedAt` in `unverifiedFiles()` | Same commit replaced passing-verify-run logic with read-edges-only | narrative trust lens |
+| Compaction baseline 47/926 → 43/803 | Canonical fixture lost the `prt_tool_todo_1` todowrite step; all other fixture goldens are consistent with 43 nodes | compaction measurement |
 
-No code changed in r4 — classification only. The two real bugs and the performance candidate are the
-recommended entry points if this debt is scheduled as separate work.
+No assertion was relaxed to hide a defect. The committed screenshot set was regenerated with
+`bun run graph:capture --mode=demo`; frames `02` and `32` were visually verified to render the graph,
+toolbar, lanes, edges and workspace view.
 
 ---
 
@@ -400,3 +410,14 @@ recommended entry points if this debt is scheduled as separate work.
   facet round-trip bugs, 1 build-cost regression candidate (2524 ms vs 250 ms) and 16 fixture/layout
   expectation drift cases. Corrected stale figures: app unit/browser are 2798/0 and 359/0 (not
   2287/53); `session-graph` 136/0 (not 136/32). Triage table added to §12. No push or PR.
+
+- **r5 (2026-11-19):** Fixed every failure triaged in r4. Root causes: `facetsFromQuery()` dropped the
+  P2.1 semantic fields; `layoutGraph()` defaulted to the O(n²) force strategy instead of lanes, which
+  broke ten layout assertions and the build-cost guard; `recordUsage()` and the rich `unverifiedFiles()`
+  rule were dropped by commit `17dd1f0947` while the cost lens stayed wired into production; three
+  golden entries predated the SpaceGraphJS migration; the compaction baseline still locked the
+  removed todowrite fixture step. All fixes are in `packages/session-ui/src/graph`, regenerated into
+  the plugin copy (`check:graph` clean). `session-ui` graph model is 377/377 and runtime fell from
+  ~4 s to 0.5 s. Full gates re-run green: root `check` 57/57, `graph:verify` all steps, capture verify
+  31/31 + 2/2 + matrix, component 77/77, parity 8/8. Regenerated the committed screenshot set and
+  visually verified frames `02` and `32`. No push or PR.
