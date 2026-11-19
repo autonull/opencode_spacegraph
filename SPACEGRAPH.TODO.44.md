@@ -1,8 +1,10 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status (r2):** Consolidation executed. Phases 0–10 are done; every gate this plan owns is green
-(root `check`, `graph:verify`, `graph:capture --mode=verify` at 31/31, component 77/77, parity 8/8).
-Supersedes the delivery model of `SPACEGRAPH.TODO.43.md` and keeps its verified restore (`r22`–`r23`).
+**Status (r3):** Consolidation executed and independently re-verified. Phases 0–10 are done; every gate
+this plan owns is green (root `check` 57/57, `graph:verify` all steps, `graph:capture --mode=verify`
+at 31/31, component 77/77, parity 8/8). The only r3 finding was a stale Vite dependency cache
+(environment, not committed); see §12. Supersedes the delivery model of `SPACEGRAPH.TODO.43.md` and
+keeps its verified restore (`r22`–`r23`).
 **Extends:** `SPACEGRAPH.TODO.43.md` (r22 restore, r23 wiring). Reference: `SPACEGRAPH.TODO.41.md`
 (the capability manifest) and `SPACEGRAPH.md` §6/§9/§11.
 **Goal:** one copy of every artefact, full functional parity with the pre-today fork, and two visual
@@ -29,6 +31,10 @@ repo pushes without explicit sign-off.
 | 8 — Hybrid composition | Done | arrangements and bridge were already plugin-owned; log text-size control and `hybrid.css` added |
 | 9 — Side panel | Done | `Overview` panel tab renders the static SVG overview and reveals a message on pick |
 | 10 — Reconcile `SPACEGRAPH.md` | Done | §5.1, §5.4, §6.3, §7.1, §9.4 and §11.4 now describe the fork |
+
+**Re-verified (r3):** from clean `HEAD` on branch `pr1-plugin-surface-apis`, root `check` 57/57,
+`graph:verify` all 16 steps (component 77/77, capture verify 31/31 + 2/2 + matrix), `session-graph`
+unit 136 pass / 0 fail. No tracked source changed in r3; the fix was to clear a stale Vite cache (§12).
 
 ---
 
@@ -101,10 +107,10 @@ Budget: the fork patch stays at the seam + model + plugin registration. No new c
    `packages/stories/vite.config.ts`.
 2. **Done (r1):** let `findStory` resolve a component id to its first story in
    `packages/stories/src/index-plugin.ts`, so the pre-today `mount("session-graph-view")` spelling works.
-3. **Remaining:** fix the 3 failing component tests: `graph-refine` inspector resize (wide) and bottom
-   sheet height (narrow), and the hostile-markup test that expects the card DOM.
-4. Replace the stale Storybook step in `script/graph-verify.ts` with `packages/stories`
-   (`bun run --cwd packages/session-graph test:components`).
+3. **Done (r2):** fixed the 3 failing component tests — the inspector resize (wide), bottom sheet
+   height (narrow) and hostile-markup card assertion.
+4. **Done (r2):** the Storybook step in `script/graph-verify.ts` now runs `packages/stories`
+   (`bun run --cwd packages/session-graph test:components`); result 77/77.
 
 **Gate:** `test:components` **77/77**.
 
@@ -314,17 +320,27 @@ The plan is complete. Use this section as the sign-off runbook, not as a to-do l
 
 ### Remaining work (not on the critical path)
 
-- **Sign-off only:** push the fork branch and submit the upstream `SessionSurface` PR.
-- **Pre-existing test debt, unchanged by this plan (measured against clean `HEAD`):** `session-ui`
-  graph model 358 pass / 19 fail (layout golden positions, determinism, level-aware overview, cost
-  lens, facets, narrative fixture, build-cost guard and sub-layout round-trip — fixture/expectation
-  drift from the fork); `session-graph` unit 136/32; app unit 2287/53; the app graph keeper e2e
-  suites fail at baseline in this environment. Triage these as separate work; none regressed here.
-  `gui-plugins` improved from 1145/8 to 1152/1.
+None of these blocks sign-off on the consolidation itself. Do them only after explicit sign-off.
+
+- **Sign-off only (blocked on the owner):** push fork branch `pr1-plugin-surface-apis` and submit the
+  upstream `SessionSurface` PR. This plan never authorises either action; §12.4 and §11.9 still hold.
+- **Pre-existing test debt, unchanged by this plan (measured against clean `HEAD`, triage as separate
+  work; none regressed here):** `session-ui` graph model 358 pass / 19 fail (layout golden positions,
+  determinism, level-aware overview, cost lens, facets, narrative fixture, build-cost guard and
+  sub-layout round-trip — fixture/expectation drift from the fork); app unit 2287/53; the app graph
+  keeper e2e suites fail at baseline in this environment. `gui-plugins` improved from 1145/8 to
+  1152/1. `session-graph` unit is **not** debt: its canonical `test` (`bun test src`) is 136 pass /
+  0 fail, and `graph:verify` runs that step green; an earlier "136/32" figure came from a
+  non-canonical run and is discarded.
 - **Environment notes (not committed):** a stale Vite dep cache originally resolved
   `@tanstack/virtual-core` 3.13.2; `session-graph` now uses the catalog 3.13.37, matching the app and
-  the patched virtual-core, so capture runs cleanly. The `spacegraphjs` matrix step needs a
-  Playwright headless-shell binary; one is linked locally outside the repo.
+  the patched virtual-core. In r3 a stale `packages/app/node_modules/.vite` cache produced `504
+  Outdated Optimize Dep` and left frames `02`/`03` at `data-graph-ready="false"`; `rm -rf
+  packages/app/node_modules/.vite` and re-running made all 31 capture frames pass (the two frames are
+  cold-start flaky until Vite finishes pre-bundling). The Vite 8 / rolldown `[PARSE_ERROR]` on
+  `ui/src/components/file-icon.tsx` during dependency scan is benign — dependency pre-bundling is
+  skipped and the app still loads. The `spacegraphjs` matrix step needs a Playwright headless-shell
+  binary; one is linked locally outside the repo.
 
 ---
 
@@ -355,3 +371,13 @@ The plan is complete. Use this section as the sign-off runbook, not as a to-do l
   and the side overview tab; reconciled `SPACEGRAPH.md`; removed stale app-matrix wiring from the
   capture script. Results: root `check` 57/57, `graph:verify` all steps, capture verify 31/31,
   component 77/77, parity 8/8. Pre-existing test debt recorded in §12. No push or PR.
+
+- **r3 (2026-11-18):** Independent re-verification of clean `HEAD`; no tracked source changed. First
+  `graph:verify` run failed only in the capture e2e step: stale `packages/app/node_modules/.vite`
+  produced `504 Outdated Optimize Dep` and left frames `02`/`03` at `data-graph-ready="false"`.
+  Clearing that cache (regenerable, not committed) and re-running made every gate pass: root `check`
+  57/57, `graph:verify` all 16 steps (`test:components` 77/77, capture verify 31/31 + 2/2 + matrix),
+  `session-graph` unit 136 pass / 0 fail. Closed the two stale Phase 0 "Remaining" markers, corrected
+  the stale `session-graph` 136/32 debt figure to 136/0, recorded the Vite-cache finding in §12, and
+  sharpened §12's remaining-work list (sign-off is blocked on the owner; debt is separate work).
+  No push or PR.
