@@ -80,8 +80,10 @@ export function SessionSurfaceHost(props: {
     <>
       {/* Kept in one stable container: moving the live transcript between branches of a Show makes Solid reconcile a
           node that is an ancestor of its new parent, and destroys the timeline's scroll position. */}
-      <div data-slot="session-transcript" style={{ display: custom() ? "none" : "contents" }}>
-        {transcript()}
+      <div data-slot="session-graph-panel-log" style={{ display: "contents" }}>
+        <div data-slot="session-transcript" style={{ display: custom() ? "none" : "contents" }}>
+          {transcript()}
+        </div>
       </div>
       <Show when={custom()}>
         <div class="flex h-full min-h-0 flex-col">{content()}</div>

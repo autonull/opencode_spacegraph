@@ -1,8 +1,9 @@
-import { createMemo, type JSX } from "solid-js"
+// oxlint-disable-next-line no-restricted-imports -- revealing a picked node is a host action on a focus change, not derived state; no SDK provider owns it
+import { createEffect, createMemo, on, type JSX } from "solid-js"
 import type { MountedSession, SessionScreen, SetupContext } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { SessionGraph } from "@opencode/session-graph"
-import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import { LAYOUTS } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 import { GraphToolbarViewControls } from "@opencode/session-graph"
 import { useI18n } from "@opencode/ui/context/i18n"
@@ -53,6 +54,14 @@ export function HybridSurface(props: {
   const timeTravel = () => props.model.timeTravelEnabled()
   const turnCount = () => live().turns.length
   const focused = () => props.model.focused(props.session)
+  // A pick in the map moves the log to the same turn: reveal the message in the embedded transcript
+  // without leaving the hybrid surface.
+  createEffect(
+    on(focused, (id) => {
+      const messageID = graph().nodes.find((node) => node.id === id)?.messageID
+      if (messageID) props.screen.transcript?.reveal(messageID)
+    }),
+  )
   const preferredRenderer = () => props.model.renderer()
   const detailMode = () => props.model.detailMode(props.session)
   const neighborhoodMode = () => props.model.neighborhoodMode(props.session)
@@ -117,7 +126,7 @@ export function HybridSurface(props: {
           onCheckpoint={(index: number) => props.model.setCheckpoint(props.session, index, turnCount())}
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
-            const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
+            const layout = LAYOUTS.find((candidate: string) => candidate === next)
 
             if (layout) props.model.setLayout(props.session, layout)
           }}

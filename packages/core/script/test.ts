@@ -10,6 +10,9 @@ await fs.mkdir(temporary)
 const environment = {
   ...Object.fromEntries(
     Object.entries(process.env).filter(([name]) => {
+      // A developer's login shell must not decide which shell spawned shell commands use.
+      // Fish is a denied shell in ShellSelect, so inheriting SHELL=/usr/bin/fish breaks shell tests.
+      if (name === "SHELL") return false
       if (process.env.RECORD === "true" && name === "OPENAI_API_KEY") return true
       if (
         /^(?:AWS|AZURE|GOOGLE|GCP|GCLOUD|VERTEX|OPENAI|ANTHROPIC|GEMINI|XAI|CLOUDFLARE|CF_AIG|SNOWFLAKE|AICORE|GITLAB|NPM_CONFIG)_/i.test(

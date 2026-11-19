@@ -2725,6 +2725,13 @@ export type ConfigEntry =
           console_watches?: boolean
           mcp_events?: boolean
           full_codemode?: boolean
+          graph_cost_lens?: boolean
+          graph_palette?: boolean
+          graph_attention?: boolean
+          graph_layout_breadth?: boolean
+          graph_library_renderers?: boolean
+          graph_time_travel?: boolean
+          graph_compaction_advisor?: boolean
           schedules?: boolean
           part_rows?: boolean
           image_generate?: boolean | { model?: string | { providerID: string; model: string; variant?: string } }
@@ -5041,13 +5048,13 @@ export type ExperimentalConfigUpdateInput = { readonly shell: string | null }
 
 export type ExperimentalConfigUpdateOutput = void
 
-export type ServerGraphWorkspaceInput = {
+export type GraphWorkspaceInput = {
   readonly location?: { readonly directory?: string | undefined } | undefined
   readonly scope?: "session" | "directory" | "workspace" | undefined
   readonly paths?: string | undefined
 }
 
-export type ServerGraphWorkspaceOutput = { location: LocationPublicRef; data: WorkspaceSnapshot }
+export type GraphWorkspaceOutput = { location: LocationPublicRef; data: WorkspaceSnapshot }
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
 export type SessionStatsInput = ExperimentalSessionStatsInput

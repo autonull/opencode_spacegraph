@@ -61,7 +61,9 @@ function setup(flagsEnabled = true) {
     widgets?: { enabled?: boolean }
     density?: unknown
     userLenses?: { id: string; name: string; description: string; surface: string }[]
-  }>({})
+    // The host negotiates flags into capabilities on prefs; the model gates optional layouts through these.
+    capabilities?: { layoutBreadth?: boolean }
+  }>({ capabilities: { layoutBreadth: flagsEnabled } })
   const stored = memory<Stored>({})
   const selected: string[] = []
 

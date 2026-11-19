@@ -110,7 +110,7 @@
   }
 
   h3 {
-    font-size: 14px;
+    font-size: var(--font-size-base, 14px);
     color: var(--v2-text-text-base);
     font-weight: var(--font-weight-bold);
     margin-top: 20px;
@@ -121,7 +121,7 @@
   h4,
   h5,
   h6 {
-    font-size: 14px;
+    font-size: var(--font-size-base, 14px);
     color: var(--v2-text-text-muted);
     font-weight: var(--font-weight-medium);
     margin-top: 20px;
@@ -289,7 +289,7 @@
   .highlights {
     background: var(--color-background-stronger);
     color: var(--v2-text-text-muted);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     line-height: 20px;
     padding: 12px;
     border-radius: 6px;
@@ -530,7 +530,7 @@
     border-collapse: separate;
     border-spacing: 0;
     color: var(--v2-text-text-base);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-variant-numeric: tabular-nums;
     font-weight: 440;
     line-height: var(--line-height-compact);

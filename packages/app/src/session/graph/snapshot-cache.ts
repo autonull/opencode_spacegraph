@@ -20,7 +20,7 @@ export function createSnapshotCache(
     `${directory()}/${scope}/${paths ?? ""}`
 
   const fetchSnapshot = async (scope: "session" | "directory" | "workspace", paths?: string): Promise<WorkspaceSnapshot> => {
-    const response = await serverSDK.api["server.graph"].workspace({
+    const response = await serverSDK.api.graph.workspace({
       location: { directory: directory() },
       scope,
       paths,

@@ -132,6 +132,14 @@ export const MIN_CARD_HEIGHT_PX = CARD_SIZE[1] / 2
 export const READABLE_CARD_WIDTH = DETAIL_TIER_WIDTH.closest * 1.05
 
 /**
+ * T17.5 — the DOM card budget once the camera leaves the frame it first rested at. At the fitted
+ * frame the map keeps every card, so the opening view is unchanged. After a camera move the budget
+ * is spent on this many nodes, ordered by distance from the camera; a budget at or above the node
+ * count culls nothing and the rendered cards cannot follow the camera.
+ */
+export const FOCUSED_CARD_BUDGET = 24
+
+/**
  * Props for the {@link SessionGraph} component.
  *
  * @public
@@ -566,11 +574,12 @@ export const SessionGraph = (props: SessionGraphProps) => {
     turnByMessageID: new Map(),
   }
   const [notesStore, setNotesStore] = createStore<Annotations>({})
-  // Use controlled notes when provided, otherwise local store
-  const notesSource = props.notes ?? notesStore
+  // Read controlled notes inside the memo: capturing `props.notes` here would freeze the empty initial
+  // value, so notes added later would be stored but never appear in the rendered graph.
+  const notesSource = () => props.notes ?? notesStore
   const [localPins, setLocalPins] = createSignal<ReadonlySet<string>>(new Set())
   const pins = createMemo<ReadonlySet<string>>(() => (props.pins ? new Set(props.pins) : localPins()))
-  const model = createMemo(() => (props.model ? withAnnotations(props.model, notesSource) : emptyModel))
+  const model = createMemo(() => (props.model ? withAnnotations(props.model, notesSource()) : emptyModel))
 
   // Demo model for first-run: uses canonical fixture when no session data
   const demoModel = createMemo(() => {
@@ -1154,7 +1163,7 @@ export const SessionGraph = (props: SessionGraphProps) => {
   // T17.5 — the card budget follows the camera. The adapter spends the budget in the order it walks
   // the nodes, so the order decides which nodes get a card: the ones under the reader's hand.
   // Gate budget recalculation on selection change or camera rest (not every viewport update).
-  const { budgetCenter } = useBudgetCenter({
+  const { budgetCenter, cameraMoved } = useBudgetCenter({
     selection: () => [...selection()],
     displayPositions,
     viewportTracker: () => viewportTracker,
@@ -1203,9 +1212,13 @@ export const SessionGraph = (props: SessionGraphProps) => {
 
   // M4 — the card budget answers the viewport and the density profile, not only the level: a small
   // pane spends fewer cards, a large display more. The camera chooses which nodes win the budget.
-  const cardBudget = createMemo(() =>
-    viewportCardBudget(level(), canvasSize(), props.density ?? "comfortable"),
-  )
+  const cardBudget = createMemo(() => {
+    const budget = viewportCardBudget(level(), canvasSize(), props.density ?? "comfortable")
+    // At the fitted frame keep every card so the opening map is unchanged. Once the camera moves,
+    // spend a focused budget on the nodes nearest the reader; a budget at or above the node count
+    // culls nothing, so the proximity order leaves the rendered card set untouched.
+    return cameraMoved() ? Math.min(budget, FOCUSED_CARD_BUDGET) : budget
+  })
 
   // Build render model using extracted helper
   const { renderModel, contentIDs, ordered } = useRenderModel({

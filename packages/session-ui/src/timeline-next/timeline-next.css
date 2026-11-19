@@ -15,7 +15,7 @@
   [data-slot="context-tool-group-elapsed"] {
     flex-shrink: 0;
     font-family: var(--v2-font-family-sans);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 440;
     line-height: var(--line-height-compact);
     letter-spacing: -0.04px;
@@ -79,7 +79,7 @@
 /* A command the user ran is its command and output, always showing, as an agent's command shows once opened. */
 [data-timeline="next"] [data-component="shell-tool"] [data-slot="shell-tool-writing"] {
   display: block;
-  font-size: 13px;
+  font-size: var(--font-size-small, 13px);
   line-height: var(--line-height-compact);
   color: var(--v2-text-text-muted);
 }
@@ -250,7 +250,7 @@
     min-height: 28px;
     min-width: 0;
     font-family: var(--v2-font-family-sans);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 440;
     line-height: var(--line-height-compact);
     letter-spacing: -0.04px;
@@ -582,7 +582,7 @@
 
   [data-slot="timeline-status-label"] {
     font-family: var(--v2-font-family-sans);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 440;
     line-height: var(--line-height-compact);
     letter-spacing: -0.04px;

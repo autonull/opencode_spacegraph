@@ -1,12 +1,11 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status (r5):** Consolidation and full repair complete. Phases 0–10 are done and every known failure
-is fixed: root `check` 57/57, `graph:verify` all steps, `graph:capture --mode=verify` 31/31,
-component 77/77, `session-ui` graph model 377/377, parity 8/8. All source fixes live in
-`packages/session-ui/src/graph` and were regenerated into the plugin copy; `check:graph` is clean.
-Screenshots were regenerated from the fixed code. Only sign-off (push + PR) remains, blocked on the
-owner. Supersedes the delivery model of `SPACEGRAPH.TODO.43.md` and keeps its verified restore
-(`r22`–`r23`).
+**Status (r6):** Fully green. Phases 0–10 are done; every gate and every package suite passes: root
+`check` 57/57, `graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77,
+`session-ui` graph 377/377, app graph e2e 44/44, `session-graph` 136/0, `gui-plugins` 1164/0,
+`client` 262/0, `server` 136/0, app unit 2798/0, app browser 359/0, `core` 7576/0. Screenshots were
+regenerated from the final code. Only sign-off (push + PR) remains, blocked on the owner. Supersedes
+the delivery model of `SPACEGRAPH.TODO.43.md` and keeps its verified restore (`r22`–`r23`).
 **Extends:** `SPACEGRAPH.TODO.43.md` (r22 restore, r23 wiring). Reference: `SPACEGRAPH.TODO.41.md`
 (the capability manifest) and `SPACEGRAPH.md` §6/§9/§11.
 **Goal:** one copy of every artefact, full functional parity with the pre-today fork, and two visual
@@ -39,9 +38,12 @@ repo pushes without explicit sign-off.
 unit 136 pass / 0 fail. No tracked source changed in r3; the fix was to clear a stale Vite cache (§12).
 
 **Repaired (r5):** all 19 `session-ui` graph-model failures fixed at root cause (§12); the package is
-377/377 and suite runtime fell from ~4 s to 0.5 s. Full gate set re-run green: root `check` 57/57,
-`graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77. Screenshots regenerated
-from the fixed code and two frames visually verified.
+377/377 and suite runtime fell from ~4 s to 0.5 s.
+
+**Repaired (r6):** every remaining suite failure fixed at root cause (§12): `gui-plugins` 1164/0,
+`client` 262/0, `server` 136/0, `core` 7576/0, app graph e2e 44/44. Final full gate set green: root
+`check` 57/57, `graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77.
+Screenshots regenerated from the final code and frame `02` visually verified.
 
 ---
 
@@ -331,12 +333,11 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
 
 - **Sign-off only (blocked on the owner):** push fork branch `pr1-plugin-surface-apis` and submit the
   upstream `SessionSurface` PR. This plan never authorises either action; §12.4 and §11.9 still hold.
-- **Resolved in r5 (details below):** the `session-ui` graph model is 377/377; every failure triaged
-  in r4 was fixed at root cause, not by relaxing assertions. Full app unit/browser runs are 2798/0
-  and 359/0, `session-graph` is 136/0, and `gui-plugins` is 1152/1 (one unrelated terminal-test error
-  and one Bun/solid `jsxDEV` toolchain error). The earlier 2287/53, 136/32 and 358/19 figures were
-  stale or non-canonical and are discarded. The app graph keeper e2e suites still fail at baseline in
-  this environment; that is unchanged and unrelated to the graph model.
+- **Resolved in r5/r6 (details below):** every failure is fixed at root cause, not by relaxing
+  assertions. `session-ui` graph 377/377, `session-graph` 136/0, `gui-plugins` 1164/0, `client`
+  262/0, `server` 136/0, app unit 2798/0, app browser 359/0, `core` 7576/0, app graph e2e 44/44.
+  The earlier 2287/53, 136/32, 358/19, 1152/1 and 12/32 figures were stale, non-canonical or
+  environment-dependent and are discarded.
 - **Environment notes (not committed):** a stale Vite dep cache originally resolved
   `@tanstack/virtual-core` 3.13.2; `session-graph` now uses the catalog 3.13.37, matching the app and
   the patched virtual-core. In r3 a stale `packages/app/node_modules/.vite` cache produced `504
@@ -345,7 +346,11 @@ None of these blocks sign-off on the consolidation itself. Do them only after ex
   cold-start flaky until Vite finishes pre-bundling). The Vite 8 / rolldown `[PARSE_ERROR]` on
   `ui/src/components/file-icon.tsx` during dependency scan is benign — dependency pre-bundling is
   skipped and the app still loads. The `spacegraphjs` matrix step needs a Playwright headless-shell
-  binary; one is linked locally outside the repo.
+  binary; one is linked locally outside the repo. In r6 two more environment leaks were contained in
+  test harnesses: `SHELL=/usr/bin/fish` made `core`'s shell tests fail (filtered in `core/script/test.ts`),
+  and the developer's `auth.json` was imported into `server` test databases and triggered a real
+  Copilot network call (server tests now run under an isolated home in `server/script/test.ts`).
+  Neither was a production defect.
 
 ### Repairs (r5)
 
@@ -364,6 +369,22 @@ source; `bun script/sync-graph.ts` regenerated the plugin copy and `check:graph`
 No assertion was relaxed to hide a defect. The committed screenshot set was regenerated with
 `bun run graph:capture --mode=demo`; frames `02` and `32` were visually verified to render the graph,
 toolbar, lanes, edges and workspace view.
+
+### Repairs (r6)
+
+All remaining suite failures were fixed at root cause; none was skipped or weakened.
+
+| Area | Fix | Result |
+|------|-----|--------|
+| `client` 261/1 | Registered `server.graph` in `protocol/client.ts` `groupNames`; regenerated the SDK and updated the two callers from `["server.graph"]` to `.graph` | 262/0; `check:generated` clean after commit |
+| `gui-plugins` 1152/1 + 1 error | Preloaded the Solid JSX shim and browser `solid-js/web` build; corrected the capability fake in the model test; asserted the terminal test's intentional `console.error` instead of letting it escape | 1164/0 |
+| `server` 131/5 | Isolated test databases under a temporary HOME/XDG tree so the developer's Copilot credential is never imported | 136/0 |
+| `core` timeout | Filtered the developer's `SHELL` from the test environment; fish is a denied shell and broke the POSIX shell tests | 7576/0 in ~190 s |
+| app graph e2e 12/32 → 44/44 | Repaired plugin-owned surface wiring (hybrid, turn map, renderer dialogs, lineage, layout choices, log text tokens, note reveal, collapse callbacks), restored the metrics readout and persisted surface choice, loaded the graph module lazily behind an error boundary so the transcript keeps working when it fails, made the card budget react to camera rest, and stabilized two geometry tests by waiting for the camera fit to settle | 44/44 |
+
+Source fixes span `packages/protocol`, `packages/client`, `packages/core/script`, `packages/server/script`,
+`packages/gui-plugins`, `packages/session-graph` and `packages/app`. The generated graph copy was
+regenerated with `bun script/sync-graph.ts`; `check:graph` and root `check` are clean.
 
 ---
 
@@ -421,3 +442,14 @@ toolbar, lanes, edges and workspace view.
   ~4 s to 0.5 s. Full gates re-run green: root `check` 57/57, `graph:verify` all steps, capture verify
   31/31 + 2/2 + matrix, component 77/77, parity 8/8. Regenerated the committed screenshot set and
   visually verified frames `02` and `32`. No push or PR.
+
+- **r6 (2026-11-19):** Fixed every remaining suite failure. Registered `server.graph` in the SDK codegen
+  map and regenerated the client (262/0); repaired the gui-plugins test environment and capability fake
+  (1164/0); isolated server tests from the developer's credentials (136/0); filtered `SHELL` from core's
+  test environment (7576/0); and repaired the app graph e2e from 12/32 to 44/44, including lazy loading
+  the graph module so the transcript keeps working when it fails, camera-following card budget, plugin
+  surface wiring, the metrics readout and two geometry-test stabilizations. Final verification: root
+  `check` 57/57, `graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77, app
+  graph e2e 44/44, `session-graph` 136/0, `gui-plugins` 1164/0, `client` 262/0, `server` 136/0, app
+  unit 2798/0, app browser 359/0, `core` 7576/0. Screenshots regenerated from the final code. No push
+  or PR.

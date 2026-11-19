@@ -7,6 +7,7 @@ import type { UseGraphAnnotationsReturn } from "./useGraphAnnotations"
 import type { UseGraphSelectionReturn } from "./useGraphSelection"
 import type { GraphRenderer } from "@spacegraphjs/renderer"
 import { POPOVER_GAP, POPOVER_WIDTH, POPOVER_MAX_HEIGHT, CARD_SIZE } from "./popover-constants"
+import { NOTE_WIDTH } from "./GraphNoteComposer"
 
 export interface UsePopoverInput {
   model: Accessor<GraphViewData>
@@ -80,7 +81,7 @@ export function usePopover(input: UsePopoverInput): UsePopoverReturn {
     viewport: viewportTracker.viewport,
   })
 
-  const noteAnchor = createNodeAnchor({
+  const rawNoteAnchor = createNodeAnchor({
     node: () => {
       const noteTarget = annotations.noteTarget()
       if (!noteTarget) return undefined
@@ -88,6 +89,18 @@ export function usePopover(input: UsePopoverInput): UsePopoverReturn {
     },
     renderer,
     viewport: viewportTracker.viewport,
+  })
+
+  // The target can be outside the camera (a newly added note reframes the view), but the composer
+  // must stay reachable so a reader can finish editing that note.
+  const noteAnchor = createMemo(() => {
+    const anchor = rawNoteAnchor()
+    if (!anchor) return undefined
+    const size = canvasSize()
+    return {
+      x: Math.max(8, Math.min(anchor.x, Math.max(8, size.width - NOTE_WIDTH - 8))),
+      y: Math.max(8, Math.min(anchor.y, Math.max(8, size.height - 200))),
+    }
   })
 
   // Beside the node, flipped to the other side when it would leave the canvas.

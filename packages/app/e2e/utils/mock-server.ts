@@ -1631,6 +1631,7 @@ export function currentSession(session: MockSession, fallbackDirectory?: string)
     ...decodeSessionOutcome(session),
     time: { created: seed.time?.created ?? 0, updated: seed.time?.updated ?? 0, ...seed.time },
     title: session.title ?? session.id,
+    fork: session.fork,
     location: { directory: seed.location?.directory ?? seed.directory ?? fallbackDirectory },
     subpath: session.subpath ?? session.path,
     revert: session.revert,

@@ -1,8 +1,8 @@
-/* The log's text scale is a hybrid-surface presentation only. The theme owns the unscaled sizes;
-   this surface re-derives them so a theme change scales with it. */
+/* The log's text scale is a hybrid-surface presentation only. The timeline stylesheet reads these
+   size tokens, so overriding them on the log scales every message without touching other surfaces. */
 [data-slot="spacegraph-hybrid-log"] {
-  --font-size-small: calc(var(--text-size-small) * var(--text-scale, 1));
-  --font-size-base: calc(var(--text-size-base) * var(--text-scale, 1));
-  --font-size-large: calc(var(--text-size-large) * var(--text-scale, 1));
-  --font-size-x-large: calc(var(--text-size-x-large) * var(--text-scale, 1));
+  --font-size-small: calc(13px * var(--text-scale, 1));
+  --font-size-base: calc(14px * var(--text-scale, 1));
+  --font-size-large: calc(16px * var(--text-scale, 1));
+  --font-size-x-large: calc(20px * var(--text-scale, 1));
 }

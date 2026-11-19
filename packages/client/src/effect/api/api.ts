@@ -2845,12 +2845,12 @@ export interface ExperimentalConfigApi<E = never> {
   readonly update: ExperimentalConfigUpdateOperation<E>
 }
 
-export type ServerGraphWorkspaceInput = {
+export type GraphWorkspaceInput = {
   readonly location?: { readonly directory?: string | undefined } | undefined
   readonly scope?: "session" | "directory" | "workspace" | undefined
   readonly paths?: string | undefined
 }
-export type ServerGraphWorkspaceOutput = {
+export type GraphWorkspaceOutput = {
   readonly location: Location.PublicRef
   readonly data: {
     readonly version: 1
@@ -2943,12 +2943,10 @@ export type ServerGraphWorkspaceOutput = {
     readonly capabilities: ReadonlyArray<string>
   }
 }
-export type ServerGraphWorkspaceOperation<E = never> = (
-  input?: ServerGraphWorkspaceInput,
-) => Effect.Effect<ServerGraphWorkspaceOutput, E>
+export type GraphWorkspaceOperation<E = never> = (input?: GraphWorkspaceInput) => Effect.Effect<GraphWorkspaceOutput, E>
 
-export interface ServerGraphApi<E = never> {
-  readonly workspace: ServerGraphWorkspaceOperation<E>
+export interface GraphApi<E = never> {
+  readonly workspace: GraphWorkspaceOperation<E>
 }
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
@@ -3221,7 +3219,7 @@ export interface AppApi<E = never> {
   readonly debug: DebugApi<E>
   readonly websearch: WebsearchApi<E>
   readonly config: ConfigApi<E>
-  readonly "server.graph": ServerGraphApi<E>
+  readonly graph: GraphApi<E>
 
   /** @deprecated Use `client.experimental.generate`. Removed in the next minor. */
   readonly generate: {

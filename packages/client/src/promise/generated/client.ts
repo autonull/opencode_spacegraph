@@ -326,8 +326,8 @@ import type {
   ConfigShellsOutput,
   ExperimentalConfigUpdateInput,
   ExperimentalConfigUpdateOutput,
-  ServerGraphWorkspaceInput,
-  ServerGraphWorkspaceOutput,
+  GraphWorkspaceInput,
+  GraphWorkspaceOutput,
 } from "./types.js"
 import { ClientError } from "./client-error.js"
 
@@ -2744,9 +2744,9 @@ export function make(options: ClientOptions) {
           requestOptions,
         ),
     },
-    "server.graph": {
-      workspace: (input?: ServerGraphWorkspaceInput, requestOptions?: RequestOptions) =>
-        request<ServerGraphWorkspaceOutput>(
+    graph: {
+      workspace: (input?: GraphWorkspaceInput, requestOptions?: RequestOptions) =>
+        request<GraphWorkspaceOutput>(
           {
             method: "GET",
             path: `/api/graph/workspace`,

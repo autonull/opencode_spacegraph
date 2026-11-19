@@ -322,8 +322,8 @@ import type {
   ConfigShellsOutput,
   ExperimentalConfigUpdateInput,
   ExperimentalConfigUpdateOutput,
-  ServerGraphWorkspaceInput,
-  ServerGraphWorkspaceOutput,
+  GraphWorkspaceInput,
+  GraphWorkspaceOutput,
 } from "../api/api.js"
 import { ClientError } from "./client-error.js"
 
@@ -1999,14 +1999,14 @@ const adaptGroupExperimentalConfig = (raw: RawClient["server.config"]) => ({
   update: EndpointExperimentalConfigUpdate(raw),
 })
 
-const EndpointServerGraphWorkspace = (raw: RawClient["server.graph"]) => (input?: ServerGraphWorkspaceInput) =>
-  preserveEffect<ServerGraphWorkspaceOutput>()(
+const EndpointGraphWorkspace = (raw: RawClient["server.graph"]) => (input?: GraphWorkspaceInput) =>
+  preserveEffect<GraphWorkspaceOutput>()(
     raw["graph.workspace"]({
       query: { location: input?.["location"], scope: input?.["scope"], paths: input?.["paths"] },
     }).pipe(Effect.mapError(mapClientError)),
   )
 
-const adaptGroupServerGraph = (raw: RawClient["server.graph"]) => ({ workspace: EndpointServerGraphWorkspace(raw) })
+const adaptGroupGraph = (raw: RawClient["server.graph"]) => ({ workspace: EndpointGraphWorkspace(raw) })
 
 const adaptClient = (raw: RawClient) => {
   const client = {
@@ -2049,7 +2049,7 @@ const adaptClient = (raw: RawClient) => {
     debug: adaptGroupDebug(raw["server.debug"]),
     websearch: adaptGroupWebsearch(raw["server.websearch"]),
     config: adaptGroupConfig(raw["server.config"]),
-    "server.graph": adaptGroupServerGraph(raw["server.graph"]),
+    graph: adaptGroupGraph(raw["server.graph"]),
   }
   return {
     ...client,

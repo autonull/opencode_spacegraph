@@ -14,18 +14,24 @@ import {
   type Plugin,
   type SetupContext,
 } from "@opencode/plugin/gui"
-import { createSignal, lazy, onCleanup, onMount, Show, Suspense, type ParentProps } from "solid-js"
+// oxlint-disable-next-line no-restricted-imports -- mirrors and restores host surface selection; the SDK's keyed providers have no equivalent for this session-scoped write
+import { createEffect, createSignal, lazy, onCleanup, onMount, Show, Suspense, type ParentProps } from "solid-js"
 // oxlint-disable-next-line no-restricted-imports -- internal graph vocabulary within the same plugin, not another built-in plugin
 import { LAYOUTS, failures } from "../internal/graph"
 import definition, { BUILTIN_LENSES, type BuiltinLensId } from ".."
 import { createSpacegraph } from "../model"
-import { MapSurface } from "../map-surface"
-import { HybridSurface } from "../hybrid-surface"
-import { SideOverview } from "../side-overview"
-import { TurnMapLayer } from "../turn-map-layer"
-import { MapDialog, TurnMapDialog } from "./dialogs"
+import { GraphLoadBoundary } from "../graph-boundary"
 import { createUiI18n, I18nContext } from "./i18n"
 import hybridStyles from "../hybrid.css?inline"
+
+// The graph render module is imported only when a graph surface is actually opened. A failed import
+// is then contained by GraphLoadBoundary instead of breaking the built-in's startup and the app shell.
+const MapSurface = lazy(() => import("../map-surface").then((mod) => ({ default: mod.MapSurface })))
+const HybridSurface = lazy(() => import("../hybrid-surface").then((mod) => ({ default: mod.HybridSurface })))
+const SideOverview = lazy(() => import("../side-overview").then((mod) => ({ default: mod.SideOverview })))
+const TurnMapLayer = lazy(() => import("../turn-map-layer").then((mod) => ({ default: mod.TurnMapLayer })))
+const MapDialog = lazy(() => import("./dialogs").then((mod) => ({ default: mod.MapDialog })))
+const TurnMapDialog = lazy(() => import("./dialogs").then((mod) => ({ default: mod.TurnMapDialog })))
 
 type Surfaces = SetupContext<typeof definition>["surfaces"]
 
@@ -68,29 +74,43 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     openPanel(session)
   }
 
-  // Phase 17.3: restore last used surface when session becomes active
-  const restoreSurface = (session: MountedSession) => {
-    if (!surfaces()) return
+  // The header's map/split switches go straight through the host's surface registry. Mirror the
+  // reactive selection into the plugin's session store so it can be restored after a reload;
+  // `recordSurface` deliberately does not select, so this cannot loop.
+  let restored = false
+  createEffect(() => {
+    const session = ctx.sessions.current()
 
-    const storedSurface = model.surface(session)
-    // Valid surfaces: transcript, ${ctx.id}.map, ${ctx.id}.hybrid
-    const validSurfaces = ["transcript", `${ctx.id}.map`, `${ctx.id}.hybrid`]
+    if (!session || !restored) return
 
-    // Only restore if a valid surface was explicitly stored.
-    // If nothing is stored, leave the host's current selection alone
-    // (e.g., the test fixture explicitly selects the map surface).
-    if (storedSurface && validSurfaces.includes(storedSurface)) {
-      ctx.surfaces.select(storedSurface, session)
+    const current = ctx.surfaces.current(session)
+
+    if (current === "transcript" || current === `${ctx.id}.map` || current === `${ctx.id}.hybrid`) {
+      model.recordSurface(session, current)
     }
-  }
+  })
 
-  // Restore surface on mount
+  // Restore surface on mount. Contributed surfaces register asynchronously, so wait for the stored
+  // id to appear in the reactive surface list instead of guessing a registration delay. Only start
+  // mirroring the host selection once the stored choice has been applied, or the transcript default
+  // would overwrite it first.
   onMount(() => {
     const session = ctx.sessions.current()
-    if (session) {
-      // Small delay to let surfaces register
-      setTimeout(() => restoreSurface(session), 0)
+    const target = session ? model.surface(session) : undefined
+
+    if (!session || !target || target === "transcript") {
+      restored = true
+
+      return
     }
+
+    createEffect(() => {
+      if (restored) return
+      if (ctx.surfaces.list().some((surface) => surface.id === target)) {
+        ctx.surfaces.select(target, session)
+        restored = true
+      }
+    })
   })
 
   // Phase 17.2: reveal from graph - switch to transcript surface first, then reveal
@@ -282,16 +302,24 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       return
     }
 
-    ctx.dialogs.open(() => (
+    const dialog = ctx.dialogs.open(() => (
       <Scope>
-        <MapDialog
-          ctx={ctx}
-          model={model}
-          session={session}
-          screen={screen}
-          title={title}
-          onOpenTranscript={handleOpenTranscript}
-        />
+        <GraphLoadBoundary
+          t={ctx.t}
+          onBack={() => {
+            dialog.close()
+            select("transcript")
+          }}
+        >
+          <MapDialog
+            ctx={ctx}
+            model={model}
+            session={session}
+            screen={screen}
+            title={title}
+            onOpenTranscript={handleOpenTranscript}
+          />
+        </GraphLoadBoundary>
       </Scope>
     ))
   }
@@ -303,28 +331,39 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
 
     const dialog = ctx.dialogs.open(() => (
       <Scope>
-        <TurnMapDialog
-          ctx={ctx}
-          model={model}
-          session={session}
-          screen={screen}
-          labels={{
-            title: ctx.t("turnMap.title"),
-            open: ctx.t("turnMap.open"),
-            close: ctx.t("turnMap.close"),
-            empty: ctx.t("turnMap.empty"),
-          }}
-          openFull={() => {
+        <GraphLoadBoundary
+          t={ctx.t}
+          onBack={() => {
             dialog.close()
-            openPanel(session)
+            select("transcript")
           }}
-          onOpenTranscript={handleOpenTranscript}
-        />
+        >
+          <TurnMapDialog
+            ctx={ctx}
+            model={model}
+            session={session}
+            screen={screen}
+            labels={{
+              title: ctx.t("turnMap.title"),
+              open: ctx.t("turnMap.open"),
+              close: ctx.t("turnMap.close"),
+              empty: ctx.t("turnMap.empty"),
+            }}
+            openFull={() => {
+              dialog.close()
+              openPanel(session)
+            }}
+            onOpenTranscript={handleOpenTranscript}
+          />
+        </GraphLoadBoundary>
       </Scope>
     ))
   }
 
   const [hash, setHash] = createSignal(location.hash)
+  // A view permalink carries its facet question as `#graph?kind:file`; the map mirrors it into the
+  // graph's facet state so a shared link lands on the same filtered view.
+  const viewQuery = () => (/^#graph\?(.+)$/.exec(hash())?.[1])
 
   const linked = () => {
     const prefix = hash().startsWith("#spacegraph:") ? "#spacegraph:" : hash().startsWith("#graph:") ? "#graph:" : undefined
@@ -352,6 +391,16 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       if (link.layout) model.setLayout(session, link.layout)
       model.focus(session, link.node)
       select(`${ctx.id}.map`)
+      return
+    }
+
+    // A message hash selects the turn that owns it while the map is open, so a link into the
+    // transcript can be followed back to the same place on the graph.
+    const messageID = /^#message-(.+)$/.exec(hash())?.[1]
+    if (messageID) {
+      const turnID = model.graph(session)().turnByMessageID.get(messageID)
+      if (turnID) model.focus(session, `turn:${turnID}`)
+      select(`${ctx.id}.map`)
     }
   }
 
@@ -378,14 +427,25 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       order: 10,
       render: ({ session, screen, transcript }) => (
         <Scope>
-          <MapSurface
-            ctx={ctx}
-            model={model}
-            session={session}
-            screen={screen}
-            onSplitView={() => select(`${ctx.id}.hybrid`, session)}
-            onOpenTranscript={handleOpenTranscript}
-          />
+          <GraphLoadBoundary t={ctx.t} onBack={() => select("transcript")}>
+            <MapSurface
+              ctx={ctx}
+              model={model}
+              session={session}
+              screen={screen}
+              onSplitView={() => select(`${ctx.id}.hybrid`, session)}
+              onBack={() => select("transcript")}
+              onOpenSession={(id: string) => {
+                const match = /^(.*\/session\/)[^/?#]+([/?#].*)?$/.exec(location.pathname + location.search + location.hash)
+                if (match) location.href = `${match[1]}${id}${match[2] ?? ""}`
+              }}
+              onTurnMap={() => {
+                if (!model.turnMap(session)) model.toggleTurnMap(session)
+              }}
+              facetQuery={viewQuery()}
+              onOpenTranscript={handleOpenTranscript}
+            />
+          </GraphLoadBoundary>
         </Scope>
       ),
       layers: [
@@ -393,20 +453,22 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
           id: "turn-map",
           render: ({ session, screen, surface }) => (
             <Scope>
-              <TurnMapLayer
-                model={model}
-                session={session}
-                screen={screen}
-                surface={surface}
-                openFull={() => select(`${ctx.id}.map`)}
-                labels={{
-                  title: ctx.t("turnMap.title"),
-                  open: ctx.t("turnMap.open"),
-                  close: ctx.t("turnMap.close"),
-                  empty: ctx.t("turnMap.empty"),
-                }}
-                onOpenTranscript={handleOpenTranscript}
-              />
+              <GraphLoadBoundary t={ctx.t} onBack={() => model.closeTurnMap(session)} silent>
+                <TurnMapLayer
+                  model={model}
+                  session={session}
+                  screen={screen}
+                  surface={surface}
+                  openFull={() => select(`${ctx.id}.map`)}
+                  labels={{
+                    title: ctx.t("turnMap.title"),
+                    open: ctx.t("turnMap.open"),
+                    close: ctx.t("turnMap.close"),
+                    empty: ctx.t("turnMap.empty"),
+                  }}
+                  onOpenTranscript={handleOpenTranscript}
+                />
+              </GraphLoadBoundary>
             </Scope>
           ),
         },
@@ -421,14 +483,16 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
       order: 20,
       render: ({ session, screen, transcript }) => (
         <Scope>
-          <HybridSurface
-            ctx={ctx}
-            model={model}
-            session={session}
-            screen={screen}
-            transcript={transcript}
-            onOpenTranscript={handleOpenTranscript}
-          />
+          <GraphLoadBoundary t={ctx.t} onBack={() => select("transcript")}>
+            <HybridSurface
+              ctx={ctx}
+              model={model}
+              session={session}
+              screen={screen}
+              transcript={transcript}
+              onOpenTranscript={handleOpenTranscript}
+            />
+          </GraphLoadBoundary>
         </Scope>
       ),
     })
@@ -446,39 +510,41 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
         order: 5,
         render: ({ session }) => (
           <Scope>
-            <GraphTranscriptSurface
-              model={model.graph(session)()}
-              session={session}
-              density={model.density()}
-              notes={model.notes(session)}
-              onNotesChange={(notes) => model.setNotes(session, notes)}
-              pins={model.pins(session)}
-              onPinsChange={(pins) => model.setPins(session, pins)}
-              onOpenTranscript={handleOpenTranscript}
-              onTurnExpand={(turnID) => {
-                // Expand is handled by the inline graph toggle
-              }}
-              onTurnWhy={(turnID) => {
-                // Open the why panel/popover for this turn
-                model.focus(session, turnID)
-                model.setDetailMode(session, "popover")
-              }}
-              onTurnExpandDelegation={(turnID) => {
-                // Expand delegation - focus the turn and open detail
-                model.focus(session, turnID)
-                model.setDetailMode(session, "popover")
-              }}
-              onTurnSubagent={(turnID, subagentID) => {
-                // Open subagent graph
-                model.focus(session, subagentID)
-                model.setDetailMode(session, "popover")
-              }}
-              onTurnShare={(turnID, layout, nodeID) => {
-                // Permalink copied - could show a toast
-                const permalink = `#spacegraph:${layout}:${nodeID}`
-                navigator.clipboard.writeText(permalink)
-              }}
-            />
+            <GraphLoadBoundary t={ctx.t} onBack={() => select("transcript")}>
+              <GraphTranscriptSurface
+                model={model.graph(session)()}
+                session={session}
+                density={model.density()}
+                notes={model.notes(session)}
+                onNotesChange={(notes) => model.setNotes(session, notes)}
+                pins={model.pins(session)}
+                onPinsChange={(pins) => model.setPins(session, pins)}
+                onOpenTranscript={handleOpenTranscript}
+                onTurnExpand={(turnID) => {
+                  // Expand is handled by the inline graph toggle
+                }}
+                onTurnWhy={(turnID) => {
+                  // Open the why panel/popover for this turn
+                  model.focus(session, turnID)
+                  model.setDetailMode(session, "popover")
+                }}
+                onTurnExpandDelegation={(turnID) => {
+                  // Expand delegation - focus the turn and open detail
+                  model.focus(session, turnID)
+                  model.setDetailMode(session, "popover")
+                }}
+                onTurnSubagent={(turnID, subagentID) => {
+                  // Open subagent graph
+                  model.focus(session, subagentID)
+                  model.setDetailMode(session, "popover")
+                }}
+                onTurnShare={(turnID, layout, nodeID) => {
+                  // Permalink copied - could show a toast
+                  const permalink = `#spacegraph:${layout}:${nodeID}`
+                  navigator.clipboard.writeText(permalink)
+                }}
+              />
+            </GraphLoadBoundary>
           </Scope>
         ),
       })
@@ -930,7 +996,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
     list: (input) => (input.open.includes("map") ? [tab, overviewTab] : []),
     render: (input) => (
       <Scope>
-        <Suspense>
+        <GraphLoadBoundary t={ctx.t} onBack={() => select("transcript")}>
           <Show
             when={input.tab.id === "overview"}
             fallback={
@@ -951,7 +1017,7 @@ const setup: Plugin.Setup<typeof definition> = (ctx) => {
               onOpenFull={() => model.select(input.session, `${ctx.id}.map`)}
             />
           </Show>
-        </Suspense>
+        </GraphLoadBoundary>
       </Scope>
     ),
   })

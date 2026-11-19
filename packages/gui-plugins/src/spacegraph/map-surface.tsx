@@ -1,9 +1,11 @@
 import type { MountedSession, SessionScreen, SetupContext } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { SessionGraph } from "@opencode/session-graph"
-import { createMemo } from "solid-js"
+import { Markdown } from "@opencode/session-ui/markdown"
+import type { GraphWindowState } from "@opencode/session-graph"
+import { createMemo, createSignal } from "solid-js"
 import { useI18n } from "@opencode/ui/context/i18n"
-import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import { LAYOUTS } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide } from "@opencode/session-ui/graph"
 import { createHostWidgetRegistry } from "./widget-host"
 
@@ -13,6 +15,10 @@ export function MapSurface(props: {
   session: MountedSession
   screen: SessionScreen
   onSplitView?: () => void
+  onBack?: () => void
+  onTurnMap?: () => void
+  onOpenSession?: (sessionID: string) => void
+  facetQuery?: string
   onOpenTranscript?: (id: string) => void
 }) {
   const i18n = useI18n()
@@ -27,6 +33,8 @@ export function MapSurface(props: {
   })
   const timeTravel = () => props.model.timeTravelEnabled()
   const turnCount = () => live().turns.length
+  // Graph windows are host state. Own them here so the map's compare/node/legend windows can open.
+  const [windows, setWindows] = createSignal<GraphWindowState[]>([])
 
   const focused = () => props.model.focused(props.session)
   const preferredRenderer = () => props.model.renderer()
@@ -51,6 +59,7 @@ export function MapSurface(props: {
         surfaceLabel={i18n.t("surface.map")}
         model={graph()}
         level={props.model.level(props.session)}
+        facetQuery={props.facetQuery}
         density={props.model.density()}
         layout={props.model.layout(props.session)}
         depth={props.model.depth(props.session)}
@@ -64,7 +73,7 @@ export function MapSurface(props: {
         onCheckpoint={(index: number) => props.model.setCheckpoint(props.session, index, turnCount())}
         onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
         onLayoutChange={(next: string) => {
-          const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
+          const layout = LAYOUTS.find((candidate: string) => candidate === next)
 
           if (layout) props.model.setLayout(props.session, layout)
         }}
@@ -76,6 +85,17 @@ export function MapSurface(props: {
         onArrangementChange={(next: GraphArrangement) => props.model.setArrangement(props.session, next)}
         onArrangementSideChange={(next: GraphSide) => props.model.setSide(props.session, next)}
         onSplitView={props.onSplitView}
+        onBack={props.onBack}
+        onTurnMap={props.onTurnMap}
+        onOpenSession={props.onOpenSession}
+        windows={windows()}
+        onOpenWindow={(window: GraphWindowState) => setWindows((current) => [...current, window])}
+        onWindowsChange={setWindows}
+        renderSummary={(node) =>
+          node.kind === "message" || node.kind === "reasoning" ? (
+            <Markdown text={node.summary ?? ""} class="text-12-regular text-text-base" />
+          ) : undefined
+        }
         preferredRenderer={preferredRenderer}
         endInset={props.model.endInset()}
         showSeeMapPrompt={false}

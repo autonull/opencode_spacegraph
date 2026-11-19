@@ -19,6 +19,7 @@ import {
   type Layout,
   type LayoutStrategy,
   type SavedQuery,
+  type SessionLineage,
   type ZoomLevel,
   type DetailMode,
   buildGraph,
@@ -35,7 +36,6 @@ import {
   type CardDensity,
 } from "./internal/graph"
 import type { WorkspaceSnapshot } from "@opencode/client/promise"
-import { buildRenderModel, exportGraph, DEFAULT_THEME } from "@opencode/session-graph"
 import { computeFocusOverlay, getFocusOpacity } from "@spacegraphjs/overlays"
 import { BUILTIN_LENSES } from "./index"
 import type definition from "./index"
@@ -153,7 +153,7 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
 
       if (!workspaceRequested.has(key)) {
         workspaceRequested.add(key)
-        void session.server.client["server.graph"]
+        void session.server.client.graph
           .workspace({ location: { directory: session.directory }, scope: "session" })
           .then((response) => {
             workspaceSnapshots.set(key, response.data)
@@ -162,11 +162,25 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
           .catch(() => undefined)
       }
 
+      // T6.5: a fork names the session it branched from and a child names its parent, so the root
+      // node can say where this session came from in the inspector.
+      const info = session.server.data.session.get(session.id)
+      const lineage: SessionLineage | undefined =
+        info?.fork || info?.parentID
+          ? {
+              forkedFrom: info.fork
+                ? { sessionID: info.fork.sessionID, boundary: info.fork.boundary }
+                : undefined,
+              parentSessionID: info.parentID,
+            }
+          : undefined
+
       const builtGraph = buildGraph({
         messages: session.server.data.session.message.list(session.id),
         status,
         snapshot: workspaceSnapshots.get(key),
         sessionID: session.id,
+        lineage,
       })
 
       // Compute incremental layout preserving previous positions
@@ -366,9 +380,16 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
         draft.logTextScale = scale
       })
     },
-    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "side",
+    // Match cycleArrangement's base: a reader who has not chosen one starts stacked.
+    arrangement: (session: MountedSession): GraphArrangement => sessionValue(session)?.arrangement ?? prefValue().arrangement ?? "stacked",
     side: (session: MountedSession): GraphSide => sessionValue(session)?.side ?? prefValue().side ?? "end",
     surface: (session: MountedSession) => sessionValue(session)?.surface,
+    /** Remember a host-driven surface switch so it survives a reload. Does not re-select it. */
+    recordSurface: (session: MountedSession, id: string) => {
+      store(session).update((draft) => {
+        draft.surface = id
+      })
+    },
     select: (session: MountedSession, id: string) => {
       store(session).update((draft) => {
         draft.surface = id
@@ -389,7 +410,9 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       })
     },
     renderer: () => "spacegraph" as const,
-    endInset: () => (isDesktop() ? "104px" : undefined),
+    // Reserve room for the four floating session-header toggles. A shorter inset put the map's own
+    // split/back buttons underneath them, so Playwright (and a reader) could not click those controls.
+    endInset: () => (isDesktop() ? "160px" : undefined),
     cycleLevel: (session: MountedSession) => {
       const level = next(ZOOM_LEVELS, store(session).value?.level ?? "overview")
 
@@ -438,18 +461,22 @@ export function createSpacegraph(ctx: SetupContext<typeof definition>) {
       void navigator.clipboard.writeText(location.href)
     },
     export: (session: MountedSession, format: "svg" | "json" | "html") => {
-      const g = graph(session)()
-      const withNotes = withAnnotations(g, (sessionValue(session)?.notes as Annotations) ?? {})
-      const level = store(session).value?.level ?? prefs.value.level ?? "execution"
-      const layoutStrategy = (store(session).value?.layout ?? prefs.value.layout ?? "lanes") as LayoutStrategy
-      const layout = layoutGraph(withNotes, { strategy: layoutStrategy })
-      const renderModel = buildRenderModel(withNotes, {
-        level,
-        positions: layout.positions,
+      // The export renderer lives in the graph module; import it only when the reader exports, so a
+      // failed module load cannot break the built-in's startup or the transcript.
+      void import("@opencode/session-graph").then(({ buildRenderModel, exportGraph, DEFAULT_THEME }) => {
+        const g = graph(session)()
+        const withNotes = withAnnotations(g, (sessionValue(session)?.notes as Annotations) ?? {})
+        const level = store(session).value?.level ?? prefs.value.level ?? "execution"
+        const layoutStrategy = (store(session).value?.layout ?? prefs.value.layout ?? "lanes") as LayoutStrategy
+        const layout = layoutGraph(withNotes, { strategy: layoutStrategy })
+        const renderModel = buildRenderModel(withNotes, {
+          level,
+          positions: layout.positions,
+        })
+        const sessionTitle = session.server.data.session.get(session.id)?.title ?? "OpenCode Session"
+        const testedCommit = "unknown"
+        exportGraph(format, renderModel, { theme: DEFAULT_THEME, sessionTitle, testedCommit })
       })
-      const sessionTitle = session.server.data.session.get(session.id)?.title ?? "OpenCode Session"
-      const testedCommit = "unknown"
-      exportGraph(format, renderModel, { theme: DEFAULT_THEME, sessionTitle, testedCommit })
     },
     /** The shared graph memo for this session. */
     graph,

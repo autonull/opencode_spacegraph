@@ -10,10 +10,10 @@ export type GraphCompareBarProps = {
 
 export const GraphCompareBar = (props: GraphCompareBarProps) => {
   const i18n = useI18n()
-  const { diff } = props
-
+  // Read `diff` off props inside the Show: destructuring would capture the initial undefined and the
+  // bar would never appear when a checkpoint is parked later.
   return (
-    <Show when={diff}>
+    <Show when={props.diff}>
       {(d) => (
         <div
           data-slot="graph-compare-bar"

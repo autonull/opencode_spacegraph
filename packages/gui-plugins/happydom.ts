@@ -1,6 +1,13 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
+import { mock } from "bun:test"
 
 GlobalRegistrator.register()
+
+// Bun resolves `solid-js` to its server build under the default test conditions. Plugins are window code running
+// against happy-dom, so point `solid-js/web` at the browser build; server stubs throw on module load (e.g. Kobalte
+// compiles its templates at import time). The app's unit tests do the same via `--conditions=solid`, which a bunfig
+// cannot express.
+mock.module("solid-js/web", () => import("solid-js/web/dist/web.js"))
 
 const originalGetContext = HTMLCanvasElement.prototype.getContext
 

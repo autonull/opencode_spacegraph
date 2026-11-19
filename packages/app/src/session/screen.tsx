@@ -54,6 +54,7 @@ import { SessionSurfaceHost, SessionSurfacePicker } from "./surface"
 import { useLocation } from "@solidjs/router"
 import { SessionGraphToggle } from "./header/session-graph-toggle"
 import { graphPermalinkFromHash } from "./graph/graph-permalink"
+import { GraphMetricsReadout } from "./graph/graph-metrics-readout"
 import { sessionSurfaceID, selectSessionSurface } from "@/runtime/plugin/surfaces"
 
 export function SessionScreenView(props: { session: SessionModel }) {
@@ -498,6 +499,9 @@ function SessionScreenContent(props: {
 
   return (
     <>
+      <Show when={new URLSearchParams(window.location.search).get("graphMetrics") === "1"}>
+        <GraphMetricsReadout />
+      </Show>
       <div class="flex-1 min-h-0 flex flex-col gap-2 px-[var(--shell-inline-inset,8px)] pb-[var(--shell-bottom-inset,8px)] pt-[var(--shell-top-inset,8px)]">
         <div ref={screen.panel.ref} data-pane-row class="relative flex-1 min-h-0 flex flex-col md:flex-row gap-2">
           {/* Keep the control outside panel animations. */}

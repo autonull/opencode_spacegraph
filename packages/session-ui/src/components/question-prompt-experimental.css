@@ -62,7 +62,7 @@
 
   [data-slot="question-header-title"] {
     min-inline-size: 0;
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 440;
     line-height: var(--line-height-base);
     color: var(--v2-text-text-muted);
@@ -115,7 +115,7 @@
   }
 
   [data-slot="question-text"] {
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 530;
     line-height: var(--line-height-base);
     color: var(--v2-text-text-base);
@@ -371,7 +371,7 @@
 
   [data-slot="option-label"] {
     font-family: var(--v2-font-family-sans);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 530;
     line-height: var(--line-height-base);
     color: var(--v2-text-text-base);
@@ -381,7 +381,7 @@
   [data-slot="option-description"] {
     min-inline-size: 0;
     font-family: var(--v2-font-family-sans);
-    font-size: 13px;
+    font-size: var(--font-size-small, 13px);
     font-weight: 440;
     line-height: var(--line-height-base);
     color: var(--v2-text-text-muted);
@@ -467,7 +467,7 @@
       background: transparent;
       outline: none;
       font-family: var(--v2-font-family-sans);
-      font-size: 13px;
+      font-size: var(--font-size-small, 13px);
       font-weight: 440;
       line-height: var(--line-height-compact);
       color: var(--v2-text-text-base);

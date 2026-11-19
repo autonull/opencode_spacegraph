@@ -8,7 +8,7 @@ import { SessionGraph } from "@opencode/session-graph"
 import { createHostWidgetRegistry } from "./widget-host"
 import { Inspector, type GraphNode as InspectorGraphNode, type GraphViewData as InspectorGraphViewData } from "@spacegraphjs/inspector"
 import { Windows, type WindowState } from "@spacegraphjs/window-manager"
-import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import { LAYOUTS } from "@opencode/session-ui/graph"
 import type { DepthMode, DetailMode, GraphArrangement, GraphSide, Annotations } from "@opencode/session-ui/graph"
 
 function convertGraphData(data: SessionGraphViewData): InspectorGraphViewData {
@@ -209,7 +209,7 @@ export default function SpacegraphPanel(props: {
           }
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
-            const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
+            const layout = LAYOUTS.find((candidate: string) => candidate === next)
 
             if (layout) props.model.setLayout(props.session, layout)
           }}

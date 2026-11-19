@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "bun:test"
+import { afterEach, describe, expect, jest, test } from "bun:test"
 import { createStore, produce } from "solid-js/store"
 import { ClientError, type PersistentPtyInfo } from "@opencode/client"
 import type { Layout, ServerRef, SessionRef, Storage, ToastOptions } from "@opencode/plugin/gui"
@@ -210,6 +210,8 @@ function setup(server: ReturnType<typeof fakeServer>) {
 }
 
 describe("terminal model", () => {
+  afterEach(() => jest.restoreAllMocks())
+
   test("is ready only once the server answers the session's first list", async () => {
     const server = fakeServer()
     const list = Promise.withResolvers<void>()
@@ -327,8 +329,10 @@ describe("terminal model", () => {
   })
 
   test("shows a list that fails with an error other than 503 as failed until the user retries", async () => {
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {})
     const server = fakeServer()
-    server.state.listError = new Error("boom")
+    const failure = new Error("boom")
+    server.state.listError = failure
     server.terminals.set("ses_1", [info("pty_1", "Terminal 1")])
     const { model, session } = setup(server)
 
@@ -353,6 +357,9 @@ describe("terminal model", () => {
 
     expect(terminal.view().type).toBe("ready")
     expect(terminal.all().map((item) => item.id)).toEqual(["pty_1"])
+    // The non-503 failure is logged once; retrying clears it without another log.
+    expect(logged).toHaveBeenCalledTimes(1)
+    expect(logged).toHaveBeenCalledWith("Failed to list terminals", failure)
   })
 
   test("a late 503 from an older list leaves the newer list and the server's support alone", async () => {

@@ -36,13 +36,20 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
     return node && (node.clusterOf?.length ?? 0) > 0 ? node : undefined
   })
 
-  const toggleGroupByID = (id: string) =>
-    setLocalCollapsedGroups((previous) => {
-      const next = new Set(previous)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  // Keep a controlled host in step with every mutation. Without this, a host that reads the
+  // controlled set (the status-bar group toggle) never sees a collapse made through this hook.
+  const commit = (next: ReadonlySet<string>) => {
+    setLocalCollapsedGroups(next)
+    options.onExplicitlyCollapsedGroupsChange?.(next)
+  }
+
+  const toggleGroupByID = (id: string) => {
+    const previous = explicitlyCollapsedGroups()
+    const next = new Set(previous)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    commit(next)
+  }
 
   const toggleGroup = () => {
     const group = selectedGroup()
@@ -53,7 +60,7 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
   const collapseOtherGroups = () => {
     const group = selectedGroup()
     if (!group) return
-    setLocalCollapsedGroups(
+    commit(
       new Set(
         options
           .model()
@@ -66,11 +73,9 @@ export function useGroupCollapse(options: UseGroupCollapseOptions): UseGroupColl
   const expandAllInCluster = () => {
     const group = selectedGroup()
     if (!group) return
-    setLocalCollapsedGroups((previous) => {
-      const next = new Set(previous)
-      next.delete(group.id)
-      return next
-    })
+    const next = new Set(explicitlyCollapsedGroups())
+    next.delete(group.id)
+    commit(next)
   }
 
   return {

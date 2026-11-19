@@ -301,6 +301,7 @@ export const GraphChrome = (props: GraphChromeProps) => {
         capabilities={capabilities()}
         renderer={ctx.rendererID()}
         level={ctx.level()}
+        model={model}
         onLevel={ctx.setLevel}
         facets={ctx.facets()}
         facetCounts={ctx.counts()}

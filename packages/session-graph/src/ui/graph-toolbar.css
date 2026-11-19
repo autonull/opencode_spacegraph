@@ -12,3 +12,11 @@
   flex: 0 0 auto;
   padding: 0 10px;
 }
+
+/* An open toolbar menu can grow past the composer's floating row, which then intercepts clicks on
+   the lower items (legend, turn map, ...). Keep the popover scrollable inside the viewport so every
+   item stays reachable and Playwright can scroll it into view. */
+[data-slot="graph-toolbar"] details[open] > div {
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}

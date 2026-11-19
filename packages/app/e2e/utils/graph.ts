@@ -33,3 +33,18 @@ export async function seedSessionGraph(page: Page) {
     localStorage.setItem(key, stored ? merge(stored) : JSON.stringify({ experimental: { sessionGraph: true } }))
   })
 }
+
+/**
+ * The map opens at `overview` by default, where only session/turn/phase cards are drawn. The graph
+ * keeper cases in `session-graph.spec.ts` exercise file and tool node behaviour, so they need the
+ * `execution` level. Seed the plugin's persisted map preference before the app boots: the session
+ * store overrides it, so a case that explicitly changes level still wins.
+ */
+export async function seedGraphExecutionLevel(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "opencode.global.dat:plugin.spacegraph.prefs",
+      JSON.stringify({ level: "execution" }),
+    )
+  })
+}

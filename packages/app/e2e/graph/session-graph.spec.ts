@@ -2,7 +2,7 @@ import { expect, test as base, type Page } from "@playwright/test"
 import { buildFixtureMessages } from "@opencode/session-ui/graph"
 import { sessionHref } from "../utils/app"
 import { trackPageErrors } from "../utils/errors"
-import { seedSessionGraph } from "../utils/graph"
+import { seedGraphExecutionLevel, seedSessionGraph } from "../utils/graph"
 import {
   assistantMessage,
   historyMessages,
@@ -17,6 +17,7 @@ import { openSession } from "../utils/workspace"
 const test = base.extend({
   page: async ({ page }, use) => {
     await seedSessionGraph(page)
+    await seedGraphExecutionLevel(page)
     await use(page)
   },
 })
@@ -28,6 +29,28 @@ const sessionID = "ses_session_graph"
 const canvasHost = '[data-slot="graph-canvas-host"]'
 
 const toolbar = '[data-slot="graph-toolbar"]'
+
+// The hybrid surface is owned by the built-in plugin now; these are its current contract slots.
+const hybridPanel = '[data-slot="spacegraph-surface-hybrid"]'
+
+const hybridLog = '[data-slot="spacegraph-hybrid-log"]'
+
+// The camera fit continues briefly after data-graph-ready. Sample geometry only once it has settled,
+// so a drag or resize measures the reader's action rather than the tail of the opening fit.
+async function waitForStableGeometry<T>(sample: () => Promise<T>) {
+  let previous = ""
+  await expect
+    .poll(
+      async () => {
+        const current = JSON.stringify(await sample())
+        const stable = current !== "" && current === previous
+        previous = current
+        return stable
+      },
+      { intervals: [100] },
+    )
+    .toBe(true)
+}
 
 /** T14: the toolbar's menus are popovers on a wide row and one overflow menu on a narrow one. */
 async function openMenu(page: Page) {
@@ -127,8 +150,9 @@ test("offers the graph switch on a narrow mobile viewport", async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 900 })
   await openSession(page, graphFixture())
 
-  // T1.4: the desktop header toggle is absent, so the mobile tab surface carries the switch.
-  const toggle = page.getByRole("button", { name: "Toggle graph view" })
+  // T1.4: the desktop header toggle is absent on a narrow viewport; the session-header slot carries
+  // the map entry point instead ("Open this turn" opens the graph for the active turn).
+  const toggle = page.getByRole("button", { name: /Open this turn/ })
   await expect(toggle).toBeVisible()
   await toggle.click()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
@@ -558,7 +582,7 @@ test("opens the hybrid turn map over the graph and closes on Escape", async ({ p
 
   await openMenu(page)
   await page.locator(toolbar).getByRole("button", { name: "Open turn map" }).click()
-  const overlay = page.getByRole("dialog", { name: "Turn map" })
+  const overlay = page.locator('[data-slot="spacegraph-turn-map"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
@@ -578,16 +602,14 @@ test("shows the map and the log together, and the reader chooses how they meet",
   // map to get it.
   await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
 
-  const hybrid = page.locator('[data-slot="session-graph-panel"]')
+  const hybrid = page.locator(hybridPanel)
   await expect(hybrid).toBeVisible()
   await expect(hybrid).toHaveAttribute("data-arrangement", "stacked")
-  await expect(page.locator('[data-slot="session-graph-panel-map"]')).toBeVisible()
-  await expect(page.locator('[data-slot="session-graph-panel-log"]')).toBeVisible()
+  await expect(hybrid.locator(canvasHost)).toBeVisible()
+  await expect(page.locator(hybridLog)).toBeVisible()
   // The log is still the log, and the map is still the map.
   await expect(
-    page.locator(
-      '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
-    ),
+    page.locator(`${hybridLog} [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]`),
   ).toBeVisible()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
@@ -599,7 +621,7 @@ test("shows the map and the log together, and the reader chooses how they meet",
   await openMenu(page)
   await page.locator(`${toolbar} [data-slot="graph-arrangement-option"][data-value="floating"]`).click()
   await expect(hybrid).toHaveAttribute("data-arrangement", "floating")
-  await expect(page.locator('[data-slot="session-graph-panel-pane-bar"]')).toBeVisible()
+  await expect(page.locator('[data-slot="hybrid-text-size"]')).toBeVisible()
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
 
   expect(errors).toEqual([])
@@ -643,7 +665,7 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   await openGraphViaMenu(page)
   await expect(page.locator(canvasHost)).toHaveAttribute("data-graph-ready", "true")
   await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
-  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+  await expect(page.locator(hybridPanel)).toBeVisible()
 
   // The oldest turn's answer, picked in the map.
   await page.getByRole("button", { name: "Search the graph" }).click()
@@ -652,9 +674,7 @@ test("picking a node in the map moves the log to it", async ({ page }) => {
   await search.locator('[data-node-id="msg:msg_user_1"]').click()
 
   // The log followed the map: the picked row is the one on screen, not merely mounted.
-  const row = page.locator(
-    '[data-slot="session-graph-panel-log"] [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]',
-  )
+  const row = page.locator(`${hybridLog} [data-timeline-row="UserMessage"][data-message-id="msg_user_1"]`)
   await expect(row).toBeVisible()
   await expect(row).toBeInViewport()
 
@@ -665,15 +685,13 @@ test("scales the log's text from the split, without leaving the map", async ({ p
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
   await page.locator(`${toolbar} [data-slot="graph-toolbar-split"]`).click()
-  await expect(page.locator('[data-slot="session-graph-panel"]')).toBeVisible()
+  await expect(page.locator(hybridPanel)).toBeVisible()
 
   // The slider is at hand: a split panel's log is narrow, so the reader wants its text bigger.
-  const slider = page.locator('[data-slot="session-graph-panel-log-scale"] input[type="range"]')
+  const slider = page.locator('[data-slot="hybrid-text-size"] input[type="range"]')
   await expect(slider).toBeVisible()
 
-  const message = page
-    .locator('[data-slot="session-graph-panel-log"]')
-    .getByText("Fix the authentication test failures.")
+  const message = page.locator(hybridLog).getByText("Fix the authentication test failures.")
   const before = await message.evaluate((element) => getComputedStyle(element).fontSize)
 
   await slider.fill("1.3")
@@ -766,11 +784,13 @@ test("falls back safely when a permalink names an unknown node", async ({ page }
 })
 
 test("counts interactions for the usability protocol when the counter is on", async ({ page }) => {
-  const errors = trackPageErrors(page)
   await openSession(page, graphFixture())
 
   // T2.3: the counter is opt-in through the URL and never leaves the browser.
   await page.goto(`${sessionHref(sessionID)}?graphMetrics=1`)
+  // Track only the page under test: navigating here aborts the previous page's in-flight terminal
+  // request, whose failed fetch is not an error in the graph surface being measured.
+  const errors = trackPageErrors(page)
   const readout = page.locator('[data-slot="graph-metrics"]')
   await expect(readout).toContainText("0 interactions")
 
@@ -921,10 +941,11 @@ test("pans the view with the right mouse button", async ({ page }) => {
   const before = await card.boundingBox()
   const host = (await page.locator(canvasHost).boundingBox())!
 
-  // The right button belongs to the camera: the view follows the cursor.
-  await page.mouse.move(host.x + host.width - 40, host.y + host.height - 40)
+  // The right button belongs to the camera: the view follows the cursor. Start in the middle so a
+  // session-entry toast in the bottom corner cannot swallow the gesture.
+  await page.mouse.move(host.x + host.width / 2, host.y + host.height / 2)
   await page.mouse.down({ button: "right" })
-  await page.mouse.move(host.x + host.width - 140, host.y + host.height - 140, { steps: 10 })
+  await page.mouse.move(host.x + host.width / 2 - 100, host.y + host.height / 2 - 100, { steps: 10 })
   await page.mouse.up({ button: "right" })
 
   await expect
@@ -955,9 +976,9 @@ test("the card budget follows the camera (T17.5)", async ({ page }) => {
 
   // The camera moves: the budget follows it, and the cards move with it.
   const host = (await page.locator(canvasHost).boundingBox())!
-  await page.mouse.move(host.x + host.width - 40, host.y + host.height - 40)
+  await page.mouse.move(host.x + host.width / 2, host.y + host.height / 2)
   await page.mouse.down({ button: "right" })
-  await page.mouse.move(host.x + host.width - 460, host.y + host.height - 260, { steps: 10 })
+  await page.mouse.move(host.x + host.width / 2 - 300, host.y + host.height / 2 - 160, { steps: 10 })
   await page.mouse.up({ button: "right" })
 
   await expect.poll(cards).not.toEqual(before)
@@ -1034,6 +1055,8 @@ test("drags a group and carries its members", async ({ page }) => {
       }),
     )
 
+  await waitForStableGeometry(rects)
+
   const host = (await page.locator(canvasHost).boundingBox())!
   const before = await rects()
   const target = before.find((group) => group.x > host.x && group.x + 400 < host.x + host.width && group.y > host.y + 80)
@@ -1064,6 +1087,15 @@ test("drags a group and carries its members", async ({ page }) => {
 test("resizes a group from its handle", async ({ page }) => {
   const errors = trackPageErrors(page)
   await openGraph(page, graphFixture())
+
+  await waitForStableGeometry(() =>
+    page.locator(`${canvasHost} .resize-handle`).evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect()
+        return [rect.x, rect.y, rect.width, rect.height]
+      }),
+    ),
+  )
 
   const handles = await page.locator(`${canvasHost} .resize-handle`).evaluateAll((elements) =>
     elements.map((element) => {

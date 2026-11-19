@@ -1,4 +1,4 @@
-import { Show, onMount } from "solid-js"
+import { Show, onCleanup, onMount } from "solid-js"
 import type { MountedSession, SessionScreen, SessionSurface } from "@opencode/plugin/gui"
 import type { SpacegraphModel } from "./model"
 import { SessionGraph } from "@opencode/session-graph"
@@ -23,7 +23,17 @@ export function TurnMapLayer(props: {
     props.openFull()
   }
 
-  onMount(() => panel?.querySelector<HTMLElement>("button")?.focus())
+  onMount(() => {
+    panel?.querySelector<HTMLElement>("button")?.focus()
+    // Escape closes the overlay wherever focus sits, including the toolbar menu that opened it.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      close()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    onCleanup(() => window.removeEventListener("keydown", onKeyDown))
+  })
 
   const keydown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {

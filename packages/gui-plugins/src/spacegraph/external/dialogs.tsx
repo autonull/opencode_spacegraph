@@ -6,7 +6,7 @@ import type { JSX } from "solid-js"
 import type { MountedSession, SessionScreen, SetupContext } from "@opencode/plugin/gui"
 import definition from ".."
 import { SessionGraph } from "@opencode/session-graph"
-import { LAYOUT_STRATEGIES } from "@opencode/session-ui/graph"
+import { LAYOUTS } from "@opencode/session-ui/graph"
 import { turnSubgraph } from "@opencode/session-ui/graph"
 import type { GraphNode } from "@opencode/session-ui/graph"
 import type { SpacegraphModel } from "../model"
@@ -52,7 +52,7 @@ export function MapDialog(props: {
           onCheckpoint={(index: number) => props.model.setCheckpoint(props.session, index, turnCount())}
           onSelect={(id: string | undefined) => props.model.focus(props.session, id)}
           onLayoutChange={(next: string) => {
-            const layout = LAYOUT_STRATEGIES.find((candidate: string) => candidate === next)
+            const layout = LAYOUTS.find((candidate: string) => candidate === next)
 
             if (layout) props.model.setLayout(props.session, layout)
           }}
