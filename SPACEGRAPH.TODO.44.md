@@ -1,7 +1,8 @@
 # SPACEGRAPH.TODO.44.md — Consolidation and parity plan
 
-**Status (r6):** Fully green. Phases 0–10 are done; every gate and every package suite passes: root
-`check` 57/57, `graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77,
+**Status (r7):** Fully green, independently re-verified from a fresh session (§12). Phases 0–10 are
+done; every gate and every package suite passes: root `check` 57/57, `graph:verify` all steps, capture
+verify 31/31 + 2/2 + matrix, component 77/77,
 `session-ui` graph 377/377, app graph e2e 44/44, `session-graph` 136/0, `gui-plugins` 1164/0,
 `client` 262/0, `server` 136/0, app unit 2798/0, app browser 359/0, `core` 7576/0. Screenshots were
 regenerated from the final code. Only sign-off (push + PR) remains, blocked on the owner. Supersedes
@@ -44,6 +45,14 @@ unit 136 pass / 0 fail. No tracked source changed in r3; the fix was to clear a 
 `client` 262/0, `server` 136/0, `core` 7576/0, app graph e2e 44/44. Final full gate set green: root
 `check` 57/57, `graph:verify` all steps, capture verify 31/31 + 2/2 + matrix, component 77/77.
 Screenshots regenerated from the final code and frame `02` visually verified.
+
+**Re-verified (r7):** from a fresh session at clean `HEAD` on `pr1-plugin-surface-apis`; no tracked
+source changed. Root `check` 57/57 (all cached) and `graph:verify` all 16 steps pass, including
+`session-graph` unit + component contract, graph capture verify (31/31 frames), the cartesian matrix
+(24 cells, 22 no-ops) and the published-package consumer check. The implementation is complete by
+Definition of Done 1–8; the only outstanding action is the owner-gated sign-off in §12 (DoD 9 forbids
+push/PR without it). Untracked `.vite` caches under `packages/posts/`, `services/www/` and the nested
+`spacegraphjs` git repo are local build artifacts, not part of the change set.
 
 ---
 
@@ -329,7 +338,9 @@ The plan is complete. Use this section as the sign-off runbook, not as a to-do l
 
 ### Remaining work (not on the critical path)
 
-None of these blocks sign-off on the consolidation itself. Do them only after explicit sign-off.
+The implementation is complete; the only remaining action is owner sign-off, which is not a code
+task and which this plan never authorises. The notes below are either that sign-off or background
+context — none is a pending code change.
 
 - **Sign-off only (blocked on the owner):** push fork branch `pr1-plugin-surface-apis` and submit the
   upstream `SessionSurface` PR. This plan never authorises either action; §12.4 and §11.9 still hold.
@@ -453,3 +464,12 @@ regenerated with `bun script/sync-graph.ts`; `check:graph` and root `check` are 
   graph e2e 44/44, `session-graph` 136/0, `gui-plugins` 1164/0, `client` 262/0, `server` 136/0, app
   unit 2798/0, app browser 359/0, `core` 7576/0. Screenshots regenerated from the final code. No push
   or PR.
+
+- **r7 (2026-11-19):** Independent fresh-session re-verification of clean `HEAD`; no tracked source
+  changed. Root `check` 57/57 (all cached) and `graph:verify` all 16 steps pass (library build,
+  contract/boundary packages, controller + bindings, overlays, navigation, second host, all four
+  renderer/adapter packages, `session-graph` unit + component contract, capture verify 31/31, cartesian
+  matrix 24 cells, published-package consumer). Confirmed the implementation satisfies Definition of
+  Done 1–8 and that the single remaining action is the owner-gated push + PR (§12, DoD 9). Updated the
+  status and §12 to make that explicit and to identify untracked `.vite`/nested-repo artifacts as local
+  build output. No push or PR.
